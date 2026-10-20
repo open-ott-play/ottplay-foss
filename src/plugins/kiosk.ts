@@ -814,25 +814,32 @@ export function createKiosk(w: any): any {
                 params.query.indexOf("folder:") === 0
             ) {
                 var folderName = caselessKey(params.query.slice(7).trim());
+                var connected = w.__ottLocalMedia?.completedSources?.();
+                if (!connected) {
+                    fail(
+                        "Wait for the local media scan to finish before locking a folder."
+                    );
+                    return;
+                }
+                var sources = connected.filter(function (source: any) {
+                    return (
+                        source.kind === "folder" &&
+                        caselessKey(String(source.name || "")) === folderName
+                    );
+                });
+                if (!folderName || sources.length !== 1) {
+                    fail(
+                        "Select one uniquely named local folder with playable videos."
+                    );
+                    return;
+                }
                 var ids = (w.cList || w.curList || []).filter(function (
                     id: any
                 ) {
                     var row = (w.channels || {})[id];
-                    return (
-                        row &&
-                        row.__ottLocalSource &&
-                        caselessKey(String(row.__ottLocalSourceName || "")) ===
-                            folderName
-                    );
+                    return row && row.__ottLocalSource === sources[0].id;
                 });
-                var sources = ids
-                    .map(function (id: any) {
-                        return w.channels[id].__ottLocalSource;
-                    })
-                    .filter(function (id: string, i: number, all: string[]) {
-                        return all.indexOf(id) === i;
-                    });
-                if (!folderName || sources.length !== 1) {
+                if (!ids.length) {
                     fail(
                         "Select one uniquely named local folder with playable videos."
                     );
@@ -856,8 +863,8 @@ export function createKiosk(w: any): any {
                     name: String(w.channels[first].channel_name || ""),
                 };
                 folder = {
-                    id: sources[0],
-                    name: String(w.channels[first].__ottLocalSourceName),
+                    id: sources[0].id,
+                    name: String(sources[0].name),
                 };
             } else if (params.query !== undefined) {
                 var text = params.query.trim();

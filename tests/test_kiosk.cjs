@@ -2242,6 +2242,11 @@ testScreenBridge().catch((error) => {
         },
     };
     r.w.cats.all = r.w.cList = r.w.curList = ["a", "b", "c"];
+    const sources = [
+        { id: "folder-1", kind: "folder", name: "Winnie" },
+        { id: "folder-2", kind: "folder", name: "Other" },
+    ];
+    r.w.__ottLocalMedia = { completedSources: () => sources };
     const result = r.request({
         mode: "on",
         query: "folder:Winnie",
@@ -2274,6 +2279,7 @@ testScreenBridge().catch((error) => {
         channel_name: "Ambiguous",
     };
     r.w.cList.push("d");
+    sources.push({ id: "folder-3", kind: "folder", name: "Winnie" });
     assert.equal(
         r.request({ mode: "set", query: "folder:Winnie" }).status,
         "rejected"
@@ -2303,6 +2309,11 @@ async function testFolderRecovery() {
         channel_name: "Last",
     };
     r.w.cats.all = r.w.cList = r.w.curList = ["a", "b", "c"];
+    r.w.__ottLocalMedia = {
+        completedSources: () => [
+            { id: "folder-1", kind: "folder", name: "Winnie" },
+        ],
+    };
     r.request({ mode: "on", query: "folder:Winnie", strict: true });
     delete r.w.channels.a;
     let scanning = true;
@@ -2362,3 +2373,39 @@ testFolderRecovery().catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+{
+    const r = rig();
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    Object.assign(r.w.channels.a, {
+        __ottLocalSource: "folder-1",
+        __ottLocalSourceName: "Winnie",
+    });
+    let sources = null;
+    r.w.__ottLocalMedia = { completedSources: () => sources };
+    const bind = () =>
+        r.request({ mode: "on", query: "folder:Winnie", strict: true });
+    assert.equal(
+        bind().status,
+        "rejected",
+        "partial catalog cannot authorize folder"
+    );
+    assert.equal(r.kiosk.enabled(), false);
+    sources = [
+        { id: "folder-1", kind: "folder", name: "Winnie" },
+        { id: "folder-empty", kind: "folder", name: "wInNiE" },
+    ];
+    assert.equal(
+        bind().status,
+        "rejected",
+        "empty same-name folder is still ambiguous"
+    );
+    assert.equal(r.kiosk.enabled(), false);
+    sources.pop();
+    assert.equal(bind().status, "ok");
+    assert.equal(r.kiosk.snapshot().folder.total, 1);
+    assert.equal(r.kiosk.allowed("b"), false);
+}
+console.log(
+    "PASS folder binding waits for full catalog and rejects empty duplicate sources"
+);

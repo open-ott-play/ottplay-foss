@@ -836,6 +836,12 @@ export function installLocalMedia(w: any): any {
         available: function () {
             return isNative() || isTauri() || !!w.indexedDB;
         },
+        completedSources: function () {
+            if (!last || last.cancelled || last.scanning) return null;
+            return (last.sources || []).map(function (source: any) {
+                return { id: source.id, kind: source.kind, name: source.name };
+            });
+        },
         didRestoreLibrary: function () {
             catalogRevision++;
             last = null;

@@ -194,6 +194,39 @@ async function flush() {
     for (let index = 0; index < 12; index++) await Promise.resolve();
 }
 (async () => {
+    const completeCatalog = catalog(1, 1, false);
+    completeCatalog.sources = [
+        { available: true, id: "folder", kind: "folder", name: "Winnie" },
+        { available: true, id: "empty", kind: "folder", name: "Winnie" },
+    ];
+    const sourceView = fixture([catalog(0, 0), completeCatalog]);
+    assert.equal(sourceView.api.completedSources(), null);
+    let partialChecked = false;
+    const sourceRead = sourceView.api.list((value) => {
+        if (value.scanning) {
+            assert.equal(sourceView.api.completedSources(), null);
+            partialChecked = true;
+        }
+        return true;
+    });
+    await flush();
+    await sourceView.tick(300);
+    await sourceRead;
+    assert.equal(partialChecked, true);
+    const completeSources = sourceView.api.completedSources();
+    assert.equal(
+        completeSources.length,
+        2,
+        "empty sources remain visible for uniqueness"
+    );
+    completeSources[0].name = "Mutated";
+    assert.equal(sourceView.api.completedSources()[0].name, "Winnie");
+    sourceView.api.didRestoreLibrary();
+    assert.equal(
+        sourceView.api.completedSources(),
+        null,
+        "invalidated catalog cannot authorize binding"
+    );
     // Native bridge reads can complete out of order without knowing about the
     // provider's lifetime. An independent manager refresh must retire the old
     // provider result even though the provider/profile itself did not change.
