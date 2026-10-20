@@ -938,6 +938,8 @@ function onPrevSelect(sel: number): void {
             typeof groupId === "string"
                 ? w.__ottChannels?.index(groupId)
                 : category;
+        if (typeof groupId === "string" && !(preferred >= 0))
+            preferred = names.indexOf(groupId);
         var order = [preferred, names.indexOf(_("All"))];
         for (var i = 0; i < names.length; i++) order.push(i);
         for (var at = 0; at < order.length; at++) {

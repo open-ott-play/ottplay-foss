@@ -452,3 +452,20 @@ for (const absent of [false, true]) {
         "PIN continuation resolves the current stable group position"
     );
 }
+{
+    const c = fixture();
+    c.catsArray = ["All", "Wrong", "A"];
+    c.cats = { A: [202, 101], All: [101, 202, 303], Wrong: [202, 303] };
+    c.__ottChannels = {
+        group: (index) => c.catsArray[index],
+        index: () => -1,
+        select() {},
+    };
+    c.prevArr = [{ c: 1, ci: 202, groupId: "A", i: 0 }];
+    c.onPrevSelect(0);
+    assert.deepEqual(
+        c.effects.find((row) => row[0] === "live"),
+        ["live", 2, 0],
+        "migrated legacy group label resolves before All after reorder"
+    );
+}
