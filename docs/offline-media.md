@@ -62,6 +62,11 @@ time plus the current file's full duration. It is a nominal estimate: pausing or
 seeking does not rewrite the start time, and can change the actual transition time.
 Unknown duration leaves the next clock blank; no successor leaves the next row
 blank. If the source cannot expose a containing folder, its source label is used.
+Reordering channel groups while a file plays keeps its original group for the
+next-file prediction and automatic transition. Removing that group (or an old
+playback record without its stable group ID) disables automatic advancement;
+OTT never substitutes whichever group now occupies the old menu position.
+The current file's title and clock remain visible while it finishes.
 These controls are shared by browser/server, Tauri and Capacitor players.
 
 Libraries made by the earlier copy-based version remain readable. Their entries

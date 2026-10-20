@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retain a Local video's stable group identity for the next-file footer,
+  automatic completion and saved playback. Reordering groups cannot select a
+  different group's video; deleting the playing group clears its successor
+  while preserving the current file's information.
+
 - Show the playing folder or collection in the finite-media footer, with current
   and next file titles below it. Display actual playback-start time and the next
   item's estimated start time instead of elapsed minutes, across Local videos,
