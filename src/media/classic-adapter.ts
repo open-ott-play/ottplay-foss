@@ -131,13 +131,17 @@ function classicMediaProgramme(): any {
         target.channelId === "channel:" + history.channelId
     ) {
         if (target.sourceId !== w.__ottClassicPlayback.sourceId()) return null;
-        var list = w.__ottChannels?.capture(history.payload?.c);
-        if (!list || !list.active()) return null;
-        var neighbour = classicMediaNeighbours(list, history.channelId);
-        if (!neighbour) return null;
-        var id = neighbour.id;
-        if (local) channel = { id: id, list: list };
-        payload = w.channels[id];
+        payload = w.channels[history.channelId];
+        if (!payload) return null;
+        if (local && typeof history.payload?.groupId === "string") {
+            var category = w.__ottChannels?.index(history.payload.groupId);
+            var list =
+                category >= 0 ? w.__ottChannels?.capture(category) : null;
+            var neighbour = list?.active()
+                ? classicMediaNeighbours(list, history.channelId)
+                : null;
+            if (neighbour) channel = { id: neighbour.id, list: list };
+        }
         if (mediaClassicInstance?.active())
             mode = mediaClassicInstance.repeatMode();
         else {
@@ -1522,7 +1526,13 @@ function classicMediaRuntime(): any {
             ) {
                 if (completedLocalGeneration === generation || !current())
                     return;
-                var list = w.__ottChannels?.capture(history.payload?.c);
+                if (!w.channels[history.channelId]) return;
+                var category =
+                    typeof history.payload?.groupId === "string"
+                        ? w.__ottChannels?.index(history.payload.groupId)
+                        : -1;
+                var list =
+                    category >= 0 ? w.__ottChannels?.capture(category) : null;
                 if (!list || !list.active()) return;
                 var members = list.members();
                 var id = members.filter(function (value: any) {

@@ -820,6 +820,7 @@ if (require.main === module) {
                 members: () => c.cats.All.slice(),
             }),
             group: () => "system:all",
+            index: (id) => (id === "system:all" ? 0 : -1),
             select: () => true,
         };
         c.observeCurrentProgramme = () =>

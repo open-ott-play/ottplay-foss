@@ -22,6 +22,7 @@ function setup(provider = "plex") {
             members: () => c.cats.All.slice(),
         }),
         group: () => "system:all",
+        index: (group) => (group === "system:all" ? 0 : -1),
         select() {},
     };
     for (const id of c.cats.All)
@@ -649,6 +650,127 @@ for (const mode of ["all", "one", "off"]) {
 console.log(
     "PASS Local finite-channel completion, repeat, kiosk and stale guards"
 );
+// Use the real library: numeric category positions can move during playback.
+for (const action of [
+    "move",
+    "remove",
+    "shuffle",
+    "manual",
+    "legacy",
+    "unknown",
+    "removed-channel",
+]) {
+    const c = fixture();
+    c.p_pref = "offline";
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.channels = {
+        101: { category: { name: "A" }, channel_name: "A1" },
+        102: { category: { name: "A" }, channel_name: "A2" },
+        103: { category: { name: "B" }, channel_name: "B1" },
+    };
+    c.cList = [101, 102, 103];
+    c.__ottChannels.mount(c);
+    c.__ottChannels.change("member", {
+        action: "add",
+        channelId: 101,
+        groupId: "provider:B",
+    });
+    if (c.__ottChannels.index("provider:A") !== 1)
+        assert(c.__ottChannels.change("move", "provider:A", -1));
+    c.__ottParental = { needs: () => false };
+    c.ifParentalAccessChId = () => false;
+    c.getChannelUrl = (id) => "file-" + id + ".mp4";
+    c.checkMedia = () => {};
+    c.playChannel = c._playChannel;
+    const category = c.__ottChannels.index("provider:A");
+    assert.equal(category, 1);
+    c._playChannel(category, 0);
+    const capturedGroup = JSON.parse(
+        JSON.stringify(c.__ottClassicPlayback.snapshot())
+    ).historyTarget.payload.groupId;
+    if (action === "move")
+        assert(c.__ottChannels.change("move", "provider:A", 1));
+    if (action === "remove")
+        assert(c.__ottChannels.change("remove", "provider:A"));
+    if (action === "move") {
+        c.__ottClassicPlayback.checkpoint(
+            c.__ottClassicPlayback.snapshot(),
+            true
+        );
+        const journal = JSON.parse(c.stored.playbackJournal);
+        assert.equal(
+            journal.bookmark.groupId,
+            "provider:A",
+            "checkpoint retains group after reorder"
+        );
+    }
+    if (action === "shuffle") {
+        vm.runInContext("Math.random = function () { return 0; };", c);
+        assert(c.__ottChannels.change("shuffle", "provider:A"));
+    }
+    c.__ottClassicPlayback.command({ type: "stop" });
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    if (action === "manual")
+        c._playChannel(c.__ottChannels.index("provider:B"), 0);
+    if (action === "removed-channel") delete c.channels[101];
+    if (action === "legacy" || action === "unknown") {
+        const snapshot = c.__ottClassicPlayback.snapshot;
+        c.__ottClassicPlayback.snapshot = () => {
+            const state = JSON.parse(JSON.stringify(snapshot()));
+            if (action === "legacy") delete state.historyTarget.payload.groupId;
+            else state.historyTarget.payload.groupId = "removed:unknown";
+            return state;
+        };
+    }
+    const programme = c.__ottClassicPlayback.programme();
+    if (action === "removed-channel") assert.equal(programme, null);
+    else if (action !== "manual") {
+        assert.equal(
+            programme.title,
+            "A1",
+            action + " retains the current file"
+        );
+        assert.equal(
+            programme.collection,
+            "A",
+            action + " retains the containing folder"
+        );
+        assert.equal(
+            programme.nextTitle,
+            action === "move" || action === "shuffle" ? "A2" : "",
+            action + " never guesses a successor from another group"
+        );
+    }
+    const before = c.calls.filter(([kind]) => kind === "play").length;
+    c.__ottMedia.ended(generation);
+    const plays = c.calls.filter(([kind]) => kind === "play");
+    if (action === "move" || action === "shuffle") {
+        assert.equal(plays.length, before + 1);
+        assert.equal(
+            plays[plays.length - 1][1],
+            "file-102.mp4",
+            action + " retains the playing group instead of its old index"
+        );
+    } else {
+        assert.equal(
+            plays.length,
+            before,
+            action + " cannot redirect the completed group's playback"
+        );
+    }
+    c.__ottMedia.ended(generation);
+    assert.equal(
+        c.calls.filter(([kind]) => kind === "play").length,
+        plays.length,
+        "duplicate EOF remains stale after " + action
+    );
+    assert.equal(
+        capturedGroup,
+        "provider:A",
+        "Local playback captures serializable group identity at start"
+    );
+}
+console.log("PASS Local EOF retains group identity across library edits");
 {
     const { c, end } = setup("offline");
     c.checkMedia = () => {};
@@ -789,8 +911,8 @@ console.log(
     c.__ottKiosk = { allowed: () => true, locked: () => true };
     assert.equal(
         c.__ottClassicPlayback.programme().nextTitle,
-        "Local 102",
-        "kiosk projects pinned repeat"
+        "",
+        "legacy reconciliation without a captured group cannot guess a kiosk successor"
     );
 }
 console.log(
