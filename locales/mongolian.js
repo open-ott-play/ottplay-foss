@@ -166,8 +166,12 @@ var keyStrings = {
         "Холболтыг шалгаад Plex сангуудаа нээнэ үү.",
     "Check this server's SWOP configuration.":
         "Энэ серверийн SWOP тохиргоог шалгана уу.",
+    "Checking folder permission": "Хавтсанд хандах зөвшөөрлийг шалгаж байна",
     "Checking the Plex server connection…":
         "Plex серверийн холболтыг шалгаж байна…",
+    "Choose a folder in the browser window":
+        "Хөтчийн цонхноос хавтас сонгоно уу",
+    "Choose files in the browser window": "Хөтчийн цонхноос файл сонгоно уу",
     "Choose from": "Эндээс сонгох",
     "Choose language": "Хэл сонгох",
     "Choose Plex server": "Plex сервер сонгох",
@@ -442,6 +446,7 @@ var keyStrings = {
         "Plex хандалтын токеноо оруулна уу. Энэ төхөөрөмжийн профайлд хадгалагдана.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex серверийн хаягаа оруулна уу, жишээ нь http://192.168.1.25:32400",
+    "Entries found": "Олдсон зүйлс",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG болон архив. Суваг: ",
     "EPG archive or XML is invalid.": "EPG архив эсвэл XML буруу байна.",
@@ -609,6 +614,8 @@ var keyStrings = {
     "Loading. Please wait...": "Ачаалж байна… түр хүлээнэ үү…",
     "Loading...": "Ачаалж байна…",
     "Local HTTP remote control": "Дотоод HTTP алсын удирдлага",
+    "Local source did not respond": "Төхөөрөмжийн эх үүсвэр хариу өгсөнгүй",
+    "Local source unavailable": "Төхөөрөмжийн эх үүсвэр ашиглах боломжгүй",
     "Local URL": "Дотоод URL",
     "Local videos": "Төхөөрөмжийн видеонууд",
     Login: "Хэрэглэгчийн нэр",
@@ -773,6 +780,10 @@ var keyStrings = {
     Rating: "Үнэлгээ",
     RD: "RD",
     "RD settings": "RD-ийн тохиргоо",
+    "Reading file information": "Файлын мэдээллийг уншиж байна",
+    "Reading folder entries": "Хавтасны агуулгыг уншиж байна",
+    "Reading local files": "Төхөөрөмжийн файлуудыг уншиж байна",
+    "Reading saved sources": "Хадгалсан эх үүсвэрүүдийг уншиж байна",
     "Reconnecting…": "Дахин холбогдож байна…",
     Records: "Бичлэгүүд",
     "Records for channel: ": "Энэ сувгийн бичлэгүүд: ",

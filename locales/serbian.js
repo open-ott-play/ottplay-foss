@@ -163,8 +163,13 @@ var keyStrings = {
         "Проверите везу и отворите своје Plex библиотеке.",
     "Check this server's SWOP configuration.":
         "Проверите SWOP конфигурацију овог сервера.",
+    "Checking folder permission": "Провера дозволе за фасциклу",
     "Checking the Plex server connection…":
         "Проверава се Plex веза са сервером…",
+    "Choose a folder in the browser window":
+        "Изаберите фасциклу у прозору прегледача",
+    "Choose files in the browser window":
+        "Изаберите датотеке у прозору прегледача",
     "Choose from": "Изаберите из",
     "Choose language": "Изаберите језик",
     "Choose Plex server": "Изаберите Plex сервер",
@@ -439,6 +444,7 @@ var keyStrings = {
         "Унесите свој Plex приступни токен. Чува се у профилу овог уређаја.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Унесите своју Plex адресу сервера, на пример http://192.168.1.25:32400",
+    "Entries found": "Пронађене ставке",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG и архивирај. канал: ",
     "EPG archive or XML is invalid.": "EPG архива или XML је неважећа.",
@@ -605,6 +611,8 @@ var keyStrings = {
     "Loading. Please wait...": "Учитавање… сачекајте…",
     "Loading...": "Учитавање…",
     "Local HTTP remote control": "Локални HTTP даљински управљач",
+    "Local source did not respond": "Локални извор није одговорио",
+    "Local source unavailable": "Локални извор није доступан",
     "Local URL": "Локални URL",
     "Local videos": "Локални видео-снимци",
     Login: "Корисничко име",
@@ -768,6 +776,10 @@ var keyStrings = {
     Rating: "Оцена",
     RD: "RD",
     "RD settings": "RD подешавања",
+    "Reading file information": "Читање података о датотеци",
+    "Reading folder entries": "Читање садржаја фасцикле",
+    "Reading local files": "Читање локалних датотека",
+    "Reading saved sources": "Читање сачуваних извора",
     "Reconnecting…": "Поновно повезивање…",
     Records: "Снимци",
     "Records for channel: ": "Снимци за канал: ",

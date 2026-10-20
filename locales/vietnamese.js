@@ -165,8 +165,13 @@ var keyStrings = {
         "Kiểm tra kết nối và mở thư viện Plex của bạn.",
     "Check this server's SWOP configuration.":
         "Kiểm tra cấu hình SWOP của máy chủ này.",
+    "Checking folder permission": "Đang kiểm tra quyền truy cập thư mục",
     "Checking the Plex server connection…":
         "Đang kiểm tra kết nối máy chủ Plex…",
+    "Choose a folder in the browser window":
+        "Chọn một thư mục trong cửa sổ trình duyệt",
+    "Choose files in the browser window":
+        "Chọn các tệp trong cửa sổ trình duyệt",
     "Choose from": "Chọn từ",
     "Choose language": "Chọn ngôn ngữ",
     "Choose Plex server": "Chọn máy chủ Plex",
@@ -433,6 +438,7 @@ var keyStrings = {
         "Nhập mã thông báo truy cập Plex của bạn. Nó được lưu trong hồ sơ của thiết bị này.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Nhập địa chỉ máy chủ Plex của bạn, ví dụ http://192.168.1.25:32400",
+    "Entries found": "Các mục tìm thấy",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG và lưu trữ. Kênh: ",
     "EPG archive or XML is invalid.": "Bản lưu trữ EPG hoặc XML không hợp lệ.",
@@ -594,6 +600,8 @@ var keyStrings = {
     "Loading. Please wait...": "Đang tải… vui lòng đợi…",
     "Loading...": "Đang tải…",
     "Local HTTP remote control": "Điều khiển từ xa HTTP cục bộ",
+    "Local source did not respond": "Nguồn cục bộ không phản hồi",
+    "Local source unavailable": "Nguồn cục bộ không khả dụng",
     "Local URL": "URL cục bộ",
     "Local videos": "Video cục bộ",
     Login: "Tên người dùng",
@@ -759,6 +767,10 @@ var keyStrings = {
     Rating: "Đánh giá",
     RD: "RD",
     "RD settings": "Cài đặt RD",
+    "Reading file information": "Đang đọc thông tin tệp",
+    "Reading folder entries": "Đang đọc nội dung thư mục",
+    "Reading local files": "Đang đọc các tệp cục bộ",
+    "Reading saved sources": "Đang đọc các nguồn đã lưu",
     "Reconnecting…": "Đang kết nối lại…",
     Records: "Bản ghi",
     "Records for channel: ": "Bản ghi của kênh: ",

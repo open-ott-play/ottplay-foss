@@ -166,8 +166,13 @@ var keyStrings = {
         "Пайвастшавиро санҷед ва китобхонаҳои Plex-и худро кушоед.",
     "Check this server's SWOP configuration.":
         "Танзимоти SWOP-и ин серверро санҷед.",
+    "Checking folder permission": "Иҷозати дастрасӣ ба ҷузвдон санҷида мешавад",
     "Checking the Plex server connection…":
         "Пайвастшавӣ ба сервери Plex санҷида мешавад…",
+    "Choose a folder in the browser window":
+        "Дар равзанаи браузер ҷузвдонеро интихоб кунед",
+    "Choose files in the browser window":
+        "Дар равзанаи браузер файлҳоро интихоб кунед",
     "Choose from": "Интихоб аз",
     "Choose language": "Забонро интихоб кунед",
     "Choose Plex server": "Сервери Plex-ро интихоб кунед",
@@ -443,6 +448,7 @@ var keyStrings = {
         "Токени дастрасии Plex-ро ворид кунед. Он дар профили ин дастгоҳ захира мешавад.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Суроғаи сервери Plex-ро ворид кунед, масалан http://192.168.1.25:32400",
+    "Entries found": "Унсурҳои ёфтшуда",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG ва бойгонӣ. Канал: ",
     "EPG archive or XML is invalid.": "Бойгонии EPG ё XML нодуруст аст.",
@@ -606,6 +612,8 @@ var keyStrings = {
     "Loading. Please wait...": "Боркунӣ… лутфан интизор шавед…",
     "Loading...": "Боркунӣ…",
     "Local HTTP remote control": "Идоракунии маҳаллии дурдасти HTTP",
+    "Local source did not respond": "Манбаи маҳаллӣ ҷавоб надод",
+    "Local source unavailable": "Манбаи маҳаллӣ дастрас нест",
     "Local URL": "URL-и маҳаллӣ",
     "Local videos": "Видеоҳои маҳаллӣ",
     Login: "Номи корбар",
@@ -770,6 +778,10 @@ var keyStrings = {
     Rating: "Баҳо",
     RD: "RD",
     "RD settings": "Танзимоти RD",
+    "Reading file information": "Маълумоти файл хонда мешавад",
+    "Reading folder entries": "Муҳтавои ҷузвдон хонда мешавад",
+    "Reading local files": "Файлҳои маҳаллӣ хонда мешаванд",
+    "Reading saved sources": "Манбаъҳои захирашуда хонда мешаванд",
     "Reconnecting…": "Пайвастшавии дубора…",
     Records: "Сабтҳо",
     "Records for channel: ": "Сабтҳо барои канал: ",

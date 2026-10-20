@@ -169,8 +169,13 @@ var keyStrings = {
         "Verificați conexiunea și deschideți bibliotecile Plex.",
     "Check this server's SWOP configuration.":
         "Verificați configurația SWOP a acestui server.",
+    "Checking folder permission": "Se verifică permisiunea pentru dosar",
     "Checking the Plex server connection…":
         "Se verifică conexiunea la serverul Plex...",
+    "Choose a folder in the browser window":
+        "Alegeți un dosar în fereastra browserului",
+    "Choose files in the browser window":
+        "Alegeți fișiere în fereastra browserului",
     "Choose from": "Alege din",
     "Choose language": "Alege limba",
     "Choose Plex server": "Alegeţi serverul Plex",
@@ -447,6 +452,7 @@ var keyStrings = {
         "Introduceți jetonul dvs. de acces Plex. Este salvat în profilul acestui dispozitiv.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Introduceți adresa serverului dvs. Plex, de exemplu http://192.168.1.25:32400",
+    "Entries found": "Elemente găsite",
     EPG: "Ghid TV",
     "EPG and archive. Channel: ": "EPG și arhivă. Canal: ",
     "EPG archive or XML is invalid.": "Arhiva EPG sau XML este nevalidă.",
@@ -615,6 +621,8 @@ var keyStrings = {
     "Loading. Please wait...": "Se încarcă… așteptați…",
     "Loading...": "Se încarcă…",
     "Local HTTP remote control": "Control HTTP local",
+    "Local source did not respond": "Sursa locală nu a răspuns",
+    "Local source unavailable": "Sursa locală nu este disponibilă",
     "Local URL": "URL local",
     "Local videos": "Videoclipuri locale",
     Login: "Nume de utilizator",
@@ -780,6 +788,10 @@ var keyStrings = {
     Rating: "Evaluare",
     RD: "RD",
     "RD settings": "Setări RD",
+    "Reading file information": "Se citesc informațiile fișierului",
+    "Reading folder entries": "Se citește conținutul dosarului",
+    "Reading local files": "Se citesc fișierele locale",
+    "Reading saved sources": "Se citesc sursele salvate",
     "Reconnecting…": "Reconectare…",
     Records: "Înregistrări",
     "Records for channel: ": "Înregistrări pentru canalul: ",

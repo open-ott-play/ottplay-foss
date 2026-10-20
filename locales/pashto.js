@@ -162,7 +162,12 @@ var keyStrings = {
     "Check the connection and open your Plex libraries.":
         "پیوستون وګورئ او خپل Plex کتابتونونه خلاص کړئ.",
     "Check this server's SWOP configuration.": "د دې سرور SWOP ترتیب چیک کړئ.",
+    "Checking folder permission": "د پوښۍ د لاسرسي اجازه کتل کېږي",
     "Checking the Plex server connection…": "د Plex سرور پیوستون چک کول…",
+    "Choose a folder in the browser window":
+        "د براوزر په کړکۍ کې یوه پوښۍ غوره کړئ",
+    "Choose files in the browser window":
+        "د براوزر په کړکۍ کې فایلونه غوره کړئ",
     "Choose from": "له دې څخه غوره کړئ",
     "Choose language": "ژبه غوره کړئ",
     "Choose Plex server": "Plex سرور غوره کړئ",
@@ -431,6 +436,7 @@ var keyStrings = {
         "خپل Plex د لاسرسي نښه دننه کړئ. دا د دې وسیلې په پروفایل کې خوندي شوی.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "خپل Plex سرور پته دننه کړئ، د مثال په توګه http://192.168.1.25:32400",
+    "Entries found": "موندل شوي توکي",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG او آرشیف. چینل: ",
     "EPG archive or XML is invalid.": "EPG آرشیف یا XML ناسم دی.",
@@ -597,6 +603,8 @@ var keyStrings = {
     "Loading. Please wait...": "پورته کیږي... مهرباني وکړئ انتظار وکړئ...",
     "Loading...": "بارول…",
     "Local HTTP remote control": "ځایی HTTP ریموټ کنټرول",
+    "Local source did not respond": "ځايي سرچینې ځواب ورنه کړ",
+    "Local source unavailable": "ځايي سرچینه د لاسرسي وړ نه ده",
     "Local URL": "ځایی URL",
     "Local videos": "ځايي ویډیوګانې",
     Login: "د کارن نوم",
@@ -760,6 +768,10 @@ var keyStrings = {
     Rating: "درجه بندي",
     RD: "RD",
     "RD settings": "RD ترتیبات",
+    "Reading file information": "د فایل معلومات لوستل کېږي",
+    "Reading folder entries": "د پوښۍ منځپانګه لوستل کېږي",
+    "Reading local files": "ځايي فایلونه لوستل کېږي",
+    "Reading saved sources": "خوندي شوې سرچینې لوستل کېږي",
     "Reconnecting…": "بیا نښلول…",
     Records: "ریکارډونه",
     "Records for channel: ": "د چینل لپاره ریکارډونه: ",

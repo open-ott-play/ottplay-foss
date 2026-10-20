@@ -170,8 +170,13 @@ var keyStrings = {
         "Comprova la connexió i obre les teves biblioteques Plex.",
     "Check this server's SWOP configuration.":
         "Comprova la configuració SWOP d’aquest servidor.",
+    "Checking folder permission": "S’està comprovant el permís de la carpeta",
     "Checking the Plex server connection…":
         "S’està comprovant la connexió amb el servidor Plex…",
+    "Choose a folder in the browser window":
+        "Trieu una carpeta a la finestra del navegador",
+    "Choose files in the browser window":
+        "Trieu fitxers a la finestra del navegador",
     "Choose from": "Tria entre",
     "Choose language": "Tria l’idioma",
     "Choose Plex server": "Tria un servidor Plex",
@@ -449,6 +454,7 @@ var keyStrings = {
         "Introdueix el teu testimoni d’accés Plex. Es desa al perfil d’aquest dispositiu.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Introdueix l’adreça del servidor Plex, per exemple http://192.168.1.25:32400",
+    "Entries found": "Elements trobats",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG i arxiu. Canal: ",
     "EPG archive or XML is invalid.": "L’arxiu EPG o l’XML no són vàlids.",
@@ -623,6 +629,8 @@ var keyStrings = {
     "Loading. Please wait...": "S’està carregant… espera, si us plau…",
     "Loading...": "S’està carregant…",
     "Local HTTP remote control": "Control remot HTTP local",
+    "Local source did not respond": "La font local no ha respost",
+    "Local source unavailable": "La font local no està disponible",
     "Local URL": "URL local",
     "Local videos": "Vídeos locals",
     Login: "Nom d’usuari",
@@ -789,6 +797,10 @@ var keyStrings = {
     Rating: "Valoració",
     RD: "RD",
     "RD settings": "Configuració de RD",
+    "Reading file information": "S’està llegint la informació del fitxer",
+    "Reading folder entries": "S’està llegint el contingut de la carpeta",
+    "Reading local files": "S’estan llegint els fitxers locals",
+    "Reading saved sources": "S’estan llegint les fonts desades",
     "Reconnecting…": "S’està tornant a connectar…",
     Records: "Enregistraments",
     "Records for channel: ": "Enregistraments del canal: ",

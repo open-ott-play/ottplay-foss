@@ -165,8 +165,13 @@ var keyStrings = {
         "کنکشن چیک کریں اور اپنی Plex لائبریریاں کھولیں۔",
     "Check this server's SWOP configuration.":
         "اس سرور کی SWOP کنفیگریشن چیک کریں۔",
+    "Checking folder permission": "فولڈر کی اجازت کی جانچ ہو رہی ہے",
     "Checking the Plex server connection…":
         "Plex سرور کنکشن کو چیک کیا جا رہا ہے…",
+    "Choose a folder in the browser window":
+        "براؤزر کی ونڈو میں ایک فولڈر منتخب کریں",
+    "Choose files in the browser window":
+        "براؤزر کی ونڈو میں فائلیں منتخب کریں",
     "Choose from": "میں سے انتخاب کریں۔",
     "Choose language": "زبان کا انتخاب کریں۔",
     "Choose Plex server": "Plex سرور کا انتخاب کریں۔",
@@ -439,6 +444,7 @@ var keyStrings = {
         "اپنا Plex رسائی ٹوکن درج کریں۔ یہ اس ڈیوائس کے پروفائل میں محفوظ ہے۔",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "اپنا Plex سرور ایڈریس درج کریں، مثال کے طور پر http://192.168.1.25:32400",
+    "Entries found": "ملنے والے آئٹمز",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG اور آرکائیو۔ چینل: ",
     "EPG archive or XML is invalid.": "EPG آرکائیو یا XML غلط ہے۔",
@@ -603,6 +609,8 @@ var keyStrings = {
     "Loading. Please wait...": "لوڈ ہو رہا ہے… براہ کرم انتظار کریں…",
     "Loading...": "لوڈ ہو رہا ہے…",
     "Local HTTP remote control": "مقامی HTTP ریموٹ کنٹرول",
+    "Local source did not respond": "مقامی ماخذ نے جواب نہیں دیا",
+    "Local source unavailable": "مقامی ماخذ دستیاب نہیں ہے",
     "Local URL": "مقامی URL",
     "Local videos": "مقامی ویڈیوز",
     Login: "صارف نام",
@@ -767,6 +775,10 @@ var keyStrings = {
     Rating: "درجہ بندی",
     RD: "RD",
     "RD settings": "RD ترتیبات",
+    "Reading file information": "فائل کی معلومات پڑھی جا رہی ہیں",
+    "Reading folder entries": "فولڈر کا مواد پڑھا جا رہا ہے",
+    "Reading local files": "مقامی فائلیں پڑھی جا رہی ہیں",
+    "Reading saved sources": "محفوظ کردہ ماخذ پڑھے جا رہے ہیں",
     "Reconnecting…": "دوبارہ منسلک ہو رہا ہے…",
     Records: "ریکارڈنگز",
     "Records for channel: ": "چینل کے لیے ریکارڈنگز: ",

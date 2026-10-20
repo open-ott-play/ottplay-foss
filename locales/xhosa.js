@@ -168,8 +168,13 @@ var keyStrings = {
         "Jonga uqhagamshelo uze uvule amathala akho e-Plex.",
     "Check this server's SWOP configuration.":
         "Jonga ulungiselelo lwe-SWOP lwale seva.",
+    "Checking folder permission": "Kujongwa imvume yefolda",
     "Checking the Plex server connection…":
         "Kujongwa uqhagamshelo lweseva ye-Plex…",
+    "Choose a folder in the browser window":
+        "Khetha ifolda kwifestile yesikhangeli",
+    "Choose files in the browser window":
+        "Khetha iifayile kwifestile yesikhangeli",
     "Choose from": "Khetha phakathi kwe",
     "Choose language": "Khetha ulwimi",
     "Choose Plex server": "Khetha iseva ye-Plex",
@@ -447,6 +452,7 @@ var keyStrings = {
         "Faka ithokheni yakho yokufikelela kwi-Plex. Igcinwa kwiprofayile yesi sixhobo.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Faka idilesi yeseva yakho ye-Plex, umzekelo http://192.168.1.25:32400",
+    "Entries found": "Izinto ezifunyenweyo",
     EPG: "EPG",
     "EPG and archive. Channel: ": "I-EPG nogcino lweenkqubo. Ijelo: ",
     "EPG archive or XML is invalid.": "Ugcino lwe-EPG okanye i-XML ayisebenzi.",
@@ -620,6 +626,8 @@ var keyStrings = {
     "Loading. Please wait...": "Kulayishwa… nceda linda…",
     "Loading...": "Kulayishwa…",
     "Local HTTP remote control": "Ulawulo olukude lwe-HTTP lwasekuhlaleni",
+    "Local source did not respond": "Umthombo wasekuhlaleni awuphendulanga",
+    "Local source unavailable": "Umthombo wasekuhlaleni awufumaneki",
     "Local URL": "I-URL yasekuhlaleni",
     "Local videos": "Iividiyo ezikwisixhobo",
     Login: "Igama lomsebenzisi",
@@ -784,6 +792,10 @@ var keyStrings = {
     Rating: "Umlinganiselo wokukala",
     RD: "RD",
     "RD settings": "Iisetingi ze-RD",
+    "Reading file information": "Kufundwa ulwazi lwefayile",
+    "Reading folder entries": "Kufundwa imixholo yefolda",
+    "Reading local files": "Kufundwa iifayile zasekuhlaleni",
+    "Reading saved sources": "Kufundwa imithombo egciniweyo",
     "Reconnecting…": "Kuqhagamshelwa kwakhona…",
     Records: "Ushicilelo lweenkqubo",
     "Records for channel: ": "Ushicilelo lweenkqubo zejelo: ",

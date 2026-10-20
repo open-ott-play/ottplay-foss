@@ -164,8 +164,12 @@ var keyStrings = {
         "Bağlantını yoxlayın və Plex kitabxanalarınızı açın.",
     "Check this server's SWOP configuration.":
         "Bu serverin SWOP konfiqurasiyasını yoxlayın.",
+    "Checking folder permission": "Qovluğa giriş icazəsi yoxlanılır",
     "Checking the Plex server connection…":
         "Plex server bağlantısı yoxlanılır...",
+    "Choose a folder in the browser window":
+        "Brauzer pəncərəsində qovluq seçin",
+    "Choose files in the browser window": "Brauzer pəncərəsində fayllar seçin",
     "Choose from": "Buradan seçin",
     "Choose language": "Dil seçin",
     "Choose Plex server": "Plex serverini seçin",
@@ -438,6 +442,7 @@ var keyStrings = {
         "Plex giriş tokeninizi daxil edin. O, bu cihazın profilində saxlanılır.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex server ünvanınızı daxil edin, məsələn http://192.168.1.25:32400",
+    "Entries found": "Tapılan elementlər",
     EPG: "Proqram cədvəli",
     "EPG and archive. Channel: ": "Proqram cədvəli və arxiv. Kanal: ",
     "EPG archive or XML is invalid.": "EPG arxivi və ya XML etibarsızdır.",
@@ -602,6 +607,8 @@ var keyStrings = {
     "Loading. Please wait...": "Yüklənir. Gözləyin…",
     "Loading...": "Yüklənir…",
     "Local HTTP remote control": "Yerli HTTP uzaqdan idarəetməsi",
+    "Local source did not respond": "Yerli mənbə cavab vermədi",
+    "Local source unavailable": "Yerli mənbə əlçatan deyil",
     "Local URL": "Yerli URL",
     "Local videos": "Yerli videolar",
     Login: "İstifadəçi adı",
@@ -766,6 +773,10 @@ var keyStrings = {
     Rating: "Reytinq",
     RD: "RD",
     "RD settings": "RD ayarları",
+    "Reading file information": "Fayl məlumatları oxunur",
+    "Reading folder entries": "Qovluqdakı elementlər oxunur",
+    "Reading local files": "Yerli fayllar oxunur",
+    "Reading saved sources": "Saxlanmış mənbələr oxunur",
     "Reconnecting…": "Yenidən qoşulur…",
     Records: "Yazılar",
     "Records for channel: ": "Kanalın yazıları: ",

@@ -173,8 +173,14 @@ var keyStrings = {
         "Jereo ny fifandraisana ary sokafy ny tranombokinao Plex.",
     "Check this server's SWOP configuration.":
         "Jereo ny fikirakirana SWOP an'ity lohamilina ity.",
+    "Checking folder permission":
+        "Manamarina ny fahazoan-dalana amin’ny lahatahiry",
     "Checking the Plex server connection…":
         "Manamarina ny fifandraisana amin'ny lohamilina Plex…",
+    "Choose a folder in the browser window":
+        "Misafidiana lahatahiry ao amin’ny varavarankelin’ny mpitety",
+    "Choose files in the browser window":
+        "Misafidiana rakitra ao amin’ny varavarankelin’ny mpitety",
     "Choose from": "Misafidiana amin'ny",
     "Choose language": "Safidio ny fiteny",
     "Choose Plex server": "Safidio ny lohamilina Plex",
@@ -454,6 +460,7 @@ var keyStrings = {
         "Ampidiro ny mari-pidiranao Plex. Tehirizina ao amin'ny mombamomba ity fitaovana ity izany.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Ampidiro ny adiresin'ny lohamilina Plex anao, ohatra http://192.168.1.25:32400",
+    "Entries found": "Zavatra hita",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG sy tahiry. Fantsona: ",
     "EPG archive or XML is invalid.": "Tsy manan-kery ny tahiry EPG na XML.",
@@ -628,6 +635,8 @@ var keyStrings = {
     "Loading. Please wait...": "Maka… andraso azafady…",
     "Loading...": "Maka…",
     "Local HTTP remote control": "Fanaraha-maso HTTP lavitra eo an-toerana",
+    "Local source did not respond": "Tsy namaly ny loharano eo an-toerana",
+    "Local source unavailable": "Tsy misy ny loharano eo an-toerana",
     "Local URL": "URL eo an-toerana",
     "Local videos": "Horonan-tsary ao amin'ny fitaovana",
     Login: "Anaran'ny mpampiasa",
@@ -795,6 +804,10 @@ var keyStrings = {
     Rating: "Naoty",
     RD: "RD",
     "RD settings": "Fikirakirana RD",
+    "Reading file information": "Mamaky ny mombamomba ny rakitra",
+    "Reading folder entries": "Mamaky ny ao anatin’ny lahatahiry",
+    "Reading local files": "Mamaky rakitra eo an-toerana",
+    "Reading saved sources": "Mamaky loharano voatahiry",
     "Reconnecting…": "Mampifandray indray…",
     Records: "Rakitsary",
     "Records for channel: ": "Rakitsary ho an'ny fantsona: ",

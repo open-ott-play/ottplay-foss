@@ -167,8 +167,13 @@ var keyStrings = {
         "Проверете ја врската и отворете ги вашите Plex библиотеки.",
     "Check this server's SWOP configuration.":
         "Проверете ја SWOP конфигурацијата на овој сервер.",
+    "Checking folder permission": "Се проверува дозволата за папката",
     "Checking the Plex server connection…":
         "Се проверува врската со Plex серверот…",
+    "Choose a folder in the browser window":
+        "Изберете папка во прозорецот на прелистувачот",
+    "Choose files in the browser window":
+        "Изберете датотеки во прозорецот на прелистувачот",
     "Choose from": "Избери од",
     "Choose language": "Избери јазик",
     "Choose Plex server": "Избери Plex сервер",
@@ -443,6 +448,7 @@ var keyStrings = {
         "Внесете го вашиот Plex токен за пристап. Се зачувува во профилот на овој уред.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Внесете ја адресата на вашиот Plex сервер, на пример http://192.168.1.25:32400",
+    "Entries found": "Пронајдени ставки",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG и архива. Канал: ",
     "EPG archive or XML is invalid.": "EPG архивата или XML не е валидна.",
@@ -612,6 +618,8 @@ var keyStrings = {
     "Loading. Please wait...": "Се вчитува… ве молиме почекајте…",
     "Loading...": "Се вчитува…",
     "Local HTTP remote control": "Локална HTTP далечинска контрола",
+    "Local source did not respond": "Локалниот извор не одговори",
+    "Local source unavailable": "Локалниот извор е недостапен",
     "Local URL": "Локален URL",
     "Local videos": "Локални видеа",
     Login: "Корисничко име",
@@ -777,6 +785,10 @@ var keyStrings = {
     Rating: "Оцена",
     RD: "RD",
     "RD settings": "Поставки за RD",
+    "Reading file information": "Се читаат информации за датотеката",
+    "Reading folder entries": "Се чита содржината на папката",
+    "Reading local files": "Се читаат локални датотеки",
+    "Reading saved sources": "Се читаат зачуваните извори",
     "Reconnecting…": "Повторно се поврзува…",
     Records: "Снимки",
     "Records for channel: ": "Снимки за каналот: ",

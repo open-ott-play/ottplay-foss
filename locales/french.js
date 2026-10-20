@@ -172,8 +172,13 @@ var keyStrings = {
         "Vérifiez la connexion et ouvrez vos bibliothèques Plex.",
     "Check this server's SWOP configuration.":
         "Vérifiez la configuration SWOP de ce serveur.",
+    "Checking folder permission": "Vérification de l’autorisation du dossier",
     "Checking the Plex server connection…":
         "Vérification de la connexion au serveur Plex…",
+    "Choose a folder in the browser window":
+        "Choisissez un dossier dans la fenêtre du navigateur",
+    "Choose files in the browser window":
+        "Choisissez des fichiers dans la fenêtre du navigateur",
     "Choose from": "Choisir parmi",
     "Choose language": "Choisir la langue",
     "Choose Plex server": "Choisissez le serveur Plex",
@@ -453,6 +458,7 @@ var keyStrings = {
         "Saisissez votre jeton d'accès Plex. Il est enregistré dans le profil de cet appareil.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Saisissez l'adresse de votre serveur Plex, par exemple http://192.168.1.25:32400",
+    "Entries found": "Éléments trouvés",
     EPG: "Guide TV",
     "EPG and archive. Channel: ": "EPG et archives. Chaîne : ",
     "EPG archive or XML is invalid.": "L'archive EPG ou XML n'est pas valide.",
@@ -624,6 +630,8 @@ var keyStrings = {
     "Loading. Please wait...": "Chargement… veuillez patienter…",
     "Loading...": "Chargement…",
     "Local HTTP remote control": "Télécommande HTTP locale",
+    "Local source did not respond": "La source locale n’a pas répondu",
+    "Local source unavailable": "Source locale indisponible",
     "Local URL": "URL locale",
     "Local videos": "Vidéos locales",
     Login: "Nom d'utilisateur",
@@ -789,6 +797,10 @@ var keyStrings = {
     Rating: "Note",
     RD: "RD",
     "RD settings": "Paramètres de RD",
+    "Reading file information": "Lecture des informations du fichier",
+    "Reading folder entries": "Lecture du contenu du dossier",
+    "Reading local files": "Lecture des fichiers locaux",
+    "Reading saved sources": "Lecture des sources enregistrées",
     "Reconnecting…": "Reconnexion…",
     Records: "Enregistrements",
     "Records for channel: ": "Enregistrements de la chaîne : ",

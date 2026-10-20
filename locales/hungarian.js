@@ -165,8 +165,13 @@ var keyStrings = {
         "Ellenőrizze a kapcsolatot, és nyissa meg a Plex könyvtárait.",
     "Check this server's SWOP configuration.":
         "Ellenőrizze a kiszolgáló SWOP-beállításait.",
+    "Checking folder permission": "Mappahozzáférési engedély ellenőrzése",
     "Checking the Plex server connection…":
         "A Plex szerverkapcsolat ellenőrzése…",
+    "Choose a folder in the browser window":
+        "Válasszon mappát a böngészőablakban",
+    "Choose files in the browser window":
+        "Válasszon fájlokat a böngészőablakban",
     "Choose from": "Választás innen",
     "Choose language": "Nyelv kiválasztása",
     "Choose Plex server": "Válassza a Plex szervert",
@@ -441,6 +446,7 @@ var keyStrings = {
         "Adja meg a Plex hozzáférési tokenjét. A rendszer az eszköz profiljába menti.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Adja meg a Plex szerver címét, például http://192.168.1.25:32400",
+    "Entries found": "Talált elemek",
     EPG: "Műsorújság",
     "EPG and archive. Channel: ": "Műsorújság és archívum. Csatorna: ",
     "EPG archive or XML is invalid.": "A EPG archívum vagy a XML érvénytelen.",
@@ -607,6 +613,8 @@ var keyStrings = {
     "Loading. Please wait...": "Betöltés… kis türelmet…",
     "Loading...": "Betöltés…",
     "Local HTTP remote control": "Helyi HTTP-távirányítás",
+    "Local source did not respond": "A helyi forrás nem válaszolt",
+    "Local source unavailable": "A helyi forrás nem érhető el",
     "Local URL": "Helyi URL-cím",
     "Local videos": "Helyi videók",
     Login: "Felhasználónév",
@@ -771,6 +779,10 @@ var keyStrings = {
     Rating: "Értékelés",
     RD: "RD",
     "RD settings": "RD beállításai",
+    "Reading file information": "Fájladatok olvasása",
+    "Reading folder entries": "Mappa tartalmának olvasása",
+    "Reading local files": "Helyi fájlok olvasása",
+    "Reading saved sources": "Mentett források olvasása",
     "Reconnecting…": "Újracsatlakozás…",
     Records: "Felvételek",
     "Records for channel: ": "Csatorna felvételei: ",

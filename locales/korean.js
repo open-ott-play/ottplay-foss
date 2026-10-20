@@ -161,7 +161,11 @@ var keyStrings = {
         "연결을 확인하고 Plex 라이브러리를 엽니다.",
     "Check this server's SWOP configuration.":
         "이 서버의 SWOP 구성을 확인하십시오.",
+    "Checking folder permission": "폴더 접근 권한 확인 중",
     "Checking the Plex server connection…": "Plex 서버 연결을 확인하는 중…",
+    "Choose a folder in the browser window":
+        "브라우저 창에서 폴더를 선택하세요",
+    "Choose files in the browser window": "브라우저 창에서 파일을 선택하세요",
     "Choose from": "선택하세요",
     "Choose language": "언어를 선택하세요",
     "Choose Plex server": "Plex 서버를 선택하세요",
@@ -431,6 +435,7 @@ var keyStrings = {
         "Plex 액세스 토큰을 입력하세요. 이 장치의 프로필에 저장됩니다.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex 서버 주소를 입력하세요(예: http://192.168.1.25:32400)",
+    "Entries found": "발견된 항목",
     EPG: "EPG",
     "EPG and archive. Channel: ": "프로그램 안내 및 지난 방송입니다. 채널: ",
     "EPG archive or XML is invalid.":
@@ -594,6 +599,8 @@ var keyStrings = {
     "Loading. Please wait...": "로딩중입니다...잠시만 기다려주세요...",
     "Loading...": "로딩중…",
     "Local HTTP remote control": "로컬 HTTP 원격 제어",
+    "Local source did not respond": "로컬 소스가 응답하지 않았습니다",
+    "Local source unavailable": "로컬 소스를 사용할 수 없습니다",
     "Local URL": "로컬 URL",
     "Local videos": "로컬 동영상",
     Login: "사용자 이름",
@@ -757,6 +764,10 @@ var keyStrings = {
     Rating: "평점",
     RD: "RD",
     "RD settings": "RD 설정",
+    "Reading file information": "파일 정보 읽는 중",
+    "Reading folder entries": "폴더 내용 읽는 중",
+    "Reading local files": "로컬 파일 읽는 중",
+    "Reading saved sources": "저장된 소스 읽는 중",
     "Reconnecting…": "재접속 중…",
     Records: "녹화",
     "Records for channel: ": "채널 녹화 프로그램: ",

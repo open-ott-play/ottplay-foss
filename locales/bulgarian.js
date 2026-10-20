@@ -165,8 +165,13 @@ var keyStrings = {
         "Проверете връзката и отворете вашите Plex библиотеки.",
     "Check this server's SWOP configuration.":
         "Проверете настройките на SWOP за този сървър.",
+    "Checking folder permission": "Проверка на разрешението за папката",
     "Checking the Plex server connection…":
         "Проверка на връзката със сървъра Plex...",
+    "Choose a folder in the browser window":
+        "Изберете папка в прозореца на браузъра",
+    "Choose files in the browser window":
+        "Изберете файлове в прозореца на браузъра",
     "Choose from": "Избор от",
     "Choose language": "Изберете език",
     "Choose Plex server": "Изберете Plex сървър",
@@ -440,6 +445,7 @@ var keyStrings = {
         "Въведете вашия Plex токен за достъп. Той е запазен в профила на това устройство.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Въведете адреса на вашия Plex сървър, например http://192.168.1.25:32400",
+    "Entries found": "Намерени елементи",
     EPG: "ТВ програма",
     "EPG and archive. Channel: ": "Програма и архив. Канал: ",
     "EPG archive or XML is invalid.": "EPG архив или XML е невалиден.",
@@ -608,6 +614,8 @@ var keyStrings = {
     "Loading. Please wait...": "Зареждане. Изчакайте…",
     "Loading...": "Зареждане…",
     "Local HTTP remote control": "Локално HTTP дистанционно",
+    "Local source did not respond": "Локалният източник не отговори",
+    "Local source unavailable": "Локалният източник е недостъпен",
     "Local URL": "Локален URL",
     "Local videos": "Локални видеоклипове",
     Login: "Потребителско име",
@@ -772,6 +780,10 @@ var keyStrings = {
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "Настройки за RD",
+    "Reading file information": "Четене на информация за файла",
+    "Reading folder entries": "Четене на съдържанието на папката",
+    "Reading local files": "Четене на локални файлове",
+    "Reading saved sources": "Четене на запазени източници",
     "Reconnecting…": "Повторно свързване…",
     Records: "Записи",
     "Records for channel: ": "Записи за канал: ",

@@ -161,7 +161,12 @@ var keyStrings = {
     "Check the connection and open your Plex libraries.":
         "Ṣàyẹ̀wò ìsopọ̀ kí o sì ṣí àwọn ilé-ìkàwé Plex rẹ.",
     "Check this server's SWOP configuration.": "Ṣàyẹ̀wò ètò SWOP sáfà yìí.",
+    "Checking folder permission": "Ń ṣàyẹ̀wò àṣẹ àpò fáìlì",
     "Checking the Plex server connection…": "Ń ṣàyẹ̀wò ìsopọ̀ sáfà Plex…",
+    "Choose a folder in the browser window":
+        "Yan àpò fáìlì nínú fèrèsé aṣàwákiri",
+    "Choose files in the browser window":
+        "Yan àwọn fáìlì nínú fèrèsé aṣàwákiri",
     "Choose from": "Yan láti",
     "Choose language": "Yan èdè",
     "Choose Plex server": "Yan sáfà Plex",
@@ -429,6 +434,7 @@ var keyStrings = {
         "Tẹ àmi ìwọlé Plex rẹ. A ó fi pamọ́ sínú prófáìlì ẹ̀rọ yìí.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Tẹ àdírẹ́sì sáfà Plex rẹ, fún àpẹẹrẹ http://192.168.1.25:32400",
+    "Entries found": "Àwọn ohun tí a rí",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG àti àkójọpọ̀ àtijọ́. Ìkànnì: ",
     "EPG archive or XML is invalid.": "Àkójọpọ̀ EPG tàbí XML kò péye.",
@@ -589,6 +595,8 @@ var keyStrings = {
     "Loading. Please wait...": "Ń gbé wọlé… jọ̀wọ́ dúró…",
     "Loading...": "Ń gbé wọlé…",
     "Local HTTP remote control": "Ìṣàkóso HTTP láti ọ̀nà jíjìn nínú nẹ́tíwọ́ọ̀kì",
+    "Local source did not respond": "Orísun inú ẹ̀rọ kò dáhùn",
+    "Local source unavailable": "Orísun inú ẹ̀rọ kò sí lárọ̀ọ́wọ́tó",
     "Local URL": "URL inú ẹ̀rọ",
     "Local videos": "Àwọn fídíò inú ẹ̀rọ",
     Login: "Orúkọ olùlò",
@@ -752,6 +760,10 @@ var keyStrings = {
     Rating: "Ìdíwọ̀n",
     RD: "RD",
     "RD settings": "Ètò RD",
+    "Reading file information": "Ń ka àlàyé fáìlì",
+    "Reading folder entries": "Ń ka ohun tó wà nínú àpò fáìlì",
+    "Reading local files": "Ń ka àwọn fáìlì inú ẹ̀rọ",
+    "Reading saved sources": "Ń ka àwọn orísun tí a fipamọ́",
     "Reconnecting…": "Ń tún sopọ̀…",
     Records: "Àwọn ìgbàsílẹ̀",
     "Records for channel: ": "Àwọn ìgbàsílẹ̀ fún ìkànnì: ",

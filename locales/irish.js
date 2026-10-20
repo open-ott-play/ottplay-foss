@@ -168,8 +168,13 @@ var keyStrings = {
         "Seiceáil an nasc agus oscail do leabharlanna Plex.",
     "Check this server's SWOP configuration.":
         "Seiceáil cumraíocht SWOP an fhreastalaí seo.",
+    "Checking folder permission": "Cead an fhillteáin á sheiceáil",
     "Checking the Plex server connection…":
         "Ceangal leis an bhfreastalaí Plex á sheiceáil…",
+    "Choose a folder in the browser window":
+        "Roghnaigh fillteán i bhfuinneog an bhrabhsálaí",
+    "Choose files in the browser window":
+        "Roghnaigh comhaid i bhfuinneog an bhrabhsálaí",
     "Choose from": "Roghnaigh as",
     "Choose language": "Roghnaigh teanga",
     "Choose Plex server": "Roghnaigh freastalaí Plex",
@@ -446,6 +451,7 @@ var keyStrings = {
         "Cuir isteach do chomhartha rochtana Plex. Sábháiltear i bpróifíl an ghléis seo é.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Cuir isteach seoladh do fhreastalaí Plex, mar shampla http://192.168.1.25:32400",
+    "Entries found": "Míreanna aimsithe",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG agus cartlann. Cainéal: ",
     "EPG archive or XML is invalid.": "Tá cartlann EPG nó XML neamhbhailí.",
@@ -611,6 +617,8 @@ var keyStrings = {
     "Loading. Please wait...": "Á luchtú… fan go fóill…",
     "Loading...": "Á luchtú…",
     "Local HTTP remote control": "Cianrialú HTTP áitiúil",
+    "Local source did not respond": "Níor fhreagair an fhoinse áitiúil",
+    "Local source unavailable": "Níl an fhoinse áitiúil ar fáil",
     "Local URL": "URL áitiúil",
     "Local videos": "Físeáin áitiúla",
     Login: "Ainm úsáideora",
@@ -775,6 +783,10 @@ var keyStrings = {
     Rating: "Rátáil",
     RD: "RD",
     "RD settings": "Socruithe RD",
+    "Reading file information": "Faisnéis an chomhaid á léamh",
+    "Reading folder entries": "Ábhar an fhillteáin á léamh",
+    "Reading local files": "Comhaid áitiúla á léamh",
+    "Reading saved sources": "Foinsí sábháilte á léamh",
     "Reconnecting…": "Ag athcheangal…",
     Records: "Taifeadtaí",
     "Records for channel: ": "Taifeadtaí don chainéal: ",

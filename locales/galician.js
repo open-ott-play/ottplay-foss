@@ -172,8 +172,13 @@ var keyStrings = {
         "Comproba a conexión e abre as túas bibliotecas Plex.",
     "Check this server's SWOP configuration.":
         "Comproba a configuración SWOP deste servidor.",
+    "Checking folder permission": "Comprobando o permiso do cartafol",
     "Checking the Plex server connection…":
         "Comprobando a conexión co servidor Plex…",
+    "Choose a folder in the browser window":
+        "Escolle un cartafol na xanela do navegador",
+    "Choose files in the browser window":
+        "Escolle ficheiros na xanela do navegador",
     "Choose from": "Escoller entre",
     "Choose language": "Escoller idioma",
     "Choose Plex server": "Escoller servidor Plex",
@@ -451,6 +456,7 @@ var keyStrings = {
         "Introduce o teu token de acceso Plex. Gárdase no perfil deste dispositivo.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Introduce o enderezo do servidor Plex, por exemplo http://192.168.1.25:32400",
+    "Entries found": "Elementos atopados",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG e arquivo. Canle: ",
     "EPG archive or XML is invalid.": "O arquivo EPG ou o XML non é válido.",
@@ -620,6 +626,8 @@ var keyStrings = {
     "Loading. Please wait...": "Cargando… agarda, por favor…",
     "Loading...": "Cargando…",
     "Local HTTP remote control": "Control remoto HTTP local",
+    "Local source did not respond": "A fonte local non respondeu",
+    "Local source unavailable": "A fonte local non está dispoñible",
     "Local URL": "URL local",
     "Local videos": "Vídeos locais",
     Login: "Nome de usuario",
@@ -785,6 +793,10 @@ var keyStrings = {
     Rating: "Valoración",
     RD: "RD",
     "RD settings": "Configuración de RD",
+    "Reading file information": "Lendo a información do ficheiro",
+    "Reading folder entries": "Lendo o contido do cartafol",
+    "Reading local files": "Lendo os ficheiros locais",
+    "Reading saved sources": "Lendo as fontes gardadas",
     "Reconnecting…": "Volvendo conectar…",
     Records: "Gravacións",
     "Records for channel: ": "Gravacións da canle: ",

@@ -55,6 +55,14 @@ reports a filesystem error, recovery names the stage and error code without
 including private file paths. Cancelling stops OTT from using late results; an
 already issued operating-system read can still finish in the background.
 
+On a large network folder, Chrome can read the folder's metadata before returning
+even the first entry to JavaScript. During that stage, **Entries found: 0** does
+not mean that OTT is copying the videos or that the folder is empty. The player
+cannot display an entry which the browser has not returned yet. A previously
+selected file can start through the direct lookup described above; a first-time
+folder selection must wait for that initial browser result. Repeated Refresh or
+page reloads do not bypass this operating-system work.
+
 Closing the page, pressing **Q** on a PC, or exiting the native app saves the
 current video position before stopping playback. On the next start, the exact
 selected file resumes from that position, including when a saved Local videos

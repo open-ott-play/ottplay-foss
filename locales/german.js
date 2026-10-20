@@ -168,8 +168,13 @@ var keyStrings = {
         "Überprüfen Sie die Verbindung und öffnen Sie Ihre Plex-Bibliotheken.",
     "Check this server's SWOP configuration.":
         "Prüfen Sie die SWOP-Konfiguration dieses Servers.",
+    "Checking folder permission": "Ordnerberechtigung wird geprüft",
     "Checking the Plex server connection…":
         "Überprüfen der Plex-Serververbindung…",
+    "Choose a folder in the browser window":
+        "Wählen Sie einen Ordner im Browserfenster",
+    "Choose files in the browser window":
+        "Wählen Sie Dateien im Browserfenster",
     "Choose from": "Auswählen aus",
     "Choose language": "Sprache wählen",
     "Choose Plex server": "Wählen Sie den Plex-Server",
@@ -447,6 +452,7 @@ var keyStrings = {
         "Geben Sie Ihr Plex-Zugriffstoken ein. Es wird im Profil dieses Geräts gespeichert.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Geben Sie Ihre Plex-Serveradresse ein, zum Beispiel http://192.168.1.25:32400",
+    "Entries found": "Gefundene Einträge",
     EPG: "Programm",
     "EPG and archive. Channel: ": "EPG und Archiv. Sender: ",
     "EPG archive or XML is invalid.": "EPG-Archiv oder XML ist ungültig.",
@@ -615,6 +621,8 @@ var keyStrings = {
     "Loading. Please wait...": "Wird geladen… bitte warten…",
     "Loading...": "Wird geladen…",
     "Local HTTP remote control": "Lokale HTTP-Fernsteuerung",
+    "Local source did not respond": "Die lokale Quelle hat nicht geantwortet",
+    "Local source unavailable": "Lokale Quelle nicht verfügbar",
     "Local URL": "Lokale URL",
     "Local videos": "Lokale Videos",
     Login: "Benutzername",
@@ -780,6 +788,10 @@ var keyStrings = {
     Rating: "Bewertung",
     RD: "RD",
     "RD settings": "Einstellungen für RD",
+    "Reading file information": "Dateiinformationen werden gelesen",
+    "Reading folder entries": "Ordnerinhalt wird gelesen",
+    "Reading local files": "Lokale Dateien werden gelesen",
+    "Reading saved sources": "Gespeicherte Quellen werden gelesen",
     "Reconnecting…": "Verbindung wird erneut hergestellt…",
     Records: "Aufnahmen",
     "Records for channel: ": "Aufnahmen für Sender: ",

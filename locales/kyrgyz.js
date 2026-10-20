@@ -166,8 +166,13 @@ var keyStrings = {
         "Байланышты текшерип, Plex китепканаларыңызды ачыңыз.",
     "Check this server's SWOP configuration.":
         "Бул сервердин SWOP жөндөөлөрүн текшериңиз.",
+    "Checking folder permission": "Папкага кирүү уруксаты текшерилүүдө",
     "Checking the Plex server connection…":
         "Plex серверинин байланышы текшерилүүдө…",
+    "Choose a folder in the browser window":
+        "Браузер терезесинен папканы тандаңыз",
+    "Choose files in the browser window":
+        "Браузер терезесинен файлдарды тандаңыз",
     "Choose from": "Төмөнкүлөрдөн тандоо",
     "Choose language": "Тилди тандоо",
     "Choose Plex server": "Plex серверин тандоо",
@@ -444,6 +449,7 @@ var keyStrings = {
         "Plex кирүү токениңизди киргизиңиз. Ал бул түзмөктүн профилинде сакталат.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex сервериңиздин дарегин киргизиңиз, мисалы http://192.168.1.25:32400",
+    "Entries found": "Табылган элементтер",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG жана архив. Канал: ",
     "EPG archive or XML is invalid.": "EPG архиви же XML жараксыз.",
@@ -611,6 +617,8 @@ var keyStrings = {
     "Loading. Please wait...": "Жүктөлүүдө… күтө туруңуз…",
     "Loading...": "Жүктөлүүдө…",
     "Local HTTP remote control": "Жергиликтүү HTTP аркылуу алыстан башкаруу",
+    "Local source did not respond": "Жергиликтүү булак жооп берген жок",
+    "Local source unavailable": "Жергиликтүү булак жеткиликсиз",
     "Local URL": "Жергиликтүү URL",
     "Local videos": "Жергиликтүү видеолор",
     Login: "Колдонуучунун аты",
@@ -776,6 +784,10 @@ var keyStrings = {
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "RD жөндөөлөрү",
+    "Reading file information": "Файл тууралуу маалымат окулууда",
+    "Reading folder entries": "Папканын мазмуну окулууда",
+    "Reading local files": "Жергиликтүү файлдар окулууда",
+    "Reading saved sources": "Сакталган булактар окулууда",
     "Reconnecting…": "Кайра туташууда…",
     Records: "Жаздыруулар",
     "Records for channel: ": "Каналдын жаздыруулары: ",

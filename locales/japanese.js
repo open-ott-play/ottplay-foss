@@ -163,8 +163,13 @@ var keyStrings = {
         "接続を確認し、Plex ライブラリを開きます。",
     "Check this server's SWOP configuration.":
         "このサーバーの SWOP 構成を確認してください。",
+    "Checking folder permission": "フォルダーのアクセス許可を確認中",
     "Checking the Plex server connection…":
         "Plex サーバー接続を確認しています…",
+    "Choose a folder in the browser window":
+        "ブラウザーのウィンドウでフォルダーを選択してください",
+    "Choose files in the browser window":
+        "ブラウザーのウィンドウでファイルを選択してください",
     "Choose from": "からお選びください",
     "Choose language": "言語を選択してください",
     "Choose Plex server": "Plexサーバーを選択してください",
@@ -437,6 +442,7 @@ var keyStrings = {
         "Plex アクセストークンを入力します。このデバイスのプロファイルに保存されます。",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex サーバー アドレスを入力します (例: http://192.168.1.25:32400)。",
+    "Entries found": "見つかった項目",
     EPG: "EPG",
     "EPG and archive. Channel: ": "番組表や過去の放送。チャンネル: ",
     "EPG archive or XML is invalid.": "EPG アーカイブまたは XML が無効です。",
@@ -599,6 +605,8 @@ var keyStrings = {
     "Loading. Please wait...": "読み込み中…お待ちください…",
     "Loading...": "読み込み中…",
     "Local HTTP remote control": "ローカル HTTP リモコン",
+    "Local source did not respond": "ローカルソースから応答がありませんでした",
+    "Local source unavailable": "ローカルソースを利用できません",
     "Local URL": "ローカル URL",
     "Local videos": "ローカル動画",
     Login: "ユーザー名",
@@ -764,6 +772,10 @@ var keyStrings = {
     Rating: "評価",
     RD: "RD",
     "RD settings": "RDの設定",
+    "Reading file information": "ファイル情報を読み取り中",
+    "Reading folder entries": "フォルダーの内容を読み取り中",
+    "Reading local files": "ローカルファイルを読み取り中",
+    "Reading saved sources": "保存済みソースを読み取り中",
     "Reconnecting…": "再接続中…",
     Records: "録画",
     "Records for channel: ": "チャンネルの録画番組： ",

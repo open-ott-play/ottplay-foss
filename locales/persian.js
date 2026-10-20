@@ -163,7 +163,12 @@ var keyStrings = {
         "اتصال را بررسی کنید و کتابخانه های Plex خود را باز کنید.",
     "Check this server's SWOP configuration.":
         "پیکربندی SWOP این سرور را بررسی کنید.",
+    "Checking folder permission": "در حال بررسی مجوز پوشه",
     "Checking the Plex server connection…": "بررسی اتصال سرور Plex…",
+    "Choose a folder in the browser window":
+        "یک پوشه در پنجره مرورگر انتخاب کنید",
+    "Choose files in the browser window":
+        "فایل‌ها را در پنجره مرورگر انتخاب کنید",
     "Choose from": "را انتخاب کنید",
     "Choose language": "زبان را انتخاب کنید",
     "Choose Plex server": "سرور Plex را انتخاب کنید",
@@ -434,6 +439,7 @@ var keyStrings = {
         "رمز دسترسی Plex خود را وارد کنید. در نمایه این دستگاه ذخیره شده است.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "آدرس سرور Plex خود را وارد کنید، به عنوان مثال http://192.168.1.25:32400",
+    "Entries found": "موارد پیدا شده",
     EPG: "EPG",
     "EPG and archive. Channel: ": "راهنمای برنامه و پخش های گذشته. کانال: ",
     "EPG archive or XML is invalid.": "بایگانی EPG یا XML نامعتبر است.",
@@ -593,6 +599,8 @@ var keyStrings = {
     "Loading. Please wait...": "در حال بارگیری… لطفاً صبر کنید…",
     "Loading...": "در حال بارگیری…",
     "Local HTTP remote control": "کنترل از راه دور HTTP محلی",
+    "Local source did not respond": "منبع محلی پاسخ نداد",
+    "Local source unavailable": "منبع محلی در دسترس نیست",
     "Local URL": "محلی URL",
     "Local videos": "ویدیوهای محلی",
     Login: "نام کاربری",
@@ -758,6 +766,10 @@ var keyStrings = {
     Rating: "امتیاز",
     RD: "RD",
     "RD settings": "تنظیمات RD",
+    "Reading file information": "در حال خواندن اطلاعات فایل",
+    "Reading folder entries": "در حال خواندن محتوای پوشه",
+    "Reading local files": "در حال خواندن فایل‌های محلی",
+    "Reading saved sources": "در حال خواندن منابع ذخیره‌شده",
     "Reconnecting…": "در حال اتصال مجدد…",
     Records: "ضبط‌ها",
     "Records for channel: ": "برنامه های ضبط شده برای کانال: ",

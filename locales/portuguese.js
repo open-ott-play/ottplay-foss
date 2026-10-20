@@ -167,8 +167,13 @@ var keyStrings = {
         "Verifique a conexão e abra suas bibliotecas Plex.",
     "Check this server's SWOP configuration.":
         "Verifique a configuração SWOP deste servidor.",
+    "Checking folder permission": "Verificando a permissão da pasta",
     "Checking the Plex server connection…":
         "Verificando a conexão do servidor Plex…",
+    "Choose a folder in the browser window":
+        "Escolha uma pasta na janela do navegador",
+    "Choose files in the browser window":
+        "Escolha arquivos na janela do navegador",
     "Choose from": "Escolher entre",
     "Choose language": "Escolher idioma",
     "Choose Plex server": "Escolha o servidor Plex",
@@ -443,6 +448,7 @@ var keyStrings = {
         "Insira seu token de acesso Plex. Ele é salvo no perfil deste dispositivo.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Insira o endereço do servidor Plex, por exemplo http://192.168.1.25:32400",
+    "Entries found": "Itens encontrados",
     EPG: "Guia TV",
     "EPG and archive. Channel: ": "EPG e arquivo. Canal: ",
     "EPG archive or XML is invalid.": "O arquivo EPG ou XML é inválido.",
@@ -611,6 +617,8 @@ var keyStrings = {
     "Loading. Please wait...": "A carregar… aguarde…",
     "Loading...": "A carregar…",
     "Local HTTP remote control": "Controlo remoto HTTP local",
+    "Local source did not respond": "A fonte local não respondeu",
+    "Local source unavailable": "Fonte local indisponível",
     "Local URL": "URL local",
     "Local videos": "Vídeos locais",
     Login: "Nome de utilizador",
@@ -776,6 +784,10 @@ var keyStrings = {
     Rating: "Classificação",
     RD: "RD",
     "RD settings": "Configurações de RD",
+    "Reading file information": "Lendo informações do arquivo",
+    "Reading folder entries": "Lendo o conteúdo da pasta",
+    "Reading local files": "Lendo arquivos locais",
+    "Reading saved sources": "Lendo fontes salvas",
     "Reconnecting…": "A voltar a ligar…",
     Records: "Gravações",
     "Records for channel: ": "Gravações do canal: ",

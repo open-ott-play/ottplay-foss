@@ -166,8 +166,13 @@ var keyStrings = {
         "Bağlantıyı kontrol edin ve Plex kitaplıklarınızı açın.",
     "Check this server's SWOP configuration.":
         "Bu sunucunun SWOP yapılandırmasını kontrol edin.",
+    "Checking folder permission": "Klasör izni denetleniyor",
     "Checking the Plex server connection…":
         "Plex sunucu bağlantısı kontrol ediliyor…",
+    "Choose a folder in the browser window":
+        "Tarayıcı penceresinde bir klasör seçin",
+    "Choose files in the browser window":
+        "Tarayıcı penceresinde dosyaları seçin",
     "Choose from": "Şuradan seç",
     "Choose language": "Dil seç",
     "Choose Plex server": "Plex sunucusunu seçin",
@@ -440,6 +445,7 @@ var keyStrings = {
         "Plex erişim belirtecinizi girin. Bu cihazın profiline kaydedildi.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex sunucu adresinizi girin, örneğin http://192.168.1.25:32400",
+    "Entries found": "Bulunan öğeler",
     EPG: "TV Rehberi",
     "EPG and archive. Channel: ": "EPG ve arşiv. Kanal: ",
     "EPG archive or XML is invalid.": "EPG arşivi veya XML geçersiz.",
@@ -602,6 +608,8 @@ var keyStrings = {
     "Loading. Please wait...": "Yükleniyor… lütfen bekleyin…",
     "Loading...": "Yükleniyor…",
     "Local HTTP remote control": "Yerel HTTP uzaktan kumandası",
+    "Local source did not respond": "Yerel kaynak yanıt vermedi",
+    "Local source unavailable": "Yerel kaynak kullanılamıyor",
     "Local URL": "Yerel URL",
     "Local videos": "Yerel videolar",
     Login: "Kullanıcı adı",
@@ -765,6 +773,10 @@ var keyStrings = {
     Rating: "Puan",
     RD: "RD",
     "RD settings": "RD ayarları",
+    "Reading file information": "Dosya bilgileri okunuyor",
+    "Reading folder entries": "Klasör içeriği okunuyor",
+    "Reading local files": "Yerel dosyalar okunuyor",
+    "Reading saved sources": "Kaydedilen kaynaklar okunuyor",
     "Reconnecting…": "Yeniden bağlanılıyor…",
     Records: "Kayıtlar",
     "Records for channel: ": "Kanal kayıtları: ",

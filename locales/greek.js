@@ -170,8 +170,13 @@ var keyStrings = {
         "Ελέγξτε τη σύνδεση και ανοίξτε τις βιβλιοθήκες Plex.",
     "Check this server's SWOP configuration.":
         "Ελέγξτε τη ρύθμιση SWOP αυτού του διακομιστή.",
+    "Checking folder permission": "Έλεγχος άδειας πρόσβασης στον φάκελο",
     "Checking the Plex server connection…":
         "Έλεγχος της σύνδεσης διακομιστή Plex…",
+    "Choose a folder in the browser window":
+        "Επιλέξτε έναν φάκελο στο παράθυρο του προγράμματος περιήγησης",
+    "Choose files in the browser window":
+        "Επιλέξτε αρχεία στο παράθυρο του προγράμματος περιήγησης",
     "Choose from": "Επιλογή από",
     "Choose language": "Επιλογή γλώσσας",
     "Choose Plex server": "Επιλέξτε διακομιστή Plex",
@@ -451,6 +456,7 @@ var keyStrings = {
         "Εισαγάγετε το διακριτικό πρόσβασης Plex. Είναι αποθηκευμένο στο προφίλ αυτής της συσκευής.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Εισαγάγετε τη διεύθυνση διακομιστή Plex, για παράδειγμα http://192.168.1.25:32400",
+    "Entries found": "Στοιχεία που βρέθηκαν",
     EPG: "Οδηγός TV",
     "EPG and archive. Channel: ": "EPG και αρχείο. Κανάλι: ",
     "EPG archive or XML is invalid.":
@@ -620,6 +626,8 @@ var keyStrings = {
     "Loading. Please wait...": "Φόρτωση… παρακαλώ περιμένετε…",
     "Loading...": "Φόρτωση…",
     "Local HTTP remote control": "Τοπικός τηλεχειρισμός HTTP",
+    "Local source did not respond": "Η τοπική πηγή δεν ανταποκρίθηκε",
+    "Local source unavailable": "Η τοπική πηγή δεν είναι διαθέσιμη",
     "Local URL": "Τοπικό URL",
     "Local videos": "Τοπικά βίντεο",
     Login: "Όνομα χρήστη",
@@ -788,6 +796,10 @@ var keyStrings = {
     Rating: "Βαθμολογία",
     RD: "RD",
     "RD settings": "Ρυθμίσεις RD",
+    "Reading file information": "Ανάγνωση πληροφοριών αρχείου",
+    "Reading folder entries": "Ανάγνωση περιεχομένων φακέλου",
+    "Reading local files": "Ανάγνωση τοπικών αρχείων",
+    "Reading saved sources": "Ανάγνωση αποθηκευμένων πηγών",
     "Reconnecting…": "Επανασύνδεση…",
     Records: "Εγγραφές",
     "Records for channel: ": "Εγγραφές καναλιού: ",

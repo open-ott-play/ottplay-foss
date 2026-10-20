@@ -166,8 +166,13 @@ var keyStrings = {
         "Angalia muunganisho na ufungue maktaba Plex zako.",
     "Check this server's SWOP configuration.":
         "Angalia usanidi wa SWOP wa seva hii.",
+    "Checking folder permission": "Inakagua ruhusa ya folda",
     "Checking the Plex server connection…":
         "Inakagua Plex muunganisho wa seva...",
+    "Choose a folder in the browser window":
+        "Chagua folda katika dirisha la kivinjari",
+    "Choose files in the browser window":
+        "Chagua faili katika dirisha la kivinjari",
     "Choose from": "Chagua kutoka",
     "Choose language": "Chagua lugha",
     "Choose Plex server": "Chagua seva ya Plex",
@@ -445,6 +450,7 @@ var keyStrings = {
         "Weka tokeni yako ya ufikiaji ya Plex. Imehifadhiwa katika wasifu wa kifaa hiki.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Weka Plex anwani yako ya seva, kwa mfano http://192.168.1.25:32400",
+    "Entries found": "Vipengee vilivyopatikana",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG na uhifadhi kwenye kumbukumbu. Kituo: ",
     "EPG archive or XML is invalid.": "EPG kumbukumbu au XML ni batili.",
@@ -610,6 +616,8 @@ var keyStrings = {
     "Loading. Please wait...": "Inapakia... tafadhali subiri...",
     "Loading...": "Inapakia...",
     "Local HTTP remote control": "Kidhibiti cha mbali cha HTTP cha ndani",
+    "Local source did not respond": "Chanzo cha ndani hakikujibu",
+    "Local source unavailable": "Chanzo cha ndani hakipatikani",
     "Local URL": "Karibu URL",
     "Local videos": "Video za ndani",
     Login: "Jina la mtumiaji",
@@ -775,6 +783,10 @@ var keyStrings = {
     Rating: "Ukadiriaji",
     RD: "RD",
     "RD settings": "RD mipangilio",
+    "Reading file information": "Inasoma taarifa za faili",
+    "Reading folder entries": "Inasoma yaliyomo kwenye folda",
+    "Reading local files": "Inasoma faili za ndani",
+    "Reading saved sources": "Inasoma vyanzo vilivyohifadhiwa",
     "Reconnecting…": "Inaunganisha upya...",
     Records: "Vipindi vilivyorekodiwa",
     "Records for channel: ": "Rekodi za kituo: ",

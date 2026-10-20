@@ -166,8 +166,12 @@ var keyStrings = {
         "Skontrolujte pripojenie a otvorte svoje knižnice Plex.",
     "Check this server's SWOP configuration.":
         "Skontrolujte konfiguráciu SWOP tohto servera.",
+    "Checking folder permission": "Kontrola oprávnenia k priečinku",
     "Checking the Plex server connection…":
         "Kontroluje sa pripojenie k serveru Plex…",
+    "Choose a folder in the browser window":
+        "Vyberte priečinok v okne prehliadača",
+    "Choose files in the browser window": "Vyberte súbory v okne prehliadača",
     "Choose from": "Vyberte si z",
     "Choose language": "Vyberte jazyk",
     "Choose Plex server": "Vyberte server Plex",
@@ -441,6 +445,7 @@ var keyStrings = {
         "Zadajte svoj prístupový token Plex. Je uložený v profile tohto zariadenia.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Zadajte adresu servera Plex, napríklad http://192.168.1.25:32400",
+    "Entries found": "Nájdené položky",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG a archivovať. kanál: ",
     "EPG archive or XML is invalid.": "EPG archív alebo XML je neplatný.",
@@ -609,6 +614,8 @@ var keyStrings = {
     "Loading. Please wait...": "Načítava sa... čakajte prosím...",
     "Loading...": "Načítava sa...",
     "Local HTTP remote control": "Miestne diaľkové ovládanie HTTP",
+    "Local source did not respond": "Lokálny zdroj neodpovedal",
+    "Local source unavailable": "Lokálny zdroj nie je dostupný",
     "Local URL": "Miestne URL",
     "Local videos": "Miestne videá",
     Login: "Používateľské meno",
@@ -775,6 +782,10 @@ var keyStrings = {
     Rating: "Hodnotenie",
     RD: "RD",
     "RD settings": "RD nastavenia",
+    "Reading file information": "Čítajú sa informácie o súbore",
+    "Reading folder entries": "Číta sa obsah priečinka",
+    "Reading local files": "Čítajú sa lokálne súbory",
+    "Reading saved sources": "Čítajú sa uložené zdroje",
     "Reconnecting…": "Opätovné pripojenie…",
     Records: "Nahrávky",
     "Records for channel: ": "Nahrávky pre kanál: ",

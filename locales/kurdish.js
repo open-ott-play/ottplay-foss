@@ -166,8 +166,13 @@ var keyStrings = {
         "Têkiliyê kontrol bikin û pirtûkxaneyên xwe yên Plex vekin.",
     "Check this server's SWOP configuration.":
         "Veavakirina SWOP ya vê serverê kontrol bikin.",
+    "Checking folder permission": "Destûra peldankê tê kontrolkirin",
     "Checking the Plex server connection…":
         "Kontrolkirina girêdana servera Plex…",
+    "Choose a folder in the browser window":
+        "Di pencereya gerokê de peldankekê hilbijêre",
+    "Choose files in the browser window":
+        "Di pencereya gerokê de pelan hilbijêre",
     "Choose from": "Hilbijêre",
     "Choose language": "Ziman hilbijêre",
     "Choose Plex server": "Pêşkêşkara Plex hilbijêrin",
@@ -439,6 +444,7 @@ var keyStrings = {
         "Tokena xwe ya gihîştina Plex binivîsin. Ew di profîla vê amûrê de tê tomarkirin.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Navnîşana servera xwe ya Plex binivîse, mînakî http://192.168.1.25:32400",
+    "Entries found": "Tiştên hatine dîtin",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG û arşîv. Kanal: ",
     "EPG archive or XML is invalid.": "arşîva EPG an jî XML nederbasdar e.",
@@ -603,6 +609,8 @@ var keyStrings = {
     "Loading. Please wait...": "Bar dike… ji kerema xwe li bendê bin…",
     "Loading...": "Barkirin…",
     "Local HTTP remote control": "Kontrola dûr a herêmî ya HTTP",
+    "Local source did not respond": "Çavkaniya herêmî bersiv neda",
+    "Local source unavailable": "Çavkaniya herêmî ne berdest e",
     "Local URL": "Herêmî URL",
     "Local videos": "Vîdyoyên herêmî",
     Login: "Navê bikarhêner",
@@ -765,6 +773,10 @@ var keyStrings = {
     Rating: "Nirxandin",
     RD: "RD",
     "RD settings": "Mîhengên RD",
+    "Reading file information": "Agahiyên pelê tên xwendin",
+    "Reading folder entries": "Naveroka peldankê tê xwendin",
+    "Reading local files": "Pelên herêmî tên xwendin",
+    "Reading saved sources": "Çavkaniyên tomarkirî tên xwendin",
     "Reconnecting…": "Ji nû ve tê girêdan…",
     Records: "Tomarkirin",
     "Records for channel: ": "Tomarên ji bo kanalê: ",

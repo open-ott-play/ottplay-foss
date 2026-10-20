@@ -167,8 +167,13 @@ var keyStrings = {
         "Egiaztatu konexioa eta ireki zure Plex liburutegiak.",
     "Check this server's SWOP configuration.":
         "Egiaztatu zerbitzari honen SWOP konfigurazioa.",
+    "Checking folder permission": "Karpetaren baimena egiaztatzen",
     "Checking the Plex server connection…":
         "Plex zerbitzariaren konexioa egiaztatzen…",
+    "Choose a folder in the browser window":
+        "Aukeratu karpeta bat arakatzailearen leihoan",
+    "Choose files in the browser window":
+        "Aukeratu fitxategiak arakatzailearen leihoan",
     "Choose from": "Aukeratu hauen artean",
     "Choose language": "Aukeratu hizkuntza",
     "Choose Plex server": "Aukeratu Plex zerbitzaria",
@@ -444,6 +449,7 @@ var keyStrings = {
         "Sartu zure Plex sarbide-tokena. Gailu honen profilean gordetzen da.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Sartu zure Plex zerbitzariaren helbidea, adibidez http://192.168.1.25:32400",
+    "Entries found": "Aurkitutako elementuak",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG eta artxiboa. Kanala: ",
     "EPG archive or XML is invalid.": "EPG artxiboa edo XMLa baliogabea da.",
@@ -609,6 +615,8 @@ var keyStrings = {
     "Loading. Please wait...": "Kargatzen… itxaron, mesedez…",
     "Loading...": "Kargatzen…",
     "Local HTTP remote control": "HTTP urruneko kontrol lokala",
+    "Local source did not respond": "Tokiko iturriak ez du erantzun",
+    "Local source unavailable": "Tokiko iturria ez dago erabilgarri",
     "Local URL": "URL lokala",
     "Local videos": "Tokiko bideoak",
     Login: "Erabiltzaile-izena",
@@ -774,6 +782,10 @@ var keyStrings = {
     Rating: "Balorazioa",
     RD: "RD",
     "RD settings": "RD ezarpenak",
+    "Reading file information": "Fitxategiaren informazioa irakurtzen",
+    "Reading folder entries": "Karpetako elementuak irakurtzen",
+    "Reading local files": "Tokiko fitxategiak irakurtzen",
+    "Reading saved sources": "Gordetako iturriak irakurtzen",
     "Reconnecting…": "Berriro konektatzen…",
     Records: "Grabazioak",
     "Records for channel: ": "Kanalaren grabazioak: ",

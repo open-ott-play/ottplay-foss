@@ -161,8 +161,12 @@ var keyStrings = {
         "Check the connection and open your Plex libraries.",
     "Check this server's SWOP configuration.":
         "Check this server's SWOP configuration.",
+    "Checking folder permission": "Checking folder permission",
     "Checking the Plex server connection…":
         "Checking the Plex server connection…",
+    "Choose a folder in the browser window":
+        "Choose a folder in the browser window",
+    "Choose files in the browser window": "Choose files in the browser window",
     "Choose from": "Choose from",
     "Choose language": "Choose language",
     "Choose Plex server": "Choose Plex server",
@@ -430,6 +434,7 @@ var keyStrings = {
         "Enter your Plex access token. It is saved in this device's profile.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Enter your Plex server address, for example http://192.168.1.25:32400",
+    "Entries found": "Entries found",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG and archive. Channel: ",
     "EPG archive or XML is invalid.": "EPG archive or XML is invalid.",
@@ -593,6 +598,8 @@ var keyStrings = {
     "Loading. Please wait...": "Loading… please wait…",
     "Loading...": "Loading…",
     "Local HTTP remote control": "Local HTTP remote control",
+    "Local source did not respond": "Local source did not respond",
+    "Local source unavailable": "Local source unavailable",
     "Local URL": "Local URL",
     "Local videos": "Local videos",
     Login: "Username",
@@ -754,6 +761,10 @@ var keyStrings = {
     Rating: "Rating",
     RD: "RD",
     "RD settings": "RD settings",
+    "Reading file information": "Reading file information",
+    "Reading folder entries": "Reading folder entries",
+    "Reading local files": "Reading local files",
+    "Reading saved sources": "Reading saved sources",
     "Reconnecting…": "Reconnecting…",
     Records: "Recordings",
     "Records for channel: ": "Recordings for channel: ",

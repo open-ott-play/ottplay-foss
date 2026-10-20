@@ -170,8 +170,13 @@ var keyStrings = {
         "Hlola uxhumano bese uvula imitapo yakho ye-Plex.",
     "Check this server's SWOP configuration.":
         "Hlola izilungiselelo ze-SWOP zale seva.",
+    "Checking folder permission": "Kuhlolwa imvume yefolda",
     "Checking the Plex server connection…":
         "Kuhlolwa uxhumano lweseva ye-Plex…",
+    "Choose a folder in the browser window":
+        "Khetha ifolda efasiteleni lesiphequluli",
+    "Choose files in the browser window":
+        "Khetha amafayela efasiteleni lesiphequluli",
     "Choose from": "Khetha kokulandelayo",
     "Choose language": "Khetha ulimi",
     "Choose Plex server": "Khetha iseva ye-Plex",
@@ -446,6 +451,7 @@ var keyStrings = {
         "Faka ithokheni yakho yokufinyelela ye-Plex. Igcinwa kuphrofayela yale divayisi.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Faka ikheli leseva yakho ye-Plex, isibonelo http://192.168.1.25:32400",
+    "Entries found": "Izinto ezitholakele",
     EPG: "EPG",
     "EPG and archive. Channel: ": "I-EPG nenqolobane. Isiteshi: ",
     "EPG archive or XML is invalid.":
@@ -619,6 +625,8 @@ var keyStrings = {
     "Loading. Please wait...": "Kuyalayishwa… sicela ulinde…",
     "Loading...": "Kuyalayishwa…",
     "Local HTTP remote control": "Ukulawula ukude nge-HTTP yendawo",
+    "Local source did not respond": "Umthombo wendawo awuphendulanga",
+    "Local source unavailable": "Umthombo wendawo awutholakali",
     "Local URL": "I-URL yendawo",
     "Local videos": "Amavidiyo akudivayisi",
     Login: "Igama lomsebenzisi",
@@ -783,6 +791,10 @@ var keyStrings = {
     Rating: "Isilinganiso",
     RD: "RD",
     "RD settings": "Izilungiselelo ze-RD",
+    "Reading file information": "Kufundwa imininingwane yefayela",
+    "Reading folder entries": "Kufundwa okuqukethwe yifolda",
+    "Reading local files": "Kufundwa amafayela endawo",
+    "Reading saved sources": "Kufundwa imithombo egciniwe",
     "Reconnecting…": "Kuxhunywa futhi…",
     Records: "Okurekhodiwe",
     "Records for channel: ": "Okurekhodiwe kwesiteshi: ",

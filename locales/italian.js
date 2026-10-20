@@ -169,8 +169,13 @@ var keyStrings = {
         "Controlla la connessione e apri le tue librerie Plex.",
     "Check this server's SWOP configuration.":
         "Controlla la configurazione SWOP di questo server.",
+    "Checking folder permission": "Verifica dei permessi della cartella",
     "Checking the Plex server connection…":
         "Controllo della connessione al server Plex…",
+    "Choose a folder in the browser window":
+        "Scegli una cartella nella finestra del browser",
+    "Choose files in the browser window":
+        "Scegli i file nella finestra del browser",
     "Choose from": "Scegli tra",
     "Choose language": "Scegli lingua",
     "Choose Plex server": "Scegli il server Plex",
@@ -444,6 +449,7 @@ var keyStrings = {
         "Inserisci il tuo token di accesso Plex. Viene salvato nel profilo di questo dispositivo.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Inserisci l'indirizzo del tuo server Plex, ad esempio http://192.168.1.25:32400",
+    "Entries found": "Elementi trovati",
     EPG: "Guida TV",
     "EPG and archive. Channel: ": "EPG e archivio. Canale: ",
     "EPG archive or XML is invalid.": "L'archivio EPG o XML non è valido.",
@@ -612,6 +618,8 @@ var keyStrings = {
     "Loading. Please wait...": "Caricamento… attendere…",
     "Loading...": "Caricamento…",
     "Local HTTP remote control": "Controllo remoto HTTP locale",
+    "Local source did not respond": "La sorgente locale non ha risposto",
+    "Local source unavailable": "Sorgente locale non disponibile",
     "Local URL": "URL locale",
     "Local videos": "Video locali",
     Login: "Nome utente",
@@ -778,6 +786,10 @@ var keyStrings = {
     Rating: "Valutazione",
     RD: "RD",
     "RD settings": "Impostazioni di RD",
+    "Reading file information": "Lettura delle informazioni sul file",
+    "Reading folder entries": "Lettura del contenuto della cartella",
+    "Reading local files": "Lettura dei file locali",
+    "Reading saved sources": "Lettura delle sorgenti salvate",
     "Reconnecting…": "Riconnessione…",
     Records: "Registrazioni",
     "Records for channel: ": "Registrazioni del canale: ",

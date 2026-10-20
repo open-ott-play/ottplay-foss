@@ -163,7 +163,12 @@ var keyStrings = {
         "Birikmäni barlaň we Plex kitaphanalaryňyzy açyň.",
     "Check this server's SWOP configuration.":
         "Bu serweriň SWOP sazlamasyny barlaň.",
+    "Checking folder permission": "Bukjanyň rugsady barlanýar",
     "Checking the Plex server connection…": "Plex serwerine birikme barlanýar…",
+    "Choose a folder in the browser window":
+        "Brauzer penjiresinde bukja saýlaň",
+    "Choose files in the browser window":
+        "Brauzer penjiresinde faýllary saýlaň",
     "Choose from": "Şundan saýla",
     "Choose language": "Dili saýlaň",
     "Choose Plex server": "Plex serwerini saýlaň",
@@ -436,6 +441,7 @@ var keyStrings = {
         "Plex giriş tokeniňizi giriziň. Ol bu enjamyň profilinde saklanýar.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex serweriňiziň salgysyny giriziň, mysal üçin http://192.168.1.25:32400",
+    "Entries found": "Tapylan ýazgylar",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG we arhiw. Kanal: ",
     "EPG archive or XML is invalid.": "EPG arhiwi ýa-da XML nädogry.",
@@ -598,6 +604,8 @@ var keyStrings = {
     "Loading. Please wait...": "Ýüklenýär… garaşyň…",
     "Loading...": "Ýüklenýär…",
     "Local HTTP remote control": "Ýerli HTTP uzakdan dolandyryş",
+    "Local source did not respond": "Ýerli çeşme jogap bermedi",
+    "Local source unavailable": "Ýerli çeşme elýeterli däl",
     "Local URL": "Ýerli URL",
     "Local videos": "Ýerli wideolar",
     Login: "Ulanyjy ady",
@@ -761,6 +769,10 @@ var keyStrings = {
     Rating: "Reýting",
     RD: "RD",
     "RD settings": "RD sazlamalary",
+    "Reading file information": "Faýlyň maglumatlary okalýar",
+    "Reading folder entries": "Bukjanyň mazmuny okalýar",
+    "Reading local files": "Ýerli faýllar okalýar",
+    "Reading saved sources": "Ýatda saklanan çeşmeler okalýar",
     "Reconnecting…": "Gaýtadan birikdirilýär…",
     Records: "Ýazgylar",
     "Records for channel: ": "Kanalyň ýazgylary: ",

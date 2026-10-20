@@ -168,8 +168,13 @@ var keyStrings = {
         "Controleer de verbinding en open uw Plex-bibliotheken.",
     "Check this server's SWOP configuration.":
         "Controleer de SWOP-configuratie van deze server.",
+    "Checking folder permission": "Mapmachtiging controleren",
     "Checking the Plex server connection…":
         "De Plex-serververbinding controleren…",
+    "Choose a folder in the browser window":
+        "Kies een map in het browservenster",
+    "Choose files in the browser window":
+        "Kies bestanden in het browservenster",
     "Choose from": "Kiezen uit",
     "Choose language": "Taal kiezen",
     "Choose Plex server": "Kies Plex-server",
@@ -446,6 +451,7 @@ var keyStrings = {
         "Voer uw Plex-toegangstoken in. Het wordt opgeslagen in het profiel van dit apparaat.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Voer uw Plex-serveradres in, bijvoorbeeld http://192.168.1.25:32400",
+    "Entries found": "Gevonden items",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG en archief. Zender: ",
     "EPG archive or XML is invalid.": "EPG-archief of XML is ongeldig.",
@@ -609,6 +615,8 @@ var keyStrings = {
     "Loading. Please wait...": "Laden… even geduld…",
     "Loading...": "Laden…",
     "Local HTTP remote control": "Lokale HTTP-afstandsbediening",
+    "Local source did not respond": "De lokale bron reageerde niet",
+    "Local source unavailable": "Lokale bron niet beschikbaar",
     "Local URL": "Lokale URL",
     "Local videos": "Lokale video's",
     Login: "Gebruikersnaam",
@@ -774,6 +782,10 @@ var keyStrings = {
     Rating: "Beoordeling",
     RD: "RD",
     "RD settings": "Instellingen voor RD",
+    "Reading file information": "Bestandsinformatie lezen",
+    "Reading folder entries": "Mapinhoud lezen",
+    "Reading local files": "Lokale bestanden lezen",
+    "Reading saved sources": "Opgeslagen bronnen lezen",
     "Reconnecting…": "Opnieuw verbinden…",
     Records: "Opnamen",
     "Records for channel: ": "Opnamen voor zender: ",

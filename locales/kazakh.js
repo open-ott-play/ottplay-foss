@@ -163,7 +163,12 @@ var keyStrings = {
         "Қосылымды тексеріп, Plex кітапханаларын ашыңыз.",
     "Check this server's SWOP configuration.":
         "Осы сервердің SWOP баптауларын тексеріңіз.",
+    "Checking folder permission": "Қалтаға кіру рұқсаты тексерілуде",
     "Checking the Plex server connection…": "Plex сервер қосылымы тексерілуде…",
+    "Choose a folder in the browser window":
+        "Браузер терезесінде қалтаны таңдаңыз",
+    "Choose files in the browser window":
+        "Браузер терезесінде файлдарды таңдаңыз",
     "Choose from": "Мынадан таңдау",
     "Choose language": "Тілді таңдаңыз",
     "Choose Plex server": "Plex серверін таңдаңыз",
@@ -436,6 +441,7 @@ var keyStrings = {
         "Plex кіру таңбалауышын енгізіңіз. Ол осы құрылғының профилінде сақталған.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Plex сервер мекенжайын енгізіңіз, мысалы, http://192.168.1.25:32400",
+    "Entries found": "Табылған элементтер",
     EPG: "Бағдарлама кестесі",
     "EPG and archive. Channel: ": "Бағдарлама кестесі және мұрағат. Арна: ",
     "EPG archive or XML is invalid.": "EPG мұрағаты немесе XML жарамсыз.",
@@ -601,6 +607,8 @@ var keyStrings = {
     "Loading. Please wait...": "Жүктелуде. Күтіңіз…",
     "Loading...": "Жүктелуде…",
     "Local HTTP remote control": "Жергілікті HTTP қашықтан басқару",
+    "Local source did not respond": "Жергілікті дереккөз жауап бермеді",
+    "Local source unavailable": "Жергілікті дереккөз қолжетімсіз",
     "Local URL": "Жергілікті URL",
     "Local videos": "Жергілікті бейнелер",
     Login: "Пайдаланушы аты",
@@ -765,6 +773,10 @@ var keyStrings = {
     Rating: "Рейтинг",
     RD: "RD",
     "RD settings": "RD баптаулары",
+    "Reading file information": "Файл туралы ақпарат оқылуда",
+    "Reading folder entries": "Қалта мазмұны оқылуда",
+    "Reading local files": "Жергілікті файлдар оқылуда",
+    "Reading saved sources": "Сақталған дереккөздер оқылуда",
     "Reconnecting…": "Қайта қосылуда…",
     Records: "Жазбалар",
     "Records for channel: ": "Арна жазбалары: ",

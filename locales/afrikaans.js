@@ -165,8 +165,12 @@ var keyStrings = {
         "Kontroleer die verbinding en maak jou Plex-biblioteke oop.",
     "Check this server's SWOP configuration.":
         "Kontroleer hierdie bediener se SWOP-opstelling.",
+    "Checking folder permission": "Vouertoestemming word nagegaan",
     "Checking the Plex server connection…":
         "Kontroleer die Plex-bedienerverbinding…",
+    "Choose a folder in the browser window":
+        "Kies ’n vouer in die blaaiervenster",
+    "Choose files in the browser window": "Kies lêers in die blaaiervenster",
     "Choose from": "Kies uit",
     "Choose language": "Kies taal",
     "Choose Plex server": "Kies Plex-bediener",
@@ -440,6 +444,7 @@ var keyStrings = {
         "Voer jou Plex-toegangsteken in. Dit word in hierdie toestel se profiel gestoor.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Voer jou Plex-bedieneradres in, byvoorbeeld http://192.168.1.25:32400",
+    "Entries found": "Inskrywings gevind",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG en argief. Kanaal: ",
     "EPG archive or XML is invalid.": "EPG-argief of XML is ongeldig.",
@@ -604,6 +609,8 @@ var keyStrings = {
     "Loading. Please wait...": "Laai… wag asseblief…",
     "Loading...": "Laai…",
     "Local HTTP remote control": "Plaaslike HTTP-afstandbeheer",
+    "Local source did not respond": "Die plaaslike bron het nie gereageer nie",
+    "Local source unavailable": "Plaaslike bron is nie beskikbaar nie",
     "Local URL": "Plaaslike URL",
     "Local videos": "Plaaslike video's",
     Login: "Gebruikersnaam",
@@ -769,6 +776,10 @@ var keyStrings = {
     Rating: "Gradering",
     RD: "RD",
     "RD settings": "RD-instellings",
+    "Reading file information": "Lêerinligting word gelees",
+    "Reading folder entries": "Vouerinskrywings word gelees",
+    "Reading local files": "Plaaslike lêers word gelees",
+    "Reading saved sources": "Gestoorde bronne word gelees",
     "Reconnecting…": "Verbind weer…",
     Records: "Opnames",
     "Records for channel: ": "Opnames vir kanaal: ",

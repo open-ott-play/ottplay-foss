@@ -166,8 +166,12 @@ var keyStrings = {
         "Iċċekkja l-konnessjoni u iftaħ il-libreriji Plex tiegħek.",
     "Check this server's SWOP configuration.":
         "Iċċekkja l-konfigurazzjoni SWOP ta’ dan is-server.",
+    "Checking folder permission": "Qed jiġi ċċekkjat il-permess tal-fowlder",
     "Checking the Plex server connection…":
         "Qed tiġi ċċekkjata l-konnessjoni mas-server Plex…",
+    "Choose a folder in the browser window":
+        "Agħżel fowlder fit-tieqa tal-brawżer",
+    "Choose files in the browser window": "Agħżel fajls fit-tieqa tal-brawżer",
     "Choose from": "Agħżel minn",
     "Choose language": "Agħżel il-lingwa",
     "Choose Plex server": "Agħżel server Plex",
@@ -444,6 +448,7 @@ var keyStrings = {
         "Daħħal it-token tal-aċċess Plex tiegħek. Jiġi ssejvjat fil-profil ta’ dan l-apparat.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Daħħal l-indirizz tas-server Plex tiegħek, pereżempju http://192.168.1.25:32400",
+    "Entries found": "Elementi misjuba",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG u arkivju. Kanal: ",
     "EPG archive or XML is invalid.": "L-arkivju EPG jew XML mhuwiex validu.",
@@ -613,6 +618,8 @@ var keyStrings = {
     "Loading. Please wait...": "Qed jitgħabba… jekk jogħġbok stenna…",
     "Loading...": "Qed jitgħabba…",
     "Local HTTP remote control": "Kontroll mill-bogħod HTTP lokali",
+    "Local source did not respond": "Is-sors lokali ma weġibx",
+    "Local source unavailable": "Is-sors lokali mhux disponibbli",
     "Local URL": "URL lokali",
     "Local videos": "Vidjows lokali",
     Login: "Isem tal-utent",
@@ -777,6 +784,10 @@ var keyStrings = {
     Rating: "Klassifikazzjoni",
     RD: "RD",
     "RD settings": "Issettjar ta’ RD",
+    "Reading file information": "Qed tinqara l-informazzjoni tal-fajl",
+    "Reading folder entries": "Qed jinqara l-kontenut tal-fowlder",
+    "Reading local files": "Qed jinqraw fajls lokali",
+    "Reading saved sources": "Qed jinqraw sorsi ssejvjati",
     "Reconnecting…": "Qed terġa’ ssir konnessjoni…",
     Records: "Reġistrazzjonijiet",
     "Records for channel: ": "Reġistrazzjonijiet għall-kanal: ",

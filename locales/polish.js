@@ -168,8 +168,12 @@ var keyStrings = {
         "Sprawdź połączenie i otwórz biblioteki Plex.",
     "Check this server's SWOP configuration.":
         "Sprawdź konfigurację SWOP tego serwera.",
+    "Checking folder permission": "Sprawdzanie uprawnień do folderu",
     "Checking the Plex server connection…":
         "Sprawdzam połączenie z serwerem Plex…",
+    "Choose a folder in the browser window":
+        "Wybierz folder w oknie przeglądarki",
+    "Choose files in the browser window": "Wybierz pliki w oknie przeglądarki",
     "Choose from": "Wybierz z",
     "Choose language": "Wybierz język",
     "Choose Plex server": "Wybierz serwer Plex",
@@ -443,6 +447,7 @@ var keyStrings = {
         "Wprowadź swój token dostępu Plex. Jest on zapisany w profilu tego urządzenia.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Wprowadź adres swojego serwera Plex, na przykład http://192.168.1.25:32400",
+    "Entries found": "Znalezione elementy",
     EPG: "Program TV",
     "EPG and archive. Channel: ": "Program i archiwum. Kanał: ",
     "EPG archive or XML is invalid.":
@@ -611,6 +616,8 @@ var keyStrings = {
     "Loading. Please wait...": "Wczytywanie. Poczekaj…",
     "Loading...": "Wczytywanie…",
     "Local HTTP remote control": "Lokalne sterowanie HTTP",
+    "Local source did not respond": "Lokalne źródło nie odpowiedziało",
+    "Local source unavailable": "Lokalne źródło jest niedostępne",
     "Local URL": "Lokalny adres URL",
     "Local videos": "Lokalne filmy",
     Login: "Nazwa użytkownika",
@@ -774,6 +781,10 @@ var keyStrings = {
     Rating: "Ocena",
     RD: "RD",
     "RD settings": "Ustawienia RD",
+    "Reading file information": "Odczytywanie informacji o pliku",
+    "Reading folder entries": "Odczytywanie zawartości folderu",
+    "Reading local files": "Odczytywanie lokalnych plików",
+    "Reading saved sources": "Odczytywanie zapisanych źródeł",
     "Reconnecting…": "Ponowne łączenie…",
     Records: "Nagrania",
     "Records for channel: ": "Nagrania kanału: ",

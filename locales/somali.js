@@ -167,8 +167,13 @@ var keyStrings = {
         "Hubi xidhiidhka oo fur maktabadahaaga Plex.",
     "Check this server's SWOP configuration.":
         "Hubi dejinta SWOP ee seerfarkan.",
+    "Checking folder permission": "Waxaa la hubinayaa oggolaanshaha galka",
     "Checking the Plex server connection…":
         "Xidhiidhka seerfarka Plex ayaa la hubinayaa…",
+    "Choose a folder in the browser window":
+        "Ka dooro gal daaqadda biraawsarka",
+    "Choose files in the browser window":
+        "Ka dooro faylal daaqadda biraawsarka",
     "Choose from": "Ka dooro",
     "Choose language": "Dooro luqad",
     "Choose Plex server": "Dooro seerfarka Plex",
@@ -441,6 +446,7 @@ var keyStrings = {
         "Geli token-kaaga gelitaanka Plex. Waxaa lagu kaydiyaa astaanta qalabkan.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Geli cinwaanka seerfarkaaga Plex, tusaale ahaan http://192.168.1.25:32400",
+    "Entries found": "Walxaha la helay",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG iyo kaydka. Kanaalka: ",
     "EPG archive or XML is invalid.": "Kaydka EPG ama XML-ku sax ma aha.",
@@ -615,6 +621,8 @@ var keyStrings = {
     "Loading. Please wait...": "Waxaa la soo rarayaa… fadlan sug…",
     "Loading...": "Waxaa la soo rarayaa…",
     "Local HTTP remote control": "Kontoroolka fog ee HTTP ee maxalliga ah",
+    "Local source did not respond": "Isha maxalliga ahi ma jawaabin",
+    "Local source unavailable": "Isha maxalliga ah lama heli karo",
     "Local URL": "URL-ka maxalliga ah",
     "Local videos": "Fiidyowyada qalabka",
     Login: "Magaca isticmaalaha",
@@ -780,6 +788,10 @@ var keyStrings = {
     Rating: "Qiimaynta",
     RD: "RD",
     "RD settings": "Dejinta RD",
+    "Reading file information": "Waxaa la akhrinayaa xogta faylka",
+    "Reading folder entries": "Waxaa la akhrinayaa waxa ku jira galka",
+    "Reading local files": "Waxaa la akhrinayaa faylasha maxalliga ah",
+    "Reading saved sources": "Waxaa la akhrinayaa ilaha la kaydiyey",
     "Reconnecting…": "Dib ayaa loo xidhayaa…",
     Records: "Duubista",
     "Records for channel: ": "Duubista kanaalka: ",

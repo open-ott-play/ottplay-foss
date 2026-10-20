@@ -162,7 +162,12 @@ var keyStrings = {
         "இணைப்பைச் சரிபார்த்து, உங்கள் Plex நூலகத்தைத் திறக்கவும்.",
     "Check this server's SWOP configuration.":
         "இந்த சேவையகத்தின் SWOP உள்ளமைவைச் சரிபார்க்கவும்.",
+    "Checking folder permission": "கோப்புறையின் அனுமதி சரிபார்க்கப்படுகிறது",
     "Checking the Plex server connection…": "Plex சர்வர் இணைப்பைச் சரிபார்க்கிறது…",
+    "Choose a folder in the browser window":
+        "உலாவி சாளரத்தில் ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்",
+    "Choose files in the browser window":
+        "உலாவி சாளரத்தில் கோப்புகளைத் தேர்ந்தெடுக்கவும்",
     "Choose from": "இதிலிருந்து தேர்வு செய்யவும்",
     "Choose language": "மொழியை தேர்வு செய்யவும்",
     "Choose Plex server": "Plex சேவையகத்தைத் தேர்வு செய்யவும்",
@@ -435,6 +440,7 @@ var keyStrings = {
         "உங்கள் Plex அணுகல் டோக்கனை உள்ளிடவும். இது இந்தச் சாதனத்தின் சுயவிவரத்தில் சேமிக்கப்பட்டுள்ளது.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "உங்கள் Plex சேவையக முகவரியை உள்ளிடவும், எடுத்துக்காட்டாக http://192.168.1.25:32400",
+    "Entries found": "கண்டறியப்பட்ட உருப்படிகள்",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG மற்றும் காப்பகம். சேனல்: ",
     "EPG archive or XML is invalid.": "EPG காப்பகம் அல்லது XML தவறானது.",
@@ -596,6 +602,8 @@ var keyStrings = {
     "Loading. Please wait...": "ஏற்றுகிறது... காத்திருக்கவும்...",
     "Loading...": "ஏற்றுகிறது…",
     "Local HTTP remote control": "உள்ளூர் HTTP ரிமோட் கண்ட்ரோல்",
+    "Local source did not respond": "உள்ளூர் மூலம் பதிலளிக்கவில்லை",
+    "Local source unavailable": "உள்ளூர் மூலம் கிடைக்கவில்லை",
     "Local URL": "உள்ளூர் URL",
     "Local videos": "உள்ளூர் காணொளிகள்",
     Login: "பயனர்பெயர்",
@@ -759,6 +767,10 @@ var keyStrings = {
     Rating: "மதிப்பீடு",
     RD: "RD",
     "RD settings": "RD அமைப்புகள்",
+    "Reading file information": "கோப்புத் தகவல் படிக்கப்படுகிறது",
+    "Reading folder entries": "கோப்புறையின் உள்ளடக்கம் படிக்கப்படுகிறது",
+    "Reading local files": "உள்ளூர் கோப்புகள் படிக்கப்படுகின்றன",
+    "Reading saved sources": "சேமித்த மூலங்கள் படிக்கப்படுகின்றன",
     "Reconnecting…": "மீண்டும் இணைக்கிறது…",
     Records: "பதிவுகள்",
     "Records for channel: ": "சேனலுக்கான பதிவுகள்: ",

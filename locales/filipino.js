@@ -170,8 +170,13 @@ var keyStrings = {
         "Suriin ang koneksyon at buksan ang iyong Plex library.",
     "Check this server's SWOP configuration.":
         "Suriin ang SWOP configuration ng server na ito.",
+    "Checking folder permission": "Sinusuri ang pahintulot sa folder",
     "Checking the Plex server connection…":
         "Sinusuri ang koneksyon ng Plex server…",
+    "Choose a folder in the browser window":
+        "Pumili ng folder sa window ng browser",
+    "Choose files in the browser window":
+        "Pumili ng mga file sa window ng browser",
     "Choose from": "Pumili mula sa",
     "Choose language": "Pumili ng wika",
     "Choose Plex server": "Piliin ang Plex server",
@@ -446,6 +451,7 @@ var keyStrings = {
         "Ilagay ang iyong Plex access token. Naka-save ito sa profile ng device na ito.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Ilagay ang iyong Plex server address, halimbawa http://192.168.1.25:32400",
+    "Entries found": "Mga nahanap na item",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG at archive. Estasyon: ",
     "EPG archive or XML is invalid.": "EPG archive o XML ay hindi wasto.",
@@ -616,6 +622,8 @@ var keyStrings = {
     "Loading. Please wait...": "Naglo-load... mangyaring maghintay...",
     "Loading...": "Naglo-load…",
     "Local HTTP remote control": "Lokal na HTTP remote control",
+    "Local source did not respond": "Hindi tumugon ang lokal na pinagmulan",
+    "Local source unavailable": "Hindi available ang lokal na pinagmulan",
     "Local URL": "Lokal URL",
     "Local videos": "Mga lokal na video",
     Login: "Pangalan ng gumagamit",
@@ -782,6 +790,10 @@ var keyStrings = {
     Rating: "Marka",
     RD: "RD",
     "RD settings": "RD na mga setting",
+    "Reading file information": "Binabasa ang impormasyon ng file",
+    "Reading folder entries": "Binabasa ang laman ng folder",
+    "Reading local files": "Binabasa ang mga lokal na file",
+    "Reading saved sources": "Binabasa ang mga na-save na pinagmulan",
     "Reconnecting…": "Kumokonekta muli...",
     Records: "Mga naitalang programa",
     "Records for channel: ": "Mga pag-record para sa channel: ",

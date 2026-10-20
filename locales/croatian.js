@@ -164,7 +164,12 @@ var keyStrings = {
         "Provjerite vezu i otvorite svoje Plex biblioteke.",
     "Check this server's SWOP configuration.":
         "Provjerite konfiguraciju SWOP ovog poslužitelja.",
+    "Checking folder permission": "Provjera dopuštenja za mapu",
     "Checking the Plex server connection…": "Provjera veze poslužitelja Plex…",
+    "Choose a folder in the browser window":
+        "Odaberite mapu u prozoru preglednika",
+    "Choose files in the browser window":
+        "Odaberite datoteke u prozoru preglednika",
     "Choose from": "Odaberite između",
     "Choose language": "Odaberite jezik",
     "Choose Plex server": "Odaberite Plex poslužitelj",
@@ -440,6 +445,7 @@ var keyStrings = {
         "Unesite svoj Plex pristupni token. Spremljeno je u profilu ovog uređaja.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Unesite svoju adresu poslužitelja Plex, na primjer http://192.168.1.25:32400",
+    "Entries found": "Pronađene stavke",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG i arhiviraj. Kanal: ",
     "EPG archive or XML is invalid.": "EPG arhiva ili XML nije važeća.",
@@ -605,6 +611,8 @@ var keyStrings = {
     "Loading. Please wait...": "Učitavanje... pričekajte...",
     "Loading...": "učitavanje...",
     "Local HTTP remote control": "Lokalni HTTP daljinski upravljač",
+    "Local source did not respond": "Lokalni izvor nije odgovorio",
+    "Local source unavailable": "Lokalni izvor nije dostupan",
     "Local URL": "Lokalno URL",
     "Local videos": "Lokalni videozapisi",
     Login: "Korisničko ime",
@@ -769,6 +777,10 @@ var keyStrings = {
     Rating: "Ocjena",
     RD: "RD",
     "RD settings": "RD postavke",
+    "Reading file information": "Čitanje informacija o datoteci",
+    "Reading folder entries": "Čitanje sadržaja mape",
+    "Reading local files": "Čitanje lokalnih datoteka",
+    "Reading saved sources": "Čitanje spremljenih izvora",
     "Reconnecting…": "Ponovno povezivanje...",
     Records: "Snimke",
     "Records for channel: ": "Snimci za kanal: ",

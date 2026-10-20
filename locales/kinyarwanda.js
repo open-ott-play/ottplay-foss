@@ -166,8 +166,13 @@ var keyStrings = {
         "Reba ihuza maze ufungure amasomero yawe ya Plex.",
     "Check this server's SWOP configuration.":
         "Reba igenamiterere rya SWOP kuri iyi seriveri.",
+    "Checking folder permission": "Kugenzura uruhushya rwo kugera ku bubiko",
     "Checking the Plex server connection…":
         "Ihuza rya seriveri ya Plex ririmo kugenzurwa…",
+    "Choose a folder in the browser window":
+        "Hitamo ububiko mu idirishya rya mushakisha",
+    "Choose files in the browser window":
+        "Hitamo dosiye mu idirishya rya mushakisha",
     "Choose from": "Hitamo muri",
     "Choose language": "Hitamo ururimi",
     "Choose Plex server": "Hitamo seriveri ya Plex",
@@ -447,6 +452,7 @@ var keyStrings = {
         "Injiza ikimenyetso cyawe cyo kwinjira cya Plex. Kibikwa mu mwirondoro w'iki gikoresho.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Injiza aderesi ya seriveri yawe ya Plex, urugero http://192.168.1.25:32400",
+    "Entries found": "Ibintu byabonetse",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG n'ububiko. Shene: ",
     "EPG archive or XML is invalid.": "Ububiko bwa EPG cyangwa XML ntibyemewe.",
@@ -619,6 +625,8 @@ var keyStrings = {
     "Loading...": "Turafungura…",
     "Local HTTP remote control":
         "Igenzura ryo kure rya HTTP ryo ku rusobe rw'aha",
+    "Local source did not respond": "Inkomoko iri ku gikoresho ntiyasubije",
+    "Local source unavailable": "Inkomoko iri ku gikoresho ntiboneka",
     "Local URL": "URL yo ku gikoresho",
     "Local videos": "Amashusho ari ku gikoresho",
     Login: "Izina ry'ukoresha",
@@ -785,6 +793,10 @@ var keyStrings = {
     Rating: "Amanota",
     RD: "RD",
     "RD settings": "Igenamiterere rya RD",
+    "Reading file information": "Gusoma amakuru ya dosiye",
+    "Reading folder entries": "Gusoma ibiri mu bubiko",
+    "Reading local files": "Gusoma dosiye ziri ku gikoresho",
+    "Reading saved sources": "Gusoma inkomoko zabitswe",
     "Reconnecting…": "Turongera guhuza…",
     Records: "Ibyafashwe",
     "Records for channel: ": "Ibyafashwe kuri shene: ",

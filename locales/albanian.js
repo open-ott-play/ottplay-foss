@@ -165,8 +165,13 @@ var keyStrings = {
         "Kontrolloni lidhjen dhe hapni bibliotekat tuaja Plex.",
     "Check this server's SWOP configuration.":
         "Kontrolloni konfigurimin SWOP të këtij serveri.",
+    "Checking folder permission": "Po kontrollohet leja e dosjes",
     "Checking the Plex server connection…":
         "Po kontrollon lidhjen e serverit Plex…",
+    "Choose a folder in the browser window":
+        "Zgjidhni një dosje në dritaren e shfletuesit",
+    "Choose files in the browser window":
+        "Zgjidhni skedarët në dritaren e shfletuesit",
     "Choose from": "Zgjidhni nga",
     "Choose language": "Zgjidhni gjuhën",
     "Choose Plex server": "Zgjidhni serverin Plex",
@@ -446,6 +451,7 @@ var keyStrings = {
         "Shkruani tokenin tuaj të hyrjes Plex. Ai ruhet në profilin e kësaj pajisjeje.",
     "Enter your Plex server address, for example http://192.168.1.25:32400":
         "Shkruani adresën tuaj të serverit Plex, për shembull http://192.168.1.25:32400",
+    "Entries found": "Elemente të gjetura",
     EPG: "EPG",
     "EPG and archive. Channel: ": "EPG dhe arkivi. Kanali: ",
     "EPG archive or XML is invalid.": "Arkivi EPG ose XML është i pavlefshëm.",
@@ -614,6 +620,8 @@ var keyStrings = {
     "Loading. Please wait...": "Po ngarkohet… ju lutemi prisni…",
     "Loading...": "Po ngarkohet…",
     "Local HTTP remote control": "Telekomanda lokale HTTP",
+    "Local source did not respond": "Burimi lokal nuk u përgjigj",
+    "Local source unavailable": "Burimi lokal nuk është i disponueshëm",
     "Local URL": "URL lokale",
     "Local videos": "Video lokale",
     Login: "Emri i përdoruesit",
@@ -780,6 +788,10 @@ var keyStrings = {
     Rating: "Vlerësimi",
     RD: "RD",
     "RD settings": "Cilësimet RD",
+    "Reading file information": "Po lexohet informacioni i skedarit",
+    "Reading folder entries": "Po lexohen elementet e dosjes",
+    "Reading local files": "Po lexohen skedarët lokalë",
+    "Reading saved sources": "Po lexohen burimet e ruajtura",
     "Reconnecting…": "Po rilidhet…",
     Records: "Regjistrimet",
     "Records for channel: ": "Regjistrimet për kanalin: ",
