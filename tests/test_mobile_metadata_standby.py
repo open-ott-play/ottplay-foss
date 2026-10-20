@@ -1,4 +1,4 @@
-"""Run shipped mobile metadata loops with controlled reads and the real work gate."""
+"""Run shipped mobile metadata reads, HTTP responses, and the real work gate."""
 from pathlib import Path
 import argparse
 import os
@@ -21,6 +21,119 @@ def function(source, marker):
 
 
 class MobileMetadataStandby(unittest.TestCase):
+    def test_android_http_response_snapshot(self):
+        folder = ROOT / "android/app/src/main/java/play/ott/foss"
+        source = (folder / "LocalMediaPlugin.kt").read_text()
+        serve = function(source, "private fun serve(")
+        # Use the actual socket handler and range/source classes. Only the
+        # Android document resolver and JSON accessor are replaced by fixtures.
+        code = r'''
+package play.ott.foss
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.net.Socket
+import java.nio.file.Files
+import kotlin.concurrent.thread
+
+class JSONObject(private val raw: String) {
+  fun getString(key: String): String {
+    check(key == "mime")
+    return Regex("\"mime\"\\s*:\\s*\"([^\"]+)\"").find(raw)!!.groupValues[1]
+  }
+}
+class Harness(val directory: File) {
+  private val token = "test-token"
+  private val id = "00000000-0000-0000-0000-000000000000"
+  val metadata = File(directory, "$id.json")
+  val payload = "CONTENT"
+  var afterOpen: () -> Unit = {}
+  var unavailable = false
+  fun reset() {
+    afterOpen = {}; unavailable = false
+    metadata.writeText("""{"mime":"video/mp4"}""")
+    File(directory, "sample.media").writeText(payload)
+  }
+  private fun validId(value: String) = value == id
+  private fun privateFile(file: File) = file.isFile &&
+    file.canonicalFile == File(directory.canonicalFile, file.name)
+  private fun openSource(item: JSONObject): LocalMediaSource {
+    if (unavailable) throw IOException("Document unavailable")
+    val source = LocalMediaSource(FileInputStream(File(directory, "sample.media")), payload.length.toLong())
+    afterOpen()
+    return source
+  }
+''' + serve + r'''
+  fun request(method: String = "GET", range: String? = null, secret: String = token): String {
+    val listener = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+    listener.soTimeout = 5000
+    val worker = thread(isDaemon = true) {
+      listener.use { it.accept().use { client -> serve(client) } }
+    }
+    val response = Socket("127.0.0.1", listener.localPort).use { client ->
+      client.soTimeout = 5000
+      val headers = if (range == null) "" else "Range: $range\r\n"
+      client.getOutputStream().write(
+        "$method /$secret/$id HTTP/1.1\r\nHost: localhost\r\n$headers\r\n".toByteArray())
+      client.getInputStream().readBytes().toString(Charsets.US_ASCII)
+    }
+    worker.join(5000)
+    check(!worker.isAlive)
+    return response
+  }
+}
+fun verify(response: String, status: Int, body: String, length: Int, contentRange: String? = null) {
+  check(response.startsWith("HTTP/1.1 $status ")) { "Expected HTTP $status, got ${response.take(80)}" }
+  check(response.substringAfter("\r\n\r\n") == body) { "Wrong response body" }
+  check(response.contains("\r\nContent-Length: $length\r\n")) { "Wrong length" }
+  if (status == 200 || status == 206) {
+    check(response.contains("\r\nContent-Type: video/mp4\r\n")) { "MIME must belong to the opened snapshot" }
+    check(response.contains("\r\nAccept-Ranges: bytes\r\n"))
+  }
+  if (contentRange != null) check(response.contains("\r\nContent-Range: $contentRange\r\n"))
+}
+fun main() {
+  val root = Files.createTempDirectory("ott-http-snapshot-").toFile()
+  try {
+    val fixture = Harness(root)
+    // A disconnection can remove metadata after this request has opened the
+    // original file. Existing descriptors remain valid; subsequent requests do not.
+    for (remove in listOf(false, true)) {
+      for ((method, range) in listOf("GET" to null, "HEAD" to null, "GET" to "bytes=2-4", "HEAD" to "bytes=2-4")) {
+        fixture.reset()
+        if (remove) fixture.afterOpen = { check(fixture.metadata.delete()) }
+        val part = if (range == null) fixture.payload else "NTE"
+        verify(fixture.request(method, range), if (range == null) 200 else 206,
+          if (method == "HEAD") "" else part, part.length, if (range == null) null else "bytes 2-4/7")
+        if (remove) verify(fixture.request(), 404, "", 0)
+      }
+    }
+    fixture.reset()
+    fixture.afterOpen = { fixture.metadata.writeText("""{"mime":"audio/mpeg"}""") }
+    verify(fixture.request(), 200, fixture.payload, 7)
+    fixture.reset()
+    verify(fixture.request(range = "bytes=9-10"), 416, "", 0, "bytes */7")
+    fixture.unavailable = true
+    verify(fixture.request(), 410, "", 0)
+    fixture.reset()
+    verify(fixture.request(secret = "wrong-token"), 404, "", 0)
+    println("PASS Android local HTTP: one metadata snapshot, GET/HEAD/ranges, replacement and unavailable sources")
+  } finally { root.deleteRecursively() }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix="ott-mobile-http-") as temp:
+            temp = Path(temp)
+            test = temp / "Http.kt"
+            test.write_text(code)
+            jar = temp / "http.jar"
+            subprocess.run(["kotlinc", str(folder / "LocalMediaSource.kt"),
+                            str(folder / "LocalMediaRange.kt"), str(test),
+                            "-include-runtime", "-d", str(jar)], check=True, timeout=90)
+            java = str(Path(os.environ["JAVA_HOME"]) / "bin/java") if os.environ.get("JAVA_HOME") else "java"
+            subprocess.run([java, "-jar", str(jar)], check=True, timeout=20)
+
     def test_android_read_boundaries_and_publication(self):
         folder = ROOT / "android/app/src/main/java/play/ott/foss"
         source = (folder / "LocalMediaPlugin.kt").read_text()
@@ -310,13 +423,14 @@ if __name__ == "__main__":
     parser.add_argument("--platform", choices=("all", "android", "ios"), default="all")
     args = parser.parse_args()
     names = {
-        "android": "test_android_read_boundaries_and_publication",
-        "ios": "test_ios_read_boundaries_and_publication",
+        "android": ("test_android_read_boundaries_and_publication", "test_android_http_response_snapshot"),
+        "ios": ("test_ios_read_boundaries_and_publication",),
     }
     suite = unittest.TestSuite(
         MobileMetadataStandby(method)
-        for platform, method in names.items()
+        for platform, methods in names.items()
         if args.platform in ("all", platform)
+        for method in methods
     )
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     raise SystemExit(not result.wasSuccessful())

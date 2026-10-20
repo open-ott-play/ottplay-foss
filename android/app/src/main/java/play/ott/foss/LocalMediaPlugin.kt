@@ -522,7 +522,7 @@ class LocalMediaPlugin : Plugin() {
                 val range = try { LocalMediaRange.parse(headers["range"], size) } catch (_: IllegalArgumentException) {
                     reply(416, "Content-Range: bytes */$size\r\n"); output.flush(); return
                 }
-                val mime = JSONObject(metadata.readText()).getString("mime").filter { it > ' ' && it < '\u007f' }
+                val mime = item.getString("mime").filter { it > ' ' && it < '\u007f' }
                 val length = if (size == 0L) 0 else range.last - range.first + 1
                 reply(if (headers.containsKey("range")) 206 else 200,
                     "Content-Type: $mime\r\nAccept-Ranges: bytes\r\n" +
