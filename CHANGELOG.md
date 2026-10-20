@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Start browser Add folder/Add files playback from the first readable video
+  instead of waiting for the whole source to scan. Report progress, bound stalled
+  reads, and ignore cancelled or superseded picker results without copying media.
+
 - Retain a Local video's stable group identity for the next-file footer,
   automatic completion and saved playback. Reordering groups cannot select a
   different group's video; deleting the playing group clears its successor

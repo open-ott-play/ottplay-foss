@@ -1,0 +1,477 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const ts = require("typescript");
+
+module.exports = async function browserImportRegression(
+    root = path.resolve(__dirname, "../..")
+) {
+    function load(relative, requireModule = require) {
+        const exports = {};
+        const source = ts.transpileModule(
+            fs.readFileSync(path.join(root, relative), "utf8"),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.CommonJS,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText;
+        require("acorn").parse(source, { ecmaVersion: 5 });
+        vm.runInNewContext(source, {
+            clearTimeout: (id) => id.owner.clear(id),
+            exports,
+            require: requireModule,
+            setTimeout: (fn, delay) => clock.set(fn, delay),
+            URL,
+        });
+        return exports;
+    }
+    let clock;
+    const browserModule = load("src/offline/browser-local-media.ts");
+    const progressModule = load("src/offline/local-media-progress.ts");
+    const plugin = load("src/plugins/local-media.ts", (name) => {
+        if (name.includes("browser-local-media")) return browserModule;
+        if (name.includes("local-media-progress")) return progressModule;
+        if (name.includes("offline/profiles"))
+            return { installOfflineProfiles() {} };
+        return { resolveNativePlugin: (_, fallback) => fallback() };
+    });
+    async function flush() {
+        for (let i = 0; i < 150; i++) await Promise.resolve();
+    }
+    function deferred() {
+        let resolve, reject;
+        const promise = new Promise((yes, no) => {
+            resolve = yes;
+            reject = no;
+        });
+        return { promise, reject, resolve };
+    }
+    function fixture(options = {}) {
+        const tasks = new Set();
+        let now = 0;
+        clock = {
+            clear: (task) => tasks.delete(task),
+            set(fn, delay) {
+                const task = { at: now + delay, fn, owner: this };
+                tasks.add(task);
+                return task;
+            },
+        };
+        const ownClock = clock;
+        const records = [];
+        let reads = 0,
+            enumerations = 0,
+            writes = 0,
+            played = 0,
+            gesture = false,
+            pickerCalls = 0,
+            html = "",
+            dialog = null;
+        const progressNode = { textContent: "" };
+        const blocked = deferred();
+        const picker = deferred();
+        const first = {
+            getFile: () => {
+                reads++;
+                return options.blockFirst
+                    ? blocked.promise
+                    : Promise.resolve({
+                          lastModified: 1,
+                          name: options.name || "first.mp4",
+                          size: 42,
+                          type: options.mime || "video/mp4",
+                      });
+            },
+            kind: "file",
+            name: options.name || "first.mp4",
+            queryPermission: () => Promise.resolve("granted"),
+        };
+        const second = {
+            getFile: () => {
+                reads++;
+                return blocked.promise;
+            },
+            kind: "file",
+            name: "second.mp4",
+            queryPermission: () => Promise.resolve("granted"),
+        };
+        const folder = {
+            kind: "directory",
+            name: "Fixture videos",
+            queryPermission: () => Promise.resolve("granted"),
+            values() {
+                enumerations++;
+                let index = 0;
+                return {
+                    next: () =>
+                        Promise.resolve(
+                            index < 2
+                                ? {
+                                      done: false,
+                                      value: [first, second][index++],
+                                  }
+                                : { done: true }
+                        ),
+                };
+            },
+        };
+        if (options.existing)
+            records.push({
+                created: 1,
+                handle: folder,
+                id: "source-existing",
+                name: folder.name,
+            });
+        const db = {
+            transaction() {
+                const tx = {};
+                tx.objectStore = () => ({
+                    add(record) {
+                        assert.ok(
+                            record.handle,
+                            "only a direct source handle is persisted"
+                        );
+                        assert.equal(
+                            record.blob,
+                            undefined,
+                            "import never copies media bytes"
+                        );
+                        writes++;
+                        records.push(record);
+                        queueMicrotask(() => tx.oncomplete());
+                    },
+                    openCursor() {
+                        const cursor = {};
+                        let index = 0;
+                        const advance = () => {
+                            queueMicrotask(() => {
+                                let continued = false;
+                                cursor.result =
+                                    index < records.length
+                                        ? {
+                                              continue() {
+                                                  continued = true;
+                                                  advance();
+                                              },
+                                              value: records[index++],
+                                          }
+                                        : null;
+                                cursor.onsuccess();
+                                if (!continued) tx.oncomplete();
+                            });
+                        };
+                        advance();
+                        return cursor;
+                    },
+                });
+                return tx;
+            },
+        };
+        function pick() {
+            pickerCalls++;
+            assert.equal(gesture, true, "picker stays inside the user gesture");
+            return picker.promise;
+        }
+        const w = {
+            _: (text) => text,
+            __ottClassicScreenPort: {
+                listOwner: () => ({
+                    active: () => true,
+                    foreground: () => !dialog,
+                }),
+                setOwnedCallback: () => {
+                    const owner = {
+                        close() {
+                            if (dialog === owner) dialog = null;
+                        },
+                        foreground: () => dialog === owner,
+                    };
+                    dialog = owner;
+                    return { owner };
+                },
+            },
+            $: () => ({
+                hide() {
+                    return this;
+                },
+                html(value) {
+                    html = value;
+                    return this;
+                },
+                show() {
+                    return this;
+                },
+            }),
+            addEventListener() {},
+            document: { getElementById: () => progressNode },
+            indexedDB: {
+                open() {
+                    const request = {};
+                    queueMicrotask(() => {
+                        request.result = db;
+                        request.onsuccess();
+                    });
+                    return request;
+                },
+            },
+            keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
+            listCaption: {},
+            listDetail: {},
+            listFooter: {},
+            loadProv: () => played++,
+            navigator: {},
+            optionsList() {},
+            renderButtonHint: () => "",
+            setTimeout: ownClock.set.bind(ownClock),
+            showDirectoryPicker: pick,
+            showOpenFilePicker: pick,
+            showPage() {},
+            stbSetItem() {},
+            URL: {
+                createObjectURL: () => "blob:fixture",
+                revokeObjectURL() {},
+            },
+        };
+        const api = plugin.installLocalMedia(w);
+        return {
+            api,
+            blocked,
+            click(id) {
+                api.open(false, true);
+                gesture = true;
+                w.listArray.find((row) => row.id === id).action();
+                gesture = false;
+            },
+            close: () => w.listKeyHandler(w.keys.RETURN),
+            detail() {
+                w.detailListAction();
+                return w.listDetail.innerHTML;
+            },
+            enumerations: () => enumerations,
+            grant: (id) =>
+                picker.resolve(
+                    id === "add-files"
+                        ? options.singleFile
+                            ? [first]
+                            : [first, second]
+                        : folder
+                ),
+            html: () => html,
+            picker,
+            pickerCalls: () => pickerCalls,
+            played: () => played,
+            progress: () => progressNode.textContent,
+            reads: () => reads,
+            spinner: () => !!dialog,
+            async tick(ms) {
+                now += ms;
+                for (const task of Array.from(tasks)) {
+                    if (task.at <= now) {
+                        tasks.delete(task);
+                        task.fn();
+                    }
+                }
+                await flush();
+            },
+            timers: () => tasks.size,
+            writes: () => writes,
+        };
+    }
+
+    for (const action of ["add-folder", "add-files"]) {
+        const f = fixture();
+        f.click(action);
+        assert.equal(f.pickerCalls(), 1);
+        await flush();
+        assert.equal(f.spinner(), true);
+        assert.match(f.html(), /ott-spinner/);
+        await f.tick(90000);
+        assert.equal(f.spinner(), true, "open picker has no scan deadline");
+        assert.equal(f.reads(), 0);
+        f.grant(action);
+        await flush();
+        assert.equal(
+            f.played(),
+            1,
+            action +
+                " activates as soon as its first readable file is available"
+        );
+        assert.equal(f.reads(), 1, "the blocked second file is not awaited");
+        assert.equal(f.timers(), 0, "first-file handoff clears its scan timer");
+        assert.equal(f.spinner(), false);
+        assert.equal(
+            f.writes(),
+            action === "add-files" ? 2 : 1,
+            "only source handles are stored"
+        );
+    }
+
+    const unsupported = fixture({
+        mime: "text/plain",
+        name: "notes.txt",
+        singleFile: true,
+    });
+    unsupported.click("add-files");
+    unsupported.grant("add-files");
+    await flush();
+    assert.equal(
+        unsupported.played(),
+        0,
+        "unsupported selected files never autoplay"
+    );
+    assert.equal(
+        unsupported.reads(),
+        1,
+        "deferred validation reads each selected file once"
+    );
+    assert.equal(unsupported.spinner(), false);
+    assert.equal(unsupported.timers(), 0);
+
+    const unusual = fixture({
+        mime: "video/x-matroska",
+        name: "movie.unknown",
+        singleFile: true,
+    });
+    unusual.click("add-files");
+    unusual.grant("add-files");
+    await flush();
+    assert.equal(
+        unusual.played(),
+        1,
+        "deferred validation retains MIME-based playable files"
+    );
+    assert.equal(unusual.reads(), 1);
+
+    const waiting = fixture({ blockFirst: true });
+    waiting.click("add-folder");
+    waiting.grant("add-folder");
+    await flush();
+    assert.equal(waiting.progress(), "Local videos: 0");
+    await waiting.tick(60000);
+    assert.equal(
+        waiting.spinner(),
+        false,
+        "a stalled read releases the dialog"
+    );
+    assert.equal(waiting.played(), 0);
+    assert.match(
+        waiting.detail(),
+        /did not respond/,
+        "stalled source explains the failure"
+    );
+    waiting.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    await flush();
+    assert.equal(waiting.played(), 0, "late timed-out reads cannot autoplay");
+    assert.equal(waiting.reads(), 1, "timeout prevents further file reads");
+
+    const closed = fixture();
+    closed.click("add-folder");
+    closed.close();
+    closed.grant("add-folder");
+    await flush();
+    assert.equal(closed.played(), 0, "closed manager ignores a late picker");
+    assert.equal(closed.timers(), 0);
+    assert.equal(
+        closed.reads(),
+        0,
+        "closed picker cannot read its newly saved source"
+    );
+    assert.equal(
+        closed.enumerations(),
+        0,
+        "closed picker cannot traverse folders"
+    );
+
+    const replaced = fixture();
+    replaced.click("add-folder");
+    const completed = await replaced.api.list();
+    assert.equal(completed.items.length, 0);
+    replaced.grant("add-folder");
+    await flush();
+    assert.equal(
+        replaced.reads(),
+        0,
+        "old picker cannot replace a newer completed scan"
+    );
+    assert.equal((await replaced.api.snapshot()).items.length, 0);
+    assert.equal(replaced.played(), 0);
+
+    const concurrent = fixture({ blockFirst: true, existing: true });
+    concurrent.click("add-folder");
+    const newerScan = concurrent.api.list();
+    await flush();
+    assert.equal(concurrent.reads(), 1);
+    concurrent.grant("add-folder");
+    await flush();
+    assert.equal(
+        concurrent.reads(),
+        1,
+        "old picker cannot start a competing traversal"
+    );
+    concurrent.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    const newerCatalog = await newerScan;
+    assert.equal(
+        newerCatalog.cancelled,
+        false,
+        "old picker cannot retire a newer scan"
+    );
+    assert.equal(newerCatalog.items.length, 2);
+    assert.equal((await concurrent.api.snapshot()).items.length, 2);
+    assert.equal(concurrent.played(), 0);
+
+    const interrupted = fixture({ blockFirst: true });
+    interrupted.click("add-folder");
+    interrupted.grant("add-folder");
+    await flush();
+    interrupted.close();
+    interrupted.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    await flush();
+    assert.equal(
+        interrupted.played(),
+        0,
+        "cancelled scan cannot reopen playback"
+    );
+    assert.equal(
+        interrupted.reads(),
+        1,
+        "cancelled scan never reads its successor"
+    );
+    assert.equal(interrupted.timers(), 0);
+
+    for (const name of ["AbortError", "NotAllowedError"]) {
+        const denied = fixture({ existing: true });
+        denied.click("add-folder");
+        denied.picker.reject(
+            Object.assign(new Error("Fixture rejection"), { name })
+        );
+        await flush();
+        assert.equal(denied.spinner(), false, name + " releases the spinner");
+        assert.equal(denied.played(), 0);
+        assert.equal(denied.enumerations(), 0, "rejected picker cannot rescan");
+        assert.equal(denied.timers(), 0);
+        assert.equal(denied.writes(), 0);
+        if (name === "NotAllowedError")
+            assert.match(denied.detail(), /Fixture rejection/);
+    }
+    console.log(
+        "PASS browser import UI: first-file playback, synchronous picker, bounded stalled reads, cancellation and stale completion"
+    );
+};

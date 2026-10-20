@@ -283,35 +283,46 @@ export function installLocalMedia(w: any): any {
                     "Unlock settings and kiosk mode to change local sources"
                 )
             );
+        function scanImported(result: any): Promise<any> {
+            if (request !== catalogRevision)
+                return Promise.resolve({
+                    cancelled: true,
+                    pickerCancelled: true,
+                });
+            if (result && result.pickerCancelled)
+                return Promise.resolve({ pickerCancelled: true });
+            return list(function (value) {
+                updateLoading(value);
+                return !value.items.some(function (item: any) {
+                    return item.available !== false && !!item.url;
+                });
+            });
+        }
         if (isNative())
             return remember(
                 folder ? native.importFolder() : native.importFiles()
             );
+        // A picker may outlive its screen. Its saved handle is still valid, but
+        // its completion must not replace a newer catalog or start playback.
+        var request = ++catalogRevision;
         if (isTauri())
             return tauriInvoke<any>(
                 folder
                     ? "offline_media_import_folder"
                     : "offline_media_import_files",
                 {}
-            ).then(function (result) {
-                if (result && result.pickerCancelled)
-                    return { pickerCancelled: true };
-                return list(function (value) {
-                    updateLoading(value);
-                    return !value.items.some(function (item: any) {
-                        return item.available !== false && !!item.url;
-                    });
-                });
-            });
+            ).then(scanImported);
         if (remoteEndpoint())
             return Promise.reject(
                 new Error(
                     "Connect folders on the server itself, or select this device's library."
                 )
             );
-        return remember(
-            folder ? browser.importFolder() : browser.importFiles()
-        );
+        return (
+            folder
+                ? browser.importFolder({ deferScan: true })
+                : browser.importFiles(undefined, { deferScan: true })
+        ).then(scanImported);
     }
     function removeSource(id: string): Promise<any> {
         if (locked() || settingsLocked())
@@ -533,7 +544,7 @@ export function installLocalMedia(w: any): any {
             function () {
                 run(function () {
                     return importFiles(true);
-                }, isTauri());
+                }, !isNative());
             }
         );
         row(
@@ -543,7 +554,7 @@ export function installLocalMedia(w: any): any {
             function () {
                 run(function () {
                     return importFiles();
-                }, isTauri());
+                }, !isNative());
             }
         );
         if (

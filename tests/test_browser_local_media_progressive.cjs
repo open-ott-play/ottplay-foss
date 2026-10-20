@@ -371,6 +371,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
         assert.equal((await pending).cancelled, true);
         assert.equal(delayed.revoked(), 0);
     }
+    await require("./helpers/browser-import-regression.cjs")();
     console.log(
         "PASS progressive local media: 10,000 entries, early playback, bounded immutable batches, yielding, direct saved-file lookup, stable URLs, cancellation, and nonmedia heartbeats"
     );

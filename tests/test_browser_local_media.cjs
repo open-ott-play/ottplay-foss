@@ -691,7 +691,42 @@ async function builtUi(devicePath) {
             window.showOpenFilePicker = () => Promise.resolve([file]);
             window.showDirectoryPicker = () => Promise.resolve(folder);
         }, Array.from(movie));
+        async function expectImportedPlayback(actionName) {
+            await page.waitForFunction(() =>
+                Array.from(document.querySelectorAll("video")).some(
+                    (video) =>
+                        video.currentTime > 0.1 && !video.error && !video.paused
+                )
+            );
+            await action("add-folder").waitFor({ state: "hidden" });
+            const playback = await page.evaluate(() => {
+                const video = Array.from(
+                    document.querySelectorAll("video")
+                ).find(
+                    (item) =>
+                        item.currentTime > 0.1 && !item.error && !item.paused
+                );
+                return {
+                    frames: video.getVideoPlaybackQuality().totalVideoFrames,
+                    position: video.currentTime,
+                };
+            });
+            assert.ok(
+                playback.frames > 0,
+                "imported video decodes actual frames"
+            );
+            console.log(
+                "PASS imported playback " +
+                    devicePath +
+                    " " +
+                    actionName +
+                    ": " +
+                    JSON.stringify(playback)
+            );
+        }
         await selectAction("add-files");
+        await expectImportedPlayback("add-files");
+        await chooseLocalProvider();
         await page.waitForFunction(
             () =>
                 document.querySelectorAll(
@@ -699,6 +734,8 @@ async function builtUi(devicePath) {
                 ).length === 1
         );
         await selectAction("add-folder");
+        await expectImportedPlayback("add-folder");
+        await chooseLocalProvider();
         await page.waitForFunction(
             () =>
                 document.querySelectorAll(

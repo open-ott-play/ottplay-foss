@@ -16,8 +16,13 @@ from the provider list. Its controls use the player's normal settings list:
 file-manager dialog. The operating system's file/folder picker still appears to
 let you choose what OTT may read.
 
-Choose a folder or files, then choose **Play local videos** to open the channel
-list. OTT saves references and small metadata records, not a second copy of the
+In a supported desktop browser or Tauri, **Add folder** and **Add files** start
+playback as soon as the first playable file is available. The remaining catalog
+loads in the background. The picker saves source references before the scan;
+it does not wait for every file to open before reporting progress. Cancelling
+the picker keeps the current library and does not start playback. Other native
+variants use **Play local videos** after loading the catalog. OTT saves
+references and small metadata records, not a second copy of the
 movies. The original disk, SD card, or directory must remain accessible. Moving
 or deleting originals, removing an SD card, or revoking access can make entries
 unavailable. Reconnect the source or grant access again; an unavailable source
@@ -32,6 +37,10 @@ background. The last selected file is looked up directly before enumerating a
 large folder. Later batches do not restart playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
 playback** without immediately repeating the stalled scan. Menu navigation and
 saved source/video selection remain available; retrying does not copy media.
+The browser's file picker is allowed to remain open while you choose a source.
+After selection, a scan that stops making progress reaches the existing
+60-second inactivity limit and returns control with an error instead of leaving
+the loading dialog open indefinitely.
 
 Closing the page, pressing **Q** on a PC, or exiting the native app saves the
 current video position before stopping playback. On the next start, the exact

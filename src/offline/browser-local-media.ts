@@ -388,12 +388,13 @@ export function installBrowserLocalMedia(w: any): any {
                                 return record.handle
                                     .getFile()
                                     .then(function (file) {
-                                        add(
-                                            record.id,
-                                            file,
-                                            file.name,
-                                            record.id
-                                        );
+                                        if (media(file))
+                                            add(
+                                                record.id,
+                                                file,
+                                                file.name,
+                                                record.id
+                                            );
                                     });
                             })
                             .catch(function (error) {
@@ -433,7 +434,7 @@ export function installBrowserLocalMedia(w: any): any {
                 return catalog(false);
             });
     }
-    function save(handles: any[]): Promise<any> {
+    function save(handles: any[], deferScan = false): Promise<any> {
         return open()
             .then(function (db) {
                 return new Promise(function (resolve, reject) {
@@ -462,13 +463,23 @@ export function installBrowserLocalMedia(w: any): any {
                     };
                 });
             })
-            .then(list);
+            .then(function () {
+                // The picker UI owns a bounded, progressive scan after saving.
+                // Do not enumerate the entire directory before it can begin.
+                return deferScan ? { sourceSaved: true } : list();
+            });
     }
-    function cancelled(error: any): Promise<any> {
-        if (error && error.name === "AbortError") return list();
+    function cancelled(error: any, deferScan = false): Promise<any> {
+        if (error && error.name === "AbortError")
+            return deferScan
+                ? Promise.resolve({ pickerCancelled: true })
+                : list();
         return Promise.reject(error);
     }
-    function importFiles(files?: any): Promise<any> {
+    function importFiles(
+        files?: any,
+        options?: { deferScan?: boolean }
+    ): Promise<any> {
         if (files)
             return Promise.reject(
                 new Error(
@@ -495,6 +506,9 @@ export function installBrowserLocalMedia(w: any): any {
                 ],
             })
             .then(function (handles: any[]) {
+                // File reads belong to the progressive scan as well: even one
+                // selected file can wait on a disconnected drive or cloud mount.
+                if (options?.deferScan) return handles;
                 return Promise.all(
                     handles.map(function (handle) {
                         return handle.getFile().then(function (file) {
@@ -507,10 +521,14 @@ export function installBrowserLocalMedia(w: any): any {
                     })
                 );
             })
-            .then(save)
-            .catch(cancelled);
+            .then(function (handles) {
+                return save(handles, !!options?.deferScan);
+            })
+            .catch(function (error) {
+                return cancelled(error, !!options?.deferScan);
+            });
     }
-    function importFolder(): Promise<any> {
+    function importFolder(options?: { deferScan?: boolean }): Promise<any> {
         if (!w.showDirectoryPicker)
             return Promise.reject(
                 new Error(
@@ -520,9 +538,11 @@ export function installBrowserLocalMedia(w: any): any {
         return w
             .showDirectoryPicker({ mode: "read" })
             .then(function (handle) {
-                return save([handle]);
+                return save([handle], !!options?.deferScan);
             })
-            .catch(cancelled);
+            .catch(function (error) {
+                return cancelled(error, !!options?.deferScan);
+            });
     }
     function requestAccess(
         onProgress?: (catalog: any) => boolean | void,
