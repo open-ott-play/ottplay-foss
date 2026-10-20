@@ -120,7 +120,7 @@ def capture(repo, rows, harness, platform):
             (tmp / 'BuildConfig.kt').write_text('package play.ott.foss\nobject BuildConfig { const val BUNDLED_EPG_DEFAULTS = true }\n')
             (tmp / 'Annotation.kt').write_text('package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)\n')
             jar = str(repo / 'vendor/ottplay-core.jar')
-            run(['kotlinc', 'Records.kt', 'Capacitor.kt', 'Http.kt', 'BuildConfig.kt', 'Annotation.kt', '-nowarn', '-classpath', jar, '-jvm-target', '17', '-include-runtime', '-d', 'records.jar'], tmp)
+            run(['kotlinc', 'Records.kt', 'Capacitor.kt', 'Http.kt', 'BuildConfig.kt', 'Annotation.kt', str(harness.ROOT / 'android/app/src/main/java/play/ott/foss/NativeWork.kt'), '-nowarn', '-classpath', jar, '-jvm-target', '17', '-include-runtime', '-d', 'records.jar'], tmp)
             stdout = run(['java', '-cp', 'records.jar' + os.pathsep + jar, 'play.ott.foss.plugin.RecordsKt'], tmp)
         results = [json.loads(line[7:]) for line in stdout.split('\n') if line.startswith('RECORD:')]
         assert [r['name'] for r in results] == [r['name'] for r in rows], stdout

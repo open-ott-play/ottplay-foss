@@ -50,7 +50,7 @@ assert.equal(
 
 // Exercise the shipped classic script with real DOM/CSS and bundled jQuery.
 // Network, media, and asynchronous boot are deliberately not started.
-for (const profile of ["server", "tauri", "capacitor"]) {
+async function checkRendering(profile) {
     const dom = new JSDOM(
         "<!doctype html><html><head></head><body>" +
             [
@@ -77,6 +77,12 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     w.confirm = () => false;
     w.console = { debug() {}, error() {}, info() {}, log() {}, warn() {} };
     const nativeSleep = [];
+    let nativeStandby = false;
+    const nativeStatus = () => ({
+        pending: 0,
+        quiescent: nativeStandby,
+        standby: nativeStandby,
+    });
     const media = {
         allowSleep: async () => {
             nativeSleep.push("allow");
@@ -94,11 +100,29 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         updateBackgroundAudio: async () => ({ ok: true }),
     };
     if (profile === "capacitor")
-        w.Capacitor = { Plugins: { MobileNativeMedia: media } };
+        w.Capacitor = {
+            isNativePlatform: () => true,
+            Plugins: {
+                MobileNativeMedia: media,
+                NativeBackground: {
+                    setStandby: async ({ standby }) => {
+                        nativeStandby = standby;
+                        return nativeStatus();
+                    },
+                    status: async () => nativeStatus(),
+                },
+            },
+        };
     if (profile === "tauri")
         w.__TAURI__ = {
             core: {
-                invoke: async (command) => {
+                invoke: async (command, args) => {
+                    if (command === "background_standby_status")
+                        return nativeStatus();
+                    if (command === "set_background_standby") {
+                        nativeStandby = args.standby;
+                        return nativeStatus();
+                    }
                     if (command === "allow_sleep") nativeSleep.push("allow");
                     if (command === "prevent_sleep")
                         nativeSleep.push("prevent");
@@ -122,6 +146,12 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     vm.runInContext(read(bundles[profile]), dom.getInternalVMContext(), {
         timeout: 10000,
     });
+    await new Promise((resolve) => w.__ottStandby.ready(resolve));
+    assert.equal(
+        w.__ottStandby.blocked(),
+        false,
+        profile + ": native startup ready"
+    );
     const style = w.document.createElement("style");
     style.textContent = read(styles[profile]);
     w.document.head.appendChild(style);
@@ -313,8 +343,11 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     assert.equal(starts, 0);
     assert.equal(pauses, 1);
     assert.equal(playback.hasAttribute("src"), false);
+    await new Promise(setImmediate); // Native teardown acknowledges asynchronously.
+    assert.equal(w.__ottStandby.snapshot().state, "suspended");
     assert.equal(timers.size, 0);
     w.stbToggleStandby();
+    await new Promise(setImmediate); // Sleep is rearmed only after successful native wake.
     assert.equal(w.stbIsStandby(), false);
     assert.equal(starts, 1);
     const rearmed = [...timers.values()].find(
@@ -322,12 +355,18 @@ for (const profile of ["server", "tauri", "capacitor"]) {
     );
     assert.ok(rearmed);
     rearmed.callback();
+    await new Promise(setImmediate);
     assert.equal(w.stbIsStandby(), true);
     assert.equal(starts, 1);
     assert.deepEqual(
         nativeSleep,
         profile === "server" ? [] : ["allow", "prevent", "allow"]
     );
+
+    // Rendering actions are allowed only after an explicit successful wake.
+    w.stbToggleStandby();
+    await new Promise(setImmediate);
+    assert.equal(w.__ottStandby.blocked(), false);
 
     // Both missing-category entry points must use the current language pack
     // in each shipped frontend, including after a language switch.
@@ -399,3 +438,11 @@ for (const profile of ["server", "tauri", "capacitor"]) {
             " classic channel renderer theme, selection and content settings"
     );
 }
+async function main() {
+    for (const profile of ["server", "tauri", "capacitor"]) {
+        await checkRendering(profile);
+    }
+}
+main().catch((error) => {
+    throw error;
+});

@@ -62,6 +62,24 @@ from `vendor`. Its Swift bridge verifies the script hash before execution; data
 is passed through JSValue calls, never interpolated into code. JVM fixtures
 require JDK 17+ and Kotlin 2.4.20+.
 
+Standby uses the app's shared `NativeWork` ownership gate. Source and batch
+loads keep tickets through HTTP completion, parsing, cache publication and
+callbacks. Entering standby cancels in-flight HTTP and prevents new loads;
+stream reads, decompression and XML events check cancellation cooperatively.
+Cancelled tickets remain cancelled after wake, so a delayed response cannot
+publish cache entries or start the next source. Small cache-publication steps
+use the ticket's atomic commit guard. Non-interruptible platform file writes
+remain counted until they finish; they cannot publish valid cache metadata
+after cancellation.
+
+The iOS app installs `cancellableRequestHandler`, which returns a transport
+cancellation closure. The older `requestHandler` remains compatible, but a host
+using it cannot interrupt HTTP through this hook; its ticket stays pending until
+the callback returns. Standalone URLSession downloads provide cancellation.
+`tests/native_epg_standby_cases.py` exercises the shipping adapters with the
+actual app gate: standby during a deferred download, joined requests, a late
+response after wake, parser cancellation, cache protection and recovery.
+
 To update, build the canonical shared-core source and run its distribution tool
 with `install-native` and this checkout path. Do not maintain native copies of
 the displaced algorithms. The workspace guard rejects their reintroduction.

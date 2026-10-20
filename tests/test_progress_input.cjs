@@ -298,6 +298,7 @@ const restartCode =
     startupFunctions("src/storage/recovery-ui.ts", ["showSettingsRecovery"]) +
     startupFunctions("src/index.ts", ["startPlayer"]) +
     startupFunctions("src/core/index.ts", [
+        "stbIsStandby",
         "stbSetStandby",
         "stbToggleStandby",
     ]);

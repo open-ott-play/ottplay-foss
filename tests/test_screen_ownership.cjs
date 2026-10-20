@@ -261,6 +261,120 @@ test("webOS Plex arrows seek only behind no list or dialog and preserve volume k
     ]);
     assert.deepEqual(seeks, []);
 });
+test("Local videos arrows change files after finite classification and respect screen ownership", ({
+    w,
+    key,
+}) => {
+    w.eval(
+        functions("src/key-handler/index.ts", [
+            "handleMainKey",
+            "keyFun",
+            "plusProg",
+            "minusProg",
+        ])
+    );
+    w.settings = { adFun: 16, auFun: 15 };
+    w.__ottActiveProviderDriver = { id: "offline" };
+    w.curList = ["first", "second", "third"];
+    w.catIndex = 2;
+    const selected = [],
+        seeks = [];
+    w.playChannel = (category, index) => {
+        selected.push([category, index]);
+        w.primaryIndex = index;
+    };
+    w.shiftArchiveSelect = (seconds) => seeks.push(seconds);
+    for (const mode of [0, -99999999999, -1e11]) {
+        w.playType = mode;
+        w.primaryIndex = 0;
+        key(w.keys.UP);
+        key(w.keys.DOWN);
+        key(w.keys.DOWN);
+        key(w.keys.UP);
+        assert.deepEqual(
+            selected.splice(0),
+            [
+                [2, 1],
+                [2, 0],
+                [2, 2],
+                [2, 0],
+            ],
+            "default directions and wrapping stay the same for mode " + mode
+        );
+        assert.deepEqual(seeks, [], "finite local files never open Seek");
+    }
+    for (const kind of ["dialog", "list", "editor", "about"]) {
+        const owned = [];
+        const callback = (code) => {
+            owned.push(code);
+            return true;
+        };
+        let owner;
+        if (kind === "list") {
+            w.listKeyHandler = callback;
+            w.showPage();
+            owner = w.__ottClassicScreenPort.owner("list");
+        } else {
+            owner = w.__ottClassicScreenPort.setOwnedCallback(
+                kind,
+                callback
+            ).owner;
+            w.$(
+                {
+                    about: "#listAbout",
+                    dialog: "#dialogbox",
+                    editor: "#listEdit",
+                }[kind]
+            ).show();
+        }
+        key(w.keys.UP);
+        key(w.keys.DOWN);
+        assert.deepEqual(
+            owned,
+            [w.keys.UP, w.keys.DOWN],
+            kind + " keeps its arrows"
+        );
+        assert.deepEqual(selected, []);
+        owner.close();
+        if (kind === "list") w.closeList();
+    }
+    w.settings.auFun = 16;
+    w.settings.adFun = 15;
+    w.primaryIndex = 1;
+    key(w.keys.UP);
+    key(w.keys.DOWN);
+    assert.deepEqual(
+        selected.splice(0),
+        [
+            [2, 0],
+            [2, 1],
+        ],
+        "custom direction bindings are retained"
+    );
+    w.__ottActiveProviderDriver = { id: "m3u" };
+    for (const mode of [12345, -1e11]) {
+        w.playType = mode;
+        key(w.keys.UP);
+        key(w.keys.DOWN);
+        assert.deepEqual(
+            seeks.splice(0),
+            [0, 60],
+            "nonlocal archives/VOD keep Seek"
+        );
+        assert.deepEqual(selected, []);
+    }
+    w.playType = 0;
+    key(w.keys.UP);
+    key(w.keys.DOWN);
+    assert.deepEqual(
+        selected,
+        [
+            [2, 0],
+            [2, 1],
+        ],
+        "ordinary live channels keep navigation"
+    );
+});
 test("screen invalidation detaches every old owner before reentrant cleanup", ({
     w,
 }) => {

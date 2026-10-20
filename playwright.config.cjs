@@ -22,6 +22,7 @@ module.exports = defineConfig({
         "playback-runtime.spec.cjs",
         "nas-library.spec.cjs",
         "plex-provider.spec.cjs",
+        "media-channel-playlists.spec.cjs",
         "vportal-provider.spec.cjs",
         "strict-kiosk.spec.cjs",
         "stalker-profiles.spec.cjs",
@@ -32,6 +33,7 @@ module.exports = defineConfig({
         "remote-plex.spec.cjs",
         "remote-favorites.spec.cjs",
         "remote-doctor.spec.cjs",
+        "standby-native.spec.cjs",
     ],
     timeout: 30000,
     use: {

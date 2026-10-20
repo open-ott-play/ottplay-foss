@@ -401,5 +401,8 @@ if (typeof window !== "undefined") {
         classic: createClassicProviderAdapter(window),
         createClassicAdapter: createClassicProviderAdapter,
         createRegistry: createProviderRegistry,
+        suspend: function () {
+            (window as any).__ottProviderRuntime.classic.dispose();
+        },
     };
 }

@@ -239,6 +239,7 @@ class MobileNativeMediaPlugin : Plugin() {
      */
     @PluginMethod
     fun startBackgroundAudio(call: PluginCall) {
+        if (NativeWork.isStandby) { call.reject("Player is in standby", "standby"); return }
         val title = call.getString("title") ?: "OTT-play FOSS"
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context
@@ -305,6 +306,7 @@ class MobileNativeMediaPlugin : Plugin() {
     /** Resume MediaSession / notification after pause. */
     @PluginMethod
     fun resumeBackgroundAudio(call: PluginCall) {
+        if (NativeWork.isStandby) { call.reject("Player is in standby", "standby"); return }
         val title = call.getString("title") ?: "OTT-play FOSS"
         val artist = call.getString("artist") ?: "Now playing"
         val ctx = bridge.context

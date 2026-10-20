@@ -139,6 +139,20 @@ pub fn merge_source(target: &mut XmltvCache, mut source: XmltvCache) -> anyhow::
 }
 
 pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>> {
+    load_sources_inner(urls, None).await
+}
+
+pub async fn load_sources_tracked(
+    urls: &[String],
+    work: crate::background_work::WorkLease,
+) -> anyhow::Result<Arc<NativeSnapshot>> {
+    load_sources_inner(urls, Some(work)).await
+}
+
+async fn load_sources_inner(
+    urls: &[String],
+    work: Option<crate::background_work::WorkLease>,
+) -> anyhow::Result<Arc<NativeSnapshot>> {
     anyhow::ensure!(!urls.is_empty(), "No XMLTV sources");
     anyhow::ensure!(urls.iter().all(|url| url.starts_with("http://") || url.starts_with("https://")), "Invalid XMLTV URL");
     let slot = SOURCES.lock().await.acquire(urls)?;
@@ -159,11 +173,21 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>
     // for a waiting caller to take over instead of stranding its subscribers.
     let mut result = attempt.lock().await;
     if result.is_none() {
-        let refreshed = refresh_sources(urls, cache, now).await
+        let refreshed = refresh_sources(urls, cache, now, work.clone())
+            .await
             .map_err(|error| SourceError(Arc::new(error)));
         let mut state = slot.0.lock().unwrap_or_else(|error| error.into_inner());
-        if let Ok(cache) = &refreshed { state.cache = Some(cache.clone()); }
-        *result = Some(refreshed);
+        let publish = || {
+            if let Ok(cache) = &refreshed {
+                state.cache = Some(cache.clone());
+            }
+            *result = Some(refreshed);
+        };
+        if let Some(work) = &work {
+            work.publish(publish).map_err(anyhow::Error::msg)?;
+        } else {
+            publish();
+        }
         // Callers already holding this attempt share even STALE/FAIL. A later
         // independent request retries normally, without altering fetched_at.
         state.attempt = Weak::new();
@@ -171,16 +195,44 @@ pub async fn load_sources(urls: &[String]) -> anyhow::Result<Arc<NativeSnapshot>
     result.as_ref().expect("source attempt completed").clone().map_err(Into::into)
 }
 
-async fn refresh_sources(urls: &[String], cache: Option<Arc<NativeSnapshot>>, now: u64) -> anyhow::Result<Arc<NativeSnapshot>> {
+async fn refresh_sources(
+    urls: &[String],
+    cache: Option<Arc<NativeSnapshot>>,
+    now: u64,
+    work: Option<crate::background_work::WorkLease>,
+) -> anyhow::Result<Arc<NativeSnapshot>> {
     let mut merged = XmltvCache::default();
     let mut last_error = None;
     for url in urls {
-        match xmltv::fetch_single_native(url).await {
-            Ok((channels, programs)) => merge_source(&mut merged, XmltvCache { channels, programs, fetched_at: now })?,
+        let fetched = match &work {
+            Some(work) => {
+                work.check().map_err(anyhow::Error::msg)?;
+                xmltv::fetch_single_tracked(url, true, work.clone()).await
+            }
+            None => xmltv::fetch_single_native(url).await,
+        };
+        if let Some(work) = &work {
+            work.check().map_err(anyhow::Error::msg)?;
+        }
+        match fetched {
+            Ok((channels, programs)) => merge_source(
+                &mut merged,
+                XmltvCache {
+                    channels,
+                    programs,
+                    fetched_at: now,
+                },
+            )?,
             Err(error) => last_error = Some(error),
         }
     }
-    match shared_guide::source_refresh(last_error.is_some(), merged.channels.is_empty(), cache.is_some())?.as_str() {
+    match shared_guide::source_refresh(
+        last_error.is_some(),
+        merged.channels.is_empty(),
+        cache.is_some(),
+    )?
+    .as_str()
+    {
         // A partial refresh retains ownership for this exact ordered source set.
         "STALE" => return Ok(cache.expect("core selected an existing stale entry")),
         "FAIL" => return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Empty XMLTV sources"))),
@@ -188,7 +240,19 @@ async fn refresh_sources(urls: &[String], cache: Option<Arc<NativeSnapshot>>, no
         _ => anyhow::bail!("Invalid shared guide refresh decision"),
     }
     merged.fetched_at = now;
-    Ok(Arc::new(tokio::task::spawn_blocking(move || NativeSnapshot::new(merged)).await??))
+    Ok(Arc::new(
+        tokio::task::spawn_blocking(move || {
+            if let Some(work) = &work {
+                work.check().map_err(anyhow::Error::msg)?;
+            }
+            let result = NativeSnapshot::new(merged);
+            if let Some(work) = &work {
+                work.check().map_err(anyhow::Error::msg)?;
+            }
+            result
+        })
+        .await??,
+    ))
 }
 
 #[cfg(test)]
@@ -263,6 +327,28 @@ mod tests {
         let mut sources = SOURCES.lock().await;
         sources.resident.remove(urls);
         sources.active.remove(urls);
+    }
+
+    #[tokio::test]
+    async fn standby_drops_custom_feed_and_wake_can_retry_without_stale_publication() {
+        let mut feed = GatedFeed::new().await;
+        let background = crate::background_work::BackgroundWork::default();
+        let work = background.enter().unwrap();
+        let urls = feed.urls.clone();
+        let request = tokio::spawn(async move {
+            work.run(load_sources_tracked(&urls, work.clone())).await
+        });
+        feed.next_call(1).await;
+        background.set_standby(true);
+        assert!(tokio::time::timeout(std::time::Duration::from_secs(2), request).await.unwrap().unwrap().is_err());
+        assert!(background.status().quiescent);
+        background.set_standby(false);
+        feed.healthy.store(true, Ordering::SeqCst);
+        feed.release.add_permits(2);
+        let work = background.enter().unwrap();
+        let result = work.run(load_sources_tracked(&feed.urls, work.clone())).await.unwrap().unwrap();
+        assert_eq!(result.counts().0, 1);
+        assert_eq!(feed.calls.load(Ordering::SeqCst), 2);
     }
 
     #[tokio::test]

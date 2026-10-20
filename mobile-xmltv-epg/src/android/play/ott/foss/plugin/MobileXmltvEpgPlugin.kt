@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import play.ott.foss.BuildConfig
+import play.ott.foss.NativeWork
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -72,31 +73,42 @@ class MobileXmltvEpgPlugin : Plugin() {
         if (!source.startsWith("http://") && !source.startsWith("https://")) {
             completion(Result.failure(IOException("invalid XMLTV URL"))); return
         }
+        val ticket = NativeWork.begin() ?: run {
+            completion(Result.failure(IOException("Player is in standby"))); return
+        }
+        val complete: (Result<Parsed>) -> Unit = { result ->
+            val checked = runCatching { ticket.check(); result.getOrThrow() }
+            try { completion(checked) } finally { ticket.finish() }
+        }
         val key = if (channel == null) source else "$source\u0000$channel"
         var generation = 0L
         synchronized(sourceLock) {
             val cached = parsedCache[key]
             when (NativeGuideSources.lookupAndroid(System.currentTimeMillis() / 1000, cached?.first, force, pendingSources.containsKey(key))) {
-                NativeCacheLookup.CACHE -> { completion(Result.success(cached!!.second)); return }
+                NativeCacheLookup.CACHE -> { complete(Result.success(cached!!.second)); return }
                 NativeCacheLookup.JOIN -> {
-                    if (pendingSources[key]!!.size >= 64) completion(Result.failure(IOException("XMLTV request limit exceeded")))
-                    else pendingSources[key]!!.add(completion)
+                    if (pendingSources[key]!!.size >= 64) complete(Result.failure(IOException("XMLTV request limit exceeded")))
+                    else pendingSources[key]!!.add(complete)
                     return
                 }
                 NativeCacheLookup.LOAD -> Unit
             }
             if (pendingSources.size >= 16) {
-                completion(Result.failure(IOException("XMLTV request limit exceeded"))); return
+                complete(Result.failure(IOException("XMLTV request limit exceeded"))); return
             }
-            pendingSources[key] = mutableListOf(completion)
+            pendingSources[key] = mutableListOf(complete)
             generation = cacheGeneration
         }
         var networkFile: File? = null
+        var finished = false
         fun finish(result: Result<Parsed>, replacedSource: Boolean = false) {
             networkFile?.delete()
             networkFile = null
+            var outcome = result
             val callbacks = synchronized(sourceLock) {
-                result.getOrNull()?.let {
+                if (finished) return
+                finished = true
+                try { ticket.commit { result.getOrNull()?.let {
                     if (channel == null && replacedSource) {
                         cacheGeneration++
                         parsedCache.keys.removeAll { cachedKey -> cachedKey.startsWith("$source\u0000") }
@@ -108,20 +120,25 @@ class MobileXmltvEpgPlugin : Plugin() {
                     while (parsedCache.size > 16 || parsedCache.values.sumOf { entry -> entry.second.retainedBytes.toLong() } > parsedCacheByteLimit) {
                         parsedCache.remove(parsedCache.keys.first())
                     }
-                }
+                } } } catch (error: IOException) { outcome = Result.failure(error) }
                 pendingSources.remove(key) ?: emptyList()
             }
-            callbacks.forEach { it(result) }
+            var callbackFailure: Throwable? = null
+            callbacks.forEach { callback ->
+                try { callback(outcome) } catch (error: Throwable) { if (callbackFailure == null) callbackFailure = error }
+            }
+            callbackFailure?.let { throw it }
         }
         var parsed: Parsed? = null
         var failure: Throwable = IOException("invalid or empty XMLTV")
         fun transition(action: NativeSourceLoadAction, succeeded: Boolean = parsed != null) =
             NativeSourceLoad.next(action, succeeded, parsed?.channels?.size ?: 0, NativeSourceFormat.ANDROID)
         fun dispatch(action: NativeSourceLoadAction) {
+            try { ticket.check() } catch (error: IOException) { finish(Result.failure(error)); return }
             when (action) {
                 NativeSourceLoadAction.READ_FRESH_DISK, NativeSourceLoadAction.READ_STALE_DISK -> {
                     parsed = runCatching {
-                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK, channel = channel)
+                        readCache(source, allowStale = action == NativeSourceLoadAction.READ_STALE_DISK, channel = channel, ticket = ticket)
                     }.getOrNull()
                     dispatch(transition(action))
                 }
@@ -138,10 +155,15 @@ class MobileXmltvEpgPlugin : Plugin() {
                         dispatch(transition(action, false))
                     }
                     try {
-                        client.newCall(Request.Builder().url(source).build()).enqueue(object : Callback {
+                        val request = client.newCall(Request.Builder().url(source).build())
+                        ticket.cancelWith { request.cancel() }
+                        ticket.check()
+                        request.enqueue(object : Callback {
                             override fun onFailure(httpCall: Call, e: IOException) { failed(e) }
                             override fun onResponse(httpCall: Call, response: Response) {
+                                var error: Throwable? = null
                                 try {
+                                    ticket.check()
                                     if (!response.isSuccessful) throw IOException("XMLTV HTTP ${response.code}")
                                     val body = response.body ?: throw IOException("empty XMLTV body")
                                     if (body.contentLength() > inputByteLimit) throw IOException("XMLTV delivered body exceeds size limit")
@@ -149,19 +171,19 @@ class MobileXmltvEpgPlugin : Plugin() {
                                     networkFile = file
                                     body.byteStream().use { input ->
                                         file.outputStream().use { output ->
-                                            LimitedInput(input, inputByteLimit, "delivered body").copyTo(output, 32 * 1024)
+                                            LimitedInput(input, inputByteLimit, "delivered body", ticket::check).copyTo(output, 32 * 1024)
                                         }
                                     }
-                                    parsed = file.inputStream().use { parseXmltv(it, channel, metadataOnly = channel == null) }
-                                    dispatch(transition(action))
-                                } catch (error: Throwable) { failed(error) }
+                                    parsed = file.inputStream().use { parseXmltv(it, channel, metadataOnly = channel == null, ticket = ticket) }
+                                } catch (failure: Throwable) { error = failure }
                                 finally { response.close() }
+                                if (error != null) failed(error!!) else dispatch(transition(action))
                             }
                         })
                     } catch (error: Throwable) { failed(error) }
                 }
                 NativeSourceLoadAction.WRITE_DISK -> {
-                    val written = runCatching { writeCache(networkFile!!, source) }.isSuccess
+                    val written = runCatching { writeCache(networkFile!!, source, ticket) }.isSuccess
                     dispatch(transition(action, written))
                 }
                 NativeSourceLoadAction.USE_FRESH_DISK, NativeSourceLoadAction.USE_NETWORK,
@@ -179,6 +201,13 @@ class MobileXmltvEpgPlugin : Plugin() {
         if (sources.size > 8) {
             completion(Result.failure(IOException("XMLTV source limit exceeded"))); return
         }
+        val ticket = NativeWork.begin() ?: run {
+            completion(Result.failure(IOException("Player is in standby"))); return
+        }
+        fun complete(result: Result<Parsed>) {
+            val checked = runCatching { ticket.check(); result.getOrThrow() }
+            try { completion(checked) } finally { ticket.finish() }
+        }
         val channels = mutableMapOf<String, String>()
         val programs = mutableMapOf<String, List<Program>>()
         val icons = mutableMapOf<String, String>()
@@ -188,17 +217,18 @@ class MobileXmltvEpgPlugin : Plugin() {
         val batch = NativeSourceBatch(sources.size)
         val errors = mutableMapOf<Int, Throwable>()
         fun next() {
+            try { ticket.check() } catch (error: IOException) { complete(Result.failure(error)); return }
             val index = batch.next()
             if (index < 0) {
                 val failure = batch.failure()
-                completion(if (failure >= 0) Result.failure(errors.getValue(failure))
+                complete(if (failure >= 0) Result.failure(errors.getValue(failure))
                     else Result.success(Parsed(channels, programs, icons, names, owners = owners)))
                 return
             }
             loadSource(sources[index], force) { result ->
                 retainedBytes += result.getOrNull()?.retainedBytes ?: 0
                 if (retainedBytes > parsedCacheByteLimit) {
-                    completion(Result.failure(IOException("XMLTV source set exceeds size limit"))); return@loadSource
+                    complete(Result.failure(IOException("XMLTV source set exceeds size limit"))); return@loadSource
                 }
                 result.onSuccess { parsed ->
                     NativeGuideSources.unowned(channels.keys, parsed.channels.keys.toList()).forEach { id ->
@@ -262,7 +292,8 @@ class MobileXmltvEpgPlugin : Plugin() {
     // MARK: - Cache
 
     @Throws(IOException::class)
-    private fun readCache(sourceUrl: String, allowStale: Boolean = false, channel: String? = null): Parsed? = synchronized(cacheLock) {
+    private fun readCache(sourceUrl: String, allowStale: Boolean = false, channel: String? = null, ticket: NativeWork.Ticket? = null): Parsed? = synchronized(cacheLock) {
+        ticket?.check()
         if (!metaFile.exists() || !cacheFile.exists()) return@synchronized null
         if (metaFile.length() > metadataByteLimit || cacheFile.length() > inputByteLimit) return@synchronized null
         val fields = metaFile.readText().split('\n', limit = 2)
@@ -270,23 +301,28 @@ class MobileXmltvEpgPlugin : Plugin() {
         if (fields.size != 2) return@synchronized null
         val fetched = fields[0].toLongOrNull() ?: return@synchronized null
         if (!NativeGuideSources.diskAndroid(sourceUrl, fields[1], System.currentTimeMillis() / 1000, fetched, allowStale)) return@synchronized null
-        cacheFile.inputStream().use { parseXmltv(it, channel, metadataOnly = channel == null) }
+        cacheFile.inputStream().use { parseXmltv(it, channel, metadataOnly = channel == null, ticket = ticket) }
     }
 
     @Throws(IOException::class)
-    private fun writeCache(data: File, sourceUrl: String) = synchronized(cacheLock) {
+    private fun writeCache(data: File, sourceUrl: String, ticket: NativeWork.Ticket? = null) = synchronized(cacheLock) {
+        ticket?.check()
         if (data.length() > inputByteLimit) throw IOException("XMLTV cache input exceeds size limit")
         val metadata = "${System.currentTimeMillis() / 1000}\n$sourceUrl"
         if (metadata.toByteArray(Charsets.UTF_8).size > metadataByteLimit) throw IOException("XMLTV cache metadata exceeds size limit")
         // Invalidate metadata first so an interrupted write cannot label another source's data.
         if (metaFile.exists() && !metaFile.delete()) throw IOException("cannot invalidate cache metadata")
-        data.copyTo(cacheFile, overwrite = true)
-        metaFile.writeText(metadata)
+        data.inputStream().use { input -> cacheFile.outputStream().use { output ->
+            LimitedInput(input, inputByteLimit, "cache input") { ticket?.check() }.copyTo(output, 32 * 1024)
+        } }
+        if (ticket == null) metaFile.writeText(metadata)
+        else ticket.commit { metaFile.writeText(metadata) }
     }
 
     // Bound both downloaded bytes and gzip expansion without materializing the
     // document as a byte array and a second, UTF-16 copy on old Android heaps.
-    private class LimitedInput(input: InputStream, private val limit: Int, private val resource: String) : FilterInputStream(input) {
+    private class LimitedInput(input: InputStream, private val limit: Int, private val resource: String,
+                               private val check: () -> Unit = {}) : FilterInputStream(input) {
         private var count = 0
         private fun consumed(size: Int): Int {
             if (size > limit - count) throw IOException("XMLTV $resource exceeds size limit")
@@ -294,24 +330,31 @@ class MobileXmltvEpgPlugin : Plugin() {
             return size
         }
         override fun read(): Int {
+            check()
             val value = `in`.read()
+            check()
             if (value != -1) consumed(1)
             return value
         }
-        override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-            consumed(`in`.read(buffer, offset, minOf(length, limit - count + 1)))
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            check()
+            val size = `in`.read(buffer, offset, minOf(length, limit - count + 1))
+            check()
+            return consumed(size)
+        }
     }
 
     // MARK: - XMLTV Parser
 
-    private fun parseXmltv(input: InputStream, channel: String? = null, metadataOnly: Boolean = false): Parsed = synchronized(parseLock) {
-        val reader = XmlReader(channel, retainedByteLimit, metadataOnly)
+    private fun parseXmltv(input: InputStream, channel: String? = null, metadataOnly: Boolean = false, ticket: NativeWork.Ticket? = null): Parsed = synchronized(parseLock) {
+        ticket?.check()
+        val reader = XmlReader(channel, retainedByteLimit, metadataOnly) { ticket?.check() }
         val buffered = input.buffered()
         buffered.mark(2)
         val gzip = buffered.read() == 0x1f && buffered.read() == 0x8b
         buffered.reset()
         val expanded = if (gzip) java.util.zip.GZIPInputStream(buffered) else buffered
-        LimitedInput(expanded, expandedByteLimit, "expanded document").use { bounded ->
+        LimitedInput(expanded, expandedByteLimit, "expanded document") { ticket?.check() }.use { bounded ->
             // SAX may close its input at the root's end before requesting gzip's
             // trailer. Keep ownership here and require CRC/truncation validation.
             val borrowed = object : FilterInputStream(bounded) { override fun close() {} }
@@ -329,7 +372,8 @@ class MobileXmltvEpgPlugin : Plugin() {
 
     // Channel discovery never retains schedules for the entire feed. Guide reads
     // keep only the owning channel, including its full archive window.
-    private class XmlReader(private val channel: String?, private val byteLimit: Int, private val metadataOnly: Boolean) : org.xml.sax.helpers.DefaultHandler() {
+    private class XmlReader(private val channel: String?, private val byteLimit: Int, private val metadataOnly: Boolean,
+                            private val check: () -> Unit = {}) : org.xml.sax.helpers.DefaultHandler() {
         val channels = mutableMapOf<String, String>()
         val programs = mutableMapOf<String, MutableList<Program>>()
         val icons = mutableMapOf<String, String>()
@@ -348,6 +392,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
 
         override fun startElement(uri: String?, local: String?, name: String, attrs: org.xml.sax.Attributes) {
+            check()
             if (skippedDepth > 0) { skippedDepth++; return }
             if ((name == "programme" && (metadataOnly || channel != null && attrs.getValue("channel") != channel)) ||
                 (name == "channel" && channel != null && attrs.getValue("id") != channel)) {
@@ -361,6 +406,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
 
         override fun endElement(uri: String?, local: String?, name: String) {
+            check()
             if (skippedDepth > 0) { skippedDepth--; return }
             records.end(name)
             if (recordDepth > 0) recordDepth--
@@ -379,6 +425,7 @@ class MobileXmltvEpgPlugin : Plugin() {
         }
 
         override fun characters(chars: CharArray, start: Int, length: Int) {
+            check()
             if (skippedDepth > 0 || recordDepth == 0) return
             // Bound accumulated text before the shared record reducer copies it.
             addChars(length)

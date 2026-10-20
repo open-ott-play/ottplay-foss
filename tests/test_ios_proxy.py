@@ -6,6 +6,7 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from native_standby_work_cases import swift_work_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,17 +27,22 @@ def main():
         "public init(_ values:",
         "public var options: [String: Any] { values }\n    public init(_ values:",
     )
+    capacitor = capacitor.replace("func reject(_ message: String)", "func reject(_ message: String, _ code: String? = nil)")
     swift = r"""
 import Foundation
 import Capacitor
 
 class Fixture: URLProtocol {
+    static var seen = 0
+    static var cancelled = 0
     override class func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "fixture.invalid"
     }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
+        Self.seen += 1
         let path = request.url!.path
+        if path == "/pending" { return }
         if path == "/transport" {
             client?.urlProtocol(self, didFailWithError: NSError(
                 domain: NSURLErrorDomain, code: -1001,
@@ -56,10 +62,11 @@ class Fixture: URLProtocol {
         client?.urlProtocol(self, didLoad: bytes)
         client?.urlProtocolDidFinishLoading(self)
     }
-    override func stopLoading() {}
+    override func stopLoading() { Self.cancelled += 1 }
 }
 URLCache.shared = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
 URLProtocol.registerClass(Fixture.self)
+NativeWork.shared.setStandby(false)
 let plugin = M3UProxyPlugin()
 func request(_ url: String) -> CAPPluginCall {
     let call = CAPPluginCall(["url": url])
@@ -88,12 +95,32 @@ for url in ["file:///tmp/secret", "data:text/plain,secret", "relative.m3u", ""] 
     let call = request(url)
     precondition(call.error != nil && call.result.isEmpty)
 }
+let pending = CAPPluginCall(["url": "https://fixture.invalid/pending"])
+let before = Fixture.seen
+plugin.proxyFetch(pending)
+var deadline = Date().addingTimeInterval(3)
+while Fixture.seen == before && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+precondition(Fixture.seen == before + 1)
+NativeWork.shared.setStandby(true)
+// A quick wake must not revive the already retired native request.
+NativeWork.shared.setStandby(false)
+deadline = Date().addingTimeInterval(3)
+while !pending.finished && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+precondition(pending.finished && pending.error != nil && pending.result.isEmpty)
+precondition(Fixture.cancelled > 0 && NativeWork.shared.snapshot["pending"] as! Int == 0)
+NativeWork.shared.setStandby(true)
+let stoppedCount = Fixture.seen
+let rejected = request("https://fixture.invalid/200")
+precondition(rejected.error != nil && Fixture.seen == stoppedCount)
+NativeWork.shared.setStandby(false)
+precondition(request("https://fixture.invalid/200").error == nil)
+print("PASS iOS native provider HTTP cancels actual transport, rejects standby admission and resumes cleanly")
 print("PASS iOS proxy: HTTP 200/206 success, 403/404/500 failure, transport/non-HTTP/encoding errors and rejected schemes")
 """
     with tempfile.TemporaryDirectory(prefix="ott-ios-proxy-") as directory:
         temp = Path(directory)
         (temp / "Capacitor.swift").write_text(capacitor)
-        (temp / "main.swift").write_text(swift)
+        (temp / "main.swift").write_text(swift_work_source() + swift)
         env = {**os.environ, "CLANG_MODULE_CACHE_PATH": str(temp / "modules")}
         subprocess.run(
             [

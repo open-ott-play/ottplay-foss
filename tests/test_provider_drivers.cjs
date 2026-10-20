@@ -28,7 +28,7 @@ test("registry only resolves explicit drivers and does not accept prototype name
         Array.from(registry.ids()),
         Array.from(f.host.__ottProviderDriverProfiles, (profile) => profile.id)
     );
-    assert.equal(registry.ids().length, 50);
+    assert.equal(registry.ids().length, 51);
     assert.equal(registry.has("constructor"), false);
     assert.equal(registry.has("m3u"), true);
     assert.throws(() => registry.register("demo", () => {}), /Duplicate/);
@@ -345,11 +345,12 @@ test("all managed provider kinds settle loader only on a terminal catalog result
     const representatives = new Map(
         profiles.map((profile) => [profile.kind, profile.id])
     );
-    assert.equal(representatives.size, 12);
+    assert.equal(representatives.size, 13);
     for (const [kind, id] of representatives) {
         const f = integrationFixture(id);
-        const loadingPanel =
-            kind === "plex" || kind === "vportal" ? "#dialogbox" : "#launch";
+        const loadingPanel = ["plex", "vportal", "offline"].includes(kind)
+            ? "#dialogbox"
+            : "#launch";
         f.host.infoBox = () => {};
         let settingsOpened = 0;
         f.host.showPage = () => {

@@ -14,6 +14,7 @@ interface LibraryGroup {
     known?: string[];
     label: string;
     members: string[];
+    shuffleBefore?: string[];
 }
 interface LibraryDocument {
     groups: LibraryGroup[];
@@ -186,6 +187,9 @@ function createChannelLibrary(
                 known: unique(group.known),
                 label: group.label,
                 members: unique(group.members),
+                shuffleBefore: Array.isArray(group.shuffleBefore)
+                    ? unique(group.shuffleBefore)
+                    : undefined,
             });
         });
         result.hidden = unique(value.hidden);
@@ -485,6 +489,34 @@ function createChannelLibrary(
     }
     return {
         active: ports.current,
+        append: function (rows: LibraryChannel[]): void {
+            if (!ports.current()) return;
+            var addedLocks: string[] = [];
+            rows.forEach(function (row) {
+                if (items[row.itemId]) return;
+                catalog.push(row);
+                if (row.locked) addedLocks.push(row.itemId);
+                items[row.itemId] = { id: row.id };
+                ids[String(row.id)] = row.itemId;
+                var group = providerById[row.groupId];
+                if (!group) {
+                    group = {
+                        id: row.groupId,
+                        label: row.groupLabel,
+                        members: [],
+                    };
+                    providerById[row.groupId] = group;
+                    provider.push(group);
+                }
+                group.members.push(row.itemId);
+                providerById["system:all"].members.push(row.itemId);
+            });
+            if (addedLocks.length)
+                state!.locks = unique(
+                    state!.locks.concat(addedLocks),
+                    state!.unlocks
+                );
+        },
         changeMember: function (
             groupId: string,
             channelId: number,
@@ -543,6 +575,10 @@ function createChannelLibrary(
             if (!writable || readFailed || !ports.current())
                 throw new Error("Channel library is unavailable for backup");
             return clone(state!);
+        },
+        isShuffled: function (groupId: string): boolean {
+            var group = groupById(state!.groups, groupId);
+            return !!(group && group.shuffleBefore);
         },
         itemId: function (id: number): string | null {
             return ids[String(id)] || null;
@@ -627,6 +663,32 @@ function createChannelLibrary(
                 if (group) group.label = label;
             });
         },
+        resetShuffle: function (groupId: string): boolean {
+            var stored = groupById(state!.groups, groupId);
+            var visible = groupById(groups(), groupId);
+            if (!stored || !stored.shuffleBefore || !visible) return false;
+            var current = unique(visible.members);
+            var membership: Record<string, boolean> = Object.create(null);
+            current.forEach(function (id) {
+                membership[id] = true;
+            });
+            var restored = unique(stored.shuffleBefore.map(resolve)).filter(
+                function (id) {
+                    return membership[id];
+                }
+            );
+            var members = restored.concat(unique(current, restored));
+            return commit(function (draft) {
+                var group = editGroup(draft, groupId)!;
+                group.members = members;
+                delete group.shuffleBefore;
+                group.inheritsMembers = false;
+                var live = providerById[groupId];
+                group.known = unique(
+                    (group.known || []).concat(live ? live.members : [])
+                );
+            });
+        },
         savedPreference: function (
             kind: string,
             channelId: number | null
@@ -677,6 +739,27 @@ function createChannelLibrary(
                 if (value == null) delete prefs[id!];
                 else prefs[id!] = value;
             }, durable);
+        },
+        shuffleGroup: function (groupId: string): boolean {
+            var visible = groupById(groups(), groupId);
+            if (!visible || visible.members.length < 2) return false;
+            var members = visible.members.slice();
+            return commit(function (draft) {
+                var group = editGroup(draft, groupId)!;
+                if (!group.shuffleBefore) group.shuffleBefore = members.slice();
+                group.members = members;
+                for (var i = group.members.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var value = group.members[i];
+                    group.members[i] = group.members[j];
+                    group.members[j] = value;
+                }
+                group.inheritsMembers = false;
+                var live = providerById[groupId];
+                group.known = unique(
+                    (group.known || []).concat(live ? live.members : [])
+                );
+            });
         },
         snapshot: function () {
             var visible = groups();

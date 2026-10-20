@@ -4,6 +4,12 @@ function sourceNamespace(host: any): string {
     var provider = String(
         host.p_pref || (driver && driver.id) || host.providerId || "classic"
     );
+    if (
+        provider === "offline" &&
+        host.__ottOfflineProfiles &&
+        typeof host.__ottOfflineProfiles.namespace === "function"
+    )
+        return host.__ottOfflineProfiles.namespace();
     var slot = Number(host.m3uArr && host.m3uArr.active);
     if (provider === "vportal" && driver && driver.configuration)
         return provider + ":" + driver.configuration().active;

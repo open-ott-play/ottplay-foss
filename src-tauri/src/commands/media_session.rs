@@ -10,7 +10,7 @@ use souvlaki::{
     MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
     SeekDirection,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
@@ -23,6 +23,8 @@ const JS_PREV: &str = "(function(){if(window._doKey&&window.keys)window._doKey(w
 
 pub struct MediaSessionState {
     inner: Mutex<Option<MediaSessionInner>>,
+    artwork: tokio::sync::Mutex<Option<(String, String)>>,
+    generation: AtomicU64,
 }
 
 struct MediaSessionInner {
@@ -70,6 +72,8 @@ impl Default for MediaSessionState {
     fn default() -> Self {
         Self {
             inner: Mutex::new(None),
+            artwork: tokio::sync::Mutex::new(None),
+            generation: AtomicU64::new(0),
         }
     }
 }
@@ -333,6 +337,73 @@ fn apply_metadata(
         .map_err(|e| format!("set_playback: {e}"))
 }
 
+// Souvlaki delegates remote artwork to untracked OS downloads. Fetch it under
+// our cancellation lease and give OS controls only a bounded local raster file.
+fn raster_artwork(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"\x89PNG\r\n\x1a\n") || bytes.starts_with(b"\xff\xd8\xff")
+        || bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a")
+        || (bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP"))
+}
+
+async fn fetch_artwork(work: &ottplay_core::background_work::WorkLease, raw: &str) -> Result<Option<Vec<u8>>, String> {
+    const LIMIT: usize = 4 * 1024 * 1024;
+    let Ok(url) = reqwest::Url::parse(raw) else { return Ok(None) };
+    if !matches!(url.scheme(), "http" | "https") { return Ok(None) }
+    let fetched = work.run(async {
+        let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build().ok()?;
+        let mut response = client.get(url).send().await.ok()?.error_for_status().ok()?;
+        if response.content_length().is_some_and(|length| length > LIMIT as u64) { return None }
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response.chunk().await.ok()? {
+            if bytes.len() + chunk.len() > LIMIT { return None }
+            bytes.extend_from_slice(&chunk);
+        }
+        raster_artwork(&bytes).then_some(bytes)
+    }).await.map_err(str::to_string)?;
+    Ok(fetched)
+}
+
+async fn prepare_artwork(app: &AppHandle, state: &MediaSessionState, work: &ottplay_core::background_work::WorkLease, raw: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = raw.filter(|raw| !raw.is_empty()) else { return Ok(None) };
+    let mut cache = work.run(state.artwork.lock()).await.map_err(str::to_string)?;
+    if let Some((source, local)) = cache.as_ref() {
+        if source == raw { return Ok(Some(local.clone())) }
+    }
+    let Some(bytes) = fetch_artwork(work, raw).await? else { return Ok(None) };
+    let root = crate::instance::app_data_dir(app)?;
+    // Alternate two bounded files so metadata sees a changed local URL.
+    // Filesystem completion remains counted if standby arrives during a write.
+    tokio::fs::create_dir_all(&root).await.map_err(|_| "Artwork cache unavailable")?;
+    work.check().map_err(str::to_string)?;
+    let slot = if cache.as_ref().is_some_and(|(_, local)| local.ends_with("-0")) { 1 } else { 0 };
+    let path = root.join(format!("media-session-artwork-{slot}"));
+    let temporary = root.join("media-session-artwork.tmp");
+    tokio::fs::write(&temporary, bytes).await.map_err(|_| "Artwork cache unavailable")?;
+    work.check().map_err(str::to_string)?;
+    tokio::fs::rename(temporary, &path).await.map_err(|_| "Artwork cache unavailable")?;
+    work.check().map_err(str::to_string)?;
+    #[cfg(target_os = "windows")]
+    let local = format!("file://{}", path.display()); // Souvlaki passes this path directly to WinRT.
+    #[cfg(not(target_os = "windows"))]
+    let local = url::Url::from_file_path(path).map_err(|_| "Artwork cache unavailable")?.to_string();
+    *cache = Some((raw.to_owned(), local.clone()));
+    Ok(Some(local))
+}
+
+fn publish_media_generation<T>(
+    generation: &AtomicU64,
+    expected: u64,
+    work: &ottplay_core::background_work::WorkLease,
+    publish: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    work.publish(|| {
+        if generation.load(Ordering::SeqCst) != expected {
+            return Err("Media session superseded".into());
+        }
+        publish()
+    }).map_err(str::to_string)?
+}
+
 fn meta_args(
     title: Option<String>,
     artist: Option<String>,
@@ -358,21 +429,28 @@ pub async fn start_media_session(
     positionSec: Option<f64>,
     seekable: Option<bool>,
 ) -> Result<MediaSessionResult, String> {
+    let work = app.state::<ottplay_core::background_work::BackgroundWork>().enter().map_err(str::to_string)?;
+    let generation = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let artwork = prepare_artwork(&app, &state, &work, artworkUrl.as_deref()).await?;
+    work.check().map_err(str::to_string)?;
+    if state.generation.load(Ordering::SeqCst) != generation { return Err("Media session superseded".into()) }
     let (title, artist) = meta_args(title, artist);
     let seekable = seekable.unwrap_or(false);
     if let Err(e) = ensure_controls(&app, &state) {
         return Ok(err(e));
     }
-    match apply_metadata(
-        &state,
-        &title,
-        &artist,
-        artworkUrl.as_deref(),
-        durationSec,
-        positionSec,
-        seekable,
-        true,
-    ) {
+    match publish_media_generation(&state.generation, generation, &work, || {
+        apply_metadata(
+            &state,
+            &title,
+            &artist,
+            artwork.as_deref(),
+            durationSec,
+            positionSec,
+            seekable,
+            true,
+        )
+    }) {
         Ok(()) => Ok(ok()),
         Err(e) => Ok(err(e)),
     }
@@ -420,18 +498,25 @@ pub async fn resume_media_session(
         )
         .await;
     }
+    let work = app.state::<ottplay_core::background_work::BackgroundWork>().enter().map_err(str::to_string)?;
+    let generation = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let artwork = prepare_artwork(&app, &state, &work, artworkUrl.as_deref()).await?;
+    work.check().map_err(str::to_string)?;
+    if state.generation.load(Ordering::SeqCst) != generation { return Err("Media session superseded".into()) }
     let (title, artist) = meta_args(title, artist);
     let seekable = seekable.unwrap_or(false);
-    match apply_metadata(
-        &state,
-        &title,
-        &artist,
-        artworkUrl.as_deref(),
-        durationSec,
-        positionSec,
-        seekable,
-        true,
-    ) {
+    match publish_media_generation(&state.generation, generation, &work, || {
+        apply_metadata(
+            &state,
+            &title,
+            &artist,
+            artwork.as_deref(),
+            durationSec,
+            positionSec,
+            seekable,
+            true,
+        )
+    }) {
         Ok(()) => Ok(ok()),
         Err(e) => Ok(err(e)),
     }
@@ -465,18 +550,25 @@ pub async fn update_media_session(
         )
         .await;
     }
+    let work = app.state::<ottplay_core::background_work::BackgroundWork>().enter().map_err(str::to_string)?;
+    let generation = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let artwork = prepare_artwork(&app, &state, &work, artworkUrl.as_deref()).await?;
+    work.check().map_err(str::to_string)?;
+    if state.generation.load(Ordering::SeqCst) != generation { return Err("Media session superseded".into()) }
     let (title, artist) = meta_args(title, artist);
     let seekable = seekable.unwrap_or(false);
-    match apply_metadata(
-        &state,
-        &title,
-        &artist,
-        artworkUrl.as_deref(),
-        durationSec,
-        positionSec,
-        seekable,
-        true,
-    ) {
+    match publish_media_generation(&state.generation, generation, &work, || {
+        apply_metadata(
+            &state,
+            &title,
+            &artist,
+            artwork.as_deref(),
+            durationSec,
+            positionSec,
+            seekable,
+            true,
+        )
+    }) {
         Ok(()) => Ok(ok()),
         Err(e) => Ok(err(e)),
     }
@@ -487,6 +579,7 @@ pub async fn update_media_session(
 pub async fn stop_media_session(
     state: State<'_, MediaSessionState>,
 ) -> Result<MediaSessionResult, String> {
+    state.generation.fetch_add(1, Ordering::SeqCst);
     set_seekable_flag(false);
     let mut guard = match state.inner.lock() {
         Ok(g) => g,
@@ -502,6 +595,71 @@ pub async fn stop_media_session(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn queued_metadata_rechecks_generation_inside_publication_lock() {
+        let background = ottplay_core::background_work::BackgroundWork::default();
+        let work = background.enter().unwrap();
+        let blocked = Arc::new(std::sync::Barrier::new(2));
+        let release = Arc::new(std::sync::Barrier::new(2));
+        let holder = {
+            let work = work.clone();
+            let blocked = blocked.clone();
+            let release = release.clone();
+            std::thread::spawn(move || work.publish(|| { blocked.wait(); release.wait(); }).unwrap())
+        };
+        blocked.wait();
+        let generation = Arc::new(AtomicU64::new(1));
+        let (started, ready) = std::sync::mpsc::channel();
+        let old = {
+            let generation = generation.clone();
+            std::thread::spawn(move || {
+                assert_eq!(generation.load(Ordering::SeqCst), 1);
+                started.send(()).unwrap();
+                publish_media_generation(&generation, 1, &work, || panic!("stale metadata published"))
+            })
+        };
+        ready.recv().unwrap();
+        generation.store(2, Ordering::SeqCst);
+        release.wait();
+        holder.join().unwrap();
+        let result: Result<(), String> = old.join().unwrap();
+        assert_eq!(result.unwrap_err(), "Media session superseded");
+    }
+
+    #[tokio::test]
+    async fn standby_cancels_artwork_before_os_delivery() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/poster", listener.local_addr().unwrap());
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            socket.read(&mut request).await.unwrap();
+            socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nx").await.unwrap();
+            started.send(()).unwrap();
+            let mut byte = [0];
+            let closed = tokio::time::timeout(Duration::from_secs(2), socket.read(&mut byte)).await.unwrap();
+            assert!(matches!(closed, Ok(0)) || closed.is_err_and(|error| error.kind() == std::io::ErrorKind::ConnectionReset));
+        });
+        let background = ottplay_core::background_work::BackgroundWork::default();
+        let work = background.enter().unwrap();
+        let request = tokio::spawn(async move { fetch_artwork(&work, &url).await });
+        ready.await.unwrap();
+        background.set_standby(true);
+        assert!(request.await.unwrap().is_err());
+        assert!(background.status().quiescent);
+        server.await.unwrap();
+    }
+
+    #[test]
+    fn artwork_never_delegates_remote_svg_loads_to_os() {
+        assert!(raster_artwork(b"\x89PNG\r\n\x1a\n"));
+        assert!(raster_artwork(b"GIF89a"));
+        assert!(!raster_artwork(b"<svg><image href='https://example.test/image'/></svg>"));
+        assert!(!raster_artwork(b"not an image"));
+    }
 
     fn movie() -> MetadataSnapshot {
         MetadataSnapshot {

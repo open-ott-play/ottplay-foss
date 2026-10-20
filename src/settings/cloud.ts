@@ -36,11 +36,24 @@ var cloudSettingsTransfer = (function () {
             write = w.stbSetItem,
             remove = w.stbDelItem,
             dump = w.stbGetAllItems;
+        var offlineExpected: {
+            bytes: string | null;
+            selection: string;
+            source: string;
+        } | null = null;
         function sameSource(): boolean {
+            var currentSource = w.__ottSourceIdentity.current(w);
+            var currentSelection = selection();
+            var ownOfflineSelection =
+                committing &&
+                offlineExpected !== null &&
+                currentSource === offlineExpected.source &&
+                currentSelection === offlineExpected.selection &&
+                read.call(w, "offlineProfiles") === offlineExpected.bytes;
             return (
-                (committing || source === w.__ottSourceIdentity.current(w)) &&
+                (committing || source === currentSource) &&
                 driver === w.__ottActiveProviderDriver &&
-                selected === selection() &&
+                (selected === currentSelection || ownOfflineSelection) &&
                 providerRead === w.providerGetItem &&
                 providerWrite === w.providerSetItem &&
                 read === w.stbGetItem &&
@@ -199,6 +212,7 @@ var cloudSettingsTransfer = (function () {
         function restore(xml: string): void {
             if (w.__ottKiosk && w.__ottKiosk.enabled()) return;
             var imported = w.__ottCloudSettingsCodec.read(xml);
+            validateOfflineProfiles(imported);
             if (!active()) return;
             if (
                 typeof read !== "function" ||
@@ -211,6 +225,31 @@ var cloudSettingsTransfer = (function () {
             if (!before || typeof before !== "object" || Array.isArray(before))
                 throw new Error("Invalid storage");
             if (
+                driver &&
+                driver.id === "offline" &&
+                source === w.__ottSourceIdentity.legacy(w)
+            ) {
+                var localBytes = Object.prototype.hasOwnProperty.call(
+                    imported,
+                    "offlineProfiles"
+                )
+                    ? imported.offlineProfiles
+                    : null;
+                var localActive = localBytes
+                    ? JSON.parse(localBytes).active
+                    : -1;
+                var localSource =
+                    localActive < 0 ? "offline" : "offline:" + localActive;
+                offlineExpected = {
+                    bytes: localBytes,
+                    selection: JSON.stringify([
+                        localSource,
+                        JSON.parse(selected)[1],
+                    ]),
+                    source: localSource,
+                };
+            }
+            if (
                 !Object.prototype.hasOwnProperty.call(imported, "parentPIN") &&
                 Object.prototype.hasOwnProperty.call(before, "parentPIN")
             )
@@ -222,6 +261,13 @@ var cloudSettingsTransfer = (function () {
                 if (keys.indexOf(key) === -1) keys.push(key);
             });
             var writes: SettingsWrite[] = keys
+                // Local source bindings never travel with a settings backup.
+                .filter(function (key) {
+                    return (
+                        key !== "offlineProfileBindings" &&
+                        key !== "__ottStandbyV1"
+                    );
+                })
                 .map(function (key) {
                     var previous = Object.prototype.hasOwnProperty.call(
                         before,
@@ -276,8 +322,12 @@ var cloudSettingsTransfer = (function () {
                     return intent === cloudSettingsIntent && sameSource();
                 });
                 source = w.__ottSourceIdentity.current(w);
+                selected = selection();
             } catch (_error) {
-                if (sameSource()) source = w.__ottSourceIdentity.current(w);
+                if (sameSource()) {
+                    source = w.__ottSourceIdentity.current(w);
+                    selected = selection();
+                }
                 committing = false;
                 fail("Settings could not be saved");
                 return;
@@ -310,6 +360,18 @@ var cloudSettingsTransfer = (function () {
                 else fail("Invalid cloud settings response");
             });
         }
+        function validateOfflineProfiles(items: any): void {
+            if (!Object.prototype.hasOwnProperty.call(items, "offlineProfiles"))
+                return;
+            var offline = w.__ottOfflineProfiles;
+            if (
+                !offline ||
+                typeof offline.validateStore !== "function" ||
+                typeof items.offlineProfiles !== "string" ||
+                !offline.validateStore(JSON.parse(items.offlineProfiles))
+            )
+                throw new Error("Invalid local video profiles");
+        }
         cancelCloudSettings = cancel;
         w.aboutKeyHandler = keyHandler;
         if (w.aboutKeyHandler !== keyHandler) {
@@ -340,9 +402,11 @@ var cloudSettingsTransfer = (function () {
             });
         else {
             try {
+                var snapshot = dump.call(w);
+                validateOfflineProfiles(snapshot);
                 send(
                     "send",
-                    w.__ottCloudSettingsCodec.write(dump.call(w)),
+                    w.__ottCloudSettingsCodec.write(snapshot),
                     codeScreen
                 );
             } catch (_error) {

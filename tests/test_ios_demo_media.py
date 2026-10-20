@@ -98,7 +98,16 @@ class PipCall {
     var results: [[String: Any]] = []
     func resolve(_ result: [String: Any]) { results.append(result) }
 }
+class TestWebView {
+    var scripts: [String] = []
+    var completions: [(Any?, Error?) -> Void] = []
+    func evaluateJavaScript(_ script: String, completionHandler: @escaping (Any?, Error?) -> Void) {
+        scripts.append(script); completions.append(completionHandler)
+    }
+}
+class TestBridge { var webView: TestWebView? = TestWebView() }
 class Harness {
+    var bridge: TestBridge? = TestBridge()
     var pipPlayer: AVPlayer?
     var pipLooper: AVPlayerLooper?
     var pipController: PipController?
@@ -116,6 +125,23 @@ class Harness {
 
 TESTS = r'''
     func run() {
+        NativeWork.shared.setStandby(false)
+        let view = bridge!.webView!
+        evalVideoJS("retired")
+        assert(NativeWork.shared.snapshot["pending"] as! Int == 1)
+        NativeWork.shared.setStandby(true)
+        NativeWork.shared.setStandby(false)
+        drainCallbacks()
+        assert(view.scripts.isEmpty && NativeWork.shared.snapshot["pending"] as! Int == 0)
+        NativeWork.shared.setStandby(true)
+        evalVideoJS("blocked"); drainCallbacks()
+        assert(view.scripts.isEmpty)
+        NativeWork.shared.setStandby(false)
+        evalVideoJS("current"); drainCallbacks()
+        assert(view.scripts == ["current"] && NativeWork.shared.snapshot["pending"] as! Int == 1)
+        view.completions.removeFirst()(nil, nil)
+        assert(NativeWork.shared.snapshot["pending"] as! Int == 0)
+        print("PASS iOS system controls: queued command retires across standby/wake; native completion remains pending")
         assert(pipSubtitle("Картинка в картинке") == "Картинка в картинке")
         assert(pipSubtitle("Image dans l’image") == "Image dans l’image")
         assert(pipSubtitle(nil) == "Picture in Picture")
@@ -158,6 +184,12 @@ TESTS = r'''
         queue.currentItem = delayedItem
         drainCallbacks()
         assert(controlNativePipPlayer(play: false) && queue.paused)
+        NativeWork.shared.setStandby(true)
+        assert(!controlNativePipPlayer(play: true) && queue.paused)
+        delayedItem.status = .readyToPlay
+        drainCallbacks()
+        assert(startRequests == 0, "Readiness cannot start PiP during standby")
+        NativeWork.shared.setStandby(false)
         delayedItem.status = .readyToPlay
         drainCallbacks()
         assert(startRequests == 1, "Late looper item readiness must reach PiP startup")
@@ -221,6 +253,7 @@ def main():
         method(source, "private func releasePipPlayer("),
         method(source, "private func observePipPlayerItem("),
         method(source, "private func controlNativePipPlayer("),
+        method(source, "private func evalVideoJS("),
         method(source, "private func tryStartPip("),
         method(source, "private func resolvePipOnce("),
         method(source, "private func teardownPip("),
@@ -244,7 +277,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ottplay-ios-demo-") as temp:
         temp = pathlib.Path(temp)
         swift = temp / "DemoMediaTests.swift"
-        swift.write_text(STUBS + "\n".join(helpers) + TESTS)
+        native_work = (ROOT / "ios/App/App/Plugins/NativeBackground.swift").read_text().split("@objc(NativeBackground)", 1)[0].replace("import Capacitor", "")
+        swift.write_text(native_work + STUBS + "\n".join(helpers) + TESTS)
         subprocess.run(
             ["swift", "-module-cache-path", str(temp / "module-cache"), str(swift)],
             check=True,

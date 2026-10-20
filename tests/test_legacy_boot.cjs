@@ -313,7 +313,10 @@ function boot(options = {}) {
         } else
             vm.runInContext(
                 options.version
-                    ? script.text.replace(/__OTTP_VERSION__/g, options.version)
+                    ? script.text.replace(
+                          /__OTTP_VERSION__|__OTTP_ASSET_VERSION__/g,
+                          options.version
+                      )
                     : script.text,
                 context,
                 {

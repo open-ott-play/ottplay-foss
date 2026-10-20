@@ -180,6 +180,46 @@ check(
     }
 );
 check(
+    "v2 backup round-trips shuffled favorites and channels with reset still available",
+    () => {
+        const f = fixture();
+        f.data.set("p:favoritesArray", "[100,200]");
+        f.mount();
+        vm.runInContext("Math.random = function () { return 0; }", f.w);
+        assert.equal(f.w.shuffleFavoritesList(), true);
+        assert.equal(f.w.__ottChannels.change("shuffle", "system:all"), true);
+        const exported = f.export();
+        assert.deepEqual(exported.tv.favorites.shuffleBefore.Favorites, [
+            { itemId: "stream:A" },
+            { itemId: "stream:B" },
+        ]);
+        assert.deepEqual(
+            exported.tv.channels.groups.find(
+                (group) => group.id === "system:all"
+            ).shuffleBefore,
+            ["stream:A", "stream:B"]
+        );
+        f.import(exported);
+        assert.equal(f.accept(), true);
+        assert.deepEqual(
+            JSON.parse(f.data.get(f.favoriteKey)),
+            exported.tv.favorites
+        );
+        assert.deepEqual(
+            JSON.parse(f.data.get(f.channelKey)),
+            exported.tv.channels
+        );
+        f.mount();
+        assert.equal(f.w.shuffleFavoritesList(true), true);
+        assert.equal(
+            f.w.__ottChannels.change("resetShuffle", "system:all"),
+            true
+        );
+        assert.deepEqual(Array.from(f.w.favoritesArray), [10, 20]);
+        assert.deepEqual(Array.from(f.w.cats.All), [10, 20]);
+    }
+);
+check(
     "v1 replaces canonical active favorites and locks despite existing migration claims",
     () => {
         const f = fixture();
@@ -435,6 +475,225 @@ check(
         assert.equal(f.accept(), true);
         f.mount();
         assert.equal(f.export().tv.favorites.defaultList, undefined);
+    }
+);
+check(
+    "JSON settings export/import round-trips offline descriptions without local bindings",
+    () => {
+        const f = fixture();
+        f.mount();
+        const profilesCode = require("./helpers/offline-profile-source.cjs")(
+            false
+        );
+        f.w.stbGetItem = f.w.storage.get;
+        f.w.stbSetItem = f.w.storage.set;
+        f.w.stbDelItem = f.w.storage.del;
+        vm.runInContext(profilesCode, f.w);
+        f.w.installOfflineProfiles(f.w, { libraryIdentity: () => "browser:" });
+        const store = {
+            active: -1,
+            profiles: Array(15).fill(null),
+            version: 1,
+        };
+        f.data.set("offlineProfiles", JSON.stringify(store));
+        f.data.set("offlineProfileBindings", "PRIVATE_BOOKMARK");
+        const exported = f.export();
+        assert.deepEqual(exported.offline_profiles, store);
+        assert(!JSON.stringify(exported).includes("PRIVATE_BOOKMARK"));
+        f.import(exported);
+        assert.equal(f.accept(), true);
+        assert.equal(f.data.get("offlineProfileBindings"), "PRIVATE_BOOKMARK");
+        const malformed = f.export();
+        malformed.offline_profiles.bookmark = "FOREIGN";
+        f.import(malformed);
+        assert.equal(f.accept(), false);
+        assert.equal(f.data.get("offlineProfileBindings"), "PRIVATE_BOOKMARK");
+    }
+);
+function offlineTransition() {
+    const f = fixture(),
+        w = f.w;
+    w.p_pref = "offline";
+    w.__ottActiveProviderDriver = { id: "offline" };
+    w.stbGetItem = w.storage.get;
+    w.stbSetItem = w.storage.set;
+    w.stbDelItem = w.storage.del;
+    vm.runInContext(require("./helpers/offline-profile-source.cjs")(false), w);
+    w.installOfflineProfiles(w, { libraryIdentity: () => "browser:" });
+    const store = { active: 1, profiles: Array(15).fill(null), version: 1 };
+    for (const index of [0, 1, 2])
+        store.profiles[index] = {
+            binding_id: "11111111-1111-4111-8111-11111111111" + index,
+            name: "Profile " + (index + 1),
+            provider: "offline",
+            selected: null,
+            sources: [{ key: "s0", kind: "folder", name: "Cartoons" }],
+            version: 1,
+        };
+    f.data.set("offlineProfiles", JSON.stringify(store));
+    f.data.set("offlineProfileBindings", "PRIVATE_LOCAL_BINDINGS");
+    f.mount();
+    const exported = f.export();
+    exported.tv.channels.locks = ["stream:B"];
+    exported.settings.fontSize = 3;
+    store.active = 0;
+    f.data.set("offlineProfiles", JSON.stringify(store));
+    f.mount();
+    return { exported, f, store };
+}
+check(
+    "JSON offline import changes slot and writes library documents to the imported namespace",
+    () => {
+        const { f, exported } = offlineTransition();
+        const oldChannels = f.data.get("p:channelLibrary:offline:0"),
+            oldFavorites = f.data.get("p:favoritesLibrary:offline:0");
+        assert.equal(f.w.__ottSourceIdentity.current(f.w), "offline:0");
+        assert.equal(exported.tv.sourceId, "offline:1");
+        f.import(exported);
+        assert.equal(f.result(), undefined);
+        assert.equal(f.accept(), true);
+        assert.equal(f.restarts(), 1);
+        assert.equal(f.w.__ottSourceIdentity.current(f.w), "offline:1");
+        assert.equal(
+            f.data.get("offlineProfiles"),
+            JSON.stringify(exported.offline_profiles)
+        );
+        assert.deepEqual(
+            JSON.parse(f.data.get("p:channelLibrary:offline:1")),
+            exported.tv.channels
+        );
+        assert.deepEqual(
+            JSON.parse(f.data.get("p:favoritesLibrary:offline:1")),
+            exported.tv.favorites
+        );
+        assert.equal(f.data.get("p:channelLibrary:offline:0"), oldChannels);
+        assert.equal(f.data.get("p:favoritesLibrary:offline:0"), oldFavorites);
+        assert.equal(
+            f.data.get("offlineProfileBindings"),
+            "PRIVATE_LOCAL_BINDINGS"
+        );
+    }
+);
+check(
+    "offline import rejects a TV document that does not belong to its imported slot",
+    () => {
+        const { f, exported } = offlineTransition();
+        const before = [...f.data];
+        exported.tv.sourceId = "offline:0";
+        f.import(exported);
+        assert.equal(f.result(), false);
+        assert.equal(f.confirm(), undefined);
+        assert.deepEqual([...f.data], before);
+    }
+);
+check(
+    "offline slot transition rolls back every failed write without changing private bindings",
+    () => {
+        for (const key of [
+            "offlineProfiles",
+            "p:channelLibrary:offline:1",
+            "p:favoritesLibrary:offline:1",
+            "sFont",
+        ]) {
+            const { f, exported } = offlineTransition();
+            // Ensure even the favorites write changes bytes rather than being a no-op.
+            exported.tv.favorites.lists.lists[
+                exported.tv.favorites.lists.active
+            ] = [{ itemId: "stream:B" }];
+            f.fail(key);
+            const before = [...f.data].sort();
+            f.import(exported);
+            assert.equal(f.accept(), false, key);
+            assert.deepEqual([...f.data].sort(), before, key);
+            assert.equal(f.restarts(), 0, key);
+        }
+    }
+);
+check(
+    "offline transition cannot adopt changed confirmation, storage, driver or post-write bytes",
+    () => {
+        for (const boundary of [
+            "confirmation",
+            "storage",
+            "driver",
+            "profile-write",
+            "notice",
+        ]) {
+            const { f, exported, store } = offlineTransition();
+            f.import(exported);
+            const replacement = () => {
+                store.active = 2;
+                f.data.set("offlineProfiles", JSON.stringify(store));
+            };
+            if (boundary === "confirmation") replacement();
+            if (boundary === "storage") f.w.stbSetItem = () => {};
+            if (boundary === "driver")
+                f.w.__ottActiveProviderDriver = { id: "offline" };
+            if (boundary === "profile-write")
+                f.hook((key) => {
+                    if (key === "offlineProfiles") replacement();
+                });
+            if (boundary === "notice") f.w.showShift = replacement;
+            const before = [...f.data];
+            assert.equal(f.accept(), false, boundary);
+            assert.equal(f.restarts(), 0, boundary);
+            if (["confirmation", "storage", "driver"].includes(boundary))
+                assert.deepEqual([...f.data], before, boundary);
+            if (["profile-write", "notice"].includes(boundary))
+                assert.equal(
+                    f.data.get("offlineProfiles"),
+                    JSON.stringify(store),
+                    boundary
+                );
+            assert.equal(
+                f.data.get("offlineProfileBindings"),
+                "PRIVATE_LOCAL_BINDINGS",
+                boundary
+            );
+        }
+    }
+);
+check(
+    "offline import cannot publish effects after a later write restores exact prior profile bytes",
+    () => {
+        for (const key of [
+            "p:channelLibrary:offline:1",
+            "p:favoritesLibrary:offline:1",
+            "sFont",
+        ]) {
+            const { f, exported } = offlineTransition();
+            const before = f.data.get("offlineProfiles"),
+                originalFont = f.w.settings.fontSize;
+            let effects = 0,
+                replaced = false;
+            f.w.setFontSize = () => effects++;
+            f.hook((writtenKey) => {
+                if (writtenKey !== key) return;
+                assert.equal(
+                    f.data.get("offlineProfiles"),
+                    JSON.stringify(exported.offline_profiles)
+                );
+                f.data.set("offlineProfiles", before);
+                replaced = true;
+            });
+            f.import(exported);
+            assert.equal(f.accept(), false, key);
+            assert(replaced, key);
+            assert.equal(f.data.get("offlineProfiles"), before, key);
+            assert.equal(
+                f.w.__ottSourceIdentity.current(f.w),
+                "offline:0",
+                key
+            );
+            assert.equal(f.w.settings.fontSize, originalFont, key);
+            assert.equal(effects, 0, key);
+            assert.equal(f.restarts(), 0, key);
+            assert.equal(
+                f.data.get("offlineProfileBindings"),
+                "PRIVATE_LOCAL_BINDINGS",
+                key
+            );
+        }
     }
 );
 console.log("OK: " + count + " settings/library backup integration groups");

@@ -246,13 +246,20 @@ function classicMediaRuntime(): any {
                 api.cancelAuto();
         });
     }
-    function beginManualLoading(item: MediaLibraryItem) {
-        if (!item.payload.plexSource && w.p_pref !== "plex") return null;
-        var request: any = { cancelled: false, owner: null };
+    function restoreLoadingList(request: any) {
+        if (!current()) return;
+        if (request && request.channel) {
+            if (w.channelsList) w.channelsList(w.catIndex, w.primaryIndex);
+        } else library.show();
+    }
+    function beginManualLoading(item: MediaLibraryItem, channel = false) {
+        if (!channel && !item.payload.plexSource && w.p_pref !== "plex")
+            return null;
+        var request: any = { cancelled: false, channel: channel, owner: null };
         request.owner = showLoading(function () {
             if (manualLoading !== request) return;
             api.cancelAuto();
-            if (current()) library.show();
+            restoreLoadingList(request);
         }, item);
         manualLoading = request;
         request.owner.own(function () {
@@ -830,6 +837,10 @@ function classicMediaRuntime(): any {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
         if (!playback || playback.runtime !== api || !direction) return;
+        if (sequence && sequence.channel) {
+            movePlaylistEntry(playback, direction, false);
+            return;
+        }
         var owner = w.__ottClassicScreenPort.screens.current();
         var feedback =
             /^plex(?:@|$)/.test(playback.ref.sourceId) &&
@@ -981,6 +992,39 @@ function classicMediaRuntime(): any {
         project(library.snapshot("none"), false);
         return true;
     }
+    /** Channel order remains owned by the standard list, including live appends. */
+    function movePlaylistEntry(
+        playback: any,
+        direction: number,
+        natural: boolean
+    ) {
+        var channel = playback.sequence && playback.sequence.channel;
+        if (!channel || !channel.list || !channel.list.active()) return;
+        var members = channel.list.members();
+        var index = members.indexOf(channel.id);
+        if (index < 0 || !members.length) return;
+        var pinned =
+            natural &&
+            w.__ottKiosk &&
+            w.__ottKiosk.locked() &&
+            w.__ottKiosk.allowed(channel.id);
+        var next =
+            natural && (pinned || repeat === "one") ? index : index + direction;
+        if (natural && !pinned && repeat === "off" && next >= members.length)
+            return;
+        next = ((next % members.length) + members.length) % members.length;
+        var category = channel.list.category();
+        if (category < 0) return;
+        w.playChannel(
+            category,
+            next,
+            !natural,
+            undefined,
+            undefined,
+            natural,
+            true
+        );
+    }
     function resolve(
         item: MediaLibraryItem,
         sequence: any = null,
@@ -991,7 +1035,10 @@ function classicMediaRuntime(): any {
         settled?: (dispatched?: boolean) => void,
         admit?: (payload: any) => boolean
     ) {
-        var loading = automatic ? null : manualLoading;
+        var loading =
+            automatic && !(sequence && sequence.channel && !sequence.background)
+                ? null
+                : manualLoading;
         var skipped =
             automatic && skipRequest && skipRequest.loading
                 ? skipRequest
@@ -1020,7 +1067,7 @@ function classicMediaRuntime(): any {
                         // Retire the wait before Plex replaces it with its error
                         // dialog. Keep the selected file available for retry.
                         finishManualLoading(loading);
-                        library.show();
+                        restoreLoadingList(loading);
                     };
                 var abortLoad: any = null;
                 function accept(payload: any) {
@@ -1092,7 +1139,7 @@ function classicMediaRuntime(): any {
                 if (!payload) {
                     if (manualLoading === loading && loading) {
                         finishManualLoading(loading);
-                        library.show();
+                        restoreLoadingList(loading);
                     }
                     if (sequence && sequence.onError) sequence.onError();
                     if (settled) settled();
@@ -1237,6 +1284,18 @@ function classicMediaRuntime(): any {
                 title: item.title,
             };
         },
+        channelLaunch: function (payload: any) {
+            return current() &&
+                pendingStart &&
+                pendingStart.sequence &&
+                pendingStart.sequence.channel &&
+                pendingStart.valid() &&
+                payload &&
+                payload.__ottMediaRef &&
+                payload.__ottMediaRef.itemId === pendingStart.ref.itemId
+                ? pendingStart.sequence.channel.id
+                : null;
+        },
         checkpoint: function (ref: MediaRef, position: number, force = false) {
             if (
                 !persistent() ||
@@ -1351,6 +1410,18 @@ function classicMediaRuntime(): any {
             }
             if (!playback || playback.ended || !valid()) return;
             playback.ended = true;
+            // A newly selected channel owns the pending resolver. Completion
+            // of the departing decoder must neither cancel it nor select again.
+            if (manualLoading && manualLoading.channel) {
+                manualLoading.endedGeneration = generation;
+                api.checkpoint(playback.ref, 0, true);
+                return;
+            }
+            if (sequence && sequence.channel) {
+                api.checkpoint(playback.ref, 0, true);
+                if (valid()) movePlaylistEntry(playback, 1, true);
+                return;
+            }
             // Natural completion retires the old decoder generation, but must
             // not replace an explicit pending arrow with its automatic sibling.
             var skipped = skipRequest;
@@ -1570,6 +1641,103 @@ function classicMediaRuntime(): any {
                 reset
             );
         },
+        playChannel: function (
+            payload: any,
+            id: any,
+            guard?: () => boolean,
+            background = false,
+            positionMode = "prompt"
+        ) {
+            if (!current() || (guard && !guard())) return false;
+            var list = w.__ottChannels && w.__ottChannels.capture(w.catIndex);
+            if (!list || !list.active() || list.members().indexOf(id) < 0)
+                return false;
+            var item = describe([payload], {
+                kind: "catalog",
+                target: "",
+                title: "",
+            })[0];
+            if (!item || !playable(item)) return false;
+            api.cancelAuto();
+            var revision = automaticGeneration;
+            var generation = w.__ottClassicPlayback.snapshot().generation;
+            var loading: any = null;
+            function valid() {
+                var state = w.__ottClassicPlayback.snapshot();
+                return (
+                    current() &&
+                    list.active() &&
+                    (!loading || !loading.cancelled) &&
+                    automaticGeneration === revision &&
+                    (!guard || guard()) &&
+                    (state.generation === generation ||
+                        (loading &&
+                            state.generation === loading.endedGeneration)) &&
+                    list.members().indexOf(id) >= 0
+                );
+            }
+            if (!valid()) return false;
+            var playback = mediaClassicPlayback;
+            if (
+                background &&
+                playback &&
+                playback.runtime === api &&
+                playback.ended
+            )
+                // Reuse natural-completion admission when Repeat changes while
+                // this channel is still resolving. Its old callbacks stay stale.
+                completionRequest = {
+                    generation: generation,
+                    playback: playback,
+                    valid: valid,
+                };
+            authorize(item, function () {
+                if (!valid()) return;
+                loading = background ? null : beginManualLoading(item, true);
+                if (!valid()) return;
+                var position = 0;
+                if (positionMode === "resume") {
+                    var saved = journal
+                        .read()
+                        .document.history.filter(function (row: any) {
+                            return row.itemId === item.ref.itemId;
+                        })[0];
+                    position = saved ? saved.position || 0 : 0;
+                }
+                if (!valid()) return;
+                resolve(
+                    item,
+                    {
+                        background: background,
+                        channel: { id: id, list: list },
+                        repeat: repeat,
+                        replace: true,
+                    },
+                    true,
+                    valid,
+                    undefined,
+                    positionMode === "prompt"
+                        ? undefined
+                        : {
+                              position: position,
+                              unavailable: function () {},
+                          },
+                    undefined,
+                    function (candidate) {
+                        return (
+                            valid() &&
+                            (Number(candidate.adult) !== 1 ||
+                                !(w.__ottParental
+                                    ? w.__ottParental.needs("channels")
+                                    : w.sPSchannels &&
+                                      w.parentPIN !== "*" &&
+                                      !w.parentAccess))
+                        );
+                    }
+                );
+            });
+            return true;
+        },
         playFavorite: function (
             ref: MediaRef,
             guard: () => boolean,
@@ -1728,10 +1896,13 @@ function classicMediaRuntime(): any {
             };
         },
         prepare: function (payload: any, url: string) {
+            var channel = api.channelLaunch(payload);
             if (
                 w.__ottKiosk &&
                 typeof w.__ottKiosk.allowedMedia === "function" &&
-                !w.__ottKiosk.allowedMedia(payload.__ottMediaRef)
+                !(channel != null
+                    ? w.__ottKiosk.allowed(channel)
+                    : w.__ottKiosk.allowedMedia(payload.__ottMediaRef))
             )
                 return null;
             if (
@@ -1801,12 +1972,15 @@ function classicMediaRuntime(): any {
                 ticket: ticket,
             };
             return {
+                channel: start && start.sequence && start.sequence.channel,
                 item: item.payload,
                 ref: item.ref,
                 resume:
                     start && start.startup
                         ? start.startup.position
-                        : start && start.automatic
+                        : start &&
+                            start.automatic &&
+                            !(start.sequence && start.sequence.channel)
                           ? 0
                           : w.OttPlayCore.mediaResumePosition(
                                 previous ? previous.position : 0,
@@ -1821,6 +1995,9 @@ function classicMediaRuntime(): any {
                     );
                 },
             };
+        },
+        repeatMode: function () {
+            return repeat;
         },
         restoreKiosk: function (selection: any, guard: () => boolean) {
             if (
@@ -2387,6 +2564,9 @@ function classicMediaRuntime(): any {
             ? playing.runtime.captureFavorite()
             : null;
     },
+    channelLaunch: function (payload: any) {
+        return classicMediaRuntime().channelLaunch(payload);
+    },
     checkpoint: function (ref: MediaRef, position: number, force = false) {
         var playback = mediaClassicPlayback;
         var runtime =
@@ -2460,6 +2640,8 @@ function classicMediaRuntime(): any {
         )
             return null;
         var sequence = playing.sequence;
+        // Channel-backed playback is pinned by the channel kiosk policy.
+        if (sequence && sequence.channel) return null;
         var items = sequence ? sequence.items : [playing];
         if (!items.length || items.length > 1000) return null;
         var index = -1;
@@ -2518,6 +2700,22 @@ function classicMediaRuntime(): any {
         if (client && typeof client.stop === "function")
             client.stop(playback.payload.stream_url);
     },
+    playChannel: function (
+        payload: any,
+        id: any,
+        guard?: () => boolean,
+        background = false,
+        positionMode = "prompt"
+    ) {
+        (window as any).__ottMedia.useSource(null);
+        return classicMediaRuntime().playChannel(
+            payload,
+            id,
+            guard,
+            background,
+            positionMode
+        );
+    },
     playFavorite: function (
         ref: MediaRef,
         guard: () => boolean,
@@ -2559,6 +2757,9 @@ function classicMediaRuntime(): any {
     },
     prepare: function (item: any, url: string) {
         return classicMediaRuntime().prepare(item, url);
+    },
+    repeatMode: function () {
+        return classicMediaRuntime().repeatMode();
     },
     restoreKiosk: function (selection: any, guard: () => boolean) {
         return classicMediaRuntime().restoreKiosk(selection, guard);

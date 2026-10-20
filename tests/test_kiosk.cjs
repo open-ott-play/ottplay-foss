@@ -627,12 +627,136 @@ console.log(
     "Kiosk admission, recovery, persistence, remote replacement and input tests passed"
 );
 
+// Channel-backed media retains slow-resolution grace without changing live-TV retries.
+for (const provider of ["vportal", "plex"]) {
+    const r = rig();
+    r.source(provider + ":0@one");
+    r.w.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: true },
+        id: provider,
+    };
+    r.w.__ottMedia = {
+        current: () => ({ sequence: { channel: { id: "b" } } }),
+    };
+    const pinned = r.request({ mode: "on", query: "Новости" });
+    assert.equal(pinned.status, "ok");
+    r.advance(59);
+    assert.equal(
+        r.played.length,
+        1,
+        provider + " must not interrupt slow initial resolution at ten seconds"
+    );
+    r.advance(1);
+    assert.equal(
+        r.played.length,
+        2,
+        provider + " retries after sixty seconds without startup progress"
+    );
+    assert.equal(r.kiosk.snapshot().startup_grace_seconds, 60);
+    r.play(true);
+    r.advance(2, true);
+    assert.equal(r.kiosk.snapshot().health, "playing");
+    r.advance(9);
+    assert.equal(r.played.length, 2);
+    r.advance(1);
+    assert.equal(
+        r.played.length,
+        3,
+        provider + " keeps the ten-second watchdog after playback starts"
+    );
+    r.advance(59);
+    assert.equal(
+        r.played.length,
+        3,
+        provider + " gives a recovery resolver its own startup grace"
+    );
+    r.advance(1);
+    assert.equal(r.played.length, 4);
+}
+{
+    const r = rig();
+    r.request({ mode: "on", query: "Новости" });
+    r.advance(9);
+    assert.equal(r.played.length, 1);
+    r.advance(1);
+    assert.equal(
+        r.played.length,
+        2,
+        "ordinary M3U startup retry remains ten seconds"
+    );
+    assert.equal(r.kiosk.snapshot().startup_grace_seconds, undefined);
+}
+
+for (const provider of ["vportal", "plex"]) {
+    const r = rig();
+    r.source(provider + ":0@one");
+    const driver = { capabilities: { mediaPlaylist: true }, id: provider };
+    r.w.__ottActiveProviderDriver = driver;
+    let ended = false;
+    r.w.__ottMedia = {
+        current: () => ({ ended, sequence: { channel: { id: "b" } } }),
+    };
+    r.request({ mode: "on", query: "Новости" });
+    r.play(true);
+    r.advance(2, true);
+    r.play(false);
+    ended = true;
+    r.advance(60);
+    assert.equal(
+        r.played.length,
+        1,
+        provider +
+            " natural end gives the loop resolver sixty seconds from observation"
+    );
+    r.advance(1);
+    assert.equal(r.played.length, 2);
+    r.w.__ottActiveProviderDriver = undefined;
+    r.kiosk.init();
+    const restoredCount = r.played.length;
+    assert.equal(r.kiosk.snapshot().startup_grace_seconds, 60);
+    r.advance(59);
+    assert.equal(
+        r.played.length,
+        restoredCount,
+        provider + " cold persisted policy waits for provider mounting"
+    );
+    r.w.__ottActiveProviderDriver = driver;
+    r.advance(1);
+    assert.equal(r.played.length, restoredCount + 1);
+}
+
 // Both library providers lock their current request-backed media queue.
+for (const provider of ["vportal", "plex"]) {
+    const r = rig();
+    r.source(provider + ":0@one");
+    r.w.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: true },
+        id: provider,
+    };
+    r.w.__ottMedia = {
+        current: () => ({ sequence: { channel: { id: "b" } } }),
+        kioskSelection: () => {
+            throw new Error(
+                "Channel policy must not capture a detached media queue"
+            );
+        },
+    };
+    const result = r.request({ mode: "on", query: "Новости" });
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.channel.id, "b");
+    assert.deepEqual(r.played, ["b"]);
+    assert.equal(r.kiosk.allowed("a"), false);
+    assert.equal(r.kiosk.allowed("b"), true);
+}
+
 for (const provider of ["vportal", "plex"]) {
     const r = rig();
     const source = provider + ":0@one";
     r.source(source);
-    r.w.__ottActiveProviderDriver = { id: provider };
+    r.w.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: true },
+        id: provider,
+    };
     r.w.cList = [];
     r.w.curList = [];
     const records = [0, 1, 0].map((i) => ({
@@ -2077,3 +2201,22 @@ testScreenBridge().catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+{
+    const r = rig();
+    r.request({ mode: "on" });
+    r.w.playChannel(0, 1);
+    const started = r.played.length;
+    r.w.__ottStandby = { blocked: () => true };
+    r.w.restart = () => assert.fail("standby watchdog must not reload");
+    r.play(false);
+    r.advance(120);
+    r.kiosk.restoreMedia();
+    assert.equal(
+        r.played.length,
+        started,
+        "manual standby suppresses watchdog and restore playback"
+    );
+    r.w.__ottStandby.blocked = () => false;
+    r.advance(10);
+    assert(r.played.length > started, "wake restores normal kiosk recovery");
+}

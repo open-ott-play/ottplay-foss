@@ -507,6 +507,34 @@ scenario(
         assert.equal(f.call("remove", { id: entry.id }).result.status, "ok");
     }
 );
+
+scenario(
+    "finite channel favorites acknowledge dispatch without canceling media loading",
+    () => {
+        const f = fixture();
+        const saved = f.call("add").result.data.entry;
+        f.w.__ottActiveProviderDriver.capabilities = { mediaPlaylist: true };
+        f.w.channels[42].__ottMediaItem = { request: { id: 42 } };
+        f.w.closeList = () => {
+            throw new Error("Do not cancel the pending media resolver");
+        };
+        f.w.playChannel = (category, index, fullscreen, admit) => {
+            assert.equal(admit(), true);
+            f.w.curList = f.w.cats[f.w.catsArray[category]];
+            f.w.primaryIndex = index;
+            return true;
+        };
+        const response = f.call("play", { id: saved.id }).result;
+        assert.equal(response.status, "ok");
+        assert.equal(response.data.state, "dispatched");
+        assert.equal(response.data.dispatched, true);
+        f.w.playChannel = () => false;
+        assert.equal(
+            f.call("play", { id: saved.id }).result.data.error,
+            "playback_failed"
+        );
+    }
+);
 scenario(
     "generic media completion closes overlays and cancellation runs before a reentrant reply",
     () => {

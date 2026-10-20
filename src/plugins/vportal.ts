@@ -68,6 +68,13 @@ interface VPortalOptions {
     title?: string;
 }
 
+export interface VPortalSection {
+    adult?: boolean;
+    request: Record<string, any>;
+    sequence?: boolean;
+    title: string;
+}
+
 export interface VPortalClient {
     cancel(): void;
     cancelAutomatic(): void;
@@ -78,11 +85,23 @@ export interface VPortalClient {
         done: (result: { items: any[]; error?: string }) => void
     ): () => void;
     play(item: any): void;
+    playlist(
+        sections: VPortalSection[],
+        done: (
+            items: any[],
+            complete: boolean,
+            error?: string,
+            scanned?: number
+        ) => void
+    ): () => void;
     resolve(item: any, done: (item: any) => void, automatic?: boolean): void;
     search(
         query: string,
         done: (result: { items: any[]; error?: string }) => void,
         isCurrent?: () => boolean
+    ): () => void;
+    sections(
+        done: (result: { items: VPortalSection[]; error?: string }) => void
     ): () => void;
     stop(url?: string): void;
 }
@@ -120,6 +139,8 @@ export function createVPortalClient(
     var background: VPortalRequestLane = { pending: null, revision: 0 };
     var searchLane: VPortalRequestLane = { pending: null, revision: 0 };
     var pageLane: VPortalRequestLane = { pending: null, revision: 0 };
+    var catalogLane: VPortalRequestLane = { pending: null, revision: 0 };
+    var stopCatalog: (() => void) | null = null;
     var stopSearch: (() => void) | null = null;
     var stopPage: (() => void) | null = null;
     var disposed = false;
@@ -338,7 +359,8 @@ export function createVPortalClient(
         accept: (data: any) => void,
         complete: () => void,
         guard: () => boolean,
-        lane: VPortalRequestLane = foreground
+        lane: VPortalRequestLane = foreground,
+        failed?: () => void
     ): void {
         var body = copyRequest(params);
         body.app = "ott-play";
@@ -360,7 +382,12 @@ export function createVPortalClient(
                 complete: function (): void {
                     if (finished) return;
                     finished = true;
-                    if ((lane === searchLane || lane === pageLane) && !guard())
+                    if (
+                        (lane === searchLane ||
+                            lane === pageLane ||
+                            lane === catalogLane) &&
+                        !guard()
+                    )
                         return;
                     if (!isCurrent(token, lane)) return;
                     lane.pending = null;
@@ -379,16 +406,20 @@ export function createVPortalClient(
                         !finished &&
                         lane !== searchLane &&
                         lane !== pageLane &&
+                        lane !== catalogLane &&
                         isCurrent(token, lane) &&
                         guard() &&
                         status !== "abort"
-                    )
-                        reportError(automatic);
+                    ) {
+                        if (failed) failed();
+                        else reportError(automatic);
+                    }
                 },
                 success: function (data: any): void {
                     if (!finished && isCurrent(token, lane) && guard())
                         accept(data);
-                    else if (data && lane !== pageLane) releaseUrl(data.stop);
+                    else if (data && lane !== pageLane && lane !== catalogLane)
+                        releaseUrl(data.stop);
                 },
                 timeout: 30000,
                 type: "POST",
@@ -399,16 +430,24 @@ export function createVPortalClient(
                 lane.pending = xhr;
             else if (
                 !finished &&
-                lane === pageLane &&
+                (lane === pageLane || lane === catalogLane) &&
                 xhr &&
                 typeof xhr.abort === "function"
             )
                 xhr.abort();
         } catch (_error) {
             if (!isCurrent(token, lane)) return;
+            finished = true;
             if (visible) hideBusy();
-            if (lane !== searchLane && lane !== pageLane && guard())
-                reportError(automatic);
+            if (
+                lane !== searchLane &&
+                lane !== pageLane &&
+                lane !== catalogLane &&
+                guard()
+            ) {
+                if (failed) failed();
+                else reportError(automatic);
+            }
             complete();
         }
     }
@@ -460,10 +499,40 @@ export function createVPortalClient(
                   : "";
         } else
             record.playlist_url = sourceTarget({
+                __ottVPortalContext: mediaContext(item, parent),
                 mediaName: title,
                 request: copyRequest(item.request),
             });
         return record;
+    }
+
+    function mediaContext(item: any, parent?: any): any {
+        var context: any = {};
+        [
+            "title",
+            "year",
+            "duration",
+            "agelimit",
+            "description",
+            "imglr",
+            "img",
+        ].forEach(function (key) {
+            context[key] = item[key] || (parent && parent[key]);
+        });
+        context.type =
+            item.type === "multistream" ||
+            (parent && parent.type === "multistream")
+                ? "multistream"
+                : "category";
+        if (
+            parent &&
+            parent.type === "multistream" &&
+            parent.title &&
+            item.title
+        )
+            context.title = parent.title + " - " + item.title;
+        if (item.adult || (parent && parent.adult)) context.adult = 1;
+        return context;
     }
 
     function validStream(value: any): boolean {
@@ -878,7 +947,12 @@ export function createVPortalClient(
         return cancelSearch;
     }
 
-    function catalogRecords(data: any, params: any, name: string): any[] {
+    function catalogRecords(
+        data: any,
+        params: any,
+        name: string,
+        retainDirect = false
+    ): any[] {
         if (
             !data ||
             (data.type !== "videoportal" &&
@@ -889,10 +963,31 @@ export function createVPortalClient(
             throw new Error();
         var records: any[] = [];
         var next: any = null;
+        var occurrences: Record<string, number> = Object.create(null);
         data.items.forEach(function (item: any): void {
             if (item && item.type === "next") next = item;
             else {
                 var record = media(item, data);
+                if (retainDirect && record && item.type === "stream") {
+                    var title = String(item.title || "");
+                    var occurrence = occurrences[title] || 0;
+                    occurrences[title] = occurrence + 1;
+                    if (record.stream_url && !record.request) {
+                        record.__ottMediaOrigin = {
+                            kind: "catalog",
+                            target: sourceTarget({
+                                mediaName: name,
+                                request: copyRequest(params),
+                            }),
+                            title: name,
+                        };
+                        record.__ottVPortalDirect = {
+                            id: directProviderId(item),
+                            occurrence: occurrence,
+                            title: title,
+                        };
+                    }
+                }
                 if (record) records.push(record);
             }
         });
@@ -1029,8 +1124,257 @@ export function createVPortalClient(
         if (active()) pendingPage = pageLane.pending;
         return cancelOwned;
     }
+    /** The profile chooses roots once; playback consumes only their flat leaves. */
+    function collect(
+        roots: VPortalSection[],
+        recursive: boolean,
+        done: (
+            items: any[],
+            complete: boolean,
+            error?: string,
+            scanned?: number
+        ) => void
+    ): () => void {
+        var token = ++catalogLane.revision;
+        if (stopCatalog) stopCatalog();
+        if (token !== catalogLane.revision) return function () {};
+        var active = true;
+        var tasks: any[] = [];
+        var visited: Record<string, boolean> = Object.create(null);
+        var known: Record<string, boolean> = Object.create(null);
+        var result: any[] = [];
+        var pages = 0;
+        var rows = 0;
+        var bytes = 0;
+        var keyBytes = 0;
+        var pendingOwned: any = null;
+        var timer: any = null;
+        var deadline = Date.now() + 120000;
+        function identity(value: any): string {
+            function order(input: any, depth: number): any {
+                if (depth > 12) throw new Error();
+                if (!input || typeof input !== "object") return input;
+                if (Array.isArray(input))
+                    return input.map(function (part) {
+                        return order(part, depth + 1);
+                    });
+                var copy = Object.create(null);
+                Object.keys(input)
+                    .sort()
+                    .forEach(function (key) {
+                        copy[key] = order(input[key], depth + 1);
+                    });
+                return copy;
+            }
+            var key = JSON.stringify(order(value, 0));
+            keyBytes += key ? key.length * 2 : 0;
+            if (!key || key.length > 65536 || keyBytes > 8388608)
+                throw new Error();
+            return key;
+        }
+        function current(): boolean {
+            return active && isCurrent(token, catalogLane);
+        }
+        function cancelOwned(): void {
+            if (!active) return;
+            active = false;
+            tasks = [];
+            if (stopCatalog === cancelOwned) stopCatalog = null;
+            if (timer !== null) w.clearTimeout(timer);
+            if (token === catalogLane.revision) ++catalogLane.revision;
+            var pending = pendingOwned;
+            pendingOwned = null;
+            if (catalogLane.pending === pending) catalogLane.pending = null;
+            if (pending && typeof pending.abort === "function") pending.abort();
+        }
+        function finish(error?: string): void {
+            if (!current()) return;
+            cancelOwned();
+            done(result.slice(), true, error, rows);
+        }
+        function enqueue(target: any): void {
+            var params = copyRequest(target.request);
+            params.limit = 300;
+            var key = identity(params);
+            if (visited[key]) return;
+            visited[key] = true;
+            tasks.push({
+                parent: target.__ottVPortalContext || {
+                    adult: target.adult ? 1 : 0,
+                    title: target.title || target.mediaName || "",
+                    type: target.sequence ? "multistream" : "category",
+                },
+                request: params,
+                title: target.title || target.mediaName || "",
+            });
+        }
+        function next(): void {
+            if (!current()) return;
+            if (!tasks.length) {
+                finish();
+                return;
+            }
+            if (++pages > 500 || Date.now() >= deadline) {
+                finish(translate("VPortal request failed"));
+                return;
+            }
+            var task = tasks.shift();
+            var data: any = null;
+            request(
+                task.request,
+                token,
+                function (value) {
+                    data = value;
+                },
+                function () {
+                    if (!current()) return;
+                    pendingOwned = null;
+                    try {
+                        if (
+                            !data ||
+                            data.truncated ||
+                            (bytes += JSON.stringify(data).length * 2) >
+                                33554432 ||
+                            !Array.isArray(data.items) ||
+                            data.items.length > 1001 ||
+                            (rows += data.items.length) > 20000
+                        )
+                            throw new Error();
+                        var context = mediaContext(data, task.parent);
+                        if (
+                            task.parent.type === "multistream" &&
+                            task.parent.title
+                        )
+                            context.title = task.parent.title;
+                        var catalogData = copyRequest(data);
+                        Object.keys(context).forEach(function (key) {
+                            catalogData[key] = context[key];
+                        });
+                        var records = catalogRecords(
+                            catalogData,
+                            task.request,
+                            task.title,
+                            recursive
+                        );
+                        var hasNext = false;
+                        records.forEach(function (record) {
+                            if (record.__ottMediaNext) {
+                                hasNext = true;
+                                var cursor = record.playlist_url;
+                                var previousParams = copyRequest(task.request);
+                                var nextParams = copyRequest(cursor.request);
+                                var nextOffset = Number(nextParams.offset);
+                                delete previousParams.offset;
+                                delete nextParams.offset;
+                                if (
+                                    !isFinite(nextOffset) ||
+                                    Math.floor(nextOffset) !== nextOffset ||
+                                    nextOffset <=
+                                        (Number(task.request.offset) || 0) ||
+                                    identity(previousParams) !==
+                                        identity(nextParams)
+                                )
+                                    throw new Error();
+                                cursor.__ottVPortalContext = context;
+                                if (visited[identity(cursor.request)])
+                                    throw new Error();
+                                enqueue(cursor);
+                            } else if (record.stream_url) {
+                                if (!recursive) {
+                                    if (!known.root) {
+                                        known.root = true;
+                                        result.push({
+                                            request: {},
+                                            title: options.title || "VPortal",
+                                        });
+                                    }
+                                    return;
+                                }
+                                var direct = record.__ottVPortalDirect;
+                                var key = identity(
+                                    record.request ||
+                                        (direct
+                                            ? [
+                                                  record.__ottMediaOrigin.target
+                                                      .request,
+                                                  direct.id || [
+                                                      direct.title,
+                                                      direct.occurrence,
+                                                  ],
+                                              ]
+                                            : record.stream_url)
+                                );
+                                if (known[key]) return;
+                                known[key] = true;
+                                record.__ottPlaylistId = key;
+                                if (direct && options.sourceId)
+                                    record.__ottMediaRef = {
+                                        itemId: "direct:" + key,
+                                        sourceId: options.sourceId,
+                                    };
+                                result.push(record);
+                            } else if (
+                                record.playlist_url &&
+                                typeof record.playlist_url === "object" &&
+                                record.playlist_url.request
+                            ) {
+                                var target = record.playlist_url;
+                                if (recursive) enqueue(target);
+                                else {
+                                    var key = identity(target.request);
+                                    if (known[key]) return;
+                                    known[key] = true;
+                                    result.push({
+                                        adult: !!record.adult,
+                                        request: copyRequest(target.request),
+                                        sequence: !!record.__ottMediaFilterable,
+                                        title: record.title,
+                                    });
+                                }
+                            }
+                        });
+                        if (
+                            !hasNext &&
+                            (data.items.some(function (item: any) {
+                                return item && item.type === "next";
+                            }) ||
+                                data.has_more ||
+                                data.hasMore ||
+                                (typeof data.total === "number" &&
+                                    data.total >
+                                        (Number(task.request.offset) || 0) +
+                                            data.items.length))
+                        )
+                            throw new Error();
+                        if (recursive)
+                            done(result.slice(), false, undefined, rows);
+                        next();
+                    } catch (_) {
+                        finish(translate("VPortal request failed"));
+                    }
+                },
+                current,
+                catalogLane
+            );
+            if (current()) pendingOwned = catalogLane.pending;
+        }
+        stopCatalog = cancelOwned;
+        try {
+            if (typeof w.setTimeout === "function")
+                timer = w.setTimeout(function () {
+                    finish(translate("VPortal request failed"));
+                }, 120000);
+            roots.forEach(enqueue);
+            next();
+        } catch (_) {
+            finish(translate("VPortal request failed"));
+        }
+        return cancelOwned;
+    }
+
     function pagehide(): void {
         if (stopPage) stopPage();
+        if (stopCatalog) stopCatalog();
     }
     if (typeof w.addEventListener === "function")
         w.addEventListener("pagehide", pagehide);
@@ -1137,25 +1481,51 @@ export function createVPortalClient(
         var token = lane.revision + 1;
         if (automatic) cancelAutomatic();
         else cancel();
-        if (!item || !isCurrent(token, lane)) return;
-        if (
-            options.sourceId &&
-            (item.request || item.vportalSource) &&
-            item.vportalSource !== options.sourceId
-        ) {
-            reportError(automatic);
-            return;
-        }
         var view = w._mediaLoadState;
+        var finished = false;
         function current(): boolean {
             return (
                 isCurrent(token, lane) &&
-                (automatic || view === w._mediaLoadState)
+                (automatic || view === w._mediaLoadState) &&
+                (!resolved ||
+                    !(resolved as any).isCurrent ||
+                    (resolved as any).isCurrent())
             );
+        }
+        function fail(): void {
+            if (finished || !current()) return;
+            finished = true;
+            if (
+                mediaSession &&
+                mediaSession.lane === lane &&
+                !mediaSession.started
+            )
+                stop();
+            // Retire only this launch's wait before displaying its error.
+            var beforeError = resolved && (resolved as any).beforeError;
+            if (typeof beforeError === "function") beforeError();
+            if (!current()) return;
+            reportError(automatic);
+            if (current() && resolved) resolved(null);
+        }
+        if (!current()) return;
+        if (
+            !item ||
+            (options.sourceId &&
+                (item.request || item.vportalSource) &&
+                item.vportalSource !== options.sourceId)
+        ) {
+            fail();
+            return;
         }
         var result: any = null;
         function start(url: string): void {
-            if (!current() || !validStream(url)) return;
+            if (finished || !current()) return;
+            if (!validStream(url)) {
+                if (resolved) fail();
+                return;
+            }
+            finished = true;
             // History may hold the selected object itself. The core must compare
             // its previous URL with the newly resolved URL before updating it.
             var playable = copyRequest(item);
@@ -1186,7 +1556,10 @@ export function createVPortalClient(
         afterRelease(function () {
             if (!current()) return;
             if (!item.request || typeof item.request !== "object") {
-                if (automatic && item.__ottVPortalQueue) {
+                if (
+                    (automatic && item.__ottVPortalQueue) ||
+                    item.__ottVPortalDirect
+                ) {
                     var direct = item.__ottVPortalDirect;
                     var origin = item.__ottMediaOrigin;
                     var target = origin && origin.target;
@@ -1200,24 +1573,22 @@ export function createVPortalClient(
                         (options.sourceId &&
                             target.vportalSource !== options.sourceId)
                     ) {
-                        reportError(true);
+                        fail();
                         return;
                     }
                     var page: any = null;
-                    var pageReceived = false;
                     request(
                         target.request,
                         token,
                         function (data): void {
                             if (current()) {
-                                pageReceived = true;
                                 page = data;
                             }
                         },
                         function (): void {
                             if (!current()) return;
                             if (!page) {
-                                if (pageReceived) reportError(true);
+                                fail();
                                 return;
                             }
                             if (
@@ -1230,7 +1601,7 @@ export function createVPortalClient(
                                 page.items.length > 10000 ||
                                 page.truncated
                             ) {
-                                reportError(true);
+                                fail();
                                 return;
                             }
                             var matches: any[] = [];
@@ -1262,13 +1633,14 @@ export function createVPortalClient(
                                     typeof fresh.request === "object") ||
                                 !validStream(fresh.url)
                             ) {
-                                reportError(true);
+                                fail();
                                 return;
                             }
                             start(fresh.url);
                         },
                         current,
-                        lane
+                        lane,
+                        fail
                     );
                     return;
                 }
@@ -1302,13 +1674,7 @@ export function createVPortalClient(
                         return;
                     }
                     if (!result || result.type === "error") {
-                        if (
-                            mediaSession &&
-                            mediaSession.lane === lane &&
-                            !mediaSession.started
-                        )
-                            stop();
-                        if (result) reportError(automatic);
+                        fail();
                         return;
                     }
                     var variants = result.variants;
@@ -1324,13 +1690,7 @@ export function createVPortalClient(
                           ? variants[names[0]]
                           : "";
                     if (!url) {
-                        if (
-                            mediaSession &&
-                            mediaSession.lane === lane &&
-                            !mediaSession.started
-                        )
-                            stop();
-                        reportError(automatic);
+                        fail();
                         return;
                     }
                     if (
@@ -1403,7 +1763,8 @@ export function createVPortalClient(
                     else w.selectBoxKeyHandler = qualityHandler;
                 },
                 current,
-                lane
+                lane,
+                fail
             );
         });
     }
@@ -1414,6 +1775,7 @@ export function createVPortalClient(
         dispose: function (): void {
             disposed = true;
             if (stopPage) stopPage();
+            if (stopCatalog) stopCatalog();
             if (typeof w.removeEventListener === "function")
                 w.removeEventListener("pagehide", pagehide);
             cancel();
@@ -1422,6 +1784,9 @@ export function createVPortalClient(
         load: load,
         page: page,
         play: play,
+        playlist: function (sections, done) {
+            return collect(sections, true, done);
+        },
         resolve: function (
             item: any,
             done: (item: any) => void,
@@ -1430,6 +1795,15 @@ export function createVPortalClient(
             play(item, done, automatic);
         },
         search: search,
+        sections: function (done) {
+            return collect(
+                [{ request: {}, title: options.title || "VPortal" }],
+                false,
+                function (items, _complete, error) {
+                    done({ error: error, items: items });
+                }
+            );
+        },
         stop: function (url?: string) {
             if (!nasOrigin || (mediaSession && url && mediaSession.url !== url))
                 return;

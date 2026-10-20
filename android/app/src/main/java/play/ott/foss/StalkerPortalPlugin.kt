@@ -239,6 +239,10 @@ class StalkerPortalPlugin : Plugin() {
         }
     }
 
+    // API22 uses OkHttp4 (nullable body); modern shells use OkHttp5.
+    private fun readBody(body: okhttp3.ResponseBody?, head: Boolean): String =
+        ProviderHttpResponse.read(body?.byteStream(), if (head) -1 else body?.contentLength() ?: -1)
+
     private fun performRequest(call: PluginCall, rawUrl: String) {
         val urlStr = rawUrl
         val method = (call.getString("method") ?: "GET").uppercase()
@@ -246,23 +250,21 @@ class StalkerPortalPlugin : Plugin() {
         val contentType = call.getString("contentType") ?: "application/json"
         val headersObj = call.getObject("headers")
 
+        val control = call.getBoolean("remoteControl", false) == true ||
+            call.getBoolean("secureControl", false) == true
+        val ticket = if (control) null else NativeWork.begin()
+        if (!control && ticket == null) { call.reject("Player is in standby", "standby"); return }
         Thread {
-            var connection: HttpURLConnection? = null
             try {
+                ticket?.check()
                 val url = URL(urlStr)
-                require(url.protocol == "http" || url.protocol == "https") { "Only HTTP(S) URLs are supported" }
+                require(url.protocol == "http" || url.protocol == "https")
                 if (BuildConfig.FLAVOR == "play" && url.protocol == "http") {
                     call.reject("OTT-play FOSS Play requires HTTPS sources. Use an HTTPS provider URL or the Full edition for HTTP sources.", "https_required")
                     return@Thread
                 }
-                val conn = url.openConnection() as HttpURLConnection
-                connection = conn
-                conn.requestMethod = method
                 val timeout = (call.getInt("timeoutMs") ?: 15000).coerceAtLeast(1)
-                conn.connectTimeout = timeout
-                conn.readTimeout = timeout
-                conn.instanceFollowRedirects = true
-
+                val builder = Request.Builder().url(urlStr)
                 var contentTypeFromHeaders = false
                 if (headersObj != null) {
                     val keys = headersObj.keys()
@@ -270,42 +272,32 @@ class StalkerPortalPlugin : Plugin() {
                         val key = keys.next()
                         if (isForbiddenHeader(key)) continue
                         val value = headersObj.opt(key)?.toString() ?: continue
-                        if (key.equals("content-type", ignoreCase = true)) {
-                            contentTypeFromHeaders = true
-                        }
-                        conn.setRequestProperty(key, value)
+                        if (key.equals("content-type", ignoreCase = true)) contentTypeFromHeaders = true
+                        builder.header(key, value)
                     }
                 }
-                if (!contentTypeFromHeaders && bodyString.isNotEmpty()) {
-                    conn.setRequestProperty("Content-Type", contentType)
+                if (!contentTypeFromHeaders && bodyString.isNotEmpty()) builder.header("Content-Type", contentType)
+                val body = if (method in listOf("GET", "HEAD")) null
+                    else bodyString.toRequestBody(null)
+                builder.method(method, body)
+                val client = OkHttpClient.Builder().connectTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                    .followSslRedirects(false)
+                    .readTimeout(timeout.toLong(), TimeUnit.MILLISECONDS)
+                    .callTimeout(timeout.toLong(), TimeUnit.MILLISECONDS).build()
+                val task = client.newCall(builder.build())
+                ticket?.cancelWith { task.cancel() }
+                ticket?.check()
+                task.execute().use { response ->
+                    val text = readBody(response.body, method == "HEAD")
+                    ticket?.check()
+                    val cookies = JSArray()
+                    response.headers.values("Set-Cookie").forEach { cookies.put(it) }
+                    val responseHeaders = StringBuilder()
+                    response.headers.forEach { (key, value) -> responseHeaders.append(key).append(": ").append(value).append("\r\n") }
+                    call.resolve(JSObject().put("status", response.code).put("statusText", response.message)
+                        .put("headers", responseHeaders.toString()).put("body", text)
+                        .put("contentType", response.header("Content-Type") ?: "application/octet-stream").put("setCookie", cookies))
                 }
-                if (bodyString.isNotEmpty()) {
-                    conn.doOutput = true
-                    conn.outputStream.use { it.write(bodyString.toByteArray(Charsets.UTF_8)) }
-                }
-
-                val status = conn.responseCode
-                val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                // HEAD describes the corresponding GET representation, not a body.
-                val declaredLength = if (method == "HEAD") -1 else conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1
-                val body = ProviderHttpResponse.read(stream, declaredLength)
-                val ct = conn.contentType ?: "application/octet-stream"
-
-                val setCookieArr = JSArray()
-                conn.headerFields?.get("Set-Cookie")?.forEach { setCookieArr.put(it) }
-
-                val ret = JSObject()
-                ret.put("status", status)
-                ret.put("statusText", conn.responseMessage ?: "")
-                val responseHeaders = StringBuilder()
-                conn.headerFields.forEach { (name, values) ->
-                    if (name != null) values.forEach { responseHeaders.append(name).append(": ").append(it).append("\r\n") }
-                }
-                ret.put("headers", responseHeaders.toString())
-                ret.put("body", body)
-                ret.put("contentType", ct)
-                ret.put("setCookie", setCookieArr)
-                call.resolve(ret)
             } catch (e: Exception) {
                 val code = when (e) {
                     is ProviderHttpResponse.TooLarge -> "response_too_large"
@@ -317,13 +309,10 @@ class StalkerPortalPlugin : Plugin() {
                     is java.net.SocketTimeoutException -> "Provider request timed out"
                     is javax.net.ssl.SSLException -> "Provider TLS connection failed; check its HTTPS certificate"
                     is java.net.UnknownHostException -> "Provider hostname could not be resolved"
-                    else -> "Provider request failed"
+                    else -> "Provider request failed or cancelled"
                 }
-                // Exceptions can contain full provider URLs with credentials.
                 call.reject(message, code)
-            } finally {
-                connection?.disconnect()
-            }
+            } finally { ticket?.finish() }
         }.start()
     }
 }

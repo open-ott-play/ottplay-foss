@@ -52,11 +52,11 @@ internal object AppUpdates {
         context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
     private fun digest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
         .joinToString("") { "%02x".format(it.toInt() and 255) }
-    private fun fileDigest(file: File): String {
+    private fun fileDigest(file: File, ticket: NativeWork.Ticket? = null): String {
         val md = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(65536)
-            while (true) { val count = input.read(buffer); if (count < 0) break; md.update(buffer, 0, count) }
+            while (true) { ticket?.check(); val count = input.read(buffer); if (count < 0) break; md.update(buffer, 0, count) }
         }
         return md.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
     }
@@ -103,43 +103,57 @@ internal object AppUpdates {
             require(p.getString("sha256", "") == hash)
             return status(app)
         }
-        check(p.edit().clear().putString("sha256", hash).putString("phase", "downloading").commit())
-        downloading = true
-        executor.execute {
-            val partial = File(app.filesDir, "app-update.part")
-            try {
-                download(app, address, partial)
-                require(fileDigest(partial) == hash)
-                val info = verify(app, partial)
-                synchronized(this) {
-                    check(partial.renameTo(stage(app)))
-                    check(p.edit().putLong("targetCode", version(info)).putString("targetVersion", info.versionName)
-                        .putString("phase", "ready").commit())
+        val ticket = NativeWork.begin() ?: error("Player is in standby; wake before downloading an update")
+        try {
+            check(p.edit().clear().putString("sha256", hash).putString("phase", "downloading").commit())
+            downloading = true
+            executor.execute {
+                val partial = File(app.filesDir, "app-update.part")
+                try {
+                    ticket.check()
+                    download(app, address, partial, ticket)
+                    require(fileDigest(partial, ticket) == hash)
+                    val info = verify(app, partial)
+                    synchronized(this) {
+                        ticket.commit {
+                            check(partial.renameTo(stage(app)))
+                            check(p.edit().putLong("targetCode", version(info)).putString("targetVersion", info.versionName)
+                                .putString("phase", "ready").commit())
+                        }
+                    }
+                } catch (error: Exception) {
+                    val reason = if (error is javax.net.ssl.SSLException) "tls_connection_failed" else "download_or_verification_failed"
+                    synchronized(this) { runCatching { state(app, "failed", reason) } }
+                } finally {
+                    partial.delete()
+                    synchronized(this) { downloading = false }
+                    ticket.finish()
                 }
-            } catch (error: Exception) {
-                val reason = if (error is javax.net.ssl.SSLException) "tls_connection_failed" else "download_or_verification_failed"
-                synchronized(this) { runCatching { state(app, "failed", reason) } }
-            } finally {
-                partial.delete()
-                synchronized(this) { downloading = false }
             }
+        } catch (error: Exception) {
+            downloading = false
+            ticket.finish()
+            throw error
         }
         return status(app)
     }
-    private fun download(context: Context, address: String, output: File) {
+    private fun download(context: Context, address: String, output: File, ticket: NativeWork.Ticket) {
         var url = https(address)
         val legacyTls = if (Build.VERSION.SDK_INT < 24)
             context.resources.openRawResource(R.raw.isrg_root_x1).use { LegacyUpdateTls.create(it) }
         else null
         val deadline = android.os.SystemClock.elapsedRealtime() + 180000
         for (redirect in 0..5) {
+            ticket.check()
             val connection = url.openConnection() as HttpsURLConnection
+            ticket.cancelWith { connection.disconnect() }
             if (legacyTls != null) connection.sslSocketFactory = legacyTls
             connection.instanceFollowRedirects = false
             connection.connectTimeout = 15000
             connection.readTimeout = 15000
             connection.setRequestProperty("Accept-Encoding", "identity")
             try {
+                ticket.check()
                 val code = connection.responseCode
                 if (code in listOf(301, 302, 303, 307, 308)) {
                     require(redirect < 5)
@@ -153,6 +167,7 @@ internal object AppUpdates {
                         val buffer = ByteArray(65536)
                         var total = 0L
                         while (true) {
+                            ticket.check()
                             require(android.os.SystemClock.elapsedRealtime() < deadline)
                             val count = input.read(buffer)
                             if (count < 0) break

@@ -96,3 +96,7 @@ We may update this policy as the project evolves. The “Last updated” date ch
 For store listing fields, use this document's stable URL:
 
 `https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md`
+
+## Local video imports
+
+Local videos are copied into this device’s app storage or this browser origin’s IndexedDB. Browser imports are not uploaded to here.now. If you explicitly choose a server library, the selected files are uploaded to that server. Removing site data, clearing app storage or uninstalling removes device-local copies. Profile backups do not include the video files.

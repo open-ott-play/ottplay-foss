@@ -323,7 +323,12 @@ for (const operation of ["exit_app", "restart_app", "standby", "wake"]) {
         pending.effect();
         assert.equal(
             f.effects.length,
-            changed === "none" && operation !== "wake" ? 1 : 0,
+            operation !== "wake" &&
+                (changed === "none" ||
+                    (operation === "standby" &&
+                        ["lock", "kiosk"].includes(changed)))
+                ? 1
+                : 0,
             operation + " " + changed
         );
     }
@@ -344,7 +349,7 @@ for (const changed of ["none", "lock", "kiosk", "replace"]) {
     pending.effect();
     assert.deepEqual(
         f.effects,
-        changed === "none" ? [["set-standby", true]] : []
+        changed !== "replace" ? [["set-standby", true]] : []
     );
     if (changed === "none") {
         f.w.stbIsStandby = () => true;
@@ -1703,3 +1708,21 @@ for (const [start, offset, id] of [
 console.log(
     "PASS channel offsets: exact safe integers, positive/negative wrap, one selection, bounded receipt, target PIN and shared stale-state guards"
 );
+
+for (const mode of ["lock", "kiosk"]) {
+    const f = fixture();
+    f[mode](true);
+    for (const operation of ["standby", "wake"]) {
+        assert.equal(
+            doctorCapabilities(f.w).find((x) => x.name === operation).state,
+            "available"
+        );
+        const request = f.run("lifecycle", { operation });
+        assert.equal(request.result.status, "ok", mode + " " + operation);
+        request.effect();
+    }
+    assert.equal(
+        f.run("lifecycle", { operation: "exit_app" }).result.status,
+        "rejected"
+    );
+}

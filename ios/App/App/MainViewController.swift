@@ -52,11 +52,14 @@ class MainViewController: CAPBridgeViewController {
             webView?.configuration.userContentController.addUserScript(script)
         }
         bridge?.registerPluginInstance(AccessMediaPlugin())
-        MobileXmltvEpg.requestHandler = { request, completion in
-            AccessMedia.fetch(request, discoverOnFailure: false, completion: completion)
+        bridge?.registerPluginInstance(NativeBackground())
+        MobileXmltvEpg.cancellableRequestHandler = { request, completion in
+            let task = AccessMedia.fetch(request, discoverOnFailure: false, completion: completion)
+            return { task.cancel() }
         }
         bridge?.registerPluginInstance(MobileCommandQueue())
         bridge?.registerPluginInstance(M3UProxyPlugin())
+        bridge?.registerPluginInstance(LocalMedia())
         bridge?.registerPluginInstance(MobileXmltvEpg())
         bridge?.registerPluginInstance(MobileNativeMedia())
         bridge?.registerPluginInstance(DashExoPlayer())

@@ -124,6 +124,86 @@ function mountChannelLibrary(host: any): void {
     channelLibraryPublish(host);
 }
 
+/** Retain the live list model so progressive data cannot replace its overlays. */
+function captureChannelAppendView(host: any): (() => void) | null {
+    var library = channelLibraryInstance;
+    var port = host.__ottClassicScreenPort;
+    var owner = port && port.listOwner();
+    var group = channelLibraryView[host.listCatIndex];
+    var rows = group && host.cats[host.catsArray[host.listCatIndex]];
+    function current(): boolean {
+        return !!(
+            library === channelLibraryInstance &&
+            library &&
+            library.active() &&
+            port === host.__ottClassicScreenPort &&
+            owner &&
+            owner.active() &&
+            owner === port.listOwner() &&
+            host.isListVisible &&
+            rows &&
+            host.listArray === rows &&
+            host.listDataArray === rows &&
+            owner.model.items === rows &&
+            owner.model.rows === rows &&
+            typeof host.channelsKeyHandler === "function" &&
+            owner.model.handler === host.channelsKeyHandler &&
+            host.listKeyHandler === host.channelsKeyHandler
+        );
+    }
+    if (!current()) return null;
+    var focused = rows[host.selIndex];
+    return function () {
+        if (!current()) return;
+        var category = channelLibraryIndex(group.id);
+        if (category < 0) return;
+        var label = host.catsArray[category];
+        var next = host.cats[label];
+        var changed = rows.length !== next.length;
+        for (var i = 0; i < next.length; i++) {
+            if (rows[i] !== next[i]) changed = true;
+            rows[i] = next[i];
+        }
+        rows.length = next.length;
+        host.cats[label] = rows;
+        if (host.curList === next) host.curList = rows;
+        host.listCatIndex = category;
+        host.selIndex = Math.max(0, rows.indexOf(focused));
+        if (
+            changed &&
+            owner.foreground() &&
+            typeof host.showPage === "function"
+        )
+            host.showPage();
+    };
+}
+
+function appendChannelLibrary(host: any, ids: any[]): void {
+    if (!channelLibraryInstance || !channelLibraryInstance.active()) return;
+    var updateView = captureChannelAppendView(host);
+    channelLibraryInstance.append(
+        ids.map(function (id: any) {
+            var channel = host.channels[id];
+            var category = channel.category || {};
+            return {
+                groupId: String(
+                    channel.groupId || "provider:" + (category.name || "Other")
+                ),
+                groupLabel: String(category.name || "Other"),
+                id: id,
+                itemId: String(channel.itemId || "channel:" + id),
+                label: String(channel.channel_name || ""),
+                locked: !!(
+                    channel.adult ||
+                    (host.parental && host.parental.test(category.name || ""))
+                ),
+            };
+        })
+    );
+    channelLibraryPublish(host);
+    if (updateView) updateView();
+}
+
 function channelLibraryChange(action: string, value?: any, extra?: any): any {
     var host = window as any;
     var library = channelLibraryInstance;
@@ -141,11 +221,16 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
             value.delta
         );
     if (action === "lock") result = library.lock(value, extra);
+    if (action === "shuffle") result = library.shuffleGroup(value);
+    if (action === "resetShuffle") result = library.resetShuffle(value);
     if (result) channelLibraryPublish(host);
     return result;
 }
 
 (window as any).__ottChannels = {
+    append: function (ids: any[]): void {
+        appendChannelLibrary(window, ids);
+    },
     capture: function (category: number) {
         var host = window as any;
         var library = channelLibraryInstance;

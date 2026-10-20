@@ -11,11 +11,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use super::queue::SharedQueues;
+use ottplay_core::native_xmltv::NativeSnapshot;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 use tokio::sync::RwLock;
-use ottplay_core::native_xmltv::NativeSnapshot;
-use super::queue::SharedQueues;
 
 #[derive(Serialize)]
 pub struct SleepResult {
@@ -26,6 +26,7 @@ pub struct SleepResult {
 
 /// Shared shell state.
 pub struct TauriState {
+    pub background: ottplay_core::background_work::BackgroundWork,
     /// Cached XMLTV (startup warm + single-flight ensure; empty never stored).
     pub xmltv_cache: Arc<RwLock<Option<Arc<NativeSnapshot>>>>,
     /// EPG URLs: configured via EPG_URLS env var or default for desktop Mode B.
@@ -101,35 +102,52 @@ pub async fn ensure_xmltv_cache(state: &TauriState) -> Result<(usize, usize), St
 }
 
 async fn refresh_xmltv_cache(state: &TauriState, force: bool) -> Result<(usize, usize), String> {
-    if !force {
-        if let Ok(snapshot) = xmltv_snapshot(state).await {
-            return Ok(snapshot.counts());
+    let work = state.background.enter().map_err(str::to_string)?;
+    work.run(async {
+        if !force {
+            if let Ok(snapshot) = xmltv_snapshot(state).await {
+                return Ok(snapshot.counts());
+            }
         }
-    }
-    let _gate = state.xmltv_fetch_lock.lock().await;
-    if !force {
-        // Winner may have filled the cache while we waited for the lock.
-        if let Ok(snapshot) = xmltv_snapshot(state).await {
-            return Ok(snapshot.counts());
+        let _gate = state.xmltv_fetch_lock.lock().await;
+        if !force {
+            // Winner may have filled the cache while we waited for the lock.
+            if let Ok(snapshot) = xmltv_snapshot(state).await {
+                return Ok(snapshot.counts());
+            }
         }
-    }
-    let urls = state.epg_urls.read().await.clone();
-    if urls.is_empty() {
-        return Err("EPG cache empty and no XMLTV URLs configured".to_string());
-    }
-    tracing::info!("[EPG] Mode B fetching {} source(s)...", urls.len());
-    let fresh = ottplay_core::fetch_xmltv(&urls).await.map_err(|e| e.to_string())?;
-    if fresh.channels.is_empty() {
-        tracing::warn!("[EPG] Fetch returned 0 channels — not caching (will retry)");
-        return Err("EPG fetch returned 0 channels".to_string());
-    }
-    let snapshot = tokio::task::spawn_blocking(move || NativeSnapshot::new(fresh))
-        .await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
-    let (n_ch, n_pr) = snapshot.counts();
-    // Queries retain the previous data and index until the replacement is complete.
-    *state.xmltv_cache.write().await = Some(Arc::new(snapshot));
-    tracing::info!("[EPG] Loaded {n_ch} channels, {n_pr} programmes");
-    Ok((n_ch, n_pr))
+        let urls = state.epg_urls.read().await.clone();
+        if urls.is_empty() {
+            return Err("EPG cache empty and no XMLTV URLs configured".to_string());
+        }
+        tracing::info!("[EPG] Mode B fetching {} source(s)...", urls.len());
+        let fresh = ottplay_core::fetch_xmltv_tracked(&urls, work.clone())
+            .await
+            .map_err(|e| e.to_string())?;
+        if fresh.channels.is_empty() {
+            tracing::warn!("[EPG] Fetch returned 0 channels — not caching (will retry)");
+            return Err("EPG fetch returned 0 channels".to_string());
+        }
+        let parsing = work.clone();
+        let snapshot = tokio::task::spawn_blocking(move || {
+            parsing.check().map_err(anyhow::Error::msg)?;
+            let result = NativeSnapshot::new(fresh);
+            parsing.check().map_err(anyhow::Error::msg)?;
+            result
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+        let (n_ch, n_pr) = snapshot.counts();
+        // Queries retain the previous data and index until the replacement is complete.
+        let mut cache = state.xmltv_cache.write().await;
+        work.publish(|| *cache = Some(Arc::new(snapshot)))
+            .map_err(str::to_string)?;
+        tracing::info!("[EPG] Loaded {n_ch} channels, {n_pr} programmes");
+        Ok((n_ch, n_pr))
+    })
+    .await
+    .map_err(str::to_string)?
 }
 
 /// Background warm + 2h refresh (Mode A companion parity). Emits `epg-cache-ready`
@@ -139,6 +157,7 @@ pub fn spawn_xmltv_warm(app: tauri::AppHandle, state: &TauriState) {
 
     // Clone Arc handles so the warm task outlives setup().
     let warm_state = TauriState {
+        background: state.background.clone(),
         xmltv_cache: state.xmltv_cache.clone(),
         epg_urls: state.epg_urls.clone(),
         epg_to_xmltv: state.epg_to_xmltv.clone(),
@@ -196,28 +215,55 @@ pub async fn get_epg(
     tvg_name: Option<String>,
     xmltv_urls: Option<Vec<String>>,
 ) -> Result<JsonValue, String> {
-    let sources = xmltv_urls.unwrap_or_default();
-    let (snapshot, fallback_id, mapped_shift) = if sources.is_empty() {
-        // Never keep map/cache guards across a fetch or a CPU-bound query.
-        ensure_xmltv_cache(&state).await?;
-        let (fallback, mapped_shift) = {
-            let epg_map = state.epg_to_xmltv.read().await;
-            let shift_map = state.time_shift_by_epg.read().await;
-            let fallback = if hash.is_empty() { channel_id } else {
-                epg_map.get(&hash).cloned().unwrap_or_else(|| hash.clone())
+    let work = state.background.enter().map_err(str::to_string)?;
+    work.run(async {
+        let sources = xmltv_urls.unwrap_or_default();
+        let (snapshot, fallback_id, mapped_shift) = if sources.is_empty() {
+            // Never keep map/cache guards across a fetch or a CPU-bound query.
+            ensure_xmltv_cache(&state).await?;
+            let (fallback, mapped_shift) = {
+                let epg_map = state.epg_to_xmltv.read().await;
+                let shift_map = state.time_shift_by_epg.read().await;
+                let fallback = if hash.is_empty() {
+                    channel_id
+                } else {
+                    epg_map.get(&hash).cloned().unwrap_or_else(|| hash.clone())
+                };
+                (fallback, shift_map.get(&hash).copied())
             };
-            (fallback, shift_map.get(&hash).copied())
+            (xmltv_snapshot(&state).await?, Some(fallback), mapped_shift)
+        } else {
+            (
+                ottplay_core::native_xmltv::load_sources_tracked(&sources, work.clone())
+                    .await
+                    .map_err(|e| e.to_string())?,
+                None,
+                None,
+            )
         };
-        (xmltv_snapshot(&state).await?, Some(fallback), mapped_shift)
-    } else {
-        (ottplay_core::native_xmltv::load_sources(&sources).await.map_err(|e| e.to_string())?, None, None)
-    };
-    let lookup = EpgLookup {
-        hash, fallback_id, ch, time_shift_hours, archive_hours: archive_hours.unwrap_or(0),
-        tvg_id: tvg_id.unwrap_or_default(), tvg_name: tvg_name.unwrap_or_default(), mapped_shift,
-    };
-    tokio::task::spawn_blocking(move || lookup.run(&snapshot))
-        .await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+        let lookup = EpgLookup {
+            hash,
+            fallback_id,
+            ch,
+            time_shift_hours,
+            archive_hours: archive_hours.unwrap_or(0),
+            tvg_id: tvg_id.unwrap_or_default(),
+            tvg_name: tvg_name.unwrap_or_default(),
+            mapped_shift,
+        };
+        let querying = work.clone();
+        tokio::task::spawn_blocking(move || {
+            querying.check().map_err(anyhow::Error::msg)?;
+            let result = lookup.run(&snapshot);
+            querying.check().map_err(anyhow::Error::msg)?;
+            result
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(str::to_string)?
 }
 
 struct EpgLookup {
@@ -234,10 +280,20 @@ struct EpgLookup {
 
 impl EpgLookup {
     fn run(self, snapshot: &NativeSnapshot) -> anyhow::Result<JsonValue> {
-        let shift = if self.time_shift_hours != 0 { self.time_shift_hours }
-            else if let Some(shift) = self.mapped_shift { shift }
-            else { snapshot.index().extract_time_shift(self.ch.as_deref().unwrap_or(&self.tvg_name))? };
-        let id = snapshot.resolve(&self.tvg_id, &self.tvg_name, self.ch.as_deref().unwrap_or(""))?;
+        let shift = if self.time_shift_hours != 0 {
+            self.time_shift_hours
+        } else if let Some(shift) = self.mapped_shift {
+            shift
+        } else {
+            snapshot
+                .index()
+                .extract_time_shift(self.ch.as_deref().unwrap_or(&self.tvg_name))?
+        };
+        let id = snapshot.resolve(
+            &self.tvg_id,
+            &self.tvg_name,
+            self.ch.as_deref().unwrap_or(""),
+        )?;
         let id = match (id, self.fallback_id) {
             (Some(id), _) => id,
             (None, Some(fallback)) => {
@@ -250,8 +306,14 @@ impl EpgLookup {
             }
             (None, None) => String::new(),
         };
-        ottplay_core::get_epg_slice_with_index(snapshot.cache(), snapshot.index(), &self.hash,
-            &id, shift, self.archive_hours)
+        ottplay_core::get_epg_slice_with_index(
+            snapshot.cache(),
+            snapshot.index(),
+            &self.hash,
+            &id,
+            shift,
+            self.archive_hours,
+        )
     }
 }
 
@@ -263,21 +325,79 @@ mod epg_snapshot_tests {
 
     fn snapshot(id: &str, name: &str) -> Arc<NativeSnapshot> {
         let now = chrono::Utc::now().timestamp();
-        Arc::new(NativeSnapshot::new(XmltvCache {
-            channels: HashMap::from([(id.into(), Channel { id: id.into(), name: name.into(), names: vec![name.into(), "Alias".into()], ..Default::default() })]),
-            programs: HashMap::from([(id.into(), vec![Programme { start: now - 1800, stop: now + 1800, title: name.into(), ..Default::default() }])]),
-            ..Default::default()
-        }).unwrap())
+        Arc::new(
+            NativeSnapshot::new(XmltvCache {
+                channels: HashMap::from([(
+                    id.into(),
+                    Channel {
+                        id: id.into(),
+                        name: name.into(),
+                        names: vec![name.into(), "Alias".into()],
+                        ..Default::default()
+                    },
+                )]),
+                programs: HashMap::from([(
+                    id.into(),
+                    vec![Programme {
+                        start: now - 1800,
+                        stop: now + 1800,
+                        title: name.into(),
+                        ..Default::default()
+                    }],
+                )]),
+                ..Default::default()
+            })
+            .unwrap(),
+        )
     }
 
     fn state(url: String, snapshot: Option<Arc<NativeSnapshot>>) -> Arc<TauriState> {
         Arc::new(TauriState {
-            xmltv_cache: Arc::new(RwLock::new(snapshot)), epg_urls: Arc::new(RwLock::new(vec![url])),
+            background: Default::default(),
+            xmltv_cache: Arc::new(RwLock::new(snapshot)),
+            epg_urls: Arc::new(RwLock::new(vec![url])),
             epg_to_xmltv: Arc::new(RwLock::new(HashMap::new())),
             time_shift_by_epg: Arc::new(RwLock::new(HashMap::new())),
             xmltv_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             command_queues: Default::default(),
         })
+    }
+
+    #[tokio::test]
+    async fn standby_revokes_default_epg_download_and_preserves_previous_cache() {
+        use axum::{routing::get, Router};
+        let calls = Arc::new(AtomicUsize::new(0));
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Semaphore::new(0));
+        let app = Router::new().route("/feed", get({
+            let calls = calls.clone(); let entered = entered.clone(); let release = release.clone();
+            move || { let calls = calls.clone(); let entered = entered.clone(); let release = release.clone(); async move {
+                calls.fetch_add(1, Ordering::SeqCst);
+                entered.notify_one();
+                release.acquire().await.unwrap().forget();
+                "<tv><channel id=\"new\"><display-name>New</display-name></channel></tv>"
+            }}
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let old = snapshot("old", "Old");
+        let state = state(format!("http://{}/feed", listener.local_addr().unwrap()), Some(old.clone()));
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+        state.background.set_standby(true);
+        assert!(ensure_xmltv_cache(&state).await.is_err());
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        state.background.set_standby(false);
+        let download = { let state = state.clone(); tokio::spawn(async move { refresh_xmltv_cache(&state, true).await }) };
+        entered.notified().await;
+        state.background.set_standby(true);
+        assert!(tokio::time::timeout(std::time::Duration::from_secs(2), download).await.unwrap().unwrap().is_err());
+        assert!(state.background.status().quiescent);
+        assert!(Arc::ptr_eq(&xmltv_snapshot(&state).await.unwrap(), &old));
+        state.background.set_standby(false);
+        release.add_permits(2);
+        assert_eq!(refresh_xmltv_cache(&state, true).await.unwrap().0, 1);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        assert!(!Arc::ptr_eq(&xmltv_snapshot(&state).await.unwrap(), &old));
+        server.abort();
     }
 
     #[tokio::test]
@@ -336,10 +456,20 @@ mod epg_snapshot_tests {
     #[test]
     fn lookup_preserves_default_map_fallback_and_shift_precedence() {
         let snapshot = snapshot("xmltv", "News");
-        let query = |explicit, mapped, fallback: Option<&str>, id: &str| EpgLookup {
-            hash: "playlist-hash".into(), fallback_id: fallback.map(str::to_string), ch: None,
-            time_shift_hours: explicit, archive_hours: 96, tvg_id: id.into(), tvg_name: String::new(), mapped_shift: mapped,
-        }.run(&snapshot).unwrap();
+        let query = |explicit, mapped, fallback: Option<&str>, id: &str| {
+            EpgLookup {
+                hash: "playlist-hash".into(),
+                fallback_id: fallback.map(str::to_string),
+                ch: None,
+                time_shift_hours: explicit,
+                archive_hours: 96,
+                tvg_id: id.into(),
+                tvg_name: String::new(),
+                mapped_shift: mapped,
+            }
+            .run(&snapshot)
+            .unwrap()
+        };
         let start = snapshot.cache().programs["xmltv"][0].start;
         assert_eq!(query(2, Some(5), Some("xmltv"), "")["epg_data"][0]["time"], start + 2 * 3600);
         assert_eq!(query(0, Some(5), Some("xmltv"), "")["epg_data"][0]["time"], start + 5 * 3600);
@@ -576,7 +706,14 @@ fn prevent_sleep_native() -> bool {
     // Linux: `systemd-inhibit` blocks idle + sleep via D-Bus for the lifetime
     // of the child process. We spawn and store the PID so allow_sleep can kill it.
     let child = match std::process::Command::new("systemd-inhibit")
-        .args(["--what=idle", "--what=sleep", "--mode=block", "--", "sleep", "infinity"])
+        .args([
+            "--what=idle",
+            "--what=sleep",
+            "--mode=block",
+            "--",
+            "sleep",
+            "infinity",
+        ])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
@@ -698,6 +835,8 @@ struct PipInner {
     instance: Option<u64>,
     ready: bool,
     current: Option<PipRequest>,
+    active_work: Option<ottplay_core::background_work::WorkLease>,
+    stopping: HashMap<u64, ottplay_core::background_work::WorkLease>,
     pending: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
 }
 
@@ -776,6 +915,11 @@ impl PipInner {
         if self.instance != Some(instance) {
             return Ok(None);
         }
+        if event == "stopped" {
+            self.stopping.remove(&session);
+            return Ok(None);
+        }
+        if event == "stop_error" { return Err("PiP teardown could not be confirmed".into()); }
         if event == "ready" {
             self.ready = true;
             return Ok(self.current.clone());
@@ -844,6 +988,21 @@ mod pip_lifecycle_tests {
             r#loop: false,
             labels: PipLabels::default(),
         }
+    }
+
+    #[test]
+    fn standby_pip_requires_matching_stop_acknowledgement() {
+        let background = ottplay_core::background_work::BackgroundWork::default();
+        let mut inner = PipInner { instance: Some(1), ..Default::default() };
+        inner.stopping.insert(7, background.enter().unwrap());
+        background.set_standby(true);
+        inner.acknowledge(99, 7, "stopped").unwrap();
+        inner.acknowledge(1, 6, "stopped").unwrap();
+        assert!(!background.status().quiescent);
+        assert!(inner.acknowledge(1, 7, "stop_error").is_err());
+        assert!(!background.status().quiescent);
+        inner.acknowledge(1, 7, "stopped").unwrap();
+        assert!(background.status().quiescent);
     }
 
     #[test]
@@ -983,6 +1142,7 @@ pub async fn play_pip(
     labels: Option<PipLabels>,
 ) -> Result<PipResult, String> {
     use tauri::Manager;
+    let work = app.state::<ottplay_core::background_work::BackgroundWork>().enter().map_err(str::to_string)?;
 
     let validation = url::Url::parse(&url)
         .map_err(|_| "PiP requires an absolute stream URL")
@@ -1000,6 +1160,7 @@ pub async fn play_pip(
     }
     let state = app.state::<PipState>();
     let setup_guard = state.commands.lock().await;
+    work.check().map_err(str::to_string)?;
     let existing_window = app.get_webview_window(PIP_LABEL);
     let is_new_window = existing_window.is_none();
     let (request, receiver, ready) = {
@@ -1025,6 +1186,7 @@ pub async fn play_pip(
         let (sender, receiver) = tokio::sync::oneshot::channel();
         inner.pending = Some(sender);
         inner.current = Some(request.clone());
+        inner.active_work = Some(work.clone());
         (request, receiver, inner.ready)
     };
 
@@ -1066,6 +1228,8 @@ pub async fn play_pip(
                             inner.cancel("PiP window closed");
                             inner.instance = None;
                             inner.ready = false;
+                            inner.active_work = None;
+                            inner.stopping.clear();
                         }
                     };
                 }
@@ -1130,9 +1294,16 @@ pub async fn stop_pip(app: tauri::AppHandle, request_id: Option<u64>) -> Result<
         if !inner.accept(request_id) {
             return Ok(PipResult { ok: false });
         }
+        if inner.active_work.is_none() && !inner.stopping.is_empty() {
+            return Ok(PipResult { ok: true });
+        }
         inner.cancel("PiP playback stopped");
         inner.next_session += 1;
-        inner.next_session
+        let session = inner.next_session;
+        if let Some(work) = inner.active_work.take() {
+            inner.stopping.insert(session, work);
+        }
+        session
     };
     if let Some(win) = app.get_webview_window(PIP_LABEL) {
         let stopped = win.eval(&pip_stop_script(session));
@@ -1140,6 +1311,10 @@ pub async fn stop_pip(app: tauri::AppHandle, request_id: Option<u64>) -> Result<
         // A failed eval must not leave a stopped player's empty window visible.
         stopped.map_err(|e| e.to_string())?;
         hidden.map_err(|e| e.to_string())?;
+    } else {
+        let mut inner = state.inner.lock().map_err(|_| "PiP state unavailable")?;
+        inner.active_work = None;
+        inner.stopping.clear();
     }
     Ok(PipResult { ok: true })
 }
@@ -1176,11 +1351,19 @@ pub fn exit_app(app: tauri::AppHandle) {
 /// `cp.php` stand-in) without CORS. Leading `@` is stripped (provider form).
 /// Used only for text-sized bodies (M3U playlists), not media streams.
 #[tauri::command]
-pub async fn proxy_fetch(url: String) -> Result<String, String> {
-    let params = ottplay_core::m3u::ProxyParams {
-        url,
-        ua: String::new(),
-    };
-    let (_headers, body) = ottplay_core::m3u::proxy_stream(params).await?;
-    Ok(String::from_utf8_lossy(&body).into_owned())
+pub async fn proxy_fetch(
+    background: tauri::State<'_, ottplay_core::background_work::BackgroundWork>,
+    url: String,
+) -> Result<String, String> {
+    let work = background.enter().map_err(str::to_string)?;
+    work.run(async {
+        let params = ottplay_core::m3u::ProxyParams {
+            url,
+            ua: String::new(),
+        };
+        let (_headers, body) = ottplay_core::m3u::proxy_stream(params).await?;
+        Ok(String::from_utf8_lossy(&body).into_owned())
+    })
+    .await
+    .map_err(str::to_string)?
 }

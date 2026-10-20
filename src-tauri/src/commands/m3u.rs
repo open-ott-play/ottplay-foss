@@ -7,24 +7,61 @@
 //! Protocol: FOSS text format using `\n\t\n` as field separator.
 
 use super::tauri_commands::TauriState;
-use std::collections::HashMap;
 use ottplay_core::native_xmltv;
+use std::collections::HashMap;
 
-struct NativeMatch { channel: String, xmltv_id: String, hash: String, shift: i64, logo: String }
-
-fn match_group(snapshot: &native_xmltv::NativeSnapshot, group: &[(String, native_xmltv::MatchChannel)]) -> anyhow::Result<Vec<NativeMatch>> {
-    let cache = snapshot.cache();
-    group.iter().map(|(channel, info)| {
-        let id = snapshot.resolve(&info.tvg_id, &info.tvg_name, &info.name)?.unwrap_or_default();
-        let shift = snapshot.index().extract_time_shift(&info.name)?;
-        let hash = ottplay_core::m3u::compute_epg_hash(&format!("{}|{id}|{shift}", info.xmltv_urls.join("|")));
-        let logo = cache.channels.get(&id).map(|ch| ch.icon.clone()).filter(|logo| !logo.is_empty())
-            .unwrap_or_else(|| format!("/logo/{channel}.svg?ch={}", url::form_urlencoded::byte_serialize(info.name.as_bytes()).collect::<String>()));
-        Ok(NativeMatch { channel: channel.clone(), xmltv_id: id, hash, shift, logo })
-    }).collect()
+struct NativeMatch {
+    channel: String,
+    xmltv_id: String,
+    hash: String,
+    shift: i64,
+    logo: String,
 }
 
-async fn native_matches(state: &TauriState, body: &str) -> Result<Option<Vec<NativeMatch>>, String> {
+fn match_group(
+    snapshot: &native_xmltv::NativeSnapshot,
+    group: &[(String, native_xmltv::MatchChannel)],
+) -> anyhow::Result<Vec<NativeMatch>> {
+    let cache = snapshot.cache();
+    group
+        .iter()
+        .map(|(channel, info)| {
+            let id = snapshot
+                .resolve(&info.tvg_id, &info.tvg_name, &info.name)?
+                .unwrap_or_default();
+            let shift = snapshot.index().extract_time_shift(&info.name)?;
+            let hash = ottplay_core::m3u::compute_epg_hash(&format!(
+                "{}|{id}|{shift}",
+                info.xmltv_urls.join("|")
+            ));
+            let logo = cache
+                .channels
+                .get(&id)
+                .map(|ch| ch.icon.clone())
+                .filter(|logo| !logo.is_empty())
+                .unwrap_or_else(|| {
+                    format!(
+                        "/logo/{channel}.svg?ch={}",
+                        url::form_urlencoded::byte_serialize(info.name.as_bytes())
+                            .collect::<String>()
+                    )
+                });
+            Ok(NativeMatch {
+                channel: channel.clone(),
+                xmltv_id: id,
+                hash,
+                shift,
+                logo,
+            })
+        })
+        .collect()
+}
+
+async fn native_matches(
+    state: &TauriState,
+    body: &str,
+    work: &ottplay_core::background_work::WorkLease,
+) -> Result<Option<Vec<NativeMatch>>, String> {
     let metadata = native_xmltv::match_metadata(body);
     if metadata.is_empty() { return Ok(None); }
     let mut groups: HashMap<Vec<String>, Vec<(String, native_xmltv::MatchChannel)>> = HashMap::new();
@@ -37,10 +74,22 @@ async fn native_matches(state: &TauriState, body: &str) -> Result<Option<Vec<Nat
             super::tauri_commands::ensure_xmltv_cache(state).await?;
             super::tauri_commands::xmltv_snapshot(state).await?
         } else {
-            native_xmltv::load_sources(&sources).await.map_err(|error| error.to_string())?
+            native_xmltv::load_sources_tracked(&sources, work.clone())
+                .await
+                .map_err(|error| error.to_string())?
         };
-        matches.extend(tokio::task::spawn_blocking(move || match_group(&snapshot, &group))
-            .await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?);
+        let parsing = work.clone();
+        matches.extend(
+            tokio::task::spawn_blocking(move || {
+                parsing.check().map_err(anyhow::Error::msg)?;
+                let result = match_group(&snapshot, &group);
+                parsing.check().map_err(anyhow::Error::msg)?;
+                result
+            })
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?,
+        );
     }
     Ok(Some(matches))
 }
@@ -55,33 +104,49 @@ pub async fn match_channels(
     body: String,
     _url: String,
 ) -> Result<String, String> {
-    if let Some(matches) = native_matches(&state, &body).await? {
+    let work = state.background.enter().map_err(str::to_string)?;
+    work.run(async {
+        if let Some(matches) = native_matches(&state, &body, &work).await? {
+            let mut epg_map = state.epg_to_xmltv.write().await;
+            let mut time_map = state.time_shift_by_epg.write().await;
+            let rows: Vec<String> = work
+                .publish(|| {
+                    matches
+                        .into_iter()
+                        .map(|entry| {
+                            epg_map.insert(entry.hash.clone(), entry.xmltv_id);
+                            time_map.insert(entry.hash.clone(), entry.shift);
+                            format!("{}~local~{}", entry.channel, entry.hash)
+                        })
+                        .collect()
+                })
+                .map_err(str::to_string)?;
+            return Ok(format!("{{}}\n\t\n{}\n\t\nlocal~/", rows.join("\n")));
+        }
+        super::tauri_commands::ensure_xmltv_cache(&state).await?;
+
+        let cache = state.xmltv_cache.read().await;
+        let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
+
+        // In-place write locks on the shared hash maps
         let mut epg_map = state.epg_to_xmltv.write().await;
         let mut time_map = state.time_shift_by_epg.write().await;
-        let rows: Vec<String> = matches.into_iter().map(|entry| {
-            epg_map.insert(entry.hash.clone(), entry.xmltv_id);
-            time_map.insert(entry.hash.clone(), entry.shift);
-            format!("{}~local~{}", entry.channel, entry.hash)
-        }).collect();
-        return Ok(format!("{{}}\n\t\n{}\n\t\nlocal~/", rows.join("\n")));
-    }
-    super::tauri_commands::ensure_xmltv_cache(&state).await?;
 
-    let cache = state.xmltv_cache.read().await;
-    let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
+        let result = work
+            .publish(|| {
+                ottplay_core::m3u::match_channels_text(
+                    &body,
+                    &cache.cache().channels,
+                    &mut epg_map,
+                    &mut time_map,
+                )
+            })
+            .map_err(str::to_string)?;
 
-    // In-place write locks on the shared hash maps
-    let mut epg_map = state.epg_to_xmltv.write().await;
-    let mut time_map = state.time_shift_by_epg.write().await;
-
-    let result = ottplay_core::m3u::match_channels_text(
-        &body,
-        &cache.cache().channels,
-        &mut epg_map,
-        &mut time_map,
-    );
-
-    result.map_err(|error| error.to_string())
+        result.map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(str::to_string)?
 }
 
 /// `invoke('match_logos', {body, url})` — resolve channel logo URLs.
@@ -94,17 +159,25 @@ pub async fn match_logos(
     body: String,
     _url: String,
 ) -> Result<String, String> {
-    if let Some(matches) = native_matches(&state, &body).await? {
-        let rows: Vec<String> = matches.into_iter().map(|entry| format!("{}~{}", entry.channel, entry.logo)).collect();
-        return Ok(format!("{{}}\n\t\n{}", rows.join("\n")));
-    }
-    super::tauri_commands::ensure_xmltv_cache(&state).await?;
+    let work = state.background.enter().map_err(str::to_string)?;
+    work.run(async {
+        if let Some(matches) = native_matches(&state, &body, &work).await? {
+            let rows: Vec<String> = matches
+                .into_iter()
+                .map(|entry| format!("{}~{}", entry.channel, entry.logo))
+                .collect();
+            return Ok(format!("{{}}\n\t\n{}", rows.join("\n")));
+        }
+        super::tauri_commands::ensure_xmltv_cache(&state).await?;
 
     let cache = state.xmltv_cache.read().await;
     let cache = cache.as_ref().ok_or("EPG cache empty after ensure")?;
 
-    let result = ottplay_core::m3u::match_logos_text(&body, &cache.cache().channels);
-    result.map_err(|error| error.to_string())
+        let result = ottplay_core::m3u::match_logos_text(&body, &cache.cache().channels);
+        result.map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(str::to_string)?
 }
 
 #[cfg(test)]
@@ -115,13 +188,29 @@ mod native_match_tests {
     #[test]
     fn retained_alias_index_preserves_playlist_hashes_shifts_and_logos() {
         let snapshot = native_xmltv::NativeSnapshot::new(XmltvCache {
-            channels: HashMap::from([("private".into(), Channel {
-                id: "private".into(), name: "News".into(), names: vec!["News".into(), "Alias".into()], icon: "https://fixture.invalid/logo".into(),
-            })]), ..Default::default()
-        }).unwrap();
+            channels: HashMap::from([(
+                "private".into(),
+                Channel {
+                    id: "private".into(),
+                    name: "News".into(),
+                    names: vec!["News".into(), "Alias".into()],
+                    icon: "https://fixture.invalid/logo".into(),
+                },
+            )]),
+            ..Default::default()
+        })
+        .unwrap();
         for sources in [vec![], vec!["https://fixture.invalid/feed".into()]] {
-            let info = native_xmltv::MatchChannel { tvg_id: "missing".into(), tvg_name: "Alias".into(), name: "Renamed +3".into(), xmltv_urls: sources };
-            let expected_hash = ottplay_core::m3u::compute_epg_hash(&format!("{}|private|3", info.xmltv_urls.join("|")));
+            let info = native_xmltv::MatchChannel {
+                tvg_id: "missing".into(),
+                tvg_name: "Alias".into(),
+                name: "Renamed +3".into(),
+                xmltv_urls: sources,
+            };
+            let expected_hash = ottplay_core::m3u::compute_epg_hash(&format!(
+                "{}|private|3",
+                info.xmltv_urls.join("|")
+            ));
             let group = vec![("42".into(), info)];
             for _ in 0..2 {
                 let matched = match_group(&snapshot, &group).unwrap();

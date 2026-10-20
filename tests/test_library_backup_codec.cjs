@@ -458,5 +458,114 @@ check(
         assert.throws(() => reentrant.host.__ottFavoritesLibrary.document());
     }
 );
+check(
+    "shuffle baselines are optional, strict and survive channel export/import",
+    () => {
+        const d = document();
+        d.channels.groups[0].shuffleBefore = ["missing:stable", "channel:a"];
+        d.favorites.shuffleBefore = {
+            Main: clone(d.favorites.lists.lists.Main),
+        };
+        assert.equal(codec.validate(d, source), true);
+        const first = libraryFixture(
+            JSON.stringify(d.channels)
+        ).library.document();
+        const second = libraryFixture(JSON.stringify(first)).library.document();
+        assert.deepEqual(
+            clone(second.groups[0].shuffleBefore),
+            d.channels.groups[0].shuffleBefore
+        );
+        assert.equal(
+            codec.validate({ ...d, channels: clone(second) }, source),
+            true
+        );
+        const invalid = [
+            (x) => {
+                x.channels.groups[0].shuffleBefore = ["same", "same"];
+            },
+            (x) => {
+                x.channels.groups[0].shuffleBefore = [4];
+            },
+            (x) => {
+                x.favorites.shuffleBefore = { Missing: [] };
+            },
+            (x) => {
+                x.favorites.shuffleBefore.Main = [
+                    { itemId: "a", url: "https://invalid/" },
+                ];
+            },
+            (x) => {
+                x.favorites.shuffleBefore.Main = [
+                    { legacyId: 1, origin: "guessed" },
+                ];
+            },
+            (x) => {
+                x.favorites.shuffleBefore.Main = new Array(1);
+            },
+            (x) => {
+                x.favorites.shuffleBefore = JSON.parse('{"__proto__":[]}');
+            },
+            (x) => {
+                x.favorites.shuffleBefore.Main = new Array(50001).fill({
+                    itemId: "a",
+                });
+            },
+        ];
+        invalid.forEach((mutate, i) => {
+            const x = clone(d);
+            mutate(x);
+            assert.equal(
+                codec.validate(x, source),
+                false,
+                "shuffle mutation " + i
+            );
+        });
+    }
+);
+check(
+    "actual favorites shuffle export/import restores original order and missing references",
+    () => {
+        const f = favoritesFixture();
+        f.host.loadFavoritesLists();
+        f.host.favoritesArray.push(22);
+        f.host.saveFavoritesLists();
+        const baseline = clone(f.host.__ottFavoritesLibrary.document());
+        vm.runInContext("Math.random = function () { return 0; }", f.host);
+        assert.equal(f.host.shuffleFavoritesList(), true);
+        const exported = clone(f.host.__ottFavoritesLibrary.document());
+        assert.equal(
+            codec.validate(
+                { channels: null, favorites: exported, sourceId: source },
+                source
+            ),
+            true
+        );
+        const restored = favoritesFixture(JSON.stringify(exported));
+        restored.host.loadFavoritesLists();
+        assert.equal(restored.host.shuffleFavoritesList(true), true);
+        assert.deepEqual(
+            clone(restored.host.__ottFavoritesLibrary.document()),
+            baseline
+        );
+        assert.deepEqual(Array.from(restored.host.favoritesArray), [11, 22]);
+    }
+);
+check(
+    "legacy active favorites replacement clears only its shuffle baseline",
+    () => {
+        const d = document();
+        d.favorites.shuffleBefore = {
+            Main: clone(d.favorites.lists.lists.Main),
+            Other: clone(d.favorites.lists.lists.Other),
+        };
+        const restored = clone(
+            codec.legacy(source, [], [], {}, {}, d, referenceFactory)
+        );
+        assert.deepEqual(restored.favorites.shuffleBefore, {
+            Other: d.favorites.shuffleBefore.Other,
+        });
+        assert.equal(codec.validate(restored, source), true);
+    }
+);
 console.log(JSON.stringify({ results }, null, 2));
 if (results.some((result) => result.status === "FAIL")) process.exitCode = 1;

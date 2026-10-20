@@ -615,10 +615,10 @@ function assertPrivateRuntime(w, profile) {
         assert.equal(w.__ottEdemDriver, undefined);
         assert.deepEqual(
             Array.from(w.__ottProviderDrivers.registry.ids()).sort(),
-            ["demo", "m3u", "plex", "stalker", "vportal", "xtream"]
+            ["demo", "m3u", "offline", "plex", "stalker", "vportal", "xtream"]
         );
     } else {
-        assert.equal(w.__ottProviderDrivers.registry.ids().length, 50);
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 51);
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -2042,8 +2042,8 @@ function exerciseProviderRuntime(profile) {
         assert.equal(w.getMediaArray, null);
         assert.strictEqual(w.playMedia, w._playMedia);
     }
-    // A library-only provider loads its own family and offers configuration
-    // without fabricating a TV channel or requiring server credentials.
+    // A media-playlist provider loads its own family and offers configuration
+    // before it has credentials or selected roots; it fabricates no channels.
     w.listCaptionElement = w.document.getElementById("listCaption");
     w.listCaption = w.listCaptionElement;
     w.listDetail = w.document.getElementById("listDetail");
@@ -2054,6 +2054,10 @@ function exerciseProviderRuntime(profile) {
         assert.equal(w.__ottActiveProviderDriver.id, id);
         assert.equal(
             w.__ottActiveProviderDriver.capabilities.libraryOnly,
+            false
+        );
+        assert.equal(
+            w.__ottActiveProviderDriver.capabilities.mediaPlaylist,
             true
         );
         assert.equal(w.__ottActiveProviderDriver.libraryReady(), false);

@@ -34,6 +34,7 @@ import {
     renameFavoritesList,
     saveFavoritesLists,
     setActiveFavoritesList,
+    shuffleFavoritesList,
     syncFavoritesArrayFromActive,
 } from "./favorites-lists";
 
@@ -522,14 +523,13 @@ export function setCurrent(
 /**
  * Restore continue-watching bookmark on startup.
  *
- * Reads the `continueWatch` provider key. If the saved mode is archive or
- * vod for a channel still present in the current playlist and the bookmark
- * is younger than 7 days, shows a `confirmBox` "Resume from archive?" dialog.
+ * Reads the scoped playback journal. The same selected local file resumes
+ * directly. TV archive bookmarks younger than seven days offer confirmation.
  * On Yes or after 10 seconds: plays archive at the saved position.
  * On No: starts normal live playback.
  *
- * Returns true if a resume was offered (archive/vod dialog shown), false
- * otherwise (no bookmark / stale / channel missing / live mode) — the caller
+ * Returns true if local resume started or archive confirmation was offered, false
+ * otherwise (no bookmark / stale archive / channel missing / live TV) — the caller
  * should then run the normal `playChannel` path.
  *
  * Must be called after the playlist is populated.
@@ -539,7 +539,27 @@ export function restoreContinueWatch(): boolean {
         var cw: any = (window as any).__ottClassicPlayback.bookmark();
         if (!cw || !cw.v || !cw.mode || cw.channelId == null) return false;
         var ageMs = Date.now() - (cw.updatedAt || 0);
-        if (ageMs < -300000 || ageMs > 7 * 24 * 60 * 60 * 1000) return false; // stale: > 7 days
+        if (ageMs < -300000) return false;
+        var host = window as any;
+        if (
+            host.__ottActiveProviderDriver?.id === "offline" &&
+            (cw.mode === "live" || cw.mode === "vod") &&
+            String(cw.channelId) === String(curList[primaryIndex]) &&
+            typeof cw.playTime === "number" &&
+            isFinite(cw.playTime) &&
+            cw.playTime > 0
+        ) {
+            // Local files retain channel history, but resume their media clock.
+            // Never use a prior cursor to replace a profile's selected file.
+            return (
+                window.playChannel(catIndex, primaryIndex, false, undefined, {
+                    channelId: String(cw.channelId),
+                    position: cw.playTime,
+                    sourceId: host.__ottClassicPlayback.sourceId(),
+                }) !== false
+            );
+        }
+        if (ageMs > 7 * 24 * 60 * 60 * 1000) return false;
         // 1) Resume dialog = archive only (positive playType sentinel required).
         // VOD / live → return false so caller does live playback.
         if (
@@ -1180,10 +1200,16 @@ export function fetchChannelGuide(
     channelId: number,
     callback: (id: number, rows: EPGEntry[] | null) => void
 ): () => void {
+    var admission = (window as any).__ottStandby;
+    var generation = admission ? admission.generation() : 0;
+    if (admission && admission.blocked()) {
+        callback(channelId, null);
+        return function () {};
+    }
     var active = true,
         cancel: any = null;
     function finish(id: number, rows: EPGEntry[] | null): void {
-        if (!active) return;
+        if (!active || (admission && !admission.current(generation))) return;
         active = false;
         callback(id, rows);
     }
@@ -1424,10 +1450,13 @@ export function publishChannelProgrammeRows(
  * - Console log "player ready!".
  */
 export function onChannelsLoaded(): void {
+    if ((window as any).__ottStandby?.blocked()) return;
     console.log("[onChanelsLoaded] cList.length=" + cList.length);
     // Dismiss the old loading dialog before playback can open a PIN or resume
     // prompt. Hiding it afterwards would close the newly created prompt.
     $("#dialogbox").hide();
+    var localRecovery: any = null;
+    var mediaRecovery: any = null;
     try {
         var driver = (window as any).__ottActiveProviderDriver;
         var libraryOnly = Boolean(
@@ -1502,30 +1531,59 @@ export function onChannelsLoaded(): void {
                 loadFavoritesLists();
                 (window as any).__ottChannels.mount(window);
                 (window as any).__ottClassicPlayback.hydrate();
-                // Start playback: restore continue-watching bookmark if available.
-                // If no archive bookmark is offered, fall back to the normal
-                // live playChannel path (live bookmarks are already encoded in
-                // catIndex/primaryIndex persisted by setCurrent).
-                var el = document.getElementById("launch");
-                if (el) el.innerHTML += "<br/>Start playback...";
-                if (!restoreContinueWatch()) {
-                    try {
-                        window.playChannel(catIndex, primaryIndex);
-                    } catch (e) {
-                        console.error(e);
-                        primaryIndex = 0;
-                        catIndex = sFavorites ? 1 : 0;
-                        try {
-                            window.playChannel(catIndex, primaryIndex);
-                        } catch (e2) {
-                            console.error(e2);
+                if (
+                    driver?.capabilities.mediaPlaylist &&
+                    (window as any).__ottMissingCatalogSelection
+                ) {
+                    mediaRecovery = driver;
+                }
+                var localProfiles = (window as any).__ottOfflineProfiles;
+                var preferred = (window as any).__ottCatalogSelectedId;
+                if (driver?.capabilities.mediaPlaylist && preferred != null) {
+                    for (var group = 0; group < catsArray.length; group++) {
+                        var preferredIndex = (
+                            cats[catsArray[group]] || []
+                        ).indexOf(preferred);
+                        if (preferredIndex >= 0) {
+                            window.setCurrent(group, preferredIndex);
+                            break;
                         }
                     }
                 }
-                try {
-                    window.loadEpgTimers();
-                } catch (e) {
-                    console.error(e);
+                if (driver && driver.id === "offline" && localProfiles) {
+                    var selectedLocal = localProfiles.selection();
+                    if (selectedLocal !== null) {
+                        var localIndex = cList.indexOf(selectedLocal);
+                        if (localIndex < 0) localRecovery = driver;
+                        else window.setCurrent(0, localIndex);
+                    }
+                }
+                if (!localRecovery && !mediaRecovery) {
+                    // Start playback: restore continue-watching bookmark if available.
+                    // If no archive bookmark is offered, fall back to the normal
+                    // live playChannel path (live bookmarks are already encoded in
+                    // catIndex/primaryIndex persisted by setCurrent).
+                    var el = document.getElementById("launch");
+                    if (el) el.innerHTML += "<br/>Start playback...";
+                    if (!restoreContinueWatch()) {
+                        try {
+                            window.playChannel(catIndex, primaryIndex);
+                        } catch (e) {
+                            console.error(e);
+                            primaryIndex = 0;
+                            catIndex = sFavorites ? 1 : 0;
+                            try {
+                                window.playChannel(catIndex, primaryIndex);
+                            } catch (e2) {
+                                console.error(e2);
+                            }
+                        }
+                    }
+                    try {
+                        window.loadEpgTimers();
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
                 // List must be hidden so main key handler gets events (ENTER, Q, C, etc.)
                 window.isListVisible = false;
@@ -1533,16 +1591,24 @@ export function onChannelsLoaded(): void {
         } else {
             // Empty channel list — show popup so user can configure provider (e.g., enter playlist URL)
             window.playType = 0;
-            setCurrent(sFavorites ? 1 : 0, 0);
+            // A local source may only be waiting for renewed browser permission.
+            // Selecting a nonexistent first channel would overwrite the saved
+            // selection before access is restored and the catalog is reloaded.
+            if (!driver || driver.id !== "offline")
+                setCurrent(sFavorites ? 1 : 0, 0);
             var launchEl = document.getElementById("launch");
-            if (launchEl)
+            if (launchEl && (!driver || driver.id !== "offline"))
                 launchEl.innerHTML += "<br/>Channel list not received !!!";
             // Reset pending provider so user can retry without hitting savedProvId === id
             window._pendingProvId = "";
             window.launch_id = "#launch";
-            // Show popup list so user can select 'Select playlist' to configure provider
+            // The offline driver owns source recovery; only remote providers
+            // need the generic playlist configuration popup here.
             try {
-                if (typeof window.popupList === "function") {
+                if (
+                    (!driver || driver.id !== "offline") &&
+                    typeof window.popupList === "function"
+                ) {
                     var pActions = window.popupActions;
                     if (pActions && pActions.length) {
                         window.popupList();
@@ -1561,6 +1627,19 @@ export function onChannelsLoaded(): void {
     if (typeof (window as any).clearBootHide === "function")
         (window as any).clearBootHide();
     console.log("player ready!");
+    if (
+        localRecovery &&
+        localRecovery === (window as any).__ottActiveProviderDriver
+    )
+        (window as any).__ottLocalMedia.resume(true);
+    if (
+        mediaRecovery &&
+        mediaRecovery === (window as any).__ottActiveProviderDriver &&
+        !(window as any).__ottKiosk?.locked()
+    ) {
+        window.channelsList(sFavorites ? 1 : 0, 0);
+        window.infoBox(window._("Channel is not available!!!"));
+    }
 }
 
 /**
@@ -3141,8 +3220,44 @@ export function searchChannel(): void {
  * Side effects: writes innerHTML to #dialogbox, shows it, installs
  * window.dialogBoxKeyHandler, hides it on RETURN.
  */
+export function shuffleChannelList(reset = false): void {
+    var w = window as any;
+    if (
+        w.listArray === w.catsArray ||
+        !w.listArray ||
+        w.listArray.length < 2 ||
+        (w.__ottKiosk && w.__ottKiosk.locked())
+    )
+        return;
+    var selected = w.listArray[w.selIndex];
+    var playing = w.curList && w.curList[w.primaryIndex];
+    var group = w.__ottChannels.group(w.listCatIndex);
+    if (group === "system:favorites") {
+        if (!shuffleFavoritesList(reset)) return;
+        w.__ottChannels.refresh();
+    } else if (
+        !group ||
+        !w.__ottChannels.change(reset ? "resetShuffle" : "shuffle", group)
+    )
+        return;
+    w.sSortAbc = 0;
+    if (typeof w.sortChannels === "function") w.sortChannels(0);
+    if (typeof w.providerSetItem === "function")
+        w.providerSetItem("sSortAbc", 0);
+    w.listArray = w.cats[w.catsArray[w.listCatIndex]] || [];
+    w.listDataArray = w.listArray;
+    w.selIndex = Math.max(0, w.listArray.indexOf(selected));
+    var at = w.curList ? w.curList.indexOf(playing) : -1;
+    if (at >= 0) w.primaryIndex = at;
+    if (typeof w.showPage === "function") w.showPage();
+}
+
 export function showActionsDialog(): void {
     var w = window as any;
+    var mediaPlaylist =
+        w.__ottActiveProviderDriver?.capabilities?.mediaPlaylist &&
+        !(w.__ottKiosk && w.__ottKiosk.locked()) &&
+        w.__ottMedia;
     var t =
         !w.sFavorites && w.listCatIndex
             ? true
@@ -3216,10 +3331,40 @@ export function showActionsDialog(): void {
             : "") +
         (typeof w.renderButtonHint === "function"
             ? w.renderButtonHint(w.keys.YELLOW, "", "Search", w.strTools)
+            : "") +
+        (w.listArray !== w.catsArray &&
+        w.listArray &&
+        w.listArray.length > 1 &&
+        !(w.__ottKiosk && w.__ottKiosk.locked()) &&
+        typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(w.keys.N2, "2", "Shuffle") +
+              w.renderButtonHint(w.keys.N5, "5", "Reset order")
+            : "") +
+        (mediaPlaylist && typeof w.renderButtonHint === "function"
+            ? w.renderButtonHint(
+                  w.keys.PLAY,
+                  "▶",
+                  mediaPlaylist.repeatMode() === "one"
+                      ? "Repeat: One"
+                      : mediaPlaylist.repeatMode() === "off"
+                        ? "Repeat: Off"
+                        : "Repeat: All"
+              )
             : "");
     $(dialog!).show();
     w.dialogBoxKeyHandler = function (ev: number): boolean {
         switch (ev) {
+            case w.keys.PLAY:
+                if (!mediaPlaylist) return false;
+                mediaPlaylist.cycleRepeat();
+                showActionsDialog();
+                return true;
+            case w.keys.N2:
+            case w.keys.N5:
+                $(dialog!).hide();
+                w.__ottClassicScreenPort.close("dialog");
+                shuffleChannelList(ev === w.keys.N5);
+                return true;
             case w.keys.ENTER:
                 $(dialog!).hide();
                 if (typeof w.addChannel2bucket === "function")
@@ -3450,6 +3595,26 @@ export function saveChannelPreference(
 export function channelsKeyHandler(keyCode: number): boolean {
     var keys = window.keys;
     if (!keys) return false;
+    var host = window as any;
+    if (
+        keyCode === keys.PLAY &&
+        $("#listPopUp").is(":visible") &&
+        host.__ottActiveProviderDriver?.capabilities?.mediaPlaylist &&
+        !(host.__ottKiosk && host.__ottKiosk.locked()) &&
+        host.__ottMedia
+    ) {
+        host.__ottMedia.cycleRepeat();
+        $("#listPopUp").hide();
+        showActionsDialog();
+        return true;
+    }
+    if (
+        (keyCode === keys.N2 || keyCode === keys.N5) &&
+        $("#listPopUp").is(":visible")
+    ) {
+        shuffleChannelList(keyCode === keys.N5);
+        return true;
+    }
 
     switch (keyCode) {
         case keys.RETURN:
@@ -3467,7 +3632,31 @@ export function channelsKeyHandler(keyCode: number): boolean {
                 ? window.curList[window.primaryIndex]
                 : undefined;
             if (selChId) {
-                if (selChId !== curChId) {
+                // The list selection is committed before media resolution.
+                // After Cancel/error it may still point at an unplayed file.
+                var retryMedia = false;
+                if (
+                    host.__ottActiveProviderDriver?.capabilities?.mediaPlaylist
+                ) {
+                    var media = host.__ottMedia?.current();
+                    var state = host.__ottClassicPlayback?.snapshot();
+                    var channel = media?.sequence?.channel;
+                    retryMedia = !(
+                        media &&
+                        channel?.list.active() &&
+                        String(channel.id) === String(selChId) &&
+                        state &&
+                        state.phase !== "idle" &&
+                        state.phase !== "stopped" &&
+                        state.target?.kind === "vod" &&
+                        state.target.sourceId === media.ref.sourceId &&
+                        state.target.channelId === media.ref.itemId &&
+                        state.historyTarget?.kind === "live" &&
+                        String(state.historyTarget.channelId) ===
+                            String(selChId)
+                    );
+                }
+                if (selChId !== curChId || retryMedia) {
                     if (typeof window.playChannel === "function") {
                         window.playChannel(
                             window.listCatIndex,

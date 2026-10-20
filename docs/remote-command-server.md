@@ -244,6 +244,18 @@ media preference within the active provider/profile for VOD. The media setting
 is restored for subsequent videos and after a player restart, including kiosk
 restoration. Setting one live channel does not override all other channels.
 
+### Local video profiles
+
+`ott NAME provider offline` selects **Local videos**. Save the connected source
+selection and current video with `ott NAME profile save 1 Kids`, then restore it
+with `ott NAME profile load 1` (or `profile 1`). Export with `profile export 1
+kids.json`; import into an inactive slot with `profile import 2 kids.json`.
+`profiles` lists the saved slots and whether local binding is required. The
+`offline_profiles` capability advertises these operations. See [Local video
+profiles](offline-profiles.md) for examples, same-device restoration, explicit
+binding on another device and the portable format. Media files and file-access
+grants are never included in these exports.
+
 ### M3U profiles and restarts
 
 Select M3U with `ott NAME provider m3u` before using profile commands.
@@ -252,22 +264,23 @@ Select M3U with `ott NAME provider m3u` before using profile commands.
 playlist first. A deployment that fixes the M3U slot cannot select another slot.
 Parental settings locks and provider distribution restrictions still apply.
 
-`profile 2 url URL`, `profile 2 history HOURS`, `profile 2 vportal LINK`, and
-`profile 2 name NAME` change the specified slot. History is the playlist's
-archive depth in whole hours (0–8760), not watch-history retention. The VPortal
-value is the complete cabinet link, including its `portal::[key:...]` prefix.
-Empty strings clear string fields. Use `profile-config 2 FILE.json` to submit
-several settings together without placing credentials in shell history:
+`profile 2 url URL`, `profile 2 history HOURS` and `profile 2 name NAME`
+change the specified slot. History is the playlist's archive depth in whole
+hours (0–8760), not watch-history retention. Empty strings clear string fields.
+Use `profile-config 2 FILE.json` to submit several settings together without
+placing credentials in shell history:
 
 ```json
-{"name":"Movies","playlist":"https://example.com/list.m3u","history_hours":72,"vportal":"portal::[key:YOUR_KEY]http://host/api/v1/"}
+{"name":"Movies","playlist":"https://example.com/list.m3u","history_hours":72}
 ```
 
-The settings object accepts only those four fields. Validation finishes before
+The settings object accepts only those three fields. Validation finishes before
 anything is saved. Other fields and slots are preserved. Editing an inactive
 slot does not select it or reload the active playlist. Responses contain only
-the slot number, name, active state, archive hours and configuration flags;
-they never return playlist URLs, VPortal keys or media source identities.
+the slot number, name, active state, archive hours and `playlist_configured`;
+they never return playlist URLs. VPortal settings belong to the standalone
+VPortal provider. M3U rejects `vportal` updates and ignores previously stored
+portal links without deleting device configuration.
 
 `ott PLAYER restart` reloads the complete player page, as do
 `ott PLAYER restart player` and `ott PLAYER restart p`.
@@ -282,26 +295,61 @@ the in-memory VPortal automatic queue is not restored across page reloads.
 An expired response or changed controller connection discards a pending reload.
 Neither command retries a mutation after an uncertain response.
 
-For an unattended player, use the CLI's `stop` / `start` aliases (or the
-equivalent `standby` / `wake` operations):
+For an unattended player, use standby and go. The older `stop` / `start` and
+`wake` aliases remain supported:
 
 ```sh
 ott d1 restart stream  # Reconnect the current stream
-ott d1 restart        # Reload the player
-ott d1 stop           # Stop streams while keeping remote control connected
-ott d1 start          # Leave standby and run the configured startup flow
+ott d1 restart        # Reload the player, preserving standby if it is set
+ott d1 standby        # Stop playback and suspend background media work
+ott d1 go             # Resume the saved provider/profile startup once
+ott d1 status         # Observe standby and background work state
 ```
 
-Standby releases the main and PiP streams, cancels preview and pending Plex
-playback, and prevents new Plex playback until the player wakes. Explicit
-channel or favorite commands can start media again; another `stop` tears down
-both streams again without waking the player. It is not a
-pause: waking starts the normal provider/profile startup flow and does not
-promise to resume the same VOD position or in-memory queue. Remote-control
-heartbeats and other background metadata requests can continue while streams
-are stopped. Kiosk and settings-lock restrictions still apply; the CLI reports
-an unavailable operation instead of bypassing them. The aliases require an
-updated CLI, and complete stream cleanup requires an updated player.
+Standby stops main/PiP playback, previews and queued autoplay, cancels provider
+requests, local-library scans and programme-guide work, and prevents late results
+or the kiosk watchdog from restarting them. New playback and scans remain blocked
+until `go`. Authenticated standby/go are available in strict kiosk and with settings
+locked; app restart, exit, reboot and configuration keep their existing restrictions.
+Remote polling, command replies and diagnostics remain available while the OS
+keeps the app running. On iOS/Android the OS may suspend the app in the background;
+`go` cannot wake a closed or suspended app, or an offline device. Standby controls
+the player's work without shutting down the operating system. On browser and TV
+runtimes without the native standby bridge, drain reporting covers tracked frontend
+work; it does not stop shared OTT Server jobs or other clients. Native cancellation
+requires an updated Tauri or Capacitor shell.
+
+The player checkpoints its confirmed playback cursor before retiring the source.
+Go reopens the saved source/profile through normal startup and resume rules; live
+streams obtain a fresh URL. Repeated go does not launch a second startup. When a
+valid interface language is already loaded, repeated standby/go reuses it and resumes
+the configured provider without opening language settings. First-run setup and genuine
+language-load failures retain their normal recovery flow. Standby
+is saved only on this installation, so page/app reload stays asleep. Portable
+settings and cloud backups neither import nor remove that state.
+The normal Exit/Q action saves the playback position and closes the player
+without entering standby; an awake player can resume normally on its next launch.
+
+`status.player.standby` reports the state. On updated players,
+`status.player.background` contains `state` and `pending`: `suspending` means tracked
+work is still draining, `suspended` confirms zero tracked frontend/native jobs,
+`running` means the player is awake, and `unsupported` or `error` does not promise
+native quiescence. `running` confirms that the standby gate reopened, not catalogue
+readiness or resumed playback; verify the saved selection and playback progress
+separately. An accepted command only confirms delivery. Older native shells
+must be updated for native HTTP, XMLTV and filesystem cancellation; the updated
+frontend still blocks its own new work. A native acknowledgement timeout leaves
+wake blocked with an error instead of silently starting against a sleeping backend.
+Native startup checks the saved shell state before opening the provider, even if
+the webview's settings were cleared. A native application update already downloading
+cannot be cancelled by the updater API: it stays counted as pending until it finishes,
+and its late result cannot relaunch an asleep player. New update checks/downloads are
+blocked during standby.
+Already-started browser script downloads and filesystem reads likewise remain
+pending until their completion; their retired owners cannot resume playback.
+An abandoned local-media request stops after its current filesystem operation.
+An idle local HTTP response retained by an external client can remain pending
+until that client reads or closes it; standby prevents further media reads.
 
 If the backend supports restarting but has no current restartable stream, the
 request returns `rejected` with `reason: "no_restartable_stream"`. This can happen

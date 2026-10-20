@@ -1,5 +1,7 @@
 # OTT-play FOSS
 
+Local files without Internet: see [Local videos and offline playback](docs/offline-media.md).
+
 [![OTT-play FOSS channel browser in a perspective view](docs/images/hero.png)](docs/images/studio-2026-default.png)
 
 *Existing Studio 2026 interface screenshot with synthetic channel and programme fixtures.
@@ -58,6 +60,11 @@ the player. Open the installed app and choose **Hide title bar** when Chrome
 offers it; **Show title bar** restores the usual frame. Ordinary tabs and TV/native
 shell layouts keep their existing behavior. See [browser window controls](docs/browser-window-controls.md)
 for supported installation URLs, updating an existing shortcut, and verification.
+
+For ten-second seeking in the main video view, use **Alt/Option + Left/Right**
+(**Command + Left/Right** also works on macOS), in fullscreen or the normal view.
+Local videos, VOD and supported channel archives use the same controls across
+web, Tauri and Capacitor. See [keyboard shortcuts and limits](docs/browser-window-controls.md#playback-keyboard-shortcuts).
 
 The synthetic test pattern can be regenerated with `scripts/generate-demo-media.sh`
 (requires FFmpeg); generated media stays in the ignored `.local-artifacts` directory.
@@ -898,7 +905,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -d '{"command":"exit_player"}'
 ```
 
-Tries standby mode first (if supported), otherwise exits the player. No fields needed.
+This unacknowledged webhook queue does not support `exit_player`. Use `ott PLAYER exit` or the modern acknowledged `command: exit_player` request on a player that supports native app exit; it never enters standby. No additional fields are accepted.
 
 ## Local Proxy Server
 
@@ -1156,7 +1163,7 @@ demonstration recordings. The helper keeps all generated media outside Git.
 
 ## Plex media library
 
-Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. It opens a hierarchical library with folders, search and playback history, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
+Each player can connect to a Plex account or Plex Media Server using the **Plex** provider. The integration uses Plex; Synology is one possible host for the media server. Select folders in the profile to populate the ordinary channel list. Playback starts from the first usable batch, with background loading, standard search and Actions for shuffle/repeat, without configuring Plex on the OTT server. See [Plex sign-in and direct playback](docs/plex-provider.md).
 
 ![Plex loading, file navigation and shutdown lifecycle](docs/images/plex-playback-lifecycle.svg)
 

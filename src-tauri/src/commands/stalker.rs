@@ -54,22 +54,25 @@ fn is_forbidden_request_header(name: &str) -> bool {
 /// `Authorization` / `Cookie` (and other safe headers) from the caller.
 #[tauri::command]
 pub async fn stalker_portal_fetch(
+    background: tauri::State<'_, ottplay_core::background_work::BackgroundWork>,
     url: String,
     method: Option<String>,
     body: Option<String>,
     content_type: Option<String>,
     headers: Option<HashMap<String, String>>,
 ) -> Result<StalkerPortalResult, String> {
-    let url = url.trim().to_string();
-    if url.is_empty() {
-        return Err("stalker_portal_fetch: missing url".into());
-    }
-    if !is_allowed_url(&url) {
-        return Err(
-            "stalker_portal_fetch: url is not an allowed stalker/swop/load.php/c/portal path"
-                .into(),
-        );
-    }
+    let work = background.enter().map_err(str::to_string)?;
+    work.run(async {
+        let url = url.trim().to_string();
+        if url.is_empty() {
+            return Err("stalker_portal_fetch: missing url".into());
+        }
+        if !is_allowed_url(&url) {
+            return Err(
+                "stalker_portal_fetch: url is not an allowed stalker/swop/load.php/c/portal path"
+                    .into(),
+            );
+        }
 
     let method_str = method.unwrap_or_else(|| "GET".to_string()).to_uppercase();
     let method = reqwest::Method::from_bytes(method_str.as_bytes())
@@ -84,70 +87,73 @@ pub async fn stalker_portal_fetch(
 
     let mut req = client.request(method, &url);
 
-    let mut header_map = HeaderMap::new();
-    let mut content_type_from_headers = false;
-    if let Some(hdrs) = headers {
-        for (name, value) in hdrs {
-            if name.trim().is_empty() || is_forbidden_request_header(&name) {
-                continue;
-            }
-            let Ok(hn) = HeaderName::from_bytes(name.as_bytes()) else {
-                continue;
-            };
-            let Ok(hv) = HeaderValue::from_str(&value) else {
-                continue;
-            };
-            if hn.as_str() == "content-type" {
-                content_type_from_headers = true;
-            }
-            header_map.append(hn, hv);
-        }
-    }
-
-    if let Some(b) = body {
-        if !b.is_empty() {
-            if !content_type_from_headers {
-                let ct = content_type
-                    .as_deref()
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("application/json");
-                if let Ok(hv) = HeaderValue::from_str(ct) {
-                    header_map.insert(reqwest::header::CONTENT_TYPE, hv);
+        let mut header_map = HeaderMap::new();
+        let mut content_type_from_headers = false;
+        if let Some(hdrs) = headers {
+            for (name, value) in hdrs {
+                if name.trim().is_empty() || is_forbidden_request_header(&name) {
+                    continue;
                 }
+                let Ok(hn) = HeaderName::from_bytes(name.as_bytes()) else {
+                    continue;
+                };
+                let Ok(hv) = HeaderValue::from_str(&value) else {
+                    continue;
+                };
+                if hn.as_str() == "content-type" {
+                    content_type_from_headers = true;
+                }
+                header_map.append(hn, hv);
             }
-            req = req.body(b);
         }
-    }
 
-    if !header_map.is_empty() {
-        req = req.headers(header_map);
-    }
+        if let Some(b) = body {
+            if !b.is_empty() {
+                if !content_type_from_headers {
+                    let ct = content_type
+                        .as_deref()
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or("application/json");
+                    if let Ok(hv) = HeaderValue::from_str(ct) {
+                        header_map.insert(reqwest::header::CONTENT_TYPE, hv);
+                    }
+                }
+                req = req.body(b);
+            }
+        }
 
-    let resp = req.send().await.map_err(|e| e.to_string())?;
-    let status = resp.status().as_u16();
-    let content_type = resp
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("application/octet-stream")
-        .to_string();
+        if !header_map.is_empty() {
+            req = req.headers(header_map);
+        }
 
-    let set_cookie: Vec<String> = resp
-        .headers()
-        .get_all(reqwest::header::SET_COOKIE)
-        .iter()
-        .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
-        .collect();
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+        let status = resp.status().as_u16();
+        let content_type = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("application/octet-stream")
+            .to_string();
 
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-    let body = String::from_utf8_lossy(&bytes).into_owned();
+        let set_cookie: Vec<String> = resp
+            .headers()
+            .get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+            .collect();
 
-    Ok(StalkerPortalResult {
-        status,
-        body,
-        content_type,
-        set_cookie,
+        let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+        let body = String::from_utf8_lossy(&bytes).into_owned();
+
+        Ok(StalkerPortalResult {
+            status,
+            body,
+            content_type,
+            set_cookie,
+        })
     })
+    .await
+    .map_err(str::to_string)?
 }
 
 #[cfg(test)]

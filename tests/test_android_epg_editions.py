@@ -119,6 +119,7 @@ def main():
                 + str(enabled).lower() + " }\n"
             )
             run("kotlinc", "EditionTest.kt", "Capacitor.kt", "Http.kt", "Annotation.kt", "BuildConfig.kt",
+                str(ROOT / "android/app/src/main/java/play/ott/foss/NativeWork.kt"),
                 "-nowarn", "-classpath", str(ROOT / "vendor/ottplay-core.jar"), "-jvm-target", "17", "-include-runtime", "-d", "edition-test.jar", cwd=tmp)
             run("java", "-cp", "edition-test.jar" + os.pathsep + str(ROOT / "vendor/ottplay-core.jar"), "play.ott.foss.plugin.EditionTestKt", cwd=tmp)
 

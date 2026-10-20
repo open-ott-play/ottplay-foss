@@ -24,7 +24,152 @@ import com.getcapacitor.*
 import play.ott.foss.*
 import java.net.*
 import java.util.concurrent.*
+import java.lang.ref.WeakReference
 fun wait(call: PluginCall) { check(call.done.await(5, TimeUnit.SECONDS)); }
+object Log { fun w(tag: String, message: String, error: Exception? = null) {} }
+class TestWebView {
+    val queued = mutableListOf<() -> Unit>()
+    val scripts = mutableListOf<String>()
+    val completions = mutableListOf<(String) -> Unit>()
+    var accepting = true
+    fun post(action: () -> Unit): Boolean { if (accepting) queued.add(action); return accepting }
+    fun evaluateJavascript(script: String, callback: (String) -> Unit) { scripts.add(script); completions.add(callback) }
+}
+object SystemMediaControl {
+    private const val TAG = "fixture"
+    private var webViewRef: WeakReference<TestWebView>? = null
+    // ACTUAL_EVAL_ON_WEB_VIEW
+    fun run() {
+        val view = TestWebView(); webViewRef = WeakReference(view)
+        evalOnWebView("retired")
+        check(NativeWork.pendingCount == 1)
+        NativeWork.setStandby(true); NativeWork.setStandby(false)
+        view.queued.removeAt(0)()
+        check(view.scripts.isEmpty() && NativeWork.pendingCount == 0)
+        NativeWork.setStandby(true); evalOnWebView("blocked")
+        check(view.queued.isEmpty())
+        NativeWork.setStandby(false); evalOnWebView("current")
+        view.queued.removeAt(0)()
+        check(view.scripts == listOf("current") && NativeWork.pendingCount == 1)
+        view.completions.removeAt(0)("null")
+        check(NativeWork.pendingCount == 0)
+        view.accepting = false; evalOnWebView("detached")
+        check(NativeWork.pendingCount == 0)
+        println("PASS Android system controls: retired queued command, standby admission, actual JS completion and detached WebView")
+    }
+}
+object DestroyedLocalOwner {
+    // ACTUAL_QUEUED_WORK
+    fun run() {
+        val executor = Executors.newSingleThreadExecutor()
+        val started = CountDownLatch(1)
+        val hold = CountDownLatch(1)
+        val active = NativeWork.begin()!!
+        executor.execute(QueuedWork({
+            started.countDown()
+            try { hold.await() } catch (_: InterruptedException) { }
+            finally { active.finish() }
+        }, { active.finish() }))
+        check(started.await(5, TimeUnit.SECONDS))
+        val waiting = NativeWork.begin()!!
+        var ran = false
+        var discarded = 0
+        val queued = QueuedWork({ ran = true; waiting.finish() }, { discarded++; waiting.finish() })
+        executor.execute(queued)
+        waiting.cancel(); active.cancel()
+        check(!NativeWork.isStandby && runCatching { waiting.check() }.isFailure)
+        val removed = executor.shutdownNow()
+        check(removed.size == 1)
+        removed.forEach { (it as? QueuedWork)?.discardBeforeStart() }
+        check(executor.awaitTermination(5, TimeUnit.SECONDS))
+        queued.run(); queued.discardBeforeStart()
+        check(!ran && discarded == 1 && NativeWork.pendingCount == 0)
+        val next = NativeWork.begin()!!; next.check(); next.finish()
+        println("PASS Android local owner destruction: running cancellation, queued discard exactly once, no leaked pending tickets")
+    }
+}
+fun backgroundStandby() {
+    BuildConfig.FLAVOR = "full"
+    val generic = StalkerPortalPlugin()
+    val playlist = M3UProxyPlugin()
+    fun send(kind: String, url: String, control: Boolean = false): PluginCall {
+        val call = PluginCall(JSObject().put("url", url).put("remoteControl", control).put("timeoutMs", 2000))
+        when (kind) {
+            "playlist" -> playlist.proxyFetch(call)
+            "portal" -> generic.portalRequest(call)
+            else -> generic.httpRequest(call)
+        }
+        return call
+    }
+    for (kind in listOf("playlist", "portal", "http")) {
+        val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+        val started = CountDownLatch(1)
+        val closed = CountDownLatch(1)
+        val worker = Thread {
+            server.accept().use { socket ->
+                socket.soTimeout = 4000
+                val input = socket.getInputStream().bufferedReader()
+                while (input.readLine().orEmpty().isNotEmpty()) { }
+                socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n".toByteArray())
+                started.countDown()
+                try { if (input.read() == -1) closed.countDown() }
+                catch (_: java.net.SocketException) { closed.countDown() }
+            }
+        }.apply { start() }
+        val url = "http://127.0.0.1:${server.localPort}/portal.php?held"
+        val pending = send(kind, url)
+        check(started.await(5, TimeUnit.SECONDS)) { "$kind did not reach server: ${pending.error}" }
+        check(NativeWork.pendingCount > 0)
+        NativeWork.setStandby(true)
+        val rejected = send(kind, url); wait(rejected)
+        check(rejected.code == "standby")
+        // Wake immediately: the retired request may only fail, never become current again.
+        NativeWork.setStandby(false)
+        wait(pending); check(pending.error != null)
+        check(closed.await(5, TimeUnit.SECONDS)) { "$kind did not close cancelled HTTP" }
+        worker.join(5000); server.close(); check(!worker.isAlive)
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (NativeWork.pendingCount != 0 && System.nanoTime() < deadline) Thread.sleep(1)
+        check(NativeWork.pendingCount == 0)
+    }
+    NativeWork.setStandby(true)
+    val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+    val worker = Thread {
+        server.accept().use { socket ->
+            val input = socket.getInputStream().bufferedReader()
+            while (input.readLine().orEmpty().isNotEmpty()) { }
+            socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".toByteArray())
+        }
+    }.apply { start() }
+    val control = send("http", "http://127.0.0.1:${server.localPort}/api/requests", true)
+    wait(control); check(control.error == null && control.result.getInt("status") == 200)
+    worker.join(5000); server.close(); check(!worker.isAlive)
+    check(NativeWork.snapshot().quiescent)
+    NativeWork.setStandby(false)
+
+    // HttpURLConnection did not follow cross-protocol redirects. Keep that
+    // boundary when using cancel-sticky OkHttp, including the HTTPS-only edition.
+    for (kind in listOf("playlist", "portal", "http")) {
+        val origin = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+        val receiver = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+        val originWorker = Thread {
+            origin.accept().use { socket ->
+                val input = socket.getInputStream().bufferedReader()
+                while (input.readLine().orEmpty().isNotEmpty()) { }
+                socket.getOutputStream().write(("HTTP/1.1 302 Found\r\nLocation: https://127.0.0.1:${receiver.localPort}/redirected\r\n" +
+                    "Content-Length: 0\r\nConnection: close\r\n\r\n").toByteArray())
+            }
+        }.apply { start() }
+        val result = send(kind, "http://127.0.0.1:${origin.localPort}/portal.php?origin")
+        wait(result)
+        if (kind == "playlist") check(result.error != null) else check(result.result.getInt("status") == 302)
+        receiver.soTimeout = 150
+        try { receiver.accept().close(); error("$kind followed cross-protocol redirect") }
+        catch (_: SocketTimeoutException) { }
+        originWorker.join(5000); origin.close(); receiver.close(); check(!originWorker.isAlive)
+    }
+    println("PASS provider standby: blocked admission, active socket cancellation, retired request after wake, control exemption and cross-protocol redirect boundary")
+}
 fun providerResponseBounds() {
     class GeneratedInput(private val length: Int) : java.io.InputStream() {
         var count = 0
@@ -276,8 +421,29 @@ fun main() {
     println("PASS actual Android HTTP plugins: SWOP refuses plaintext/credentials/query/normalized paths in both editions; Play rejects HTTP before network; Full native HTTP/M3U retain requests; errors omit provider URLs")
     screenshotTransport()
     providerResponseBounds()
+    backgroundStandby()
+    SystemMediaControl.run()
+    DestroyedLocalOwner.run()
 }
 '''
+service=(ROOT/'android/app/src/main/java/play/ott/foss/MediaPlaybackService.kt').read_text()
+start=service.index('private fun evalOnWebView(')
+end=service.index('{',start)+1
+depth=1
+while depth:
+    depth+=(service[end]=='{')-(service[end]=='}')
+    end+=1
+MAIN=MAIN.replace('// ACTUAL_EVAL_ON_WEB_VIEW', service[start:end])
+local=(ROOT/'android/app/src/main/java/play/ott/foss/LocalMediaPlugin.kt').read_text()
+start=local.index('private class QueuedWork(')
+end=local.index('{',start)+1
+depth=1
+while depth:
+    depth+=(local[end]=='{')-(local[end]=='}')
+    end+=1
+MAIN=MAIN.replace('// ACTUAL_QUEUED_WORK', local[start:end])
+assert 'ownedWork.forEach { it.cancel() }' in local
+assert '(clients.shutdownNow() + worker.shutdownNow()).forEach { (it as? QueuedWork)?.discardBeforeStart() }' in local
 SDK=Path(os.environ.get('ANDROID_SDK_ROOT',os.environ.get('ANDROID_HOME','/opt/homebrew/share/android-commandlinetools')))/'platforms/android-36/android.jar'
 JSON=Path(os.environ['ANDROID_JSON_JAR'])
 HTTP_JARS=[Path(p) for p in os.environ['ANDROID_HTTP_CLASSPATH'].split(os.pathsep)]
@@ -294,6 +460,6 @@ with tempfile.TemporaryDirectory(prefix='ott-http-policy-') as directory:
     (temp/'BuildConfig.kt').write_text('package play.ott.foss\nobject BuildConfig { var FLAVOR = "play" }')
     (temp/'Annotation.kt').write_text('package com.getcapacitor.annotation\nannotation class CapacitorPlugin(val name: String)')
     (temp/'Main.kt').write_text(MAIN)
-    sources=[str(ROOT/f'android/app/src/main/java/play/ott/foss/{name}.kt') for name in ['StalkerPortalPlugin','M3UProxyPlugin','ProviderHttpResponse']]
+    sources=[str(ROOT/f'android/app/src/main/java/play/ott/foss/{name}.kt') for name in ['StalkerPortalPlugin','M3UProxyPlugin','ProviderHttpResponse','NativeWork']]
     subprocess.run([shutil.which('kotlinc') or 'kotlinc','-jvm-target','17','-cp',os.pathsep.join(map(str,[classes,SDK,*HTTP_JARS])),*map(str,temp.glob('*.kt')),*sources,'-include-runtime','-d',str(temp/'test.jar')],check=True)
     subprocess.run([str(JAVA/'java'),'-Xmx64m','-cp',os.pathsep.join(map(str,[temp/'test.jar',classes,JSON,*HTTP_JARS])),'fixture.MainKt'],check=True,timeout=30)

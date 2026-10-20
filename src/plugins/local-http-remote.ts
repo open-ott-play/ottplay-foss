@@ -50,6 +50,7 @@ export function createLocalHttpRemote(
         var current = generation;
         var currentCode = code;
         var xhr = new w.XMLHttpRequest();
+        xhr.__ottRemoteControl = true;
         request = xhr;
         try {
             xhr.open(

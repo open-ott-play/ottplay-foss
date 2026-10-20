@@ -115,7 +115,7 @@ function createLibraryBackupCodec() {
             },
             members: strings,
         },
-        { inheritsMembers: boolean, known: strings }
+        { inheritsMembers: boolean, known: strings, shuffleBefore: strings }
     );
     var numbers = dictionary(finite);
     var selection = record({ groupId: text, itemId: text });
@@ -186,6 +186,9 @@ function createLibraryBackupCodec() {
             defaultList: function (value) {
                 return value === "Favorites";
             },
+            shuffleBefore: dictionary(function (value) {
+                return array(value, reference);
+            }, 1000),
         }
     );
     function favorites(value: any): boolean {
@@ -196,6 +199,10 @@ function createLibraryBackupCodec() {
             owns(lists.lists, lists.active) &&
             (value.defaultList === undefined ||
                 owns(lists.lists, value.defaultList)) &&
+            (value.shuffleBefore === undefined ||
+                Object.keys(value.shuffleBefore).every(function (key) {
+                    return owns(lists.lists, key);
+                })) &&
             lists.order.length <= 1000 &&
             lists.order.every(function (key: string) {
                 return owns(lists.lists, key);
@@ -288,6 +295,11 @@ function createLibraryBackupCodec() {
                 return codec.resolve(value, "raw");
             }
         );
+        if (favorite.shuffleBefore) {
+            delete favorite.shuffleBefore[favorite.lists.active];
+            if (!Object.keys(favorite.shuffleBefore).length)
+                delete favorite.shuffleBefore;
+        }
         result.favorites = favorite;
         if (!validate(result, source))
             throw new Error("Invalid migrated library backup");

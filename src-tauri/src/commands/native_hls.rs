@@ -58,6 +58,8 @@ pub struct NativeHlsStats {
 }
 
 struct Session {
+    // Held through every outstanding relay response after the listener stops.
+    _work: Option<ottplay_core::background_work::WorkLease>,
     resources: Mutex<HashMap<String, Arc<Resource>>>,
     samples: Mutex<VecDeque<(String, u64, f64)>>,
     sampled: Mutex<VecDeque<String>>,
@@ -98,7 +100,10 @@ fn playback_cookie_seeds(
 }
 
 impl Session {
-    fn new(window: Option<tauri::WebviewWindow>) -> Result<Arc<Self>, String> {
+    fn new(
+        window: Option<tauri::WebviewWindow>,
+        work: Option<ottplay_core::background_work::WorkLease>,
+    ) -> Result<Arc<Self>, String> {
         let jar = Arc::new(Jar::default());
         let client = reqwest::Client::builder()
             .cookie_provider(jar.clone())
@@ -116,6 +121,7 @@ impl Session {
         let (seeds, cookie_bytes) = playback_cookie_seeds(cookies)?;
         let (cancel, _) = watch::channel(false);
         Ok(Arc::new(Self {
+            _work: work,
             resources: Mutex::new(HashMap::new()),
             samples: Mutex::new(VecDeque::new()),
             cancel,
@@ -305,10 +311,19 @@ pub struct NativeHlsStart {
 }
 
 impl NativeHlsState {
+    #[cfg(test)]
     async fn start(
         &self,
         url: String,
         window: Option<tauri::WebviewWindow>,
+    ) -> Result<NativeHlsStart, String> {
+        self.start_tracked(url, window, None).await
+    }
+    async fn start_tracked(
+        &self,
+        url: String,
+        window: Option<tauri::WebviewWindow>,
+        work: Option<ottplay_core::background_work::WorkLease>,
     ) -> Result<NativeHlsStart, String> {
         let url = Url::parse(&url).map_err(|_| "Native HLS URL is invalid")?;
         validate_url(&url)?;
@@ -338,14 +353,21 @@ impl NativeHlsState {
         if server.sessions.lock().unwrap().len() >= MAX_SESSIONS {
             return Err("Native HLS session limit exceeded".into());
         }
-        let session = Session::new(window)?;
+        let session = Session::new(window, work.clone())?;
         let resource = session.register(url, Kind::Playlist { main: true })?;
         let token = uuid::Uuid::new_v4().simple().to_string();
-        server
-            .sessions
-            .lock()
-            .unwrap()
-            .insert(token.clone(), session);
+        let insert = || {
+            server
+                .sessions
+                .lock()
+                .unwrap()
+                .insert(token.clone(), session);
+        };
+        if let Some(work) = &work {
+            work.publish(insert).map_err(str::to_string)?;
+        } else {
+            insert();
+        }
         Ok(NativeHlsStart {
             url: format!("http://{}/hls/{token}/{resource}", server.address),
             session: token,
@@ -372,9 +394,13 @@ impl NativeHlsState {
     pub async fn stop_all(&self) {
         let mut guard = self.server.lock().await;
         if let Some(server) = guard.as_ref() {
-            for session in server.sessions.lock().unwrap().values() {
+            let mut sessions = server.sessions.lock().unwrap();
+            for session in sessions.values() {
                 session.cancel.send_replace(true);
             }
+            // Keep-alive HTTP connections can retain a Router/map clone after
+            // listener abort. Only actual in-flight replies should retain leases.
+            sessions.clear();
         }
         *guard = None;
     }
@@ -407,10 +433,12 @@ fn main_window(window: &tauri::WebviewWindow) -> Result<(), String> {
 pub async fn native_hls_start(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, NativeHlsState>,
+    background: tauri::State<'_, ottplay_core::background_work::BackgroundWork>,
     url: String,
 ) -> Result<NativeHlsStart, String> {
     main_window(&window)?;
-    state.start(url, Some(window)).await
+    let work = background.enter().map_err(str::to_string)?;
+    state.start_tracked(url, Some(window), Some(work)).await
 }
 
 #[tauri::command]

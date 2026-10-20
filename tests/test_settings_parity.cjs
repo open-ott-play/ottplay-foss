@@ -116,7 +116,8 @@ function fixture(
         console,
         document: {
             getElementById(id) {
-                if (!elements.has(id)) elements.set(id, { innerHTML: "" });
+                if (!elements.has(id))
+                    elements.set(id, { innerHTML: "", style: {} });
                 return elements.get(id);
             },
         },

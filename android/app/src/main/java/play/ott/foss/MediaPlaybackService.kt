@@ -14,6 +14,8 @@ import android.os.IBinder
 import android.util.Log
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.FutureTask
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import android.os.Handler
 import android.os.Looper
@@ -106,17 +108,21 @@ class MediaPlaybackService : Service() {
                 Log.w(TAG, "evalOnWebView: no WebView bound")
                 return
             }
-            wv.post {
-                if (webViewRef?.get() !== wv) return@post
+            val ticket = NativeWork.begin() ?: return
+            if (!wv.post {
+                if (webViewRef?.get() !== wv) { ticket.finish(); return@post }
                 try {
-                    wv.evaluateJavascript(js, null)
+                    ticket.check()
+                    wv.evaluateJavascript(js) { ticket.finish() }
                 } catch (e: Exception) {
+                    ticket.finish()
                     Log.w(TAG, "evaluateJavascript failed", e)
                 }
-            }
+            }) ticket.finish()
         }
 
         private fun drivePlay() {
+            if (NativeWork.isStandby) return
             evalOnWebView(
                 "if(typeof window.stbResume==='function')window.stbResume();else if(window.stbContinue&&window.stbIsPlaying&&!window.stbIsPlaying())window.stbContinue(); true;"
             )
@@ -243,6 +249,7 @@ class MediaPlaybackService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (NativeWork.isStandby) { retirePlayback(); stopSelf(); return START_NOT_STICKY }
         // There is no decoder in this service. A process restart must not advertise
         // playback without the owning WebView, nor resurrect a stopped session.
         if (intent != null && intent.hasExtra(EXTRA_GENERATION) &&
@@ -343,20 +350,34 @@ class MediaPlaybackService : Service() {
         artworkTask?.cancel(true)
         artworkConnection?.disconnect()
         if (url.isEmpty() || !canControl()) return
-        artworkTask = artworkExecutor.submit {
-            val bitmap = decodeArtwork(url) ?: return@submit
-            if (!canControl() || generation != artworkGeneration.get()) return@submit
-            mainHandler.post {
-                if (!canControl() || generation != artworkGeneration.get()) return@post
-                artworkBitmap = bitmap
-                updatePlaybackState()
-                updateNotification()
+        val ticket = NativeWork.begin() ?: return
+        val started = AtomicBoolean(false)
+        val work = object : FutureTask<Unit>({
+            ticket.check()
+            val bitmap = decodeArtwork(url, ticket)
+            if (bitmap != null && canControl() && generation == artworkGeneration.get()) {
+                mainHandler.post {
+                    if (NativeWork.isStandby || !canControl() || generation != artworkGeneration.get()) return@post
+                    artworkBitmap = bitmap
+                    updatePlaybackState()
+                    updateNotification()
+                }
             }
+        }, Unit) {
+            override fun run() {
+                started.set(true)
+                try { super.run() } finally { ticket.finish() }
+            }
+            override fun done() { if (!started.get()) ticket.finish() }
         }
+        ticket.cancelWith { work.cancel(true); artworkConnection?.disconnect() }
+        artworkTask = work
+        try { artworkExecutor.execute(work) } catch (_: Exception) { work.cancel(false) }
     }
 
-    private fun decodeArtwork(url: String): Bitmap? {
+    private fun decodeArtwork(url: String, ticket: NativeWork.Ticket): Bitmap? {
         return try {
+            ticket.check()
             if (!canControl() || Thread.currentThread().isInterrupted) return null
             val maxBytes = 2 * 1024 * 1024
             val bytes: ByteArray
@@ -377,6 +398,7 @@ class MediaPlaybackService : Service() {
                         val output = ByteArrayOutputStream()
                         val buffer = ByteArray(8192)
                         while (true) {
+                            ticket.check()
                             if (Thread.currentThread().isInterrupted) return null
                             val count = stream.read(buffer)
                             if (count < 0) break
@@ -391,6 +413,7 @@ class MediaPlaybackService : Service() {
                 }
             }
             if (bytes.size > maxBytes) return null
+            ticket.check()
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             if (options.outWidth <= 0 || options.outHeight <= 0) return null

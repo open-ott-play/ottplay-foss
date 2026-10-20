@@ -33,7 +33,7 @@ use tokio::task::JoinSet;
 use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
 use ottplay_core::xmltv::{self, XmltvCache};
 
@@ -323,9 +323,20 @@ async fn main() -> anyhow::Result<()> {
         // Installation-authenticated relay must not inherit permissive asset CORS.
         .merge(swop::routes_from_env()?)
         .merge(nas_library::routes_from_env()?)
-        .merge(control_discovery::routes());
+        .merge(control_discovery::routes())
+        .merge(offline_media_routes().await?);
 
     serve_listeners(listeners, app, tls_config).await
+}
+
+/// Media import is disabled unless an operator configures both storage and a secret.
+async fn offline_media_routes() -> anyhow::Result<Router> {
+    let Some(directory) = std::env::var_os("OTT_OFFLINE_MEDIA_DIR") else {
+        return Ok(Router::new());
+    };
+    let token = std::env::var("OTT_OFFLINE_MEDIA_TOKEN")
+        .map_err(|_| anyhow::anyhow!("OTT_OFFLINE_MEDIA_DIR requires OTT_OFFLINE_MEDIA_TOKEN"))?;
+    Ok(ottplay_core::offline_media::Library::new(directory.into(), token, "server").await?.routes())
 }
 
 async fn refresh_epg_snapshot(
@@ -443,7 +454,17 @@ fn device_entry_routes(directory: &std::path::Path) -> Router {
 }
 
 fn player_asset_routes(directory: &std::path::Path) -> Router {
-    let mut routes = Router::new();
+    // These generated files live at the web root; expose only the explicit
+    // public files rather than mounting the source/configuration directory.
+    let mut routes = Router::new()
+        .route_service(
+            "/offline-worker.js",
+            ServeFile::new(directory.join("offline-worker.js")),
+        )
+        .route_service(
+            "/build-info.json",
+            ServeFile::new(directory.join("build-info.json")),
+        );
     for name in [
         "dist",
         "styles",
@@ -453,6 +474,7 @@ fn player_asset_routes(directory: &std::path::Path) -> Router {
         "fonts",
         "js",
         "providers",
+        "hosted",
         "diagnostics",
     ] {
         routes = routes.nest_service(&format!("/{name}"), ServeDir::new(directory.join(name)));
@@ -1516,6 +1538,62 @@ mod device_entry_tests {
             .to_string();
         let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
         (status, content_type, body)
+    }
+
+    #[tokio::test]
+    async fn generated_root_assets_are_served_without_exposing_private_neighbors() {
+        let stamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "ottplay-root-assets-{}-{stamp}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(directory.join("hosted")).unwrap();
+        std::fs::write(directory.join("hosted/epg-worker.js"), "self.onmessage = function () {};").unwrap();
+        let _fixture = WebRootFixture {
+            directory: directory.clone(),
+        };
+        std::fs::write(
+            directory.join("offline-worker.js"),
+            "self.addEventListener('fetch', function () {});",
+        )
+        .unwrap();
+        std::fs::write(directory.join("build-info.json"), r#"{"revision":"test"}"#).unwrap();
+        std::fs::write(directory.join(".env"), "PRIVATE=secret").unwrap();
+        std::fs::write(directory.join("Cargo.toml"), "private source").unwrap();
+        let mut app = player_asset_routes(&directory);
+        for (path, mime, bytes) in [
+            (
+                "/offline-worker.js",
+                "javascript",
+                "self.addEventListener('fetch', function () {});",
+            ),
+            (
+                "/build-info.json",
+                "application/json",
+                r#"{"revision":"test"}"#,
+            ),
+        ] {
+            let result = request(&mut app, path).await;
+            assert_eq!(result.0, StatusCode::OK, "{path}");
+            assert!(result.1.contains(mime), "{path}: {}", result.1);
+            assert_eq!(result.2.as_ref(), bytes.as_bytes());
+        }
+        assert_eq!(request(&mut app, "/hosted/epg-worker.js").await.0, StatusCode::OK);
+        for path in [
+            "/.env",
+            "/Cargo.toml",
+            "/offline-worker.js/.env",
+            "/build-info.json/Cargo.toml",
+        ] {
+            assert_eq!(
+                request(&mut app, path).await.0,
+                StatusCode::NOT_FOUND,
+                "{path}"
+            );
+        }
     }
 
     #[tokio::test]

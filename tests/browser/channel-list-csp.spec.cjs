@@ -44,17 +44,43 @@ function initializeFixture(native, capacitor) {
     document.addEventListener("securitypolicyviolation", (event) => {
         window.__fixtureViolations.push(event.effectiveDirective);
     });
+    const background = (window.__fixtureBackground = {
+        probes: 0,
+        standby: false,
+    });
+    const snapshot = () => ({
+        pending: 0,
+        quiescent: background.standby,
+        standby: background.standby,
+    });
+    const status = async () => {
+        background.probes++;
+        return snapshot();
+    };
+    const setStandby = async ({ standby }) => {
+        background.standby = standby;
+        return snapshot();
+    };
     if (capacitor) {
-        // Only identify the input environment; no native bridge is invoked.
+        // The renderer uses real startup admission; model its native status
+        // rather than letting a missing bridge put the fixture into standby.
         window.Capacitor = {
             getPlatform: () => "ios",
             isNativePlatform: () => true,
+            Plugins: { NativeBackground: { setStandby, status } },
         };
     } else if (native) {
         window.__TAURI__ = {
             core: {
-                invoke: async (command) =>
-                    command === "plugin:updater|check" ? null : { ok: true },
+                invoke: async (command, args) => {
+                    if (command === "background_standby_status")
+                        return status();
+                    if (command === "set_background_standby")
+                        return setStandby(args);
+                    return command === "plugin:updater|check"
+                        ? null
+                        : { ok: true };
+                },
             },
         };
     }
@@ -303,6 +329,16 @@ async function fixturePage(
                 errors.join("; "),
         })
         .toBe(true);
+    if (native) {
+        await expect
+            .poll(() => page.evaluate(() => window.__fixtureBackground.probes))
+            .toBeGreaterThan(0);
+        await expect
+            .poll(() =>
+                page.evaluate(() => window.__ottStandby.snapshot().state)
+            )
+            .toBe("running");
+    }
     await expect(page.locator("#_name")).toContainText("Current bulletin");
     expect(errors).toEqual([]);
     expect(unexpectedRequests).toEqual([]);
@@ -926,6 +962,64 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                         preview: window.previewChan,
                         visible: window.isListVisible,
                     }));
+
+                if (profile !== "server") {
+                    // A pending native probe must reject admission without
+                    // claiming playback or closing the user's current list.
+                    await page.evaluate(() => {
+                        window.__ottStandby.native(
+                            window.__ottNativeStandby,
+                            () =>
+                                new Promise((resolve) => {
+                                    window.__finishFixtureProbe = resolve;
+                                })
+                        );
+                    });
+                    await expect
+                        .poll(() =>
+                            page.evaluate(
+                                () =>
+                                    typeof window.__finishFixtureProbe ===
+                                        "function" &&
+                                    window.__ottStandby.blocked()
+                            )
+                        )
+                        .toBe(true);
+                    const beforeBlocked = await playback();
+                    expect(await play("2")).toMatchObject({
+                        data: { error: "Playback was rejected by the player." },
+                        status: "rejected",
+                    });
+                    await expect(list).toBeVisible();
+                    expect(await playback()).toEqual(beforeBlocked);
+                    for (const command of [
+                        { channel_number: 2, command: "channel_by_number" },
+                        { channel_name: "Films", command: "channel_by_name" },
+                        { command: "random_channel", random_range: [1, 1] },
+                    ]) {
+                        expect(
+                            await page.evaluate(
+                                (value) => window.handleCommand(value),
+                                command
+                            )
+                        ).toBe("rejected");
+                    }
+                    expect(await playback()).toEqual(beforeBlocked);
+                    await page.evaluate(() =>
+                        window.__finishFixtureProbe({
+                            pending: 0,
+                            quiescent: false,
+                            standby: false,
+                        })
+                    );
+                    await expect
+                        .poll(() =>
+                            page.evaluate(
+                                () => window.__ottStandby.snapshot().state
+                            )
+                        )
+                        .toBe("running");
+                }
 
                 // The actual ott request handler must enter fullscreen even
                 // when the requested channel is already playing.

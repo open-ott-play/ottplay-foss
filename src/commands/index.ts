@@ -349,6 +349,8 @@ export function handleCommand(cmd: Command): string {
         cmd.command === "random_channel"
     ) {
         var w = window;
+        if (typeof w.stbIsStandby === "function" && w.stbIsStandby())
+            return "rejected";
         if (
             w.commandChannelsReady === false ||
             (w.commandChannelsReady !== true &&

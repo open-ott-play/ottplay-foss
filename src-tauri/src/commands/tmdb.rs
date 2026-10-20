@@ -24,10 +24,16 @@ pub struct TmdbProxyResult {
 ///
 /// Missing `TMDB_API_KEY` rejects (Mode A Rust companion returns 503).
 #[tauri::command]
-pub async fn tmdb_proxy(path: String, query: Option<String>) -> Result<TmdbProxyResult, String> {
-    let api_key = ottplay_core::tmdb::require_api_key().map_err(|e| e.to_string())?;
-    let query = query.unwrap_or_default();
-    let path_tail = normalize_tmdb_path(&path)?;
+pub async fn tmdb_proxy(
+    background: tauri::State<'_, ottplay_core::background_work::BackgroundWork>,
+    path: String,
+    query: Option<String>,
+) -> Result<TmdbProxyResult, String> {
+    let work = background.enter().map_err(str::to_string)?;
+    work.run(async {
+        let api_key = ottplay_core::tmdb::require_api_key().map_err(|e| e.to_string())?;
+        let query = query.unwrap_or_default();
+        let path_tail = normalize_tmdb_path(&path)?;
 
     let (status, headers, bytes) = ottplay_core::tmdb::proxy(&path_tail, &query, &api_key)
         .await
@@ -45,22 +51,27 @@ pub async fn tmdb_proxy(path: String, query: Option<String>) -> Result<TmdbProxy
         return Err(format!("tmdb HTTP {status}: {msg}"));
     }
 
-    if path_tail.starts_with("s/") || content_type.contains("json") || content_type.starts_with("text/")
-    {
-        Ok(TmdbProxyResult {
-            status,
-            content_type,
-            body: String::from_utf8_lossy(&bytes).into_owned(),
-            body_base64: None,
-        })
-    } else {
-        Ok(TmdbProxyResult {
-            status,
-            content_type,
-            body: String::new(),
-            body_base64: Some(b64_encode(&bytes)),
-        })
-    }
+        if path_tail.starts_with("s/")
+            || content_type.contains("json")
+            || content_type.starts_with("text/")
+        {
+            Ok(TmdbProxyResult {
+                status,
+                content_type,
+                body: String::from_utf8_lossy(&bytes).into_owned(),
+                body_base64: None,
+            })
+        } else {
+            Ok(TmdbProxyResult {
+                status,
+                content_type,
+                body: String::new(),
+                body_base64: Some(b64_encode(&bytes)),
+            })
+        }
+    })
+    .await
+    .map_err(str::to_string)?
 }
 
 fn normalize_tmdb_path(path: &str) -> Result<String, String> {

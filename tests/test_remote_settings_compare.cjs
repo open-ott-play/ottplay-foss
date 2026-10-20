@@ -26,7 +26,6 @@ const settings = {
     history_hours: 24,
     name: "Local",
     playlist: "https://example.invalid/list?token=secret",
-    vportal: "portal::[key:secret]https://example.invalid/api/v1/",
 };
 const params = { number: 2, provider: "m3u", settings };
 stored.set(
@@ -35,7 +34,7 @@ stored.set(
         M3Us: [
             {},
             {
-                medUrl: settings.vportal,
+                medUrl: "portal::[key:secret]https://retired.invalid/api/v1/",
                 name: settings.name,
                 rechours: "24",
                 www: settings.playlist,
@@ -44,6 +43,11 @@ stored.set(
     })
 );
 assert.equal(compare(host, params).data.matched, true);
+assert.equal(
+    compare(host, { ...params, settings: { ...settings, vportal: "" } }).status,
+    "rejected",
+    "M3U comparison ignores saved legacy links and accepts only TV fields"
+);
 assert.equal(
     compare(host, {
         ...params,

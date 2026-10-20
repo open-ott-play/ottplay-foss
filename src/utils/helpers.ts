@@ -355,19 +355,34 @@ export function loadScript(
     errorCb: ((e: Error) => void) | null,
     location: HTMLElement
 ): void {
+    var standby = (window as any).__ottStandby;
+    if (standby && standby.blocked()) {
+        if (errorCb) errorCb(standby.error());
+        return;
+    }
+    var release = standby ? standby.track(function () {}) : function () {};
     var script = document.createElement("script");
     script.src = url;
     script.type = "text/javascript";
     if (typeof (script as any).crossOrigin !== "undefined")
         (script as any).crossOrigin = "anonymous";
-    if (successCb) script.onload = successCb;
+    script.onload = function () {
+        release();
+        if (successCb) successCb();
+    };
     script.onerror = function () {
+        release();
         var err = new Error("Error loading: " + url);
         console.error(err);
         alert(err.message);
         if (typeof errorCb === "function") errorCb(err);
     };
-    location.appendChild(script);
+    try {
+        location.appendChild(script);
+    } catch (error) {
+        release();
+        throw error;
+    }
 }
 
 /**

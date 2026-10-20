@@ -620,6 +620,7 @@ var keyStrings = {
     "Local HTTP remote control":
         "Igenzura ryo kure rya HTTP ryo ku rusobe rw'aha",
     "Local URL": "URL yo ku gikoresho",
+    "Local videos": "Amashusho ari ku gikoresho",
     Login: "Izina ry'ukoresha",
     lang: "Ikinyarwanda",
     large: "binini",
@@ -848,6 +849,7 @@ var keyStrings = {
     "Repeat: One": "Subiramo: kimwe",
     "Request sended!": "Ubusabe bwoherejwe!",
     "Requesting approval for %1": "Turasaba icyemezo cya %1",
+    "Reset order": 'Tondeka shene: "Uko biri"',
     "Restart player": "Ongera utangize porogaramu yo gukina",
     "Restart stream": "Ongera utangize isakaza",
     "Restart stream / Live": "Ongera utangize isakaza / imbonankubone",
@@ -982,6 +984,7 @@ var keyStrings = {
     "Show when changing program": "Erekana igihe ikiganiro gihindutse",
     "Show when rewind": "Erekana igihe usubiza inyuma",
     "Show when switching": "Erekana igihe uhindura shene",
+    Shuffle: "Kuvangavanga",
     "Shuffle and play": "Vangavanga ukine",
     "Shuffle: Loading...": "Kuvangavanga: birimo gufungurwa…",
     "Shuffle: Off": "Kuvangavanga: bizimye",

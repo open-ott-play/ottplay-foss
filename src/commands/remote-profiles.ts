@@ -1,4 +1,3 @@
-import { parseVPortalLink } from "../plugins/vportal";
 import { checkProviderUrl, isProviderAllowed } from "../provider";
 
 // Configuration publication can synchronously reenter the remote dispatcher.
@@ -34,7 +33,7 @@ export function compareRemoteSettings(w: any, params: any): any {
     if (!object(params) || !object(params.settings)) return fail();
     var provider = params.provider;
     var schemas: Record<string, string[]> = {
-        m3u: ["history_hours", "name", "playlist", "vportal"],
+        m3u: ["history_hours", "name", "playlist"],
         plex: ["server", "token"],
         stalker: ["mac", "name", "server"],
     };
@@ -99,7 +98,6 @@ export function compareRemoteSettings(w: any, params: any): any {
                 history_hours: Number(slot.rechours || 0),
                 name: slot.name || "",
                 playlist: slot.www || "",
-                vportal: slot.medUrl || "",
             };
         } else if (provider === "stalker") {
             var portal =
@@ -144,7 +142,32 @@ export function handleRemoteProfiles(
         done(compareRemoteSettings(window, request.params));
         return true;
     }
-    if (["profiles", "profile", "profile_settings"].indexOf(action) < 0)
+    var offline = (window as any).__ottOfflineProfiles;
+    if (
+        offline &&
+        (window as any).__ottActiveProviderDriver &&
+        (window as any).__ottActiveProviderDriver.id === "offline" &&
+        [
+            "profiles",
+            "profile",
+            "profile_save",
+            "profile_export",
+            "profile_import",
+        ].indexOf(action) >= 0
+    ) {
+        offline.request(request).then(done);
+        return true;
+    }
+    if (
+        [
+            "profiles",
+            "profile",
+            "profile_settings",
+            "profile_save",
+            "profile_export",
+            "profile_import",
+        ].indexOf(action) < 0
+    )
         return false;
     function rejected(message: string): any {
         return { data: { error: message }, status: "rejected" };
@@ -201,7 +224,6 @@ export function handleRemoteProfiles(
             name: name(slot.name),
             number: index + 1,
             playlist_configured: !!slot.www.trim(),
-            vportal_configured: !!parseVPortalLink(slot.medUrl),
         };
     }
     function locked(): boolean {
@@ -302,7 +324,6 @@ export function handleRemoteProfiles(
             return rejected("This player URL is restricted to one profile.");
         var slot = config.M3Us[index];
         var fields: string[] = [];
-        var mediaChanged = false;
         var reload = false;
         if (action === "profile") {
             if (!slot.www.trim())
@@ -312,11 +333,6 @@ export function handleRemoteProfiles(
             if (!checkProviderUrl(slot.www))
                 return rejected(
                     "This playlist is not allowed on this platform."
-                );
-            var existingPortal = parseVPortalLink(slot.medUrl);
-            if (existingPortal && !checkProviderUrl(existingPortal.url))
-                return rejected(
-                    "This VPortal is not allowed on this platform."
                 );
             reload = config.active !== index;
             config.active = index;
@@ -328,12 +344,7 @@ export function handleRemoteProfiles(
                 !fields.length ||
                 fields.some(function (key) {
                     return (
-                        [
-                            "name",
-                            "playlist",
-                            "history_hours",
-                            "vportal",
-                        ].indexOf(key) < 0
+                        ["name", "playlist", "history_hours"].indexOf(key) < 0
                     );
                 })
             )
@@ -346,9 +357,7 @@ export function handleRemoteProfiles(
                         ? "www"
                         : field === "history_hours"
                           ? "rechours"
-                          : field === "vportal"
-                            ? "medUrl"
-                            : "name";
+                          : "name";
                 if (field === "history_hours") {
                     if (
                         typeof value !== "number" ||
@@ -366,20 +375,12 @@ export function handleRemoteProfiles(
                     );
                 if (field === "playlist" && !playlistAllowed(value))
                     return rejected("Use a valid HTTP(S) playlist URL.");
-                if (field === "vportal" && value) {
-                    var parsed = parseVPortalLink(value);
-                    if (!parsed || !checkProviderUrl(parsed.url))
-                        return rejected(
-                            "Use the complete VPortal cabinet link allowed on this platform."
-                        );
-                }
                 var changed =
                     field === "history_hours"
                         ? historyHours(slot[target]) !== value
                         : String(slot[target] || "") !== value;
                 if (!changed) continue;
                 slot[target] = value;
-                if (field === "vportal") mediaChanged = true;
                 if (
                     config.active === index &&
                     (field === "playlist" || field === "history_hours")
@@ -387,17 +388,6 @@ export function handleRemoteProfiles(
                     reload = true;
             }
         }
-        // A newly selected legacy slot may not yet have a media identity. Seed
-        // only that slot so media synchronization cannot recursively save it.
-        if (
-            config.active === index &&
-            parseVPortalLink(slot.medUrl) &&
-            !slot.medSourceId
-        )
-            slot.medSourceId =
-                Date.now().toString(36) +
-                "-" +
-                Math.random().toString(36).slice(2);
         var changed = JSON.stringify(config) !== before;
         var load = w.loadPlaylist;
         if (reload && typeof load !== "function")
@@ -422,13 +412,6 @@ export function handleRemoteProfiles(
             )
                 return rejected("Could not complete the profile save.");
             var persisted = driver.configuration();
-            if (mediaChanged) {
-                // The driver owns source identity rotation on a cabinet change.
-                if (!persisted.M3Us[index].medSourceId)
-                    return rejected("Could not complete the profile save.");
-                expected.M3Us[index].medSourceId =
-                    persisted.M3Us[index].medSourceId;
-            }
             if (JSON.stringify(persisted) !== JSON.stringify(expected))
                 return rejected("The profile changed while saving. Try again.");
             config = persisted;

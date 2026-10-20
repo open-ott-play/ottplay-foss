@@ -1,4 +1,5 @@
 import { popupActionId } from "./compatibility/legacy-names";
+import { installStandby } from "./core/standby";
 import { applyLanguageMetadata, normalizeSearchText } from "./localization";
 import {
     languageAssetPath,
@@ -6,6 +7,7 @@ import {
     languageNames,
 } from "./localization/assets";
 import { accessMediaPlugin, prepareAccessMedia } from "./plugins/access-media";
+import { installLocalMedia } from "./plugins/local-media";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -1431,9 +1433,9 @@ function updateMediaInfoDisplay(): void {
 var mediaCheckTimer: any = null;
 
 /**
- * Detect whether the current playback is an archive recording (stream with
- * a finite duration > 180s and < 1,000,000s). If so, sets playType to
- * -99999999999 and resets playTime to 0.
+ * Detect finite channel media. Local videos accept any positive finite duration;
+ * other providers retain the > 180s and < 1,000,000s recording heuristic.
+ * Reclassifies playback without replacing its session or backend.
  *
  * Side effects: Updates window.playType, window.playTime; calls
  * updateMediaInfoDisplay(). Clears mediaCheckTimer.
@@ -1442,11 +1444,12 @@ function checkMedia(): void {
     clearTimeout(mediaCheckTimer);
     if (video) {
         var duration = stbGetLen();
+        var driver = (window as any).__ottActiveProviderDriver;
+        var localFile = driver && driver.id === "offline";
         if (
-            duration &&
-            duration > 180 &&
-            duration !== Number.POSITIVE_INFINITY &&
-            duration < 1000000
+            duration > 0 &&
+            isFinite(duration) &&
+            (localFile || (duration > 180 && duration < 1000000))
         ) {
             var playback = (window as any).__ottClassicPlayback;
             if (playback && typeof playback.command === "function")
@@ -1469,6 +1472,13 @@ function checkMedia(): void {
 function body_onUnload(): void {
     var playback = (window as any).__ottClassicPlayback;
     if (playback && typeof playback.snapshot === "function") {
+        try {
+            var backend = (window as any).__ottCoreBackendPeek?.();
+            var handle = backend && backend.current();
+            if (handle && handle.active()) handle.sample();
+        } catch (_) {
+            // Keep the last observed clock if the decoder is already retiring.
+        }
         var state = playback.snapshot();
         playback.checkpoint(state, true);
         // VOD has its own resume history. A hidden channel remains selected and
@@ -1590,7 +1600,7 @@ function loadInterfaceLanguage(
     };
 }
 
-function selectLang(forceReload?: boolean): void {
+function selectLang(forceReload?: boolean, startup?: boolean): void {
     var langCodes = [
         "_eng",
         "_arm",
@@ -1693,7 +1703,7 @@ function selectLang(forceReload?: boolean): void {
             : "";
     }
     function resumeAfterLanguage(exit?: boolean): void {
-        if (typeof duneAddSettings !== "function") {
+        if (startup || typeof duneAddSettings !== "function") {
             if (exit === true) {
                 closeList();
                 stbExit();
@@ -1811,7 +1821,8 @@ function selectLang(forceReload?: boolean): void {
                     );
                 return true;
             case keys.EXIT:
-                if (typeof duneAddSettings === "function") return false;
+                if (!startup && typeof duneAddSettings === "function")
+                    return false;
             case keys.RETURN:
                 cancelled = true;
                 if (cancelLanguageLoad) cancelLanguageLoad();
@@ -1994,7 +2005,28 @@ export function startPlayer(): void {
 
 /** Reuse the successful early dictionary and commit first-run auto selection. */
 function loadStartupLanguage(): boolean {
+    var languageHost = window as any;
+    // Retire any pre-standby language picker/download, including when startup
+    // reuses the active dictionary and therefore starts no replacement request.
+    languageHost.__ottLanguagePending = null;
+    var standby = languageHost.__ottStandby;
+    var generation = standby && standby.generation();
+    function current(): boolean {
+        return (
+            !standby ||
+            (languageHost.__ottStandby === standby &&
+                standby.current(generation))
+        );
+    }
     var lang = stbGetItem("ottplaylang");
+    // A wake reuses this session's verified dictionary, not a stale saved code
+    // from an unsupported system language or a failed first-boot download.
+    var active =
+        Object.prototype.hasOwnProperty.call(languageNames, lang) &&
+        languageHost.__ottInterfaceLanguage === lang &&
+        languageHost.__ottBootDictionary === languageHost.keyStrings
+            ? lang
+            : "";
     var bootLanguage = (window as any).__ottBootLanguage;
     (window as any).__ottBootLanguage = null;
     var preloaded =
@@ -2009,7 +2041,7 @@ function loadStartupLanguage(): boolean {
         lang =
             preloaded && bootLanguage.automatic
                 ? String(bootLanguage.code)
-                : "";
+                : active;
         if (lang) {
             stbSetItem("ottplaylang", lang);
             stbSetItem("ottplaylangmode", "system");
@@ -2023,18 +2055,20 @@ function loadStartupLanguage(): boolean {
             if (typeof (window as any).clearBootHide === "function")
                 (window as any).clearBootHide();
         }
-        selectLang();
+        if (current()) selectLang(undefined, true);
         return false;
     }
 
     function ready(): void {
+        if (!current()) return;
         (window as any).__ottBootDictionary = (window as any).keyStrings;
-        if (typeof duneAddSettings !== "function") loadProv();
-        else if (typeof (window as any).optionsList === "function")
-            (window as any).optionsList(selectLang);
+        loadProv();
         checkTauriUpdatesAfterLanguage();
     }
-    if (preloaded && bootLanguage.code === lang) {
+    if (
+        (preloaded && bootLanguage.code === lang) ||
+        (active && active === lang)
+    ) {
         // Keep the script-load callback's ordering: onStbReady must install
         // native HTTP/EPG shims before a saved provider starts its first request.
         applyLanguageMetadata(lang);
@@ -2043,13 +2077,14 @@ function loadStartupLanguage(): boolean {
     }
     console.log("TRACE lang=" + lang + ", loading langJS");
     loadInterfaceLanguage(lang, function (loaded) {
+        if (!current()) return;
         if (loaded) ready();
         else {
             var el = document.getElementById("launch");
             if (el) el.style.display = "none";
             if (typeof (window as any).clearBootHide === "function")
                 (window as any).clearBootHide();
-            selectLang(true);
+            selectLang(true, true);
         }
     });
     return true;
@@ -2062,13 +2097,13 @@ function loadStartupLanguage(): boolean {
  * - Syncing PlayerSettings to window.* globals
  * - Initialising UI references and applying visual settings
  * - Saving the current popup state for provider-switch restoration
- * - Loading the language file and then launching the provider / options
+ * - Loading the language file and then launching the provider
  * - Preparing TMDb if available
  *
  * Side effects: Extensive — calls loadSettings(), installSettingsFacade(),
  * setTimezone(), setFontSize(), setListPos(), setColor(), setEditor(),
  * setPipPosBuf(), setSleepTimeout(); loads language JS; calls loadProv()
- * or optionsList().
+ * to resume the configured source.
  *
  * Edge case: If no language is set, calls selectLang() directly and returns.
  * Wrapped in try/catch — exceptions are displayed in #launch.
@@ -2101,6 +2136,7 @@ function onStbReady(): void {
             (window as any).applyLocalSwopConfig();
         if ((window as any).__ottNasLibrary)
             (window as any).__ottNasLibrary.init();
+        installLocalMedia(window);
         initUIReferences();
 
         // Apply settings
@@ -2123,11 +2159,14 @@ function onStbReady(): void {
         if (typeof (window as any).showEditKey === "undefined")
             (window as any).showEditKey = (window as any).showEditKey1;
 
-        // Save current popup state (read by loadProv when switching providers)
-        savedPopup.popupActions = popupActions.slice();
-        savedPopup.popupArray = popupArray.slice();
-        savedPopup.popupDetail = popupDetail.slice();
-        savedPopup.ver = version;
+        // Retain the pristine menu across wake; provider-owned/hidden entries
+        // must not become the baseline for the next provider mount.
+        if (!savedPopup.popupActions.length) {
+            savedPopup.popupActions = popupActions.slice();
+            savedPopup.popupArray = popupArray.slice();
+            savedPopup.popupDetail = popupDetail.slice();
+            savedPopup.ver = version;
+        }
 
         // Install native transports even if startup pauses for language selection.
         // Re-apply Tauri IPC override after provider script loads.
@@ -2145,8 +2184,14 @@ function onStbReady(): void {
                 setupStalkerPortalShim();
         }
 
-        if (TMDb && TMDb.prepare) TMDb.prepare();
-        loadStartupLanguage();
+        window.__ottStandby.ready(function () {
+            if (window.__ottStandby.blocked()) {
+                stbSetStandby(true);
+                return;
+            }
+            if (TMDb && TMDb.prepare) TMDb.prepare();
+            loadStartupLanguage();
+        });
     } catch (e) {
         startupError(document.getElementById("launch"), "onStbReady", e);
     }
@@ -2337,6 +2382,8 @@ function setupTauriCompanionShim(): void {
     window.installTauriHttpTransport($, tauriInvoke);
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any) {
+        if ((window as any).__ottStandby?.blocked())
+            return origAjax(urlOrOpts, maybeOpts);
         let opts: any;
         if (typeof urlOrOpts === "string") {
             opts = Object.assign({}, maybeOpts || {}, { url: urlOrOpts });
@@ -2564,6 +2611,7 @@ function setupTauriEpgCacheReady(): void {
     }
     eventApi
         .listen("epg-cache-ready", function (_ev: any) {
+            if ((window as any).__ottStandby?.blocked()) return;
             try {
                 console.log("[Tauri] epg-cache-ready — refilling EPG");
                 invalidateEpgCache(true);
@@ -2610,6 +2658,9 @@ function setupTauriEpgCacheReady(): void {
  * @param chIdx - Channel index within the category.
  * @param fullscreen - Close the list after admitting a remote selection.
  * @param admit - Optional current-state guard for a synchronous remote channel step.
+ * @param resume - Startup-only local file offset, bound to its source and channel.
+ * @param background - Keep the channel list open during natural media transitions.
+ * @param fromStart - Start an adjacent media file at zero instead of its saved position.
  *
  * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
  * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
@@ -2622,9 +2673,25 @@ function _playChannel(
     catIdx: number,
     chIdx: number,
     fullscreen?: boolean,
-    admit?: () => boolean
+    admit?: () => boolean,
+    resume?: { channelId: string; position: number; sourceId: string },
+    background = false,
+    fromStart = false
 ): boolean | void {
     var w = window as any;
+    if (w.__ottStandby?.blocked()) return false;
+    function resumeCurrent(): boolean {
+        return (
+            !resume ||
+            (w.__ottActiveProviderDriver?.id === "offline" &&
+                w.__ottClassicPlayback.sourceId() === resume.sourceId &&
+                String((cats[catsArray[catIdx]] || [])[chIdx]) ===
+                    resume.channelId &&
+                isFinite(resume.position) &&
+                resume.position >= 0)
+        );
+    }
+    if (!resumeCurrent()) return false;
     if (admit && !admit()) return false;
     var kiosk = w.__ottKiosk;
     var kioskId = (cats[catsArray[catIdx]] || [])[chIdx];
@@ -2678,7 +2745,15 @@ function _playChannel(
             var list = cats[requestedCategory];
             var index = list ? list.indexOf(requestedId) : -1;
             if (category >= 0 && index >= 0)
-                playChannel(category, index, fullscreen);
+                playChannel(
+                    category,
+                    index,
+                    fullscreen,
+                    admit,
+                    resume,
+                    background,
+                    fromStart
+                );
         })
     ) {
         console.log("[playChannel] blocked by parental");
@@ -2695,8 +2770,38 @@ function _playChannel(
     if (admit && !admit()) return false;
     if (settings.stopPlay) stbStop();
     if (admit && !admit()) return false;
+    if (!resumeCurrent()) return false;
     setCurrent(catIdx, chIdx);
+    if (!resumeCurrent()) return false;
     var channelId = curList[primaryIndex];
+    var mediaItem =
+        channels[channelId] && (channels[channelId] as any).__ottMediaItem;
+    if (mediaItem && w.__ottMedia && w.__ottMedia.playChannel) {
+        var selectedDriver = w.__ottActiveProviderDriver;
+        var selectedLoad = w.__ottCommandChannelLoad;
+        var selectedRow = channels[channelId];
+        clearTimeout(w.previewTimer);
+        w.previewChan = null;
+        if (w.isListVisible && !background) closeList();
+        if (
+            selectedDriver !== w.__ottActiveProviderDriver ||
+            selectedLoad !== w.__ottCommandChannelLoad ||
+            selectedRow !== channels[channelId]
+        )
+            return false;
+        return w.__ottMedia.playChannel(
+            mediaItem,
+            channelId,
+            undefined,
+            background,
+            fromStart
+                ? "start"
+                : w.commandChannelsReady === false ||
+                    (kiosk && kiosk.locked() && kiosk.allowed(channelId))
+                  ? "resume"
+                  : "prompt"
+        );
+    }
     console.log(
         "[playChannel] channelId=" +
             channelId +
@@ -2709,13 +2814,14 @@ function _playChannel(
     )
         w.__ottClassicPlayback.command({
             channelId: channelId,
+            position: resume && resume.position,
             type: "live",
         });
     else w.playType = 0;
     updateChannelInfo(channelId);
     if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (typeof setPlayer === "function") setPlayer();
-    stbPlay(getChannelUrl(channelId));
+    stbPlay(getChannelUrl(channelId), resume && resume.position);
     clearTimeout(w._tmedia);
     w._tmedia = setTimeout(checkMedia, 2000);
     return true;
@@ -2723,15 +2829,21 @@ function _playChannel(
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
 function _playMedia(item: MediaHistoryEntry, automatic = false): void {
+    if ((window as any).__ottStandby?.blocked()) return;
     var kiosk = (window as any).__ottKiosk;
+    var channelLaunch =
+        (window as any).__ottMedia &&
+        (window as any).__ottMedia.channelLaunch &&
+        (window as any).__ottMedia.channelLaunch(item);
     if (
         kiosk &&
         kiosk.enabled() &&
         !(
-            automatic &&
-            kiosk.locked() &&
-            typeof kiosk.allowedMedia === "function" &&
-            kiosk.allowedMedia(item && (item as any).__ottMediaRef)
+            (channelLaunch != null && kiosk.allowed(channelLaunch)) ||
+            (automatic &&
+                kiosk.locked() &&
+                typeof kiosk.allowedMedia === "function" &&
+                kiosk.allowedMedia(item && (item as any).__ottMediaRef))
         )
     )
         return;
@@ -2756,7 +2868,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     // A delayed live-channel probe must not relabel the newly selected VOD item.
     clearTimeout((window as any)._tmedia);
     clearTimeout(mediaCheckTimer);
-    setCurrent(catIndex, -1);
+    if (channelLaunch == null) setCurrent(catIndex, -1);
     var media = (window as any).__ottMedia.prepare(item, streamUrl);
     if (!media) return;
     item = media.item;
@@ -2789,6 +2901,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     )
         (window as any).__ottClassicPlayback.command({
             channelId: media.ref.itemId,
+            channelSelection: media.channel && media.channel.id,
             item: item,
             position: startupPosition,
             sourceId: media.ref.sourceId,
@@ -5427,6 +5540,11 @@ if (typeof window.__TAURI__ !== "undefined") {
 if (typeof (window as any).Capacitor !== "undefined") {
     window.stbExit = function (): void {
         if (window.__ottRemoteInputActive) return;
+        try {
+            body_onUnload();
+        } catch (_) {
+            // An explicit exit must still finish if persistence is unavailable.
+        }
         if (typeof window.stbStop === "function") window.stbStop();
         const Cap = (window as any).Capacitor;
         const plugins = Cap && Cap.Plugins ? Cap.Plugins : null;
@@ -5476,6 +5594,30 @@ installRemoteLifecycle(window, {
 });
 window.setPlayer = setPlayer;
 window.stbGetItem = stbGetItem;
+installStandby(window, stbGetItem, stbSetItem);
+if (window.__TAURI__ || window.__TAURI_INTERNALS__) {
+    window.__ottNativeStandby = function (standby: boolean) {
+        return tauriInvoke("set_background_standby", { standby: standby });
+    };
+    window.__ottStandby.native(window.__ottNativeStandby, function () {
+        return tauriInvoke("background_standby_status", {});
+    });
+} else if (window.Capacitor && window.Capacitor.isNativePlatform?.()) {
+    var nativeBackground = resolveNativePlugin<any>(
+        "NativeBackground",
+        function () {
+            return {};
+        }
+    );
+    window.__ottNativeStandby = function (standby: boolean) {
+        if (!nativeBackground.setStandby)
+            return Promise.reject(new Error("Native standby unavailable"));
+        return nativeBackground.setStandby({ standby: standby });
+    };
+    window.__ottStandby.native(window.__ottNativeStandby, function () {
+        return nativeBackground.status();
+    });
+}
 (window as any).stbGetPersistedItem = stbGetPersistedItem;
 window.stbSetItem = stbSetItem;
 window.stbDelItem = stbDelItem;
@@ -7288,9 +7430,17 @@ optionsArr.push({ action: selectLang, name: "Change interface language" });
 // and cannot resolve bare specifiers in the Mode A/B player.js bundle.
 var tauriUpdaterStarted = false;
 function checkTauriUpdatesAfterLanguage(): void {
-    if (typeof window.__TAURI__ === "undefined" || tauriUpdaterStarted) return;
+    const standby = window.__ottStandby;
+    if (
+        typeof window.__TAURI__ === "undefined" ||
+        tauriUpdaterStarted ||
+        standby?.blocked()
+    )
+        return;
     tauriUpdaterStarted = true;
     void (async () => {
+        const generation = standby?.generation();
+        let release = function () {};
         try {
             type UpdaterMeta = {
                 rid: number;
@@ -7299,11 +7449,13 @@ function checkTauriUpdatesAfterLanguage(): void {
                 date?: string;
                 body?: string;
             };
+            if (standby) release = standby.track(function () {});
             const update = await tauriInvoke<UpdaterMeta | null>(
                 "plugin:updater|check",
-                {}
+                { timeout: 10000 }
             );
-            if (!update) return;
+            release();
+            if (!update || (standby && !standby.current(generation))) return;
             const ver = update.version;
             // Soft prompt — do not force install on startup.
             const confirmed = await new Promise<boolean>((resolve) => {
@@ -7316,16 +7468,19 @@ function checkTauriUpdatesAfterLanguage(): void {
                     () => resolve(false)
                 );
             });
-            if (confirmed) {
+            if (confirmed && (!standby || standby.current(generation))) {
                 const ChannelCtor = (window as any).__TAURI__?.core?.Channel;
                 if (typeof ChannelCtor !== "function") {
                     throw new Error("Tauri Channel unavailable for updater");
                 }
                 const onEvent = new ChannelCtor();
+                if (standby) release = standby.track(function () {});
                 await tauriInvoke("plugin:updater|download_and_install", {
                     onEvent,
                     rid: update.rid,
                 });
+                release();
+                if (standby && !standby.current(generation)) return;
                 // Relaunch is optional; ask the user to restart if plugin-process is absent.
                 try {
                     const processApi = (window as any).__TAURI__?.process;
@@ -7345,6 +7500,8 @@ function checkTauriUpdatesAfterLanguage(): void {
         } catch (err) {
             // Missing latest.json / placeholder pubkey / offline: non-fatal.
             console.debug("Tauri updater check skipped:", err);
+        } finally {
+            release();
         }
     })();
 }

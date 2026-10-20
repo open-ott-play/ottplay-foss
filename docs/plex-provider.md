@@ -1,67 +1,26 @@
 # Plex on each player
 
-Choose **Plex** in the provider list, then **Sign in with Plex**. The official Plex sign-in page opens in a browser. On a TV, open `plex.tv/link` on a phone or computer and enter the displayed code. Choose an available Plex server after signing in; the player checks its connection and opens the library. **Back** cancels sign-in or server connection.
+Choose **Plex** in the provider list, then **Sign in with Plex**. The official Plex sign-in page opens in a browser. On a TV, open `plex.tv/link` on a phone or computer and enter the displayed code. Choose an available Plex server after signing in; the player checks its connection and opens folder selection. **Back** cancels sign-in or server connection.
 
 For a manual connection, enter the Plex server address (for example `http://192.168.1.25:32400`) and its access token, then choose **Save and open library**. The token is masked in the settings screen. Prefer an HTTPS Plex endpoint for an HTTPS browser player: access to local HTTP endpoints depends on the browser's local-network permissions and mixed-content policy. Native players can use the transport supported by their build. The Play distribution retains its HTTPS policy.
 
-Plex is a library provider: it opens library sections, search, folders and media. It does not flatten the collection into TV channels. Switching to Plex preserves other providers' saved connections, playlists and favorites.
+Plex uses the same channel list as Local videos. In **Plex settings → Folders**, select the libraries or folders this profile should include, choose **Ok** in the picker, then save the profile. Only the selected roots and their descendants are scanned. Overlapping selections do not duplicate a video. Existing profiles without a selection open the folder picker; they never silently import the whole server.
 
-The [illustrated playback lifecycle](#loading-navigation-and-shutdown) explains
-loading, cancellation and file changes. The [review process and results](#reliability-review-process-and-results)
-record the regression checks behind these guarantees.
+![Selected sources become one ordinary playlist](images/media-channel-playlists.svg)
 
-**Browse folders** opens the server's filesystem hierarchy. Items without a title
-use alternate Plex metadata or a filename, with **Untitled** as a final fallback.
-The heading keeps the selected folder's name instead of Plex's generic `Folder`
-label. Approaching the last three rows automatically loads the next page into
-the same list. **Loading…** is replaced by the next items without moving the
-selection or adding another breadcrumb. A failed request keeps the existing
-items and offers a selectable retry row; **Back** still opens the parent folder.
-Selecting a video starts an ordered queue of that folder’s files. Natural completion
-plays the next file in the same folder, including files on later catalog pages.
-The selected filename and an animated loading dialog appear immediately while
-the player collects the folder and resolves the file. Other list selections are
-blocked during this wait. **Back** cancels and keeps the same file selected;
-a connection error returns to the list for retry. Once the stream is handed to
-the decoder, its normal buffering indicator follows actual video readiness.
-Subfolders are excluded. **Shuffle: Off** starts its videos in a random order. The
-queue includes every page of that folder and applies the current title filter;
-it does not descend into subfolders. A failed page cancels the new queue.
+The player connects under the standard animated loading dialog and reports processed entries and available videos. It starts when the first usable batch arrives; if a saved video is selected, it waits for that video or the end of the scan. Remaining items arrive in the background without restarting the current video. Cancelling, changing source or changing profile retires the previous load. A stalled scan ends with an error rather than holding the loading screen indefinitely.
 
-During full-screen Plex playback, **Left/Right** seek backward/forward by
-10 seconds and **Up/Down** play the next/previous file. These controls also apply
-to a remote Plex queue while another TV provider is selected. Dedicated volume
-buttons still control volume; open lists and dialogs retain their own navigation.
+**OK** opens the ordinary channel list. Search, favorites, order changes and **Actions → Shuffle / Reset order** work on this list. There is no separate Random button or folder tree during normal playback. Folder selection belongs to the profile editor.
 
-If switching files needs a folder or metadata request, a loading wait appears.
-**Up/Down** can adjust the pending selection; **Back** cancels it and keeps the
-current file selected. Temporary connection
-failures are retried up to three attempts. A failed or incomplete folder never
-becomes a partial playback queue. If the server remains unavailable, retry the
-arrow after checking the connection.
+**Actions → Repeat** cycles through **All**, **One** and **Off**. All wraps the selected channel group, One repeats its current video, and Off stops after the final video. The Play key changes this setting while Actions is open. Changing the order or receiving another batch affects subsequent file transitions without restarting the current file.
 
-The playback buttons appear beside the description. **Repeat** cycles through
-**All**, **One**, and **Off**: repeat the queue, repeat the current video, or finish
-after its last video. Remote shortcuts are **5** (or **Play**) for shuffle and
-**9** for repeat. Shuffle visibly changes from **Off** through **Loading** to **On**.
-Press **5** again to cancel loading or switch the current queue back to folder
-order without restarting the video; **Play** explicitly starts a fresh shuffle.
-Both the keyboard number row and numeric keypad work. The repeat preference is
-saved per media source. Back, Stop,
-changing the filter or choosing another item cancels a pending queue launch.
+Selecting a video opens the standard loading dialog immediately while its playable URL is resolved. **Back** cancels and returns to the list. Late replies cannot launch a cancelled selection. The decoder's normal buffering indicator follows stream preparation.
 
-On reopening the player, Plex continues the last unfinished video at its saved
-position, including seconds within the first minute. It resolves the Plex item
-again instead of retaining an expiring stream URL. Compatible HLS waits for its
-initial media buffer before applying the saved position. **Enter/OK** reopens
-the saved folder with the playing file selected; **Back** returns through its saved
-breadcrumbs. The folder queue is rebuilt from the current server catalog and
-continues from that file, respecting the saved repeat setting. Older checkpoints
-restore the saved folder directly even when they do not contain its full
-breadcrumb trail. Tauri saves the current
-position before its explicit Exit action. If the file is unavailable, the
-library opens for another selection. Disabled watch history and finished videos
-do not trigger automatic playback; the parental PIN still applies.
+During full-screen Plex playback, **Left/Right** seek backward/forward by ten seconds and **Up/Down** play the previous/next file in the current list. Dedicated volume keys still adjust volume. Open lists and dialogs retain their own navigation. Explicit remote Plex queues keep their own requested order and completion policy.
+
+The standard channel selection and per-file watch position are saved independently of expiring media URLs. Reopening resolves the selected video again through Plex. Startup resumes its saved position automatically; choosing a file manually offers the existing Continue watching prompt. Arrow navigation and natural completion start the next file at zero. Older Plex profiles can restore their unfinished last video from the same server’s media journal after folder selection. Parental admission still applies.
+
+The same implementation is built for the browser, here.now, OTT Server, LG/webOS, Tauri and Capacitor. Updating only one installed instance does not update the others. The separate native Compose Android application does not currently expose a Plex/VPortal provider.
 
 The **Playback** setting offers:
 
@@ -249,8 +208,9 @@ For access away from home, the selected Plex server must have a reachable remote
 ![Plex playback lifecycle: an owned loading screen, explicit file selection across natural completion, and early session cleanup](images/plex-playback-lifecycle.svg)
 
 A loading screen belongs to the request that opened it. During startup, the
-player collects the saved folder and resolves a fresh stream before playing.
-Replacing that screen cancels both stages; a late result cannot start a video
+player scans the profile’s selected roots and resolves a fresh stream for the
+saved video (or the first available video on a new profile). It can start before
+other selected folders finish loading. Replacing that screen cancels pending work; a late result cannot start a video
 behind a newer dialog. Cancellation preserves the saved playback position.
 
 During a full-screen file change, repeated **Up/Down** presses update the pending
@@ -259,10 +219,11 @@ destination into the new playback generation. Responses from the previous
 request are ignored. Navigation performed during cancellation also wins over
 the old request. **Left/Right** remain seek controls for the current video.
 
-Catalog browsing continues after a full 200-row page even when Plex omits
-`totalSize`. A short or empty page finishes that traversal, with cursor and
-catalog bounds still enforced. Preparing a playback queue continues to require
-the complete validated collection.
+Folder scanning continues after a full 200-row page even when Plex omits
+`totalSize`. A known total or an empty page finishes that traversal; a server-capped short
+page without a total still advances. Cursor and catalog bounds remain enforced. The normal playlist receives incremental batches.
+An explicit remote Plex queue still requires its complete validated collection
+before playback, preserving the requested order and all-or-nothing admission.
 
 Account connection probes accept both JSON and XML from Plex Media Server.
 They verify the server identity before sending its token. The cloud account

@@ -698,6 +698,28 @@ export function executeRemoteFavorites(
                                 return;
                             }
                             var admitted = w.playChannel(c, i, true, valid);
+                            if (
+                                w.channels[id].__ottMediaItem &&
+                                expectedDriver.capabilities &&
+                                expectedDriver.capabilities.mediaPlaylist
+                            ) {
+                                // Finite channel media resolves asynchronously.
+                                // Match the regular channel command's dispatch
+                                // receipt without closing its owned loading UI.
+                                if (
+                                    admitted === true &&
+                                    sourceCurrent() &&
+                                    String(
+                                        (w.curList || [])[w.primaryIndex]
+                                    ) === String(id)
+                                )
+                                    finish(undefined, {
+                                        dispatched: true,
+                                        entry: favoritePublic(selected),
+                                    });
+                                else fail("playback_failed");
+                                return;
+                            }
                             var after = w.__ottClassicPlayback.snapshot();
                             dispatched(
                                 admitted === true &&

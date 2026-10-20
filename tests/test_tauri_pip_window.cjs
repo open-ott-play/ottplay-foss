@@ -489,6 +489,46 @@ async function run() {
         assert.equal(f.plays.length, 1);
         assert.equal(next.destroyed, true);
     });
+    test("standby acknowledgement waits for teardown of a replaced decoder", {
+        shaka: true,
+    }, async (f) => {
+        ready(
+            f,
+            request(1, "https://fixture.invalid/first.mpd", { engine: 2 })
+        );
+        await settle();
+        const old = f.shakaInstances[0];
+        const drained = deferred();
+        old.destroy = () => drained.promise;
+        f.w.__ottplayPip.play(direct(2));
+        f.w.__ottplayPip.stop(3);
+        await settle();
+        assert.equal(events(f, "stopped").length, 0);
+        drained.resolve();
+        await settle();
+        assert.deepEqual(
+            events(f, "stopped").map((event) => event.args.session),
+            [3]
+        );
+    });
+    test("failed decoder teardown never acknowledges standby as stopped", {
+        shaka: true,
+    }, async (f) => {
+        ready(
+            f,
+            request(1, "https://fixture.invalid/first.mpd", { engine: 2 })
+        );
+        await settle();
+        f.shakaInstances[0].destroy = () =>
+            Promise.reject(new Error("private decoder detail"));
+        f.w.__ottplayPip.play(direct(2));
+        await settle();
+        f.w.__ottplayPip.stop(3);
+        await settle();
+        assert.equal(events(f, "stopped").length, 0);
+        assert.equal(events(f, "stop_error").length, 1);
+        assert.equal(events(f, "stop_error")[0].args.session, 3);
+    });
     test("HLS waits for manifest and loads the bundled decoder", {
         noHls: true,
     }, async (f) => {

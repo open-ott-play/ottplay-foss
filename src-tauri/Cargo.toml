@@ -1,6 +1,6 @@
 [package]
 name = "ottplay-tauri"
-version = "1.1.57"
+version = "1.1.58"
 description = "Tauri desktop shell for ottplay-foss (Mode B), reusing ottplay-core"
 edition = "2021"
 authors = ["4alvit <4alvit@users.noreply.github.com>"]
@@ -38,6 +38,7 @@ raw-window-handle = "0.6"
 futures-util = "0.3"
 uuid = { version = "1", features = ["v4"] }
 tauri-plugin-window-state = "2"
+tauri-plugin-dialog = "=2.7.3"
 
 # Windows releases publish raw MSI/NSIS installers, not legacy ZIP wrappers.
 # Avoid the unused archive extraction path; Unix still needs tar/gzip app updates.

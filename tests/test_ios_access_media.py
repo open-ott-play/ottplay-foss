@@ -3,6 +3,7 @@
 import subprocess
 import tempfile
 from pathlib import Path
+from native_standby_work_cases import swift_work_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SWIFT = r'''
@@ -589,7 +590,7 @@ assert(finished, "Timed out after requests: \(Fixture.snapshot().map { $0.url!.p
 
 with tempfile.TemporaryDirectory(prefix="ottplay-access-test-") as directory:
     path = Path(directory)
-    (path / "main.swift").write_text(SWIFT)
+    (path / "main.swift").write_text(swift_work_source() + SWIFT)
     sources = ROOT / "ios/App/App/Plugins"
     subprocess.run(["swiftc", str(sources / "AccessMediaPolicy.swift"),
                     str(sources / "AccessMediaProxy.swift"), str(path / "main.swift"),

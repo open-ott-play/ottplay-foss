@@ -33,6 +33,7 @@ impl From<reqwest::Error> for HttpError {
 /// No browser cookies are imported; explicit provider request headers survive.
 #[tauri::command]
 pub async fn proxy_http(
+    background: tauri::State<'_, ottplay_core::background_work::BackgroundWork>,
     url: String,
     method: String,
     body: Option<String>,
@@ -40,9 +41,71 @@ pub async fn proxy_http(
     timeout_ms: Option<u64>,
     secure_control: Option<bool>,
     screenshot_control: Option<bool>,
+    remote_control: Option<bool>,
+) -> Result<HttpResponse, HttpError> {
+    proxy_http_with_background(
+        &background,
+        url,
+        method,
+        body,
+        headers,
+        timeout_ms,
+        secure_control,
+        screenshot_control,
+        remote_control,
+    )
+    .await
+}
+
+async fn proxy_http_with_background(
+    background: &ottplay_core::background_work::BackgroundWork,
+    url: String,
+    method: String,
+    body: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    timeout_ms: Option<u64>,
+    secure_control: Option<bool>,
+    screenshot_control: Option<bool>,
+    remote_control: Option<bool>,
 ) -> Result<HttpResponse, HttpError> {
     let secure_control = secure_control.unwrap_or(false);
     let screenshot_control = screenshot_control.unwrap_or(false);
+    // Remote control and diagnostic screenshots must survive player standby.
+    let work = if remote_control.unwrap_or(false) || secure_control || screenshot_control {
+        None
+    } else {
+        Some(background.enter().map_err(|message| HttpError {
+            message: message.into(),
+            timeout: false,
+        })?)
+    };
+    let request = proxy_http_inner(
+        url,
+        method,
+        body,
+        headers,
+        timeout_ms,
+        secure_control,
+        screenshot_control,
+    );
+    match work {
+        Some(work) => work.run(request).await.map_err(|message| HttpError {
+            message: message.into(),
+            timeout: false,
+        })?,
+        None => request.await,
+    }
+}
+
+async fn proxy_http_inner(
+    url: String,
+    method: String,
+    body: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    timeout_ms: Option<u64>,
+    secure_control: bool,
+    screenshot_control: bool,
+) -> Result<HttpResponse, HttpError> {
     let url =
         reqwest::Url::parse(url.strip_prefix('@').unwrap_or(&url)).map_err(|error| HttpError {
             message: error.to_string(),
@@ -205,6 +268,75 @@ mod tests {
     use super::*;
     use std::io::{BufRead, BufReader, Read, Write};
     use std::net::TcpListener;
+
+    #[tokio::test]
+    async fn standby_cancels_provider_body_but_keeps_control_transport_available() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/provider", listener.local_addr().unwrap());
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            socket.read(&mut request).await.unwrap();
+            socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nx").await.unwrap();
+            started.send(()).unwrap();
+            let mut byte = [0];
+            let closed = tokio::time::timeout(Duration::from_secs(2), socket.read(&mut byte)).await.unwrap();
+            assert!(matches!(closed, Ok(0)) || closed.is_err_and(|error| error.kind() == std::io::ErrorKind::ConnectionReset));
+        });
+        let background = ottplay_core::background_work::BackgroundWork::default();
+        let request = tokio::spawn({
+            let background = background.clone();
+            async move { proxy_http_with_background(&background, url, "GET".into(), None, None, Some(10000), None, None, None).await }
+        });
+        ready.await.unwrap();
+        background.set_standby(true);
+        let error = tokio::time::timeout(Duration::from_secs(2), request).await.unwrap().unwrap().unwrap_err();
+        assert!(error.message.contains("cancelled"));
+        assert!(background.status().quiescent);
+        server.await.unwrap();
+        let refused = proxy_http_with_background(&background, "http://127.0.0.1:1".into(), "GET".into(), None, None, Some(50), None, None, None).await.unwrap_err();
+        assert_eq!(refused.message, "Player is in standby");
+        let control_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let control_url = format!("http://{}/command", control_listener.local_addr().unwrap());
+        let control_server = tokio::spawn(async move {
+            let (mut socket, _) = control_listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            socket.read(&mut request).await.unwrap();
+            socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]").await.unwrap();
+        });
+        let legacy = proxy_http_with_background(&background, control_url, "GET".into(), None, None, Some(1000), None, None, Some(true)).await.unwrap();
+        assert_eq!(legacy.status, 200);
+        assert_eq!(legacy.body, "[]");
+        control_server.await.unwrap();
+        // An exempt control request still reaches its own policy validation.
+        let control = proxy_http_with_background(&background, "http://127.0.0.1:1".into(), "GET".into(), None, None, Some(50), Some(true), None, None).await.unwrap_err();
+        assert!(control.message.contains("Secure control requests require HTTPS"));
+    }
+
+    async fn proxy_http(
+        url: String,
+        method: String,
+        body: Option<String>,
+        headers: Option<HashMap<String, String>>,
+        timeout_ms: Option<u64>,
+        secure_control: Option<bool>,
+        screenshot_control: Option<bool>,
+    ) -> Result<HttpResponse, HttpError> {
+        proxy_http_with_background(
+            &Default::default(),
+            url,
+            method,
+            body,
+            headers,
+            timeout_ms,
+            secure_control,
+            screenshot_control,
+            None,
+        )
+        .await
+    }
 
     #[tokio::test]
     async fn preserves_http_error_body_headers_and_post_request() {

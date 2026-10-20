@@ -236,6 +236,7 @@ function playbackFixture() {
     const p = {
         cats: { All: ["a", "b"] },
         catsArray: ["All"],
+        channels: { a: { id: "a" }, b: { id: "b" } },
         checkMedia() {},
         clearTimeout(id) {
             events.push(["cancel", id]);
@@ -436,6 +437,21 @@ assert.equal(
 );
 assert.equal(writes.length, 1);
 w.commandChannelsReady = false;
+w.stbIsStandby = () => true;
+const beforeStandby = delivered.length;
+for (const command of [
+    { channel_number: 1, command: "channel_by_number" },
+    { channel_name: "News", command: "channel_by_name" },
+    { command: "random_channel" },
+]) {
+    assert.equal(
+        handle(command),
+        "rejected",
+        "standby commands must not wait for wake"
+    );
+}
+assert.equal(delivered.length, beforeStandby);
+w.stbIsStandby = () => false;
 assert.equal(
     handle({ channel_number: 1, command: "channel_by_number" }),
     "deferred"
