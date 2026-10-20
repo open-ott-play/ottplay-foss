@@ -57,16 +57,30 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
     private func sourceFile(_ id: String) throws -> URL {
         try directory().appendingPathComponent(id + ".source.json")
     }
+    private func readMetadata(_ url: URL) throws -> Data? {
+        try checkWork()
+        let data = try? Data(contentsOf: url)
+        // Keep the ticket through the synchronous read, then propagate
+        // cancellation instead of treating it as a corrupt metadata file.
+        try checkWork()
+        return data
+    }
     private func sources() throws -> [Source] {
+        try checkWork()
         let root = try directory()
-        return try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
-            .filter { $0.lastPathComponent.hasSuffix(".source.json") && regularPrivateFile($0, in: root) }
-            .compactMap { url in
-                guard let data = try? Data(contentsOf: url), data.count < 8 * 1024 * 1024,
-                      let source = try? JSONDecoder().decode(Source.self, from: data),
-                      UUID(uuidString: source.id) != nil else { return nil }
-                return source
-            }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let files = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
+        try checkWork()
+        var result: [Source] = []
+        for url in files {
+            try checkWork()
+            guard url.lastPathComponent.hasSuffix(".source.json"), regularPrivateFile(url, in: root),
+                  let data = try readMetadata(url), data.count < 8 * 1024 * 1024,
+                  let source = try? JSONDecoder().decode(Source.self, from: data),
+                  UUID(uuidString: source.id) != nil else { continue }
+            result.append(source)
+        }
+        try checkWork()
+        return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     private func save(_ source: Source) throws {
         let bytes = try JSONEncoder().encode(source)
@@ -199,18 +213,21 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         try checkWork()
         let directory = try directory()
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        var items: [[String: Any]] = files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap { metadata in
+        try checkWork()
+        var items: [[String: Any]] = []
+        for metadata in files.filter({ $0.pathExtension == "json" }).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            try checkWork()
             guard regularPrivateFile(metadata, in: directory),
-                  let data = try? Data(contentsOf: metadata), let entry = try? JSONDecoder().decode(Entry.self, from: data),
+                  let data = try readMetadata(metadata), let entry = try? JSONDecoder().decode(Entry.self, from: data),
                   UUID(uuidString: entry.id) != nil, !entry.filename.contains("/"),
-                  entry.filename.hasPrefix(entry.id + ".") else { return nil }
+                  entry.filename.hasPrefix(entry.id + ".") else { continue }
             let file = directory.appendingPathComponent(entry.filename)
             guard regularPrivateFile(file, in: directory),
                   let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
                   let size = attributes[.size] as? NSNumber,
-                  let url = bridge?.portablePath(fromLocalURL: file) else { return nil }
-            return ["id": entry.id, "name": entry.name, "mime": entry.mime, "size": size.int64Value,
-                    "url": url.absoluteString, "source": "imported", "sourceId": "", "available": true, "access": "granted"]
+                  let url = bridge?.portablePath(fromLocalURL: file) else { continue }
+            items.append(["id": entry.id, "name": entry.name, "mime": entry.mime, "size": size.int64Value,
+                          "url": url.absoluteString, "source": "imported", "sourceId": "", "available": true, "access": "granted"])
         }
         var sourceRows: [[String: Any]] = []
         for var source in try sources() {
@@ -235,13 +252,19 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                               "available": portable != nil, "access": granted ? "granted" : "required"])
             }
         }
+        try checkWork()
         return ["available": true, "persistent": true, "storage": "device", "items": items, "sources": sourceRows,
                 "directAccess": true, "folderAccess": true]
+    }
+    private func resolveSnapshot(_ call: CAPPluginCall) throws {
+        let result = try snapshot()
+        guard let ticket = currentWork else { throw URLError(.cancelled) }
+        try ticket.commit { call.resolve(result) }
     }
     @objc func list(_ call: CAPPluginCall) {
         tracked(call) { [weak self] in
             guard let self else { call.reject("Local media unavailable"); return }
-            do { call.resolve(try self.snapshot()) } catch { call.reject("Local media unavailable") }
+            do { try self.resolveSnapshot(call) } catch { call.reject("Local media unavailable") }
         }
     }
     @objc func remove(_ call: CAPPluginCall) {
@@ -254,7 +277,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                         source.excluded.append(item.path)
                         source.items.removeAll { $0.id == id }
                         try self.save(source)
-                        call.resolve(try self.snapshot())
+                        try self.resolveSnapshot(call)
                         return
                     }
                 }
@@ -268,7 +291,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                     try FileManager.default.removeItem(at: directory.appendingPathComponent(entry.filename))
                     try FileManager.default.removeItem(at: metadata)
                 }
-                call.resolve(try self.snapshot())
+                try self.resolveSnapshot(call)
             } catch { call.reject("Unable to delete local media") }
         }
     }
@@ -293,7 +316,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 }
                 guard let source = target else {
                     if id != nil { call.reject("Unknown local media source") }
-                    else { call.resolve(try self.snapshot()) }
+                    else { try self.resolveSnapshot(call) }
                     return
                 }
                 self.presentPicker(call, folder: source.kind == "folder", replacing: source.id)
@@ -307,7 +330,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 self.release(id)
                 let file = try self.sourceFile(id)
                 if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
-                call.resolve(try self.snapshot())
+                try self.resolveSnapshot(call)
             } catch { call.reject("Unable to disconnect local media source") }
         }
     }
@@ -362,7 +385,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                     self.release(source.id)
                     if replacing == nil { created.append(source.id) }
                 }
-                call.resolve(try self.snapshot())
+                try self.resolveSnapshot(call)
             } catch {
                 for id in created {
                     self.release(id)
