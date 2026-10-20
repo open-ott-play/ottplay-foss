@@ -824,3 +824,42 @@ console.log(
         "browsing cannot rename playing collection"
     );
 }
+{
+    const { c, resolve } = setup("vportal");
+    c.__ottClassicPlayback.reconcile();
+    c.__ottMedia.playQueue(
+        [
+            {
+                __ottMediaLabel: { key: "Untitled", value: "Untitled" },
+                id: 301,
+                request: { id: 301 },
+                title: "Untitled",
+            },
+            {
+                __ottMediaLabel: { key: "Untitled", value: "Untitled" },
+                id: 302,
+                request: { id: 302 },
+                title: "Untitled",
+            },
+            { id: 303, request: { id: 303 }, title: "User filename.mp4" },
+        ],
+        "Collection",
+        () => true,
+        () => {}
+    );
+    resolve();
+    c._ = (value) => (value === "Untitled" ? "Translated untitled" : value);
+    let programme = c.__ottClassicPlayback.programme();
+    assert.equal(programme.title, "Translated untitled");
+    assert.equal(programme.nextTitle, "Translated untitled");
+    c.__ottClassicPlayback.command({ type: "stop" });
+    c.__ottMedia.ended(c.__ottClassicPlayback.snapshot().generation);
+    resolve();
+    programme = c.__ottClassicPlayback.programme();
+    assert.equal(programme.title, "Translated untitled");
+    assert.equal(
+        programme.nextTitle,
+        "User filename.mp4",
+        "user supplied names are not translated"
+    );
+}

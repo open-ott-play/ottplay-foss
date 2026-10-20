@@ -164,7 +164,7 @@ function classicMediaProgramme(): any {
         payload.__ottMediaOrigin?.title ||
         payload.category?.name ||
         "";
-    var title = payload.channel_name || payload.title || "";
+    var title = payload.channel_name || classicMediaTitle(payload);
     var nextTitle = "";
     if (channel && channel.list.active()) {
         var neighbours = classicMediaNeighbours(channel.list, channel.id);
@@ -181,8 +181,9 @@ function classicMediaProgramme(): any {
                     w.channels[repeatOne ? neighbours.id : neighbours.nextId];
                 nextTitle =
                     nextRow?.channel_name ||
-                    nextRow?.__ottMediaItem?.title ||
-                    "";
+                    (nextRow?.__ottMediaItem
+                        ? classicMediaTitle(nextRow.__ottMediaItem)
+                        : "");
             }
         }
         var currentRow = w.channels[channel.id];
@@ -195,7 +196,7 @@ function classicMediaProgramme(): any {
         var next = mode === "one" ? sequence.index : sequence.index + 1;
         if (mode !== "off" || next < sequence.items.length) {
             var item = sequence.items[next % sequence.items.length];
-            nextTitle = item?.title || item?.payload?.title || "";
+            nextTitle = item ? classicMediaTitle(item.payload || item) : "";
         }
     }
     return {
