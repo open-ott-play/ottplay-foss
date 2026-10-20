@@ -36,6 +36,10 @@ Standby cancels pending lookup and scan work. After an explicit wake, an
 invalidated catalog is rebuilt in the background with the same saved-item
 priority; a completed valid catalog is reused. A late endpoint response from
 before standby cannot start a new catalog request.
+Acceptance must cover a playing instance entering standby during a partial scan
+and waking in the same window. Confirm a new provider load, the same saved file
+and position, and continued catalog growth; an accepted wake command alone does
+not establish that playback resumed.
 
 The standard loading dialog shows its loading title once and one count of
 playable videos found. Internal scan counters remain available for diagnostics

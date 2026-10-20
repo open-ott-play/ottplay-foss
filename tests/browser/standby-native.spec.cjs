@@ -4,15 +4,80 @@ const path = require("node:path");
 const { createHash } = require("node:crypto");
 const { test, expect } = require("../helpers/browser-test.cjs");
 
-async function fixture(page, context, baseURL, delayed) {
+let localMovie;
+function localMediaFixture() {
+    if (localMovie) return localMovie;
+    const segment = fs.readFileSync(
+        path.resolve(__dirname, "../fixtures/media-runtime/segment00.ts")
+    );
+    const fragments = [];
+    for (let index = 0; index < 30; index++) {
+        const mux = new (require("mux.js").mp4.Transmuxer)({
+            baseMediaDecodeTime: index * 2 * 90000,
+            remux: true,
+        });
+        mux.on("data", (data) => {
+            if (!index) fragments.push(Buffer.from(data.initSegment));
+            fragments.push(Buffer.from(data.data));
+        });
+        mux.push(new Uint8Array(segment));
+        mux.flush();
+    }
+    localMovie = Buffer.concat(fragments);
+    return localMovie;
+}
+
+async function fixture(
+    page,
+    context,
+    baseURL,
+    delayed,
+    local = false,
+    systemLanguage = false
+) {
     const origin = new URL(baseURL).origin;
     const control = { pending: [], polls: 0, replies: [], sequence: 0 };
-    const observed = { errors: [], media: [], providers: [] };
+    const observed = { catalogs: 0, errors: [], media: [], providers: [] };
     page.on("pageerror", (error) => observed.errors.push(error.message));
     await context.route("**/*", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
         if (url.origin !== origin) return route.abort("blockedbyclient");
+        if (url.pathname === "/native-standby/catalog") {
+            observed.catalogs++;
+            // Keep the native catalog incomplete throughout both playback
+            // attempts. A saved late file must not wait for the full scan.
+            return route.fulfill({
+                json: {
+                    items: [
+                        {
+                            id: "751db9d74d2cfe13",
+                            name: "2999-saved-video.mp4",
+                            sourceId: "folder",
+                            url: origin + "/native-standby/saved.mp4",
+                        },
+                    ],
+                    scanned: 1,
+                    scanning: true,
+                    sources: [
+                        {
+                            available: true,
+                            id: "folder",
+                            kind: "folder",
+                            name: "Videos",
+                        },
+                    ],
+                    total: null,
+                },
+            });
+        }
+        if (url.pathname === "/native-standby/saved.mp4") {
+            observed.media.push(url.pathname);
+            return route.fulfill({
+                body: localMediaFixture(),
+                contentType: "video/mp4",
+            });
+        }
         if (url.pathname.startsWith("/native-standby-control/")) {
             if (request.method() === "POST") {
                 if (url.pathname.endsWith("/responses"))
@@ -59,9 +124,51 @@ async function fixture(page, context, baseURL, delayed) {
     });
     await context.routeWebSocket("**/*", (socket) => socket.close());
     await context.addInitScript(
-        ({ origin, delayed }) => {
+        ({ origin, delayed, local, systemLanguage }) => {
             localStorage.setItem("ottplaylang", "_eng");
-            localStorage.setItem("ottplayprov", "m3u");
+            localStorage.setItem(
+                "ottplaylangmode",
+                systemLanguage ? "system" : "manual"
+            );
+            localStorage.setItem("ottplayprov", local ? "offline" : "m3u");
+            if (local) {
+                const profile = {
+                    binding_id: "b133083e-c5b8-420d-86f2-f436c1891f3a",
+                    name: "Local saved video",
+                    provider: "offline",
+                    selected: {
+                        name: "2999-saved-video.mp4",
+                        source_key: "s0",
+                    },
+                    sources: [{ key: "s0", kind: "folder", name: "Videos" }],
+                    version: 1,
+                };
+                localStorage.setItem(
+                    "offlineProfiles",
+                    JSON.stringify({
+                        active: 2,
+                        profiles: Array.from({ length: 15 }, (_, i) =>
+                            i === 2 ? profile : null
+                        ),
+                        version: 1,
+                    })
+                );
+                localStorage.setItem(
+                    "offlineProfileBindings",
+                    JSON.stringify({
+                        [profile.binding_id]: {
+                            library: "tauri",
+                            selected: "751db9d74d2cfe13",
+                            signature: JSON.stringify({
+                                selected: profile.selected,
+                                sources: profile.sources,
+                            }),
+                            sources: { s0: "folder" },
+                        },
+                    })
+                );
+                localStorage.setItem("offlinesPlayers", "0");
+            }
             localStorage.setItem("m3usPlayers", "0");
             localStorage.setItem(
                 "m3um3uArr",
@@ -90,7 +197,7 @@ async function fixture(page, context, baseURL, delayed) {
                 ready: false,
                 readyAfterProbe: null,
                 resolveProbe: null,
-                standby: true,
+                standby: !local,
             });
             const play = HTMLMediaElement.prototype.play;
             HTMLMediaElement.prototype.play = function (...args) {
@@ -108,6 +215,7 @@ async function fixture(page, context, baseURL, delayed) {
             async function invoke(command, args = {}) {
                 state.calls.push({
                     command,
+                    preferredId: args.preferredId,
                     remoteControl: args.remoteControl,
                     standby: args.standby,
                 });
@@ -143,6 +251,8 @@ async function fixture(page, context, baseURL, delayed) {
                     state.standby = args.standby;
                     return snapshot();
                 }
+                if (command === "offline_media_endpoint")
+                    return { endpoint: origin + "/native-standby/catalog" };
                 if (command === "proxy_http" || command === "proxy_fetch") {
                     const response = await nativeFetch(
                         args.url.replace(/^@/, ""),
@@ -176,7 +286,7 @@ async function fixture(page, context, baseURL, delayed) {
                 event: { listen: async () => () => {} },
             };
         },
-        { delayed, origin }
+        { delayed, local, origin, systemLanguage }
     );
     const response = page.waitForResponse(
         (r) => new URL(r.url()).pathname === "/dist/player.js"
@@ -284,3 +394,92 @@ test("remote go supersedes a pending native startup probe", async ({
     ).toEqual([false]);
     expect(observed.errors).toEqual([]);
 });
+
+for (const systemLanguage of [false, true]) {
+    test(`mounted Local resumes its saved file after standby with ${systemLanguage ? "system" : "explicit"} language`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        test.setTimeout(45000);
+        const { observed, rpc } = await fixture(
+            page,
+            context,
+            baseURL,
+            false,
+            true,
+            systemLanguage
+        );
+        const selected = "local-751db9d74d2cfe13";
+        const catalogStarts = () =>
+            page.evaluate(() =>
+                window.__nativeStandbyFixture.calls
+                    .filter((call) => call.command === "offline_media_endpoint")
+                    .map((call) => call.preferredId)
+            );
+        await page.waitForFunction(
+            () => window.commandChannelsReady && window.video?.currentTime > 0.1
+        );
+        expect(await catalogStarts()).toEqual([selected.slice(6)]);
+        expect(
+            await page.evaluate(() => window.curList[window.primaryIndex])
+        ).toBe(selected);
+        expect(await page.evaluate(() => window.cList.length)).toBe(1);
+        await page.evaluate(() => {
+            window.video.currentTime = 12;
+        });
+        await page.waitForFunction(
+            () => !window.video.seeking && window.video.currentTime >= 12
+        );
+        const before = await page.evaluate(() => ({
+            generation: window.__ottClassicPlayback.snapshot().generation,
+            position: window.video.currentTime,
+        }));
+        expect((await rpc("lifecycle", { operation: "standby" })).status).toBe(
+            "ok"
+        );
+        await page.waitForFunction(
+            () =>
+                window.__ottStandby.snapshot().state === "suspended" &&
+                window.__ottActiveProviderDriver === null
+        );
+        expect(await page.evaluate(() => window.commandChannelsReady)).toBe(
+            false
+        );
+        expect(await page.evaluate(() => window.video.paused)).toBe(true);
+        expect((await rpc("lifecycle", { operation: "wake" })).status).toBe(
+            "ok"
+        );
+        await expect
+            .poll(catalogStarts)
+            .toEqual([selected.slice(6), selected.slice(6)]);
+        await page.waitForFunction(
+            () =>
+                window.commandChannelsReady &&
+                !window.video.paused &&
+                window.video.readyState >= 2 &&
+                window.video.currentTime >= 12
+        );
+        const after = await page.evaluate(() => ({
+            count: window.cList.length,
+            generation: window.__ottClassicPlayback.snapshot().generation,
+            position: window.video.currentTime,
+            profile: window.__ottOfflineProfiles.selection(),
+            provider: window.__ottActiveProviderDriver?.id,
+            selected: window.curList[window.primaryIndex],
+        }));
+        expect(after.generation).toBeGreaterThan(before.generation);
+        expect(after.position).toBeGreaterThanOrEqual(before.position - 0.5);
+        expect(after).toMatchObject({
+            count: 1,
+            profile: selected,
+            provider: "offline",
+            selected,
+        });
+        await expect(page.locator("#list")).toBeHidden();
+        await expect(page.locator("#dialogbox")).toBeHidden();
+        expect(observed.catalogs).toBeGreaterThan(1);
+        expect(observed.media.length).toBeGreaterThan(0);
+        expect(observed.errors).toEqual([]);
+    });
+}
