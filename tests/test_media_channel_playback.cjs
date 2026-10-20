@@ -769,6 +769,33 @@ for (const action of [
         "provider:A",
         "Local playback captures serializable group identity at start"
     );
+    if (action === "move") {
+        const journal = JSON.parse(c.stored.playbackJournal);
+        assert.equal(
+            journal.history.find((entry) => entry.channelId === "101").groupId,
+            "provider:A",
+            "history serialization retains departing group"
+        );
+        c.__ottClassicPlayback.hydrate();
+        const previous = c.prevArr.find((entry) => String(entry.ci) === "101");
+        assert.equal(
+            previous.groupId,
+            "provider:A",
+            "hydration preserves stable group on previous entry"
+        );
+        assert(c.__ottChannels.change("move", "provider:A", -1));
+        vm.runInContext(
+            sourceFunctions("src/key-handler/index.ts", ["onPrevSelect"]),
+            c
+        );
+        c.onPrevSelect(c.prevArr.indexOf(previous));
+        assert.equal(
+            c.catIndex,
+            c.__ottChannels.index("provider:A"),
+            "manual previous uses stable group after another reorder"
+        );
+        assert.equal(c.curList[c.primaryIndex], 101);
+    }
 }
 console.log("PASS Local EOF retains group identity across library edits");
 {

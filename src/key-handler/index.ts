@@ -894,6 +894,7 @@ function onPrevSelect(sel: number): void {
     // Capture identity and timestamp before selection/PIN can rewrite the journal.
     var chId = entry.ci;
     var category = entry.c;
+    var groupId = entry.groupId;
     var timestamp = entry.t;
     var archive = timestamp !== undefined;
     if (
@@ -931,7 +932,13 @@ function onPrevSelect(sel: number): void {
             catalog[chId] !== channel
         )
             return null;
-        var order = [category, names.indexOf(_("All"))];
+        // Resolve stable identity at every admission boundary, including after PIN.
+        // A removed group may use All, never the unrelated group now at old c.
+        var preferred =
+            typeof groupId === "string"
+                ? w.__ottChannels?.index(groupId)
+                : category;
+        var order = [preferred, names.indexOf(_("All"))];
         for (var i = 0; i < names.length; i++) order.push(i);
         for (var at = 0; at < order.length; at++) {
             var candidate = order[at];

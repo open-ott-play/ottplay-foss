@@ -410,3 +410,45 @@ for (const mutate of [
 console.log(
     "PASS history selection: stable identity, scoped EPG/PIN callbacks and parental access"
 );
+
+for (const absent of [false, true]) {
+    const c = fixture();
+    c.catsArray = ["All", "Wrong", "Saved"];
+    c.cats = { All: [101, 202, 303], Saved: [202, 101], Wrong: [202, 303] };
+    c.__ottChannels = {
+        group: (index) => c.catsArray[index],
+        index: (id) =>
+            id === "stable:saved" && !absent
+                ? c.catsArray.indexOf("Saved")
+                : -1,
+        select() {},
+    };
+    c.prevArr = [{ c: 1, ci: 202, groupId: "stable:saved", i: 0 }];
+    c.onPrevSelect(0);
+    assert.deepEqual(
+        c.effects.find((row) => row[0] === "live"),
+        ["live", absent ? 0 : 2, absent ? 1 : 0],
+        "stable previous entry never selects unrelated old category"
+    );
+}
+{
+    const c = fixture();
+    c.catsArray = ["All", "Saved", "Wrong"];
+    c.cats = { All: [101, 202, 303], Saved: [202], Wrong: [202] };
+    c.__ottChannels = {
+        group: (index) => c.catsArray[index],
+        index: (id) =>
+            id === "stable:saved" ? c.catsArray.indexOf("Saved") : -1,
+        select() {},
+    };
+    c.prevArr = [{ c: 1, ci: 202, groupId: "stable:saved", i: 0 }];
+    c.parentalArray = [202];
+    c.onPrevSelect(0);
+    c.catsArray.splice(1, 2, "Wrong", "Saved");
+    c.grant();
+    assert.deepEqual(
+        c.effects.find((row) => row[0] === "live"),
+        ["live", 2, 0],
+        "PIN continuation resolves the current stable group position"
+    );
+}

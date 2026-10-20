@@ -620,6 +620,7 @@ function classicPlaybackSelect(
                         classicPlaybackChannelHint(visit.channelId),
                     channelId: visit.channelId,
                     groupId:
+                        payload.groupId ||
                         (w.__ottChannels && w.__ottChannels.group(payload.c)) ||
                         (w.catsArray || [])[payload.c],
                     kind: visit.kind,
@@ -915,6 +916,7 @@ function classicPlaybackHydrate(): void {
                 channelHint: entry.channelHint,
                 ci: found ? found.id : entry.channelId,
                 e: entry.label,
+                groupId: entry.groupId,
                 i: found ? found.index : -1,
             };
             if (entry.kind === "archive") result.t = entry.archiveStart;
