@@ -31,6 +31,7 @@ class MobileMetadataStandby(unittest.TestCase):
         import_methods = "\n".join(function(source, marker) for marker in (
             "private fun releaseUnusedGrant(", "private fun selected(",
         ))
+        access_method = function(source, "fun requestAccess(")
         code = r'''
 import java.io.IOException
 import play.ott.foss.NativeWork
@@ -39,8 +40,9 @@ class JSONObject(val raw: String, val grant: String = raw) {
   fun optString(key: String) = if (key == "grantUri") grant else raw
   fun getString(key: String) = optString(key)
 }
-class PluginCall {
+class PluginCall(val requested: String? = null) {
   var replies = 0; var errors = 0
+  fun getString(key: String) = requested
   fun resolve(value: Any) { replies++ }
   fun reject(value: String) { errors++ }
 }
@@ -107,6 +109,29 @@ class ImportHarness(val ticket: NativeWork.Ticket, val rows: List<JSONObject>, v
 ''' + import_methods + r'''
   fun pick(call: PluginCall) = selected(call, ActivityResult(Activity.RESULT_OK, PickData(Uri("picked"))))
 }
+class UiThread {
+  var queued = 0
+  fun runOnUiThread(action: () -> Unit) { queued++ }
+}
+class AccessHarness(val ticket: NativeWork.Ticket, val cancelDuringOpen: Boolean = false, val empty: Boolean = false) {
+  val activity = UiThread()
+  var catalogReads = 0; var sourceReads = 0; var opens = 0
+  fun checkWork() = ticket.check()
+  fun submit(call: PluginCall, action: () -> Unit) { action() }
+  fun metadata(): List<JSONObject> { checkWork(); catalogReads++; return listOf(JSONObject("s1"), JSONObject("s2"), JSONObject("s3")) }
+  fun sourceMetadata(): List<JSONObject> {
+    checkWork(); sourceReads++
+    return if (empty) emptyList() else if (cancelDuringOpen) listOf(JSONObject("s1")) else listOf(JSONObject("s1"), JSONObject("s2"), JSONObject("s3"))
+  }
+  fun sourceId(item: JSONObject) = item.raw
+  fun openSource(item: JSONObject): java.io.Closeable {
+    checkWork(); opens++
+    if (cancelDuringOpen) NativeWork.setStandby(true)
+    return java.io.Closeable { }
+  }
+  fun pick(call: PluginCall, folder: Boolean) {}
+''' + access_method + r'''
+}
 fun main() {
   for (sources in listOf(false, true)) {
     for ((cancel, fail) in listOf(false to false, false to true, true to false, true to true)) {
@@ -132,6 +157,13 @@ fun main() {
     }
   }
   NativeWork.setStandby(false)
+  val emptyOwner = NativeWork.begin()!!
+  val emptyAccess = AccessHarness(emptyOwner, empty = true)
+  emptyAccess.requestAccess(PluginCall())
+  check(emptyAccess.catalogReads == 0 && emptyAccess.opens == 0 && emptyAccess.sourceReads == 1)
+  check(emptyAccess.activity.queued == 1)
+  emptyOwner.finish()
+  NativeWork.setStandby(false)
   val ticket = NativeWork.begin()!!
   val call = PluginCall()
   check(runCatching { Harness(ticket).publish(call) }.isFailure)
@@ -156,8 +188,27 @@ fun main() {
     owner.finish()
     check(NativeWork.snapshot().pending == 0)
   }
+  for (requested in listOf(null, "s3")) {
+    NativeWork.setStandby(false)
+    val owner = NativeWork.begin()!!
+    val access = AccessHarness(owner)
+    access.requestAccess(PluginCall(requested))
+    check(access.catalogReads == if (requested == null) 1 else 0)
+    check(access.sourceReads == 1 && access.activity.queued == 1)
+    check(access.opens == if (requested == null) 3 else 0)
+    owner.finish()
+  }
+  NativeWork.setStandby(false)
+  val accessOwner = NativeWork.begin()!!
+  val cancelledAccess = AccessHarness(accessOwner, true)
+  check(runCatching { cancelledAccess.requestAccess(PluginCall()) }.isFailure)
+  check(cancelledAccess.opens == 1 && cancelledAccess.activity.queued == 0)
+  check(NativeWork.snapshot().pending == 1)
+  accessOwner.finish()
+  check(NativeWork.snapshot().pending == 0)
   println("PASS Android metadata: cancel between reads, unreadable files, stale wake, fenced publication")
   println("PASS Android grant cleanup: cancelled import releases only unreferenced grants")
+  println("PASS Android access recovery: one catalog snapshot, explicit ID skips it, cancellation prevents UI continuation")
 }
 '''
         with tempfile.TemporaryDirectory(prefix="ott-mobile-metadata-") as temp:

@@ -337,13 +337,16 @@ class LocalMediaPlugin : Plugin() {
     @PluginMethod fun requestAccess(call: PluginCall) {
         submit(call) {
             val requestedId = call.getString("id")
-            val denied = sourceMetadata().firstOrNull { source ->
+            val sources = sourceMetadata()
+            val records = if (requestedId == null && sources.isNotEmpty()) metadata() else emptyList()
+            val denied = sources.firstOrNull { source ->
                 checkWork()
                 if (requestedId != null) source.optString("id") == requestedId
-                else metadata().filter { sourceId(it) == source.optString("id") }.any { item ->
+                else records.filter { sourceId(it) == source.optString("id") }.any { item ->
                     try { openSource(item).use { }; false } catch (_: Exception) { true }
                 }
             }
+            checkWork()
             val folder = denied?.optString("kind") != "file"
             activity.runOnUiThread { pick(call, folder) }
         }

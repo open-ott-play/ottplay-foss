@@ -903,7 +903,7 @@ or typed standby/wake requests. Connect the player to the
 [command server](docs/remote-command-server.md) and use its CLI:
 
 ```sh
-ott d1 standby        # Stop playback and background media work; remain connected
+ott d1 standby        # Stop playback and tracked player work; remain connected
 ott d1 go             # Leave standby and resume configured provider/profile startup
 ott d1 restart stream # Reconnect the current stream
 ott d1 restart        # Reload the player; preserve standby if it is set
@@ -913,8 +913,14 @@ ott d1 exit           # Exit a supported native app; never enters standby
 Replace `d1` with your registered player alias. `stop` is an alias for `standby`;
 `start` and `wake` are aliases for `go`. Go requires a running, connected player;
 it cannot launch a closed app or wake an offline device. A browser or TV without
-native app exit reports that exit is unsupported. Check `ott d1 status` after a lifecycle command:
-acceptance alone does not prove completed teardown, reload or resumed playback.
+native app exit reports that exit is unsupported. Standby keeps remote polling
+active and does not suspend unrelated host or shared-server work.
+
+After standby/go, check `ott d1 status` for the standby/background state and
+verify resumed playback separately. After a player reload, confirm a new runtime
+with `ott d1 doctor`. After exit, confirm through the OS that the app process
+closed; a remote timeout does not prove exit. Command acceptance alone does not
+confirm these outcomes.
 
 ## Local Proxy Server
 
