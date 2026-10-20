@@ -172,7 +172,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     sleepingGate.set(true);
     sleeping.api.suspend();
     assert.equal(sleepingGate.snapshot().state, "suspending");
-    assert.equal(sleepingGate.snapshot().pending, 1);
+    assert.equal(sleepingGate.snapshot().pending, 2);
     releaseFile();
     const stoppedScan = await scan;
     await Promise.resolve();

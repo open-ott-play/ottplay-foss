@@ -5,6 +5,8 @@ export function installBrowserLocalMedia(w: any): any {
     var urls: any = {};
     var knownSources: any[] = [];
     var scanGeneration = 0;
+    var pendingFiles: any = {};
+    var pendingFileCount = 0;
     var urlApi = w.URL || w.webkitURL;
     var available = !!(w.indexedDB && urlApi && urlApi.createObjectURL);
 
@@ -81,6 +83,56 @@ export function installBrowserLocalMedia(w: any): any {
             /^(video|audio)\//i.test(file.type || "") ||
             /\.(mp4|m4v|webm|mp3|m4a|ogg|wav|mov)$/i.test(file.name || "")
         );
+    }
+    function fileTimeout(limit = false): Error {
+        var error: any = new Error("Local file did not respond");
+        error.name = "TimeoutError";
+        error.localMediaLimit = limit;
+        return error;
+    }
+    function readFile(id: string, handle: any): Promise<any> {
+        // Browser filesystem calls cannot be aborted. Retain timed-out calls
+        // until they really settle, across retries as well as catalog scans.
+        var old = pendingFiles[id];
+        if (old)
+            return old.timedOut ? Promise.reject(fileTimeout()) : old.result;
+        if (pendingFileCount >= 2) return Promise.reject(fileTimeout(true));
+        var entry: any = { timedOut: false };
+        pendingFiles[id] = entry;
+        pendingFileCount++;
+        entry.result = new Promise(function (resolve, reject) {
+            var settled = false;
+            var timer = w.setTimeout(function () {
+                settled = true;
+                entry.timedOut = true;
+                reject(fileTimeout());
+            }, 10000);
+            var pending: Promise<any>;
+            try {
+                pending = Promise.resolve(handle.getFile());
+            } catch (error) {
+                pending = Promise.reject(error);
+            }
+            if (w.__ottStandby) w.__ottStandby.observe(pending);
+            function finish(error: any, file?: any): void {
+                delete pendingFiles[id];
+                pendingFileCount--;
+                w.clearTimeout(timer);
+                if (settled) return;
+                settled = true;
+                if (error) reject(error);
+                else resolve(file);
+            }
+            pending.then(
+                function (file) {
+                    finish(null, file);
+                },
+                function (error) {
+                    finish(error);
+                }
+            );
+        });
+        return entry.result;
     }
     function item(
         id: string,
@@ -294,7 +346,9 @@ export function installBrowserLocalMedia(w: any): any {
                         work = visited
                             .then(function () {
                                 return readPhase("metadata", function () {
-                                    return active() ? child.getFile() : null;
+                                    return active()
+                                        ? readFile(sourceId + ":" + name, child)
+                                        : null;
                                 });
                             })
                             .then(function (file) {
@@ -313,7 +367,8 @@ export function installBrowserLocalMedia(w: any): any {
                             // their parent. Keep scanning readable siblings.
                             if (
                                 !error ||
-                                !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError)$/.test(
+                                error.localMediaLimit ||
+                                !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|TimeoutError)$/.test(
                                     error.name
                                 )
                             )
@@ -363,7 +418,7 @@ export function installBrowserLocalMedia(w: any): any {
                 .then(function (fileHandle) {
                     return active() && fileHandle
                         ? readPhase("metadata", function () {
-                              return fileHandle.getFile();
+                              return readFile(preferredId!, fileHandle);
                           })
                         : Promise.reject();
                 })
@@ -465,7 +520,10 @@ export function installBrowserLocalMedia(w: any): any {
                                 return readPhase(
                                     "metadata",
                                     function () {
-                                        return record.handle.getFile();
+                                        return readFile(
+                                            record.id,
+                                            record.handle
+                                        );
                                     },
                                     true
                                 ).then(function (file) {

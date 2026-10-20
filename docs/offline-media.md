@@ -47,8 +47,14 @@ and file metadata reads. It shows entries discovered separately from playable
 videos; neither counter measures copied or downloaded media. Before the first
 playable video, directory enumeration may take up to ten minutes, including
 nested folders on a network drive. An unchanged status does not extend this
-deadline. File metadata reads and later stalled reads retain the 60-second
-inactivity limit. Cancel remains available while waiting; expired or cancelled
+deadline. Each file metadata request (`getFile()`) has a ten-second deadline: a stalled
+file is skipped so readable siblings can still start. Browser calls cannot be
+aborted, so at most two unfinished file requests may remain outstanding across
+scans and retries. If both remain blocked, the player returns to recovery instead
+of starting more reads. Late results from skipped files cannot replace playback.
+Directory iteration and direct directory/file-handle lookup retain their existing
+inactivity limits; the per-file deadline applies to `getFile()`, not those browser
+operations. Cancel remains available while waiting; expired or cancelled
 reads cannot revive the old dialog or replace a newer selection. Startup loading
 has the same Cancel control and returns to source management. When the browser
 reports a filesystem error, recovery names the stage and error code without

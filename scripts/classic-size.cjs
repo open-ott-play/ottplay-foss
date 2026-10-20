@@ -301,7 +301,11 @@ const { gzipSync } = require("node:zlib");
 // Startup cancellation, sanitized read failures and local standby wake add
 // about 2613 raw bytes on Node 22; reserve 2816 for this reviewed feature set.
 // Web gzip is 303501 bytes; add 896 for native transforms and release identity.
-const BUDGET = Object.freeze({ bytes: 981175, gzipBytes: 303756 });
+// A bounded per-file deadline keeps unreadable local files from blocking siblings.
+// Node 22.23.3 clean web measures 981418 raw (+661 over 980757), including
+// its 40-byte source identity. Add 320 raw bytes above the old cap so the
+// frozen version suffix still fits. Allow 256 gzip bytes for native/release variation.
+const BUDGET = Object.freeze({ bytes: 981495, gzipBytes: 304012 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -446,7 +450,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Node 22 beta output totals 350370 gzip bytes for native builds; the observed
 // CI entry variation leaves only 47 bytes. Retain 128 bytes of aggregate margin.
 // Integrated Node 22 native output is 350730 gzip bytes; retain suffix room.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1113431, gzipBytes: 352122 });
+// Count the same bounded metadata-read increment once; providers are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1113751, gzipBytes: 352378 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
