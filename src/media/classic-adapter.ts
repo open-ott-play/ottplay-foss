@@ -1128,9 +1128,11 @@ function classicMediaRuntime(): any {
             !w.__ottKiosk?.screenBlocked?.()
         )
             return false;
+        var revision = automaticGeneration;
         w.__ottKiosk.deferScreenEnd(function () {
             if (
                 current() &&
+                automaticGeneration === revision &&
                 w.__ottClassicPlayback.snapshot().generation === generation
             ) {
                 if (completedLocalGeneration === generation)

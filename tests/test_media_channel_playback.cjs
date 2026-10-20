@@ -1107,6 +1107,35 @@ console.log(
     "PASS local EOF and delayed admission wait for screen wake with or without kiosk"
 );
 {
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 0);
+    let asleep = true,
+        deferred;
+    c.__ottKiosk = {
+        allowed: () => true,
+        deferScreenEnd: (fn) => {
+            deferred = fn;
+        },
+        locked: () => false,
+        screenBlocked: () => asleep,
+    };
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    c.__ottMedia.cancelAuto();
+    asleep = false;
+    deferred();
+    assert.equal(
+        moves.length,
+        0,
+        "cancelled EOF must not replace a newer navigation on wake"
+    );
+}
+{
     const { c } = setup("offline");
     c.checkMedia = () => {};
     c.channels = Object.fromEntries(
