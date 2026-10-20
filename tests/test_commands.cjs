@@ -680,7 +680,39 @@ try {
     );
 
     host.curList = ["one"];
+    host.channels.one.channel_name = "BBC One";
+    for (const ready of [true, false]) {
+        host.commandChannelsReady = ready;
+        for (const name of [
+            " ",
+            "\t",
+            "\n",
+            "\t \n",
+            "\u00a0",
+            "\u2003",
+            "\u3000",
+        ]) {
+            const before = played.length;
+            const outcome = command({
+                channel_name: name,
+                command: "channel_by_name",
+            });
+            assert.equal(
+                played.length,
+                before,
+                "blank name must not play a channel containing a space"
+            );
+            assert.equal(
+                outcome,
+                "rejected",
+                "blank name must be rejected, including before channels are ready"
+            );
+        }
+    }
+    host.commandChannelsReady = true;
     for (const [file, code, title, query] of [
+        ["german", "_ger", "BBC One", "One"],
+        ["german", "_ger", "BBC One", "c o"],
         ["german", "_ger", "Straße", "STRASSE"],
         ["german", "_ger", "Café", "CAFE\u0301"],
         ["turkish", "_tur", "IŞIK", "ışık"],
@@ -762,5 +794,5 @@ function visitNotifications(node) {
 }
 visitNotifications(commandAst);
 console.log(
-    "PASS command localization: real RU/AR notifications, literal remote text, safe RTL DOM, Unicode name search and keyboard volume"
+    "PASS command localization: real RU/AR notifications, literal remote text, safe RTL DOM, blank-name rejection, Unicode name search and keyboard volume"
 );
