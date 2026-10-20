@@ -1012,3 +1012,47 @@ console.log(
         "user supplied names are not translated"
     );
 }
+{
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 2);
+    c.__ottKiosk = {
+        allowed: (id) => id === 101 || id === 103,
+        folderLoop: () => true,
+        folderNext: (id) => (id === 103 ? 101 : 103),
+        locked: () => true,
+    };
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    assert.equal(moves.length, 1);
+    assert.equal(moves[0][1], 0, "folder kiosk wraps from last file to first");
+    assert.equal(moves[0][5], true);
+    assert.equal(moves[0][6], true, "folder successor starts at zero");
+}
+console.log(
+    "PASS Local folder kiosk natural completion wraps within the folder"
+);
+{
+    const { c } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 0);
+    c.__ottKiosk = {
+        allowed: (id) => id !== 102,
+        folderLoop: () => true,
+        folderNext: () => 103,
+        locked: () => true,
+    };
+    c.__ottMedia.cycleRepeat();
+    assert.equal(
+        c.__ottClassicPlayback.programme().nextTitle,
+        "Local 103",
+        "folder footer skips unrelated file even with Repeat One saved"
+    );
+}

@@ -173,16 +173,28 @@ function classicMediaProgramme(): any {
     if (channel && channel.list.active()) {
         var neighbours = classicMediaNeighbours(channel.list, channel.id);
         if (neighbours) {
+            var folderId = w.__ottKiosk?.folderLoop?.()
+                ? w.__ottKiosk.folderNext(channel.id, channel.list.members())
+                : null;
             var pinned =
-                w.__ottKiosk?.locked() && w.__ottKiosk.allowed(channel.id);
+                !w.__ottKiosk?.folderLoop?.() &&
+                w.__ottKiosk?.locked() &&
+                w.__ottKiosk.allowed(channel.id);
             var repeatOne = pinned || mode === "one";
             if (
                 repeatOne ||
+                folderId !== null ||
                 mode !== "off" ||
                 neighbours.index + 1 < neighbours.length
             ) {
                 var nextRow =
-                    w.channels[repeatOne ? neighbours.id : neighbours.nextId];
+                    w.channels[
+                        folderId !== null
+                            ? folderId
+                            : repeatOne
+                              ? neighbours.id
+                              : neighbours.nextId
+                    ];
                 nextTitle =
                     nextRow?.channel_name ||
                     (nextRow?.__ottMediaItem
@@ -1122,6 +1134,22 @@ function classicMediaRuntime(): any {
         var members = channel.list.members();
         var index = members.indexOf(channel.id);
         if (index < 0 || !members.length) return;
+        if (natural && w.__ottKiosk?.folderLoop?.()) {
+            var folderId = w.__ottKiosk.folderNext(channel.id, members);
+            var folderIndex = members.indexOf(folderId);
+            var folderCategory = channel.list.category();
+            if (folderIndex < 0 || folderCategory < 0) return;
+            w.playChannel(
+                folderCategory,
+                folderIndex,
+                false,
+                admit,
+                undefined,
+                true,
+                true
+            );
+            return;
+        }
         var pinned =
             natural &&
             w.__ottKiosk &&

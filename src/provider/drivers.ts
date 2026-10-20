@@ -408,6 +408,12 @@ function createOfflineDriver(
                         return entry.id === item.sourceId;
                     })[0];
                     catalog.channels[id] = {
+                        __ottLocalSource:
+                            source && source.kind === "folder" ? source.id : "",
+                        __ottLocalSourceName:
+                            source && source.kind === "folder"
+                                ? source.name
+                                : "",
                         __ottMediaCollection:
                             item.directory ||
                             (parts.length > 1 ? parts[parts.length - 2] : "") ||

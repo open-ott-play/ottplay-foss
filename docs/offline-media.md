@@ -256,3 +256,21 @@ force-stop/restart and reboot; verify the same title; test screen-off/resume;
 disconnect the source and confirm the original remains. Also test an absent SD
 card or revoked grant and an old imported copy. Real hardware and signed release
 validation remain separate from simulator/JVM/browser tests.
+
+## Strict kiosk for one local folder
+
+Connect the folder with **Add folder**, start a file, and use the authenticated
+controller to pin that folder:
+
+```sh
+ott PLAYER kiosk on --strict 'folder:Winnie-the-Pooh'
+```
+
+The folder name must match one connected folder uniquely. This pins the source
+reference, not all Local videos and not just the current file. Files in that
+folder play in the current list order and wrap to its first file after the last;
+the folder policy overrides Repeat One/Off. Other folders and providers remain
+blocked. The current file and folder policy survive restart, and new files in
+the same folder can join after Refresh. A disconnected folder never falls back
+to unrelated videos. `kiosk off` releases the policy. Ordinary channel kiosk
+commands retain their existing single-channel behavior.

@@ -2220,3 +2220,74 @@ testScreenBridge().catch((error) => {
     r.advance(10);
     assert(r.played.length > started, "wake restores normal kiosk recovery");
 }
+{
+    const r = rig();
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    r.w.channels = {
+        a: {
+            __ottLocalSource: "folder-1",
+            __ottLocalSourceName: "Winnie",
+            channel_name: "First",
+        },
+        b: {
+            __ottLocalSource: "folder-2",
+            __ottLocalSourceName: "Other",
+            channel_name: "Outside",
+        },
+        c: {
+            __ottLocalSource: "folder-1",
+            __ottLocalSourceName: "Winnie",
+            channel_name: "Last",
+        },
+    };
+    r.w.cats.all = r.w.cList = r.w.curList = ["a", "b", "c"];
+    const result = r.request({
+        mode: "on",
+        query: "folder:Winnie",
+        strict: true,
+    });
+    assert.equal(result.status, "ok");
+    assert.equal(r.kiosk.strict(), true);
+    assert.equal(r.kiosk.snapshot().folder.total, 2);
+    assert.equal(r.kiosk.allowed("b"), false);
+    assert.equal(r.kiosk.folderNext("a", r.w.curList), "c");
+    assert.equal(r.kiosk.folderNext("c", r.w.curList), "a");
+    assert.equal(r.kiosk.admit("c"), true);
+    assert.equal(r.kiosk.snapshot().channel.id, "c");
+    assert.equal(r.kiosk.admit("b"), false);
+    const saved = JSON.parse(r.storage.__ottKioskV1);
+    assert.equal(saved.folder.id, "folder-1");
+    assert.equal(saved.channel.id, "c");
+    const restored = rig(r.storage);
+    restored.w.__ottActiveProviderDriver = { id: "offline" };
+    restored.source("offline:device");
+    restored.w.channels = r.w.channels;
+    assert.equal(restored.kiosk.allowed("c"), true);
+    assert.equal(restored.kiosk.allowed("b"), false);
+    restored.source("offline:another-profile");
+    assert.equal(restored.kiosk.allowed("c"), false);
+    assert.equal(restored.kiosk.folderNext("c", ["a", "c"]), null);
+    r.w.channels.d = {
+        __ottLocalSource: "folder-3",
+        __ottLocalSourceName: "Winnie",
+        channel_name: "Ambiguous",
+    };
+    r.w.cList.push("d");
+    assert.equal(
+        r.request({ mode: "set", query: "folder:Winnie" }).status,
+        "rejected"
+    );
+    assert.equal(
+        r.kiosk.snapshot().channel.id,
+        "c",
+        "failed selection keeps the current policy"
+    );
+    assert.equal(
+        r.request({ mode: "set", query: "folder:missing" }).status,
+        "rejected"
+    );
+}
+console.log(
+    "PASS strict local-folder membership, wrapping, persistence, ambiguity and source isolation"
+);
