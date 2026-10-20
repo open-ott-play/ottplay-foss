@@ -428,7 +428,10 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count the same standby allowance once across the complete payload.
 // Count the same Local EOF/footer allowance once; providers are unchanged.
 // Count the same collection/programme feature once in the full payload.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1107543, gzipBytes: 350458 });
+// Stable-group completion/history adds 536 raw / 184 gzip to the full player
+// (1107534 / 349398 on Node 26.8.2). The existing entry and gzip caps fit;
+// retain 256 raw aggregate bytes for the frozen beta suffix and native variants.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1107799, gzipBytes: 350458 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
