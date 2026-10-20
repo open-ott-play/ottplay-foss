@@ -151,6 +151,17 @@ export function installBrowserLocalMedia(w: any): any {
         var stopped = false,
             firstPlayable = false;
         var phase = "sources";
+        var readErrorName = "";
+        var readErrorPhase = "";
+        function readFailure(error: any): void {
+            readErrorName =
+                /^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|AbortError|InvalidStateError|QuotaExceededError|TimeoutError|TypeError|UnknownError)$/.test(
+                    error && error.name
+                )
+                    ? error.name
+                    : "Error";
+            readErrorPhase = phase;
+        }
         function active(): boolean {
             return !stopped && generation === scanGeneration;
         }
@@ -170,6 +181,8 @@ export function installBrowserLocalMedia(w: any): any {
                 ),
                 persistent: false,
                 phase: scanning ? phase : "complete",
+                readErrorName: readErrorName,
+                readErrorPhase: readErrorPhase,
                 scanned: scanned,
                 scanning: scanning,
                 sources: sources.map(function (source) {
@@ -248,6 +261,7 @@ export function installBrowserLocalMedia(w: any): any {
             sourceId: string
         ): Promise<void> {
             if (!active()) return Promise.resolve();
+            phase = "enumerating";
             var iterator = handle.values();
             function next(): Promise<void> {
                 if (!active()) return Promise.resolve();
@@ -294,6 +308,7 @@ export function installBrowserLocalMedia(w: any): any {
                             });
                     return work
                         .catch(function (error) {
+                            if (active()) readFailure(error);
                             // Files can disappear or have narrower permissions than
                             // their parent. Keep scanning readable siblings.
                             if (
@@ -464,6 +479,10 @@ export function installBrowserLocalMedia(w: any): any {
                                 });
                             })
                             .catch(function (error) {
+                                if (!active()) return;
+                                readFailure(error);
+                                (source as any).readErrorName = readErrorName;
+                                (source as any).readErrorPhase = readErrorPhase;
                                 source.access =
                                     error && error.name === "NotAllowedError"
                                         ? "permission-required"

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Wake Standby from a local click, tap or key press. Consume the wake gesture
+  without changing the channel or volume, while preserving native wake ordering
+  and kiosk restrictions.
+
 - Keep waiting for a large browser folder's initial directory batch instead of
   expiring after 60 seconds. Show the picker, enumeration and metadata phases
   with discovered-entry and playable-video counts; preserve immediate cancel

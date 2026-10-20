@@ -458,6 +458,26 @@ export function installLocalMedia(w: any): any {
                 (loading && loading.foreground() && owner.active()))
         );
     }
+    function failureMessage(value: any): string {
+        var name = value && value.readErrorName;
+        if (
+            !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|AbortError|InvalidStateError|QuotaExceededError|TimeoutError|TypeError|UnknownError|Error)$/.test(
+                name
+            )
+        )
+            return "";
+        var stage = (
+            {
+                enumerating: "Reading folder entries",
+                files: "Reading local files",
+                metadata: "Reading file information",
+                permission: "Checking folder permission",
+                sources: "Reading saved sources",
+            } as any
+        )[value.readErrorPhase];
+        if (typeof stage !== "string") stage = "Local source unavailable";
+        return (w._ ? w._(stage) : stage) + ": " + name;
+    }
     function updateLoading(value: any): void {
         progressState = value;
         if (!loading || !current()) return;
@@ -794,7 +814,7 @@ export function installLocalMedia(w: any): any {
             }
         );
     }
-    function open(recovery = false, skipScan = false): void {
+    function open(recovery = false, skipScan = false, message = ""): void {
         if (locked()) return;
         if (settingsLocked()) {
             if (typeof w.enterPinAndSetAccess === "function")
@@ -808,7 +828,7 @@ export function installLocalMedia(w: any): any {
         owner = null;
         w.selIndex = 0;
         if (skipScan) catalogRevision++;
-        render();
+        render(message || failureMessage(last));
         if (!skipScan) run(list);
     }
     var api = {
@@ -820,6 +840,7 @@ export function installLocalMedia(w: any): any {
             catalogRevision++;
             last = null;
         },
+        failureMessage: failureMessage,
         importFiles: importFiles,
         isPlaybackUrl: function (url: string) {
             return !!(
@@ -856,8 +877,16 @@ export function installLocalMedia(w: any): any {
         },
         progressTimeout: localMediaProgressTimeout,
         remove: remove,
-        resume: function (skipScan = false) {
-            open(true, skipScan);
+        resume: function (skipScan = false, message = "") {
+            // Backend exception text may contain private file paths. Keep only
+            // our fixed timeout message or the sanitized filesystem error code.
+            open(
+                true,
+                skipScan,
+                message === "Local source did not respond"
+                    ? message
+                    : failureMessage(last)
+            );
         },
         snapshot: function () {
             // Profile operations must never replace the provider's active scan.

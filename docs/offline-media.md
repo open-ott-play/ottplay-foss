@@ -49,7 +49,11 @@ playable video, directory enumeration may take up to ten minutes, including
 nested folders on a network drive. An unchanged status does not extend this
 deadline. File metadata reads and later stalled reads retain the 60-second
 inactivity limit. Cancel remains available while waiting; expired or cancelled
-reads cannot revive the old dialog or replace a newer selection.
+reads cannot revive the old dialog or replace a newer selection. Startup loading
+has the same Cancel control and returns to source management. When the browser
+reports a filesystem error, recovery names the stage and error code without
+including private file paths. Cancelling stops OTT from using late results; an
+already issued operating-system read can still finish in the background.
 
 Closing the page, pressing **Q** on a PC, or exiting the native app saves the
 current video position before stopping playback. On the next start, the exact

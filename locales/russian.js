@@ -603,6 +603,9 @@ var keyStrings = {
     "Loading. Please wait...": "Загрузка. Подождите…",
     "Loading...": "Загрузка…",
     "Local HTTP remote control": "Локальный HTTP-пульт",
+    "Local source did not respond":
+        "Локальный источник не ответил за отведённое время",
+    "Local source unavailable": "Локальный источник недоступен",
     "Local URL": "Локальный адрес",
     "Local videos": "Локальные видео",
     Login: "Имя пользователя",
@@ -769,6 +772,8 @@ var keyStrings = {
     "RD settings": "Настройки RD",
     "Reading file information": "Чтение сведений о файле",
     "Reading folder entries": "Чтение содержимого папки",
+    "Reading local files": "Чтение локальных файлов",
+    "Reading saved sources": "Чтение сохранённых источников",
     "Reconnecting…": "Повторное подключение…",
     Records: "Записи",
     "Records for channel: ": "Записи канала: ",

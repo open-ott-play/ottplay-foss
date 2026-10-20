@@ -810,6 +810,63 @@ async function builtUi(devicePath) {
                 (v) => v.currentTime > 0.1 && !v.error
             )
         );
+        for (const input of ["keyboard", "pointer", "touch"]) {
+            const before = await page.evaluate(() => ({
+                selected: window.curList[window.primaryIndex],
+                volume: document.querySelector("video").volume,
+            }));
+            await page.evaluate(() => window.stbSetStandby(true));
+            await page.waitForFunction(() => window.__ottStandby.isStandby());
+            if (input === "keyboard") await page.keyboard.press("ArrowDown");
+            else if (input === "pointer") await page.mouse.click(300, 200);
+            else {
+                const touch = await context.newCDPSession(page);
+                await touch.send("Emulation.setTouchEmulationEnabled", {
+                    enabled: true,
+                    maxTouchPoints: 1,
+                });
+                await touch.send("Input.dispatchTouchEvent", {
+                    touchPoints: [{ x: 300, y: 200 }],
+                    type: "touchStart",
+                });
+                await touch.send("Input.dispatchTouchEvent", {
+                    touchPoints: [],
+                    type: "touchEnd",
+                });
+                await touch.send("Emulation.setTouchEmulationEnabled", {
+                    enabled: false,
+                });
+                await touch.detach();
+            }
+            await page.waitForFunction(() => {
+                const video = document.querySelector("video");
+                return (
+                    !window.__ottStandby.blocked() &&
+                    video.currentTime > 0.1 &&
+                    !video.paused &&
+                    !video.error
+                );
+            });
+            const after = await page.evaluate(() => ({
+                frames: document
+                    .querySelector("video")
+                    .getVideoPlaybackQuality().totalVideoFrames,
+                selected: window.curList[window.primaryIndex],
+                volume: document.querySelector("video").volume,
+            }));
+            assert.equal(
+                after.selected,
+                before.selected,
+                "wake gesture cannot change the selected video"
+            );
+            assert.equal(
+                after.volume,
+                before.volume,
+                "wake gesture cannot change the volume"
+            );
+            assert.ok(after.frames > 0, "local wake resumes decoded video");
+            console.log("PASS local standby wake " + devicePath + " " + input);
+        }
         await page.waitForFunction(() => !!window.__ottTryKeyboardSeek);
         await page.waitForFunction(() => window.playType === -99999999999);
         const playbackUrl = page.url();

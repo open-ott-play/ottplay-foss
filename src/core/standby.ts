@@ -356,6 +356,95 @@ export function installStandby(w: any, read: any, write: any): any {
         track: track,
     };
     w.__ottStandby = api;
+    // Capture before player/kiosk handlers. Waking is always allowed, but the
+    // gesture that wakes must not also navigate, change volume or unlock UI.
+    var wakeKey = false;
+    var wakePointer = false;
+    var wakeMouseReleased = false;
+    function consumeInput(event: any): void {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        else if (event.stopPropagation) event.stopPropagation();
+    }
+    function wakeFromInput(): void {
+        if (asleep && typeof w.stbSetStandby === "function")
+            w.stbSetStandby(false);
+    }
+    function localInput(event: any): void {
+        var type = event.type;
+        if (/^key/.test(type)) {
+            if (!blocked() && !wakeKey) return;
+            if (type === "keyup") {
+                consumeInput(event);
+                wakeKey = false;
+                return;
+            }
+            if (!wakeKey && event.repeat) {
+                consumeInput(event);
+                return;
+            }
+            var firstKey = !wakeKey;
+            wakeKey = true;
+            consumeInput(event);
+            if (firstKey) wakeFromInput();
+            return;
+        }
+        if (type === "pointerdown") {
+            // A new physical gesture ends suppression of an older touch which
+            // produced no compatibility click after preventDefault().
+            wakePointer = blocked();
+            wakeMouseReleased = false;
+            if (!wakePointer) return;
+        } else if (type === "touchstart") {
+            if (!w.PointerEvent) {
+                wakePointer = blocked();
+                wakeMouseReleased = false;
+            }
+            if (!wakePointer && !blocked()) return;
+            wakePointer = true;
+        } else if (type === "mousedown") {
+            if (!blocked() && wakeMouseReleased) wakePointer = false;
+            wakeMouseReleased = false;
+            if (!wakePointer && !blocked()) return;
+            wakePointer = true;
+        } else if (!wakePointer && !blocked()) return;
+        consumeInput(event);
+        if (type === "mouseup") wakeMouseReleased = true;
+        if (
+            type === "pointerdown" ||
+            type === "mousedown" ||
+            type === "touchstart" ||
+            type === "click"
+        )
+            wakeFromInput();
+        if (
+            type === "click" ||
+            type === "pointercancel" ||
+            type === "touchcancel"
+        )
+            wakePointer = false;
+    }
+    if (typeof w.addEventListener === "function")
+        [
+            "keydown",
+            "keypress",
+            "keyup",
+            "pointerdown",
+            "pointerup",
+            "pointercancel",
+            "mousedown",
+            "mouseup",
+            "touchstart",
+            "touchend",
+            "touchcancel",
+            "click",
+            "contextmenu",
+        ].forEach(function (type) {
+            w.addEventListener(type, localInput, {
+                capture: true,
+                passive: false,
+            });
+        });
     // Preserve the actual Request/Response contracts; only work ownership changes.
     if (typeof w.fetch === "function") {
         var fetch = w.fetch;

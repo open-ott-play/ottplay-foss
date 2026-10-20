@@ -208,6 +208,12 @@ function createOfflineDriver(
     var catalog = emptyDriverCatalog();
     var revision = 0;
     var loadTimer: any = null;
+    var loadingOwner: any = null;
+    function closeLoading(): void {
+        var current = loadingOwner;
+        loadingOwner = null;
+        if (current) current.close();
+    }
     function clearLoadTimer(): void {
         if (
             loadTimer !== null &&
@@ -236,6 +242,7 @@ function createOfflineDriver(
             disposed = true;
             revision++;
             clearLoadTimer();
+            closeLoading();
         },
         guide: function (_, done) {
             if (active()) done([]);
@@ -244,6 +251,7 @@ function createOfflineDriver(
         load: function (done) {
             var request = ++revision;
             clearLoadTimer();
+            closeLoading();
             var media = (window as any).__ottLocalMedia;
             if (!media) {
                 done(emptyDriverCatalog(), "Local media is unavailable");
@@ -322,6 +330,7 @@ function createOfflineDriver(
                 if (!current()) return;
                 clearLoadTimer();
                 revision++;
+                closeLoading();
                 if (!started) {
                     done(emptyDriverCatalog(), error);
                     if (
@@ -330,7 +339,7 @@ function createOfflineDriver(
                         request + 1 === revision &&
                         typeof media.resume === "function"
                     )
-                        media.resume(true);
+                        media.resume(true, error);
                 }
             }
             function heartbeat(timeout = 60000): void {
@@ -478,6 +487,7 @@ function createOfflineDriver(
                     return true;
                 var incremental = started;
                 started = true;
+                closeLoading();
                 var snapshot = driverCatalogSnapshot(catalog);
                 snapshot.incremental = incremental;
                 done(snapshot, undefined, incremental);
@@ -504,10 +514,48 @@ function createOfflineDriver(
                         value.sources.length &&
                         typeof media.resume === "function"
                     )
-                        media.resume(true);
+                        media.resume(
+                            true,
+                            media.failureMessage
+                                ? media.failureMessage(value)
+                                : ""
+                        );
                     else media.open();
                 }
                 return true;
+            }
+            var host = window as any;
+            var panel =
+                typeof document !== "undefined" &&
+                document.getElementById("dialogbox");
+            if (
+                panel &&
+                panel.querySelector(".ott-spinner") &&
+                host.__ottClassicScreenPort &&
+                typeof host.renderButtonHint === "function" &&
+                !(host.__ottKiosk && host.__ottKiosk.locked())
+            ) {
+                loadingOwner = host.__ottClassicScreenPort.setOwnedCallback(
+                    "dialog",
+                    function (key: number) {
+                        if (
+                            current() &&
+                            !started &&
+                            (key === host.keys.RETURN ||
+                                key === host.keys.EXIT) &&
+                            !(host.__ottKiosk && host.__ottKiosk.locked())
+                        )
+                            recover("");
+                    }
+                ).owner;
+                var cancel = document.createElement("div");
+                cancel.setAttribute("data-local-cancel", "");
+                cancel.innerHTML = host.renderButtonHint(
+                    host.keys.RETURN,
+                    host.strRETURN,
+                    "Cancel"
+                );
+                panel.appendChild(cancel);
             }
             heartbeat();
             try {

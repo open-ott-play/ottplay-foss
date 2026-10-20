@@ -26,7 +26,8 @@ function fixture(saved = "0") {
     const stored = new Map([["__ottStandbyV1", saved]]),
         requests = [],
         events = [],
-        timers = new Map();
+        timers = new Map(),
+        listeners = new Map();
     let sequence = 0;
     class Xhr {
         constructor() {
@@ -62,6 +63,11 @@ function fixture(saved = "0") {
             },
         },
         AbortController,
+        addEventListener(type, handler, options) {
+            const registered = listeners.get(type) || [];
+            registered.push({ handler, options });
+            listeners.set(type, registered);
+        },
         clearInterval() {},
         clearTimeout(id) {
             timers.delete(id);
@@ -82,7 +88,34 @@ function fixture(saved = "0") {
         (key) => stored.get(key),
         (key, value) => stored.set(key, value)
     );
-    return { events, gate, requests, stored, timers, w };
+    return {
+        events,
+        gate,
+        input(type, properties = {}) {
+            const event = {
+                ...properties,
+                preventDefault() {
+                    this.prevented = true;
+                },
+                prevented: false,
+                stopImmediatePropagation() {
+                    this.stopped = true;
+                },
+                stopped: false,
+                type,
+            };
+            for (const { handler } of listeners.get(type) || []) {
+                handler(event);
+                if (event.stopped) break;
+            }
+            return event;
+        },
+        listeners,
+        requests,
+        stored,
+        timers,
+        w,
+    };
 }
 const tick = async () => {
     for (let i = 0; i < 8; i++) await Promise.resolve();
@@ -510,5 +543,141 @@ test("wake waits for native teardown to drain before starting a new decoder", as
     [...f.timers.values()].find((x) => x.delay === 250).fn();
     await tick();
     assert.equal(starts, 1);
+    assert.equal(f.gate.blocked(), false);
+});
+
+test("local wake consumes the complete first gesture and preserves later controls", () => {
+    for (const [pointerEvents, gesture, next] of [
+        [false, ["keydown", "keypress", "keydown", "keyup"], "keydown"],
+        [
+            true,
+            ["pointerdown", "mousedown", "pointerup", "mouseup", "click"],
+            "pointerdown",
+        ],
+        [
+            false,
+            ["touchstart", "touchend", "mousedown", "mouseup", "click"],
+            "touchstart",
+        ],
+        [
+            true,
+            ["pointerdown", "touchstart", "pointerup", "touchend"],
+            "pointerdown",
+        ],
+        [false, ["touchstart", "touchend"], "touchstart"],
+        [false, ["mousedown", "mouseup"], "mousedown"],
+        [false, ["click"], "click"],
+    ]) {
+        const f = fixture();
+        if (pointerEvents) f.w.PointerEvent = function () {};
+        const locked = { locked: () => true };
+        f.w.__ottKiosk = locked;
+        let starts = 0;
+        let wakes = 0;
+        f.w.stbSetStandby = (value) => {
+            assert.equal(value, false);
+            wakes++;
+            f.gate.set(value, () => starts++);
+        };
+        f.gate.set(true);
+        for (const type of gesture) {
+            const event = f.input(type, { isTrusted: false });
+            assert.equal(
+                event.prevented,
+                true,
+                type + " cannot leak into player controls"
+            );
+            assert.equal(event.stopped, true);
+            assert.equal(f.listeners.get(type)[0].options.capture, true);
+            assert.equal(f.listeners.get(type)[0].options.passive, false);
+        }
+        assert.equal(wakes, 1);
+        assert.equal(starts, 1);
+        assert.equal(f.gate.blocked(), false);
+        assert.equal(
+            f.input(next).prevented,
+            false,
+            "the next deliberate gesture reaches controls"
+        );
+        assert.strictEqual(
+            f.w.__ottKiosk,
+            locked,
+            "waking does not remove kiosk constraints"
+        );
+    }
+});
+
+test("motion, hover and focus do not wake a player left in standby", () => {
+    const f = fixture("1");
+    let wakes = 0;
+    f.w.stbSetStandby = () => wakes++;
+    for (const type of [
+        "mousemove",
+        "pointermove",
+        "mouseover",
+        "focus",
+        "wheel",
+    ]) {
+        assert.equal(f.input(type).prevented, false);
+    }
+    assert.equal(wakes, 0);
+    assert.equal(f.gate.blocked(), true);
+});
+
+test("local gesture keeps native wake admission blocked until acknowledgement", async () => {
+    const f = fixture();
+    const wake = deferred();
+    const requests = [];
+    let starts = 0;
+    f.w.PointerEvent = function () {};
+    f.gate.native((standby) => {
+        requests.push(standby);
+        return standby
+            ? Promise.resolve({ pending: 0, quiescent: true, standby: true })
+            : wake.promise;
+    });
+    f.w.stbSetStandby = (value) => f.gate.set(value, () => starts++);
+    f.gate.set(true);
+    await tick();
+    assert.equal(f.input("pointerdown").prevented, true);
+    await tick();
+    assert.equal(starts, 0);
+    assert.equal(f.gate.blocked(), true);
+    assert.equal(f.input("keydown").prevented, true);
+    assert.equal(f.input("pointerup").prevented, true);
+    assert.deepEqual(
+        requests,
+        [true, false],
+        "additional input does not issue another native wake"
+    );
+    wake.resolve({ pending: 0, quiescent: false, standby: false });
+    await tick();
+    assert.equal(starts, 1);
+    assert.equal(f.gate.blocked(), false);
+    assert.equal(
+        f.input("click").prevented,
+        true,
+        "trailing click cannot activate a control"
+    );
+    assert.equal(f.input("keyup").prevented, true);
+    assert.equal(f.input("pointerdown").prevented, false);
+    assert.equal(f.input("keydown").prevented, false);
+});
+
+test("a key held before standby cannot wake it by autorepeat", () => {
+    const f = fixture();
+    let wakes = 0;
+    f.w.stbSetStandby = (value) => {
+        wakes++;
+        f.gate.set(value);
+    };
+    assert.equal(f.input("keydown").prevented, false);
+    f.gate.set(true);
+    assert.equal(f.input("keydown", { repeat: true }).prevented, true);
+    assert.equal(wakes, 0);
+    assert.equal(f.gate.blocked(), true);
+    assert.equal(f.input("keyup").prevented, true);
+    assert.equal(f.input("keydown", { repeat: false }).prevented, true);
+    assert.equal(wakes, 1, "a fresh press wakes normally");
     assert.equal(f.gate.blocked(), false);
 });

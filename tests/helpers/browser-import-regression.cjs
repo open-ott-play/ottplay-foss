@@ -125,17 +125,26 @@ async function browserImportRegression(
                     : [first, second];
                 return {
                     next: () =>
-                        options.blockIterator ||
-                        (options.blockAfterFirst && index > 0)
-                            ? blocked.promise
-                            : Promise.resolve(
-                                  index < entries.length
-                                      ? {
-                                            done: false,
-                                            value: entries[index++],
-                                        }
-                                      : { done: true }
-                              ),
+                        options.iteratorError
+                            ? Promise.reject(
+                                  Object.assign(
+                                      new Error(
+                                          "file:///private/hidden-fixture/failure"
+                                      ),
+                                      { name: options.iteratorError }
+                                  )
+                              )
+                            : options.blockIterator ||
+                                (options.blockAfterFirst && index > 0)
+                              ? blocked.promise
+                              : Promise.resolve(
+                                    index < entries.length
+                                        ? {
+                                              done: false,
+                                              value: entries[index++],
+                                          }
+                                        : { done: true }
+                                ),
                 };
             },
         };
@@ -509,6 +518,33 @@ async function browserImportRegression(
     assert.match((await laterResult).message, /did not respond/);
     laterEnumeration.blocked.resolve({ done: true });
     await flush();
+
+    for (const [errorName, expected] of [
+        ["NotReadableError", "NotReadableError"],
+        ["PrivateSecretError", "Error"],
+    ]) {
+        const failed = fixture({ iteratorError: errorName });
+        failed.click("add-folder");
+        failed.grant("add-folder");
+        await flush();
+        const catalog = await failed.api.snapshot();
+        assert.equal(catalog.readErrorName, expected);
+        assert.equal(catalog.readErrorPhase, "enumerating");
+        assert.equal(
+            failed.api.failureMessage(catalog),
+            "Reading folder entries: " + expected
+        );
+        assert.doesNotMatch(
+            JSON.stringify(catalog),
+            /private|hidden-fixture|PrivateSecretError/
+        );
+        assert.doesNotMatch(
+            failed.detail(),
+            /private|hidden-fixture|PrivateSecretError/
+        );
+        assert.equal(failed.played(), 0);
+        assert.equal(failed.spinner(), false);
+    }
 
     const waiting = fixture({ blockFirst: true });
     waiting.click("add-folder");
