@@ -896,16 +896,31 @@ Silently ignored on clients without volume control support.
 | `volume` | number | — | Absolute level 0-100 |
 | `volume_step` | number | — | Relative change, e.g. +10 or -5 |
 
-#### `exit_player` — Exit / shutdown player
+#### Player standby, restart and exit
 
-```bash
-curl -X POST http://192.168.1.50:8081/api/webhook/commands \
-  -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command":"exit_player"}'
+The local proxy's unacknowledged webhook queue does not support `exit_player`
+or typed standby/wake requests. Connect the player to the
+[command server](docs/remote-command-server.md) and use its CLI:
+
+```sh
+ott d1 standby        # Stop playback and tracked player work; remain connected
+ott d1 go             # Leave standby and resume configured provider/profile startup
+ott d1 restart stream # Reconnect the current stream
+ott d1 restart        # Reload the player; preserve standby if it is set
+ott d1 exit           # Exit a supported native app; never enters standby
 ```
 
-This unacknowledged webhook queue does not support `exit_player`. Use `ott PLAYER exit` or the modern acknowledged `command: exit_player` request on a player that supports native app exit; it never enters standby. No additional fields are accepted.
+Replace `d1` with your registered player alias. `stop` is an alias for `standby`;
+`start` and `wake` are aliases for `go`. Go requires a running, connected player;
+it cannot launch a closed app or wake an offline device. A browser or TV without
+native app exit reports that exit is unsupported. Standby keeps remote polling
+active and does not suspend unrelated host or shared-server work.
+
+After standby/go, check `ott d1 status` for the standby/background state and
+verify resumed playback separately. After a player reload, confirm a new runtime
+with `ott d1 doctor`. After exit, confirm through the OS that the app process
+closed; a remote timeout does not prove exit. Command acceptance alone does not
+confirm these outcomes.
 
 ## Local Proxy Server
 
@@ -987,7 +1002,17 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 ### Home Assistant automation examples
 
-Set `ottplay_device_authorization` in Home Assistant `secrets.yaml` to `Bearer <device-code>` using the code shown by the enabled player.
+The popup, channel and volume examples use the local proxy. Set
+`ottplay_device_authorization` in Home Assistant `secrets.yaml` to
+`Bearer <device-code>` using the code shown by the enabled player.
+
+Night standby uses the separate [command server](docs/remote-command-server.md).
+Replace its example URL and `DEVICE_UUID` below with your controller address and
+registered device ID; the local CLI alias `d1` is not a device ID.
+Set `ottplay_control_authorization` to `Bearer <controller-admin-token>` in
+`secrets.yaml`. This credential is separate from the local proxy's device code.
+See Home Assistant's [RESTful Command](https://www.home-assistant.io/integrations/rest_command/)
+and [secrets](https://www.home-assistant.io/docs/configuration/secrets/) documentation.
 
 ```yaml
 rest_command:
@@ -999,6 +1024,13 @@ rest_command:
       Authorization: !secret ottplay_device_authorization
     payload: >-
       {{ {'command': command} | combine(payload | default({})) | tojson }}
+  tv_standby:
+    url: "https://controller.example.com/ott-control/api/requests?device_id=DEVICE_UUID"
+    method: POST
+    headers:
+      Authorization: !secret ottplay_control_authorization
+    content_type: "application/json"
+    payload: '{"action":"lifecycle","params":{"operation":"standby"}}'
 
 automation:
   # Show popup when door opens
@@ -1039,16 +1071,26 @@ automation:
           payload:
             volume_step: 10
 
-  # Put TV to standby at night
+  # Put the player in standby at night; keep remote control connected
   - alias: "TV: Night standby"
     trigger:
       platform: time
       at: "23:00:00"
     action:
-      - service: rest_command.tv_command
-        data:
-          command: exit_player
+      - service: rest_command.tv_standby
+        response_variable: standby_request
 ```
+
+`standby_request` contains the HTTP response for the automation trace. HTTP 202
+only means queued: retain its `content.id`, then poll
+`GET /api/requests?device_id=DEVICE_UUID&id=REQUEST_ID` with the same controller
+credential for the player's reply. A new `status` request observes
+`player.standby` and `player.background`; standby on with `suspended` and zero
+pending confirms the player's tracked work has drained. To leave standby, use
+the same typed request with `"operation":"wake"` (`ott d1 go`).
+Do not repeat a mutation blindly after a timeout. See the controller's
+[request/response API](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/api.md#requestresponse-extension-protocol-1)
+and [standby semantics](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/api.md#player-standby-and-wake).
 
 ## Server API Reference
 

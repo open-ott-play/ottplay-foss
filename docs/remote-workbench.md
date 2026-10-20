@@ -6,9 +6,10 @@ browser screen-selection requirements and platform capabilities still apply.
 
 Install the CLI, controller and player separately. The controller's
 [CLI installation guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md#installation-and-connection)
-provides a pinned source installation containing all seven Python modules,
-including the offline report verifier. Stable CLI v0.1.0 does not contain this
-workbench. Updating a launcher or running `restart` does not install a new player.
+provides a pinned source installation. Keep the complete `cli/` directory from
+one revision together, including the offline report verifier. Stable CLI v0.1.0
+does not contain this workbench. Updating a launcher or running `restart` does not
+install a new player.
 For a local Mac installation, use the
 [delivery and recovery runbook](macos-local-delivery.md); verify the loaded
 runtime after the files have been replaced.

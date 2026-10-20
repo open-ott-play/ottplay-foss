@@ -141,11 +141,36 @@ class LocalMediaPlugin : Plugin() {
         } catch (error: Exception) { descriptor.close(); throw error }
     }
 
-    private fun metadata(): List<JSONObject> = directory.listFiles().orEmpty()
-        .filter { it.name.endsWith(".json") && privateFile(it) }.sortedBy { it.name }.mapNotNull {
-            try { JSONObject(it.readText()).takeIf { item -> validId(item.optString("id")) } }
-            catch (_: Exception) { null }
+    private fun readMetadata(file: File): JSONObject? {
+        checkWork()
+        val text = try { file.readText() } catch (_: Exception) { null }
+        // A synchronous read keeps its ticket until it returns; do not start
+        // another read, or hide cancellation as corrupt JSON, afterward.
+        checkWork()
+        return try { text?.let { JSONObject(it) } } catch (_: Exception) { null }
+    }
+
+    private fun metadata(): List<JSONObject> {
+        checkWork()
+        val files = directory.listFiles().orEmpty()
+        checkWork()
+        val records = files.sortedBy { it.name }.mapNotNull {
+            checkWork()
+            if (!it.name.endsWith(".json") || !privateFile(it)) null
+            else readMetadata(it)?.takeIf { item -> validId(item.optString("id")) }
         }
+        checkWork()
+        return records
+    }
+
+    private fun sourceMetadata(): List<JSONObject> {
+        checkWork()
+        val files = sourceDirectory.listFiles().orEmpty()
+        checkWork()
+        val records = files.filter { it.name.endsWith(".json") }.mapNotNull { readMetadata(it) }
+        checkWork()
+        return records
+    }
 
     private fun sourceId(item: JSONObject): String = item.optString("sourceId").ifEmpty {
         item.optString("grantUri").takeIf { it.isNotEmpty() }?.let { sourceId(Uri.parse(it)) } ?: item.getString("id")
@@ -164,8 +189,10 @@ class LocalMediaPlugin : Plugin() {
         } finally { partial.delete() }
     }
 
-    private fun releaseUnusedGrant(grant: String) {
-        if (metadata().none { it.optString("grantUri") == grant }) {
+    private fun releaseUnusedGrant(grant: String, referenced: Boolean) {
+        // Use the caller's serial-worker snapshot. Cleanup must also work after
+        // cancellation, without starting another metadata enumeration.
+        if (!referenced) {
             try { context.contentResolver.releasePersistableUriPermission(Uri.parse(grant), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             catch (_: SecurityException) { /* permission was already revoked */ }
         }
@@ -174,7 +201,8 @@ class LocalMediaPlugin : Plugin() {
     private fun snapshot(): JSObject {
         checkWork()
         val port = startServer()
-        val items = metadata().map { item ->
+        val records = metadata()
+        val items = records.map { item ->
             checkWork()
             var size = item.optLong("size", 0)
             val available = try { openSource(item).use { size = it.size }; true } catch (_: Exception) { false }
@@ -187,16 +215,18 @@ class LocalMediaPlugin : Plugin() {
             }
         }
         val sources = linkedMapOf<String, JSONObject>()
-        sourceDirectory.listFiles().orEmpty().filter { it.name.endsWith(".json") }.forEach { file ->
-            try { val source = JSONObject(file.readText()); if (validId(source.optString("id"))) sources[source.getString("id")] = source }
-            catch (_: Exception) { /* corrupt metadata is not a grant */ }
+        sourceMetadata().forEach { source ->
+            checkWork()
+            if (validId(source.optString("id"))) sources[source.getString("id")] = source
         }
-        metadata().forEach { item ->
+        records.forEach { item ->
+            checkWork()
             val id = sourceId(item)
             if (!sources.containsKey(id)) sources[id] = JSONObject().put("id", id).put("name", item.getString("name"))
                 .put("kind", "file").put("grantUri", item.optString("grantUri"))
         }
         val sourceItems = sources.values.map { source ->
+            checkWork()
             val children = items.filter { it.optString("sourceId") == source.getString("id") }
             val grant = source.optString("grantUri")
             val available = if (children.isNotEmpty()) children.any { it.optBoolean("available") }
@@ -204,21 +234,30 @@ class LocalMediaPlugin : Plugin() {
             JSObject().put("id", source.getString("id")).put("name", source.getString("name"))
                 .put("kind", source.optString("kind", "file")).put("available", available).put("access", if (available) "granted" else "unavailable")
         }
+        checkWork()
         return JSObject().put("available", true).put("persistent", true).put("storage", "device")
             .put("directAccess", true).put("directSources", true).put("sources", JSArray(sourceItems)).put("items", JSArray(items))
+    }
+
+    private fun resolveSnapshot(call: PluginCall) {
+        val result = snapshot()
+        val ticket = currentWork.get() ?: throw IOException("Local media owner unavailable")
+        ticket.commit { call.resolve(result) }
     }
 
     @PluginMethod fun list(call: PluginCall) {
         submit(call) {
             try {
                 // Re-scan saved trees with their existing grants. Missing sources remain in the catalog.
-                sourceDirectory.listFiles().orEmpty().filter { it.name.endsWith(".json") }.forEach {
+                sourceMetadata().forEach { source ->
+                    checkWork()
                     try {
-                        val source = JSONObject(it.readText())
                         if (source.optString("kind") == "folder") scanTree(Uri.parse(source.getString("grantUri")))
-                    } catch (_: Exception) { /* unavailable source: retain its references for reconnect */ }
+                    } catch (_: Exception) {
+                        checkWork() // Cancellation must not be treated as an unavailable folder.
+                    }
                 }
-                call.resolve(snapshot())
+                resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Local media unavailable") }
         }
     }
@@ -228,19 +267,21 @@ class LocalMediaPlugin : Plugin() {
         if (!validId(id)) { call.reject("Invalid local media ID"); return }
         submit(call) {
             try {
-                val item = metadata().find { it.getString("id") == id }
+                val records = metadata()
+                val item = records.find { it.getString("id") == id }
+                val remaining = records.filter { it.getString("id") != id }
                 // Only legacy private copies may be deleted. Never delete a referenced source document.
                 val media = File(directory, "$id.media")
                 if (media.exists() && !media.delete()) throw IOException("Delete failed")
                 val meta = File(directory, "$id.json")
                 if (meta.exists() && !meta.delete()) throw IOException("Delete failed")
                 item?.optString("grantUri")?.takeIf { it.isNotEmpty() }?.let { grant ->
-                    if (metadata().none { it.optString("grantUri") == grant }) {
+                    if (remaining.none { it.optString("grantUri") == grant }) {
                         File(sourceDirectory, "${sourceId(Uri.parse(grant))}.json").delete()
-                        releaseUnusedGrant(grant)
+                        releaseUnusedGrant(grant, false)
                     }
                 }
-                call.resolve(snapshot())
+                resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Unable to remove local media reference") }
         }
     }
@@ -250,7 +291,9 @@ class LocalMediaPlugin : Plugin() {
         if (!validId(id)) { call.reject("Invalid source ID"); return }
         submit(call) {
             try {
-                val affected = metadata().filter { sourceId(it) == id }
+                val records = metadata()
+                val affected = records.filter { sourceId(it) == id }
+                val remainingGrants = records.filter { sourceId(it) != id }.mapTo(HashSet<String>()) { it.optString("grantUri") }
                 val sourceFile = File(sourceDirectory, "$id.json")
                 val sourceGrant = if (sourceFile.isFile) JSONObject(sourceFile.readText()).optString("grantUri") else ""
                 for (item in affected) {
@@ -262,8 +305,9 @@ class LocalMediaPlugin : Plugin() {
                     if (meta.exists() && !meta.delete()) throw IOException("Delete failed")
                 }
                 if (sourceFile.exists() && !sourceFile.delete()) throw IOException("Delete failed")
-                (affected.map { it.optString("grantUri") } + sourceGrant).filter { it.isNotEmpty() }.distinct().forEach { releaseUnusedGrant(it) }
-                call.resolve(snapshot())
+                (affected.map { it.optString("grantUri") } + sourceGrant).filter { it.isNotEmpty() }.distinct()
+                    .forEach { releaseUnusedGrant(it, it in remainingGrants) }
+                resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Unable to disconnect local source") }
         }
     }
@@ -293,14 +337,16 @@ class LocalMediaPlugin : Plugin() {
     @PluginMethod fun requestAccess(call: PluginCall) {
         submit(call) {
             val requestedId = call.getString("id")
-            val denied = sourceDirectory.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull {
-                try { JSONObject(it.readText()) } catch (_: Exception) { null }
-            }.firstOrNull { source ->
+            val sources = sourceMetadata()
+            val records = if (requestedId == null && sources.isNotEmpty()) metadata() else emptyList()
+            val denied = sources.firstOrNull { source ->
+                checkWork()
                 if (requestedId != null) source.optString("id") == requestedId
-                else metadata().filter { sourceId(it) == source.optString("id") }.any { item ->
+                else records.filter { sourceId(it) == source.optString("id") }.any { item ->
                     try { openSource(item).use { }; false } catch (_: Exception) { true }
                 }
             }
+            checkWork()
             val folder = denied?.optString("kind") != "file"
             activity.runOnUiThread { pick(call, folder) }
         }
@@ -350,18 +396,24 @@ class LocalMediaPlugin : Plugin() {
                     result.data?.clipData?.let { clip -> for (index in 0 until clip.itemCount) uris.add(clip.getItemAt(index).uri) }
                     if (uris.isEmpty()) result.data?.data?.let { uris.add(it) }
                     require(uris.size <= 128) { "Select at most 128 files at once" }
-                    val known = metadata().mapTo(HashSet<String>()) { it.optString("uri") }
+                    val records = metadata()
+                    val known = records.mapTo(HashSet<String>()) { it.optString("uri") }
+                    val knownGrants = records.mapTo(HashSet<String>()) { it.optString("grantUri") }
                     for (uri in uris.distinct()) {
+                        checkWork()
                         grant(uri)
                         try {
                             link(uri, uri, known)
                             val item = metadata().find { it.optString("uri") == uri.toString() }
                             if (item != null) saveSource(uri, item.getString("name"), "file")
-                            else releaseUnusedGrant(uri.toString())
-                        } catch (error: Exception) { releaseUnusedGrant(uri.toString()); throw error }
+                            else releaseUnusedGrant(uri.toString(), uri.toString() in knownGrants || uri.toString() in known)
+                        } catch (error: Exception) {
+                            releaseUnusedGrant(uri.toString(), uri.toString() in knownGrants || uri.toString() in known)
+                            throw error
+                        }
                     }
                 }
-                call.resolve(snapshot())
+                resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Cannot link source: select local seekable files with persistent read access. No files were copied.") }
         }
     }
@@ -414,7 +466,7 @@ class LocalMediaPlugin : Plugin() {
                     grant(tree)
                     scanTree(tree)
                 }
-                call.resolve(snapshot())
+                resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Cannot finish linking folder: select a local folder with persistent read access. No files were copied.") }
         }
     }
