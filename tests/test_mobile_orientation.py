@@ -16,14 +16,26 @@ class MobileOrientationTests(unittest.TestCase):
     def test_android_launcher_and_native_overlay_share_landscape(self):
         """Both landscape directions apply to the launcher and its video overlay."""
         manifest = ET.parse(ROOT / "android/app/src/main/AndroidManifest.xml")
-        activities = manifest.findall("./application/activity")
-        self.assertEqual(len(activities), 1)
-        activity = activities[0]
+        candidates = manifest.findall("./application/activity") + manifest.findall("./application/activity-alias")
+        launchers = [
+            activity for activity in candidates
+            if any(
+                intent.find(f"action[@{ANDROID}name='android.intent.action.MAIN']") is not None
+                and intent.find(f"category[@{ANDROID}name='android.intent.category.LAUNCHER']") is not None
+                for intent in activity.findall("intent-filter")
+            )
+        ]
+        self.assertEqual(len(launchers), 1)
+        activity = launchers[0]
+        self.assertEqual(activity.tag, "activity")
         self.assertEqual(activity.get(ANDROID + "name"), ".MainActivity")
         self.assertEqual(activity.get(ANDROID + "screenOrientation"), "sensorLandscape")
         self.assertEqual(activity.get(ANDROID + "supportsPictureInPicture"), "true")
         properties = {p.get(ANDROID + "name"): p.get(ANDROID + "value") for p in activity.findall("property")}
         self.assertEqual(properties.get("android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"), "true")
+        home = manifest.find(f"./application/activity-alias[@{ANDROID}name='.HomeActivity']")
+        self.assertIsNotNone(home)
+        self.assertEqual(home.get(ANDROID + "targetActivity"), activity.get(ANDROID + "name"))
 
     def test_iphone_and_ipad_launch_masks_exclude_portrait(self):
         """Both device families declare exactly the two landscape orientations."""
