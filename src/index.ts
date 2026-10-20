@@ -2768,7 +2768,13 @@ function _playChannel(
     }
     // Closing a list can run cleanup that changes the provider or local policy.
     if (admit && !admit()) return false;
-    if (settings.stopPlay) stbStop();
+    // Natural EOF already retired its decoder. Stopping it again would cancel
+    // the completion guard before the next Local file can be admitted.
+    if (
+        settings.stopPlay &&
+        !(background && w.__ottClassicPlayback?.snapshot().phase === "stopped")
+    )
+        stbStop();
     if (admit && !admit()) return false;
     if (!resumeCurrent()) return false;
     setCurrent(catIdx, chIdx);

@@ -170,6 +170,7 @@ function classicMediaRuntime(): any {
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
+    var completedLocalGeneration = -1;
     var collectionRequest: any = null;
     var shuffleRequest: any = null;
     var completionRequest: any = null;
@@ -996,7 +997,8 @@ function classicMediaRuntime(): any {
     function movePlaylistEntry(
         playback: any,
         direction: number,
-        natural: boolean
+        natural: boolean,
+        admit?: () => boolean
     ) {
         var channel = playback.sequence && playback.sequence.channel;
         if (!channel || !channel.list || !channel.list.active()) return;
@@ -1019,7 +1021,7 @@ function classicMediaRuntime(): any {
             category,
             next,
             !natural,
-            undefined,
+            admit,
             undefined,
             natural,
             true
@@ -1391,6 +1393,49 @@ function classicMediaRuntime(): any {
             }
         },
         ended: function (generation: number) {
+            // Local files use the channel catalog, not a media-library queue.
+            // Their finite target therefore has no mediaClassicPlayback owner.
+            var state = w.__ottClassicPlayback.snapshot();
+            var history = state.historyTarget;
+            if (
+                w.__ottActiveProviderDriver?.id === "offline" &&
+                state.generation === generation &&
+                state.phase === "stopped" &&
+                state.target?.kind === "vod" &&
+                history?.kind === "live" &&
+                state.target.channelId === "channel:" + history.channelId &&
+                state.target.sourceId === source &&
+                history.sourceId === source
+            ) {
+                if (completedLocalGeneration === generation || !current())
+                    return;
+                var list = w.__ottChannels?.capture(history.payload?.c);
+                if (!list || !list.active()) return;
+                var members = list.members();
+                var id = members.filter(function (value: any) {
+                    return String(value) === history.channelId;
+                })[0];
+                if (id === undefined) return;
+                completedLocalGeneration = generation;
+                var revision = automaticGeneration;
+                function localAdmitted(): boolean {
+                    var latest = w.__ottClassicPlayback.snapshot();
+                    return (
+                        current() &&
+                        list.active() &&
+                        revision === automaticGeneration &&
+                        latest.generation === generation &&
+                        latest.phase === "stopped"
+                    );
+                }
+                movePlaylistEntry(
+                    { sequence: { channel: { id: id, list: list } } },
+                    1,
+                    true,
+                    localAdmitted
+                );
+                return;
+            }
             var playback = mediaClassicPlayback;
             var sequence = playback && playback.sequence;
             var revision = automaticGeneration;
@@ -2591,7 +2636,9 @@ function classicMediaRuntime(): any {
     },
     description: classicMediaDescription,
     ended: function (generation: number) {
-        if (mediaClassicInstance) mediaClassicInstance.ended(generation);
+        if ((window as any).__ottActiveProviderDriver?.id === "offline")
+            classicMediaRuntime().ended(generation);
+        else if (mediaClassicInstance) mediaClassicInstance.ended(generation);
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);

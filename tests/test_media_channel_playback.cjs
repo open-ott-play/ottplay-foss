@@ -593,3 +593,90 @@ for (const provider of ["plex", "vportal"]) {
             " exact startup resume, manual resume prompt, and fresh automatic/arrow playback"
     );
 }
+
+// Native/Browser Local sources use plain finite channels, without a media queue.
+for (const mode of ["all", "one", "off"]) {
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    while (c.__ottMedia.repeatMode() !== mode) c.__ottMedia.cycleRepeat();
+    c._playChannel(0, 2);
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    assert.equal(moves.length, mode === "off" ? 0 : 1);
+    end();
+    assert.equal(
+        moves.length,
+        mode === "off" ? 0 : 1,
+        "duplicate EOF cannot advance twice"
+    );
+    if (moves.length) {
+        assert.equal(moves[0][0], 0);
+        assert.equal(moves[0][1], mode === "one" ? 2 : 0);
+        assert.equal(
+            moves[0][2],
+            false,
+            "natural completion keeps the list open"
+        );
+        assert.equal(moves[0][5], true);
+        assert.equal(moves[0][6], true, "next Local file starts at zero");
+        assert.equal(moves[0][3](), true, "current completion may start");
+        c.__ottClassicPlayback.command({ channelId: 102, type: "live" });
+        assert.equal(
+            moves[0][3](),
+            false,
+            "late PIN completion cannot override a manual selection"
+        );
+    }
+}
+{
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c._playChannel(0, 1);
+    c.__ottKiosk = { allowed: (id) => id === 102, locked: () => true };
+    const moves = [];
+    c.playChannel = (...args) => moves.push(args);
+    end();
+    assert.equal(moves.length, 1);
+    assert.equal(moves[0][1], 1, "pinned Local file loops itself");
+}
+console.log(
+    "PASS Local finite-channel completion, repeat, kiosk and stale guards"
+);
+{
+    const { c, end } = setup("offline");
+    c.checkMedia = () => {};
+    c.channels = Object.fromEntries(
+        c.cats.All.map((id) => [id, { channel_name: "Local " + id }])
+    );
+    c.sStopPlay = 1;
+    c.parentalArray = [];
+    c.__ottParental = { needs: () => false };
+    let stops = 0;
+    c.stbStop = () => {
+        stops++;
+        c.__ottMedia.cancelAuto();
+        c.__ottClassicPlayback.cancel();
+        c.__ottClassicPlayback.command({ type: "stop" });
+    };
+    c._playChannel(0, 0);
+    const before = stops;
+    end();
+    assert.equal(
+        stops,
+        before,
+        "EOF does not redundantly stop the retired decoder"
+    );
+    assert.equal(
+        c.primaryIndex,
+        1,
+        "real channel transition survives stop-before-play"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+}
