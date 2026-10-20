@@ -197,6 +197,15 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 // Observation failure must never prevent transport teardown.
             }
         }
+        function refreshContext() {
+            var latest = ports.context();
+            if (context && latest && latest.generation === context.generation)
+                if (context.kind !== latest.kind) {
+                    context.kind = latest.kind;
+                    context.active = latest.active;
+                    context.sourceActive = latest.sourceActive;
+                }
+        }
         function observe(type?: string) {
             if (!current() || suspended || phase === "stopped") return;
             if (!engine) {
@@ -215,13 +224,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 return;
             }
             if (type === "ended" && awaitingRecovery) return;
-            var latest = ports.context();
-            if (context && latest && latest.generation === context.generation)
-                if (context.kind !== latest.kind) {
-                    context.kind = latest.kind;
-                    context.active = latest.active;
-                    context.sourceActive = latest.sourceActive;
-                }
+            refreshContext();
             var sample = engine.sample();
             // A resolver or engine may report autoplay after the lease attaches.
             // Only restart requests retain pause; ordinary native controls may resume directly.
@@ -599,11 +602,24 @@ function createMediaBackend(ports: MediaBackendPorts) {
             suspend: function () {
                 if (!handle.active() || suspended || phase === "stopped")
                     return;
-                observe();
-                if (!handle.active()) return;
-                retainAttempt("suspended");
+                // Retire callbacks before reading the decoder: a native sample
+                // can synchronously emit EOF and select the next local file.
                 suspended = true;
+                retainAttempt("suspended");
                 attachment++;
+                try {
+                    refreshContext();
+                    var sample = engine && engine.sample();
+                    if (sample && sample.ready >= 1) {
+                        if (offset === null) offset = desired - sample.position;
+                        var measured = sample.position + offset;
+                        if (isFinite(measured) && measured >= 0)
+                            position = measured;
+                        duration = sample.duration;
+                    }
+                } catch (_) {
+                    // A disappearing decoder must still release its transport.
+                }
                 cancelResolve();
                 cancelResolve = function () {};
                 pendingEvents = [];
@@ -614,6 +630,8 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 phase = "paused";
                 updateTimer();
                 if (retired) retired.dispose();
+                if (!current()) return;
+                if (!context || context.kind !== "live") command("position");
                 if (!current()) return;
                 command("pause");
                 announce("suspend");

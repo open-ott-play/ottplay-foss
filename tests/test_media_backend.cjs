@@ -1231,6 +1231,73 @@ for (const kind of ["live", "vod", "archive"])
         assert.equal(h.snapshot().phase, "playing");
         assert.equal(h.snapshot().position, kind === "live" ? 0 : saved);
     });
+test("screen suspension retires EOF callbacks before sampling the final local clock", (f) => {
+    const originalOpen = f.ports.open;
+    let finalSample = false;
+    f.ports.open = (request, event) => {
+        const engine = originalOpen(request, event);
+        const read = engine.sample;
+        engine.sample = () => {
+            if (finalSample) event("ended");
+            return read();
+        };
+        return engine;
+    };
+    const originalEmit = f.ports.emit;
+    f.ports.emit = (...args) => {
+        originalEmit(...args);
+        if (args[1] === "ended") f.backend.open({ url: "next-local-file" });
+    };
+    const handle = f.backend.open({ url: "local-file" });
+    f.playing(0, 12);
+    f.leases[0].sample.position = 499;
+    finalSample = true;
+    handle.suspend();
+    assert.equal(f.leases.length, 1, "suspend cannot launch the next file");
+    assert.equal(
+        f.commands.some((event) => event.type === "ended"),
+        false
+    );
+    assert.equal(
+        handle.snapshot().position,
+        499,
+        "final cursor is checkpointed"
+    );
+    assert.equal(f.commands.at(-2).type, "position");
+    assert.equal(f.commands.at(-2).position, 499);
+    assert.equal(handle.snapshot().phase, "paused");
+    assert.equal(f.leases[0].disposed, 1);
+    f.leases[0].event("ended");
+    assert.equal(f.leases.length, 1, "late native EOF remains retired");
+    finalSample = false;
+    handle.resume();
+    assert.equal(f.leases[1].request.position, 499);
+});
+test("screen suspension releases an unreadable decoder without losing its saved clock", (f) => {
+    const originalOpen = f.ports.open;
+    let failSample = false;
+    f.ports.open = (request, event) => {
+        const engine = originalOpen(request, event);
+        const read = engine.sample;
+        engine.sample = () => {
+            if (failSample) throw Error("native decoder detached");
+            return read();
+        };
+        return engine;
+    };
+    const handle = f.backend.open({ url: "local-file" });
+    f.playing(0, 31);
+    failSample = true;
+    handle.suspend();
+    assert.equal(handle.snapshot().position, 31);
+    assert.equal(handle.snapshot().phase, "paused");
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(
+        f.timers.some((timer) => timer.active),
+        false
+    );
+});
+
 test("screen suspension cancels resolution and ignores late results", () => {
     const f = fixture();
     const callbacks = [];
