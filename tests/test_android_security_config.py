@@ -94,4 +94,24 @@ class NativeSecurityConfig(unittest.TestCase):
             'android.permission.SYSTEM_ALERT_WINDOW',
         }))
 
+    def test_home_setup_is_explicit_only_and_can_see_alternate_home_apps(self):
+        setup = next(node for node in self.app.findall('activity')
+                     if node.get(NS+'name') == '.HomeSetupActivity')
+        self.assertEqual(setup.get(NS+'exported'), 'true')
+        self.assertEqual(setup.findall('intent-filter'), [])
+        self.assertEqual(setup.get(NS+'excludeFromRecents'), 'true')
+        queries = self.manifest.find('queries').findall('intent')
+        self.assertTrue(any(
+            {node.get(NS+'name') for node in query.findall('action')} == {'android.intent.action.MAIN'}
+            and {node.get(NS+'name') for node in query.findall('category')} == {'android.intent.category.HOME'}
+            for query in queries))
+        resources = []
+        for language in ('values', 'values-ru'):
+            strings = ET.parse(MAIN/'res'/language/'strings.xml').getroot()
+            resources.append({node.get('name'): node.text for node in strings.findall('string')
+                              if node.get('name', '').startswith('home_setup_')})
+        self.assertEqual(resources[0].keys(), resources[1].keys())
+        self.assertTrue(resources[0])
+        self.assertTrue(all(resources[0].values()) and all(resources[1].values()))
+
 if __name__ == '__main__': unittest.main()

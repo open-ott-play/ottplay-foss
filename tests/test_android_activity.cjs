@@ -1,6 +1,7 @@
 // Execute the real MainActivity against small Android/Capacitor test doubles,
 // then run its emitted scripts against the real TS controls and device maps.
 const assert = require("node:assert/strict");
+require("./test_android_home_setup.cjs");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");

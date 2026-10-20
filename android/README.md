@@ -36,6 +36,9 @@ It allows an operator to select OTTPlay as the Android Home app on a dedicated
 player. This makes the physical Home button return to OTTPlay as well as allowing
 Android to open it at startup. It adds no boot receiver or background service.
 Installing an APK does not enable or select this mode automatically.
+The explicit native `play.ott.foss/.HomeSetupActivity` screen enables the alias
+after confirmation and opens Android's Home selector. This works without asking
+the ADB shell to change another application's component state.
 
 Follow the [setup, rollback and hardware verification procedure](../docs/android-distributions.md#optional-startup-as-the-android-home-app)
 or the [Russian instructions](../docs/android-autostart-RU.md). Keep the existing

@@ -27,8 +27,9 @@ Activity из фона ограничен: возможность получит
 
 ## Подготовка и сохранение штатного лаунчера
 
-Нужен APK с новым компонентом, подписанный тем же сертификатом, что установленный
-`play.ott.foss`. В старых APK этого компонента нет. Используйте обычное обновление
+Нужен APK с обоими компонентами — `HomeActivity` и `HomeSetupActivity`,
+подписанный тем же сертификатом, что установленный `play.ott.foss`. В старых APK
+одного или обоих компонентов может не быть. Используйте обычное обновление
 поверх приложения: оно сохраняет данные, профили и регистрацию удалённого
 управления. Не удаляйте приложение, не очищайте его данные и не обходите ошибку
 подписи принудительным понижением версии.
@@ -62,10 +63,22 @@ OTT_PREVIOUS_HOME='REPLACE_WITH_RECORDED_HOME_COMPONENT'
 
 ## Включение режима Home
 
+Откройте встроенный экран настройки:
+
 ```sh
-adb -s "$OTT_ADB_SERIAL" shell pm enable --user 0 play.ott.foss/.HomeActivity
-adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
-  play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -n play.ott.foss/.HomeSetupActivity
+```
+
+Выберите **Включить**, подтвердите изменение, затем выберите OTTPlay в системном
+выборе домашнего приложения. Само открытие экрана ничего не меняет. После
+подтверждения OTTPlay включает собственный компонент: серийная прошивка может
+запрещать `adb shell pm enable` для компонентов чужого приложения. Root и
+отладочная сборка для этого не нужны.
+
+Проверьте результат и один раз откройте Home вручную:
+
+```sh
 adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
@@ -73,9 +86,18 @@ adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
 ```
 
 В качестве Home должен определяться alias OTTPlay, а последняя команда должна
-открыть плеер. Если прошивка не принимает `set-home-activity`, используйте её
-системный выбор домашнего приложения и снова проверьте результат. Если штатного
-способа назначить приложение нет, остановитесь: отключать лаунчер производителя
+открыть плеер. При необходимости используйте системный выбор домашнего
+приложения. Если прошивка не предоставляет работающий экран выбора,
+авторизованный оператор ADB может назначить Home после включения компонента
+в самом приложении:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
+  play.ott.foss/.HomeActivity
+```
+
+Снова проверьте результат. Если ни один штатный способ не работает,
+остановитесь: отключать лаунчер производителя
 для принудительного выбора не требуется. Android описывает этот механизм как
 [роль Home](https://developer.android.com/reference/androidx/core/role/RoleManagerCompat#ROLE_HOME).
 
@@ -93,6 +115,9 @@ adb -s "$OTT_ADB_SERIAL" shell am start --user 0 -n "$OTT_PREVIOUS_HOME"
 
 Вторая команда открывает прежний лаунчер, но не делает его домашним экраном
 по умолчанию.
+Некоторые прошивки не обрабатывают `android.settings.SETTINGS`. В этом случае
+используйте проверенный компонент настроек именно этого устройства; имя пакета
+производителя нельзя угадывать.
 
 ## Проверка на устройстве
 
@@ -136,12 +161,40 @@ adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 ```
 
-Только после восстановления прежнего Home выключите дополнительный alias:
+Вместо команды можно выбрать записанный лаунчер в системных настройках Home.
+Только после восстановления прежнего Home снова откройте встроенную настройку
+OTTPlay и выберите **Отключить**. Экран не позволит отключить компонент, пока
+OTTPlay остаётся домашним приложением или наличие замены нельзя подтвердить.
 
 ```sh
-adb -s "$OTT_ADB_SERIAL" shell pm disable --user 0 play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -n play.ott.foss/.HomeSetupActivity
+```
+
+После подтверждения отключения проверьте открытие записанного лаунчера:
+
+```sh
 adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 ```
 
 Обычный значок OTTPlay остаётся доступным. Удалять данные плеера не нужно.
+
+## Заставка проектора
+
+Заставка Android может перекрывать уже работающий плеер. На X1BQ с Android 11
+и LuminaOS 1.0.73 кнопка «Назад» закрыла заставку производителя. Для установки,
+используемой как выделенный плеер, `screensaver_enabled` у пользователя `0`
+изменён с `1` на `0`:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell settings --user 0 get secure screensaver_enabled
+# Необязательное изменение, после записи исходного значения:
+adb -s "$OTT_ADB_SERIAL" shell settings --user 0 put secure screensaver_enabled 0
+```
+
+Для отмены верните записанное значение. Если оно отсутствовало (`null`),
+используйте `settings --user 0 delete secure screensaver_enabled`. Эта настройка
+не связана с выбором Home. Таймер отключения экрана на проверенном устройстве
+оставлен прежним: окно OTT во время воспроизведения уже удерживало
+`KEEP_SCREEN_ON`. Заставки других производителей могут не учитывать этот флаг.

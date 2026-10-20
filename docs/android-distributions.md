@@ -51,8 +51,9 @@ when validating a particular installation. [Инструкция на русск
 
 ### Install and preserve the previous Home app
 
-Use an APK containing the alias, signed with the same certificate as the
-installed `play.ott.foss`. Older APKs do not contain this component. An ordinary
+Use an APK containing both `HomeActivity` and `HomeSetupActivity`, signed with
+the same certificate as the installed `play.ott.foss`. Older APKs may lack
+one or both components. An ordinary
 signed update preserves the application data, including profiles and remote
 registration. Do not uninstall the player, clear its data or force a downgrade
 to resolve an installation error.
@@ -86,10 +87,22 @@ OTT_PREVIOUS_HOME='REPLACE_WITH_RECORDED_HOME_COMPONENT'
 
 ### Enable and verify Home mode
 
+Open the native setup screen:
+
 ```sh
-adb -s "$OTT_ADB_SERIAL" shell pm enable --user 0 play.ott.foss/.HomeActivity
-adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
-  play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -n play.ott.foss/.HomeSetupActivity
+```
+
+Choose **Enable**, confirm the change, then select OTTPlay in Android's Home
+selector. Opening this screen alone does not change the Home app. OTTPlay enables
+its own alias after confirmation; production firmware can reject `adb shell pm
+enable` for another application's component. Root access and a debuggable build
+are unnecessary.
+
+Verify the result and manually open Home once:
+
+```sh
 adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
@@ -97,8 +110,16 @@ adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
 ```
 
 The resolved Home component must be the OTTPlay alias, and the player must open.
-If the firmware rejects `set-home-activity`, use its default-app/Home selector
-and verify the resolver again. Stop if no supported selector accepts the app;
+If necessary, open the firmware's default-app/Home selector. On firmware without
+a working selector, an authorized ADB operator can set the default after enabling
+the entry in the app:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell cmd package set-home-activity --user 0 \
+  play.ott.foss/.HomeActivity
+```
+
+Verify the resolver again. Stop if neither supported path accepts the app;
 do not disable the manufacturer's launcher to force selection. The Android
 [Home role](https://developer.android.com/reference/androidx/core/role/RoleManagerCompat#ROLE_HOME)
 is the supported association. The manual `am start` above is only a preflight
@@ -115,6 +136,8 @@ adb -s "$OTT_ADB_SERIAL" shell am start --user 0 -n "$OTT_PREVIOUS_HOME"
 ```
 
 The latter opens the old launcher without restoring it as the default.
+Some firmware does not resolve `android.settings.SETTINGS`. In that case use a
+verified settings component for that device; do not assume a vendor package name.
 
 ### Verify startup on the actual device
 
@@ -158,15 +181,43 @@ adb -s "$OTT_ADB_SERIAL" shell cmd package resolve-activity --brief --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 ```
 
-Only after the previous Home is restored, disable the optional alias:
+Alternatively, select the recorded launcher in Android's Home settings. Only
+after the previous Home is restored, reopen OTTPlay's native setup screen and
+choose **Disable**. The screen refuses to disable the alias while OTTPlay is
+still the selected Home or a replacement cannot be verified.
 
 ```sh
-adb -s "$OTT_ADB_SERIAL" shell pm disable --user 0 play.ott.foss/.HomeActivity
+adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
+  -n play.ott.foss/.HomeSetupActivity
+```
+
+After confirming Disable, verify that Home opens the recorded launcher:
+
+```sh
 adb -s "$OTT_ADB_SERIAL" shell am start --user 0 \
   -a android.intent.action.MAIN -c android.intent.category.HOME
 ```
 
 The normal OTTPlay app icon remains available. No player data needs to be removed.
+
+### Projector screen saver
+
+An Android screen saver can cover an already running player. On the X1BQ with
+Android 11 and LuminaOS 1.0.73, pressing Back dismissed the vendor screen saver.
+For the dedicated-player installation, `screensaver_enabled` was changed from
+`1` to `0` for user `0`:
+
+```sh
+adb -s "$OTT_ADB_SERIAL" shell settings --user 0 get secure screensaver_enabled
+# Optional, after recording the original value:
+adb -s "$OTT_ADB_SERIAL" shell settings --user 0 put secure screensaver_enabled 0
+```
+
+Restore the recorded value to undo this change; use `settings --user 0 delete
+secure screensaver_enabled` if the original value was absent (`null`). This
+setting is separate from selecting the Home app. The tested installation kept
+its original screen-off timeout: OTT's active playback window already held
+`KEEP_SCREEN_ON`. Do not assume every vendor screen saver follows this setting.
 
 ## Release identity
 
