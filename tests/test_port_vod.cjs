@@ -708,6 +708,74 @@ if (require.main === module) {
             "Favorites hint remains when a favoriteable media row is present"
         );
     }
+    // Local files become finite playback before their first channel-info paint.
+    // Only the owned file/source may supply the footer, including after EOF.
+    {
+        const c = fixture();
+        c.__ottActiveProviderDriver = { id: "offline" };
+        c.p_pref = "offline";
+        let namespace = "offline:0";
+        c.__ottOfflineProfiles = { namespace: () => namespace };
+        c.channels = {
+            1: { channel_name: "First <clip>.mp4", rec: 0 },
+            2: { channel_name: "Second clip.mkv", rec: 0 },
+        };
+        c.observeCurrentProgramme = () =>
+            assert.fail("Local files have no EPG");
+        c.getChannelUrl = () => "blob:local";
+        c.ifParentalAccessChId = () => false;
+        c.checkMedia = () => {};
+        for (const selector of [
+            "#channel_name",
+            "#programm_name",
+            "#programm_name2",
+        ])
+            c.$(selector).text("Previous channel");
+        c._playChannel(0, 0);
+        assert(c.playType < 0, "local channel is immediately finite");
+        for (const selector of [
+            "#channel_name",
+            "#programm_name",
+            "#programm_name2",
+        ])
+            assert.equal(c.elements[selector].textContent, "First <clip>.mp4");
+
+        c.cats.All = [1, 2];
+        c._playChannel(0, 1);
+        c.updateChannelInfo(1); // Delayed paint for the old file.
+        assert.equal(
+            c.elements["#programm_name"].textContent,
+            "Second clip.mkv"
+        );
+        c.__ottClassicPlayback.command({ type: "stop" });
+        c.updateChannelInfo(2);
+        assert.equal(
+            c.elements["#programm_name"].textContent,
+            "Second clip.mkv"
+        );
+
+        // A new local profile may reuse the same channel ID before its load completes.
+        namespace = "offline:1";
+        c.elements["#programm_name"].textContent = "New profile pending";
+        c.updateChannelInfo(2);
+        assert.equal(
+            c.elements["#programm_name"].textContent,
+            "New profile pending"
+        );
+        c.channels[2].channel_name = "Other profile.mp4";
+        c._playChannel(0, 1);
+        assert.equal(
+            c.elements["#programm_name"].textContent,
+            "Other profile.mp4"
+        );
+
+        // A new provider may also reuse a numeric ID while its old callback remains queued.
+        c.p_pref = "m3u";
+        c.__ottActiveProviderDriver = { id: "m3u" };
+        c.elements["#programm_name"].textContent = "New source";
+        c.updateChannelInfo(2);
+        assert.equal(c.elements["#programm_name"].textContent, "New source");
+    }
     // An outstanding TV guide callback must not overwrite the playing movie's OSD.
     {
         const c = fixture();

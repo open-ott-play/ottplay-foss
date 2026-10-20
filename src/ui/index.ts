@@ -1616,7 +1616,25 @@ export function virtualTimeshiftProg(nowSec?: number): {
 export function updateChannelInfo(channelId: number): void {
     // A retained live guide subscription can fire during archive or VOD.
     // Those modes own their programme, playhead and footer rendering.
-    if (channelId == null || (window as any).playType) return;
+    var host = window as any;
+    // Local files retain channel navigation, but enter finite playback before
+    // this first repaint. Their current channel still owns the filename.
+    var localFile =
+        host.__ottActiveProviderDriver?.id === "offline" && host.playType < 0;
+    if (channelId == null || (host.playType && !localFile)) return;
+    if (localFile) {
+        var playback = host.__ottClassicPlayback;
+        var state = playback && playback.snapshot();
+        if (
+            !state ||
+            !state.target ||
+            !state.historyTarget ||
+            state.target.channelId !== "channel:" + channelId ||
+            state.historyTarget.channelId !== String(channelId) ||
+            state.target.sourceId !== playback.sourceId()
+        )
+            return;
+    }
     var curList = (window as any).curList || [];
     var primaryIndex = (window as any).primaryIndex;
     if (channelId !== curList[primaryIndex]) return;
@@ -1679,7 +1697,8 @@ export function updateChannelInfo(channelId: number): void {
 
     // EPG data — legacy stbPlayer.js:1258-1281 uses observeCurrentProgramme return,
     // then always writes +remaining minutes and next-program duration.
-    var hasProg = observeCurrentProgramme(channelId, updateChannelInfo);
+    var hasProg =
+        !localFile && observeCurrentProgramme(channelId, updateChannelInfo);
     if (hasProg && t && t.time_to) {
         // Has current EPG program
         if (programNameEl) programNameEl.textContent = t.name;
@@ -1757,13 +1776,19 @@ export function updateChannelInfo(channelId: number): void {
             if (programDurationEl) programDurationEl.textContent = "";
             if (programDescrEl) programDescrEl.textContent = "";
         } else {
-            if (programNameEl) programNameEl.innerHTML = "&nbsp; ";
+            if (programNameEl) {
+                if (localFile && t)
+                    programNameEl.textContent = t.channel_name || "";
+                else programNameEl.innerHTML = "&nbsp; ";
+            }
             wAny._prog100 = 0;
             if (progressEl) progressEl.style.width = "0%";
             if (progressREl) progressREl.style.width = "0%";
             if (beginTimeEl) beginTimeEl.textContent = "";
             if (endTimeEl) endTimeEl.textContent = "";
-            if (programName2El) programName2El.textContent = "";
+            if (programName2El)
+                programName2El.textContent =
+                    localFile && t ? t.channel_name || "" : "";
             if (programDurationEl) programDurationEl.textContent = "";
             if (programDescrEl) programDescrEl.textContent = "";
         }
