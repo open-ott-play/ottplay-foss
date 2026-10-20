@@ -5,6 +5,8 @@
 
     var instance = Number(window.location.hash.slice(1));
     var current = null;
+    var teardowns = [];
+    var teardownFailed = false;
     var lastSession = 0;
     var lifecycle = 0;
     var libraries = {};
@@ -69,8 +71,10 @@
     }
 
     function release(state) {
-        if (!state) return;
-        if (state.autoCancel) state.autoCancel();
+        if (!state) return Promise.resolve();
+        var teardown = Promise.resolve();
+        var failed = false;
+        try { if (state.autoCancel) state.autoCancel(); } catch (_) { failed = true; }
         state.autoCancel = null;
         state.autoNative = false;
         state.playbackEpoch++;
@@ -79,22 +83,37 @@
         if (state.hls) {
             try {
                 state.hls.destroy();
-            } catch (_) {}
+            } catch (_) { failed = true; }
             state.hls = null;
         }
         if (state.shaka) {
             try {
                 var destroyed = state.shaka.destroy();
-                if (destroyed && destroyed.catch)
-                    destroyed.catch(function () {});
-            } catch (_) {}
+                if (destroyed && destroyed.then) {
+                    teardown = destroyed;
+                    teardown.catch(function () {});
+                }
+            } catch (_) { failed = true; }
             state.shaka = null;
         }
         try {
             state.video.pause();
             state.video.removeAttribute("src");
             state.video.load();
-        } catch (_) {}
+        } catch (_) { failed = true; }
+        if (failed) teardown = Promise.reject(new Error("PiP teardown failed"));
+        // A replaced/failed engine can still own requests while the new one plays.
+        // Keep every asynchronous teardown in the window-wide drain boundary.
+        teardowns.push(teardown);
+        function retired() {
+            var index = teardowns.indexOf(teardown);
+            if (index >= 0) teardowns.splice(index, 1);
+        }
+        teardown.then(retired, function () {
+            teardownFailed = true;
+            retired();
+        });
+        return teardown;
     }
 
     function stop(session) {
@@ -106,6 +125,11 @@
         current = null;
         release(previous);
         status("");
+        if (typeof session === "number") {
+            Promise.all(teardowns.slice()).then(function () {
+                report({ session: session }, teardownFailed ? "stop_error" : "stopped");
+            }, function () { report({ session: session }, "stop_error"); });
+        }
     }
 
     function fail(state) {

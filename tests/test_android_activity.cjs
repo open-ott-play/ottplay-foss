@@ -76,6 +76,24 @@ try {
         "package android.os; public class Bundle {}"
     );
     write(
+        "android/content/SharedPreferences.java",
+        `package android.content; public class SharedPreferences {
+        public boolean standby;
+        public boolean getBoolean(String key,boolean fallback){
+            if(!"standby".equals(key) || fallback)throw new AssertionError();
+            return standby;
+        }
+    }`
+    );
+    write(
+        "play/ott/foss/NativeWork.java",
+        `package play.ott.foss; public class NativeWork {
+        public static final NativeWork INSTANCE=new NativeWork();
+        public boolean standby; public int calls;
+        public void setStandby(boolean value){standby=value;calls++;}
+    }`
+    );
+    write(
         "android/view/KeyEvent.java",
         `package android.view; public class KeyEvent {
         public static final int ACTION_DOWN=0, ACTION_UP=1;
@@ -100,10 +118,20 @@ try {
         "com/getcapacitor/BridgeActivity.java",
         `package com.getcapacitor; public class BridgeActivity {
         public Bridge bridge; public int fallback; public java.util.List<String> plugins=new java.util.ArrayList<>();
+        public android.content.SharedPreferences preferences=new android.content.SharedPreferences();
+        public android.content.SharedPreferences getSharedPreferences(String name,int mode){
+            if(!"ott-background".equals(name) || mode!=0)throw new AssertionError();
+            return preferences;
+        }
         public static final String AUDIO_SERVICE="audio";
         public android.media.AudioManager audio=new android.media.AudioManager();
         public Object getSystemService(String name){if(!AUDIO_SERVICE.equals(name))throw new AssertionError();return audio;}
-        public void registerPlugin(Class<?> plugin){if(bridge!=null)throw new AssertionError("late plugin registration");plugins.add(plugin.getName());}
+        public void registerPlugin(Class<?> plugin){
+            if(bridge!=null)throw new AssertionError("late plugin registration");
+            if(play.ott.foss.NativeWork.INSTANCE.calls!=1 || play.ott.foss.NativeWork.INSTANCE.standby!=preferences.standby)
+                throw new AssertionError("standby persistence must be restored before plugin registration");
+            plugins.add(plugin.getName());
+        }
         protected void onCreate(android.os.Bundle state){bridge=new Bridge();}
         public android.view.Window window=new android.view.Window(); public boolean focus=true,pip=false;
         public android.view.Window getWindow(){return window;}
@@ -209,7 +237,9 @@ try {
             check(app.audio.volume==6 && app.audio.calls==1);
             check(app.dispatchKeyEvent(new KeyEvent(1,KeyEvent.KEYCODE_VOLUME_UP,0)));
             check(app.audio.calls==1);
+            app.preferences.standby=true;
             app.onCreate(new android.os.Bundle());
+            check(NativeWork.INSTANCE.standby && NativeWork.INSTANCE.calls==1);
             check(androidx.core.view.WindowInsetsControllerCompat.hides==1);
             check(app.window.cleared==2048);
             androidx.core.view.WindowInsetsCompat.imeVisible=true;
@@ -262,6 +292,11 @@ try {
             app.audio=null;
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_VOLUME_UP,0)));
             check(!app.dispatchKeyEvent(new KeyEvent(0,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,0)));
+            NativeWork.INSTANCE.calls=0;
+            MainActivity awake=new MainActivity();
+            awake.onCreate(new android.os.Bundle());
+            check(!NativeWork.INSTANCE.standby && NativeWork.INSTANCE.calls==1);
+            awake.onDestroy();
         }
     }`
     );
@@ -380,6 +415,7 @@ try {
         setInterval() {
             return 1;
         },
+        stbIsStandby: () => false,
         video,
     };
     w.window = w;
@@ -466,7 +502,7 @@ try {
     assert.equal(destroyed, 1);
     assert.equal(video.paused, true);
     console.log(
-        "PASS Android activity: native hardware volume independent of WebView, plugin registration before bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"
+        "PASS Android activity: native hardware volume independent of WebView, persisted standby before plugin registration and bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"
     );
 } finally {
     fs.rmSync(temp, { force: true, recursive: true });

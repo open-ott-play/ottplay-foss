@@ -1026,6 +1026,7 @@ export function stbGetAllItems(): Record<string, string> {
         if (
             key === "__ottKioskV1" ||
             key === "offlineProfileBindings" ||
+            key === "__ottStandbyV1" ||
             isStorageMetadataKey(key)
         )
             delete items[key];
@@ -1038,6 +1039,7 @@ export function isPortableSettingsKey(key: string): boolean {
     return (
         key !== "__ottKioskV1" &&
         key !== "offlineProfileBindings" &&
+        key !== "__ottStandbyV1" &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
     );
@@ -1055,6 +1057,7 @@ export function portableSettingsSnapshot(
         if (
             key === "__ottKioskV1" ||
             key === "offlineProfileBindings" ||
+            key === "__ottStandbyV1" ||
             isStorageMetadataKey(key)
         )
             delete result[key];
@@ -1109,7 +1112,9 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
         .filter(function (key) {
             // A backup cannot replace or erase this installation's grants.
             return (
-                key !== "offlineProfileBindings" && !isStorageMetadataKey(key)
+                key !== "offlineProfileBindings" &&
+                key !== "__ottStandbyV1" &&
+                !isStorageMetadataKey(key)
             );
         })
         .map(function (key) {

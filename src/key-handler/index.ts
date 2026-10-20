@@ -332,7 +332,7 @@ function toggleMainPlayback(): void {
  * @returns void
  * @sideeffect Calls any of the following on `window`: numberProg, keyFun, channelsList, infoBarHide, exitPortal,
  *             popupList, prevProg, stbPause/stbContinue, playChannel, stbToggleMute, stbSetVolume,
- *             showShift, showChannelInfo, epgList, togglePip, toggleStandby, stbExit, etc.
+ *             showShift, showChannelInfo, epgList, togglePip, stbStop/stbStopPip, stbExit, etc.
  *             Sets `window.isListVisible` for CH_LIST and SETUP.
  * @analysis Digits 0-9 are handled before the switch. Color keys are skipped when settings.noColorKeys is set.
  *             RETURN dispatches based on settings.eFun (0-4). The PLAY/PAUSE toggle uses stbIsPlaying().
@@ -382,7 +382,11 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     if (w.playType < 0 && /^(up|down|left|right)$/.test(command.id)) {
         var media = w.__ottMedia && w.__ottMedia.current();
         // A remote Plex queue keeps the selected TV provider unchanged.
-        if (media && /^plex(?:@|$)/.test(media.ref.sourceId)) {
+        if (
+            media &&
+            (/^plex(?:@|$)/.test(media.ref.sourceId) ||
+                (media.sequence && media.sequence.channel))
+        ) {
             if (command.id === "left" || command.id === "right")
                 call("shiftArchive", command.id === "left" ? -10 : 10);
             else w.__ottMedia.skip(command.id === "up" ? 1 : -1);
@@ -473,8 +477,16 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             } catch (_) {
                 // Persistence must not prevent the user's explicit exit.
             }
+            // Exit preserves the next launch's playback intent. A denied or
+            // asynchronous window close must not become persistent standby.
+            ["stbStop", "stbStopPip"].forEach(function (name) {
+                try {
+                    call(name);
+                } catch (_) {
+                    // Retire the other lane and exit even if cleanup fails.
+                }
+            });
             call("stbExit");
-            call("toggleStandby");
         },
         "previous-channel": function () {
             call("prevProg");
@@ -558,6 +570,8 @@ export function dispatchKey(keyCode: number, event?: Event): void {
 export function keyFun(fn: number): void {
     var w = window as any;
     var id = w.__ottInputRouter.binding(fn);
+    // Local videos are finite media, but these bindings still change files.
+    var localVideos = w.__ottActiveProviderDriver?.id === "offline";
     function call(name: string, ...args: any[]) {
         if (typeof w[name] === "function") return w[name].apply(w, args);
     }
@@ -599,11 +613,11 @@ export function keyFun(fn: number): void {
             call("popupList");
         },
         "navigation.backward": function () {
-            if (w.playType) call("shiftArchiveSelect", 0);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 0);
             else call("minusProg");
         },
         "navigation.forward": function () {
-            if (w.playType) call("shiftArchiveSelect", 60);
+            if (w.playType && !localVideos) call("shiftArchiveSelect", 60);
             else call("plusProg");
         },
         "navigation.quick": function () {

@@ -144,17 +144,13 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let completion: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
-                    let code = (error as NSError).code == NSURLErrorTimedOut ? "timeout" : nil
-                    call.reject("portalRequest failed: \(error.localizedDescription)", code)
-                }
+                let code = (error as NSError).code == NSURLErrorTimedOut ? "timeout" : nil
+                call.reject("portalRequest failed: \(error.localizedDescription)", code)
                 return
             }
             guard let data = data, let response = response else {
                 let nsError = NSError(domain: "StalkerPortal", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])
-                DispatchQueue.main.async {
-                    call.reject("portalRequest failed: \(nsError.localizedDescription)")
-                }
+                call.reject("portalRequest failed: \(nsError.localizedDescription)")
                 return
             }
             let http = response as? HTTPURLResponse
@@ -162,9 +158,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             let contentType = response.mimeType ?? "application/octet-stream"
             guard let body = String(data: data, encoding: .utf8) else {
                 // A decode failure must not become a successful empty catalogue.
-                DispatchQueue.main.async {
-                    call.reject("portalRequest failed: response is not valid UTF-8", "invalid_response")
-                }
+                call.reject("portalRequest failed: response is not valid UTF-8", "invalid_response")
                 return
             }
             var setCookie: [String] = []
@@ -185,27 +179,30 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
             Logger(subsystem: "play.ott.foss", category: "StalkerPortal").debug("[StalkerPortal] OK \(rawURL) (status=\(status))")
-            DispatchQueue.main.async {
-                call.resolve([
-                    "status": NSNumber(value: status),
-                    "statusText": HTTPURLResponse.localizedString(forStatusCode: status),
-                    "headers": responseHeaders,
-                    "body": body,
-                    "contentType": contentType,
-                    "setCookie": setCookie,
-                ])
-            }
+            call.resolve([
+                "status": NSNumber(value: status),
+                "statusText": HTTPURLResponse.localizedString(forStatusCode: status),
+                "headers": responseHeaders,
+                "body": body,
+                "contentType": contentType,
+                "setCookie": setCookie,
+            ])
         }
         DispatchQueue.main.async {
             if let requestID, self.requests[requestID] != nil {
                 call.reject("HTTP request is already pending"); return
             }
+            let control = call.getBool("remoteControl") == true || call.getBool("secureControl") == true
+            let ticket = control ? nil : NativeWork.shared.begin()
+            if !control && ticket == nil { call.reject("Player is in standby", "standby"); return }
             let ownership = UUID()
             let finish: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
                 DispatchQueue.main.async {
                     if let requestID, self.requests[requestID]?.id == ownership { self.requests[requestID] = nil }
+                    defer { ticket?.finish() }
+                    if let ticket { do { try ticket.check() } catch { call.reject("Provider request cancelled", "cancelled"); return } }
+                    completion(data, response, error)
                 }
-                completion(data, response, error)
             }
             #if os(iOS)
             let task = AccessMedia.fetch(request, completion: finish)
@@ -213,6 +210,7 @@ public class StalkerPortalPlugin: CAPPlugin, CAPBridgedPlugin {
             let task = URLSession.shared.dataTask(with: request, completionHandler: finish)
             task.resume()
             #endif
+            ticket?.cancelWith { task.cancel() }
             if let requestID { self.requests[requestID] = (ownership, { task.cancel() }) }
         }
     }

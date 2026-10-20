@@ -99,15 +99,34 @@ for (const language of ["_eng", "_rus"]) {
                 },
             });
             await expect(dialog).toBeHidden();
+            // Unconfigured startup opens profile folder selection, never all
+            // library contents as an implicit playback queue.
+            for (const count of [3, 4]) {
+                await expect.poll(() => pending.length).toBe(count);
+                await pending[count - 1].fulfill({
+                    headers: { "access-control-allow-origin": "*" },
+                    json: {
+                        MediaContainer: {
+                            Directory: [
+                                {
+                                    key: "7",
+                                    title: "My library",
+                                    type: "movie",
+                                },
+                            ],
+                        },
+                    },
+                });
+            }
             await expect(page.locator("#list")).toContainText("My library");
             await page.evaluate(() => window.loadChannels());
-            await expect.poll(() => pending.length).toBe(3);
+            await expect.poll(() => pending.length).toBe(5);
             await expect(spinner).toBeVisible();
             await expect(dialog).toContainText(waitText);
             await expect(dialog).toContainText(connectionText);
             await page.waitForTimeout(3500);
             await expect(spinner).toBeVisible();
-            await pending[2].fulfill({
+            await pending[4].fulfill({
                 body: "Unauthorized",
                 headers: { "access-control-allow-origin": "*" },
                 status: 401,
@@ -263,6 +282,38 @@ for (const format of ["JSON", "XML"]) {
     );
 }
 
+// Folder browsing remains a supported Media API for controllers and saved
+// media queues, while ordinary profile startup now uses the channel playlist.
+async function openLegacyPlex(page, restore = false) {
+    await page.waitForFunction(
+        () =>
+            window.__ottActiveProviderDriver?.libraryReady() &&
+            window.providerMediaClient
+    );
+    if (!restore)
+        await page.waitForFunction(
+            () =>
+                !window.cList.length ||
+                window.__ottClassicPlayback.snapshot().phase === "playing"
+        );
+    await page.evaluate((restore) => {
+        if (!restore) window.stbStop();
+        // Close an unconfigured profile picker through its public editor entry,
+        // so a delayed picker callback cannot replace the explicit Media view.
+        window.__ottEditProvider();
+        if (restore) window.closeList();
+        window.__ottChannels.mount(window);
+        window.__ottMedia.useSource(null);
+        const open = () =>
+            window.__ottMedia.open({
+                path: "/library/sections",
+                plexSource: window.__ottMedia.sourceId(),
+                title: "Plex",
+            });
+        if (!restore || !window.__ottMedia.restoreLast(open)) open();
+    }, restore);
+}
+
 async function select(page, title) {
     await page.waitForFunction(
         (title) =>
@@ -381,6 +432,12 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
                     "plexcfg",
                     JSON.stringify({
                         address: local,
+                        folders: [
+                            {
+                                path: "/library/sections/7/folder",
+                                title: "Kiosk library",
+                            },
+                        ],
                         playback: "compatible",
                         token: "synthetic-kiosk-token",
                     })
@@ -397,6 +454,7 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
     );
     await page.goto("/f/pc/");
     await page.keyboard.press("Shift");
+    await openLegacyPlex(page);
     await select(page, "Kiosk library");
     await select(page, "Browse folders");
     await select(page, "Kiosk film");
@@ -602,6 +660,7 @@ touchTest(
         );
         await page.goto("/f/pc/");
         await page.keyboard.press("Shift");
+        await openLegacyPlex(page);
         await select(page, "My library");
         await select(
             page,
@@ -746,7 +805,7 @@ touchTest(
     }
 );
 
-test("Plex boots as a nested library, plays direct HLS and keeps access URLs out of history", async ({
+test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of history", async ({
     page,
     context,
     baseURL,
@@ -930,6 +989,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     await page.goto("/f/pc/");
     // Real users activate the page with a remote/key/click before selecting media.
     await page.keyboard.press("Shift");
+    await openLegacyPlex(page);
     await select(page, "My library");
     await select(page, "Browse folders");
     for (let level = 1; level <= 3; level++)
@@ -1020,7 +1080,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     const shuffledGeneration = await page.evaluate(
         () => window.__ottClassicPlayback.snapshot().generation
     );
-    await page.keyboard.press("Enter");
+    await page.evaluate(() => window.__ottMedia.open(null));
     await expect(shuffle("On")).toBeVisible();
     await expect(shuffle("On")).toHaveAttribute("data-state", "on");
     await expect(shuffle("On")).toHaveAttribute("aria-pressed", "true");
@@ -1139,7 +1199,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     }
     // Visible list/dialog owners still receive arrows without seeking the
     // underlying paused movie or falling through to the volume bindings.
-    await page.keyboard.press("Enter");
+    await page.evaluate(() => window.__ottMedia.open(null));
     await expect(page.locator("#listCaption")).toContainText("Folder 3");
     for (const [key, keyCode] of [
         ["ArrowLeft", 37],
@@ -1200,6 +1260,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     releaseCollection = undefined;
     holdDecision = true;
     await page.reload();
+    await openLegacyPlex(page, true);
     await expect.poll(() => typeof releaseCollection).toBe("function");
     const startupSpinner = page.locator("#dialogbox .ott-spinner");
     await expect(startupSpinner).toBeVisible();
@@ -1235,7 +1296,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     expect(
         await page.evaluate(() => document.querySelector("video").currentTime)
     ).toBeLessThan(15);
-    await page.keyboard.press("Enter");
+    await page.evaluate(() => window.__ottMedia.open(null));
     await expect(page.locator("#listCaption")).toContainText("Folder 3");
     await expect(page.locator("#list")).toContainText("Following film");
     await page.keyboard.press("ArrowDown");
@@ -1312,6 +1373,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
     });
     failCollection = true;
     await page.reload();
+    await openLegacyPlex(page, true);
     await page.waitForFunction(
         () =>
             window.__ottMedia?.current()?.payload.request.path ===
@@ -1387,6 +1449,7 @@ test("Plex boots as a nested library, plays direct HLS and keeps access URLs out
         (path) => path === "/library/metadata/42"
     ).length;
     await page.reload();
+    await openLegacyPlex(page, true);
     await expect(page.locator("body")).toContainText("My library");
     expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
     expect(
@@ -1530,6 +1593,7 @@ test("Plex appends folder pages without changing selection or Back ownership and
     }
 
     await page.goto("/f/pc/");
+    await openLegacyPlex(page);
     await select(page, "My library");
     await select(page, "Browse folders");
     await select(page, "Turtles");
@@ -1738,7 +1802,7 @@ for (const { engine, strict } of [
             });
             await context.routeWebSocket("**/*", (socket) => socket.close());
             await context.addInitScript(
-                ({ local, engine }) => {
+                ({ local, engine, strict }) => {
                     const play = HTMLMediaElement.prototype.play;
                     HTMLMediaElement.prototype.play = function () {
                         this.muted = true;
@@ -1759,16 +1823,25 @@ for (const { engine, strict } of [
                         "plexcfg",
                         JSON.stringify({
                             address: local,
+                            folders: strict
+                                ? [
+                                      {
+                                          path: "/library/sections/7/folder",
+                                          title: "Aspect library",
+                                      },
+                                  ]
+                                : undefined,
                             playback: "compatible",
                             token: "synthetic-aspect-token",
                         })
                     );
                 },
-                { engine, local }
+                { engine, local, strict }
             );
             await page.setViewportSize({ height: 720, width: 960 });
             await page.goto(engine === "video.js" ? "/f/pc2/" : "/f/pc/");
             await page.keyboard.press("Shift");
+            await openLegacyPlex(page);
             await select(page, "Aspect library");
             await select(page, "Browse folders");
             await select(page, films[0].title);
@@ -1989,8 +2062,10 @@ for (const { engine, strict } of [
                         )
                     ).toBe(true);
             }
-            // Library-only providers have no TV channels, but still own durable media preferences.
-            expect(await page.evaluate(() => window.cList.length)).toBe(0);
+            // Explicit Media playback shares preferences with its configured flat playlist.
+            expect(await page.evaluate(() => window.cList.length)).toBe(
+                strict ? 2 : 0
+            );
             await page.evaluate(() => window.stbToggleAspectRatio());
             await page
                 .getByRole("button", { exact: true, name: "Fill screen" })
@@ -2098,7 +2173,7 @@ for (const { engine, strict } of [
                     );
                 });
             } else {
-                await page.keyboard.press("Enter");
+                await page.evaluate(() => window.__ottMedia.open(null));
                 await select(page, films[1].title);
                 await ready("43");
             }
@@ -2108,6 +2183,7 @@ for (const { engine, strict } of [
             expect(await aspect()).toEqual({ mode: "fill", savedMode: "fill" });
             await geometry("fill");
             await page.reload();
+            if (!strict) await openLegacyPlex(page, true);
             await ready("43");
             expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
                 strict

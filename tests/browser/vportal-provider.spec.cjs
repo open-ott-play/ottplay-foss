@@ -5,7 +5,7 @@ const link = "portal::[key:FIXTURE_VPORTAL_SECRET]https://portal.fixture/api/";
 test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
-test("Independent VPortal opens without TV, locks playback and restores after reload", async ({
+test("VPortal flat channel playlist locks playback and restores after reload", async ({
     page,
     context,
     baseURL,
@@ -82,6 +82,7 @@ test("Independent VPortal opens without TV, locks playback and restores after re
                     portals: Array.from({ length: 15 }, (_, i) => ({
                         link: i ? "" : link,
                         name: i ? "" : "Кино",
+                        sections: i ? [] : [{ request: {}, title: "Root" }],
                     })),
                 })
             );
@@ -94,11 +95,15 @@ test("Independent VPortal opens without TV, locks playback and restores after re
         };
     }, link);
     await page.goto("/f/pc/");
-    await expect(page.locator("#list")).toContainText("Fixture film");
     await expect
         .poll(() => page.evaluate(() => window.commandChannelsReady))
         .toBe(true);
-    expect(await page.evaluate(() => window.cList.length)).toBe(0);
+    expect(await page.evaluate(() => window.cList.length)).toBe(1);
+    await page.waitForFunction(
+        () => document.querySelector("video")?.currentTime > 0.2
+    );
+    await page.evaluate(() => window.channelsList(0, 0));
+    await expect(page.locator("#list")).toContainText("Fixture film");
     await page.evaluate(() => window.showProviderSelection());
     await expect(page.locator("#list")).toContainText("VPortal");
     await page.evaluate(() => window.__ottEditProvider());
@@ -109,32 +114,27 @@ test("Independent VPortal opens without TV, locks playback and restores after re
     expect(await page.locator("#list").innerText()).not.toContain(
         "FIXTURE_VPORTAL_SECRET"
     );
-    await page.evaluate(() => window.popMedia());
-    await page.waitForFunction(() =>
-        window.__ottMedia
-            .snapshot()
-            .frame?.items.some((x) => x.title === "Fixture film")
-    );
-    await page.keyboard.press("Shift");
-    await page.evaluate(() =>
-        window.__ottMedia.select(
-            window.__ottMedia
-                .snapshot()
-                .frame.items.findIndex((x) => x.title === "Fixture film")
-        )
-    );
+    await page.evaluate(() => window.channelsList(0, 0));
+    await expect(page.locator("#list")).toContainText("Fixture film");
+    await page.evaluate(() => {
+        window.selIndex = 0;
+        window.listKeyHandler(window.keys.ENTER);
+    });
     await page.waitForFunction(
         () => document.querySelector("video")?.currentTime > 0.2
     );
     const lock = await page.evaluate(
         () =>
             new Promise((resolve) =>
-                window.__ottKiosk.request({ mode: "on" }, resolve)
+                window.__ottKiosk.request(
+                    { mode: "on", query: "Fixture film" },
+                    resolve
+                )
             )
     );
     expect(lock.status).toBe("ok");
-    expect(lock.data.media.total).toBe(1);
-    expect(lock.data.channel).toBeNull();
+    expect(lock.data.media).toBeUndefined();
+    expect(lock.data.channel, JSON.stringify(lock)).toBeTruthy();
     const stored = await page.evaluate(() =>
         localStorage.getItem("__ottKioskV1")
     );

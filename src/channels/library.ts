@@ -491,9 +491,11 @@ function createChannelLibrary(
         active: ports.current,
         append: function (rows: LibraryChannel[]): void {
             if (!ports.current()) return;
+            var addedLocks: string[] = [];
             rows.forEach(function (row) {
                 if (items[row.itemId]) return;
                 catalog.push(row);
+                if (row.locked) addedLocks.push(row.itemId);
                 items[row.itemId] = { id: row.id };
                 ids[String(row.id)] = row.itemId;
                 var group = providerById[row.groupId];
@@ -509,6 +511,11 @@ function createChannelLibrary(
                 group.members.push(row.itemId);
                 providerById["system:all"].members.push(row.itemId);
             });
+            if (addedLocks.length)
+                state!.locks = unique(
+                    state!.locks.concat(addedLocks),
+                    state!.unlocks
+                );
         },
         changeMember: function (
             groupId: string,

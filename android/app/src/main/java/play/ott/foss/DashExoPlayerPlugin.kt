@@ -38,6 +38,14 @@ class DashExoPlayerPlugin : Plugin() {
         private const val NOTIFICATION_ID = 4406
     }
 
+    private var stopSubscription: (() -> Unit)? = null
+    override fun load() {
+        stopSubscription = NativeWork.onStandbyAsync { done ->
+            val act = activity
+            if (act == null) done()
+            else act.runOnUiThread { try { tearDown() } finally { done() } }
+        }
+    }
     private var player: ExoPlayer? = null
     private var playerView: PlayerView? = null
     private var overlay: FrameLayout? = null
@@ -77,6 +85,7 @@ class DashExoPlayerPlugin : Plugin() {
             return
         }
         act.runOnUiThread {
+            if (NativeWork.isStandby) { call.reject("Player is in standby", "standby"); return@runOnUiThread }
             try {
                 ensureOverlay(act)
                 releasePlayerKeepOverlay()
@@ -158,6 +167,7 @@ class DashExoPlayerPlugin : Plugin() {
             return
         }
         act.runOnUiThread {
+            if (NativeWork.isStandby) { call.reject("Player is in standby", "standby"); return@runOnUiThread }
             val p = player
             if (p == null) {
                 call.resolve(
@@ -255,6 +265,7 @@ class DashExoPlayerPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        stopSubscription?.invoke(); stopSubscription = null
         tearDown()
         super.handleOnDestroy()
     }

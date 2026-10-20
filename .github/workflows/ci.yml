@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: open-ott-play/ottplay-control-server
-          ref: 49f508ee0fecd95f61c740109f191e043c923237
+          ref: bdbce12256528bef061ed96fff0a2f26bbb4157b
           path: .control-current
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -95,9 +95,10 @@ jobs:
           OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
         run: |
           node scripts/smoke-diagnostics.cjs
-          node scripts/smoke-remote-cli.cjs
+          # M3U metadata uses the current CLI; keep the old server and its negative capability probes.
+          OTT_CLI="$GITHUB_WORKSPACE/.control-current/cli/ott.py" node scripts/smoke-remote-cli.cjs
           node scripts/smoke-workbench.cjs
-          node .control-integration/scripts/smoke_foss_roadmap.cjs .
+          # Exact M3U settings comparison uses the current contract in the roadmap step below.
       - name: Build the engine-aware control server
         working-directory: .control-current
         run: go build -o "$RUNNER_TEMP/ottplay-control-server-current" ./cmd/ottplay-control-server

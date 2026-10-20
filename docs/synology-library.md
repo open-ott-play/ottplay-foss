@@ -66,8 +66,9 @@ replace `OTTPLAY_NAS_KEY` and restart the server.
 
 ## Other players
 
-- OTT-play installations with VPortal support: use the file's `vportal` link in
-  **VPortal link**, then open **Show Media Library**. The link has the form
+- OTT-play installations with VPortal support: select the standalone **VPortal**
+  provider and enter the file's `vportal` link in its profile. Choose the sections
+  to include in the channel list. The link has the form
   `portal::[key:YOUR_KEY]http://PLAYER_LAN_IP:8443/nas/api`.
 - VLC, Kodi and other M3U players: open the file's `playlist` URL as a network
   playlist. It is a separate source; it does not replace an IPTV playlist.

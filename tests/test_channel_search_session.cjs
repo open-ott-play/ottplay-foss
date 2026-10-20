@@ -535,6 +535,157 @@ for (const [profile, code] of profiles) {
         });
     }
     check(
+        "Media playlist repeat belongs to Actions and keeps the channel selection",
+        (f) => {
+            let mode = "all";
+            const before = Array.from(f.host.listArray);
+            const selection = f.host.selIndex;
+            f.host.__ottActiveProviderDriver.capabilities = {
+                mediaPlaylist: true,
+            };
+            f.host.__ottMedia = {
+                cycleRepeat: () => {
+                    mode =
+                        mode === "all" ? "one" : mode === "one" ? "off" : "all";
+                },
+                repeatMode: () => mode,
+            };
+            f.host.renderButtonHint = (key, icon, label) => label;
+            const html = () =>
+                f.element("dialogbox").innerHTML ||
+                f.element("dialogbox").html ||
+                "";
+            f.host.showActionsDialog();
+            assert.match(html(), /Repeat: All/);
+            f.key("PLAY");
+            assert.equal(mode, "one");
+            assert.match(html(), /Repeat: One/);
+            f.key("PLAY");
+            assert.equal(mode, "off");
+            assert.match(html(), /Repeat: Off/);
+            assert.deepEqual(Array.from(f.host.listArray), before);
+            assert.equal(f.host.selIndex, selection);
+            f.key("RETURN");
+            f.element("listPopUp").visible = true;
+            f.host.channelsKeyHandler(f.host.keys.PLAY);
+            assert.equal(mode, "all");
+            assert.match(html(), /Repeat: All/);
+        }
+    );
+    check("Live provider Actions do not offer media repeat", (f) => {
+        f.host.renderButtonHint = (key, icon, label) => label;
+        f.host.showActionsDialog();
+        assert.doesNotMatch(
+            f.element("dialogbox").innerHTML ||
+                f.element("dialogbox").html ||
+                "",
+            /Repeat:/
+        );
+    });
+    for (const reason of [
+        "stopped",
+        "idle",
+        "cancelled-new-item",
+        "target-mismatch",
+        "source-mismatch",
+        "retired-list",
+        "missing-media",
+    ]) {
+        check("Same media row retries after " + reason, (f) => {
+            f.showChannels("provider:news", 0);
+            f.host.setCurrent(f.host.listCatIndex, 0);
+            f.host.playType = -99999999999;
+            f.host.__ottActiveProviderDriver.capabilities = {
+                mediaPlaylist: true,
+            };
+            const media = {
+                ref: { itemId: "file:11", sourceId: "media-source" },
+                sequence: {
+                    channel: {
+                        id: 11,
+                        list: { active: () => reason !== "retired-list" },
+                    },
+                },
+            };
+            const state = {
+                historyTarget: { channelId: "11", kind: "live" },
+                phase: "playing",
+                target: {
+                    channelId: "file:11",
+                    kind: "vod",
+                    sourceId: "media-source",
+                },
+            };
+            if (reason === "stopped" || reason === "idle") state.phase = reason;
+            if (reason === "cancelled-new-item") {
+                // Selection advanced before the resolver was cancelled; the
+                // old decoder and media owner still belong to another row.
+                media.sequence.channel.id = 22;
+                media.ref.itemId = state.target.channelId = "file:22";
+                state.historyTarget.channelId = "22";
+            }
+            if (reason === "target-mismatch")
+                state.target.channelId = "file:22";
+            if (reason === "source-mismatch")
+                state.target.sourceId = "old-source";
+            f.host.__ottMedia = {
+                current: () => (reason === "missing-media" ? null : media),
+            };
+            f.host.__ottClassicPlayback = { snapshot: () => state };
+            f.host.channelsKeyHandler(f.host.keys.ENTER);
+            assert.deepEqual(f.take("play"), [["play", 11]]);
+        });
+    }
+    for (const phase of ["playing", "paused", "loading"]) {
+        check(
+            "Same committed media row does not restart while " + phase,
+            (f) => {
+                f.showChannels("provider:news", 0);
+                f.host.setCurrent(f.host.listCatIndex, 0);
+                f.host.playType = -99999999999;
+                f.host.__ottActiveProviderDriver.capabilities = {
+                    mediaPlaylist: true,
+                };
+                f.host.__ottMedia = {
+                    current: () => ({
+                        ref: { itemId: "file:11", sourceId: "media-source" },
+                        sequence: {
+                            channel: { id: 11, list: { active: () => true } },
+                        },
+                    }),
+                };
+                f.host.__ottClassicPlayback = {
+                    snapshot: () => ({
+                        historyTarget: { channelId: "11", kind: "live" },
+                        phase,
+                        target: {
+                            channelId: "file:11",
+                            kind: "vod",
+                            sourceId: "media-source",
+                        },
+                    }),
+                };
+                f.host.channelsKeyHandler(f.host.keys.ENTER);
+                assert.equal(f.take("play").length, 0);
+            }
+        );
+    }
+    for (const provider of ["m3u", "offline"]) {
+        check(
+            "Same " + provider + " row preserves the normal info action",
+            (f) => {
+                f.showChannels("provider:news", 0);
+                f.host.setCurrent(f.host.listCatIndex, 0);
+                f.host.__ottActiveProviderDriver.id = provider;
+                f.host.settings = { infoTimeout: 4 };
+                f.host.channelsKeyHandler(f.host.keys.ENTER);
+                assert.equal(f.take("play").length, 0);
+                assert.deepEqual(f.take("update"), [["update", 11]]);
+                assert.deepEqual(f.take("info"), [["info", 4]]);
+            }
+        );
+    }
+    check(
         "Actions shuffle persists order and keeps the playing item",
         async (f) => {
             const before = Array.from(f.host.listArray);

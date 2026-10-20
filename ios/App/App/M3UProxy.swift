@@ -89,37 +89,30 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
 
     let completion: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
       if let error = error {
-        DispatchQueue.main.async {
-          // URLSession descriptions may contain provider credentials.
-          #if os(iOS)
-          if let failure = error as? AccessMediaFailure { call.reject(failure.rawValue); return }
-          #endif
-          call.reject("proxy_fetch failed: transport error \((error as NSError).code)")
-        }
+        // URLSession descriptions may contain provider credentials.
+        #if os(iOS)
+        if let failure = error as? AccessMediaFailure { call.reject(failure.rawValue); return }
+        #endif
+        call.reject("proxy_fetch failed: transport error \((error as NSError).code)")
         return
       }
       guard let response = response as? HTTPURLResponse else {
-        DispatchQueue.main.async { call.reject("proxy_fetch failed: invalid HTTP response") }
+        call.reject("proxy_fetch failed: invalid HTTP response")
         return
       }
       guard (200..<300).contains(response.statusCode) else {
-        DispatchQueue.main.async { call.reject("Upstream \(response.statusCode)") }
+        call.reject("Upstream \(response.statusCode)")
         return
       }
       guard let data = data, let body = String(data: data, encoding: .utf8) else {
         let nsError = NSError(
           domain: "M3UProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: "empty response"])
-        DispatchQueue.main.async {
-          call.reject("proxy_fetch failed: \(nsError.localizedDescription)")
-        }
+        call.reject("proxy_fetch failed: \(nsError.localizedDescription)")
         return
       }
       os_log("[M3UProxy] OK (status=%d, bytes=%d)", response.statusCode, data.count)
-      DispatchQueue.main.async {
-        call.resolve(["body": body])
-      }
+      call.resolve(["body": body])
     }
-
     // Register/cancel in bridge call order; a retired completion cannot remove
     // a newer request that reused the same caller ID.
     DispatchQueue.main.async {
@@ -127,14 +120,19 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
         call.reject("Proxy request is already pending")
         return
       }
+      let control = call.getBool("remoteControl") == true || call.getBool("secureControl") == true
+      let ticket = control ? nil : NativeWork.shared.begin()
+      if !control && ticket == nil { call.reject("Player is in standby", "standby"); return }
       let ownership = UUID()
       let finish: (Data?, URLResponse?, Error?) -> Void = { data, response, error in
         DispatchQueue.main.async {
           if let requestID, self.requests[requestID]?.id == ownership {
             self.requests[requestID] = nil
           }
+          defer { ticket?.finish() }
+          if let ticket { do { try ticket.check() } catch { call.reject("Provider request cancelled", "cancelled"); return } }
+          completion(data, response, error)
         }
-        completion(data, response, error)
       }
       #if os(iOS)
       let task = AccessMedia.fetch(request, completion: finish)
@@ -142,6 +140,7 @@ public class M3UProxyPlugin: CAPPlugin, CAPBridgedPlugin {
       let task = URLSession.shared.dataTask(with: request, completionHandler: finish)
       task.resume()
       #endif
+      ticket?.cancelWith { task.cancel() }
       if let requestID { self.requests[requestID] = (ownership, { task.cancel() }) }
     }
   }

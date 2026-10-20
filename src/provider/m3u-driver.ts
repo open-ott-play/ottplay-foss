@@ -116,7 +116,6 @@ function createM3uProviderDriver(
         } catch (_) {}
         return normalizeM3uConfiguration(value, fixedSlot);
     }
-    var rememberedConfiguration = configuration();
     function identity(config: M3uConfiguration): string {
         var slot = config.M3Us[config.active];
         return JSON.stringify([config.active, slot.www, String(slot.rechours)]);
@@ -738,6 +737,10 @@ function createM3uProviderDriver(
         },
         loadMedia: function (url: string, name: string, callback: any): any {
             if (!active() || !media) return function () {};
+            if (/^portal:/i.test(url.trim())) {
+                callback({ records: [] });
+                return function () {};
+            }
             return media.load(
                 {
                     mac: ports.deviceMac
@@ -757,17 +760,6 @@ function createM3uProviderDriver(
         saveConfiguration: function (value: any): boolean {
             if (!active()) return false;
             var next = normalizeM3uConfiguration(value, fixedSlot);
-            var previous = configuration();
-            next.M3Us.forEach(function (slot, index) {
-                if (
-                    slot.medUrl !== previous.M3Us[index].medUrl ||
-                    slot.medUrl !== rememberedConfiguration.M3Us[index].medUrl
-                )
-                    slot.medSourceId =
-                        Math.floor(ports.now() * 1000).toString(36) +
-                        "-" +
-                        Math.random().toString(36).slice(2);
-            });
             var operation = ++revision;
             if (identity(next) !== identity(configuration())) {
                 closeHostedGuide();
@@ -779,7 +771,6 @@ function createM3uProviderDriver(
             }
             ports.storage.set("m3uArr", JSON.stringify(next));
             if (!active() || operation !== revision) return false;
-            rememberedConfiguration = next;
             publish("configuration");
             return active() && operation === revision;
         },

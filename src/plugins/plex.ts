@@ -1,5 +1,6 @@
 interface PlexConfig {
     address: string;
+    folders?: Array<{ path: string; title: string }>;
     playback: "auto" | "original" | "compatible";
     token: string;
 }
@@ -23,7 +24,32 @@ function normalizePlexConfig(value: any): PlexConfig | null {
         return null;
     var port = /^https?:\/\/(?:\[[^\]]+\]|[^/:]+):(\d+)(?:\/|$)/i.exec(address);
     if (port && (+port[1] < 1 || +port[1] > 65535)) return null;
-    return {
+    var folders: Array<{ path: string; title: string }> | undefined;
+    if (value.folders !== undefined) {
+        if (!Array.isArray(value.folders) || value.folders.length > 1000)
+            return null;
+        folders = [];
+        var seen: any = Object.create(null);
+        for (var index = 0; index < value.folders.length; index++) {
+            var folder = value.folders[index];
+            var path = folder && plexFolderPath(folder.path);
+            if (
+                !path ||
+                typeof folder.title !== "string" ||
+                folder.title.length > 1024
+            )
+                return null;
+            if (seen[path]) continue;
+            seen[path] = true;
+            folders.push({
+                path: path,
+                title: folder.title
+                    .replace(/[\u0000-\u001f\u007f]/g, " ")
+                    .trim(),
+            });
+        }
+    }
+    var result: PlexConfig = {
         address: address,
         playback:
             value.playback === "original" || value.playback === "compatible"
@@ -31,6 +57,8 @@ function normalizePlexConfig(value: any): PlexConfig | null {
                 : "auto",
         token: token,
     };
+    if (folders !== undefined) result.folders = folders;
+    return result;
 }
 
 function plexRows(value: any): any[] {
@@ -108,6 +136,16 @@ function plexPath(value: any): string {
     return value;
 }
 
+/** Only selected library or folder roots may enter a profile playlist. */
+function plexFolderPath(value: any): string {
+    var path = plexPath(value);
+    return /^\/library\/(?:sections\/[1-9][0-9]{0,19}\/(?:all(?:\?type=(?:[134]|10))?|folder(?:\?parent=[0-9]{1,20})?)|metadata\/[1-9][0-9]{0,19}\/children)$/.test(
+        path
+    )
+        ? path
+        : "";
+}
+
 function createPlexClient(
     configuration: any,
     options: {
@@ -138,6 +176,8 @@ function createPlexClient(
     var resolveTimer: any = null;
     var cancelCollection: (() => void) | null = null;
     var cancelPage: (() => void) | null = null;
+    var cancelScan: (() => void) | null = null;
+    var scanRevision = 0;
     var pageRevision = 0;
     var sections: any = null;
     var sectionsAt = 0;
@@ -1000,6 +1040,211 @@ function createPlexClient(
         else next();
         return cancelOwned;
     }
+    /** Build the profile playlist progressively, independently of playback and remote queues. */
+    function scanFolders(
+        folders: Array<{ path: string; title: string }>,
+        onBatch: (rows: any[], scanned: number) => void,
+        done: (error?: string) => void,
+        guard?: () => boolean
+    ): () => void {
+        var scan = ++scanRevision;
+        if (cancelScan) cancelScan();
+        if (scan !== scanRevision) return function () {};
+        var ended = false;
+        var pendingScan: any = null;
+        var timer: any = null;
+        var watchdog: any = null;
+        var roots: string[] = [];
+        var paths: any = Object.create(null);
+        var seen: any = Object.create(null);
+        var signatures: any = Object.create(null);
+        var offset = 0;
+        var scanned = 0;
+        var pages = 0;
+        var characters = 0;
+        var total: number | null = null;
+        function cancelOwned(): void {
+            if (ended) return;
+            ended = true;
+            if (cancelScan === cancelOwned) cancelScan = null;
+            if (timer !== null) w.clearTimeout(timer);
+            if (watchdog !== null) w.clearTimeout(watchdog);
+            var previous = pendingScan;
+            pendingScan = null;
+            if (previous && previous.xhr) previous.xhr.abort();
+        }
+        function active(): boolean {
+            if (ended) return false;
+            if (
+                disposed ||
+                scan !== scanRevision ||
+                (options.isCurrent && !options.isCurrent()) ||
+                (guard && !guard())
+            ) {
+                cancelOwned();
+                return false;
+            }
+            return true;
+        }
+        function finish(error?: string): void {
+            if (!active()) return;
+            cancelOwned();
+            done(error);
+        }
+        function heartbeat(): void {
+            if (watchdog !== null) w.clearTimeout(watchdog);
+            watchdog = w.setTimeout(function () {
+                finish("Plex source did not respond");
+            }, 60000);
+        }
+        function enqueue(path: string): void {
+            if (!path || paths[path]) return;
+            paths[path] = true;
+            roots.push(path);
+        }
+        function later(run: () => void, delay = 0): void {
+            if (active())
+                timer = w.setTimeout(function () {
+                    timer = null;
+                    if (active()) run();
+                }, delay);
+        }
+        function next(attempt = 1): void {
+            if (!active()) return;
+            if (!roots.length) return finish();
+            if (pages >= 1000 || Object.keys(paths).length > 1000)
+                return finish("Plex playlist is too large");
+            var path = roots[0];
+            var owner: any = { xhr: null };
+            pendingScan = owner;
+            function complete(
+                raw: any,
+                failed = false,
+                retryable = false
+            ): void {
+                if (!active() || pendingScan !== owner) return;
+                pendingScan = null;
+                if (failed) {
+                    if (retryable && attempt < 3)
+                        return later(function () {
+                            next(attempt + 1);
+                        }, attempt * 500);
+                    return finish("Plex connection failed");
+                }
+                var data: any;
+                var rows: any[];
+                try {
+                    data = plexContainer(raw, w);
+                    rows = items(data);
+                } catch (_) {
+                    return finish("Invalid Plex response");
+                }
+                var count =
+                    data.size === undefined ? rows.length : Number(data.size);
+                var start =
+                    data.offset === undefined ? offset : Number(data.offset);
+                var reported =
+                    data.totalSize === undefined
+                        ? null
+                        : Number(data.totalSize);
+                if (
+                    count !== rows.length ||
+                    count > 200 ||
+                    start !== offset ||
+                    (reported !== null &&
+                        (!isFinite(reported) ||
+                            Math.floor(reported) !== reported ||
+                            reported < offset + count ||
+                            (total !== null && total !== reported)))
+                )
+                    return finish("Invalid Plex response");
+                var signature =
+                    path +
+                    ":" +
+                    JSON.stringify(
+                        rows.map(function (row) {
+                            return row && [row.ratingKey, row.key, row.type];
+                        })
+                    );
+                if (count && signatures[signature])
+                    return finish("Invalid Plex response");
+                signatures[signature] = true;
+                pages++;
+                if (count) heartbeat();
+                scanned += count;
+                if (scanned > 100000)
+                    return finish("Plex playlist is too large");
+                if (reported !== null) total = reported;
+                var batch: any[] = [];
+                records(data, path, {}, false).forEach(function (record) {
+                    if (record.playlist_url) {
+                        enqueue(plexFolderPath(record.playlist_url.path));
+                        return;
+                    }
+                    var id = record.request && record.request.path;
+                    if (!id || seen[id]) return;
+                    seen[id] = true;
+                    characters += JSON.stringify(record).length;
+                    batch.push(record);
+                });
+                if (characters > 8 * 1024 * 1024)
+                    return finish("Plex playlist is too large");
+                onBatch(batch, scanned);
+                if (!active()) return;
+                offset += count;
+                if (
+                    (total !== null && offset === total) ||
+                    (total === null && count === 0)
+                ) {
+                    roots.shift();
+                    offset = 0;
+                    total = null;
+                } else if (!count) return finish("Invalid Plex response");
+                later(next);
+            }
+            try {
+                var xhr = jq.ajax({
+                    dataType: "text",
+                    error: function (xhr: any, status: string) {
+                        complete(null, true, retryableRead(xhr, status));
+                    },
+                    headers: {
+                        Accept: "application/json",
+                        "X-Plex-Container-Size": "200",
+                        "X-Plex-Container-Start": String(offset),
+                    },
+                    success: function (data: any) {
+                        complete(data);
+                    },
+                    timeout: 30000,
+                    type: "GET",
+                    url: url(path, {
+                        "X-Plex-Container-Size": 200,
+                        "X-Plex-Container-Start": offset,
+                    }),
+                });
+                if (pendingScan === owner) owner.xhr = xhr;
+            } catch (_) {
+                complete(null, true);
+            }
+        }
+        cancelScan = cancelOwned;
+        if (
+            !Array.isArray(folders) ||
+            folders.some(function (folder) {
+                return !folder || !plexFolderPath(folder.path);
+            })
+        ) {
+            finish("Invalid Plex folder selection");
+        } else {
+            heartbeat();
+            folders.forEach(function (folder) {
+                enqueue(plexFolderPath(folder.path));
+            });
+            next();
+        }
+        return cancelOwned;
+    }
     function load(value: any, callback: any): void {
         cancel();
         var token = revision;
@@ -1336,6 +1581,7 @@ function createPlexClient(
         unloading = true;
         if (cancelPage) cancelPage();
         if (cancelCollection) cancelCollection();
+        if (cancelScan) cancelScan();
         cancel();
         release();
         unloading = false;
@@ -1414,10 +1660,77 @@ function createPlexClient(
             disposed = true;
             if (cancelPage) cancelPage();
             if (cancelCollection) cancelCollection();
+            if (cancelScan) cancelScan();
             cancel();
             release();
             sections = null;
             search = null;
+        },
+        folderChoices: function (value: any, done: (result: any) => void) {
+            var cursor = value || target("/library/sections", "Plex");
+            var request = {
+                offset: cursor.offset === undefined ? 0 : cursor.offset,
+                path: cursor.path,
+                plexSource: cursor.plexSource,
+                title: cursor.title,
+            };
+            return page(request, function (result) {
+                if (result.error) return done(result);
+                done({
+                    items: result.items
+                        .filter(function (row) {
+                            return (
+                                row.playlist_url &&
+                                typeof row.playlist_url === "object" &&
+                                (row.__ottMediaNext ||
+                                    plexFolderPath(row.playlist_url.path))
+                            );
+                        })
+                        .map(function (row) {
+                            var entry = row.playlist_url;
+                            if (row.__ottMediaNext)
+                                return {
+                                    next: true,
+                                    target: entry,
+                                    title: row.title,
+                                };
+                            var path = entry.path;
+                            var browse = entry;
+                            var section =
+                                /^\/library\/sections\/([0-9]+)\/all$/.exec(
+                                    path
+                                );
+                            if (section) {
+                                var matches = sections
+                                    ? items(sections).filter(function (item) {
+                                          return (
+                                              String(item.key) === section![1]
+                                          );
+                                      })
+                                    : [];
+                                path +=
+                                    "?type=" +
+                                    (matches[0] && matches[0].type === "show"
+                                        ? "4"
+                                        : matches[0] &&
+                                            matches[0].type === "artist"
+                                          ? "10"
+                                          : "1");
+                                browse = target(
+                                    "/library/sections/" +
+                                        section[1] +
+                                        "/folder",
+                                    row.title
+                                );
+                            }
+                            return {
+                                browse: browse,
+                                path: path,
+                                title: row.title,
+                            };
+                        }),
+                });
+            });
         },
         libraries: function (
             done: (result: any) => void,
@@ -1470,6 +1783,7 @@ function createPlexClient(
             );
         },
         resolve: resolve,
+        scanFolders: scanFolders,
         stableRequests: true,
         stop: function (expected?: string) {
             if (session && expected && session.url !== expected) return;
@@ -1507,6 +1821,7 @@ function plexConfiguredSource(w: any, text: string): string | null {
 (window as any).__ottPlex = {
     configuredSource: plexConfiguredSource,
     create: createPlexClient,
+    folderPath: plexFolderPath,
     normalize: normalizePlexConfig,
     parseContainer: plexContainer,
 };

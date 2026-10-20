@@ -39,6 +39,7 @@ export interface StalkerPortalPlugin {
         timeoutMs?: number;
         requestId?: string;
         screenshotControl?: boolean;
+        remoteControl?: boolean;
     }): Promise<NativeHttpResponse>;
     portalRequest(opts: {
         url: string;
@@ -321,6 +322,8 @@ export function setupStalkerPortalShim(): void {
     }
 
     $.ajax = function (urlOrOpts: any, maybeOpts?: any): any {
+        if ((window as any).__ottStandby?.blocked())
+            return origAjax(urlOrOpts, maybeOpts);
         let opts: any;
         if (typeof urlOrOpts === "string") {
             opts = Object.assign({ url: urlOrOpts }, maybeOpts || {});

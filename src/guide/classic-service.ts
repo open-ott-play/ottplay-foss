@@ -56,6 +56,7 @@ function guideReferences(ids: any[]): Array<GuideReference | null> {
 }
 function guideCurrent(reference: GuideReference): boolean {
     return (
+        !guideHost().__ottStandby?.blocked() &&
         reference.sourceId === guideSource() &&
         (guideHost().channels || {})[reference.id] === reference.token &&
         guideChannelId(reference.token, reference.id) === reference.channelId
@@ -119,6 +120,10 @@ function guideOwner(): any {
             current: guideCurrent,
             decode: decodeGuide,
             fetch: function (reference: GuideReference, complete: any) {
+                if (host.__ottStandby?.blocked()) {
+                    complete(null);
+                    return function () {};
+                }
                 return host.fetchChannelGuide(
                     reference.id,
                     function (_id: any, rows: any) {
@@ -354,6 +359,11 @@ var classicGuideApi = {
         }
     },
     source: guideSource,
+    suspend: function () {
+        clearGuideConsumers();
+        if (classicGuideOwner) classicGuideOwner.dispose();
+        classicGuideOwner = null;
+    },
     valid: guideCurrent,
 };
 (window as any).__ottClassicGuide = classicGuideApi;

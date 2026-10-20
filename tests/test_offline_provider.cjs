@@ -548,10 +548,7 @@ test("startup scan counter updates one bounded node without exposing source path
     progress({ items: [], scanned: 64 });
     progress({ items: [first], scanned: 128 });
     assert.equal(nodes.length, 1);
-    assert.equal(
-        nodes[0].textContent,
-        "Loading. Please wait... (128) · Local videos: 1"
-    );
+    assert.equal(nodes[0].textContent, "Local videos: 1");
     assert.deepEqual(nodes[0].attrs, {
         "data-local-items": "1",
         "data-local-phase": "files",
@@ -560,10 +557,7 @@ test("startup scan counter updates one bounded node without exposing source path
     });
     assert(!JSON.stringify(nodes[0]).includes("private/path"));
     progress({ items: [first], scanned: 150, total: 10000 });
-    assert.equal(
-        nodes[0].textContent,
-        "Loading. Please wait... (150 / 10000) · Local videos: 1"
-    );
+    assert.equal(nodes[0].textContent, "Local videos: 1");
     finish({ items: [first], scanned: 128 });
     await Promise.resolve();
 });

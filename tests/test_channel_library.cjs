@@ -666,6 +666,65 @@ for (let slot = 0; slot < 15; slot++) {
     assert.equal(incremental.itemId(99), "stream:99");
 }
 {
+    const host = vm.createContext({ window: {} });
+    const storage = new Map();
+    for (const file of [
+        "src/channels/library.ts",
+        "src/provider/source-identity.ts",
+        "src/channels/classic-library.ts",
+    ])
+        runtime(host, file);
+    const w = host.window;
+    Object.assign(w, {
+        _: (label) => label,
+        channels: {
+            11: { adult: 1, channel_name: "Unlocked file" },
+            12: { channel_name: "Selected file" },
+            13: { channel_name: "Other file" },
+            14: { adult: 1, channel_name: "Late adult file" },
+            15: {
+                category: { name: "Adults" },
+                channel_name: "Late protected category",
+            },
+        },
+        cList: [11, 12, 13],
+        p_pref: "append-protection",
+        parental: /^Adults$/,
+        providerGetItem: (key) => storage.get(key) ?? null,
+        providerSetItem: (key, value) => storage.set(key, value),
+    });
+    const adapter = w.__ottChannels;
+    adapter.mount(w);
+    assert.deepEqual(plain(w.parentalArray), [11]);
+    assert(adapter.change("lock", 11, false));
+    assert(adapter.select(0, 12));
+    vm.runInContext("Math.random = function () { return 0; };", host);
+    assert(adapter.change("shuffle", "system:all"));
+    const before = plain(adapter.document());
+    assert.deepEqual(plain(w.curList), [12, 13, 11]);
+
+    // On the next progressive load, the explicitly unlocked file also arrives
+    // late. Neither its missing first batch nor a repeated row may re-lock it.
+    w.cList = [12, 13];
+    adapter.mount(w);
+    w.cList.push(11, 14, 15);
+    adapter.append([11, 14, 15, 14]);
+    assert.deepEqual(
+        plain(w.parentalArray),
+        [14, 15],
+        "appended adult metadata and category rules both protect new files"
+    );
+    assert.deepEqual(plain(adapter.document().unlocks), ["channel:11"]);
+    assert.deepEqual(plain(adapter.document().selected), before.selected);
+    assert.deepEqual(plain(adapter.document().groups), before.groups);
+    assert.deepEqual(plain(w.curList), [12, 13, 11, 14, 15]);
+    assert.equal(w.curList[w.primaryIndex], 12);
+    assert(adapter.change("resetShuffle", "system:all"));
+    assert.deepEqual(plain(w.curList), [11, 12, 13, 14, 15]);
+    assert.equal(w.curList[w.primaryIndex], 12);
+    assert.deepEqual(plain(w.parentalArray), [14, 15]);
+}
+{
     source = "shuffle-test";
     const shuffled = library();
     shuffled.select("system:all", 12);
@@ -759,6 +818,215 @@ for (let slot = 0; slot < 15; slot++) {
     assert.equal(shuffled.isShuffled("system:all"), false);
     assert.equal(shuffled.snapshot().all.includes(11), false);
     assert.equal(shuffled.snapshot().all.at(-1), 140);
+}
+function progressiveListFixture(provider = "plex") {
+    const storage = new Map();
+    const w = {
+        _: (label) => label,
+        channels: {},
+        channelsKeyHandler: () => true,
+        cList: Array.from({ length: 30 }, (_, i) => i + 1),
+        p_pref: provider,
+        providerGetItem: (key) => storage.get(key) ?? null,
+        providerSetItem: (key, value) => storage.set(key, value),
+    };
+    for (const id of w.cList)
+        w.channels[id] = {
+            category: { name: "Films" },
+            channel_name: "Film " + id,
+        };
+    w.window = w;
+    const ctx = vm.createContext(w);
+    for (const file of [
+        "src/ui/screen-controller.ts",
+        "src/ui/input-router.ts",
+        "src/ui/classic-screen-port.ts",
+        "src/channels/library.ts",
+        "src/provider/source-identity.ts",
+        "src/channels/classic-library.ts",
+    ])
+        runtime(ctx, file);
+    const rendered = [];
+    w.showPage = () => {
+        const owner = w.__ottClassicScreenPort.commitList();
+        rendered.push({
+            focused: w.listArray[w.selIndex],
+            owner,
+            page: Math.floor(w.selIndex / 25),
+            rows: Array.from(w.listDataArray),
+        });
+    };
+    const adapter = w.__ottChannels;
+    adapter.mount(w);
+    adapter.select(0, 1);
+    function open(category = 0, selected = 27) {
+        w.listCatIndex = category;
+        w.listArray = w.cats[w.catsArray[category]];
+        w.listDataArray = w.listArray;
+        w.listKeyHandler = w.channelsKeyHandler;
+        w.selIndex = selected;
+        w.showPage();
+        return w.__ottClassicScreenPort.listOwner();
+    }
+    function append(id = 31, category = "Films") {
+        w.channels[id] = {
+            category: { name: category },
+            channel_name: "Film " + id,
+        };
+        w.cList.push(id);
+        adapter.append([id]);
+    }
+    return { adapter, append, open, rendered, w };
+}
+for (const provider of ["offline", "plex", "vportal"]) {
+    const f = progressiveListFixture(provider);
+    const owner = f.open();
+    const rows = f.w.listArray;
+    f.append();
+    assert.deepEqual(
+        Array.from(f.w.listArray),
+        f.w.cList,
+        provider + ": late rows reach the open list"
+    );
+    assert.equal(
+        f.w.listArray,
+        rows,
+        "progress does not replace the ScreenPort model"
+    );
+    assert.equal(f.w.listDataArray, rows);
+    assert.equal(f.w.cats.All, rows);
+    assert.equal(f.w.curList, rows);
+    assert.equal(f.w.__ottClassicScreenPort.listOwner(), owner);
+    assert.equal(owner.foreground(), true);
+    assert.equal(
+        f.w.listArray[f.w.selIndex],
+        28,
+        "the focused channel stays selected"
+    );
+    assert.equal(
+        f.w.curList[f.w.primaryIndex],
+        1,
+        "the playing channel is independent of list focus"
+    );
+    assert.equal(f.rendered.length, 2);
+    assert.equal(f.rendered.at(-1).page, 1, "the user stays on the same page");
+    f.append(32);
+    assert.equal(
+        f.rendered.length,
+        3,
+        "successive batches keep the active array connected"
+    );
+}
+{
+    const f = progressiveListFixture();
+    assert(
+        f.adapter.change("member", {
+            action: "move",
+            channelId: 1,
+            delta: 0,
+            groupId: "system:all",
+        })
+    );
+    f.w.cList = f.w.cList.filter((id) => id !== 1);
+    f.adapter.mount(f.w);
+    f.open(0, 27);
+    const focused = f.w.listArray[f.w.selIndex];
+    f.append(1);
+    assert.equal(
+        f.w.listArray[0],
+        1,
+        "a late saved item resumes its stored order"
+    );
+    assert.equal(
+        f.w.selIndex,
+        28,
+        "focus follows its ID when an earlier item returns"
+    );
+    assert.equal(f.w.listArray[f.w.selIndex], focused);
+    assert.equal(f.rendered.at(-1).page, 1);
+}
+for (const kind of ["dialog", "editor", "picker"]) {
+    const f = progressiveListFixture();
+    const list = f.open();
+    const overlay = f.w.__ottClassicScreenPort.openOverlay(kind, () => {});
+    f.append();
+    assert.equal(
+        f.w.__ottScreens.current(),
+        overlay,
+        kind + ": progress cannot replace the overlay"
+    );
+    assert.equal(overlay.active(), true);
+    assert.equal(list.active(), true);
+    assert.equal(f.rendered.length, 1, "a covered list is not rendered");
+    assert.equal(f.w.listArray.length, 31, "covered list data stays current");
+    overlay.close();
+    f.w.showPage();
+    assert.equal(f.rendered.at(-1).rows.length, 31);
+    assert.equal(f.w.__ottClassicScreenPort.listOwner(), list);
+}
+for (const view of ["search", "replacement", "closed", "category"]) {
+    const f = progressiveListFixture();
+    const owner = f.open();
+    if (view === "closed") f.w.__ottClassicScreenPort.closeList();
+    else {
+        if (view === "category") f.w.listArray = f.w.catsArray;
+        else f.w.listArray = view === "search" ? [2, 7] : ["Settings"];
+        f.w.listDataArray = f.w.listArray;
+        f.w.listKeyHandler = () => true;
+        if (view !== "replacement") f.w.showPage();
+    }
+    const rows = f.w.listArray;
+    const before = Array.from(rows);
+    const count = f.rendered.length;
+    f.append();
+    assert.equal(
+        f.rendered.length,
+        count,
+        view + ": progress cannot reopen or redraw another view"
+    );
+    assert.equal(f.w.listArray, rows);
+    assert.deepEqual(Array.from(rows), before);
+    assert.equal(f.w.cats.All.length, 31);
+    if (view === "replacement")
+        assert.equal(f.w.__ottClassicScreenPort.listOwner(), owner);
+}
+{
+    const f = progressiveListFixture();
+    const owner = f.open(1);
+    f.append(31, "Other");
+    assert.equal(f.rendered.length, 1, "unaffected category does not redraw");
+    assert.equal(f.w.listArray, f.w.cats.Films);
+    f.append(32, "Films");
+    assert.equal(f.rendered.length, 2);
+    assert.equal(f.w.listArray.at(-1), 32);
+    assert.equal(f.w.listArray.includes(31), false);
+    assert.equal(f.w.__ottClassicScreenPort.listOwner(), owner);
+}
+{
+    const f = progressiveListFixture();
+    const old = f.open();
+    let replacement;
+    f.w._ = (label) => {
+        if (label === "All" && !replacement) {
+            f.w.listArray = ["Settings opened during publication"];
+            f.w.listDataArray = f.w.listArray;
+            f.w.listKeyHandler = () => true;
+            f.w.showPage();
+            replacement = f.w.__ottClassicScreenPort.listOwner();
+        }
+        return label;
+    };
+    f.append();
+    assert.equal(old.active(), false);
+    assert.equal(f.w.__ottClassicScreenPort.listOwner(), replacement);
+    assert.deepEqual(Array.from(f.w.listArray), [
+        "Settings opened during publication",
+    ]);
+    assert.equal(
+        f.rendered.length,
+        2,
+        "publication reentry keeps the replacement view untouched"
+    );
 }
 console.log(
     "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"

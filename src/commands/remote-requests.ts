@@ -820,7 +820,10 @@ export function executeRemoteRequest(
                         reject("Playback is unavailable.");
                         return;
                     }
-                    w.playChannel(c, i, true);
+                    if (w.playChannel(c, i, true) === false) {
+                        reject("Playback was rejected by the player.");
+                        return;
+                    }
                     reply({ channel: matches[0], dispatched: true });
                     return;
                 }

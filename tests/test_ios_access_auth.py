@@ -8,6 +8,7 @@ No real browser, Keychain or network is used.
 import subprocess
 import tempfile
 from pathlib import Path
+from native_standby_work_cases import swift_work_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SWIFT = r'''
@@ -1154,7 +1155,7 @@ with tempfile.TemporaryDirectory(prefix="ottplay-auth-test-") as directory:
     proxy = (sources.parent / "M3UProxy.swift").read_text()
     proxy = proxy.replace("import Capacitor\n", "").replace("import os.log\n", "").replace("#if os(iOS)", "#if true")
     (path / "M3UProxy.swift").write_text(proxy)
-    (path / "main.swift").write_text(SWIFT)
+    (path / "main.swift").write_text(swift_work_source() + SWIFT)
     subprocess.run(["swiftc", str(path / "AccessMediaPolicy.swift"),
                     str(path / "AccessMedia.swift"), str(path / "StalkerPortalPlugin.swift"), str(path / "M3UProxy.swift"), str(path / "main.swift"),
                     "-o", str(path / "test")], check=True)

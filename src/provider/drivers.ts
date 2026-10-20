@@ -15,6 +15,8 @@ interface DriverCatalog {
     groups: { [name: string]: Array<string | number> };
     ids: Array<string | number>;
     incremental?: boolean;
+    selectedId?: string | number;
+    selectionMissing?: boolean;
 }
 interface DriverHttpRequest {
     contentType?: string;
@@ -33,6 +35,7 @@ interface ProviderDriverProfile {
     title: string;
 }
 interface ProviderDriverPorts {
+    catalogProgress?(scanned: number, items: number, total?: number): void;
     channelCatalog?(
         rows: any[],
         hash: (value: string) => number,
@@ -96,6 +99,8 @@ interface ProviderDriver {
         guide: boolean;
         settings: boolean;
         media: boolean;
+        /** Finite provider media projected into the ordinary channel list. */
+        mediaPlaylist?: boolean;
         libraryOnly?: boolean;
     };
     configuration?(): any;
@@ -410,12 +415,6 @@ function createOfflineDriver(
                             Math.floor(Number(value.scanned) || 0)
                         );
                         if (!isFinite(scanned)) scanned = 0;
-                        var total = Number(value.total);
-                        var knownTotal =
-                            value.total != null &&
-                            isFinite(total) &&
-                            total >= scanned &&
-                            Math.floor(total) === total;
                         var waiting = waitForFinal
                             ? "invalid-index"
                             : wanted && !catalog.channels[wanted]
@@ -440,11 +439,6 @@ function createOfflineDriver(
                             value.phase || "files"
                         );
                         progress.textContent =
-                            ports.translate("Loading. Please wait...") +
-                            " (" +
-                            scanned +
-                            (knownTotal ? " / " + total : "") +
-                            ") · " +
                             ports.translate("Local videos") +
                             ": " +
                             catalog.ids.length;
@@ -1974,6 +1968,32 @@ function mountProviderDriver(
     var driver = providerDriverRegistry.create(
         id,
         {
+            catalogProgress: function (scanned, items, total) {
+                var doc = host.document;
+                var panel = doc && doc.getElementById("dialogbox");
+                if (!panel || !panel.querySelector || !doc.createElement)
+                    return;
+                if (!panel.querySelector(".ott-spinner")) return;
+                var counter = panel.querySelector("[data-catalog-progress]");
+                if (!counter) {
+                    counter = doc.createElement("div");
+                    counter.setAttribute("data-catalog-progress", "");
+                    panel.appendChild(counter);
+                }
+                counter.textContent =
+                    host._("Loading. Please wait...") +
+                    " " +
+                    scanned +
+                    (total !== undefined && total >= scanned
+                        ? " / " + total
+                        : "") +
+                    " · " +
+                    profile.title +
+                    ": " +
+                    items;
+                counter.setAttribute("data-catalog-scanned", String(scanned));
+                counter.setAttribute("data-catalog-items", String(items));
+            },
             channelCatalog: function (rows, hash, profile) {
                 return host.__ottChannelCatalog.project(rows, hash, profile);
             },
@@ -2417,6 +2437,8 @@ function mountProviderDriver(
                 return;
             }
             if (catalog) {
+                host.__ottMissingCatalogSelection = !!catalog.selectionMissing;
+                host.__ottCatalogSelectedId = catalog.selectedId;
                 // Catalog replacement is confined to this explicit legacy-view codec.
                 host.cList = catalog.ids.slice();
                 var channels =

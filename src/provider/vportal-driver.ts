@@ -1,8 +1,66 @@
 /** Independent, device-local VPortal profiles. M3U settings remain untouched. */
 interface VPortalProviderDriver extends ProviderDriver {
+    cancelConnection(): void;
     mediaClient(): any;
+    mediaItem(id: string | number): any;
     remoteProfiles?(request: any): any;
     saveConfiguration(value: any): boolean;
+}
+
+function normalizeVPortalSections(value: any): any[] | null {
+    if (value === undefined) return [];
+    if (!Array.isArray(value) || value.length > 100) return null;
+    try {
+        if (JSON.stringify(value).length > 65536) return null;
+        return value.map(function (section) {
+            if (
+                !section ||
+                typeof section.title !== "string" ||
+                /[\u0000-\u001f\u007f]/.test(section.title) ||
+                encodeURIComponent(section.title).replace(/%[0-9A-F]{2}/g, "x")
+                    .length > 512 ||
+                !section.request ||
+                typeof section.request !== "object" ||
+                Array.isArray(section.request) ||
+                Object.keys(section.request).some(function (key) {
+                    return (
+                        key === "key" ||
+                        key === "app" ||
+                        key === "__proto__" ||
+                        key === "constructor" ||
+                        key === "prototype"
+                    );
+                })
+            )
+                throw new Error();
+            function ordered(value: any, depth: number): any {
+                if (depth > 12) throw new Error();
+                if (!value || typeof value !== "object") return value;
+                if (Array.isArray(value))
+                    return value.map(function (part) {
+                        return ordered(part, depth + 1);
+                    });
+                var result = Object.create(null);
+                Object.keys(value)
+                    .sort()
+                    .forEach(function (key) {
+                        result[key] = ordered(value[key], depth + 1);
+                    });
+                return result;
+            }
+            var normalized: any = {
+                request: JSON.parse(
+                    JSON.stringify(ordered(section.request, 0))
+                ),
+                title: section.title,
+            };
+            if (section.adult) normalized.adult = true;
+            if (section.sequence) normalized.sequence = true;
+            return normalized;
+        });
+    } catch (_) {
+        return null;
+    }
 }
 
 function createVPortalProviderDriver(
@@ -14,6 +72,7 @@ function createVPortalProviderDriver(
     var revision = 0;
     var client: any = null;
     var ready = false;
+    var catalog: DriverCatalog = helpers.emptyCatalog();
     var api = (window as any).__ottVPortal;
     function active(): boolean {
         return !disposed && owner.active();
@@ -37,6 +96,7 @@ function createVPortalProviderDriver(
             config.portals.push({
                 link: row && typeof row.link === "string" ? row.link : "",
                 name: row && typeof row.name === "string" ? row.name : "",
+                sections: normalizeVPortalSections(row && row.sections) || [],
             });
         }
         return config;
@@ -44,6 +104,7 @@ function createVPortalProviderDriver(
     function retire(): void {
         revision++;
         ready = false;
+        catalog = helpers.emptyCatalog();
         var previous = client;
         client = null;
         if (previous) previous.dispose();
@@ -89,7 +150,13 @@ function createVPortalProviderDriver(
                     return false;
                 if (!current() || JSON.stringify(configuration()) !== before)
                     return false;
-                next.portals.push({ link: row.link, name: row.name });
+                var sections = normalizeVPortalSections(row.sections);
+                if (!sections) return false;
+                next.portals.push({
+                    link: row.link,
+                    name: row.name,
+                    sections: sections,
+                });
             }
             if (!operations.write({ profiles: JSON.stringify(next) }, current))
                 return false;
@@ -107,11 +174,15 @@ function createVPortalProviderDriver(
         archive: function () {
             return "";
         },
+        cancelConnection: function () {
+            if (!ready && client) retire();
+        },
         capabilities: {
             archive: false,
             guide: false,
-            libraryOnly: true,
+            libraryOnly: false,
             media: true,
+            mediaPlaylist: true,
             settings: true,
         },
         configuration: configuration,
@@ -144,7 +215,11 @@ function createVPortalProviderDriver(
                 var config = configuration();
                 var row = config.portals[config.active];
                 var parsed = api.parse(row.link);
-                if (!parsed || !ports.validateUrl(parsed.url)) {
+                if (
+                    !parsed ||
+                    !ports.validateUrl(parsed.url) ||
+                    !row.sections.length
+                ) {
                     if (current()) done(null, "credentials");
                     return;
                 }
@@ -158,24 +233,143 @@ function createVPortalProviderDriver(
                     title: row.name || "VPortal",
                 });
                 if (!client || !current()) return;
-                ready = true;
-                done(helpers.emptyCatalog());
+                var published = false;
+                var count = 0;
+                var wanted = "";
+                var legacyIndex = 0;
+                try {
+                    var selection = JSON.parse(
+                        ports.storage.get(
+                            "channelLibrary:" + ports.sourceIdentity!()
+                        ) || "null"
+                    );
+                    wanted =
+                        selection && selection.selected
+                            ? String(selection.selected.itemId || "")
+                            : "";
+                    legacyIndex = Math.max(
+                        0,
+                        Number(ports.storage.get("primaryIndex")) || 0
+                    );
+                } catch (_) {}
+                ports.progress(ports.translate("Loading channels..."));
+                client.playlist(
+                    row.sections,
+                    function (
+                        items: any[],
+                        complete: boolean,
+                        error?: string,
+                        scanned?: number
+                    ) {
+                        if (!current() || generation !== revision) return;
+                        if (!published) {
+                            if (ports.catalogProgress)
+                                ports.catalogProgress(
+                                    scanned || items.length,
+                                    items.length
+                                );
+                            else
+                                ports.progress(
+                                    ports.translate("Loading channels...") +
+                                        " " +
+                                        items.length
+                                );
+                        }
+                        if (items.length > count) {
+                            var rows = items.map(function (item: any) {
+                                return {
+                                    groupId: "vportal",
+                                    groupName: row.name || "VPortal",
+                                    itemId: "vportal:" + item.__ottPlaylistId,
+                                    logo: item.logo_30x30 || "",
+                                    name: item.title,
+                                    providerId: "",
+                                    url: "vportal:request",
+                                };
+                            });
+                            catalog = ports.channelCatalog!(
+                                rows,
+                                ports.hash,
+                                "vportal"
+                            );
+                            catalog.ids.forEach(function (id, index) {
+                                catalog.channels[id].adult =
+                                    Number(items[index].adult) === 1 ? 1 : 0;
+                                catalog.channels[id].__ottMediaItem =
+                                    items[index];
+                                catalog.channels[id].__ottMediaProvider =
+                                    "vportal";
+                            });
+                            var selectedAvailable =
+                                !wanted ||
+                                catalog.ids.some(function (id) {
+                                    return (
+                                        catalog.channels[id].itemId ===
+                                            wanted ||
+                                        String(id) === wanted ||
+                                        "channel:" + id === wanted
+                                    );
+                                });
+                            if (
+                                !published &&
+                                !complete &&
+                                (wanted
+                                    ? !selectedAvailable
+                                    : catalog.ids.length <= legacyIndex)
+                            )
+                                return;
+                            ready = true;
+                            if (!published) {
+                                catalog.selectionMissing =
+                                    complete && !!wanted && !selectedAvailable;
+                                published = true;
+                                done(catalog);
+                            } else {
+                                var added = helpers.emptyCatalog();
+                                added.incremental = true;
+                                added.ids = catalog.ids.slice(count);
+                                added.ids.forEach(function (
+                                    id: string | number
+                                ) {
+                                    added.channels[id] = catalog.channels[id];
+                                });
+                                done(added);
+                            }
+                            count = items.length;
+                        }
+                        if (complete && !published)
+                            done(null, error || "empty");
+                        else if (
+                            complete &&
+                            error &&
+                            (driver as any).publishError
+                        )
+                            (driver as any).publishError();
+                    }
+                );
             });
         },
-        logo: function () {
-            return "";
+        logo: function (id) {
+            return catalog.channels[id] ? catalog.channels[id].logo : "";
         },
         mediaClient: function () {
             return active() && ready ? client : null;
         },
+        mediaItem: function (id) {
+            return active() && catalog.channels[id]
+                ? catalog.channels[id].__ottMediaItem
+                : null;
+        },
         saveConfiguration: saveConfiguration,
         saveCredentials: function (value) {
             var config = configuration();
-            config.portals[config.active].link = value.playlist || "";
+            var row = config.portals[config.active];
+            if (row.link !== (value.playlist || "")) row.sections = [];
+            row.link = value.playlist || "";
             return saveConfiguration(config);
         },
-        stream: function () {
-            return "";
+        stream: function (id) {
+            return catalog.channels[id] ? catalog.channels[id].url : "";
         },
     };
     owner.own(driver.dispose);
@@ -189,6 +383,11 @@ function mountVPortalProvider(
 ): void {
     var revision = 0;
     var attached: any = null;
+    var editorClient: any = null;
+    function closeEditorClient(): void {
+        if (editorClient) editorClient.dispose();
+        editorClient = null;
+    }
     function active(): boolean {
         return owner.active();
     }
@@ -297,8 +496,13 @@ function mountVPortalProvider(
                 return fail(
                     "VPortal profiles accept name and vportal fields only."
                 );
+            if (
+                fields.indexOf("vportal") !== -1 &&
+                settings.vportal !== config.portals[index].link
+            )
+                config.portals[index].sections = [];
             fields.forEach(function (key) {
-                config.portals[index][key === "vportal" ? "link" : "name"] =
+                config.portals[index][key === "vportal" ? "link" : key] =
                     settings[key];
             });
         }
@@ -318,6 +522,7 @@ function mountVPortalProvider(
         )
             return fail("Could not complete the profile save.");
         revision++;
+        closeEditorClient();
         if (reload) host.loadChannels();
         if (
             !active() ||
@@ -340,12 +545,15 @@ function mountVPortalProvider(
     };
     function edit(): boolean {
         if (!active() || locked()) return false;
+        driver.cancelConnection();
+        closeEditorClient();
         var editor = ++revision;
         var selected = driver.configuration!().active;
         function current(): boolean {
             return active() && revision === editor && !locked();
         }
         function list(): void {
+            closeEditorClient();
             if (!current()) return;
             var config = driver.configuration!();
             host.listArray = config.portals.map(function (
@@ -398,15 +606,15 @@ function mountVPortalProvider(
                     host._("VPortal link") +
                         ": " +
                         (row.link ? "********" : ""),
-                    "",
-                    host._("Save and open library"),
+                    host._("Category selection") + ": " + row.sections.length,
+                    host._("Save and load channels"),
                 ];
                 host.listDataArray = host.listArray;
             }
             render();
             host.listCaption.innerHTML = "VPortal — " + (selected + 1);
             host.selIndex = 0;
-            host.listKeyHandler = function (key: number) {
+            function mainKeys(key: number): boolean {
                 if (!current()) return false;
                 if (key === host.keys.RETURN) {
                     fieldRevision++;
@@ -424,13 +632,15 @@ function mountVPortalProvider(
                     host.setEdit = function () {
                         if (!current() || field !== fieldRevision) return;
                         fieldRevision++;
-                        row[index ? "link" : "name"] = String(
-                            host.editvar || ""
-                        ).trim();
+                        var value = String(host.editvar || "").trim();
+                        if (index && row.link !== value) row.sections = [];
+                        row[index ? "link" : "name"] = value;
                         render();
                         host.showPage();
                     };
                     host.showEditKey(host.keys.ENTER, index === 1);
+                } else if (index === 2) {
+                    chooseSections();
                 } else if (index === 3) {
                     if (JSON.stringify(driver.configuration!()) !== before) {
                         list();
@@ -442,6 +652,10 @@ function mountVPortalProvider(
                                 "Enter the VPortal link as shown in the cabinet"
                             )
                         );
+                        return true;
+                    }
+                    if (!row.sections.length) {
+                        chooseSections();
                         return true;
                     }
                     config.active = selected;
@@ -456,7 +670,90 @@ function mountVPortalProvider(
                     host.loadChannels();
                 }
                 return true;
-            };
+            }
+            function chooseSections(): void {
+                if (!host.__ottVPortal.parse(row.link)) {
+                    host.alert(
+                        host._("Enter the VPortal link as shown in the cabinet")
+                    );
+                    return;
+                }
+                closeEditorClient();
+                var field = ++fieldRevision;
+                function pickerCurrent(): boolean {
+                    return current() && fieldRevision === field;
+                }
+                function leave(): void {
+                    fieldRevision++;
+                    closeEditorClient();
+                    render();
+                    host.listCaption.innerHTML = "VPortal — " + (selected + 1);
+                    host.selIndex = 2;
+                    host.listKeyHandler = mainKeys;
+                    host.showPage();
+                }
+                host.listArray = [host._("Loading channels...")];
+                host.listDataArray = host.listArray;
+                host.listCaption.innerHTML = host._("Category selection");
+                host.selIndex = 0;
+                host.listKeyHandler = function (key: number) {
+                    if (key === host.keys.RETURN) leave();
+                    return true;
+                };
+                host.showPage();
+                editorClient = host.__ottVPortal.create(row.link, {
+                    isCurrent: pickerCurrent,
+                    title: row.name || "VPortal",
+                });
+                editorClient.sections(function (result: any) {
+                    if (!pickerCurrent()) return;
+                    if (result.error) {
+                        leave();
+                        host.alert(host._("VPortal request failed"));
+                        return;
+                    }
+                    var choices = normalizeVPortalSections(result.items) || [];
+                    function selectedIndex(section: any): number {
+                        var key = JSON.stringify(section.request);
+                        for (var i = 0; i < row.sections.length; i++)
+                            if (JSON.stringify(row.sections[i].request) === key)
+                                return i;
+                        return -1;
+                    }
+                    function draw(): void {
+                        host.listArray = choices.map(function (section: any) {
+                            return (
+                                (selectedIndex(section) >= 0 ? "☑ " : "☐ ") +
+                                escape(section.title)
+                            );
+                        });
+                        host.listArray.push(host._("Ok"));
+                        host.listDataArray = host.listArray;
+                        host.showPage();
+                    }
+                    host.listKeyHandler = function (key: number) {
+                        if (!pickerCurrent()) return false;
+                        if (
+                            key === host.keys.RETURN ||
+                            (key === host.keys.ENTER &&
+                                host.selIndex === choices.length)
+                        ) {
+                            leave();
+                            return true;
+                        }
+                        if (key !== host.keys.ENTER) return false;
+                        var section = choices[host.selIndex];
+                        if (!section) return true;
+                        var index = selectedIndex(section);
+                        if (index < 0) row.sections.push(section);
+                        else row.sections.splice(index, 1);
+                        draw();
+                        return true;
+                    };
+                    draw();
+                });
+            }
+            host.listKeyHandler = mainKeys;
             host.showPage();
         }
         host.listFooter.innerHTML = host.renderButtonHint(
@@ -477,6 +774,12 @@ function mountVPortalProvider(
         host.popupArray.splice(index, 1, label());
         host.popupDetail.splice(index, 1, label());
     };
+    (driver as any).publishError = function () {
+        if (active()) {
+            var notify = host.showShift || host.alert;
+            notify.call(host, host._("VPortal request failed"));
+        }
+    };
     (driver as any).publishLibrary = function () {
         if (!active()) return;
         attached = driver.mediaClient();
@@ -485,6 +788,7 @@ function mountVPortalProvider(
     };
     owner.own(function () {
         revision++;
+        closeEditorClient();
         if (host.providerMediaClient === attached) {
             host.providerMediaClient = null;
             host.getMediaArray = null;
@@ -502,7 +806,13 @@ function mountVPortalProvider(
     ): boolean {
         if (!driver.libraryReady!()) {
             if (error && error !== "credentials")
-                host.alert(host._("VPortal request failed"));
+                host.alert(
+                    host._(
+                        error === "empty"
+                            ? "No channels loaded"
+                            : "VPortal request failed"
+                    )
+                );
             host.__ottEditProvider();
             return false;
         }

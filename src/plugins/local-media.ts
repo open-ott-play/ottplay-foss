@@ -42,12 +42,15 @@ export function installLocalMedia(w: any): any {
             return "";
         }
     }
-    function getEndpoint(refresh = false): Promise<string> {
+    function getEndpoint(
+        refresh = false,
+        preferredId?: string
+    ): Promise<string> {
         if (isTauri())
-            return tauriInvoke<any>(
-                "offline_media_endpoint",
-                refresh ? { refresh: true } : {}
-            ).then(function (value) {
+            return tauriInvoke<any>("offline_media_endpoint", {
+                ...(refresh ? { refresh: true } : {}),
+                ...(preferredId ? { preferredId } : {}),
+            }).then(function (value) {
                 endpoint = value.endpoint;
                 return endpoint;
             });
@@ -120,6 +123,8 @@ export function installLocalMedia(w: any): any {
         onProgress?: (value: any) => boolean | void,
         preferredId?: string
     ): Promise<any> {
+        if (w.__ottStandby?.blocked())
+            return Promise.reject(w.__ottStandby.error());
         var request = ++catalogRevision;
         last = null;
         function accept(value: any): boolean {
@@ -135,8 +140,10 @@ export function installLocalMedia(w: any): any {
                   return native.list();
               })
             : boundedLocalRead(function () {
-                  return getEndpoint();
+                  return getEndpoint(false, preferredId);
               }).then(function (base) {
+                  if (request !== catalogRevision)
+                      return { cancelled: true, items: [] };
                   return base
                       ? pollCatalog(base, request, accept, !!onProgress)
                       : boundedLocalRead(function (progress) {
@@ -695,8 +702,9 @@ export function installLocalMedia(w: any): any {
             w.$("#dialogbox")
                 .html(
                     '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
-                        '<div id="local-media-progress">' +
                         text(w._("Loading. Please wait...")) +
+                        '<div id="local-media-progress">' +
+                        text(formatLocalMediaProgress({ items: [] }, w._)) +
                         "</div><br/><br/>" +
                         w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Cancel")
                 )
@@ -794,6 +802,11 @@ export function installLocalMedia(w: any): any {
                     )
                 );
             return Promise.resolve(JSON.parse(JSON.stringify(last)));
+        },
+        suspend: function () {
+            catalogRevision++;
+            revision++;
+            close();
         },
         title: title,
     };

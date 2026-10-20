@@ -29,6 +29,7 @@ pub fn run() {
     linux_media_compat::configure_early();
     let epg_urls = commands::tauri_commands::init_xmltv_urls();
     let command_queues = commands::queue::new_shared();
+    let background = ottplay_core::background_work::BackgroundWork::default();
     // No listener starts at launch; settings explicitly configure optional HTTP.
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -50,6 +51,8 @@ pub fn run() {
             }
             ws.build()
         })
+        .manage(background.clone())
+        .manage(commands::background::BackgroundPersistence::default())
         .manage(commands::offline_media::OfflineMediaState::default())
         .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
@@ -57,6 +60,7 @@ pub fn run() {
         .manage(commands::runtime_diagnostics::RuntimeDiagnosticsState::default())
         .manage(PipState::default())
         .manage(TauriState {
+            background,
             xmltv_cache: Arc::new(RwLock::new(None)),
             epg_urls: Arc::new(RwLock::new(epg_urls.clone())),
             epg_to_xmltv: Arc::new(RwLock::new(HashMap::new())),
@@ -66,6 +70,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
+            commands::background::background_standby_status,
+            commands::background::set_background_standby,
             commands::offline_media::offline_media_endpoint,
             commands::offline_media::offline_media_import_files,
             commands::offline_media::offline_media_import_folder,
@@ -122,6 +128,7 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            commands::background::restore(app.handle());
             // Always build the main window here (tauri.conf windows=[]) so
             // OTTPLAY_INSTANCE / OTTPLAY_DATA_DIR can set data_directory +
             // macOS data_store_identifier at create time. Destroy+recreate

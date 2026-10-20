@@ -7,7 +7,6 @@ const acorn = require("acorn");
 const m3uFixture = require("./helpers/m3u-driver-fixture.cjs");
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const portal = "portal::[key:PRIVATE_FIXTURE]https://portal.test/api/v1/";
-const nextPortal = "portal::[key:SECOND_PRIVATE]https://second.test/api/v1/";
 const code = ts.transpileModule(
     fs.readFileSync("src/commands/remote-profiles.ts", "utf8"),
     {
@@ -47,8 +46,7 @@ function fixture(options = {}) {
                 checkProviderUrl: (value) => f.host.checkProviderUrl(value),
                 isProviderAllowed: () => f.allowed !== false,
             };
-        assert.equal(name, "../plugins/vportal");
-        return { parseVPortalLink: f.host.parseVPortalLink };
+        throw new Error("Unexpected dependency: " + name);
     };
     vm.runInContext(code, f.host);
     return Object.assign(f, {
@@ -118,7 +116,6 @@ test("ordered metadata has exactly one active slot and no configuration secrets"
         name: "Profile 1",
         number: 1,
         playlist_configured: true,
-        vportal_configured: true,
     });
     assert.equal(f.writes(), 0);
     assert.equal(f.reloads, 0);
@@ -307,18 +304,14 @@ test(
     { dune: true, href: "https://player.test/?n=3" }
 );
 
-test("inactive patch preserves fourteen slots and keeps active media alive", (f) => {
-    const before = clone(f.driver.configuration()),
-        client = f.host.providerMediaClient;
-    f.host.getMediaArray("", () => {});
-    const pending = f.requests.at(-1);
+test("inactive TV patch preserves other slots and legacy data without loading media", (f) => {
+    const before = clone(f.driver.configuration());
     const result = f.invoke("profile_settings", {
         number: 15,
         settings: {
             history_hours: 8760,
             name: "Cinema",
             playlist: "https://new.test/list",
-            vportal: nextPortal,
         },
     });
     assert.equal(result.status, "ok");
@@ -328,14 +321,14 @@ test("inactive patch preserves fourteen slots and keeps active media alive", (f)
     const after = clone(f.driver.configuration());
     assert.equal(after.active, 0);
     assert.deepEqual(after.M3Us.slice(0, 14), before.M3Us.slice(0, 14));
-    assert.notEqual(after.M3Us[14].medSourceId, before.M3Us[14].medSourceId);
-    assert.equal(after.M3Us[14].medUrl, nextPortal);
+    assert.equal(after.M3Us[14].medSourceId, before.M3Us[14].medSourceId);
+    assert.equal(after.M3Us[14].medUrl, before.M3Us[14].medUrl);
     assert.equal(after.M3Us[14].www, "https://new.test/list");
     assert.equal(after.M3Us[14].rechours, 8760);
     assert.equal(f.writes(), 1);
     assert.equal(f.reloads, 0);
-    assert.equal(f.host.providerMediaClient, client);
-    assert.equal(pending.aborts, 0);
+    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.requests.length, 0);
 });
 
 test("active name update does not reload or rotate source and identical patches are no-ops", (f) => {
@@ -359,7 +352,6 @@ test("active name update does not reload or rotate source and identical patches 
             settings: {
                 history_hours: 0,
                 name: "я".repeat(128),
-                vportal: portal,
             },
         }).status,
         "ok"
@@ -369,76 +361,64 @@ test("active name update does not reload or rotate source and identical patches 
     assert.equal(f.reloads, 0);
 });
 
-test("active playlist/archive/VPortal patch reloads once and retires old media", (f) => {
-    const before = clone(f.driver.configuration()),
-        client = f.host.providerMediaClient;
-    f.host.getMediaArray("", () => {});
-    const pending = f.requests.at(-1);
+test("active playlist/archive patch reloads once without starting retired media", (f) => {
+    const before = clone(f.driver.configuration());
     const result = f.invoke("profile_settings", {
         number: 1,
         settings: {
             history_hours: 72,
             name: "New",
             playlist: "https://new.test/list",
-            vportal: nextPortal,
         },
     });
     assert.equal(result.status, "ok");
     assert.equal(result.data.reloaded, true);
     assert.equal(f.reloads, 1);
     assert.equal(f.writes(), 1);
-    assert.equal(pending.aborts, 1);
-    assert.notEqual(f.host.providerMediaClient, client);
+    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.requests.length, 0);
+    assert.equal(
+        f.driver.configuration().M3Us[0].medUrl,
+        before.M3Us[0].medUrl
+    );
     assert.deepEqual(
         clone(f.driver.configuration().M3Us.slice(1)),
         before.M3Us.slice(1)
     );
 });
 
-test("VPortal-only changes cancel old media without reloading channels or guide", (f) => {
-    const before = clone(f.driver.configuration()),
-        client = f.host.providerMediaClient;
-    f.host.getMediaArray("", () => {});
-    const pending = f.requests.at(-1);
-    const result = f.invoke("profile_settings", {
-        number: 1,
-        settings: { vportal: nextPortal },
-    });
-    assert.equal(result.status, "ok");
-    assert.equal(result.data.reloaded, false);
-    assert.equal(f.reloads, 0);
-    assert.equal(pending.aborts, 1);
-    assert.notEqual(f.host.providerMediaClient, client);
-    assert.equal(
-        f.requests.length,
-        1,
-        "no extra request starts during media source synchronization"
-    );
-    assert.equal(f.driver.configuration().M3Us[0].www, before.M3Us[0].www);
-    assert.equal(
-        f.invoke("profile_settings", { number: 1, settings: { vportal: "" } })
-            .status,
-        "ok"
-    );
+test("M3U rejects retired VPortal edits atomically, including clearing the link", (f) => {
+    for (const vportal of [portal, ""]) {
+        unchangedRejection(f, "profile_settings", {
+            number: 1,
+            settings: { name: "Must not save", vportal },
+        });
+    }
     assert.equal(f.host.providerMediaClient, null);
-    assert.equal(f.reloads, 0);
 });
 
 test(
-    "legacy VPortal slot selection seeds only its identity and reloads once",
+    "legacy VPortal links do not block TV selection or create identities",
     (f) => {
         const before = clone(f.driver.configuration());
+        const checked = [];
+        f.host.checkProviderUrl = (url) => {
+            checked.push(url);
+            return url.startsWith("https://playlist.test/");
+        };
         const result = f.invoke("profile", { number: 15 });
         assert.equal(result.status, "ok");
         assert.equal(result.data.profile.number, 15);
         assert.equal(result.data.profile.active, true);
         assert.equal(result.data.dispatched, true);
         assert.equal(f.reloads, 1);
-        assert.equal(f.writes(), 1, "no recursive identity save");
+        assert.equal(f.writes(), 1);
         const after = clone(f.driver.configuration());
-        assert.deepEqual(after.M3Us.slice(0, 14), before.M3Us.slice(0, 14));
-        assert(after.M3Us[14].medSourceId);
-        assert.equal(f.host.providerMediaClient.m3uActive, 14);
+        assert.deepEqual(after.M3Us, before.M3Us);
+        assert.equal(after.M3Us[14].medSourceId, undefined);
+        assert.deepEqual(checked, [before.M3Us[14].www]);
+        assert.equal(f.host.providerMediaClient, null);
+        assert.equal(f.requests.length, 0);
     },
     {
         change: (config) => {
@@ -447,14 +427,32 @@ test(
     }
 );
 
+test("standalone VPortal profile operations still delegate to its driver", (f) => {
+    const requests = [];
+    f.host.__ottActiveProviderDriver = {
+        id: "vportal",
+        remoteProfiles: (request) => {
+            requests.push(clone(request));
+            return { data: { provider: "vportal", saved: true }, status: "ok" };
+        },
+    };
+    const params = { number: 1, settings: { name: "Cinema", vportal: portal } };
+    const result = f.invoke("profile_settings", params);
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.provider, "vportal");
+    assert.deepEqual(requests, [{ action: "profile_settings", params }]);
+    assert.equal(f.writes(), 0);
+    assert.equal(f.reloads, 0);
+});
+
 test("clearing fields is allowed but empty playlist slots cannot be selected", (f) => {
     const result = f.invoke("profile_settings", {
         number: 1,
-        settings: { history_hours: 0, name: "", playlist: "", vportal: "" },
+        settings: { history_hours: 0, name: "", playlist: "" },
     });
     assert.equal(result.status, "ok");
     assert.equal(result.data.profile.playlist_configured, false);
-    assert.equal(result.data.profile.vportal_configured, false);
+    assert.equal("vportal_configured" in result.data.profile, false);
     assert.equal(f.reloads, 1);
     assert.equal(f.host.providerMediaClient, null);
     unchangedRejection(f, "profile", { number: 1 });

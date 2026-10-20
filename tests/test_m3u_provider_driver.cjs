@@ -829,7 +829,7 @@ test("settings editors mask portal keys, guard stale handlers, import files and 
     f.host.editvar = "stale";
     old();
     assert.notEqual(driver.configuration().M3Us[0].name, "stale");
-    key(f, 4, "invalid portal");
+    key(f, 1, secondPortal);
     const reopen = Array.from(f.timers.values()).at(-1);
     const count = f.edits.length;
     f.mount("demo");
@@ -837,62 +837,51 @@ test("settings editors mask portal keys, guard stale handlers, import files and 
     assert.equal(f.edits.length, count);
 });
 
-test("VPortal cold initialization, unchanged refresh, slot cancellation and source-history identity use real client", () => {
-    const f = fixture({
+test("legacy portal slots stay inert through startup, refresh and slot changes without affecting TV", () => {
+    for (const dune of [false, true]) {
+        const f = fixture({
             config: {
                 active: 0,
                 M3Us: [
-                    { medUrl: portal, name: "Home", www: "https://tv.test/" },
-                    { medUrl: secondPortal, www: "https://tv.test/" },
+                    {
+                        medSourceId: "keep-source",
+                        medUrl: portal,
+                        name: "Home",
+                        www: "https://tv.test/",
+                    },
+                    { medUrl: secondPortal, www: "https://tv.test/other" },
                 ],
             },
-        }),
-        driver = f.start();
-    const client = f.host.providerMediaClient;
-    assert(client);
-    const sourceId = driver.configuration().M3Us[0].medSourceId;
-    assert(sourceId);
-    let completed = 0;
-    f.host.getMediaArray("", () => completed++);
-    assert.equal(f.requests[0].settings.url, "https://relay.test/vportal/api");
-    assert.equal(
-        JSON.parse(f.requests[0].settings.data).params.key,
-        "PRIVATE_FIXTURE"
-    );
-    f.host.duneAddSettings(0);
-    assert.equal(f.host.providerMediaClient, client);
-    assert.equal(f.requests[0].aborts, 0);
-    f.requests[0].resolve({
-        items: [
-            { request: { cmd: "play", id: 1 }, title: "Movie", type: "stream" },
-        ],
-        type: "category",
-    });
-    assert.equal(completed, 1);
-    const oldItem = f.host.mediaRecords[0];
-    f.host.providerSetItem("medHistory", "saved-history");
-    f.host.getMediaArray("", () => completed++);
-    const pending = f.requests.at(-1);
-    f.host.selectAndRestart(1);
-    assert.equal(pending.aborts, 1);
-    assert.equal(f.host.providerGetItem("medHistory"), null);
-    assert.equal(f.saved.get("m3umedHistory"), "saved-history");
-    pending.resolve({
-        items: [
-            { title: "Stale", type: "stream", url: "https://old.test/a.mp4" },
-        ],
-        type: "category",
-    });
-    assert.equal(completed, 1);
-    assert.equal(f.host.mediaRecords.length, 0);
-    const count = f.requests.length;
-    f.host.playMedia(oldItem);
-    assert.equal(f.requests.length, count);
-    client.play(oldItem);
-    assert.equal(f.requests.length, count);
-    key(f, 3, "", 1);
-    assert.equal(f.host.getMediaArray, null);
-    assert.equal(f.host.playMedia, f.host._playMedia);
+            dune,
+        });
+        const before = f.saved.get("m3um3uArr");
+        const driver = f.start();
+        f.host.duneAddSettings(0);
+        f.host.m3uUpdateMedia();
+        assert.equal(f.saved.get("m3um3uArr"), before);
+        assert.equal(f.host.providerMediaClient, null);
+        assert.equal(f.host.getMediaArray, null);
+        assert.equal(f.host.playMedia, f.host._playMedia);
+        assert.equal(f.requests.length, 0);
+        f.host.providerSetItem("medHistory", "saved-history");
+        f.host.selectAndRestart(1);
+        assert.equal(f.saved.get("m3umedHistory"), "saved-history");
+        assert.equal(f.host.providerMediaClient, null);
+        assert.equal(f.host.getMediaArray, null);
+        let completed = 0;
+        let catalog;
+        driver.load((value) => {
+            completed++;
+            catalog = value;
+        });
+        assert.equal(f.requests[0].settings.url, "https://tv.test/other");
+        f.requests[0].resolve(playlist);
+        assert.equal(completed, 1);
+        assert.equal(catalog.ids.length, 2);
+        assert.equal(driver.configuration().M3Us[0].medSourceId, "keep-source");
+        assert.equal(driver.configuration().M3Us[1].medUrl, secondPortal);
+        f.dom.window.close();
+    }
 });
 
 test("public HTML params retain15 slots and tolerate malformed escapes; Dune n parameter pins selected slot", () => {
@@ -1211,34 +1200,40 @@ test("catalog teardown, editor save and injected hashing reentry preserve newer 
     );
 });
 
-test("replacing active portal preserves history but rejects old source requests and pending UI", () => {
+test("M3U settings hide legacy portal configuration and preserve it during ordinary edits", () => {
     const f = fixture({
-            config: {
-                active: 0,
-                M3Us: [{ medUrl: portal, www: "https://tv.test/" }],
-            },
-        }),
-        driver = f.start();
-    const original = driver.configuration().M3Us[0].medSourceId;
-    f.host.getMediaArray("", () => {});
-    f.requests[0].resolve({
-        items: [
-            { request: { cmd: "play", id: 1 }, title: "Movie", type: "stream" },
-        ],
-        type: "category",
+        config: {
+            active: 0,
+            M3Us: [
+                {
+                    medSourceId: "keep-source",
+                    medUrl: portal,
+                    www: "https://tv.test/",
+                },
+            ],
+        },
     });
-    const old = f.host.mediaRecords[0];
-    f.host.providerSetItem("medHistory", JSON.stringify([old]));
-    const history = f.saved.get("m3umedHistory");
-    f.host.getMediaArray("", () => {});
-    const pending = f.requests.at(-1);
-    key(f, 3, secondPortal);
-    assert.equal(pending.aborts, 1);
-    assert.notEqual(driver.configuration().M3Us[0].medSourceId, original);
-    assert.equal(f.saved.get("m3umedHistory"), history);
-    const count = f.requests.length;
-    f.host.playMedia(old);
-    assert.equal(f.requests.length, count);
+    const driver = f.start();
+    f.host.providerSetItem("medHistory", "saved-history");
+    f.host.doEditListData(0);
+    assert.equal(f.host.listArray.length, 5);
+    assert.equal(f.host.listArray[4], "Load playlist");
+    assert(
+        !/VPortal|PRIVATE_FIXTURE|portal.test/.test(f.host.listArray.join(" "))
+    );
+    f.host.doEditM3Ua(0);
+    f.host.detailListAction();
+    assert(
+        !/VPortal|PRIVATE_FIXTURE|portal.test/.test(f.host.listDetail.innerHTML)
+    );
+    key(f, 0, "Updated TV");
+    const slot = driver.configuration().M3Us[0];
+    assert.equal(slot.name, "Updated TV");
+    assert.equal(slot.medUrl, portal);
+    assert.equal(slot.medSourceId, "keep-source");
+    assert.equal(f.saved.get("m3umedHistory"), "saved-history");
+    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.requests.length, 0);
 });
 
 test("Dune busy view closes on cancel/Return/source change without hiding a replacement dialog", () => {
@@ -1310,39 +1305,81 @@ test("guide projection stops refreshing the old view when a row callback replace
     }
 });
 
-test("programmatic and raw portal replacement rotate media identity and reject retained old requests", () => {
+test("programmatic and raw legacy portal changes stay inactive and preserve source identity", () => {
     for (const raw of [false, true]) {
         const f = fixture({
-                config: {
-                    active: 0,
-                    M3Us: [{ medUrl: portal, www: "https://tv.test/" }],
-                },
-            }),
-            driver = f.start();
-        f.host.getMediaArray("", () => {});
-        f.requests[0].resolve({
-            items: [
-                {
-                    request: { cmd: "play", id: 7 },
-                    title: "Movie",
-                    type: "stream",
-                },
-            ],
-            type: "category",
+            config: {
+                active: 0,
+                M3Us: [
+                    {
+                        medSourceId: "keep-source",
+                        medUrl: portal,
+                        www: "https://tv.test/",
+                    },
+                ],
+            },
         });
-        const item = f.host.mediaRecords[0],
-            oldId = driver.configuration().M3Us[0].medSourceId,
-            cfg = driver.configuration();
+        const driver = f.start();
+        const cfg = driver.configuration();
         cfg.M3Us[0].medUrl = secondPortal;
         if (raw) {
             f.saved.set("m3um3uArr", JSON.stringify(cfg));
             f.host.m3uUpdateMedia();
         } else driver.saveConfiguration(cfg);
-        assert.notEqual(driver.configuration().M3Us[0].medSourceId, oldId);
-        const count = f.requests.length;
-        f.host.playMedia(item);
-        assert.equal(f.requests.length, count);
+        assert.equal(driver.configuration().M3Us[0].medSourceId, "keep-source");
+        assert.equal(driver.configuration().M3Us[0].medUrl, secondPortal);
+        assert.equal(f.host.providerMediaClient, null);
+        assert.equal(f.host.getMediaArray, null);
+        assert.equal(f.requests.length, 0);
     }
+});
+
+test("switching a Dune catalog to a legacy portal cancels pending loading and keeps its stored value", () => {
+    const f = fixture({
+        config: {
+            active: 0,
+            M3Us: [
+                {
+                    medUrl: "https://catalog.test/root",
+                    www: "https://tv.test/",
+                },
+            ],
+        },
+        dune: true,
+    });
+    const driver = f.start();
+    let completed = 0;
+    f.host.getMediaArray("", () => completed++);
+    const pending = f.requests[0];
+    const cfg = driver.configuration();
+    cfg.M3Us[0].medUrl = portal;
+    driver.saveConfiguration(cfg);
+    assert.equal(pending.aborts, 1);
+    assert.equal(f.host.getMediaArray, null);
+    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.panels["#dialogbox"].visible, false);
+    pending.resolve(
+        '{"channels":[{"title":"Late","stream_url":"https://old.test/movie"}]}'
+    );
+    assert.equal(completed, 0);
+    assert.equal(f.host.mediaRecords.length, 0);
+    assert.equal(f.requests.length, 1);
+    assert.equal(driver.configuration().M3Us[0].medUrl, portal);
+});
+
+test("Dune legacy media entrypoint ignores portal links without fetching or exposing credentials", () => {
+    const f = fixture({ dune: true });
+    const driver = f.start();
+    const results = [];
+    driver.loadMedia(portal, "Old portal", (result) =>
+        results.push(clone(result))
+    );
+    driver.loadMedia("  PoRtAl::invalid  ", "Invalid portal", (result) =>
+        results.push(clone(result))
+    );
+    assert.deepEqual(results, [{ records: [] }, { records: [] }]);
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.errors.length, 0);
 });
 
 test("hosted M3U owns XMLTV without companion requests and disposes stale guide sessions", () => {

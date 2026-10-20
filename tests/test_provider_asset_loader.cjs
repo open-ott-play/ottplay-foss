@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
+const fs = require("node:fs");
+const ts = require("typescript");
 const privateRuntime = require("./helpers/private-runtime.cjs");
 const { integrationFixture } = require("./helpers/provider-driver-fixture.cjs");
 
@@ -67,6 +69,44 @@ function fixture(host = {}) {
     }
     return { assets, ensure, host, publish, requests };
 }
+
+test("standby counts in-flight scripts until settlement and denies new loads", () => {
+    const f = fixture({ clearInterval, clearTimeout, Promise, setTimeout });
+    vm.runInContext(
+        ts.transpileModule(
+            fs
+                .readFileSync("src/core/standby.ts", "utf8")
+                .replace(/^export /gm, ""),
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText,
+        f.host
+    );
+    const gate = f.host.installStandby(
+        f.host,
+        () => "0",
+        () => {}
+    );
+    const lifetime = owner();
+    let mounted = 0,
+        rejected = 0;
+    f.ensure("m3u", lifetime, () => mounted++);
+    lifetime.dispose();
+    gate.set(true);
+    assert.equal(gate.snapshot().state, "suspending");
+    assert.equal(gate.snapshot().pending, 1);
+    f.ensure(
+        "plex",
+        owner(),
+        () => mounted++,
+        () => rejected++
+    );
+    assert.equal(rejected, 1);
+    assert.equal(f.requests.length, 1);
+    f.publish("m3u");
+    f.requests[0].ready();
+    assert.equal(mounted, 0);
+    assert.equal(gate.snapshot().state, "suspended");
+});
 
 test("eager and unknown kinds stay synchronous without network", () => {
     const f = fixture();

@@ -5,6 +5,7 @@ const CLASSIC_MODULES = [
     "build/shared/wire-contracts.js",
     "build/utils/lzstring.js",
     "build/storage/index.js",
+    "build/core/standby.js",
     "build/localization/unicode-data.js",
     "build/localization/unicode.js",
     "build/localization/index.js",

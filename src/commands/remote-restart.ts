@@ -128,6 +128,8 @@ export function remotePlayerInfo(w: any): any {
                 ? platform
                 : "browser",
         runtime: remoteRuntime,
+        standby: typeof w.stbIsStandby === "function" && !!w.stbIsStandby(),
+        ...(w.__ottStandby ? { background: w.__ottStandby.snapshot() } : {}),
         version: "__OTTP_VERSION__",
     };
 }
@@ -476,12 +478,6 @@ function remoteLifecycleCapability(
                 : "current_state_unsupported"
         );
     }
-    if (remoteSettingsLocked(w)) return result("policy_restricted");
-    if (operation === "reload_player")
-        return result(
-            typeof w.restart === "function" ? "ready" : "not_implemented"
-        );
-    if (remoteKiosk(w)) return result("policy_restricted");
     if (operation === "standby" || operation === "wake")
         return result(
             typeof w.stbToggleStandby === "function" &&
@@ -489,6 +485,12 @@ function remoteLifecycleCapability(
                 ? "ready"
                 : "not_implemented"
         );
+    if (remoteSettingsLocked(w)) return result("policy_restricted");
+    if (operation === "reload_player")
+        return result(
+            typeof w.restart === "function" ? "ready" : "not_implemented"
+        );
+    if (remoteKiosk(w)) return result("policy_restricted");
     var hooks = w.__ottRemoteLifecycle;
     return result(
         hooks &&
@@ -1066,7 +1068,8 @@ export function executeRemoteControl(
         );
         return;
     }
-    if (remoteSettingsLocked(w) || remoteKiosk(w)) {
+    var standby = operation === "standby" || operation === "wake";
+    if (!standby && (remoteSettingsLocked(w) || remoteKiosk(w))) {
         fail(
             "rejected",
             "Unlock player settings and kiosk before this operation."
@@ -1077,7 +1080,6 @@ export function executeRemoteControl(
         fail("unsupported", "This lifecycle operation is unavailable.");
         return;
     }
-    var standby = operation === "standby" || operation === "wake";
     var method = remoteLifecycleMethods[operation];
     var setStandby =
         standby && typeof w.stbSetStandby === "function"
@@ -1086,7 +1088,7 @@ export function executeRemoteControl(
     var effect = standby ? setStandby || w.stbToggleStandby : hooks[method];
     var readStandby = w.stbIsStandby;
     afterReply(function () {
-        if (remoteSettingsLocked(w) || remoteKiosk(w)) return;
+        if (!standby && (remoteSettingsLocked(w) || remoteKiosk(w))) return;
         if (standby) {
             if (w.stbIsStandby !== readStandby) return;
             if (setStandby) {

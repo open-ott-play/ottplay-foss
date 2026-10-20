@@ -589,3 +589,85 @@ for (const testCase of shortcutCases) {
 console.log(
     "Modifier seek: capture delivery, native video, repeats, editors, screens and kiosk passed"
 );
+
+// Q/power is Exit, including when a native shell closes asynchronously or a
+// browser denies window.close(). It must retire both lanes without persisting
+// standby, so reopening can restore the checkpointed file and position.
+for (const testCase of shortcutCases) {
+    for (const scenario of [
+        { failure: null, list: false },
+        { failure: null, list: true },
+        { failure: "checkpoint", list: false },
+        { failure: "main", list: true },
+        { failure: "pip", list: true },
+    ]) {
+        const dom = new JSDOM("<body></body>", {
+            runScripts: "outside-only",
+            url: "https://player.example/",
+        });
+        const w = dom.window;
+        const calls = [];
+        function effect(name) {
+            calls.push(name);
+            if (scenario.failure === name) throw new Error("fixture " + name);
+        }
+        try {
+            w.localStorage.setItem("__ottStandbyV1", "0");
+            require("./helpers/screen-runtime.cjs")(w);
+            Object.assign(w, {
+                $: () => ({ is: () => false }),
+                body_onUnload: () => effect("checkpoint"),
+                isListVisible: scenario.list,
+                keys: { POWER: 81 },
+                listKeyHandlerFn: () => {
+                    calls.push("list");
+                    return true;
+                },
+                nativeListInertia: null,
+                settings: {},
+                stbEventToKeyCode: (event) => event.keyCode,
+                stbExit: () => {
+                    effect("exit");
+                    return new Promise(() => {});
+                },
+                stbStop: () => effect("main"),
+                stbStopPip: () => effect("pip"),
+                toggleMainPlayback() {},
+                toggleStandby: () => {
+                    calls.push("standby");
+                    w.localStorage.setItem("__ottStandbyV1", "1");
+                },
+            });
+            w.eval(
+                declarations(
+                    testCase.code,
+                    ["cancelNativeListInertia", "keyHandler", "handleMainKey"],
+                    testCase.name
+                )
+            );
+            w.__ottClassicScreenPort.reconcile();
+            assert.equal(
+                w.__ottClassicScreenPort.screens.current()?.kind || null,
+                scenario.list ? "list" : null
+            );
+            const event = new w.KeyboardEvent("keydown", {
+                cancelable: true,
+                key: "q",
+                keyCode: 81,
+            });
+            assert.doesNotThrow(() => w.keyHandler(event));
+            assert.deepEqual(
+                calls,
+                ["checkpoint", "main", "pip", "exit"],
+                testCase.name +
+                    " Exit completes every cleanup: " +
+                    JSON.stringify(scenario)
+            );
+            assert.equal(w.localStorage.getItem("__ottStandbyV1"), "0");
+            assert.equal(event.defaultPrevented, true);
+        } finally {
+            w.close();
+        }
+    }
+}
+console.log("Exit checkpoints and stops both lanes without persisting standby");

@@ -1,3 +1,4 @@
+pub mod background;
 pub mod native_hls;
 pub mod runtime_diagnostics;
 pub mod lifecycle;

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		DA0FF1000000000000000002 /* LocalMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0FF1000000000000000001 /* LocalMedia.swift */; };
+		DA0FF2000000000000000002 /* NativeBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0FF2000000000000000001 /* NativeBackground.swift */; };
 		DD1A60000000000000000002 /* RuntimeDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1A60000000000000000001 /* RuntimeDiagnostics.swift */; };
 		DD1A60000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DD1A60000000000000000003 /* PrivacyInfo.xcprivacy */; };
 		DEADB0000000000000000002 /* RemoteScreenshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADB0000000000000000001 /* RemoteScreenshot.swift */; };
@@ -37,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		DA0FF1000000000000000001 /* LocalMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalMedia.swift; sourceTree = "<group>"; };
+		DA0FF2000000000000000001 /* NativeBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBackground.swift; sourceTree = "<group>"; };
 		DD1A60000000000000000001 /* RuntimeDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeDiagnostics.swift; sourceTree = "<group>"; };
 		DD1A60000000000000000003 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DEADB0000000000000000001 /* RemoteScreenshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreenshot.swift; sourceTree = "<group>"; };
@@ -103,6 +105,7 @@
 				DAACC0000000000000000011 /* AccessMediaPolicy.swift */,
 				DAACC0000000000000000021 /* AccessMedia.swift */,
 				DA0FF1000000000000000001 /* LocalMedia.swift */,
+				DA0FF2000000000000000001 /* NativeBackground.swift */,
 				DAACC0000000000000000031 /* AccessMediaProxy.swift */,
 				6A7B8C9D0E1F2A3B4C5D6EA /* MobileCommandQueue.swift */,
 				65871D83BE744D7284BAE975 /* MobileNativeMedia.swift */,
@@ -231,6 +234,7 @@
 				DAACC0000000000000000012 /* AccessMediaPolicy.swift in Sources */,
 				DAACC0000000000000000022 /* AccessMedia.swift in Sources */,
 				DA0FF1000000000000000002 /* LocalMedia.swift in Sources */,
+				DA0FF2000000000000000002 /* NativeBackground.swift in Sources */,
 				DAACC0000000000000000032 /* AccessMediaProxy.swift in Sources */,
 				5F2A4B6D1FED79650016851F /* MobileCommandQueue.swift in Sources */,
 				04BC0D8B75264E3D90FEB2C9 /* MobileNativeMedia.swift in Sources */,

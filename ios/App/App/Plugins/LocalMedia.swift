@@ -17,6 +17,18 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         CAPPluginMethod(name: "removeSource", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAccess", returnType: CAPPluginReturnPromise),
     ]
+    private var currentWork: NativeWork.Ticket?
+    private var removeStandbyObserver: (() -> Void)?
+    private func tracked(_ call: CAPPluginCall, _ action: @escaping () -> Void) {
+        guard let ticket = NativeWork.shared.begin() else { call.reject("Player is in standby", "standby"); return }
+        queue.async {
+            self.currentWork = ticket
+            defer { self.currentWork = nil; ticket.finish() }
+            do { try ticket.check(); action() }
+            catch { call.reject("Local media request cancelled") }
+        }
+    }
+    private func checkWork() throws { try currentWork?.check() }
     private let queue = DispatchQueue(label: "ott.offline-media", qos: .userInitiated)
     private var pendingPicker: CAPPluginCall?
     private var pickingFolder = false
@@ -39,6 +51,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         var excluded: [String]
     }
     deinit {
+        removeStandbyObserver?()
         for url in activeScopes.values { url.stopAccessingSecurityScopedResource() }
     }
     private func sourceFile(_ id: String) throws -> URL {
@@ -56,12 +69,16 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
             }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     private func save(_ source: Source) throws {
-        try JSONEncoder().encode(source).write(to: sourceFile(source.id), options: .atomic)
+        let bytes = try JSONEncoder().encode(source)
+        let file = try sourceFile(source.id)
+        if let ticket = currentWork { try ticket.commit { try bytes.write(to: file, options: .atomic) } }
+        else { try bytes.write(to: file, options: .atomic) }
     }
     private func release(_ id: String) {
         activeScopes.removeValue(forKey: id)?.stopAccessingSecurityScopedResource()
     }
     private func resolve(_ source: inout Source) throws -> URL {
+        try checkWork()
         if let active = activeScopes[source.id] { return active }
         var stale = false
         let url = try URL(resolvingBookmarkData: source.bookmark, options: [.withoutUI],
@@ -102,6 +119,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { throw CocoaError(.fileReadNoPermission) }
             var scanned = 0
             for case let url as URL in enumerator {
+                try checkWork()
                 scanned += 1
                 guard scanned <= 20_000 else { throw CocoaError(.fileReadTooLarge) }
                 let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
@@ -118,6 +136,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
             candidates = [("", root)]
         }
         for (path, url) in candidates where !source.excluded.contains(path) {
+            try checkWork()
             guard let (mime, size) = mediaInfo(url) else { continue }
             if let index = source.items.firstIndex(where: { $0.path == path }) {
                 source.items[index].name = String(url.lastPathComponent.prefix(256))
@@ -154,10 +173,21 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
             directory.resolvingSymlinksInPath().appendingPathComponent(file.lastPathComponent).standardizedFileURL
     }
     public override func load() {
+        removeStandbyObserver = NativeWork.shared.onStandbyAsync { [weak self] done in
+            guard let self else { done(); return }
+            self.queue.async { [weak self] in
+                defer { done() }
+                guard let self else { return }
+                for id in Array(self.activeScopes.keys) { self.release(id) }
+            }
+        }
+        guard let ticket = NativeWork.shared.begin() else { return }
         queue.async {
-            guard let directory = try? self.directory(),
+            defer { ticket.finish() }
+            guard (try? ticket.check()) != nil, let directory = try? self.directory(),
                   let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
             for file in files where file.pathExtension != "json" {
+                guard (try? ticket.check()) != nil else { return }
                 let id = file.deletingPathExtension().lastPathComponent
                 if UUID(uuidString: id) != nil && !FileManager.default.fileExists(atPath: directory.appendingPathComponent(id + ".json").path) {
                     try? FileManager.default.removeItem(at: file)
@@ -166,6 +196,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         }
     }
     private func snapshot() throws -> [String: Any] {
+        try checkWork()
         let directory = try directory()
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         var items: [[String: Any]] = files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap { metadata in
@@ -183,6 +214,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         }
         var sourceRows: [[String: Any]] = []
         for var source in try sources() {
+            try checkWork()
             var root: URL?
             var granted = false
             do {
@@ -194,6 +226,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
             sourceRows.append(["id": source.id, "name": source.name, "kind": source.kind,
                                "available": granted, "access": granted ? "granted" : "required"])
             for item in source.items where !source.excluded.contains(item.path) {
+                try checkWork()
                 let url = root.flatMap { child(item.path, root: $0) }
                 let exists = url.flatMap { mediaInfo($0) } != nil
                 let portable = exists ? url.flatMap { bridge?.portablePath(fromLocalURL: $0) } : nil
@@ -206,14 +239,14 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 "directAccess": true, "folderAccess": true]
     }
     @objc func list(_ call: CAPPluginCall) {
-        queue.async { [weak self] in
+        tracked(call) { [weak self] in
             guard let self else { call.reject("Local media unavailable"); return }
             do { call.resolve(try self.snapshot()) } catch { call.reject("Local media unavailable") }
         }
     }
     @objc func remove(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), UUID(uuidString: id) != nil else { call.reject("Invalid local media ID"); return }
-        queue.async { [weak self] in
+        tracked(call) { [weak self] in
             guard let self else { call.reject("Local media unavailable"); return }
             do {
                 for var source in try self.sources() {
@@ -244,7 +277,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
     @objc func requestAccess(_ call: CAPPluginCall) {
         let id = call.getString("id")
         if let id, UUID(uuidString: id) == nil { call.reject("Unknown local media source"); return }
-        queue.async {
+        tracked(call) {
             do {
                 let saved = try self.sources()
                 var target = id.flatMap { requested in saved.first { $0.id == requested } }
@@ -269,7 +302,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
     }
     @objc func removeSource(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), UUID(uuidString: id) != nil else { call.reject("Invalid source ID"); return }
-        queue.async {
+        tracked(call) {
             do {
                 self.release(id)
                 let file = try self.sourceFile(id)
@@ -280,6 +313,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
     }
     private func presentPicker(_ call: CAPPluginCall, folder: Bool, replacing: String? = nil) {
         DispatchQueue.main.async {
+            guard !NativeWork.shared.isStandby else { call.reject("Player is in standby", "standby"); return }
             guard self.pendingPicker == nil else { call.reject("A media picker is already open"); return }
             guard let presenter = self.bridge?.viewController else { call.reject("Media picker unavailable"); return }
             self.pendingPicker = call
@@ -304,10 +338,11 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         let replacing = replacingSource
         replacingSource = nil
         guard urls.count <= 128 else { call.reject("Select at most 128 files at once"); return }
-        queue.async {
+        tracked(call) {
             var created: [String] = []
             do {
                 for url in urls {
+                    try self.checkWork()
                     guard url.startAccessingSecurityScopedResource() else { throw CocoaError(.fileReadNoPermission) }
                     defer { url.stopAccessingSecurityScopedResource() }
                     let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])

@@ -263,7 +263,10 @@ var cloudSettingsTransfer = (function () {
             var writes: SettingsWrite[] = keys
                 // Local source bindings never travel with a settings backup.
                 .filter(function (key) {
-                    return key !== "offlineProfileBindings";
+                    return (
+                        key !== "offlineProfileBindings" &&
+                        key !== "__ottStandbyV1"
+                    );
                 })
                 .map(function (key) {
                     var previous = Object.prototype.hasOwnProperty.call(

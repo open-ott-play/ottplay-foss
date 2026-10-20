@@ -633,11 +633,7 @@ function getChanelsArray(a) {
     }
     var t = m3uArr.M3Us[m3uArr.active].www;
     if (/^portal:/i.test((t || "").trim())) {
-        alert(
-            _(
-                "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
-            )
-        );
+        alert(_("Enter playlist URL"));
         a();
         return;
     }
@@ -666,22 +662,11 @@ function _m3u2popup() {
         (e + 1 + " - " + (r.name || m3uMediaDisplay(r.www)));
 }
 
-function m3uMediaHint() {
-    return (
-        _("Enter the VPortal link as shown in the cabinet") +
-        ":<br>portal::[key:...]http://host/api/v1/"
-    );
-}
-
 function m3uMediaDisplay(value) {
     return String(value || "").replace(
         /(portal::(?:\[|%5b)key:)[\s\S]*?(\]|%5d)/i,
         "$1***$2"
     );
-}
-
-function m3uNewMediaSourceId() {
-    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
 }
 
 function m3uReopenEditor(initKeys) {
@@ -691,18 +676,11 @@ function m3uReopenEditor(initKeys) {
     }, 0);
 }
 
-// VPortal is independent of the TV playlist and scoped to the selected M3U slot.
+// Only legacy Dune catalogs remain attached to M3U slots.
 function m3uUpdateMedia() {
     var active = m3uArr.active;
     var source = m3uArr.M3Us[active].medUrl || "";
     var previous = window.providerMediaClient;
-    if (
-        previous &&
-        previous.m3uSource === source &&
-        previous.m3uActive === active &&
-        getMediaArray === previous.load
-    )
-        return;
     if (previous) previous.dispose();
     window.providerMediaClient = null;
     if (typeof cancelMediaLoad === "function") cancelMediaLoad();
@@ -713,49 +691,10 @@ function m3uUpdateMedia() {
     mediaRecordsPar = null;
     getMediaArray = null;
     if (typeof _playMedia === "function") playMedia = _playMedia;
-    if (!source) return;
-    var parsed =
-        typeof parseVPortalLink === "function" && parseVPortalLink(source);
-    if (parsed) {
-        if (
-            typeof checkProviderUrl === "function" &&
-            !checkProviderUrl(parsed.url)
-        )
-            return;
-        if (
-            !m3uArr.M3Us[active].medSourceId ||
-            (previous &&
-                previous.m3uActive === active &&
-                previous.m3uSource !== source)
-        ) {
-            m3uArr.M3Us[active].medSourceId = m3uNewMediaSourceId();
-            providerSetItem("m3uArr", JSON.stringify(m3uArr));
-        }
-        var client = createVPortalClient(source, {
-            isCurrent: function () {
-                return (
-                    m3uArr.active === active &&
-                    m3uArr.M3Us[active].medUrl === source &&
-                    getMediaArray === client.load &&
-                    playMedia === client.play
-                );
-            },
-            sourceId: m3uArr.M3Us[active].medSourceId,
-            title: m3uArr.M3Us[active].name || _("Media Library"),
-        });
-        client.m3uSource = source;
-        client.m3uActive = active;
-        window.providerMediaClient = client;
-        getMediaArray = client.load;
-        playMedia = client.play;
-    } else if (/^portal:/i.test(source.trim())) {
-        getMediaArray = function (_target, callback) {
-            mediaRecords = [];
-            alert(m3uMediaHint());
-            callback();
-        };
-    } else if (browserName() === "dune") {
-        // Preserve existing Dune catalogs stored before the VPortal setting.
+    // Legacy portal links are inert; VPortal has its own provider profile.
+    if (!source || /^portal:/i.test(source.trim())) return;
+    if (browserName() === "dune") {
+        // Preserve existing non-portal Dune catalogs.
         getMediaArray = _getMediaArray;
     }
 }
@@ -820,12 +759,6 @@ var doEditM3Ua = function (e) {
             curColor +
             ';">' +
             (e.rechours || 0) +
-            "</span><br/>" +
-            _("VPortal link") +
-            ':<br/><span " style="color:' +
-            curColor +
-            ';">' +
-            m3uMediaDisplay(e.medUrl) +
             "</span>";
         listPodval.innerHTML =
             btnDiv(keys.RETURN, strRETURN, "Close") +
@@ -880,7 +813,6 @@ function doEditListData(r) {
             listArray[e++] = _("Playlist file") + ": " + r + strNew;
         }
         listArray[e++] = _("Archive hours") + ": " + (s.rechours || 0);
-        listArray[e] = _("VPortal link") + ": " + m3uMediaDisplay(s.medUrl);
         listDataArray = listArray;
     }
 
@@ -890,34 +822,9 @@ function doEditListData(r) {
         setEdit = function () {
             if (s[r] == editvar.trim()) return;
             if (r === "www" && /^portal:/i.test(editvar.trim())) {
-                alert(
-                    _(
-                        "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
-                    )
-                );
+                alert(_("Enter playlist URL"));
                 m3uReopenEditor(t);
                 return;
-            }
-            if (r === "medUrl") {
-                editvar = editvar.trim();
-                if (
-                    editvar &&
-                    (typeof parseVPortalLink !== "function" ||
-                        !parseVPortalLink(editvar))
-                ) {
-                    alert(m3uMediaHint());
-                    m3uReopenEditor(t);
-                    return;
-                }
-                if (
-                    editvar &&
-                    typeof checkProviderUrl === "function" &&
-                    !checkProviderUrl(parseVPortalLink(editvar).url)
-                ) {
-                    m3uReopenEditor(t);
-                    return;
-                }
-                s.medSourceId = m3uNewMediaSourceId();
             }
             if (a)
                 pdsa.forEach(function (e) {
@@ -939,21 +846,18 @@ function doEditListData(r) {
             _("Enter playlist Name"),
             _("Enter playlist URL") + e,
             _("Enter playlist archive hours") + e,
-            m3uMediaHint(),
             "",
             _("Load playlist"),
         ],
         a = 2,
-        o = 3,
-        l = 5,
+        l = 4,
         u = 1e3;
-    listArray = ["", "", "", "", "", _("Load playlist")];
+    listArray = ["", "", "", "", _("Load playlist")];
     if (typeof readFile == "function") {
         listArray.splice(2, 0, "");
         i.splice(2, 0, _("Select playlist file") + e);
         a = 3;
-        o = 4;
-        l = 6;
+        l = 5;
         u = 2;
     }
     n();
@@ -1004,9 +908,6 @@ function doEditListData(r) {
                             [0],
                             true
                         );
-                        return true;
-                    case o:
-                        t("Edit VPortal link", "medUrl");
                         return true;
                     case l:
                         if (_number > 0 && _number <= m3uCap) loadPlaylist();
@@ -1262,6 +1163,11 @@ function getMediaArrayEXTM3U(e) {
 if (browserName() == "dune") {
     var _getMediaArray = function (e, r) {
         if (e === "") e = m3uArr.M3Us[m3uArr.active].medUrl || "";
+        if (/^portal:/i.test(e.trim())) {
+            mediaRecords = [];
+            r();
+            return;
+        }
         getMediaArrayXML(e, r);
     };
     var box_mac = stb.getMacAddress().replace(/:/g, "");

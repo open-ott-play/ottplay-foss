@@ -248,6 +248,13 @@
         progress?: (message: string) => void
     ): any {
         if (previous) previous.close();
+        if (host.__ottStandby?.blocked())
+            return {
+                close: function () {},
+                guide: function (_id: any, done: any) {
+                    done(null);
+                },
+            };
         var configuration = settings();
         var worker: any = null;
         var disposed = false;
@@ -352,6 +359,10 @@
             // A wedged Worker must not prevent a retry or keep resources alive.
             timeout = host.setTimeout(finished, 1000);
             try {
+                if (host.__ottStandby?.blocked()) {
+                    finished();
+                    return;
+                }
                 old.postMessage({ type: "close" });
             } catch (_) {
                 finished();
@@ -554,5 +565,9 @@
         open: open,
         remoteSnapshot: remoteSnapshot,
         showDiagnostics: showDiagnostics,
+        suspend: function () {
+            cancelDiagnostics();
+            if (previous) previous.close();
+        },
     };
 })(window);

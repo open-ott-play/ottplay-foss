@@ -317,7 +317,9 @@ function coreBridge(f, kind = "vod") {
         .filter(
             (node) =>
                 ts.isFunctionDeclaration(node) &&
-                ["getCoreMediaBackend", "stbStop"].includes(node.name?.text)
+                ["getCoreMediaBackend", "stbStop", "stbIsStandby"].includes(
+                    node.name?.text
+                )
         )
         .map((node) => node.getText(source).replace(/^export /, ""))
         .join("\n");
@@ -367,6 +369,7 @@ function coreBridge(f, kind = "vod") {
                 calls.push("ended:" + generation);
             },
         },
+        _standby: false,
         clearInterval: f.ports.clearInterval,
         coreMediaBackend: null,
         openCoreEngineLease: f.ports.open,

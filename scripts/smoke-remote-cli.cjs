@@ -185,11 +185,6 @@ assert(
     ),
     "OTT_OFFLINE_PROFILES only accepts unsupported-controller; default checks require support"
 );
-assert(
-    !(offlineProfilesOnly && process.env.OTT_OFFLINE_PROFILES),
-    "offline-profiles-only cannot run against an unsupported controller"
-);
-
 const binary = process.env.OTT_CONTROL_BINARY,
     cli = process.env.OTT_CLI;
 assert(binary && cli, "Set OTT_CONTROL_BINARY and OTT_CLI");
@@ -1088,20 +1083,9 @@ function moduleOf(file, requireFn, window) {
             television().offline(1);
             desktop().offline();
             const offlineCaps = (await jsonOn("tv", "caps")).offline_profiles;
-            if (process.env.OTT_OFFLINE_PROFILES === "unsupported-controller") {
-                assert.equal(
-                    offlineCaps,
-                    undefined,
-                    "legacy controller must not advertise offline profiles"
-                );
-                console.log(
-                    "PASS legacy controller does not advertise unsupported local video profiles"
-                );
-                return;
-            }
             assert(
                 offlineCaps,
-                "controller must support offline profiles in the default and offline-only checks"
+                "the current CLI retains the player capabilities"
             );
             assert.deepEqual(offlineCaps.operations, [
                 "list",
@@ -1110,6 +1094,50 @@ function moduleOf(file, requireFn, window) {
                 "export",
                 "import",
             ]);
+            if (process.env.OTT_OFFLINE_PROFILES === "unsupported-controller") {
+                // The old server forwards capabilities, but rejects the newer
+                // profile actions. The old CLI merely hid this metadata.
+                const stored = [...offlineStores.get("dev_test")];
+                const selected = television().selectedChannel;
+                const submitted = submissions.filter(
+                    (request) => request.action === "profile_save"
+                ).length;
+                await assert.rejects(
+                    run("profile", "save", "1", "Rejected"),
+                    (error) => {
+                        assert.equal(error.stdout, "");
+                        assert.match(
+                            error.stderr,
+                            /This controller does not accept Local videos profile requests/
+                        );
+                        assert.match(
+                            error.stderr,
+                            /The request was not repeated/
+                        );
+                        return true;
+                    }
+                );
+                assert.equal(
+                    submissions.filter(
+                        (request) => request.action === "profile_save"
+                    ).length,
+                    submitted + 1,
+                    "the rejected action is submitted once without replay"
+                );
+                assert.equal(
+                    television().controlsReceived.filter(
+                        (request) => request.action === "profile_save"
+                    ).length,
+                    0,
+                    "the old server never delivers an unsupported action"
+                );
+                assert.deepEqual([...offlineStores.get("dev_test")], stored);
+                assert.equal(television().selectedChannel, selected);
+                console.log(
+                    "PASS current CLI reports legacy controller rejection of local profile writes without replay or mutation"
+                );
+                return;
+            }
             const emptyOffline = await jsonOn("tv", "profiles");
             assert.equal(emptyOffline.provider, "offline");
             assert.equal(
@@ -1224,8 +1252,6 @@ function moduleOf(file, requireFn, window) {
                 history_hours: 72,
                 name: "Movies",
                 playlist: "https://example.com/two.m3u?token=TEST_ONLY_TOKEN",
-                vportal:
-                    "portal::[key:TEST_ONLY_KEY]https://example.com/api/v1/",
             }),
             { mode: 0o600 }
         );
@@ -1248,7 +1274,17 @@ function moduleOf(file, requireFn, window) {
         assert.equal(television().configuration.M3Us[1].rechours, 72);
         const listed = await run("profiles");
         assert.match(listed.stdout, /Movies/);
+        assert(!/vportal/i.test(listed.stdout));
         assert(!/TEST_ONLY/.test(listed.stdout + listed.stderr));
+        await assert.rejects(
+            run(
+                "profile",
+                "2",
+                "vportal",
+                "portal::[key:TEST_ONLY_KEY]https://example.com/api/v1/"
+            )
+        );
+        assert.equal(television().configuration.M3Us[1].medUrl || "", "");
         await run("profile", "2");
         assert.equal(television().configuration.active, 1);
         assert.equal(television().playlistLoads, 1);

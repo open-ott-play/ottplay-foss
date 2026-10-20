@@ -27,17 +27,6 @@ function mountM3uProviderSettings(
             "$1***$2"
         );
     }
-    function hint(): string {
-        return (
-            host._("Enter the VPortal link as shown in the cabinet") +
-            ":<br>portal::[key:...]http://host/api/v1/"
-        );
-    }
-    function newMediaIdentity(): string {
-        return (
-            Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
-        );
-    }
     function projectConfiguration(config: M3uConfiguration): void {
         var key = JSON.stringify(config);
         if (key !== configurationKey) {
@@ -70,22 +59,6 @@ function mountM3uProviderSettings(
             return;
         var slot = config.M3Us[config.active];
         var source = slot.medUrl || "";
-        var parsed =
-            typeof host.parseVPortalLink === "function"
-                ? host.parseVPortalLink(source)
-                : null;
-        if (
-            parsed &&
-            (!slot.medSourceId ||
-                (client &&
-                    client.m3uActive === config.active &&
-                    client.m3uSource !== source &&
-                    client.m3uSourceId === slot.medSourceId))
-        ) {
-            slot.medSourceId = newMediaIdentity();
-            driver.saveConfiguration(config);
-            return;
-        }
         var revision = ++mediaRevision;
         var previous = client;
         client = null;
@@ -107,42 +80,9 @@ function mountM3uProviderSettings(
                 host.getMediaArray === client.load
             );
         }
-        if (!source) return;
-        if (parsed) {
-            if (!host.checkProviderUrl(parsed.url)) return;
-            if (!active() || revision !== mediaRevision) return;
-            client = host.createVPortalClient(source, {
-                isCurrent: function () {
-                    return current() && host.playMedia === client.play;
-                },
-                sourceId: slot.medSourceId,
-                title: slot.name || host._("Media Library"),
-            });
-            if (!client) return;
-            client.m3uSource = source;
-            client.m3uActive = config.active;
-            client.m3uSourceId = slot.medSourceId;
-            host.providerMediaClient = client;
-            host.getMediaArray = client.load;
-            host.playMedia = client.play;
-        } else if (/^portal:/i.test(source.trim())) {
-            client = {
-                cancel: function () {},
-                dispose: function () {},
-                load: function (_target: any, callback: any) {
-                    if (
-                        !current() ||
-                        (callback.isCurrent && !callback.isCurrent())
-                    )
-                        return;
-                    host.mediaRecords = [];
-                    host.alert(hint());
-                    callback();
-                },
-            };
-            host.providerMediaClient = client;
-            host.getMediaArray = client.load;
-        } else if (host.browserName() === "dune") {
+        // Legacy portal links are inert; VPortal has its own provider profile.
+        if (!source || /^portal:/i.test(source.trim())) return;
+        if (host.browserName() === "dune") {
             var loadRevision = 0;
             var busyView: any = null;
             function cancel() {
@@ -373,11 +313,7 @@ function mountM3uProviderSettings(
                 "<br/>" +
                 host._("Archive hours") +
                 ": " +
-                text(slot.rechours || 0) +
-                "<br/>" +
-                host._("VPortal link") +
-                ":<br/>" +
-                text(masked(slot.medUrl));
+                text(slot.rechours || 0);
             host.listFooter.innerHTML =
                 footer() +
                 host.renderButtonHint(
@@ -422,7 +358,7 @@ function mountM3uProviderSettings(
             fieldRevision = 0;
         var fields = ["name", "www"].concat(
             typeof host.readFile === "function" ? ["file"] : [],
-            ["rechours", "medUrl", "", "load"]
+            ["rechours", "", "load"]
         );
         function current() {
             return active() && revision === editorRevision;
@@ -454,12 +390,6 @@ function mountM3uProviderSettings(
                         ": " +
                         text(slot.rechours || 0)
                     );
-                if (field === "medUrl")
-                    return (
-                        host._("VPortal link") +
-                        ": " +
-                        text(masked(slot.medUrl))
-                    );
                 return field === "load" ? host._("Load playlist") : "";
             });
             host.listDataArray = host.listArray;
@@ -469,7 +399,6 @@ function mountM3uProviderSettings(
             var key = field === "file" ? "www" : field;
             var keys = key === "rechours" ? [0] : null;
             var captions: any = {
-                medUrl: "Edit VPortal link",
                 name: "Enter playlist Name",
                 rechours: "Enter playlist archive hours",
                 www: "Enter playlist URL",
@@ -493,31 +422,12 @@ function mountM3uProviderSettings(
                 if (!current() || fieldToken !== fieldRevision) return;
                 var config = driver.configuration(),
                     slot: any = config.M3Us[slotIndex];
-                var typed = String(host.editvar),
-                    value = key === "medUrl" ? typed.trim() : typed;
+                var value = String(host.editvar);
                 if (String(slot[key] || "") === value.trim()) return;
                 if (key === "www" && /^portal:/i.test(value.trim())) {
-                    host.alert(
-                        host._(
-                            "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
-                        )
-                    );
+                    host.alert(host._("Enter playlist URL"));
                     reopen();
                     return;
-                }
-                if (key === "medUrl" && value) {
-                    var parsed =
-                        typeof host.parseVPortalLink === "function" &&
-                        host.parseVPortalLink(value);
-                    if (!parsed) {
-                        host.alert(hint());
-                        reopen();
-                        return;
-                    }
-                    if (!host.checkProviderUrl(parsed.url)) {
-                        reopen();
-                        return;
-                    }
                 }
                 if (!current()) return;
                 if (key === "www" && slotIndex === config.active) {
@@ -528,7 +438,6 @@ function mountM3uProviderSettings(
                 if (!current()) return;
                 slot[key] =
                     key === "rechours" ? parseInt(value, 10) || 0 : value;
-                if (key === "medUrl") slot.medSourceId = newMediaIdentity();
                 if (!driver.saveConfiguration(config) || !current()) return;
                 fieldRevision++;
                 render();
@@ -560,12 +469,10 @@ function mountM3uProviderSettings(
                 www: "Enter playlist URL",
             };
             host.listDetail.innerHTML =
-                field === "medUrl"
-                    ? hint()
-                    : (details[field] ? host._(details[field]) : "") +
-                      (["www", "file", "rechours"].indexOf(field) !== -1
-                          ? host._(" (after changing, load playlist)")
-                          : "");
+                (details[field] ? host._(details[field]) : "") +
+                (["www", "file", "rechours"].indexOf(field) !== -1
+                    ? host._(" (after changing, load playlist)")
+                    : "");
         };
         host.listKeyHandler = function (key: number) {
             if (!current()) return false;
@@ -662,7 +569,7 @@ function reportM3uProviderLoad(host: any, driver: any, error: string): boolean {
         host.alert(
             host._(
                 error === "m3u-portal"
-                    ? "Enter this link in VPortal link. Playlist URL requires an M3U playlist."
+                    ? "Enter playlist URL"
                     : "Failed to load channel list!"
             )
         );

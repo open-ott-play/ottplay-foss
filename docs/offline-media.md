@@ -60,10 +60,11 @@ then remove the old imported copy.
 Progressive catalog loading applies to browser-local folders (including here.now
 and the browser UI served by OTT Server) and updated Tauri builds. Tauri's native
 scan publishes available entries while it continues in the background; adding a
-folder starts playback once an eligible entry is ready. The standard loading
-dialog shows processed records and playable videos. A total is shown only when
-known, not estimated from the number found so far. These counts describe catalog
-work, not downloaded or copied video bytes.
+folder starts playback once an eligible entry is ready. A saved Tauri selection
+is looked up directly before the background scan, so resuming it does not wait
+for its place in directory enumeration. The standard loading dialog shows one
+loading title and one count of playable videos found. Internal scan counters
+remain available for diagnostics and stall detection.
 
 Capacitor Android/iOS and the optional server library still return a complete
 catalog before playback starts. They share the loading dialog, but do not yet

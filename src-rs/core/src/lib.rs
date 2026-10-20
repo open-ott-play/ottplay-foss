@@ -6,18 +6,19 @@ use serde_json::Value as JsonValue;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
-pub mod db;
-pub mod offline_media;
+pub mod background_work;
 pub mod control_discovery;
+pub mod db;
 pub mod m3u;
 pub mod native_xmltv;
-pub mod runtime_diagnostics;
+pub mod offline_media;
 mod proxy;
+pub mod runtime_diagnostics;
+mod shared_guide;
 pub mod stalker;
 pub mod tmdb;
 pub mod vportal;
 pub mod xmltv;
-mod shared_guide;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -25,6 +26,20 @@ mod shared_guide;
 
 /// Fetch XMLTV from `urls`, parse, persist to SQLite, return channels+programs.
 pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
+    fetch_xmltv_inner(urls, None).await
+}
+
+pub async fn fetch_xmltv_tracked(
+    urls: &[String],
+    work: background_work::WorkLease,
+) -> anyhow::Result<xmltv::XmltvCache> {
+    fetch_xmltv_inner(urls, Some(work)).await
+}
+
+async fn fetch_xmltv_inner(
+    urls: &[String],
+    work: Option<background_work::WorkLease>,
+) -> anyhow::Result<xmltv::XmltvCache> {
     let refresh = shared_guide::GuideRefresh::new(urls.len())?;
     let mut all_channels: HashMap<String, xmltv::Channel> = HashMap::new();
     let mut all_programs: HashMap<String, Vec<xmltv::Programme>> = HashMap::new();
@@ -33,7 +48,17 @@ pub async fn fetch_xmltv(urls: &[String]) -> anyhow::Result<xmltv::XmltvCache> {
     while refresh.action()? == "FETCH" {
         let source_index = refresh.index()?;
         let url = &urls[source_index];
-        match xmltv::fetch_single(url).await {
+        let fetched = match &work {
+            Some(work) => {
+                work.check().map_err(anyhow::Error::msg)?;
+                xmltv::fetch_single_tracked(url, false, work.clone()).await
+            }
+            None => xmltv::fetch_single(url).await,
+        };
+        if let Some(work) = &work {
+            work.check().map_err(anyhow::Error::msg)?;
+        }
+        match fetched {
             Ok((mut ch, pr)) => {
                 for id in refresh.unowned(ch.keys().cloned().collect())? {
                     let channel = ch
@@ -161,7 +186,10 @@ fn get_epg_slice_using(
 
 /// Fuzzy-match a playlist channel name against XMLTV channels.
 /// Returns `(xmltv_channel_id, channel_name, score)`.
-pub fn match_channel(name: &str, channels: &xmltv::Channels) -> anyhow::Result<Option<(String, f32)>> {
+pub fn match_channel(
+    name: &str,
+    channels: &xmltv::Channels,
+) -> anyhow::Result<Option<(String, f32)>> {
     xmltv::match_channel(name, channels)
 }
 

@@ -182,7 +182,7 @@ SWOP input across a real browser media-ended event.
 The control CLI accepts `ott PLAYER vp TITLE_FILTER` to search the active
 provider's VPortal and start a repeating queue. `ott PLAYER vp --list TITLE_FILTER`
 returns the same numbered titles without changing playback. This supports the
-M3U VPortal setting and Edem's media portal. Matching is case-insensitive and uses
+standalone VPortal provider and Edem's media portal. Matching is case-insensitive and uses
 the shared title normalization. TV channel numbers and EPG searches are unchanged.
 
 Use `ott PLAYER vpr TITLE_FILTER` to shuffle all matching videos once before

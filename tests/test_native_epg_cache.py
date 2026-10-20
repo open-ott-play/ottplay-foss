@@ -23,6 +23,7 @@ from native_epg_fallback_cases import fallback_methods
 from native_epg_resource_cases import resource_methods, RESOURCE_STUBS
 from native_epg_index_cases import index_methods, instrument_index
 from native_android_epg_resource_cases import KOTLIN_ADAPTERS, KOTLIN_RESOURCE_TESTS
+from native_epg_standby_cases import SWIFT_STANDBY_TESTS, KOTLIN_STANDBY_TESTS
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = '<tv><channel id="a"><display-name>Feed A</display-name></channel></tv>'
@@ -250,6 +251,9 @@ SWIFT_TESTS = r"""
     }
 """
 
+# Exercise the actual app ownership gate, omitting only its Capacitor plugin.
+SWIFT_STUBS += (ROOT / "ios/App/App/Plugins/NativeBackground.swift").read_text(encoding="utf-8").split("@objc(NativeBackground)")[0].replace("import Capacitor", "")
+
 KOTLIN_CAPACITOR = r"""
 package com.getcapacitor
 import java.io.File
@@ -289,11 +293,12 @@ object Fixture {
     var stream: (() -> java.io.InputStream)? = null
     var length = -1L
     var closed = 0
+    var cancelled = 0
     val queue = mutableListOf<() -> Unit>()
     fun releaseOne() { check(queue.isNotEmpty()); queue.removeAt(0)() }
-    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear(); stream = null; length = -1; closed = 0 }
+    fun reset() { data = null; requests = 0; sources.clear(); errors.clear(); requestUrls.clear(); deferred = false; queue.clear(); stream = null; length = -1; closed = 0; cancelled = 0 }
 }
-interface Call { fun enqueue(callback: Callback) }
+interface Call { fun enqueue(callback: Callback); fun cancel() }
 interface Callback {
     fun onFailure(call: Call, e: IOException)
     fun onResponse(call: Call, response: Response)
@@ -316,12 +321,14 @@ class OkHttpClient {
         fun build() = OkHttpClient()
     }
     fun newCall(request: Request): Call = object: Call {
+        private var cancelled = false
+        override fun cancel() { cancelled = true; Fixture.cancelled++ }
         override fun enqueue(callback: Callback) {
             Fixture.requests++
             Fixture.requestUrls.add(request.url)
             val action = {
                 val data = Fixture.sources[request.url] ?: Fixture.data
-                val error = Fixture.errors[request.url]
+                val error = if (cancelled) IOException("cancelled") else Fixture.errors[request.url]
                 if (error != null || (data == null && Fixture.stream == null)) callback.onFailure(this, error ?: IOException("offline"))
                 else callback.onResponse(this, Response(Body(data)))
             }
@@ -492,11 +499,12 @@ def main():
         return try String(contentsOf: document.url, encoding: .utf8)
     }
 '''
-            tests += resource_methods()
+            tests += resource_methods() + SWIFT_STANDBY_TESTS
             swift = swift.replace("    // MARK: - Cache", tests + "\n    // MARK: - Cache")
             swift += RESOURCE_STUBS
             swift += "\nMobileXmltvEpg.requestHandler = { request, completion in URLSession.shared.dataTask(with: request.url!, completionHandler: completion).resume() }\ntry MobileXmltvEpg().runCacheTests()\ntry MobileXmltvEpg().runPolicyTests()\ntry MobileXmltvEpg().runFallbackTests()\ntry MobileXmltvEpg().runResourceTests()\ntry MobileXmltvEpg().runIndexTests()\ntry runDownloadResourceTests()\n"
             swift = swift.replace("Date().timeIntervalSince1970", "FixtureClock.now")
+            swift = swift.replace("try MobileXmltvEpg().runCacheTests()", "try MobileXmltvEpg().runStandbyTests()\ntry MobileXmltvEpg().runCacheTests()")
             swift = instrument_index(swift)
             (tmp / "CacheTest.swift").write_text(swift)
             run("swift", "-module-cache-path", str(tmp / "swift-module-cache"), "CacheTest.swift", cwd=tmp)
@@ -507,9 +515,9 @@ def main():
             tests = tests.replace("parseXmltv(", "parseFixture(").replace("gunzip(", "expandedFixture(")
             tests = tests.replace("readCache(", "readCacheText(").replace("writeCache(", "writeCacheFixture(")
             kotlin = kotlin.replace(
-                "    // MARK: - Cache", tests + KOTLIN_ADAPTERS + KOTLIN_RESOURCE_TESTS + "\n    // MARK: - Cache"
+                "    // MARK: - Cache", tests + KOTLIN_ADAPTERS + KOTLIN_RESOURCE_TESTS + KOTLIN_STANDBY_TESTS + "\n    // MARK: - Cache"
             )
-            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests(); MobileXmltvEpgPlugin().runResourceTests() }\n"
+            kotlin += "\nfun main() { MobileXmltvEpgPlugin().runStandbyTests(); MobileXmltvEpgPlugin().runCacheTests(); MobileXmltvEpgPlugin().runPolicyTests(); MobileXmltvEpgPlugin().runFallbackTests(); MobileXmltvEpgPlugin().runResourceTests() }\n"
             kotlin = kotlin.replace("System.currentTimeMillis()", "com.getcapacitor.FixtureClock.now")
             (tmp / "CacheTest.kt").write_text(kotlin)
             (tmp / "Capacitor.kt").write_text(KOTLIN_CAPACITOR)
@@ -527,6 +535,7 @@ def main():
                 "Http.kt",
                 "Annotation.kt",
                 "BuildConfig.kt",
+                str(ROOT / "android/app/src/main/java/play/ott/foss/NativeWork.kt"),
                 "-nowarn",
                 "-classpath", str(ROOT / "vendor/ottplay-core.jar"),
                 "-jvm-target", "17",

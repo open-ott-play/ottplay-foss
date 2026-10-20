@@ -27,6 +27,37 @@ import java.util.concurrent.ConcurrentHashMap
 /** SAF grants reference original documents. Existing private imports remain readable. */
 @CapacitorPlugin(name = "LocalMedia")
 class LocalMediaPlugin : Plugin() {
+    private val ownedWork = ConcurrentHashMap.newKeySet<NativeWork.Ticket>()
+    @Synchronized private fun beginWork(): NativeWork.Ticket? =
+        if (destroyed) null else NativeWork.begin()?.also { ownedWork.add(it) }
+    private fun finishWork(ticket: NativeWork.Ticket) { ownedWork.remove(ticket); ticket.finish() }
+    // shutdownNow returns queued Runnables without invoking them. Their tickets
+    // still need deterministic completion, while running work owns its finally.
+    private class QueuedWork(private val action: () -> Unit, private val discard: () -> Unit) : Runnable {
+        private val claimed = java.util.concurrent.atomic.AtomicBoolean()
+        override fun run() { if (claimed.compareAndSet(false, true)) action() }
+        fun discardBeforeStart() { if (claimed.compareAndSet(false, true)) discard() }
+    }
+    private val currentWork = ThreadLocal<NativeWork.Ticket>()
+    private var stopSubscription: (() -> Unit)? = null
+    private fun checkWork() { currentWork.get()?.check() }
+    private fun submit(call: PluginCall, action: () -> Unit) {
+        val ticket = beginWork() ?: run { call.reject("Local media unavailable or in standby", "standby"); return }
+        try {
+            worker.execute(QueuedWork({
+                currentWork.set(ticket)
+                try { ticket.check(); action() }
+                catch (_: Exception) { call.reject("Local media request cancelled") }
+                finally { currentWork.remove(); finishWork(ticket) }
+            }, { finishWork(ticket); call.reject("Local media owner destroyed") }))
+        } catch (_: Exception) { finishWork(ticket); call.reject("Local media unavailable") }
+    }
+    private fun query(uri: Uri, projection: Array<String>): android.database.Cursor? {
+        checkWork()
+        val signal = android.os.CancellationSignal()
+        currentWork.get()?.cancelWith { signal.cancel() }
+        return context.contentResolver.query(uri, projection, null, null, null, signal)
+    }
     private val worker = Executors.newSingleThreadExecutor()
     private val clients = Executors.newFixedThreadPool(4)
     private val connections = java.util.Collections.newSetFromMap(ConcurrentHashMap<Socket, Boolean>())
@@ -47,9 +78,16 @@ class LocalMediaPlugin : Plugin() {
                 while (!socket.isClosed) {
                     val client = socket.accept()
                     if (connections.size >= 4) { client.close(); continue }
+                    val ticket = beginWork()
+                    if (ticket == null) { client.close(); continue }
                     connections.add(client)
-                    try { clients.execute { try { serve(client) } finally { connections.remove(client); client.close() } } }
-                    catch (_: Exception) { connections.remove(client); client.close() }
+                    ticket.cancelWith { client.close() }
+                    try { clients.execute(QueuedWork({
+                        currentWork.set(ticket)
+                        try { ticket.check(); serve(client) }
+                        finally { currentWork.remove(); connections.remove(client); runCatching { client.close() }; finishWork(ticket) }
+                    }, { connections.remove(client); runCatching { client.close() }; finishWork(ticket) })) }
+                    catch (_: Exception) { connections.remove(client); runCatching { client.close() }; finishWork(ticket) }
                 }
             } catch (_: IOException) { /* destroyed */ }
         }, "ott-offline-media").start()
@@ -60,15 +98,27 @@ class LocalMediaPlugin : Plugin() {
         file.canonicalFile == File(directory.canonicalFile, file.name)
 
     override fun load() {
-        worker.execute {
-            // Interrupted imports never become library entries; discard their private staging files.
-            directory.listFiles().orEmpty().filter { it.name.endsWith(".part") ||
-                (it.name.endsWith(".media") && !File(directory, it.name.removeSuffix(".media") + ".json").isFile) }
-                .forEach { it.delete() }
+        stopSubscription = NativeWork.onStandby {
+            connections.forEach { runCatching { it.close() } }
         }
+        val ticket = beginWork() ?: return
+        try { worker.execute(QueuedWork({
+            try {
+                ticket.check()
+                // Interrupted imports never become library entries; discard their private staging files.
+                directory.listFiles().orEmpty().forEach {
+                    ticket.check()
+                    if (it.name.endsWith(".part") || (it.name.endsWith(".media") &&
+                        !File(directory, it.name.removeSuffix(".media") + ".json").isFile)) it.delete()
+                }
+            } catch (_: Exception) { /* cancelled or unavailable local storage */ }
+            finally { finishWork(ticket) }
+        }, { finishWork(ticket) })) }
+        catch (_: Exception) { finishWork(ticket) }
     }
 
     private fun openSource(item: JSONObject): LocalMediaSource {
+        checkWork()
         if (!item.has("uri")) {
             val file = File(directory, "${item.getString("id")}.media")
             check(privateFile(file)) { "Original media unavailable" }
@@ -76,7 +126,9 @@ class LocalMediaPlugin : Plugin() {
         }
         val uri = Uri.parse(item.getString("uri"))
         require(uri.scheme == "content")
-        val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
+        val signal = android.os.CancellationSignal()
+        currentWork.get()?.cancelWith { signal.cancel() }
+        val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r", signal)
             ?: throw IOException("Original media unavailable")
         try {
             val input = FileInputStream(descriptor.fileDescriptor)
@@ -102,11 +154,13 @@ class LocalMediaPlugin : Plugin() {
 
     private fun saveSource(uri: Uri, name: String, kind: String) {
         val id = sourceId(uri)
+        checkWork()
         val partial = File(sourceDirectory, "$id.part")
         try {
             partial.writeText(JSONObject().put("id", id).put("name", name).put("kind", kind)
                 .put("grantUri", uri.toString()).toString())
-            check(partial.renameTo(File(sourceDirectory, "$id.json")))
+            val publish = { check(partial.renameTo(File(sourceDirectory, "$id.json"))) }
+            currentWork.get()?.commit(publish) ?: publish()
         } finally { partial.delete() }
     }
 
@@ -118,8 +172,10 @@ class LocalMediaPlugin : Plugin() {
     }
 
     private fun snapshot(): JSObject {
+        checkWork()
         val port = startServer()
         val items = metadata().map { item ->
+            checkWork()
             var size = item.optLong("size", 0)
             val available = try { openSource(item).use { size = it.size }; true } catch (_: Exception) { false }
             JSObject().apply {
@@ -153,7 +209,7 @@ class LocalMediaPlugin : Plugin() {
     }
 
     @PluginMethod fun list(call: PluginCall) {
-        worker.execute {
+        submit(call) {
             try {
                 // Re-scan saved trees with their existing grants. Missing sources remain in the catalog.
                 sourceDirectory.listFiles().orEmpty().filter { it.name.endsWith(".json") }.forEach {
@@ -170,7 +226,7 @@ class LocalMediaPlugin : Plugin() {
     @PluginMethod fun remove(call: PluginCall) {
         val id = call.getString("id").orEmpty()
         if (!validId(id)) { call.reject("Invalid local media ID"); return }
-        worker.execute {
+        submit(call) {
             try {
                 val item = metadata().find { it.getString("id") == id }
                 // Only legacy private copies may be deleted. Never delete a referenced source document.
@@ -192,7 +248,7 @@ class LocalMediaPlugin : Plugin() {
     @PluginMethod fun removeSource(call: PluginCall) {
         val id = call.getString("id").orEmpty()
         if (!validId(id)) { call.reject("Invalid source ID"); return }
-        worker.execute {
+        submit(call) {
             try {
                 val affected = metadata().filter { sourceId(it) == id }
                 val sourceFile = File(sourceDirectory, "$id.json")
@@ -213,6 +269,7 @@ class LocalMediaPlugin : Plugin() {
     }
 
     private fun pick(call: PluginCall, folder: Boolean) {
+        if (NativeWork.isStandby) { call.reject("Player is in standby", "standby"); return }
         synchronized(this) {
             if (picking) { call.reject("A media picker is already open"); return }
             picking = true
@@ -234,7 +291,7 @@ class LocalMediaPlugin : Plugin() {
     @PluginMethod fun importFolder(call: PluginCall) = pick(call, true)
 
     @PluginMethod fun requestAccess(call: PluginCall) {
-        worker.execute {
+        submit(call) {
             val requestedId = call.getString("id")
             val denied = sourceDirectory.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull {
                 try { JSONObject(it.readText()) } catch (_: Exception) { null }
@@ -257,8 +314,9 @@ class LocalMediaPlugin : Plugin() {
     private class UnavailableDocument(cause: Exception) : IOException(cause)
 
     private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null): Boolean {
+        checkWork()
         var name = knownName ?: "Local media"
-        if (knownName == null) context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+        if (knownName == null) query(uri, arrayOf(OpenableColumns.DISPLAY_NAME))?.use {
             if (it.moveToFirst()) name = it.getString(0).orEmpty().take(256)
         }
         val declaredMime = knownMime ?: context.contentResolver.getType(uri).orEmpty()
@@ -275,7 +333,8 @@ class LocalMediaPlugin : Plugin() {
         val partial = File(directory, "$id.json.part")
         try {
             partial.writeText(item.toString())
-            check(partial.renameTo(File(directory, "$id.json")))
+            val publish = { check(partial.renameTo(File(directory, "$id.json"))) }
+            currentWork.get()?.commit(publish) ?: publish()
         } finally { partial.delete() }
         known.add(uri.toString())
         return true
@@ -284,7 +343,7 @@ class LocalMediaPlugin : Plugin() {
     @ActivityCallback private fun selected(call: PluginCall?, result: ActivityResult) {
         picking = false
         if (call == null) return
-        worker.execute {
+        submit(call) {
             try {
                 if (result.resultCode == Activity.RESULT_OK) {
                     val uris = mutableListOf<Uri>()
@@ -310,7 +369,7 @@ class LocalMediaPlugin : Plugin() {
     private fun scanTree(tree: Uri) {
         val root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
         var folderName = "Local folder"
-        context.contentResolver.query(root, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use {
+        query(root, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME))?.use {
             if (it.moveToFirst()) folderName = it.getString(0).orEmpty().take(256)
         }
         saveSource(tree, folderName, "folder")
@@ -321,13 +380,15 @@ class LocalMediaPlugin : Plugin() {
         var count = 0
         while (!pending.isEmpty()) {
             check(!destroyed)
+            checkWork()
             val parent = pending.removeFirst()
             if (!seen.add(parent)) continue
             require(seen.size <= 4096) { "Too many folders" }
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parent)
-            context.contentResolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE), null, null, null)?.use { cursor ->
+            query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE))?.use { cursor ->
                 while (cursor.moveToNext()) {
+                    checkWork()
                     require(++count <= 20000) { "Too many documents" }
                     val document = cursor.getString(0)
                     val name = cursor.getString(1).orEmpty().take(256)
@@ -346,7 +407,7 @@ class LocalMediaPlugin : Plugin() {
     @ActivityCallback private fun selectedFolder(call: PluginCall?, result: ActivityResult) {
         picking = false
         if (call == null) return
-        worker.execute {
+        submit(call) {
             try {
                 if (result.resultCode == Activity.RESULT_OK) {
                     val tree = result.data?.data ?: throw IOException("No folder selected")
@@ -423,12 +484,14 @@ class LocalMediaPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        stopSubscription?.invoke(); stopSubscription = null
         synchronized(this) {
             destroyed = true
             listener?.close(); listener = null
         }
         connections.forEach { try { it.close() } catch (_: Exception) { } }
-        clients.shutdownNow(); worker.shutdownNow()
+        ownedWork.forEach { it.cancel() }
+        (clients.shutdownNow() + worker.shutdownNow()).forEach { (it as? QueuedWork)?.discardBeforeStart() }
         super.handleOnDestroy()
     }
 

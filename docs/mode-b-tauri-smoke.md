@@ -205,6 +205,7 @@ to windowed mode. See [SDL's corresponding fix](https://github.com/libsdl-org/SD
 - [ ] Channel list loads
 - [ ] Start playback on one stream (HLS / progressive as available)
 - [ ] Pause / resume; volume or wake-lock behavior sanity-check
+- [ ] With a valid interface language already loaded, run two `ott PLAYER standby` → `ott PLAYER go` cycles in the same window without reload; repeat for manual and system language modes. Confirm standby drains to `suspended` with `pending: 0`, then the same provider/profile/item resumes with advancing playback; no language settings reopen, and each navigation key produces one action.
 
 ### C. PiP (native)
 

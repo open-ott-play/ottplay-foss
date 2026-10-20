@@ -241,6 +241,7 @@ function classicPlaybackCommand(command: any): void {
         var localChannel =
             type === "live" && w.__ottActiveProviderDriver?.id === "offline";
         var finiteChannel = type === "finite-channel" || localChannel;
+        var mediaChannel = type === "vod" && command.channelSelection != null;
         var id =
             command.channelId !== undefined
                 ? command.channelId
@@ -301,11 +302,27 @@ function classicPlaybackCommand(command: any): void {
                   sourceId: history.sourceId,
               }
             : history;
+        if (mediaChannel) {
+            // Resolve and checkpoint the real media ID, while the channel
+            // list retains its ordinary stable selection and history.
+            history = {
+                channelId: String(command.channelSelection),
+                kind: "live",
+                payload: {
+                    c: w.catIndex,
+                    ci: command.channelSelection,
+                    i: w.primaryIndex,
+                },
+                sourceId: classicPlaybackSource(w),
+            };
+        }
         w.playType =
             type === "archive"
                 ? history.archiveStart
                 : type === "vod"
-                  ? -1e11
+                  ? mediaChannel
+                      ? -99999999999
+                      : -1e11
                   : finiteChannel
                     ? -99999999999
                     : 0;

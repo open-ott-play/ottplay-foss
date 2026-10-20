@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- When a valid interface language is already loaded, resume the configured provider and channel after repeated standby/go without reopening language settings. Retain the resolved system language and original popup menu, including hidden provider settings, and ignore stale language callbacks from an earlier startup. Avoid duplicate playback listeners and polling timers, and bound Tauri update checks. Cancel local metadata scans and abandoned media requests between filesystem operations while keeping in-flight reads counted until they actually finish.
+
+- Make remote standby/go suspend playback, provider requests, local scans and EPG work while keeping control connected. Persist the device-local state across reload, block late playback and kiosk watchdog recovery until go, and expose actual background drain status. Allow authenticated standby/go with kiosk/settings locks while retaining other lifecycle restrictions.
+
+- Remove VPortal setup, catalog loading and remote settings from M3U profiles. Use the standalone VPortal provider for selected portal sections; stored legacy device values are preserved but inactive. M3U remote metadata and settings comparisons now cover only TV settings.
+
+- Project selected Plex folders and standalone VPortal sections into the standard channel playlist. Start from the first usable batch, append remaining videos without restarting playback, and ignore results from cancelled loads.
+- Update an already open channel list as background batches arrive, preserving the focused item and any active dialog or search.
+- Resolve channel-backed media with the existing loading dialog, authentication and watch history. Keep file navigation aligned with the current channel order, including after shuffle or background additions.
+- Keep VPortal direct-file identities stable when signed URLs rotate, and refresh the playback URL before selection or repeat.
+- Close the owned loading dialog after a VPortal resolution failure so the same item can be retried; ignore cancelled and superseded replies.
+- Put media playlist repeat in channel-list Actions; reuse existing search, Shuffle and Reset order instead of a separate media browser during normal playback.
+- Apply repeat changes to a pending next-file transition without leaving playback stopped, and open All rather than an empty Favorites category when the saved media file is missing.
+- Include tracks from selected Plex music libraries in the standard playlist.
+- Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
 ## [1.1.58] - 2026-10-19

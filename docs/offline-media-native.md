@@ -86,7 +86,7 @@ reconnect through the native picker when necessary.
 Updated Tauri builds publish cumulative native snapshots during background
 scanning. The frontend starts playback from an eligible partial catalog and
 appends later entries without restarting the video. The standard spinner shows
-processed records and playable entries; unknown totals are omitted. Android and
+one loading title and one count of playable videos found. Android and
 iOS still return one completed snapshot per request. Their shared spinner does
 not imply background scanning or first-batch playback. Large or stalled catalogs
 can reach the shared provider's 60-second inactivity timeout.

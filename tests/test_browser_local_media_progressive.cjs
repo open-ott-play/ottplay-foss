@@ -3,6 +3,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const standby = ts.transpileModule(
+    fs
+        .readFileSync(path.join(__dirname, "../src/core/standby.ts"), "utf8")
+        .replace(/^export /gm, ""),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
 const source = ts.transpileModule(
     fs
         .readFileSync(
@@ -27,6 +33,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     const files = Array.from({ length: count }, (_, index) => ({
         getFile: async () => {
             reads++;
+            await waits.file;
             if (index === brokenIndex) {
                 const error = new Error("File removed during scan");
                 error.name = "NotFoundError";
@@ -44,6 +51,10 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
         name: "movie-" + index + "." + extension,
     }));
     const folder = {
+        getDirectoryHandle: async () => {
+            await waits.directory;
+            return folder;
+        },
         getFileHandle: async (name) => files.find((file) => file.name === name),
         kind: "directory",
         name: "Movies",
@@ -132,14 +143,82 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
         String,
     });
     vm.runInContext(source, context);
+    vm.runInContext(standby, context);
     return {
         api: context.installBrowserLocalMedia(w),
+        installStandby: () =>
+            context.installStandby(
+                w,
+                () => "0",
+                () => {}
+            ),
         permissionRequests: () => permissionRequests,
         reads: () => reads,
         revoked: () => revoked,
+        w,
     };
 }
 (async () => {
+    let releaseFile;
+    const sleeping = fixture(2, "mp4", -1, undefined, {
+        file: new Promise((resolve) => {
+            releaseFile = resolve;
+        }),
+    });
+    const sleepingGate = sleeping.installStandby();
+    const scan = sleeping.api.list();
+    while (!sleeping.reads())
+        await new Promise((resolve) => setImmediate(resolve));
+    sleepingGate.set(true);
+    sleeping.api.suspend();
+    assert.equal(sleepingGate.snapshot().state, "suspending");
+    assert.equal(sleepingGate.snapshot().pending, 1);
+    releaseFile();
+    const stoppedScan = await scan;
+    await Promise.resolve();
+    assert.equal(stoppedScan.cancelled, true);
+    assert.equal(stoppedScan.items.length, 0);
+    assert.equal(
+        sleeping.reads(),
+        1,
+        "Standby prevents another filesystem read"
+    );
+    assert.equal(sleepingGate.snapshot().state, "suspended");
+    let releaseDirectory;
+    const preferredSleep = fixture(1, "mp4", -1, undefined, {
+        directory: new Promise((resolve) => {
+            releaseDirectory = resolve;
+        }),
+    });
+    const preferredGate = preferredSleep.installStandby();
+    const preferredScan = preferredSleep.api.list(
+        undefined,
+        "source-movies:sub/movie-0.mp4"
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    preferredGate.set(true);
+    preferredSleep.api.suspend();
+    releaseDirectory();
+    assert.equal((await preferredScan).cancelled, true);
+    assert.equal(
+        preferredSleep.reads(),
+        0,
+        "Retired preferred path cannot start a file read"
+    );
+    const stopped = fixture(10000);
+    const stoppedResult = await stopped.api.list((snapshot) => {
+        if (snapshot.items.length) stopped.api.suspend();
+    });
+    assert.equal(stoppedResult.cancelled, true);
+    assert(
+        stopped.reads() < 10000,
+        "standby retires traversal before reading the remaining tree"
+    );
+    stopped.w.__ottStandby = {
+        blocked: () => true,
+        error: () => new Error("standby"),
+    };
+    await assert.rejects(stopped.api.list(), /standby/);
     const f = fixture(10000);
     let publications = 0,
         firstReads = 0,

@@ -49,6 +49,7 @@ function fixture(managed = false) {
         _corePipSession: 0,
         _inLiveRestart: false,
         _playSession: 1,
+        _standby: false,
         catIndex: 0,
         cats: { News: [101, 202] },
         catsArray: ["News"],
@@ -104,6 +105,7 @@ function fixture(managed = false) {
         "getCoreMediaBackend",
         "openCoreEngineLease",
         "stbIsPlaying",
+        "stbIsStandby",
     ]);
     c.startCoreEngine = (_url, _position, observe) => {
         c._playSession++;

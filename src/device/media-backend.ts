@@ -44,6 +44,7 @@ interface MediaEngineLease {
     tracks?(kind: string): any;
 }
 interface MediaBackendPorts {
+    admitted?(): boolean;
     clearInterval(timer: any): void;
     context(): MediaBackendContext | null;
     emit(
@@ -86,6 +87,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
         request: MediaBackendRequest,
         previewEvent?: (handle: any, type: string) => void
     ): any {
+        if (ports.admitted && !ports.admitted()) return null;
         function announce(type: string): void {
             if (previewEvent) previewEvent(handle, type);
             else publish(handle, type);
@@ -409,6 +411,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
         var handle: any = {
             active: function () {
                 return (
+                    (!ports.admitted || ports.admitted()) &&
                     current() &&
                     (lane !== "main" || !context || domainCurrent())
                 );
@@ -524,7 +527,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     timelineOffset: live ? 0 : position - sample.position,
                     url: request.url,
                 });
-                return next.active()
+                return next && next.active()
                     ? {
                           accepted: true,
                           dispatched: true,

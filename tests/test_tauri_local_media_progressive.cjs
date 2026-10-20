@@ -69,7 +69,7 @@ function fixture(snapshots, options = {}) {
         dialogOwner = owner;
         return owner;
     }
-    const w = {
+    let w = {
         _: (text) => text,
         __ottClassicScreenPort: {
             listOwner: () => listOwner,
@@ -111,6 +111,13 @@ function fixture(snapshots, options = {}) {
         showPage() {},
         stbSetItem() {},
     };
+    // Exercise the real provider's saved-selection admission with the same
+    // Tauri bridge fixture used by the polling and cancellation scenarios.
+    if (options.host)
+        w = Object.assign(options.host, {
+            __TAURI__: w.__TAURI__,
+            fetch: w.fetch,
+        });
     if (options.fetch) w.fetch = options.fetch;
     if (options.mode) {
         delete w.__TAURI__;
@@ -271,6 +278,200 @@ async function flush() {
     endpointReady = true;
     assert.equal((await discovery.api.list()).items.length, 1);
     assert.equal(discovery.queued(), 0);
+
+    const savedId = "751db9d74d2cfe13";
+    const standby = fixture([catalog(1, 1, false)]);
+    const standbyError = new Error("Player is in standby");
+    standby.w.__ottStandby = {
+        blocked: () => true,
+        error: () => standbyError,
+    };
+    await assert.rejects(
+        standby.api.list(
+            () => assert.fail("standby cannot publish preferred-file progress"),
+            savedId
+        ),
+        (error) => error === standbyError
+    );
+    assert.equal(
+        standby.commands.length,
+        0,
+        "standby never invokes native lookup"
+    );
+    assert.equal(standby.reads(), 0, "standby never requests the catalog");
+    assert.equal(
+        standby.queued(),
+        0,
+        "standby never schedules catalog polling"
+    );
+
+    let finishSuspendedEndpoint;
+    const suspended = fixture([catalog(1, 1, false)], {
+        endpoint: () =>
+            new Promise((resolve) => {
+                finishSuspendedEndpoint = resolve;
+            }),
+    });
+    const suspendedResult = suspended.api.list(
+        () =>
+            assert.fail(
+                "suspended lookup cannot publish preferred-file progress"
+            ),
+        savedId
+    );
+    await flush();
+    assert.equal(suspended.commands[0].args.preferredId, savedId);
+    suspended.api.suspend();
+    finishSuspendedEndpoint({ endpoint: "http://localhost/catalog" });
+    const cancelledDiscovery = await suspendedResult;
+    assert.equal(cancelledDiscovery.cancelled, true);
+    assert.equal(
+        suspended.reads(),
+        0,
+        "endpoint completion after suspend cannot start a catalog request"
+    );
+    assert.equal(cancelledDiscovery.items.length, 0);
+    assert.equal(suspended.queued(), 0, "suspended discovery leaves no poller");
+    await assert.rejects(suspended.api.snapshot(), /scan to finish/);
+
+    const savedFile = {
+        id: savedId,
+        name: "2999-saved-video.mp4",
+        sourceId: "folder",
+        url: "/video/" + savedId,
+    };
+    const firstFile = {
+        id: "first",
+        name: "0001-first-video.mp4",
+        sourceId: "folder",
+        url: "/video/first",
+    };
+    const tailFile = {
+        id: "tail",
+        name: "3000-tail-video.mp4",
+        sourceId: "folder",
+        url: "/video/tail",
+    };
+    function savedCatalog(items, scanned, scanning = true) {
+        return { ...catalog(scanned, 0, scanning), items };
+    }
+    const savedProvider =
+        require("./helpers/provider-driver-fixture.cjs").integrationFixture(
+            "offline",
+            { offlineprimaryIndex: "2998" }
+        );
+    savedProvider.host.clearBootHide = () => {};
+    const appended = [];
+    savedProvider.host.__ottChannels = {
+        append: (ids) => appended.push(...ids),
+        reset() {},
+    };
+    savedProvider.host.__ottOfflineProfiles = {
+        filter: (value) => value,
+        read: () => ({ active: 3 }),
+        selection: () => "local-" + savedId,
+    };
+    const savedStartup = fixture(
+        [
+            savedCatalog([firstFile], 1),
+            savedCatalog([firstFile, savedFile], 2),
+            savedCatalog([firstFile, savedFile, tailFile], 3000, false),
+        ],
+        { host: savedProvider.host }
+    );
+    savedProvider.host.loadProv();
+    await flush();
+    assert.equal(
+        savedStartup.commands[0].args.preferredId,
+        savedId,
+        "profile 3's opaque saved ID reaches native lookup unchanged"
+    );
+    assert.equal(savedStartup.commands[0].args.refresh, undefined);
+    assert.equal(
+        savedProvider.completed,
+        0,
+        "an earlier file must not replace the saved file while it is pending"
+    );
+    await savedStartup.tick();
+    assert.equal(
+        savedProvider.completed,
+        1,
+        "saved file releases startup before all 3,000 entries are enumerated"
+    );
+    assert.equal(savedStartup.reads(), 2);
+    assert.equal(
+        savedStartup.queued(),
+        1,
+        "full scan remains in the background"
+    );
+    const resumedChannel = savedProvider.host.channels["local-" + savedId];
+    assert.ok(resumedChannel, "the saved channel is ready for playback");
+    await savedStartup.tick();
+    assert.equal(
+        savedProvider.completed,
+        1,
+        "scan completion cannot restart playback"
+    );
+    assert.strictEqual(
+        savedProvider.host.channels["local-" + savedId],
+        resumedChannel
+    );
+    assert.deepEqual(appended, ["local-tail"]);
+    assert.equal(savedStartup.queued(), 0);
+
+    const replacedProvider =
+        require("./helpers/provider-driver-fixture.cjs").integrationFixture(
+            "offline"
+        );
+    replacedProvider.host.clearBootHide = () => {};
+    let sameBinding = true;
+    replacedProvider.host.__ottOfflineProfiles = {
+        catalogGuard: () => () => sameBinding,
+        filter: (value) => value,
+        read: () => ({ active: 3 }),
+        selection: () => "local-" + savedId,
+    };
+    replacedProvider.host.__ottChannels = {
+        append: () => assert.fail("retired profile cannot append local videos"),
+        reset() {},
+    };
+    const replacedStartup = fixture(
+        [savedCatalog([savedFile], 1), savedCatalog([savedFile, tailFile], 2)],
+        { host: replacedProvider.host }
+    );
+    replacedProvider.host.loadProv();
+    await flush();
+    assert.equal(replacedProvider.completed, 1);
+    sameBinding = false;
+    await replacedStartup.tick();
+    assert.equal(replacedProvider.host.channels["local-tail"], undefined);
+    assert.equal(replacedProvider.completed, 1);
+    assert.equal(
+        replacedStartup.queued(),
+        0,
+        "profile replacement retires polling"
+    );
+
+    let browserPreference;
+    const browserPreferred = fixture([], {
+        mode: "browser",
+        read(_progress, preferredId) {
+            browserPreference = preferredId;
+            return Promise.resolve(savedCatalog([savedFile], 1, false));
+        },
+    });
+    await browserPreferred.api.list(() => true, savedId);
+    assert.equal(
+        browserPreference,
+        savedId,
+        "browser lookup keeps its saved ID"
+    );
+    assert.equal(
+        browserPreferred.commands.length,
+        0,
+        "browser never invokes Tauri"
+    );
+
     for (const mode of ["browser", "native"]) {
         let finish, progress;
         let answer = null;
@@ -423,9 +624,24 @@ async function flush() {
         "first add uses the standard owned spinner"
     );
     assert.equal(
+        (ui.html().match(/Loading\. Please wait\.\.\./g) || []).length,
+        1,
+        "import dialog renders one static loading heading"
+    );
+    assert.equal(
+        (ui.html().match(/id="local-media-progress"/g) || []).length,
+        1,
+        "import dialog has a single dynamic progress node"
+    );
+    assert.doesNotMatch(
+        ui.html().match(/id="local-media-progress">([^<]*)/)[1],
+        /Loading/,
+        "counter updates cannot replace or duplicate the static loading heading"
+    );
+    assert.equal(
         ui.progress(),
-        "Loading. Please wait... (1) · Local videos: 0",
-        "ongoing import shows actual progress without an invented total"
+        "Local videos: 0",
+        "ongoing import shows one playable-video count without repeating the heading"
     );
     assert.equal(ui.played(), 0);
     await ui.tick();
@@ -454,7 +670,8 @@ async function flush() {
     await flush();
     assert.equal(
         known.progress(),
-        "Loading. Please wait... (7 / 10000) · Local videos: 0"
+        "Local videos: 0",
+        "known scan totals do not duplicate the visible playable-video count"
     );
     assert.equal(
         known.played(),
@@ -480,6 +697,11 @@ async function flush() {
     const refreshed = fixture([catalog(2, 1, false)]);
     await refreshed.api.list();
     assert.equal(
+        Object.hasOwn(refreshed.commands[0].args, "preferredId"),
+        false,
+        "ordinary catalog reads omit an absent preferred ID"
+    );
+    assert.equal(
         refreshed.commands.filter((command) => command.args.refresh).length,
         0,
         "ordinary catalog reads never restart scanning"
@@ -492,13 +714,22 @@ async function flush() {
         1,
         "explicit Refresh starts a native rescan once"
     );
+    assert.ok(
+        refreshed.commands.every((command) => !command.args.preferredId),
+        "refresh without a saved selection does not invent a preferred file"
+    );
 
     const cancelled = fixture([catalog(0, 0), catalog(1, 1, false)]);
-    const first = cancelled.api.list(() => true);
+    const first = cancelled.api.list(() => true, "old-profile-file");
     await flush();
-    const replacement = cancelled.api.list();
+    const replacement = cancelled.api.list(undefined, "new-profile-file");
     await flush();
     assert.equal((await replacement).items.length, 1);
+    assert.deepEqual(
+        cancelled.commands.map((command) => command.args.preferredId),
+        ["old-profile-file", "new-profile-file"],
+        "replacement forwards its own preferred file instead of retaining the old one"
+    );
     await cancelled.tick();
     assert.equal((await first).cancelled, true);
     assert.equal(
@@ -583,9 +814,10 @@ async function flush() {
     );
 
     const stopped = fixture([catalog(0, 0)]);
-    const stopResult = stopped.api.list(() => false);
+    const stopResult = stopped.api.list(() => false, savedId);
     assert.equal((await stopResult).cancelled, true);
     assert.equal(stopped.queued(), 0);
+    assert.equal(stopped.commands[0].args.preferredId, savedId);
 
     const stalled = fixture([catalog(0, 0)]);
     const stalledResult = stalled.api.list().then(

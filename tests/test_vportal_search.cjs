@@ -776,13 +776,13 @@ for (const response of [
     const [item] = directQueue(f, [
         directStream("Find item", "https://cdn.example/old.mp4", { id: 10 }),
     ]);
-    let called = 0;
-    f.client.resolve(item, () => called++, true);
+    const resolved = [];
+    f.client.resolve(item, (value) => resolved.push(value), true);
     f.requests[1].receive(response);
-    assert.equal(
-        called,
-        0,
-        "Missing, changed, invalid or ambiguous items cannot fall back to a stale URL"
+    assert.deepEqual(
+        resolved,
+        [null],
+        "Missing, changed, invalid or ambiguous items complete without a stale URL"
     );
     assert.deepEqual(f.notifications, ["VPortal request failed"]);
 }
@@ -798,15 +798,19 @@ for (const action of [
     const [item] = directQueue(f, [
         directStream("Find item", "https://cdn.example/old.mp4"),
     ]);
-    let called = 0;
-    f.client.resolve(item, () => called++, true);
+    const resolved = [];
+    f.client.resolve(item, (value) => resolved.push(value), true);
     if (action === "transport") f.requests[1].fail();
     else if (action === "source") f.sourceCurrent(false);
     else f.client[action]();
     f.requests[1].receive(
         page([directStream("Find item", "https://cdn.example/new.mp4")])
     );
-    assert.equal(called, 0, action + " cannot revive old signed URLs");
+    assert.deepEqual(
+        resolved,
+        action === "transport" ? [null] : [],
+        action + " cannot revive old signed URLs"
+    );
     assert.deepEqual(
         f.notifications,
         action === "transport" ? ["VPortal request failed"] : []
@@ -879,12 +883,12 @@ for (const action of [
     );
     assert.equal(resolved.stream_url, "https://cdn.example/new.mp4");
     item.__ottMediaOrigin.target.vportalSource = "different-source";
-    f.client.resolve(
-        item,
-        () => {
-            throw new Error("Foreign origin resolved");
-        },
-        true
+    const rejected = [];
+    f.client.resolve(item, (value) => rejected.push(value), true);
+    assert.deepEqual(
+        rejected,
+        [null],
+        "Foreign origin completes without playback"
     );
     assert.equal(
         f.requests.length,

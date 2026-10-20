@@ -118,6 +118,16 @@ export function installBrowserLocalMedia(w: any): any {
         onProgress?: (catalog: any) => boolean | void,
         preferredId?: string
     ): Promise<any> {
+        if (w.__ottStandby?.blocked())
+            return Promise.reject(w.__ottStandby.error());
+        var pending = scan(onProgress, preferredId);
+        if (w.__ottStandby) w.__ottStandby.observe(pending);
+        return pending;
+    }
+    function scan(
+        onProgress?: (catalog: any) => boolean | void,
+        preferredId?: string
+    ): Promise<any> {
         if (typeof onProgress !== "function") onProgress = undefined;
         var generation = ++scanGeneration;
         var items: any[] = [],
@@ -196,6 +206,7 @@ export function installBrowserLocalMedia(w: any): any {
             prefix: string,
             sourceId: string
         ): Promise<void> {
+            if (!active()) return Promise.resolve();
             var iterator = handle.values();
             function next(): Promise<void> {
                 if (!active()) return Promise.resolve();
@@ -219,10 +230,10 @@ export function installBrowserLocalMedia(w: any): any {
                     else
                         work = Promise.resolve()
                             .then(function () {
-                                return child.getFile();
+                                return active() ? child.getFile() : null;
                             })
                             .then(function (file) {
-                                if (media(file))
+                                if (active() && file && media(file))
                                     add(
                                         sourceId + ":" + name,
                                         file,
@@ -274,10 +285,12 @@ export function installBrowserLocalMedia(w: any): any {
             });
             return handle
                 .then(function (directory) {
-                    return directory.getFileHandle(parts[parts.length - 1]);
+                    return active()
+                        ? directory.getFileHandle(parts[parts.length - 1])
+                        : Promise.reject();
                 })
                 .then(function (fileHandle) {
-                    return fileHandle.getFile();
+                    return active() ? fileHandle.getFile() : Promise.reject();
                 })
                 .then(function (file) {
                     if (media(file)) add(preferredId!, file, path, record.id);
@@ -547,6 +560,9 @@ export function installBrowserLocalMedia(w: any): any {
         remove: remove,
         removeSource: remove,
         requestAccess: requestAccess,
+        suspend: function () {
+            scanGeneration++;
+        },
     };
     w.__ottBrowserLocalMedia = api;
     w.addEventListener("unload", function () {
@@ -560,6 +576,7 @@ export function installBrowserLocalMedia(w: any): any {
 /** Native shells already bundle their UI. Only HTTPS/localhost web builds install a worker. */
 export function installOfflineShell(w: any): Promise<any> {
     if (
+        w.__ottStandby?.blocked() ||
         !w.navigator.serviceWorker ||
         !w.isSecureContext ||
         w.Capacitor ||

@@ -87,6 +87,11 @@ function createProviderAssetLoader(
         fail: (error: any) => void
     ): void {
         if (!owner.active()) return;
+        var standby = host.__ottStandby;
+        if (standby && standby.blocked()) {
+            fail(standby.error());
+            return;
+        }
         var group = Object.prototype.hasOwnProperty.call(
             providerAssetGroups,
             kind
@@ -117,9 +122,11 @@ function createProviderAssetLoader(
             if (index !== -1) request.waiters.splice(index, 1);
         });
         if (!start) return;
+        var release = standby ? standby.track(function () {}) : function () {};
 
         function settle(error?: any): void {
             if (request.done) return;
+            release();
             request.done = true;
             delete pending[kind];
             var waiters = request.waiters;

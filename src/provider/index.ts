@@ -436,6 +436,24 @@ function setPopupChannels(): void {
                 "<br/>" +
                 renderButtonHint(keys.N5, "5", "Reset order")
         );
+    var host = window as any;
+    if (
+        host.__ottActiveProviderDriver?.capabilities?.mediaPlaylist &&
+        !(host.__ottKiosk && host.__ottKiosk.locked()) &&
+        host.__ottMedia
+    )
+        $("#listPopUp").append(
+            "<br/>" +
+                renderButtonHint(
+                    keys.PLAY,
+                    "▶",
+                    host.__ottMedia.repeatMode() === "one"
+                        ? "Repeat: One"
+                        : host.__ottMedia.repeatMode() === "off"
+                          ? "Repeat: Off"
+                          : "Repeat: All"
+                )
+        );
 }
 declare var sPreview: number;
 declare var previewChan: any;
@@ -879,6 +897,7 @@ declare var confirmBox: (
  * The stored "noProvParam" flag hides provider settings in popup arrays.
  */
 export function loadProv(providerId?: string): void {
+    if ((window as any).__ottStandby?.blocked()) return;
     var kiosk = (window as any).__ottKiosk;
     if (kiosk && kiosk.enabled()) {
         if ((window as any).__ottActiveProviderDriver) return;
@@ -887,6 +906,8 @@ export function loadProv(providerId?: string): void {
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
+    (window as any).__ottMissingCatalogSelection = false;
+    (window as any).__ottCatalogSelectedId = undefined;
     (window as any).__ottParental.revoke();
     if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     if ((window as any).__ottClassicPlayback)
@@ -1316,6 +1337,7 @@ export function loadProv(providerId?: string): void {
  * Edge case: Stops any active playback before loading.
  */
 export function loadChannels(): void {
+    if ((window as any).__ottStandby?.blocked()) return;
     if ((window as any).__ottClassicScreenPort)
         (window as any).__ottClassicScreenPort.invalidate();
     if ((window as any).__ottClassicPlayback)
@@ -1327,7 +1349,12 @@ export function loadChannels(): void {
     // A restored local folder can take time to enumerate. Its catalog still
     // produces channels, but boot must reveal the normal loading UI before
     // waiting for filesystem access, just as for a remote media library.
-    var libraryLoading = libraryOnly || !!(driver && driver.id === "offline");
+    var libraryLoading =
+        libraryOnly ||
+        !!(
+            driver &&
+            (driver.id === "offline" || driver.capabilities.mediaPlaylist)
+        );
     var catalogSession = (
         window as any
     ).__ottProviderRuntime.classic.beginCatalog(driverOwned);

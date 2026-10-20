@@ -5,7 +5,9 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import java.net.HttpURLConnection
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import java.net.URL
 
 @CapacitorPlugin(name = "M3UProxy")
@@ -41,36 +43,26 @@ class M3UProxyPlugin : Plugin() {
 
         val effectiveReferer = if (referer.isNotEmpty()) referer else origin
 
+        val ticket = NativeWork.begin() ?: run { call.reject("Player is in standby", "standby"); return }
         Thread {
-            var connection: HttpURLConnection? = null
             try {
+                ticket.check()
                 val address = URL(urlStr)
                 if (BuildConfig.FLAVOR == "play" && address.protocol == "http") {
                     call.reject("OTT-play FOSS Play requires HTTPS sources. Use an HTTPS playlist URL or the Full edition for HTTP sources.", "https_required")
                     return@Thread
                 }
-                val conn = address.openConnection() as HttpURLConnection
-                connection = conn
-                conn.requestMethod = "GET"
-                conn.setRequestProperty("User-Agent", ua)
-                if (effectiveReferer.isNotEmpty()) {
-                    conn.setRequestProperty("Referer", effectiveReferer)
+                val request = Request.Builder().url(address).header("User-Agent", ua)
+                if (effectiveReferer.isNotEmpty()) request.header("Referer", effectiveReferer)
+                val task = client.newCall(request.build())
+                ticket.cancelWith { task.cancel() }
+                ticket.check()
+                task.execute().use { response ->
+                    val body = readBody(response.body)
+                    ticket.check()
+                    if (!response.isSuccessful) { call.reject("Playlist provider returned HTTP ${response.code}"); return@Thread }
+                    call.resolve(JSObject().put("body", body))
                 }
-                conn.connectTimeout = 15_000
-                conn.readTimeout = 15_000
-
-                val status = conn.responseCode
-                val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                val body = ProviderHttpResponse.read(stream, conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1)
-
-                if (status !in 200..299) {
-                    call.reject("Playlist provider returned HTTP $status")
-                    return@Thread
-                }
-
-                val ret = JSObject()
-                ret.put("body", body)
-                call.resolve(ret)
             } catch (e: Exception) {
                 val message = when (e) {
                     is ProviderHttpResponse.TooLarge -> "Playlist response exceeds the 8 MiB limit; use a smaller playlist"
@@ -80,12 +72,18 @@ class M3UProxyPlugin : Plugin() {
                 }
                 call.reject(message, if (e is ProviderHttpResponse.TooLarge) "response_too_large" else null)
             } finally {
-                connection?.disconnect()
+                ticket.finish()
             }
         }.start()
     }
 
     companion object {
+        // API22 uses OkHttp4 (nullable body); modern shells use OkHttp5.
+        private fun readBody(body: okhttp3.ResponseBody?): String =
+            ProviderHttpResponse.read(body?.byteStream(), body?.contentLength() ?: -1)
+        private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
+            .followSslRedirects(false)
+            .readTimeout(15, TimeUnit.SECONDS).callTimeout(30, TimeUnit.SECONDS).build()
         private const val DEFAULT_UA = "OTT-play-FOSS/1.0"
 
         private val UA_PRESETS: Map<String, String> = mapOf(

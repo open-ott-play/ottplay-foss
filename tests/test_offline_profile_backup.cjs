@@ -114,12 +114,14 @@ function fixture() {
 test("all generic exports exclude local bindings and keep portable profiles", () => {
     const { w, stored, requests } = fixture();
     stored.set("offlineProfiles", valid);
+    stored.set("__ottStandbyV1", "1");
     for (const value of [
         w.stbGetAllItems(),
         w.portableSettingsSnapshot(Object.fromEntries(stored)),
     ]) {
         assert.equal(value.offlineProfiles, valid);
         assert.equal(value.offlineProfileBindings, undefined);
+        assert.equal(value.__ottStandbyV1, undefined);
         assert(!JSON.stringify(value).includes("DEVICE-SECRET"));
     }
     w.cloudSendSettings();
@@ -142,7 +144,9 @@ for (const rawDump of [false, true]) {
                 const f = fixture();
                 if (rawDump)
                     f.w.stbGetAllItems = () => Object.fromEntries(f.stored);
+                f.stored.set("__ottStandbyV1", "1");
                 const imported = {
+                    __ottStandbyV1: "0",
                     offlineProfileBindings: "FOREIGN-SECRET",
                     offlineProfiles: valid,
                     ordinary: "after",
@@ -151,6 +155,7 @@ for (const rawDump of [false, true]) {
                     f.w.restoreLocalSettingsSnapshot(imported);
                 else f.deliver(imported);
                 assert.equal(f.stored.get("ordinary"), "after");
+                assert.equal(f.stored.get("__ottStandbyV1"), "1");
                 assert.equal(f.stored.get("offlineProfiles"), valid);
                 assert.equal(
                     f.stored.get("offlineProfileBindings"),
