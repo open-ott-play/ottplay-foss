@@ -125,17 +125,19 @@ export function installBrowserLocalMedia(w: any): any {
     // cancelling never prunes URLs that the current player may still be using.
     function list(
         onProgress?: (catalog: any) => boolean | void,
-        preferredId?: string
+        preferredId?: string,
+        prioritySources?: string[]
     ): Promise<any> {
         if (w.__ottStandby?.blocked())
             return Promise.reject(w.__ottStandby.error());
-        var pending = scan(onProgress, preferredId);
+        var pending = scan(onProgress, preferredId, prioritySources);
         if (w.__ottStandby) w.__ottStandby.observe(pending);
         return pending;
     }
     function scan(
         onProgress?: (catalog: any) => boolean | void,
-        preferredId?: string
+        preferredId?: string,
+        prioritySources?: string[]
     ): Promise<any> {
         if (typeof onProgress !== "function") onProgress = undefined;
         var generation = ++scanGeneration;
@@ -339,6 +341,15 @@ export function installBrowserLocalMedia(w: any): any {
                             )
                         );
                     });
+                if (prioritySources?.length)
+                    saved.sort(function (a, b) {
+                        var left = prioritySources!.indexOf(a.id),
+                            right = prioritySources!.indexOf(b.id);
+                        return (
+                            (left < 0 ? prioritySources!.length : left) -
+                            (right < 0 ? prioritySources!.length : right)
+                        );
+                    });
                 var chain = Promise.resolve();
                 saved.forEach(function (record) {
                     chain = chain.then(function () {
@@ -435,21 +446,24 @@ export function installBrowserLocalMedia(w: any): any {
             });
     }
     function save(handles: any[], deferScan = false): Promise<any> {
+        var sourceIds: string[] = [];
         return open()
             .then(function (db) {
                 return new Promise(function (resolve, reject) {
                     var tx = db.transaction("files", "readwrite");
                     handles.forEach(function (handle, index) {
+                        var id =
+                            "source-" +
+                            Date.now().toString(36) +
+                            "-" +
+                            index +
+                            "-" +
+                            Math.random().toString(36).slice(2);
+                        sourceIds.push(id);
                         tx.objectStore("files").add({
                             created: Date.now(),
                             handle: handle,
-                            id:
-                                "source-" +
-                                Date.now().toString(36) +
-                                "-" +
-                                index +
-                                "-" +
-                                Math.random().toString(36).slice(2),
+                            id: id,
                             name: handle.name,
                         });
                     });
@@ -466,7 +480,9 @@ export function installBrowserLocalMedia(w: any): any {
             .then(function () {
                 // The picker UI owns a bounded, progressive scan after saving.
                 // Do not enumerate the entire directory before it can begin.
-                return deferScan ? { sourceSaved: true } : list();
+                return deferScan
+                    ? { sourceIds: sourceIds, sourceSaved: true }
+                    : list();
             });
     }
     function cancelled(error: any, deferScan = false): Promise<any> {

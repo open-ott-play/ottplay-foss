@@ -691,7 +691,56 @@ async function builtUi(devicePath) {
             window.showOpenFilePicker = () => Promise.resolve([file]);
             window.showDirectoryPicker = () => Promise.resolve(folder);
         }, Array.from(movie));
+        async function blockOlderSource() {
+            await page.evaluate(async () => {
+                const root = await navigator.storage.getDirectory();
+                const folder = await root.getDirectoryHandle(
+                    "unresponsive-old-source",
+                    { create: true }
+                );
+                const picker = window.showDirectoryPicker;
+                window.showDirectoryPicker = () => Promise.resolve(folder);
+                const saved = await window.__ottBrowserLocalMedia.importFolder({
+                    deferScan: true,
+                });
+                window.showDirectoryPicker = picker;
+                const prototype = FileSystemDirectoryHandle.prototype;
+                const values = prototype.values;
+                const pending = [];
+                window.__blockedImportSource = {
+                    id: saved.sourceIds[0],
+                    pending,
+                    prototype,
+                    values,
+                };
+                prototype.values = function () {
+                    if (this.name !== "unresponsive-old-source")
+                        return values.call(this);
+                    return {
+                        next: () =>
+                            new Promise((resolve) => pending.push(resolve)),
+                    };
+                };
+            });
+        }
+        async function releaseOlderSource() {
+            await page.evaluate(async () => {
+                const blocked = window.__blockedImportSource;
+                blocked.prototype.values = blocked.values;
+                for (const resolve of blocked.pending) resolve({ done: true });
+                await window.__ottBrowserLocalMedia.removeSource(blocked.id);
+                delete window.__blockedImportSource;
+            });
+        }
         async function expectImportedPlayback(actionName) {
+            const expected =
+                actionName === "add-files"
+                    ? "offline-fixture.mp4"
+                    : "folder-video.mp4";
+            await page.waitForFunction((name) => {
+                const id = window.curList[window.primaryIndex];
+                return window.channels[id]?.channel_name === name;
+            }, expected);
             await page.waitForFunction(() =>
                 Array.from(document.querySelectorAll("video")).some(
                     (video) =>
@@ -724,8 +773,10 @@ async function builtUi(devicePath) {
                     JSON.stringify(playback)
             );
         }
+        await blockOlderSource();
         await selectAction("add-files");
         await expectImportedPlayback("add-files");
+        await releaseOlderSource();
         await chooseLocalProvider();
         await page.waitForFunction(
             () =>
@@ -733,8 +784,10 @@ async function builtUi(devicePath) {
                     '[data-local-media-action="disconnect-source"]'
                 ).length === 1
         );
+        await blockOlderSource();
         await selectAction("add-folder");
         await expectImportedPlayback("add-folder");
+        await releaseOlderSource();
         await chooseLocalProvider();
         await page.waitForFunction(
             () =>

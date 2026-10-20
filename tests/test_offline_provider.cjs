@@ -924,3 +924,49 @@ test("local footer metadata uses immediate directory and supports legacy source 
     );
     assert.equal(catalog.channels["local-relative"].channel_name, "Third.mp4");
 });
+
+test("import selection is consumed once and preserves explicit profile precedence", async () => {
+    for (const explicitProfile of [false, true]) {
+        const f = integrationFixture("offline");
+        const preferred = [];
+        let imported = "local-imported";
+        let profileActive = explicitProfile;
+        f.host.clearBootHide = () => {};
+        f.host.__ottSourceIdentity = { current: () => "saved-source" };
+        f.saved.set(
+            "offlinechannelLibrary:saved-source",
+            JSON.stringify({ selected: { itemId: "channel:local-saved" } })
+        );
+        f.host.__ottOfflineProfiles = {
+            read: () => ({ active: profileActive ? 1 : 0 }),
+            selection: () => (profileActive ? "local-profile" : null),
+        };
+        f.host.__ottLocalMedia = {
+            list: (_, id) => {
+                preferred.push(id);
+                return Promise.resolve({ items: [] });
+            },
+            takeImportSelection: () => {
+                const result = imported;
+                imported = "";
+                return result;
+            },
+        };
+        f.host.loadProv();
+        assert.equal(preferred[0], explicitProfile ? "profile" : "imported");
+        assert.equal(
+            imported,
+            "",
+            "the handoff is consumed even with an active profile"
+        );
+        await Promise.resolve();
+        profileActive = false;
+        f.host.loadProv();
+        assert.equal(
+            preferred[1],
+            "saved",
+            "later loads use normal saved selection"
+        );
+        await Promise.resolve();
+    }
+});

@@ -23,6 +23,8 @@ export function installLocalMedia(w: any): any {
     var resuming = false;
     var last: any = null;
     var endpoint = "";
+    var importedSelection = "";
+    var nextImportSelection = "";
     function isNative(): boolean {
         return !!(
             w.Capacitor &&
@@ -121,7 +123,8 @@ export function installLocalMedia(w: any): any {
     }
     function list(
         onProgress?: (value: any) => boolean | void,
-        preferredId?: string
+        preferredId?: string,
+        prioritySources?: string[]
     ): Promise<any> {
         if (w.__ottStandby?.blocked())
             return Promise.reject(w.__ottStandby.error());
@@ -147,7 +150,11 @@ export function installLocalMedia(w: any): any {
                   return base
                       ? pollCatalog(base, request, accept, !!onProgress)
                       : boundedLocalRead(function (progress) {
-                            return browser.list(progress, preferredId);
+                            return browser.list(
+                                progress,
+                                preferredId,
+                                prioritySources
+                            );
                         });
               });
         // Native bridges and browser filesystem reads cannot always be aborted.
@@ -291,11 +298,34 @@ export function installLocalMedia(w: any): any {
                 });
             if (result && result.pickerCancelled)
                 return Promise.resolve({ pickerCancelled: true });
-            return list(function (value) {
-                updateLoading(value);
-                return !value.items.some(function (item: any) {
-                    return item.available !== false && !!item.url;
-                });
+            var pending = list(
+                function (value) {
+                    updateLoading(value);
+                    return !value.items.some(function (item: any) {
+                        return item.available !== false && !!item.url;
+                    });
+                },
+                undefined,
+                result && result.sourceIds
+            );
+            var scanRequest = catalogRevision;
+            return pending.then(function (value) {
+                if (
+                    scanRequest === catalogRevision &&
+                    last === value &&
+                    result &&
+                    result.sourceIds
+                ) {
+                    var item = value.items.filter(function (item: any) {
+                        return (
+                            result.sourceIds.indexOf(item.sourceId) >= 0 &&
+                            item.available !== false &&
+                            !!item.url
+                        );
+                    })[0];
+                    importedSelection = item ? "local-" + item.id : "";
+                }
+                return value;
             });
         }
         if (isNative())
@@ -305,6 +335,8 @@ export function installLocalMedia(w: any): any {
         // A picker may outlive its screen. Its saved handle is still valid, but
         // its completion must not replace a newer catalog or start playback.
         var request = ++catalogRevision;
+        importedSelection = "";
+        nextImportSelection = "";
         if (isTauri())
             return tauriInvoke<any>(
                 folder
@@ -430,6 +462,8 @@ export function installLocalMedia(w: any): any {
         active.close();
     }
     function close(): void {
+        importedSelection = "";
+        nextImportSelection = "";
         finishLoading();
         opened = false;
         revision++;
@@ -456,11 +490,14 @@ export function installLocalMedia(w: any): any {
             open();
             return;
         }
+        var selected = importedSelection;
         finishLoading();
         opened = false;
         revision++;
         if (typeof w.closeList === "function") w.closeList();
         w.stbSetItem("ottplayprov", "offline");
+        nextImportSelection = selected;
+        importedSelection = "";
         w.loadProv("offline");
     }
     function editServer(): void {
@@ -818,6 +855,11 @@ export function installLocalMedia(w: any): any {
             catalogRevision++;
             revision++;
             close();
+        },
+        takeImportSelection: function () {
+            var selected = nextImportSelection;
+            nextImportSelection = "";
+            return selected;
         },
         title: title,
     };

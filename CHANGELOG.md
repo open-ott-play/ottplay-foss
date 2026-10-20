@@ -5,6 +5,8 @@
 - Start browser Add folder/Add files playback from the first readable video
   instead of waiting for the whole source to scan. Report progress, bound stalled
   reads, and ignore cancelled or superseded picker results without copying media.
+  Prioritize newly selected sources through the playback handoff so a stalled
+  old folder cannot block the new video.
 
 - Retain a Local video's stable group identity for the next-file footer,
   automatic completion and saved playback. Reordering groups cannot select a

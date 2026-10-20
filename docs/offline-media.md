@@ -20,7 +20,11 @@ In a supported desktop browser or Tauri, **Add folder** and **Add files** start
 playback as soon as the first playable file is available. The remaining catalog
 loads in the background. The picker saves source references before the scan;
 it does not wait for every file to open before reporting progress. Cancelling
-the picker keeps the current library and does not start playback. Other native
+the picker keeps the current library and does not start playback. Newly selected
+browser sources are read before older sources, so a stalled old folder cannot
+block a newly added video. That new selection is carried through the initial
+player handoff; ordinary restart/resume and active profile restrictions are
+unchanged. Other native
 variants use **Play local videos** after loading the catalog. OTT saves
 references and small metadata records, not a second copy of the
 movies. The original disk, SD card, or directory must remain accessible. Moving

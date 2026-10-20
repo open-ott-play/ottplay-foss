@@ -276,6 +276,9 @@ function createOfflineDriver(
             var waitForFinal = false;
             var legacyIndex = 0;
             try {
+                var imported = media.takeImportSelection
+                    ? media.takeImportSelection()
+                    : "";
                 var host = window as any;
                 var source =
                     host.__ottSourceIdentity &&
@@ -289,6 +292,8 @@ function createOfflineDriver(
                         : null;
                 if (profileSelection !== null) {
                     wanted = profileSelection || "local-profile-unbound";
+                } else if (imported) {
+                    wanted = imported;
                 } else if (saved && saved.selected && saved.selected.itemId) {
                     wanted = String(saved.selected.itemId).replace(
                         /^channel:/,

@@ -62,8 +62,10 @@ module.exports = async function browserImportRegression(
         };
         const ownClock = clock;
         const records = [];
+        const handoffs = [];
         let reads = 0,
             enumerations = 0,
+            olderEnumerations = 0,
             writes = 0,
             played = 0,
             gesture = false,
@@ -92,7 +94,14 @@ module.exports = async function browserImportRegression(
         const second = {
             getFile: () => {
                 reads++;
-                return blocked.promise;
+                return options.secondPlayable
+                    ? Promise.resolve({
+                          lastModified: 1,
+                          name: "second.mp4",
+                          size: 43,
+                          type: "video/mp4",
+                      })
+                    : blocked.promise;
             },
             kind: "file",
             name: "second.mp4",
@@ -118,10 +127,19 @@ module.exports = async function browserImportRegression(
                 };
             },
         };
-        if (options.existing)
+        if (options.existing || options.olderBlocked)
             records.push({
                 created: 1,
-                handle: folder,
+                handle: options.olderBlocked
+                    ? {
+                          ...folder,
+                          name: "Older offline folder",
+                          values() {
+                              olderEnumerations++;
+                              return { next: () => new Promise(() => {}) };
+                          },
+                      }
+                    : folder,
                 id: "source-existing",
                 name: folder.name,
             });
@@ -206,6 +224,9 @@ module.exports = async function browserImportRegression(
                 },
             }),
             addEventListener() {},
+            closeList() {
+                if (options.realisticClose) w.__ottLocalMedia.suspend();
+            },
             document: { getElementById: () => progressNode },
             indexedDB: {
                 open() {
@@ -221,7 +242,11 @@ module.exports = async function browserImportRegression(
             listCaption: {},
             listDetail: {},
             listFooter: {},
-            loadProv: () => played++,
+            loadProv() {
+                played++;
+                if (options.realisticClose)
+                    handoffs.push(w.__ottLocalMedia.takeImportSelection());
+            },
             navigator: {},
             optionsList() {},
             renderButtonHint: () => "",
@@ -259,7 +284,9 @@ module.exports = async function browserImportRegression(
                             : [first, second]
                         : folder
                 ),
+            handoffs: () => handoffs,
             html: () => html,
+            olderEnumerations: () => olderEnumerations,
             picker,
             pickerCalls: () => pickerCalls,
             played: () => played,
@@ -308,6 +335,57 @@ module.exports = async function browserImportRegression(
             "only source handles are stored"
         );
     }
+
+    for (const action of ["add-folder", "add-files"]) {
+        const prioritized = fixture({
+            olderBlocked: true,
+            realisticClose: true,
+        });
+        prioritized.click(action);
+        prioritized.grant(action);
+        await flush();
+        assert.equal(
+            prioritized.played(),
+            1,
+            "new source starts ahead of an older blocked source"
+        );
+        assert.equal(
+            prioritized.olderEnumerations(),
+            0,
+            "manager does not traverse an older source first"
+        );
+        assert.equal(prioritized.reads(), 1);
+        assert.equal(prioritized.handoffs().length, 1);
+        assert.match(
+            prioritized.handoffs()[0],
+            /^local-source-/,
+            "new source selection survives ordinary screen cleanup"
+        );
+        assert.equal(
+            prioritized.api.takeImportSelection(),
+            "",
+            "import selection is consumed only once"
+        );
+    }
+
+    const mixed = fixture({
+        mime: "text/plain",
+        name: "notes.txt",
+        olderBlocked: true,
+        realisticClose: true,
+        secondPlayable: true,
+    });
+    mixed.click("add-files");
+    mixed.grant("add-files");
+    await flush();
+    assert.equal(
+        mixed.played(),
+        1,
+        "a later playable selected file starts ahead of older blocked sources"
+    );
+    assert.equal(mixed.reads(), 2, "both selected handles are checked once");
+    assert.equal(mixed.olderEnumerations(), 0);
+    assert.match(mixed.handoffs()[0], /^local-source-/);
 
     const unsupported = fixture({
         mime: "text/plain",
