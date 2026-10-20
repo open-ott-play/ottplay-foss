@@ -256,8 +256,11 @@ interval passed. This is consistent with Android's delayed persistence, but is
 not proof that every firmware behaves identically. The manufacturer's launcher
 and settings remain installed and accessible.
 
-A normal power-off/power-on cycle and startup with delayed Wi-Fi need separate
-validation; a successful ADB reboot does not cover them.
+The user then separately powered the projector off and on. That boot again
+changed the boot ID and opened `HomeActivity` automatically; both the Home role
+and effective launcher remained OTT. Normal power-button startup is therefore
+verified separately from ADB reboot. Startup with deliberately delayed Wi-Fi
+was not separately tested.
 
 ## Release identity
 
