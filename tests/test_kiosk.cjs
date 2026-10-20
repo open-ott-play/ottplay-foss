@@ -2291,3 +2291,74 @@ testScreenBridge().catch((error) => {
 console.log(
     "PASS strict local-folder membership, wrapping, persistence, ambiguity and source isolation"
 );
+async function testFolderRecovery() {
+    const r = rig();
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    r.w.channels.a.__ottLocalSource = "folder-1";
+    r.w.channels.a.__ottLocalSourceName = "Winnie";
+    r.w.channels.c = {
+        __ottLocalSource: "folder-1",
+        __ottLocalSourceName: "Winnie",
+        channel_name: "Last",
+    };
+    r.w.cats.all = r.w.cList = r.w.curList = ["a", "b", "c"];
+    r.request({ mode: "on", query: "folder:Winnie", strict: true });
+    delete r.w.channels.a;
+    let scanning = true;
+    r.w.__ottLocalMedia = {
+        snapshot: () =>
+            scanning ? Promise.reject(Error("scanning")) : Promise.resolve({}),
+    };
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const before = r.played.length;
+    r.advance(10);
+    await flush();
+    assert.equal(
+        r.played.length,
+        before,
+        "partial scan cannot replace saved file"
+    );
+    scanning = false;
+    r.advance(10);
+    await flush();
+    assert.equal(r.played.at(-1), "c", "completed scan recovers within folder");
+    assert.equal(JSON.parse(r.storage.__ottKioskV1).channel.id, "c");
+    delete r.w.channels.c;
+    const recovered = r.played.length;
+    r.advance(10);
+    await flush();
+    assert.equal(
+        r.played.length,
+        recovered,
+        "empty folder cannot play outside entry"
+    );
+    r.w.channels.c = {
+        __ottLocalSource: "folder-1",
+        channel_name: "Last",
+    };
+    let finish;
+    r.w.__ottLocalMedia.snapshot = () =>
+        new Promise((resolve) => {
+            finish = resolve;
+        });
+    delete r.w.channels.c;
+    r.advance(10);
+    await flush();
+    r.source("offline:other-profile");
+    r.w.channels.c = { __ottLocalSource: "folder-1" };
+    finish({});
+    await flush();
+    assert.equal(
+        r.played.length,
+        recovered,
+        "late recovery cannot cross profile"
+    );
+    console.log(
+        "PASS folder recovery waits for complete scan and stays source-scoped"
+    );
+}
+testFolderRecovery().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

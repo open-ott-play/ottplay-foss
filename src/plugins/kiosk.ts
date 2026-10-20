@@ -24,6 +24,7 @@ export function createKiosk(w: any): any {
     var applyingScreenPause = false;
     var frameRecovery = false;
     var frameHealthySince: number | null = null;
+    var folderRecovery: any = null;
     var videoProgress = createKioskVideoProgress(w);
     var strictInput = createStrictKioskInput(w, strict);
     function now(): number {
@@ -383,6 +384,46 @@ export function createKiosk(w: any): any {
         var indices = locate(policy.channel.id);
         if (!indices || !(w.channels || {})[policy.channel.id]) {
             health = "channel-unavailable";
+            if (
+                folderLoop() &&
+                !folderRecovery &&
+                w.__ottLocalMedia &&
+                typeof w.__ottLocalMedia.snapshot === "function"
+            ) {
+                // A missing ID during progressive loading is not a deleted file.
+                // snapshot rejects until the complete local catalog is known.
+                var selected = policy;
+                folderRecovery = selected;
+                Promise.resolve()
+                    .then(function () {
+                        return w.__ottLocalMedia.snapshot();
+                    })
+                    .then(function () {
+                        if (
+                            policy !== selected ||
+                            !currentSource() ||
+                            !screenAwake ||
+                            w.__ottStandby?.blocked() ||
+                            w.commandChannelsReady !== true ||
+                            (locate(selected.channel.id) &&
+                                (w.channels || {})[selected.channel.id])
+                        )
+                            return;
+                        var ids = w.cList || w.curList || [];
+                        for (var i = 0; i < ids.length; i++) {
+                            var replacement =
+                                allowed(ids[i]) && locate(String(ids[i]));
+                            if (replacement) {
+                                w.playChannel(replacement[0], replacement[1]);
+                                break;
+                            }
+                        }
+                    })
+                    .catch(function () {})
+                    .then(function () {
+                        if (folderRecovery === selected) folderRecovery = null;
+                    });
+            }
             return;
         }
         if (mediaPlaylistChannel()) {
