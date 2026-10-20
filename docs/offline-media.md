@@ -274,3 +274,10 @@ blocked. The current file and folder policy survive restart, and new files in
 the same folder can join after Refresh. A disconnected folder never falls back
 to unrelated videos. `kiosk off` releases the policy. Ordinary channel kiosk
 commands retain their existing single-channel behavior.
+
+On Android, switching the screen off with the power button pauses local video
+and audio, including when kiosk is disabled. Local EOF and delayed start
+callbacks cannot advance to another file while the screen is off. Wake resumes
+the owned file at its saved position, or handles a deferred natural completion
+once. Changing provider, file, or entering Standby invalidates the old wake
+request. This uses the same native screen lifecycle as the Plex kiosk path.
