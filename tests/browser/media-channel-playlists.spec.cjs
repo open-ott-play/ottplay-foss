@@ -6,6 +6,70 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
+// Read production programme state and default footer after actual decoder playback.
+// No renderer, media state, or DOM setter is replaced by this assertion.
+async function expectProgramme(page, expected, openedAt) {
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const item = window.__ottClassicPlayback.programme();
+                return (
+                    item && {
+                        collection: item.collection,
+                        nextTitle: item.nextTitle,
+                        title: item.title,
+                    }
+                );
+            })
+        )
+        .toEqual(expected);
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const item = window.__ottClassicPlayback.programme();
+                return (
+                    !!item &&
+                    item.startedAt > 0 &&
+                    item.duration > 0 &&
+                    Math.abs(item.duration - window.video.duration) < 0.1
+                );
+            })
+        )
+        .toBe(true);
+    const info = await page.evaluate(() => {
+        window.updateMediaInfo();
+        const item = window.__ottClassicPlayback.programme();
+        const clock = (seconds) => {
+            const date = new Date(seconds * 1000);
+            return [date.getHours(), date.getMinutes(), date.getSeconds()]
+                .map((value) => String(value).padStart(2, "0"))
+                .join(":");
+        };
+        return {
+            currentClock: clock(item.startedAt),
+            decoderDuration: window.video.duration,
+            duration: item.duration,
+            nextClock: clock(item.startedAt + item.duration),
+            nextStartedAt: item.nextStartedAt,
+            startedAt: item.startedAt,
+        };
+    });
+    expect(info.startedAt).toBeGreaterThanOrEqual(openedAt - 1);
+    expect(info.startedAt).toBeLessThanOrEqual(Date.now() / 1000 + 1);
+    expect(Math.abs(info.duration - info.decoderDuration)).toBeLessThan(0.1);
+    expect(
+        Math.abs(info.nextStartedAt - info.startedAt - info.duration)
+    ).toBeLessThan(0.001);
+    await expect(page.locator("#channel_name")).toHaveText(expected.collection);
+    await expect(page.locator("#programm_name")).toHaveText(expected.title);
+    await expect(page.locator("#nprogramm_name")).toHaveText(
+        expected.nextTitle
+    );
+    await expect(page.locator("#begin_time")).toHaveText(info.currentClock);
+    await expect(page.locator("#nbegin_time")).toHaveText(info.nextClock);
+    return info;
+}
+
 for (const provider of ["plex", "vportal"]) {
     for (const layout of ["/f/pc/", "/f/"]) {
         test(`${provider} selected folders stream into ordinary channels ${layout}`, async ({
@@ -205,6 +269,7 @@ for (const provider of ["plex", "vportal"]) {
                 },
                 { origin, provider }
             );
+            const openedAt = Date.now() / 1000;
             await page.goto(layout);
             await page.keyboard.press("Shift");
             await expect.poll(() => first.length).toBe(1);
@@ -237,6 +302,15 @@ for (const provider of ["plex", "vportal"]) {
             ).toEqual(playing);
             await expect(page.locator("#list")).toContainText("Film 1");
             await expect(page.locator("#list")).toContainText("Film 2");
+            await expectProgramme(
+                page,
+                {
+                    collection: provider === "plex" ? "Selected 1" : "one",
+                    nextTitle: "Film 2",
+                    title: "Film 1",
+                },
+                openedAt
+            );
             await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
             await page.evaluate(() => {
                 window.sNoNumbersKeys = 1;
@@ -351,4 +425,100 @@ for (const provider of ["plex", "vportal"]) {
             expect(errors).toEqual([]);
         });
     }
+}
+
+for (const layout of ["/f/pc/", "/f/"]) {
+    test(`Local folder uses current and next programme clocks ${layout}`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const origin = new URL(baseURL).origin;
+        const fragments = [];
+        const segment = fs.readFileSync(
+            path.resolve(__dirname, "../fixtures/media-runtime/segment00.ts")
+        );
+        for (let index = 0; index < 30; index++) {
+            const mux = new (require("mux.js").mp4.Transmuxer)({
+                baseMediaDecodeTime: index * 2 * 90000,
+                remux: true,
+            });
+            mux.on("data", (data) => {
+                if (!index) fragments.push(Buffer.from(data.initSegment));
+                fragments.push(Buffer.from(data.data));
+            });
+            mux.push(new Uint8Array(segment));
+            mux.flush();
+        }
+        const movie = Buffer.concat(fragments);
+        await context.route("**/*", (route) => {
+            const url = new URL(route.request().url());
+            if (url.origin !== origin) return route.abort();
+            if (url.pathname === "/footer-local/catalog")
+                return route.fulfill({
+                    json: {
+                        items: ["First.mp4", "Next.mp4"].map((name, index) => ({
+                            directory: "Cartoons",
+                            id: String(index),
+                            name,
+                            sourceId: "folder",
+                            url: origin + `/footer-local/${index}.mp4`,
+                        })),
+                        sources: [
+                            {
+                                available: true,
+                                id: "folder",
+                                kind: "folder",
+                                name: "Videos",
+                            },
+                        ],
+                    },
+                });
+            if (/^\/footer-local\/\d.mp4$/.test(url.pathname))
+                return route.fulfill({ body: movie, contentType: "video/mp4" });
+            return route.continue();
+        });
+        await context.routeWebSocket("**/*", (socket) => socket.close());
+        await context.addInitScript((origin) => {
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "offline");
+            localStorage.setItem(
+                "localMediaEndpoint",
+                origin + "/footer-local/catalog"
+            );
+            localStorage.setItem("offlinesPlayers", "0");
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                return play.call(this);
+            };
+        }, origin);
+        const openedAt = Date.now() / 1000;
+        await page.goto(layout);
+        await page.keyboard.press("Shift");
+        await page.waitForFunction(() => window.video?.currentTime > 0.2);
+        const first = await expectProgramme(
+            page,
+            {
+                collection: "Cartoons",
+                nextTitle: "Next.mp4",
+                title: "First.mp4",
+            },
+            openedAt
+        );
+        await expect
+            .poll(() => page.evaluate(() => window.video.currentTime))
+            .toBeGreaterThan(1);
+        const afterProgress = await expectProgramme(
+            page,
+            {
+                collection: "Cartoons",
+                nextTitle: "Next.mp4",
+                title: "First.mp4",
+            },
+            openedAt
+        );
+        expect(afterProgress.startedAt).toBe(first.startedAt);
+        expect(afterProgress.nextStartedAt).toBe(first.nextStartedAt);
+    });
 }
