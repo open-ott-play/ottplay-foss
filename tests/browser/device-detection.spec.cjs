@@ -1119,7 +1119,7 @@ test.describe("webOS fullscreen remote navigation", () => {
             });
             window.infoBarHide();
         });
-        await expect(page.locator("#channel_name")).toHaveText(
+        await expect(page.locator("#programm_name")).toHaveText(
             "Poster-only movie"
         );
         await page.keyboard.press("ArrowRight");
