@@ -430,6 +430,7 @@ for (const testCase of shortcutCases) {
                 testCase.code,
                 [
                     "tryKeyboardSeek",
+                    "tryKeyboardRandom",
                     "installKeyboardSeek",
                     "cancelNativeListInertia",
                     "keyHandler",
@@ -671,3 +672,151 @@ for (const testCase of shortcutCases) {
     }
 }
 console.log("Exit checkpoints and stops both lanes without persisting standby");
+
+// R selects inside the current collection, without stealing browser/editor keys.
+for (const testCase of shortcutCases) {
+    const dom = new JSDOM(
+        '<body><video tabindex="0"></video><input><div contenteditable=""><span>text</span></div></body>',
+        { runScripts: "outside-only" }
+    );
+    const w = dom.window;
+    const calls = [];
+    let owner = null;
+    let playing = null;
+    try {
+        Object.assign(w, {
+            __ottClassicScreenPort: {
+                reconcile() {},
+                screens: { current: () => owner },
+            },
+            __ottMedia: {
+                current: () => playing,
+                randomPlay: (fromList) => calls.push(["media", fromList]),
+            },
+            catIndex: 1,
+            cats: { All: [1, 2, 3, 4], Favorites: [3, 1], Other: [4, 2] },
+            catsArray: ["All", "Favorites", "Other"],
+            channels: { 1: {}, 2: {}, 3: {}, 4: {} },
+            channelsKeyHandler() {},
+            closeList: () => calls.push(["close"]),
+            curList: [3, 1],
+            listArray: [4, 2],
+            listCatIndex: 2,
+            mediaKeyHandler() {},
+            ott_device: "pc",
+            playChannel: (category, index) =>
+                calls.push(["channel", category, index]),
+            primaryIndex: 0,
+        });
+        w.eval(
+            declarations(testCase.code, ["tryKeyboardRandom"], testCase.name)
+        );
+        w.document.addEventListener("keydown", w.tryKeyboardRandom, true);
+        const video = w.document.querySelector("video");
+        video.addEventListener("keydown", (e) => e.stopPropagation());
+        function send(init, target = video) {
+            const before = calls.length;
+            const event = new w.KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                code: "KeyR",
+                key: "r",
+                ...init,
+            });
+            target.dispatchEvent(event);
+            return { calls: calls.slice(before), event };
+        }
+        assert.deepEqual(
+            send({}).calls,
+            [["channel", 1, 1]],
+            "R stays in Favorites and excludes current channel"
+        );
+        w.ott_device = "pc2";
+        assert.deepEqual(
+            send({ key: "к" }).calls,
+            [["channel", 1, 1]],
+            "physical R works on another layout"
+        );
+        assert.deepEqual(
+            send({ repeat: true }).calls,
+            [],
+            "held key does not select again"
+        );
+        for (const modifier of ["altKey", "ctrlKey", "metaKey", "shiftKey"]) {
+            const result = send({ [modifier]: true });
+            assert.deepEqual(result.calls, []);
+            assert.equal(
+                result.event.defaultPrevented,
+                false,
+                "browser modifier shortcut remains native"
+            );
+        }
+        for (const device of ["android", "webos", "tizen"]) {
+            w.ott_device = device;
+            assert.deepEqual(send({}).calls, []);
+        }
+        w.ott_device = "pc";
+        for (const target of [
+            w.document.querySelector("input"),
+            w.document.querySelector("span"),
+        ]) {
+            const result = send({}, target);
+            assert.deepEqual(result.calls, []);
+            assert.equal(result.event.defaultPrevented, false);
+        }
+        for (const kind of ["editor", "dialog", "about", "picker"]) {
+            owner = { kind };
+            assert.deepEqual(send({}).calls, []);
+        }
+        owner = { kind: "list" };
+        assert.deepEqual(
+            send({}).calls,
+            [],
+            "settings and unknown lists do not select channels"
+        );
+        const customRepeat = send({ repeat: true });
+        assert.deepEqual(customRepeat.calls, []);
+        assert.equal(
+            customRepeat.event.defaultPrevented,
+            true,
+            "custom search list repeat is consumed before its numeric handler"
+        );
+        w.listKeyHandlerFn = w.channelsKeyHandler;
+        w.Math.random = () => 0;
+        assert.deepEqual(
+            send({}).calls,
+            [["close"], ["channel", 2, 0]],
+            "visible list uses its category rather than playing category"
+        );
+        w.listKeyHandlerFn = w.mediaKeyHandler;
+        assert.deepEqual(
+            send({}).calls,
+            [["media", true]],
+            "visible media list owns random selection"
+        );
+        owner = null;
+        playing = { sequence: { items: [{}, {}] } };
+        assert.deepEqual(
+            send({}).calls,
+            [["media", false]],
+            "VOD uses current sequence rather than underlying IPTV list"
+        );
+        playing = null;
+        w.curList = [3];
+        w.cats.Favorites = [3];
+        assert.deepEqual(
+            send({}).calls,
+            [],
+            "single-item list does not restart current playback"
+        );
+        w.__ottKiosk = { locked: () => true };
+        assert.deepEqual(send({}).calls, [], "kiosk cannot switch");
+        w.__ottKiosk = { strict: () => true };
+        assert.deepEqual(send({}).calls, [], "strict kiosk cannot switch");
+    } finally {
+        w.close();
+    }
+}
+console.log(
+    "PC R random shortcut: collection boundaries, media dispatch, modifiers, editors, repeat and kiosk protection"
+);

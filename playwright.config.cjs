@@ -27,6 +27,7 @@ module.exports = defineConfig({
         "strict-kiosk.spec.cjs",
         "stalker-profiles.spec.cjs",
         "pc2-playback.spec.cjs",
+        "pc-random.spec.cjs",
         "window-controls.spec.cjs",
         "remote-diagnostics.spec.cjs",
         "remote-screenshot.spec.cjs",

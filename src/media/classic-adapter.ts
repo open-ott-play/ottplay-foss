@@ -2221,6 +2221,46 @@ function classicMediaRuntime(): any {
                 },
             };
         },
+        randomPlay: function (fromList: boolean) {
+            if (!current() || manualLoading || shuffleRequest) return;
+            var playback = mediaClassicPlayback;
+            if (!fromList && playback && playback.runtime === api) {
+                var sequence = playback.sequence;
+                if (!sequence || sequence.channel || sequence.placeholder)
+                    return;
+                var choices: number[] = [];
+                sequence.items.forEach(function (
+                    item: MediaLibraryItem,
+                    index: number
+                ) {
+                    if (index !== sequence.index && playable(item))
+                        choices.push(index);
+                });
+                if (choices.length)
+                    skipPlayback(
+                        choices[Math.floor(Math.random() * choices.length)] -
+                            sequence.index
+                    );
+                return;
+            }
+            var view = library.snapshot("current");
+            if (view.loading || !view.frame) return;
+            var indexes: number[] = [];
+            view.frame.items.forEach(function (
+                item: MediaLibraryItem,
+                index: number
+            ) {
+                if (
+                    playable(item) &&
+                    (!playback ||
+                        playback.runtime !== api ||
+                        item.ref.itemId !== playback.ref.itemId)
+                )
+                    indexes.push(index);
+            });
+            if (indexes.length)
+                api.select(indexes[Math.floor(Math.random() * indexes.length)]);
+        },
         repeatMode: function () {
             return repeat;
         },
@@ -2989,6 +3029,13 @@ function classicMediaRuntime(): any {
         return classicMediaRuntime().prepare(item, url);
     },
     programme: classicMediaProgramme,
+    randomPlay: function (fromList: boolean) {
+        var runtime =
+            !fromList && mediaClassicPlayback
+                ? mediaClassicPlayback.runtime
+                : classicMediaRuntime();
+        runtime.randomPlay(fromList);
+    },
     repeatMode: function () {
         return classicMediaRuntime().repeatMode();
     },

@@ -66,6 +66,11 @@ For ten-second seeking in the main video view, use **Alt/Option + Left/Right**
 Local videos, VOD and supported channel archives use the same controls across
 web, Tauri and Capacitor. See [keyboard shortcuts and limits](docs/browser-window-controls.md#playback-keyboard-shortcuts).
 
+On the PC interface, **R** plays a random different channel or video from the
+current list without shuffling its order. It works in the main video view and
+channel/video lists; text editors, dialogs, settings and kiosk restrictions keep
+priority. Other device key mappings are unchanged.
+
 The synthetic test pattern can be regenerated with `scripts/generate-demo-media.sh`
 (requires FFmpeg); generated media stays in the ignored `.local-artifacts` directory.
 

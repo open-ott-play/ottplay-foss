@@ -905,6 +905,23 @@ for (const [profile, code] of profiles) {
             assert.equal(f.take("render").length, before);
         });
     }
+    check("PC random search selection stays inside visible results", (f) => {
+        f.host.ott_device = "pc";
+        f.host.keys.RANDOM = 82;
+        f.host.primaryIndex = 0;
+        f.search("News");
+        f.key("RANDOM");
+        f.flush();
+        assert.deepEqual(f.take("play"), [["play", 22]]);
+    });
+    check("non-PC search does not add a random binding", (f) => {
+        f.host.ott_device = "android";
+        f.host.keys.RANDOM = 82;
+        f.search("News");
+        f.key("RANDOM");
+        f.flush();
+        assert.deepEqual(f.take("play"), []);
+    });
     check("newest search stays current after obsolete callbacks", async (f) => {
         const first = f.open();
         f.host.editvar = "News Two";

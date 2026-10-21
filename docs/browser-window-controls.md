@@ -47,6 +47,22 @@ and kiosk restrictions still take priority. The shortcuts do not change the
 second-channel PiP video or override shortcuts intercepted by the operating
 system before they reach the player.
 
+### Random item on PC
+
+Press **R** to play a random different channel or video from the current list.
+When a channel or media list is open, selection stays within that displayed list;
+from the main video view it uses the current channel category or active video
+sequence. With only one playable item, R leaves it playing. The command does not
+shuffle the list or change its saved order, and media-folder controls such as
+Search and Next page are not playback candidates.
+
+This shortcut is available in the PC/PC2 interface used by the desktop browser,
+OTT Server, here.now and Tauri. It also works when the video has keyboard focus
+in fullscreen. Other device interfaces keep their existing mappings.
+**Ctrl/Command/Alt + R**, key repeats, text entry, dialogs, settings and kiosk
+locks do not trigger random playback. Provider access and parental PIN checks
+still apply to the selected item.
+
 ## Installation identity and supported URLs
 
 The optional browser bootstrap supports exactly `/`, `/index.html`, `/f/pc`, and
@@ -101,6 +117,7 @@ node tests/test_browser_window_controls.cjs
 node tests/test_frontend_staging.cjs
 node tests/test_package_modea.cjs
 npx playwright test tests/browser/window-controls.spec.cjs
+npx playwright test tests/browser/pc-random.spec.cjs
 ```
 
 The browser regression uses the built classic player, actual HLS fixture decoding,

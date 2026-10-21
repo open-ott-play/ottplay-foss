@@ -238,6 +238,13 @@ The numeric popup exposes the same actions on **2** and **5**, respectively.
 These shared list controls apply to the browser, server-hosted UI, Tauri and
 Capacitor. Kiosk locks prevent changing the order.
 
+On the PC interface, **R** jumps to another random video in the current list or
+active playback sequence. This is a single selection: it does not enable shuffle
+or change the order of the folder. A one-item list keeps its current video.
+The shortcut also applies to channel and supported media-library lists; it is
+inactive in text editors, other modal controls, and kiosk locks. See
+[PC random-item shortcut](browser-window-controls.md#random-item-on-pc).
+
 Select Local videos, choose a playable title, then apply the existing kiosk
 command through the authorized command server. Stable entry IDs identify the
 saved selection; temporary playback URLs are regenerated. Connect the source

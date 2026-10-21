@@ -87,6 +87,124 @@ export var keys: Record<string, number> = {
  * Main key dispatch
  * --------------------------------------------------------------------------- */
 
+/** Choose one item from the visible collection without changing its order. */
+export function tryKeyboardRandom(event: KeyboardEvent): boolean {
+    var w = window as any;
+    if (
+        !event ||
+        !/^pc(?:2)?$/.test(w.ott_device || "") ||
+        !(
+            event.code === "KeyR" ||
+            event.keyCode === 82 ||
+            event.which === 82 ||
+            event.key === "r" ||
+            event.key === "R"
+        )
+    )
+        return false;
+    // Keep browser reload shortcuts, native text input, and IME ownership.
+    if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.keyCode === 229 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+    )
+        return true;
+    function editable(element: any): boolean {
+        while (element) {
+            if (
+                /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName || "") ||
+                element.isContentEditable ||
+                (element.getAttribute &&
+                    element.hasAttribute("contenteditable") &&
+                    /^(|true|plaintext-only)$/i.test(
+                        element.getAttribute("contenteditable")
+                    ))
+            )
+                return true;
+            element = element.parentElement;
+        }
+        return false;
+    }
+    if (editable(event.target) || editable(document.activeElement)) return true;
+    var kiosk = w.__ottKiosk;
+    if (
+        kiosk &&
+        ((kiosk.strict && kiosk.strict()) || (kiosk.locked && kiosk.locked()))
+    )
+        return false;
+    if (w.__ottStandby?.blocked()) return false;
+    var port = w.__ottClassicScreenPort;
+    if (!port || !port.screens || typeof port.reconcile !== "function")
+        return false;
+    port.reconcile();
+    var owner = port.screens.current();
+    if (owner && owner.kind !== "list") return false;
+    var isMedia = !!(
+        owner &&
+        typeof w.mediaKeyHandler === "function" &&
+        (w.listKeyHandlerFn === w.mediaKeyHandler ||
+            w.listKeyHandler === w.mediaKeyHandler)
+    );
+    var isChannels = !!(
+        owner &&
+        typeof w.channelsKeyHandler === "function" &&
+        (w.listKeyHandlerFn === w.channelsKeyHandler ||
+            w.listKeyHandler === w.channelsKeyHandler)
+    );
+    // Custom lists (such as search) own their first press; consume held repeats.
+    if (owner && !isMedia && !isChannels && !event.repeat) return false;
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    if (event.repeat) return true;
+    if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
+    var media = w.__ottMedia;
+    var playing =
+        media && typeof media.current === "function" && media.current();
+    if (isMedia || (!owner && playing && !playing.sequence?.channel)) {
+        if (media && typeof media.randomPlay === "function")
+            media.randomPlay(isMedia);
+        return true;
+    }
+    var category = isChannels ? w.listCatIndex : w.catIndex;
+    var list = isChannels ? w.listArray : w.curList;
+    var label = (w.catsArray || [])[category];
+    var categoryList = label === undefined ? null : (w.cats || {})[label];
+    if (
+        !Array.isArray(list) ||
+        !Array.isArray(categoryList) ||
+        !list.length ||
+        typeof w.playChannel !== "function"
+    )
+        return true;
+    var current = w.curList && w.curList[w.primaryIndex];
+    // Keep large local libraries linear; a category can contain thousands of files.
+    var members: any = Object.create(null);
+    categoryList.forEach(function (id: any, index: number) {
+        members[typeof id + ":" + id] = index;
+    });
+    var choices: number[] = [];
+    list.forEach(function (id: any) {
+        var index = members[typeof id + ":" + id];
+        if (
+            index !== undefined &&
+            w.channels &&
+            w.channels[id] &&
+            id !== current
+        )
+            choices.push(index);
+    });
+    if (!choices.length) return true;
+    var index = choices[Math.floor(Math.random() * choices.length)];
+    if (isChannels && typeof w.closeList === "function") w.closeList();
+    w.playChannel(category, index);
+    return true;
+}
+
 /** Own desktop playback arrows before native video controls can seek. */
 export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     var w = window as any;
@@ -172,9 +290,10 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
 export function installKeyboardSeek(): void {
     var w = window as any;
     w.__ottTryKeyboardSeek = tryKeyboardSeek;
+    w.__ottTryKeyboardRandom = tryKeyboardRandom;
     if (w.__ottKeyboardSeekCapture || !document.addEventListener) return;
     w.__ottKeyboardSeekCapture = function (event: KeyboardEvent): void {
-        tryKeyboardSeek(event);
+        if (!tryKeyboardRandom(event)) tryKeyboardSeek(event);
     };
     document.addEventListener("keydown", w.__ottKeyboardSeekCapture, true);
 }
@@ -199,6 +318,11 @@ export function keyHandler(event: KeyboardEvent): void {
     if (
         typeof (window as any).__ottTryKeyboardSeek === "function" &&
         (window as any).__ottTryKeyboardSeek(event)
+    )
+        return;
+    if (
+        typeof (window as any).__ottTryKeyboardRandom === "function" &&
+        (window as any).__ottTryKeyboardRandom(event)
     )
         return;
     // If an input, textarea, or contenteditable is focused, let the browser handle

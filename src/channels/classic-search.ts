@@ -125,6 +125,22 @@ function createClassicChannelSearch(host: any) {
                 if (!visible()) return true;
                 var keys = host.keys;
                 var id = rows[host.selIndex];
+                if (
+                    keys.RANDOM &&
+                    key === keys.RANDOM &&
+                    /^pc(?:2)?$/.test(host.ott_device || "")
+                ) {
+                    var playing =
+                        host.curList && host.curList[host.primaryIndex];
+                    var choices = rows.filter(function (candidate: number) {
+                        return candidate !== playing;
+                    });
+                    if (choices.length)
+                        play(
+                            choices[Math.floor(Math.random() * choices.length)]
+                        );
+                    return true;
+                }
                 if (key === keys.EXIT) {
                     host.closeList();
                     return true;
