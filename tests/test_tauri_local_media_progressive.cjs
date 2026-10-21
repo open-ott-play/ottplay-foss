@@ -141,7 +141,10 @@ function fixture(snapshots, options = {}) {
         require(name) {
             if (name.includes("browser-local-media"))
                 return {
-                    installBrowserLocalMedia: () => ({ list: options.read }),
+                    installBrowserLocalMedia: () => ({
+                        list: options.read,
+                        suspend() {},
+                    }),
                     installOfflineShell() {},
                 };
             if (name.includes("offline/profiles"))
@@ -149,7 +152,8 @@ function fixture(snapshots, options = {}) {
             if (name.includes("local-media-progress"))
                 return helperModule.exports;
             return {
-                resolveNativePlugin: () => ({ list: options.read }),
+                resolveNativePlugin: () =>
+                    options.native || { list: () => options.read() },
                 tauriInvoke: async (name, args) => {
                     commands.push({ args, name });
                     if (name === "offline_media_endpoint" && options.endpoint)
@@ -194,6 +198,72 @@ async function flush() {
     for (let index = 0; index < 12; index++) await Promise.resolve();
 }
 (async () => {
+    {
+        let nativeEvent,
+            nativeFinish,
+            nativeArgs,
+            nativeRemoved = 0;
+        const nativeCancels = [];
+        const native = fixture([], {
+            mode: "native",
+            native: {
+                addListener: async (name, callback) => {
+                    assert.equal(name, "localMediaProgress");
+                    nativeEvent = callback;
+                    return {
+                        remove: async () => {
+                            nativeRemoved++;
+                        },
+                    };
+                },
+                cancelList: async (args) => {
+                    nativeCancels.push(args.requestId);
+                },
+                list: (args) => {
+                    nativeArgs = args;
+                    return new Promise((resolve) => {
+                        nativeFinish = resolve;
+                    });
+                },
+            },
+        });
+        let nativePartial = 0;
+        const nativeRead = native.api.list(() => {
+            nativePartial++;
+            return true;
+        }, "gone");
+        await flush();
+        assert.equal(nativeArgs.preferredId, "gone");
+        nativeEvent({ catalog: catalog(1, 1), requestId: "old-request" });
+        assert.equal(nativePartial, 0);
+        const nativeFirst = {
+            ...catalog(1, 1),
+            preferred: { id: "gone", state: "missing" },
+        };
+        nativeEvent({ catalog: nativeFirst, requestId: nativeArgs.requestId });
+        assert.equal(
+            nativePartial,
+            1,
+            "native progress is delivered before list completion"
+        );
+        assert.equal(native.api.preferredState("gone"), "missing");
+        assert.equal(native.api.preferredState("other"), undefined);
+        native.api.cancelNativeList();
+        assert.equal((await nativeRead).cancelled, true);
+        assert.deepEqual(nativeCancels, [nativeArgs.requestId]);
+        assert.equal(nativeRemoved, 1);
+        nativeEvent({
+            catalog: catalog(2, 2),
+            requestId: nativeArgs.requestId,
+        });
+        nativeFinish(catalog(2, 2, false));
+        await flush();
+        assert.equal(
+            nativePartial,
+            1,
+            "cancelled native progress cannot repopulate the catalog"
+        );
+    }
     const completeCatalog = catalog(1, 1, false);
     completeCatalog.sources = [
         { available: true, id: "folder", kind: "folder", name: "Winnie" },

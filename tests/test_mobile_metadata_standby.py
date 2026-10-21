@@ -406,7 +406,20 @@ do { try Harness(ticket).publish(call); fatalError("Late publication") } catch {
 assert(call.replies == 0)
 ticket.finish()
 assert(NativeWork.shared.snapshot["pending"] as! Int == 0)
-print("PASS iOS metadata: cancel between reads, unreadable files, stale wake, fenced publication")
+NativeWork.shared.setStandby(false)
+let cancelledList = NativeWork.shared.begin()!
+let playingMedia = NativeWork.shared.begin()!
+var closed = 0
+cancelledList.cancelWith { closed += 1 }
+cancelledList.cancelWork()
+cancelledList.cancelWork()
+assert(closed == 1)
+do { try cancelledList.check(); fatalError("Cancelled list still owns publication") } catch {}
+try playingMedia.check()
+assert(NativeWork.shared.snapshot["pending"] as! Int == 2)
+cancelledList.finish(); playingMedia.finish()
+assert(NativeWork.shared.snapshot["pending"] as! Int == 0)
+print("PASS iOS metadata: cancel between reads, unreadable files, stale wake, fenced publication, scoped list cancellation")
 '''
         with tempfile.TemporaryDirectory(prefix="ott-mobile-metadata-") as temp:
             temp = Path(temp)

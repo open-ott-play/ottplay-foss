@@ -51,23 +51,34 @@ struct ScanState {
     cached: bool,
     revision: u64,
     error: Option<String>,
+    preferred: Option<Preferred>,
 }
 impl ScanState {
     fn invalidate(&mut self) {
         self.cached = false;
+        self.preferred = None;
         self.revision = self.revision.wrapping_add(1);
     }
 
-    fn cache_preferred(&mut self, preferred: Option<(u64, Record)>) {
-        if let Some((revision, record)) = preferred {
+    fn cache_preferred(&mut self, preferred: Option<(u64, Option<Record>, Preferred)>) {
+        if let Some((revision, record, status)) = preferred {
             // A source can be disconnected while the direct lookup is awaiting
             // filesystem I/O. Never resurrect that entry in a newer snapshot.
             if self.cached && self.revision == revision {
-                self.records.insert(record.id.clone(), (record, true));
+                if let Some(record) = record {
+                    self.records.insert(record.id.clone(), (record, true));
+                }
+                self.preferred = Some(status);
             }
         }
     }
 }
+#[derive(Clone, Serialize)]
+pub struct Preferred {
+    id: String,
+    state: &'static str,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 struct Record {
     id: String,
@@ -123,6 +134,8 @@ pub struct Catalog {
     pub total: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scan_error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preferred: Option<Preferred>,
 }
 #[derive(Deserialize)]
 struct ImportQuery {
@@ -530,30 +543,58 @@ impl Library {
         &self,
         id: &str,
         work: &crate::background_work::WorkLease,
-    ) -> Option<(u64, Record)> {
+    ) -> Option<(u64, Option<Record>, Preferred)> {
         if self.storage != "device" || !valid_id(id) {
             return None;
         }
-        // The caller has a short deadline, but filesystem work keeps its
-        // lease until the current syscall finishes, even if the caller leaves.
         let library = self.clone();
         let id = id.to_string();
-        tokio::time::timeout(
+        let revision = work.run(self.scan.lock()).await.ok()?.revision;
+        let status = Preferred {
+            id: id.clone(),
+            state: "pending",
+        };
+        let result = tokio::time::timeout(
             std::time::Duration::from_secs(1),
             owned_read(work, |owner| async move {
-                let revision = owner
-                    .run(library.scan.lock())
-                    .await
-                    .map_err(|_| BACKGROUND_CANCELLED)?
-                    .revision;
+                // Only an explicit NotFound proves absence. Permission, timeout,
+                // corrupt metadata or a changed/symlinked source stay pending.
+                let metadata = library.root.join(format!("{id}.json"));
+                if matches!(checked(Some(&owner), fs::symlink_metadata(&metadata)).await?,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound)
+                {
+                    return Ok((None, "missing"));
+                }
                 let record = library.read_record(&id, Some(&owner)).await?;
+                let path = record.linked_path.clone().unwrap_or_else(|| {
+                    library
+                        .root
+                        .join(format!("{}.{}", record.id, record.extension))
+                });
+                if matches!(checked(Some(&owner), fs::symlink_metadata(&path)).await?,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound)
+                {
+                    // A disconnected volume is not evidence that one saved
+                    // file was removed from an otherwise readable folder.
+                    if let Some(parent) = path.parent() {
+                        if checked(Some(&owner), fs::metadata(parent))
+                            .await?
+                            .map(|metadata| metadata.is_dir())
+                            .unwrap_or(false)
+                        {
+                            return Ok((None, "missing"));
+                        }
+                    }
+                }
                 library.read_path(&record, Some(&owner)).await?;
-                Ok((revision, record))
+                Ok((Some(record), "found"))
             }),
         )
-        .await
-        .ok()?
-        .ok()
+        .await;
+        match result {
+            Ok(Ok((record, state))) => Some((revision, record, Preferred { state, ..status })),
+            _ => Some((revision, None, status)),
+        }
     }
 
     /// Make the saved item available without restarting an existing scan.
@@ -629,7 +670,7 @@ impl Library {
 
     async fn start_refresh_sources_seeded(
         &self,
-        preferred: Option<(u64, Record)>,
+        preferred: Option<(u64, Option<Record>, Preferred)>,
         work: crate::background_work::WorkLease,
         force_refresh: bool,
     ) {
@@ -651,6 +692,7 @@ impl Library {
                 scan.cached = true;
                 scan.scanned = 0;
                 scan.error = None;
+                scan.preferred = None;
                 scan.cache_preferred(preferred);
                 true
             });
@@ -919,7 +961,7 @@ impl Library {
     }
     async fn read_catalog(&self, work: &ReadWork) -> Result<Catalog, Failure> {
         let base = self.endpoint();
-        let (scanning, scanned, scan_error, cached) = {
+        let (scanning, scanned, scan_error, cached, preferred) = {
             let scan = work.run(self.scan.lock()).await?;
             (
                 scan.jobs > 0,
@@ -930,6 +972,7 @@ impl Library {
                 } else {
                     None
                 },
+                scan.preferred.clone(),
             )
         };
         let mut records = match cached {
@@ -1036,6 +1079,7 @@ impl Library {
                 Some(scanned)
             },
             scan_error,
+            preferred,
         })
     }
 }
@@ -1779,6 +1823,69 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn missing_saved_native_file_is_reported_before_background_discovery() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = root.with_extension("originals");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::write(originals.join("removed.mp4"), b"video")
+            .await
+            .unwrap();
+        fs::write(originals.join("survivor.mp4"), b"video")
+            .await
+            .unwrap();
+        let library = Library::new(root.clone(), "p".repeat(32), "device")
+            .await
+            .unwrap();
+        library
+            .link_paths(vec![originals.clone()], true)
+            .await
+            .unwrap();
+        let id = library
+            .catalog()
+            .await
+            .unwrap()
+            .items
+            .iter()
+            .find(|item| item.name == "removed.mp4")
+            .unwrap()
+            .id
+            .clone();
+        fs::remove_file(originals.join("removed.mp4"))
+            .await
+            .unwrap();
+        let reopened = Library::new(root.clone(), "r".repeat(32), "device")
+            .await
+            .unwrap();
+        reopened
+            .start_refresh_sources_with_preferred(Some(&id))
+            .await;
+        {
+            let scan = reopened.scan.lock().await;
+            assert_eq!(scan.scanned, 0);
+            assert_eq!(scan.jobs, 1);
+            let preferred = scan.preferred.as_ref().unwrap();
+            assert_eq!(preferred.id, id);
+            assert_eq!(preferred.state, "missing");
+        }
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while reopened.scan.lock().await.jobs != 0 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert!(reopened
+            .catalog()
+            .await
+            .unwrap()
+            .items
+            .iter()
+            .any(|item| item.name == "survivor.mp4" && item.available));
+        fs::remove_dir_all(root).await.unwrap();
+        fs::remove_dir_all(originals).await.unwrap();
+    }
+
+    #[tokio::test]
     async fn preferred_item_does_not_wait_for_or_reset_an_active_native_scan() {
         let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         let originals = root.with_extension("originals");
@@ -1859,17 +1966,13 @@ mod tests {
             .preferred_record(id, &library.background.enter().unwrap())
             .await
             .is_some());
-        assert!(other
+        let foreign = other
             .preferred_record(id, &other.background.enter().unwrap())
             .await
-            .is_none());
-        for invalid in [
-            "../movie",
-            "/tmp/movie.mp4",
-            "local-movie",
-            "",
-            &"0".repeat(32),
-        ] {
+            .unwrap();
+        assert!(foreign.1.is_none());
+        assert_eq!(foreign.2.state, "missing");
+        for invalid in ["../movie", "/tmp/movie.mp4", "local-movie", ""] {
             assert!(library
                 .preferred_record(invalid, &library.background.enter().unwrap())
                 .await
@@ -1878,10 +1981,12 @@ mod tests {
         fs::remove_file(library.root.join(format!("{id}.mp4")))
             .await
             .unwrap();
-        assert!(library
+        let missing = library
             .preferred_record(id, &library.background.enter().unwrap())
             .await
-            .is_none());
+            .unwrap();
+        assert!(missing.1.is_none());
+        assert_eq!(missing.2.state, "missing");
         fs::remove_dir_all(root).await.unwrap();
     }
 
@@ -1904,20 +2009,24 @@ mod tests {
         let target = originals.join("replacement.mp4");
         fs::rename(&movie, &target).await.unwrap();
         std::os::unix::fs::symlink(&target, &movie).unwrap();
-        assert!(library
+        let blocked = library
             .preferred_record(&id, &library.background.enter().unwrap())
             .await
-            .is_none());
+            .unwrap();
+        assert!(blocked.1.is_none());
+        assert_eq!(blocked.2.state, "pending");
         fs::remove_file(&movie).await.unwrap();
         fs::rename(target, movie).await.unwrap();
         let metadata = root.join(format!("{id}.json"));
         let metadata_target = root.join("metadata.backup");
         fs::rename(&metadata, &metadata_target).await.unwrap();
         std::os::unix::fs::symlink(metadata_target, metadata).unwrap();
-        assert!(library
+        let blocked = library
             .preferred_record(&id, &library.background.enter().unwrap())
             .await
-            .is_none());
+            .unwrap();
+        assert!(blocked.1.is_none());
+        assert_eq!(blocked.2.state, "pending");
         fs::remove_dir_all(root).await.unwrap();
         fs::remove_dir_all(originals).await.unwrap();
     }

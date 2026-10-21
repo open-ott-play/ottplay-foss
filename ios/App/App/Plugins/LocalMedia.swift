@@ -11,19 +11,34 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
     public let jsName = "LocalMedia"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "list", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelList", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "importFiles", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "importFolder", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "removeSource", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAccess", returnType: CAPPluginReturnPromise),
     ]
+    private let listLock = NSLock()
+    private var listWork: [String: NativeWork.Ticket] = [:]
     private var currentWork: NativeWork.Ticket?
     private var removeStandbyObserver: (() -> Void)?
-    private func tracked(_ call: CAPPluginCall, _ action: @escaping () -> Void) {
+    private func tracked(_ call: CAPPluginCall, requestId: String? = nil, _ action: @escaping () -> Void) {
         guard let ticket = NativeWork.shared.begin() else { call.reject("Player is in standby", "standby"); return }
+        if let requestId {
+            listLock.lock(); let previous = listWork.updateValue(ticket, forKey: requestId); listLock.unlock()
+            previous?.cancelWork()
+        }
         queue.async {
             self.currentWork = ticket
-            defer { self.currentWork = nil; ticket.finish() }
+            defer {
+                self.currentWork = nil
+                if let requestId {
+                    self.listLock.lock()
+                    if self.listWork[requestId] === ticket { self.listWork[requestId] = nil }
+                    self.listLock.unlock()
+                }
+                ticket.finish()
+            }
             do { try ticket.check(); action() }
             catch { call.reject("Local media request cancelled") }
         }
@@ -123,8 +138,28 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         guard resolved == base || resolved.hasPrefix(base + "/") else { return nil }
         return url
     }
-    private func refresh(_ source: inout Source, root: URL) throws {
-        var candidates: [(String, URL)] = []
+    private func refresh(_ source: inout Source, root: URL,
+                         onItem: ((LinkedItem, URL) -> Void)? = nil,
+                         onScan: (() -> Void)? = nil) throws {
+        var indices: [String: Int] = [:]
+        for (index, item) in source.items.enumerated() where indices[item.path] == nil { indices[item.path] = index }
+        func append(_ path: String, _ url: URL) throws {
+            try checkWork()
+            guard !source.excluded.contains(path), let (mime, size) = mediaInfo(url) else { return }
+            let item: LinkedItem
+            if let index = indices[path] {
+                source.items[index].name = String(url.lastPathComponent.prefix(256))
+                source.items[index].mime = mime
+                source.items[index].size = size
+                item = source.items[index]
+            } else {
+                item = LinkedItem(id: UUID().uuidString.lowercased(), name: String(url.lastPathComponent.prefix(256)),
+                                  path: path, mime: mime, size: size)
+                indices[path] = source.items.count
+                source.items.append(item)
+            }
+            onItem?(item, url)
+        }
         if source.kind == "folder" {
             let rootValues = try root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
             guard rootValues.isDirectory == true, rootValues.isSymbolicLink != true else { throw CocoaError(.fileReadNoSuchFile) }
@@ -135,6 +170,7 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
             for case let url as URL in enumerator {
                 try checkWork()
                 scanned += 1
+                onScan?()
                 guard scanned <= 20_000 else { throw CocoaError(.fileReadTooLarge) }
                 let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
                 if values.isSymbolicLink == true { enumerator.skipDescendants(); continue }
@@ -143,27 +179,17 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
                 guard url.path.hasPrefix(prefix) else { continue }
                 let relative = String(url.path.dropFirst(prefix.count))
                 guard child(relative, root: root) != nil else { continue }
-                candidates.append((relative, url))
+                try append(relative, url)
             }
         } else {
             guard mediaInfo(root) != nil else { throw CocoaError(.fileReadNoSuchFile) }
-            candidates = [("", root)]
-        }
-        for (path, url) in candidates where !source.excluded.contains(path) {
-            try checkWork()
-            guard let (mime, size) = mediaInfo(url) else { continue }
-            if let index = source.items.firstIndex(where: { $0.path == path }) {
-                source.items[index].name = String(url.lastPathComponent.prefix(256))
-                source.items[index].mime = mime
-                source.items[index].size = size
-            } else {
-                source.items.append(LinkedItem(id: UUID().uuidString.lowercased(), name: String(url.lastPathComponent.prefix(256)),
-                                               path: path, mime: mime, size: size))
-            }
+            onScan?()
+            try append("", root)
         }
         // Keep absent records: the UI can explain a disconnected file instead of silently dropping it.
         try save(source)
     }
+
     private struct Entry: Codable {
         let id: String
         let name: String
@@ -262,12 +288,132 @@ public class LocalMedia: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate {
         guard let ticket = currentWork else { throw URLError(.cancelled) }
         try ticket.commit { call.resolve(result) }
     }
+    private func progressSnapshot(_ call: CAPPluginCall, requestId: String) throws {
+        guard let ticket = currentWork else { throw URLError(.cancelled) }
+        let directory = try directory()
+        var saved = try sources()
+        var items: [String: [String: Any]] = [:]
+        var order: [String] = []
+        var sourceRows: [[String: Any]] = saved.map { ["id": $0.id, "name": $0.name, "kind": $0.kind,
+            "available": false, "access": "required"] }
+        var scanned = 0
+        let preferredId = call.getString("preferredId") ?? ""
+        var preferredState = "pending"
+        var lastPublish = Date.distantPast
+        func catalog(_ scanning: Bool) -> [String: Any] {
+            var result: [String: Any] = ["available": true, "persistent": true, "storage": "device",
+                "directAccess": true, "folderAccess": true, "items": order.compactMap { items[$0] },
+                "sources": sourceRows, "scanning": scanning, "scanned": scanned]
+            if !scanning { result["total"] = scanned }
+            if !preferredId.isEmpty { result["preferred"] = ["id": preferredId, "state": preferredState] }
+            return result
+        }
+        func publish(_ force: Bool = false) throws {
+            try checkWork()
+            guard force || Date().timeIntervalSince(lastPublish) >= 0.25 else { return }
+            lastPublish = Date()
+            let value = catalog(true)
+            try ticket.commit { self.notifyListeners("localMediaProgress", data: ["requestId": requestId, "catalog": value]) }
+        }
+        func append(_ row: [String: Any]) throws {
+            guard let id = row["id"] as? String else { return }
+            let first = !items.values.contains { $0["available"] as? Bool == true }
+            if items[id] == nil { order.append(id) }
+            items[id] = row
+            if id == preferredId && row["available"] as? Bool == true { preferredState = "found" }
+            try publish(first && row["available"] as? Bool == true)
+        }
+        func linked(_ item: LinkedItem, _ source: Source, _ url: URL?) -> [String: Any] {
+            let portable = url.flatMap { mediaInfo($0) != nil ? bridge?.portablePath(fromLocalURL: $0) : nil }
+            return ["id": item.id, "name": item.name, "mime": item.mime, "size": item.size,
+                "url": portable?.absoluteString ?? "", "source": "linked", "sourceId": source.id,
+                "directory": url?.deletingLastPathComponent().lastPathComponent ?? "", "available": portable != nil]
+        }
+        // Resolve only the saved item first. The rest of the directory is not
+        // traversed until this result (including definitive absence) is published.
+        if UUID(uuidString: preferredId) != nil {
+            if let index = saved.firstIndex(where: { $0.items.contains { $0.id == preferredId } }),
+               let item = saved[index].items.first(where: { $0.id == preferredId }) {
+                do {
+                    let root = try resolve(&saved[index])
+                    sourceRows[index]["available"] = true; sourceRows[index]["access"] = "granted"
+                    if let url = child(item.path, root: root) {
+                        _ = try url.resourceValues(forKeys: [.isRegularFileKey])
+                        try append(linked(item, saved[index], url))
+                    }
+                } catch {
+                    let error = error as NSError
+                    if error.domain == NSCocoaErrorDomain && [NSFileReadNoSuchFileError, NSFileNoSuchFileError].contains(error.code) {
+                        preferredState = "missing"
+                    }
+                    try checkWork()
+                }
+            } else {
+                let metadata = directory.appendingPathComponent(preferredId + ".json")
+                if !FileManager.default.fileExists(atPath: metadata.path) { preferredState = "missing" }
+                else if let data = try readMetadata(metadata), let entry = try? JSONDecoder().decode(Entry.self, from: data),
+                        entry.id == preferredId, !entry.filename.contains("/"), entry.filename.hasPrefix(entry.id + ".") {
+                    let file = directory.appendingPathComponent(entry.filename)
+                    if !FileManager.default.fileExists(atPath: file.path) { preferredState = "missing" }
+                    else if regularPrivateFile(file, in: directory), let info = mediaInfo(file), let url = bridge?.portablePath(fromLocalURL: file) {
+                        try append(["id": entry.id, "name": entry.name, "mime": entry.mime, "size": info.1,
+                            "url": url.absoluteString, "source": "imported", "sourceId": entry.id, "available": true])
+                    }
+                }
+            }
+        }
+        try publish(true)
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        for metadata in files where metadata.pathExtension == "json" && !metadata.lastPathComponent.hasSuffix(".source.json") {
+            try checkWork()
+            scanned += 1
+            guard regularPrivateFile(metadata, in: directory), let data = try readMetadata(metadata),
+                  let entry = try? JSONDecoder().decode(Entry.self, from: data), UUID(uuidString: entry.id) != nil,
+                  !entry.filename.contains("/"), entry.filename.hasPrefix(entry.id + ".") else { continue }
+            let file = directory.appendingPathComponent(entry.filename)
+            if regularPrivateFile(file, in: directory), let info = mediaInfo(file), let url = bridge?.portablePath(fromLocalURL: file) {
+                try append(["id": entry.id, "name": entry.name, "mime": entry.mime, "size": info.1,
+                    "url": url.absoluteString, "source": "imported", "sourceId": entry.id, "available": true])
+            }
+            try publish()
+        }
+        for index in saved.indices {
+            try checkWork()
+            var source = saved[index]
+            do {
+                let root = try resolve(&source)
+                sourceRows[index] = ["id": source.id, "name": source.name, "kind": source.kind, "available": true, "access": "granted"]
+                let identity = source
+                try refresh(&source, root: root, onItem: { item, url in
+                    // The work ticket also owns progress delivery. A cancelled
+                    // source never publishes a late snapshot into the new list.
+                    try? append(linked(item, identity, url))
+                }, onScan: { scanned += 1; try? publish() })
+                for item in source.items where items[item.id] == nil && !source.excluded.contains(item.path) {
+                    try append(linked(item, source, child(item.path, root: root)))
+                }
+            } catch {
+                try checkWork()
+                sourceRows[index] = ["id": source.id, "name": source.name, "kind": source.kind, "available": false, "access": "required"]
+            }
+        }
+        try ticket.commit { call.resolve(catalog(false)) }
+    }
+    @objc func cancelList(_ call: CAPPluginCall) {
+        listLock.lock(); let ticket = listWork[call.getString("requestId") ?? ""]; listLock.unlock()
+        ticket?.cancelWork()
+        call.resolve()
+    }
     @objc func list(_ call: CAPPluginCall) {
-        tracked(call) { [weak self] in
+        tracked(call, requestId: call.getString("requestId")) { [weak self] in
             guard let self else { call.reject("Local media unavailable"); return }
-            do { try self.resolveSnapshot(call) } catch { call.reject("Local media unavailable") }
+            do {
+                if let requestId = call.getString("requestId"), !requestId.isEmpty { try self.progressSnapshot(call, requestId: requestId) }
+                else { try self.resolveSnapshot(call) }
+            } catch { call.reject("Local media unavailable") }
         }
     }
+
     @objc func remove(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), UUID(uuidString: id) != nil else { call.reject("Invalid local media ID"); return }
         tracked(call) { [weak self] in

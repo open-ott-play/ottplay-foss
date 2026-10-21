@@ -69,8 +69,18 @@ function createInputRouter(ports: any) {
         // Overlays are modal. Global volume remains available over ordinary lists.
         ports.reconcile();
         var owner = ports.screens.current();
-        if (owner && owner.kind !== "list")
+        if (owner && owner.kind !== "list") {
+            // A loading operation may be retired before the ordinary power/quit
+            // action. Editors and confirmation dialogs remain modal.
+            if (
+                command.id === "power" &&
+                typeof owner.model?.cancelOnPower === "function"
+            ) {
+                owner.model.cancelOnPower();
+                if (ports.global(command)) return true;
+            }
             return ports.screens.dispatch(command);
+        }
         if (ports.global(command)) return true;
         if (owner) return ports.screens.dispatch(command);
         ports.main(command);

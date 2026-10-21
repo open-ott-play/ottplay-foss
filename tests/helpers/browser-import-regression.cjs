@@ -62,6 +62,8 @@ async function browserImportRegression(
         };
         const ownClock = clock;
         const records = [];
+        const created = [];
+        let tracked = 0;
         const handoffs = [];
         let reads = 0,
             enumerations = 0,
@@ -122,7 +124,13 @@ async function browserImportRegression(
                               values: () => ({ next: () => blocked.promise }),
                           },
                       ]
-                    : [first, second];
+                    : Array.from({ length: options.count || 2 }, (_, at) =>
+                          at === 0
+                              ? first
+                              : at === 1
+                                ? second
+                                : { ...second, name: "later-" + at + ".mp4" }
+                      );
                 return {
                     next: () =>
                         options.iteratorError
@@ -278,10 +286,25 @@ async function browserImportRegression(
             showPage() {},
             stbSetItem() {},
             URL: {
-                createObjectURL: () => "blob:fixture",
+                createObjectURL: (file) => {
+                    created.push(file.name);
+                    return "blob:fixture-" + created.length;
+                },
                 revokeObjectURL() {},
             },
         };
+        if (options.track)
+            w.__ottStandby = {
+                blocked: () => false,
+                observe(pending) {
+                    tracked++;
+                    pending.then(
+                        () => tracked--,
+                        () => tracked--
+                    );
+                    return pending;
+                },
+            };
         const api = plugin.installLocalMedia(w);
         return {
             api,
@@ -293,6 +316,8 @@ async function browserImportRegression(
                 gesture = false;
             },
             close: () => w.listKeyHandler(w.keys.RETURN),
+            created: () => created,
+
             detail() {
                 w.detailListAction();
                 return w.listDetail.innerHTML;
@@ -333,6 +358,7 @@ async function browserImportRegression(
                 await flush();
             },
             timers: () => tasks.size,
+            tracked: () => tracked,
             writes: () => writes,
         };
     }
@@ -546,7 +572,11 @@ async function browserImportRegression(
         assert.equal(failed.spinner(), false);
     }
 
-    const waiting = fixture({ blockFirst: true });
+    const waiting = fixture({
+        blockFirst: true,
+        secondPlayable: true,
+        track: true,
+    });
     waiting.click("add-folder");
     waiting.grant("add-folder");
     await flush();
@@ -556,17 +586,20 @@ async function browserImportRegression(
         "Local videos: 0 · Entries found: 1 · Reading file information",
         "a discovered file remains visible while its metadata read is pending"
     );
-    await waiting.tick(60000);
-    assert.equal(
-        waiting.spinner(),
-        false,
-        "a stalled read releases the dialog"
-    );
+    await waiting.tick(9899);
     assert.equal(waiting.played(), 0);
-    assert.match(
-        waiting.detail(),
-        /did not respond/,
-        "stalled source explains the failure"
+    await waiting.tick(1);
+    assert.equal(
+        waiting.played(),
+        1,
+        "one stalled metadata read does not hide the next playable file"
+    );
+    assert.equal(waiting.reads(), 2);
+    assert.deepEqual(waiting.created(), ["second.mp4"]);
+    assert.equal(
+        waiting.tracked(),
+        1,
+        "timed-out native read remains tracked until it actually settles"
     );
     waiting.blocked.resolve({
         lastModified: 1,
@@ -575,8 +608,123 @@ async function browserImportRegression(
         type: "video/mp4",
     });
     await flush();
-    assert.equal(waiting.played(), 0, "late timed-out reads cannot autoplay");
-    assert.equal(waiting.reads(), 1, "timeout prevents further file reads");
+    assert.equal(waiting.tracked(), 0);
+    assert.equal(waiting.played(), 1);
+    assert.deepEqual(
+        waiting.created(),
+        ["second.mp4"],
+        "late skipped file never receives a playback URL"
+    );
+
+    const allBlocked = fixture({ blockFirst: true, count: 12000, track: true });
+    allBlocked.click("add-folder");
+    allBlocked.grant("add-folder");
+    await flush();
+    await allBlocked.tick(20000);
+    assert.equal(
+        allBlocked.spinner(),
+        false,
+        "two stalled file reads settle recovery before the global deadline"
+    );
+    assert.equal(allBlocked.played(), 0);
+    assert.equal(
+        allBlocked.reads(),
+        2,
+        "a 12,000-file folder cannot queue 12,000 abandoned native reads"
+    );
+    assert.equal(allBlocked.tracked(), 2);
+    const unavailable = await allBlocked.api.snapshot();
+    assert.equal(
+        unavailable.sources.length,
+        1,
+        "recovery retains the linked source"
+    );
+    assert.equal(unavailable.readErrorName, "TimeoutError");
+    await allBlocked.api.list();
+    assert.equal(
+        allBlocked.reads(),
+        2,
+        "retry does not duplicate unresolved reads or bypass their global cap"
+    );
+    assert.equal(allBlocked.tracked(), 2);
+    allBlocked.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    await flush();
+    assert.equal(allBlocked.tracked(), 0);
+    assert.deepEqual(allBlocked.created(), []);
+    await allBlocked.api.list((value) =>
+        value.items.length ? false : undefined
+    );
+    assert.equal(
+        allBlocked.reads(),
+        3,
+        "a settled browser call releases capacity for a fresh scan"
+    );
+
+    const shared = fixture({
+        blockFirst: true,
+        existing: true,
+        secondPlayable: true,
+        track: true,
+    });
+    const oldScan = shared.api.list();
+    await flush();
+    const newScan = shared.api.list((value) =>
+        value.items.length ? false : undefined
+    );
+    await flush();
+    assert.equal(
+        shared.reads(),
+        1,
+        "overlapping generations share a still-pending stable file read"
+    );
+    shared.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    const oldCatalog = await oldScan;
+    const newCatalog = await newScan;
+    assert.equal(oldCatalog.cancelled, true);
+    assert.equal(newCatalog.items.length, 1);
+    assert.deepEqual(
+        shared.created(),
+        ["first.mp4"],
+        "only the current generation publishes the shared result"
+    );
+    assert.equal(shared.tracked(), 0);
+
+    const cancelledRead = fixture({
+        blockFirst: true,
+        secondPlayable: true,
+        track: true,
+    });
+    cancelledRead.click("add-folder");
+    cancelledRead.grant("add-folder");
+    await flush();
+    cancelledRead.close();
+    await cancelledRead.tick(10000);
+    assert.equal(
+        cancelledRead.reads(),
+        1,
+        "a cancelled scan cannot use its timeout to start the next file"
+    );
+    assert.equal(cancelledRead.played(), 0);
+    assert.equal(cancelledRead.tracked(), 1);
+    cancelledRead.blocked.resolve({
+        lastModified: 1,
+        name: "first.mp4",
+        size: 42,
+        type: "video/mp4",
+    });
+    await flush();
+    assert.equal(cancelledRead.tracked(), 0);
+    assert.deepEqual(cancelledRead.created(), []);
 
     const closed = fixture();
     closed.click("add-folder");

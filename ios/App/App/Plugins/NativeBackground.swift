@@ -39,6 +39,15 @@ final class NativeWork {
             owner.lock.unlock()
             if now { action() }
         }
+        func cancelWork() {
+            let owner = NativeWork.shared
+            owner.lock.lock()
+            let action = !cancelled && !finished ? cancel : nil
+            cancelled = true
+            cancel = nil
+            owner.lock.unlock()
+            action?()
+        }
         func finish() {
             let owner = NativeWork.shared
             owner.lock.lock(); defer { owner.lock.unlock() }

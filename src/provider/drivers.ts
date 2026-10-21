@@ -282,6 +282,7 @@ function createOfflineDriver(
             var progressStamp = "";
             var wanted = "";
             var waitForFinal = false;
+            var missingPreferred = false;
             var legacyIndex = 0;
             try {
                 var imported = media.takeImportSelection
@@ -351,6 +352,7 @@ function createOfflineDriver(
             }
             function publish(value: any, final: boolean): boolean {
                 if (!current()) return false;
+                ensureLoadingControls();
                 if (!value || !Array.isArray(value.items)) {
                     recover("Invalid local media catalog", false);
                     return false;
@@ -453,7 +455,9 @@ function createOfflineDriver(
                         if (!isFinite(scanned)) scanned = 0;
                         var waiting = waitForFinal
                             ? "invalid-index"
-                            : wanted && !catalog.channels[wanted]
+                            : wanted &&
+                                !catalog.channels[wanted] &&
+                                !missingPreferred
                               ? "saved-id"
                               : catalog.ids.length <= legacyIndex &&
                                   legacyIndex > 0
@@ -483,12 +487,21 @@ function createOfflineDriver(
                 }
                 if (final) clearLoadTimer();
                 if (
+                    wanted.indexOf("local-") === 0 &&
+                    value.preferred &&
+                    value.preferred.id === wanted.slice(6) &&
+                    value.preferred.state === "missing"
+                )
+                    missingPreferred = true;
+                if (
                     !started &&
                     !final &&
                     (!catalog.ids.length ||
                         waitForFinal ||
                         catalog.ids.length <= legacyIndex ||
-                        (wanted && !catalog.channels[wanted]))
+                        (wanted &&
+                            !catalog.channels[wanted] &&
+                            !missingPreferred))
                 )
                     return true;
                 var incremental = started;
@@ -496,6 +509,8 @@ function createOfflineDriver(
                 closeLoading();
                 var snapshot = driverCatalogSnapshot(catalog);
                 snapshot.incremental = incremental;
+                if (missingPreferred && !catalog.channels[wanted])
+                    snapshot.selectedId = catalog.ids[0];
                 done(snapshot, undefined, incremental);
                 if (!current()) return false;
                 try {
@@ -530,39 +545,66 @@ function createOfflineDriver(
                 }
                 return true;
             }
-            var host = window as any;
-            var panel =
-                typeof document !== "undefined" &&
-                document.getElementById("dialogbox");
-            if (
-                panel &&
-                panel.querySelector(".ott-spinner") &&
-                host.__ottClassicScreenPort &&
-                typeof host.renderButtonHint === "function" &&
-                !(host.__ottKiosk && host.__ottKiosk.locked())
-            ) {
-                loadingOwner = host.__ottClassicScreenPort.setOwnedCallback(
-                    "dialog",
-                    function (key: number) {
-                        if (
-                            current() &&
-                            !started &&
-                            (key === host.keys.RETURN ||
-                                key === host.keys.EXIT) &&
-                            !(host.__ottKiosk && host.__ottKiosk.locked())
-                        )
-                            recover("");
-                    }
-                ).owner;
-                var cancel = document.createElement("div");
-                cancel.setAttribute("data-local-cancel", "");
-                cancel.innerHTML = host.renderButtonHint(
-                    host.keys.RETURN,
-                    host.strRETURN,
-                    "Cancel"
-                );
-                panel.appendChild(cancel);
+            function cancelStartup(): void {
+                var host = window as any;
+                if (!current() || started || host.__ottKiosk?.locked()) return;
+                if (typeof media.cancelScan === "function") media.cancelScan();
+                recover("");
             }
+            function ensureLoadingControls(): void {
+                var host = window as any;
+                var panel =
+                    typeof document !== "undefined" &&
+                    document.getElementById("dialogbox");
+                if (
+                    !current() ||
+                    started ||
+                    !panel ||
+                    !panel.querySelector(".ott-spinner") ||
+                    panel.style?.display === "none" ||
+                    !host.__ottClassicScreenPort ||
+                    typeof host.renderButtonHint !== "function" ||
+                    host.__ottKiosk?.locked()
+                )
+                    return;
+                if (
+                    !loadingOwner ||
+                    (typeof loadingOwner.active === "function" &&
+                        !loadingOwner.active())
+                ) {
+                    loadingOwner = host.__ottClassicScreenPort.setOwnedCallback(
+                        "dialog",
+                        function (key: number) {
+                            if (
+                                key === host.keys.RETURN ||
+                                key === host.keys.EXIT ||
+                                key === host.keys.ENTER
+                            )
+                                cancelStartup();
+                        }
+                    ).owner;
+                    loadingOwner.model = loadingOwner.model || {};
+                    loadingOwner.model.cancelOnPower = cancelStartup;
+                }
+                // Startup can replace the spinner markup after the first
+                // callback; restore its visible action on the next batch.
+                if (!panel.querySelector("[data-local-cancel]")) {
+                    var cancel = document.createElement("div");
+                    cancel.setAttribute("data-local-cancel", "");
+                    cancel.innerHTML = host.renderButtonHint(
+                        host.keys.RETURN,
+                        host.strRETURN,
+                        "Cancel"
+                    );
+                    cancel.onclick = function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        cancelStartup();
+                    };
+                    panel.appendChild(cancel);
+                }
+            }
+            ensureLoadingControls();
             heartbeat();
             try {
                 media

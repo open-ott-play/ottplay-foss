@@ -38,7 +38,10 @@ before reading the saved directory. Scanning uses the normal in-player loading
 indicator. Browser folders stream their catalog: a new selection can play the
 first available video immediately, while remaining files are appended in the
 background. The last selected file is looked up directly before enumerating a
-large folder. Later batches do not restart playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
+large folder. If that lookup confirms the file is missing, playback starts with
+the first available video from the permitted sources while scanning continues.
+A pending lookup is not treated as a missing file. Later batches do not restart
+playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
 playback** without immediately repeating the stalled scan. Menu navigation and
 saved source/video selection remain available; retrying does not copy media.
 The browser's file picker is allowed to remain open while you choose a source.
@@ -54,6 +57,9 @@ has the same Cancel control and returns to source management. When the browser
 reports a filesystem error, recovery names the stage and error code without
 including private file paths. Cancelling stops OTT from using late results; an
 already issued operating-system read can still finish in the background.
+The loading dialog exposes **Cancel** for pointer/touch input and Back/Esc.
+On PC, **Q** also retires the pending load before exiting the player. Cancelled
+results cannot restart playback. Strict kiosk retains its local-input lock.
 
 On a large network folder, Chrome can read the folder's metadata before returning
 even the first entry to JavaScript. During that stage, **Entries found: 0** does
@@ -69,8 +75,10 @@ selected file resumes from that position, including when a saved Local videos
 profile is active. This applies to here.now/browser, OTT Server, Tauri, and
 Capacitor players. Each saved profile keeps its own position; switching profiles
 does not overwrite another profile's or the unprofiled library's resume journal.
-The original source must still be present and permitted;
-missing files or revoked access open recovery instead of playing a different file.
+The original source must still be present and permitted. A confirmed missing
+file selects the first playable file allowed by the active profile or folder
+kiosk; its old playback position is not applied to the replacement. Revoked
+access, unavailable sources and unbound profiles still open recovery.
 Local positions do not have the seven-day expiry used for TV archives.
 
 A completed video starts from the beginning. Manually selecting a channel or
@@ -109,7 +117,7 @@ then remove the old imported copy.
 ## Platform behavior
 
 Progressive catalog loading applies to browser-local folders (including here.now
-and the browser UI served by OTT Server) and updated Tauri builds. Tauri's native
+and the browser UI served by OTT Server), updated Tauri and Capacitor builds. Tauri's native
 scan publishes available entries while it continues in the background; adding a
 folder starts playback once an eligible entry is ready. A saved Tauri selection
 is looked up directly before the background scan, so resuming it does not wait
@@ -117,14 +125,10 @@ for its place in directory enumeration. The standard loading dialog shows one
 loading title and one count of playable videos found. Internal scan counters
 remain available for diagnostics and stall detection.
 
-Capacitor Android/iOS and the optional server library still return a complete
-catalog before playback starts. They share the loading dialog, but do not yet
-provide first-batch playback or background catalog appends. Android/iOS list calls
-have no progress events, so their 60-second response deadline is a total operation
-limit, including directory traversal. A valid large scan can exceed it and require
-a smaller source or a retry; it is not evidence that scanning finished. This
-matches the existing provider startup limit and also bounds the source manager.
-Browser/Tauri reads reset their inactivity deadline only on actual progress;
+Updated Capacitor Android/iOS bridges publish request-scoped progress and partial
+catalogs while scanning. Cancel retires the matching native request and its
+listener. Older installed bridges and one-shot server libraries remain compatible
+but cannot supply early batches. Browser/native reads reset their inactivity deadline only on actual progress;
 unchanged polling does not reset it. Check
 the installed build's source revision: earlier 1.1.58 Tauri builds still have the
 one-shot scan.

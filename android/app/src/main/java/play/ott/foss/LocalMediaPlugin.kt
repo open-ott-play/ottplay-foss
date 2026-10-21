@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 /** SAF grants reference original documents. Existing private imports remain readable. */
 @CapacitorPlugin(name = "LocalMedia")
 class LocalMediaPlugin : Plugin() {
+    private val listWork = ConcurrentHashMap<String, NativeWork.Ticket>()
     private val ownedWork = ConcurrentHashMap.newKeySet<NativeWork.Ticket>()
     @Synchronized private fun beginWork(): NativeWork.Ticket? =
         if (destroyed) null else NativeWork.begin()?.also { ownedWork.add(it) }
@@ -41,16 +42,17 @@ class LocalMediaPlugin : Plugin() {
     private val currentWork = ThreadLocal<NativeWork.Ticket>()
     private var stopSubscription: (() -> Unit)? = null
     private fun checkWork() { currentWork.get()?.check() }
-    private fun submit(call: PluginCall, action: () -> Unit) {
+    private fun submit(call: PluginCall, requestId: String? = null, action: () -> Unit) {
         val ticket = beginWork() ?: run { call.reject("Local media unavailable or in standby", "standby"); return }
+        if (requestId != null) listWork.put(requestId, ticket)?.cancel()
         try {
             worker.execute(QueuedWork({
                 currentWork.set(ticket)
                 try { ticket.check(); action() }
                 catch (_: Exception) { call.reject("Local media request cancelled") }
-                finally { currentWork.remove(); finishWork(ticket) }
-            }, { finishWork(ticket); call.reject("Local media owner destroyed") }))
-        } catch (_: Exception) { finishWork(ticket); call.reject("Local media unavailable") }
+                finally { currentWork.remove(); if (requestId != null) listWork.remove(requestId, ticket); finishWork(ticket) }
+            }, { if (requestId != null) listWork.remove(requestId, ticket); finishWork(ticket); call.reject("Local media owner destroyed") }))
+        } catch (_: Exception) { if (requestId != null) listWork.remove(requestId, ticket); finishWork(ticket); call.reject("Local media unavailable") }
     }
     private fun query(uri: Uri, projection: Array<String>): android.database.Cursor? {
         checkWork()
@@ -150,14 +152,14 @@ class LocalMediaPlugin : Plugin() {
         return try { text?.let { JSONObject(it) } } catch (_: Exception) { null }
     }
 
-    private fun metadata(): List<JSONObject> {
+    private fun metadata(onRecord: ((JSONObject) -> Unit)? = null): List<JSONObject> {
         checkWork()
         val files = directory.listFiles().orEmpty()
         checkWork()
         val records = files.sortedBy { it.name }.mapNotNull {
             checkWork()
             if (!it.name.endsWith(".json") || !privateFile(it)) null
-            else readMetadata(it)?.takeIf { item -> validId(item.optString("id")) }
+            else readMetadata(it)?.takeIf { item -> validId(item.optString("id")) }?.also { item -> onRecord?.invoke(item) }
         }
         checkWork()
         return records
@@ -246,17 +248,110 @@ class LocalMediaPlugin : Plugin() {
         ticket.commit { call.resolve(result) }
     }
 
+    private fun progressList(call: PluginCall, requestId: String) {
+        val ticket = currentWork.get() ?: throw IOException("Local media owner unavailable")
+        val sources = sourceMetadata().filter { validId(it.optString("id")) }
+        val items = linkedMapOf<String, JSObject>()
+        val preferredId = call.getString("preferredId").orEmpty()
+        var preferredState = "pending"
+        var scanned = 0
+        var lastPublish = 0L
+        val port = startServer()
+        fun row(item: JSONObject): JSObject {
+            var size = item.optLong("size", 0)
+            val available = try { openSource(item).use { size = it.size }; true }
+                catch (_: Exception) { checkWork(); false }
+            return JSObject().put("id", item.getString("id")).put("name", item.getString("name"))
+                .put("mime", item.getString("mime")).put("directory", item.optString("directory"))
+                .put("size", size).put("sourceId", sourceId(item))
+                .put("source", if (item.has("uri")) "linked" else "imported")
+                .put("available", available)
+                .put("url", if (available) "http://127.0.0.1:$port/$token/${item.getString("id")}" else "")
+        }
+        fun catalog(scanning: Boolean): JSObject {
+            val knownSources = linkedMapOf<String, JSONObject>()
+            sources.forEach { knownSources[it.getString("id")] = it }
+            items.values.forEach { item ->
+                val id = item.getString("sourceId").orEmpty()
+                if (!knownSources.containsKey(id)) knownSources[id] = JSONObject().put("id", id)
+                    .put("name", item.getString("name")).put("kind", "file")
+            }
+            val sourceRows = knownSources.values.map { source ->
+                val id = source.getString("id")
+                val available = items.values.any { it.getString("sourceId") == id && it.getBoolean("available") == true } ||
+                    context.contentResolver.persistedUriPermissions.any { it.uri.toString() == source.optString("grantUri") && it.isReadPermission }
+                JSObject().put("id", id).put("name", source.getString("name")).put("kind", source.optString("kind", "file"))
+                    .put("available", available).put("access", if (available) "granted" else "unavailable")
+            }
+            val value = JSObject().put("available", true).put("persistent", true).put("storage", "device")
+                .put("directAccess", true).put("directSources", true).put("sources", JSArray(sourceRows))
+                .put("items", JSArray(items.values.toList())).put("scanning", scanning).put("scanned", scanned)
+            if (!scanning) value.put("total", scanned)
+            if (preferredId.isNotEmpty()) value.put("preferred", JSObject().put("id", preferredId).put("state", preferredState))
+            return value
+        }
+        fun publish(force: Boolean = false) {
+            checkWork()
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (!force && now - lastPublish < 250) return
+            lastPublish = now
+            val value = catalog(true)
+            ticket.commit { notifyListeners("localMediaProgress", JSObject().put("requestId", requestId).put("catalog", value)) }
+        }
+        fun accept(item: JSONObject) {
+            checkWork()
+            val value = row(item)
+            val first = items.values.none { it.getBoolean("available") == true }
+            items[item.getString("id")] = value
+            scanned++
+            if (item.optString("id") == preferredId && value.getBoolean("available") == true) preferredState = "found"
+            publish(first && value.getBoolean("available") == true)
+        }
+        if (validId(preferredId)) {
+            val file = File(directory, "$preferredId.json")
+            if (!file.exists()) preferredState = "missing"
+            else readMetadata(file)?.takeIf { it.optString("id") == preferredId }?.let { item ->
+                accept(item)
+                if (preferredState != "found") {
+                    if (!item.has("uri")) {
+                        if (!File(directory, "$preferredId.media").exists()) preferredState = "missing"
+                    } else {
+                        runCatching { query(Uri.parse(item.getString("uri")), arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID))?.use {
+                            if (!it.moveToFirst()) preferredState = "missing"
+                        } }
+                        checkWork()
+                    }
+                }
+            }
+        }
+        publish(true)
+        metadata { accept(it) }
+        sources.forEach { source ->
+            checkWork()
+            try { if (source.optString("kind") == "folder") scanTree(Uri.parse(source.getString("grantUri"))) { accept(it) } }
+            catch (_: Exception) { checkWork() }
+        }
+        val value = catalog(false)
+        ticket.commit { call.resolve(value) }
+    }
+
+    @PluginMethod fun cancelList(call: PluginCall) {
+        val requestId = call.getString("requestId").orEmpty()
+        listWork[requestId]?.cancel()
+        call.resolve()
+    }
+
     @PluginMethod fun list(call: PluginCall) {
-        submit(call) {
+        val requestId = call.getString("requestId").orEmpty()
+        submit(call, requestId.takeIf { it.isNotEmpty() }) {
             try {
-                // Re-scan saved trees with their existing grants. Missing sources remain in the catalog.
+                if (requestId.isNotEmpty()) { progressList(call, requestId); return@submit }
+                // Older clients retain the complete-snapshot contract.
                 sourceMetadata().forEach { source ->
                     checkWork()
                     try {
                         if (source.optString("kind") == "folder") scanTree(Uri.parse(source.getString("grantUri")))
-                    } catch (_: Exception) {
-                        checkWork() // Cancellation must not be treated as an unavailable folder.
-                    }
+                    } catch (_: Exception) { checkWork() }
                 }
                 resolveSnapshot(call)
             } catch (_: Exception) { call.reject("Local media unavailable") }
@@ -360,7 +455,7 @@ class LocalMediaPlugin : Plugin() {
 
     private class UnavailableDocument(cause: Exception) : IOException(cause)
 
-    private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null, folderLabel: String = "", existing: JSONObject? = null): Boolean {
+    private fun link(uri: Uri, grantUri: Uri, known: MutableSet<String>, knownName: String? = null, knownMime: String? = null, folderLabel: String = "", existing: JSONObject? = null, onRecord: ((JSONObject) -> Unit)? = null): Boolean {
         checkWork()
         var name = knownName ?: "Local media"
         if (knownName == null) query(uri, arrayOf(OpenableColumns.DISPLAY_NAME))?.use {
@@ -382,6 +477,7 @@ class LocalMediaPlugin : Plugin() {
                     currentWork.get()?.commit(publish) ?: publish()
                 } finally { partial.delete() }
             }
+            if (existing != null) onRecord?.invoke(existing)
             return false
         }
         val id = UUID.randomUUID().toString()
@@ -398,6 +494,7 @@ class LocalMediaPlugin : Plugin() {
             currentWork.get()?.commit(publish) ?: publish()
         } finally { partial.delete() }
         known.add(uri.toString())
+        onRecord?.invoke(item)
         return true
     }
 
@@ -433,7 +530,7 @@ class LocalMediaPlugin : Plugin() {
         }
     }
 
-    private fun scanTree(tree: Uri) {
+    private fun scanTree(tree: Uri, onRecord: ((JSONObject) -> Unit)? = null) {
         val root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
         var folderName = "Local folder"
         query(root, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME))?.use {
@@ -468,7 +565,7 @@ class LocalMediaPlugin : Plugin() {
                     }
                     else try {
                         val uri = DocumentsContract.buildDocumentUriUsingTree(tree, document)
-                        link(uri, tree, known, name, mime, directoryNames[parent].orEmpty(), existing[uri.toString()])
+                        link(uri, tree, known, name, mime, directoryNames[parent].orEmpty(), existing[uri.toString()], onRecord)
                     } catch (_: UnavailableDocument) {
                         // A revoked/non-seekable document must not hide readable siblings.
                     }

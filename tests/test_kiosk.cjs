@@ -2466,6 +2466,53 @@ async function testFolderRecovery() {
         "PASS folder recovery waits for complete scan and stays source-scoped"
     );
 }
+async function testEarlyMissingFolderRecovery() {
+    const r = rig();
+    r.w.__ottActiveProviderDriver = { id: "offline" };
+    r.source("offline:device");
+    r.w.channels.a.__ottLocalSource = "folder-1";
+    r.w.channels.a.__ottLocalSourceName = "Winnie";
+    r.w.channels.c = { __ottLocalSource: "folder-1", channel_name: "Next" };
+    r.w.cats.all = r.w.cList = r.w.curList = ["a", "b", "c"];
+    r.w.__ottLocalMedia = {
+        completedSources: () => [
+            { id: "folder-1", kind: "folder", name: "Winnie" },
+        ],
+    };
+    r.request({ mode: "on", query: "folder:Winnie", strict: true });
+    delete r.w.channels.a;
+    let probes = 0;
+    r.w.__ottLocalMedia = {
+        preferredState: (id) => {
+            assert.equal(id, "a");
+            return "missing";
+        },
+        snapshot: () => {
+            probes++;
+            return Promise.reject(Error("still scanning"));
+        },
+    };
+    r.advance(10);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+        r.played.at(-1),
+        "c",
+        "confirmed missing saved file recovers during partial scan"
+    );
+    assert.equal(
+        probes,
+        0,
+        "early recovery does not wait for a complete snapshot"
+    );
+    assert.equal(JSON.parse(r.storage.__ottKioskV1).channel.id, "c");
+    console.log(
+        "PASS confirmed missing folder item recovers early within its captured source"
+    );
+}
+testEarlyMissingFolderRecovery().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
 testFolderRecovery().catch((error) => {
     console.error(error);
     process.exitCode = 1;

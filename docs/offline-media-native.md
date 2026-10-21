@@ -86,10 +86,13 @@ reconnect through the native picker when necessary.
 Updated Tauri builds publish cumulative native snapshots during background
 scanning. The frontend starts playback from an eligible partial catalog and
 appends later entries without restarting the video. The standard spinner shows
-one loading title and one count of playable videos found. Android and
-iOS still return one completed snapshot per request. Their shared spinner does
-not imply background scanning or first-batch playback. Large or stalled catalogs
-can reach the shared provider's 60-second inactivity timeout.
+one loading title and one count of playable videos found. Updated Android and
+iOS bridges publish partial catalogs with request-scoped progress events. The
+saved file is checked first; a confirmed missing file permits early playback of
+the first available file within the active profile or folder kiosk. Pending
+lookups and unavailable sources do not permit substitution. Cancel retires the
+native scan and its progress listener. Older bridges remain one-shot compatible.
+Stalled reads still reach the shared provider's inactivity timeout.
 
 New native code requires an APK/IPA/Tauri application update. Updating only the
 hosted page does not install a native picker or permission implementation. The

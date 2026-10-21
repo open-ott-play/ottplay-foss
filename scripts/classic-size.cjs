@@ -306,7 +306,11 @@ const { gzipSync } = require("node:zlib");
 // Completed-source uniqueness and missing-file recovery keep bounded native/beta headroom.
 // Android Local screen suspension and deferred EOF add about 1.2 KB raw;
 // retain bounded gzip/native/release identity headroom.
-const BUDGET = Object.freeze({ bytes: 985700, gzipBytes: 305400 });
+// Progressive missing-file fallback, native scan events and cancellable loading
+// add bounded startup control. Node 22.23.3 measures 988660/305866 web
+// and 988618/305920 native; complete native 1120808/354248 bytes.
+// Retain a small reserve for clean-source identity and release suffixes.
+const BUDGET = Object.freeze({ bytes: 989400, gzipBytes: 306550 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -453,7 +457,7 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Integrated Node 22 native output is 350730 gzip bytes; retain suffix room.
 // Count the same local-folder policy and EOF/footer routing once in the total.
 // Node 22 measures 1115298/352559 web and 1115256/352616 native.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1118300, gzipBytes: 353800 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1122000, gzipBytes: 355000 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

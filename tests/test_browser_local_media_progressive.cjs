@@ -27,6 +27,8 @@ require("acorn").parse(source, { ecmaVersion: 5 });
 
 function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     let reads = 0,
+        iteratorReads = 0,
+        iteratorCreations = 0,
         revoked = 0,
         nextUrl = 0,
         permissionRequests = 0;
@@ -55,7 +57,15 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
             await waits.directory;
             return folder;
         },
-        getFileHandle: async (name) => files.find((file) => file.name === name),
+        getFileHandle: async (name) => {
+            const file = files.find((file) => file.name === name);
+            if (!file) {
+                const error = new Error("Missing file");
+                error.name = "NotFoundError";
+                throw error;
+            }
+            return file;
+        },
         kind: "directory",
         name: "Movies",
         queryPermission: async () => {
@@ -67,9 +77,11 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
             return "granted";
         },
         values: () => {
+            iteratorCreations++;
             let index = 0;
             return {
                 next: async () => {
+                    iteratorReads++;
                     await waits.iterator;
                     return index < files.length
                         ? { done: false, value: files[index++] }
@@ -145,6 +157,8 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     vm.runInContext(source, context);
     vm.runInContext(standby, context);
     return {
+        addSource: (id) =>
+            saved.push({ created: 2, handle: folder, id, name: folder.name }),
         api: context.installBrowserLocalMedia(w),
         installStandby: () =>
             context.installStandby(
@@ -152,13 +166,160 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
                 () => "0",
                 () => {}
             ),
+        iteratorCreations: () => iteratorCreations,
+        iteratorReads: () => iteratorReads,
         permissionRequests: () => permissionRequests,
         reads: () => reads,
         revoked: () => revoked,
         w,
     };
 }
+async function settle(pending) {
+    let timer;
+    try {
+        return await Promise.race([
+            pending,
+            new Promise((_, reject) => {
+                timer = setTimeout(
+                    () =>
+                        reject(
+                            new Error(
+                                "Pending directory regression did not complete"
+                            )
+                        ),
+                    5000
+                );
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+async function flushScans() {
+    for (let i = 0; i < 150; i++) await Promise.resolve();
+}
+
 (async () => {
+    let releaseInitial;
+    const sharedInitial = fixture(3, "mp4", -1, undefined, {
+        iterator: new Promise((resolve) => {
+            releaseInitial = resolve;
+        }),
+    });
+    const firstOwner = sharedInitial.api.list();
+    await flushScans();
+    const secondOwner = sharedInitial.api.list();
+    await flushScans();
+    const lastOwner = sharedInitial.api.list();
+    await flushScans();
+    assert.equal(
+        sharedInitial.iteratorCreations(),
+        1,
+        "rapid retries share only the unresolved first iterator"
+    );
+    assert.equal(
+        sharedInitial.iteratorReads(),
+        1,
+        "rapid retries cannot queue another full native enumeration"
+    );
+    releaseInitial();
+    const initialResults = await settle(
+        Promise.all([firstOwner, secondOwner, lastOwner])
+    );
+    assert.equal(initialResults[0].cancelled, true);
+    assert.equal(initialResults[1].cancelled, true);
+    assert.equal(initialResults[0].items.length, 0);
+    assert.equal(initialResults[1].items.length, 0);
+    assert.equal(initialResults[2].items.length, 3);
+    assert.equal(
+        sharedInitial.iteratorReads(),
+        4,
+        "only newest owner advances the iterator after its shared first result"
+    );
+    assert.equal((await settle(sharedInitial.api.list())).items.length, 3);
+    assert.equal(
+        sharedInitial.iteratorCreations(),
+        2,
+        "a completed first result is never reused as an advanced iterator"
+    );
+
+    let failInitial;
+    const failedWait = {
+        iterator: new Promise((_, reject) => {
+            failInitial = reject;
+        }),
+    };
+    const failedInitial = fixture(2, "mp4", -1, undefined, failedWait);
+    const failedScan = failedInitial.api.list();
+    await flushScans();
+    failInitial(
+        Object.assign(new Error("fixture failure"), {
+            name: "NotReadableError",
+        })
+    );
+    assert.equal((await settle(failedScan)).items[0].available, false);
+    failedWait.iterator = Promise.resolve();
+    assert.equal((await settle(failedInitial.api.list())).items.length, 2);
+    assert.equal(
+        failedInitial.iteratorCreations(),
+        2,
+        "rejected first reads release their cache entry"
+    );
+
+    let releaseRoots;
+    const roots = fixture(2, "mp4", -1, undefined, {
+        iterator: new Promise((resolve) => {
+            releaseRoots = resolve;
+        }),
+    });
+    roots.addSource("source-second");
+    const rootOne = roots.api.list();
+    await flushScans();
+    const rootTwo = roots.api.list(undefined, "source-second:movie-0.mp4");
+    await flushScans();
+    assert.equal(
+        roots.iteratorCreations(),
+        2,
+        "different source roots never share a pending native enumeration"
+    );
+    releaseRoots();
+    const rootResults = await settle(Promise.all([rootOne, rootTwo]));
+    assert.equal(rootResults[0].items.length, 0);
+    assert.equal(rootResults[1].items.length, 4);
+
+    let releaseStandby;
+    const initialStandby = fixture(2, "mp4", -1, undefined, {
+        iterator: new Promise((resolve) => {
+            releaseStandby = resolve;
+        }),
+    });
+    const initialGate = initialStandby.installStandby();
+    const sleepingInitial = initialStandby.api.list();
+    await flushScans();
+    initialGate.set(true);
+    initialStandby.api.suspend();
+    assert.equal(
+        initialGate.snapshot().pending,
+        2,
+        "standby tracks the raw first read and its catalog separately"
+    );
+    initialGate.set(false);
+    const wakingInitial = initialStandby.api.list();
+    await flushScans();
+    assert.equal(
+        initialStandby.iteratorCreations(),
+        1,
+        "wake reuses a still-pending directory read"
+    );
+    releaseStandby();
+    const wakeResults = await settle(
+        Promise.all([sleepingInitial, wakingInitial])
+    );
+    assert.equal(wakeResults[0].items.length, 0);
+    assert.equal(wakeResults[1].items.length, 2);
+    await flushScans();
+    assert.equal(initialGate.snapshot().pending, 0);
+
     let releaseFile;
     const sleeping = fixture(2, "mp4", -1, undefined, {
         file: new Promise((resolve) => {
@@ -172,7 +333,7 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
     sleepingGate.set(true);
     sleeping.api.suspend();
     assert.equal(sleepingGate.snapshot().state, "suspending");
-    assert.equal(sleepingGate.snapshot().pending, 1);
+    assert.equal(sleepingGate.snapshot().pending, 2);
     releaseFile();
     const stoppedScan = await scan;
     await Promise.resolve();
@@ -273,6 +434,22 @@ function fixture(count, extension = "mp4", brokenIndex = -1, mime, waits = {}) {
         firstUrl,
         "unchanged files keep playback URLs"
     );
+    let missingFirst;
+    const missing = await f.api.list((snapshot) => {
+        if (snapshot.items.length && !missingFirst)
+            missingFirst = {
+                count: snapshot.items.length,
+                preferred: snapshot.preferred,
+                scanning: snapshot.scanning,
+            };
+    }, "source-movies:removed.mp4");
+    assert.equal(missingFirst.count, 1);
+    assert.equal(missingFirst.scanning, true);
+    assert.deepEqual(JSON.parse(JSON.stringify(missingFirst.preferred)), {
+        id: "source-movies:removed.mp4",
+        state: "missing",
+    });
+    assert.equal(missing.items.length, 10000);
     const beforeCancel = f.reads();
     const cancelled = await f.api.list(() => false);
     assert.equal(cancelled.cancelled, true);

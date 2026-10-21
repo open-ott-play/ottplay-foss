@@ -2434,3 +2434,35 @@ console.log(
         passed +
         " groups, actual ES5 private modules and UI/input functions"
 );
+
+test("loading cancellation runs before Q exits but ordinary dialogs stay modal", ({
+    w,
+}) => {
+    const actions = [];
+    w.keys.POWER = 81;
+    w.stbExit = () => actions.push("exit");
+    w.body_onUnload = () => actions.push("save");
+    w.$("#dialogbox").show();
+    const loading = w.__ottClassicScreenPort.setOwnedCallback("dialog", () =>
+        actions.push("loading-key")
+    ).owner;
+    loading.model.cancelOnPower = () => {
+        actions.push("cancel");
+        loading.close();
+    };
+    w.__ottClassicScreenPort.dispatch(81, null, (command) =>
+        actions.push(command.id)
+    );
+    assert.equal(actions[0], "cancel");
+    assert.ok(actions.includes("power"));
+    assert.ok(!actions.includes("loading-key"));
+    actions.length = 0;
+    w.$("#dialogbox").show();
+    w.__ottClassicScreenPort.setOwnedCallback("dialog", () =>
+        actions.push("modal-key")
+    );
+    w.__ottClassicScreenPort.dispatch(81, null, (command) =>
+        actions.push(command.id)
+    );
+    assert.deepEqual(actions, ["modal-key"]);
+});

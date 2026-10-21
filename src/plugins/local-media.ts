@@ -24,6 +24,10 @@ export function installLocalMedia(w: any): any {
     var loading: any = null;
     var progressState: any = null;
     var catalogRevision = 0;
+    var activeNativeCancel: (() => void) | null = null;
+    function cancelNativeList(): void {
+        if (activeNativeCancel) activeNativeCancel();
+    }
     var resuming = false;
     var last: any = null;
     var endpoint = "";
@@ -125,6 +129,92 @@ export function installLocalMedia(w: any): any {
             return value;
         });
     }
+    function nativeList(
+        progress: (value: any) => boolean,
+        preferredId: string | undefined,
+        request: number
+    ): Promise<any> {
+        cancelNativeList();
+        var requestId = "local-" + request + "-" + Date.now();
+        return new Promise(function (resolve, reject) {
+            var listener: any = null;
+            var settled = false;
+            var started = false;
+            function cleanup(): void {
+                if (activeNativeCancel === cancel) activeNativeCancel = null;
+                if (listener) {
+                    var handle = listener;
+                    listener = null;
+                    try {
+                        Promise.resolve(handle.remove()).catch(function () {});
+                    } catch (_) {}
+                }
+            }
+            function finish(error: any, value?: any): void {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                if (error) reject(error);
+                else resolve(value);
+            }
+            function cancel(): void {
+                if (settled) return;
+                if (started && typeof native.cancelList === "function") {
+                    try {
+                        Promise.resolve(
+                            native.cancelList({ requestId: requestId })
+                        ).catch(function () {});
+                    } catch (_) {}
+                }
+                finish(null, { cancelled: true, items: [] });
+            }
+            activeNativeCancel = cancel;
+            function start(): void {
+                if (settled) return;
+                if (request !== catalogRevision) {
+                    cancel();
+                    return;
+                }
+                started = true;
+                try {
+                    Promise.resolve(
+                        native.list({
+                            preferredId: preferredId,
+                            requestId: requestId,
+                        })
+                    ).then(
+                        function (value: any) {
+                            finish(null, value);
+                        },
+                        function (error: any) {
+                            finish(error);
+                        }
+                    );
+                } catch (error) {
+                    finish(error);
+                }
+            }
+            if (typeof native.addListener !== "function") {
+                start();
+                return;
+            }
+            Promise.resolve(
+                native.addListener("localMediaProgress", function (event: any) {
+                    if (settled || !event || event.requestId !== requestId)
+                        return;
+                    if (request !== catalogRevision || !progress(event.catalog))
+                        cancel();
+                })
+            ).then(function (handle: any) {
+                listener = handle;
+                if (settled) {
+                    cleanup();
+                    return;
+                }
+                start();
+            }, start);
+        });
+    }
     function list(
         onProgress?: (value: any) => boolean | void,
         preferredId?: string,
@@ -143,8 +233,8 @@ export function installLocalMedia(w: any): any {
             return !onProgress || onProgress(value) !== false;
         }
         var pending = isNative()
-            ? boundedLocalRead(function () {
-                  return native.list();
+            ? boundedLocalRead(function (progress) {
+                  return nativeList(progress, preferredId, request);
               })
             : boundedLocalRead(function () {
                   return getEndpoint(false, preferredId);
@@ -162,8 +252,8 @@ export function installLocalMedia(w: any): any {
                         });
               });
         // Native bridges and browser filesystem reads cannot always be aborted.
-        // Android/iOS list has no progress events: its 60s response limit is a
-        // total deadline, matching provider startup. Browser progress resets it.
+        // Native and browser progress extend the idle deadline while actual
+        // discovery advances. Late events remain bound to this catalog owner.
         // Retire ownership on expiry so late results cannot populate a completed
         // snapshot or revive a closed loading dialog.
         function boundedLocalRead(
@@ -187,6 +277,7 @@ export function installLocalMedia(w: any): any {
                             catalogRevision++;
                             last = null;
                         }
+                        cancelNativeList();
                         reject(new Error("Local source did not respond"));
                     }, timeout);
                 }
@@ -194,8 +285,10 @@ export function installLocalMedia(w: any): any {
                     if (settled) return;
                     settled = true;
                     clear();
-                    if (error) reject(error);
-                    else resolve(value);
+                    if (error) {
+                        cancelNativeList();
+                        reject(error);
+                    } else resolve(value);
                 }
                 heartbeat();
                 try {
@@ -493,6 +586,8 @@ export function installLocalMedia(w: any): any {
     function close(): void {
         importedSelection = "";
         nextImportSelection = "";
+        cancelNativeList();
+        browser.suspend();
         finishLoading();
         opened = false;
         revision++;
@@ -777,6 +872,8 @@ export function installLocalMedia(w: any): any {
                 }
             ).owner;
             loading = active;
+            active.model = active.model || {};
+            active.model.cancelOnPower = close;
             w.$("#dialogbox")
                 .html(
                     '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
@@ -836,6 +933,12 @@ export function installLocalMedia(w: any): any {
         available: function () {
             return isNative() || isTauri() || !!w.indexedDB;
         },
+        cancelNativeList: cancelNativeList,
+        cancelScan: function () {
+            catalogRevision++;
+            cancelNativeList();
+            browser.suspend();
+        },
         completedSources: function () {
             if (!last || last.cancelled || last.scanning) return null;
             return (last.sources || []).map(function (source: any) {
@@ -878,6 +981,11 @@ export function installLocalMedia(w: any): any {
         },
         list: list,
         open: open,
+        preferredState: function (id: string) {
+            return last && last.preferred && last.preferred.id === id
+                ? last.preferred.state
+                : undefined;
+        },
         progressText: function (value: any) {
             return formatLocalMediaProgress(value, w._);
         },
@@ -906,6 +1014,7 @@ export function installLocalMedia(w: any): any {
             return Promise.resolve(JSON.parse(JSON.stringify(last)));
         },
         suspend: function () {
+            cancelNativeList();
             catalogRevision++;
             revision++;
             close();

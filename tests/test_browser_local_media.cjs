@@ -237,6 +237,7 @@ main()
     });
 
 async function builtUi(devicePath) {
+    const stalledFixture = process.argv.includes("--stalled-file");
     const root = path.resolve(__dirname, "..");
     const dist = path.join(root, "dist");
     if (!fs.existsSync(path.join(dist, "offline-worker.js")))
@@ -664,33 +665,84 @@ async function builtUi(devicePath) {
         await chooseLocalProvider();
         // Real filesystem handles, not uploaded File/Blob copies. The native
         // picker is replaced only to make the user-selection step deterministic.
-        await page.evaluate(async (bytes) => {
-            const root = await navigator.storage.getDirectory();
-            const folder = await root.getDirectoryHandle("selected-folder", {
-                create: true,
-            });
-            const nested = await folder.getDirectoryHandle("nested", {
-                create: true,
-            });
-            async function write(parent, name, data) {
-                const handle = await parent.getFileHandle(name, {
+        await page.evaluate(
+            async ({ bytes, stalled }) => {
+                const root = await navigator.storage.getDirectory();
+                const folder = await root.getDirectoryHandle(
+                    "selected-folder",
+                    {
+                        create: true,
+                    }
+                );
+                const nested = await folder.getDirectoryHandle("nested", {
                     create: true,
                 });
-                const output = await handle.createWritable();
-                await output.write(data);
-                await output.close();
-                return handle;
-            }
-            const file = await write(
-                root,
-                "offline-fixture.mp4",
-                new Uint8Array(bytes)
-            );
-            await write(nested, "folder-video.mp4", new Uint8Array(bytes));
-            await write(folder, "notes.txt", "not a video");
-            window.showOpenFilePicker = () => Promise.resolve([file]);
-            window.showDirectoryPicker = () => Promise.resolve(folder);
-        }, Array.from(movie));
+                async function write(parent, name, data) {
+                    const handle = await parent.getFileHandle(name, {
+                        create: true,
+                    });
+                    const output = await handle.createWritable();
+                    await output.write(data);
+                    await output.close();
+                    return handle;
+                }
+                const file = await write(
+                    root,
+                    "offline-fixture.mp4",
+                    new Uint8Array(bytes)
+                );
+                await write(nested, "folder-video.mp4", new Uint8Array(bytes));
+                await write(folder, "notes.txt", "not a video");
+                window.showOpenFilePicker = () => Promise.resolve([file]);
+                window.showDirectoryPicker = () => Promise.resolve(folder);
+                if (stalled) {
+                    const bad = await folder.getFileHandle(
+                        "stalled-first.mp4",
+                        { create: true }
+                    );
+                    const filePrototype = FileSystemFileHandle.prototype;
+                    const originalGetFile = filePrototype.getFile;
+                    const directoryPrototype =
+                        FileSystemDirectoryHandle.prototype;
+                    const originalValues = directoryPrototype.values;
+                    const pending = [];
+                    window.__stalledFileFixture = {
+                        bad,
+                        calls: 0,
+                        originalGetFile,
+                        pending,
+                    };
+                    filePrototype.getFile = function () {
+                        if (this.name !== "stalled-first.mp4")
+                            return originalGetFile.call(this);
+                        window.__stalledFileFixture.calls++;
+                        return new Promise((resolve) => pending.push(resolve));
+                    };
+                    directoryPrototype.values = function () {
+                        const iterator = originalValues.call(this);
+                        if (this.name !== "selected-folder") return iterator;
+                        let first = true;
+                        return {
+                            next: async () => {
+                                if (first) {
+                                    first = false;
+                                    return { done: false, value: bad };
+                                }
+                                let step;
+                                do {
+                                    step = await iterator.next();
+                                } while (
+                                    !step.done &&
+                                    step.value.name === "stalled-first.mp4"
+                                );
+                                return step;
+                            },
+                        };
+                    };
+                }
+            },
+            { bytes: Array.from(movie), stalled: stalledFixture }
+        );
         async function blockOlderSource() {
             await page.evaluate(async () => {
                 const root = await navigator.storage.getDirectory();
@@ -737,10 +789,14 @@ async function builtUi(devicePath) {
                 actionName === "add-files"
                     ? "offline-fixture.mp4"
                     : "folder-video.mp4";
-            await page.waitForFunction((name) => {
-                const id = window.curList[window.primaryIndex];
-                return window.channels[id]?.channel_name === name;
-            }, expected);
+            await page.waitForFunction(
+                (name) => {
+                    const id = window.curList[window.primaryIndex];
+                    return window.channels[id]?.channel_name === name;
+                },
+                expected,
+                { timeout: stalledFixture ? 20000 : 10000 }
+            );
             await page.waitForFunction(() =>
                 Array.from(document.querySelectorAll("video")).some(
                     (video) =>
@@ -788,6 +844,34 @@ async function builtUi(devicePath) {
         await selectAction("add-folder");
         await expectImportedPlayback("add-folder");
         await releaseOlderSource();
+        if (stalledFixture) {
+            const before = await page.evaluate(
+                () => window.curList[window.primaryIndex]
+            );
+            const calls = await page.evaluate(async () => {
+                const fixture = window.__stalledFileFixture;
+                const file = await fixture.originalGetFile.call(fixture.bad);
+                for (const resolve of fixture.pending) resolve(file);
+                return fixture.calls;
+            });
+            await page.waitForTimeout(100);
+            assert.equal(
+                calls,
+                1,
+                "provider handoff does not duplicate the abandoned file read"
+            );
+            assert.equal(
+                await page.evaluate(() => window.curList[window.primaryIndex]),
+                before,
+                "late first-file completion cannot replace the healthy playing file"
+            );
+            console.log(
+                "PASS stalled first metadata " +
+                    devicePath +
+                    ": healthy next video decoded and late file ignored"
+            );
+            return;
+        }
         await chooseLocalProvider();
         await page.waitForFunction(
             () =>

@@ -418,13 +418,24 @@ export function createKiosk(w: any): any {
                 w.__ottLocalMedia &&
                 typeof w.__ottLocalMedia.snapshot === "function"
             ) {
-                // A missing ID during progressive loading is not a deleted file.
-                // snapshot rejects until the complete local catalog is known.
+                // Missing catalog membership alone is not deletion: direct
+                // lookup must confirm it, otherwise wait for the final catalog.
                 var selected = policy;
                 folderRecovery = selected;
                 Promise.resolve()
                     .then(function () {
-                        return w.__ottLocalMedia.snapshot();
+                        var media = w.__ottLocalMedia;
+                        if (
+                            media.preferredState &&
+                            media.preferredState(
+                                String(selected.channel.id).replace(
+                                    /^local-/,
+                                    ""
+                                )
+                            ) === "missing"
+                        )
+                            return;
+                        return media.snapshot();
                     })
                     .then(function () {
                         if (

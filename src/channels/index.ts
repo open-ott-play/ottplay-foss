@@ -1531,14 +1531,19 @@ export function onChannelsLoaded(): void {
                 loadFavoritesLists();
                 (window as any).__ottChannels.mount(window);
                 (window as any).__ottClassicPlayback.hydrate();
+                var preferred = (window as any).__ottCatalogSelectedId;
+                var localFallback =
+                    driver?.id === "offline" &&
+                    preferred != null &&
+                    cList.indexOf(preferred) >= 0;
                 if (
                     driver?.capabilities.mediaPlaylist &&
-                    (window as any).__ottMissingCatalogSelection
+                    (window as any).__ottMissingCatalogSelection &&
+                    !localFallback
                 ) {
                     mediaRecovery = driver;
                 }
                 var localProfiles = (window as any).__ottOfflineProfiles;
-                var preferred = (window as any).__ottCatalogSelectedId;
                 if (driver?.capabilities.mediaPlaylist && preferred != null) {
                     for (var group = 0; group < catsArray.length; group++) {
                         var preferredIndex = (
@@ -1554,8 +1559,10 @@ export function onChannelsLoaded(): void {
                     var selectedLocal = localProfiles.selection();
                     if (selectedLocal !== null) {
                         var localIndex = cList.indexOf(selectedLocal);
-                        if (localIndex < 0) localRecovery = driver;
-                        else window.setCurrent(0, localIndex);
+                        if (localIndex < 0 && !localFallback)
+                            localRecovery = driver;
+                        else if (localIndex >= 0)
+                            window.setCurrent(0, localIndex);
                     }
                 }
                 if (!localRecovery && !mediaRecovery) {

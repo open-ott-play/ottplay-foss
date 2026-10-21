@@ -415,6 +415,77 @@ test("scan waits for saved stable selection instead of playing first different v
     assert.equal(f.completed, 1);
 });
 
+test("confirmed missing saved file starts first batch while the catalog remains pending", async () => {
+    const f = integrationFixture("offline");
+    let progress, finish;
+    f.host.__ottSourceIdentity = { current: () => "saved-source" };
+    f.saved.set(
+        "offlinechannelLibrary:saved-source",
+        JSON.stringify({ selected: { itemId: "channel:local-gone" } })
+    );
+    f.host.clearBootHide = () => {};
+    f.host.__ottLocalMedia = {
+        list: (callback) => {
+            progress = callback;
+            return new Promise((resolve) => {
+                finish = resolve;
+            });
+        },
+    };
+    f.host.loadProv();
+    const first = { id: "first", name: "First.mp4", url: "blob:first" };
+    progress({
+        items: [first],
+        preferred: { id: "different", state: "missing" },
+        scanning: true,
+    });
+    assert.equal(
+        f.completed,
+        0,
+        "another request's missing result cannot release this selection"
+    );
+    progress({
+        items: [first],
+        preferred: { id: "gone", state: "pending" },
+        scanning: true,
+    });
+    assert.equal(
+        f.completed,
+        0,
+        "pending lookup still protects a valid later saved file"
+    );
+    progress({
+        items: [first],
+        preferred: { id: "gone", state: "missing" },
+        scanning: true,
+    });
+    assert.equal(
+        f.completed,
+        1,
+        "first playable batch starts without awaiting scan completion"
+    );
+    assert.equal(f.host.__ottCatalogSelectedId, "local-first");
+    const selected = f.host.channels["local-first"];
+    const second = { id: "second", name: "Second.mp4", url: "blob:second" };
+    progress({
+        items: [first, second],
+        preferred: { id: "gone", state: "missing" },
+        scanning: true,
+    });
+    assert.equal(f.completed, 1);
+    assert.strictEqual(
+        f.host.channels["local-first"],
+        selected,
+        "background append preserves playing row"
+    );
+    finish({
+        items: [first, second],
+        preferred: { id: "gone", state: "missing" },
+    });
+    await Promise.resolve();
+    assert.equal(f.completed, 1);
+});
+
 test("progress callback cancels background enumeration after provider replacement", async () => {
     const f = fixture();
     let progress, finish;
@@ -607,6 +678,26 @@ test("missing saved offline selection opens recovery after startup cleanup witho
         assert.equal(f.writes(), 0);
         assert.deepEqual(f.plays, []);
     }
+});
+
+test("confirmed local fallback bypasses stale profile selection and restored index", () => {
+    const f = startupFixture("offline");
+    f.host.__ottActiveProviderDriver.capabilities.mediaPlaylist = true;
+    f.host.cList = ["local-first"];
+    f.host.catsArray = ["all"];
+    f.host.cats = { all: ["local-first"] };
+    const setCurrent = f.host.setCurrent;
+    f.host.setCurrent = (category, index) => {
+        setCurrent(category, index);
+        f.host.catIndex = category;
+        f.host.primaryIndex = index;
+    };
+    f.host.__ottCatalogSelectedId = "local-first";
+    f.host.__ottMissingCatalogSelection = true;
+    f.host.__ottOfflineProfiles = { selection: () => "local-gone" };
+    f.host.onChannelsLoaded();
+    assert.deepEqual(f.plays, [[0, 0]]);
+    assert.equal(f.saved.primaryIndex, 0);
 });
 
 test("offline catalog cannot publish sources for a replaced profile", async () => {
@@ -990,7 +1081,16 @@ function startupDialogFixture() {
         setOwnedCallback: (kind, handler) => {
             assert.equal(kind, "dialog");
             callbacks.push(handler);
-            return { owner: { close: () => closed++ } };
+            let active = true;
+            return {
+                owner: {
+                    active: () => active,
+                    close: () => {
+                        active = false;
+                        closed++;
+                    },
+                },
+            };
         },
     };
     return { ...f, callbacks, closed: () => closed, nodes };
@@ -1073,4 +1173,74 @@ test("strict kiosk prevents local startup cancellation, including a newly locked
         if (f.callbacks[0]) f.callbacks[0](f.host.keys.RETURN);
         assert.equal(resumed, 0);
     }
+});
+
+test("a late-rendered loading panel gains clickable Cancel and retires native work", async (t) => {
+    const f = startupDialogFixture();
+    let panelReady = false,
+        cancel,
+        progress,
+        finish,
+        stopped = 0;
+    const panel = {
+        appendChild: (node) => {
+            if (node.innerHTML) cancel = node;
+        },
+        querySelector: (selector) =>
+            selector === ".ott-spinner" ? {} : cancel || null,
+    };
+    f.host.document.getElementById = () => (panelReady ? panel : null);
+    f.host.__ottLocalMedia = {
+        cancelScan: () => stopped++,
+        list: (callback) => {
+            progress = callback;
+            return new Promise((resolve) => (finish = resolve));
+        },
+        resume() {},
+    };
+    const driver = f.mount("offline");
+    t.after(() => driver.dispose());
+    const results = [];
+    driver.load((catalog) => results.push(catalog));
+    assert.equal(f.callbacks.length, 0);
+    panelReady = true;
+    progress({ items: [], scanned: 500, scanning: true });
+    assert.equal(f.callbacks.length, 1);
+    assert.match(cancel.innerHTML, /Cancel/);
+    cancel.onclick({ preventDefault() {}, stopPropagation() {} });
+    assert.equal(stopped, 1);
+    assert.equal(results.length, 1);
+    finish({ items: [{ id: "late", name: "Late.mp4", url: "blob:late" }] });
+    await Promise.resolve();
+    assert.equal(results.length, 1);
+});
+
+test("redrawn loading spinner rebinds Cancel after the old owner is retired", (t) => {
+    const f = startupDialogFixture();
+    const make = f.host.__ottClassicScreenPort.setOwnedCallback;
+    const owners = [];
+    f.host.__ottClassicScreenPort.setOwnedCallback = (...args) => {
+        const result = make(...args);
+        owners.push(result.owner);
+        return result;
+    };
+    let progress,
+        cancelled = 0;
+    f.host.__ottLocalMedia = {
+        cancelScan: () => cancelled++,
+        list: (callback) => {
+            progress = callback;
+            return new Promise(() => {});
+        },
+        resume() {},
+    };
+    const driver = f.mount("offline");
+    t.after(() => driver.dispose());
+    driver.load(() => {});
+    owners[0].close();
+    progress({ items: [], scanned: 20, scanning: true });
+    assert.equal(owners.length, 2);
+    assert.equal(typeof owners[1].model.cancelOnPower, "function");
+    f.callbacks[1](27);
+    assert.equal(cancelled, 1);
 });

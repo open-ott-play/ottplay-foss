@@ -28,8 +28,10 @@ not reopen it. Each Tauri instance uses its own metadata and profile selection.
 
 The preferred lookup accepts only an existing opaque item ID, never a path. It
 is bounded so a missing or unresponsive source cannot block scan startup. An
-unavailable saved item still follows the existing recovery flow; a different
-video is not substituted. Reading an endpoint during an active scan does not
+unavailable source still follows the recovery flow. When the source is available
+and the saved file is confirmed missing, the first playable file allowed by the
+active profile or folder kiosk starts without waiting for the full scan. A lookup
+still in progress cannot authorize that fallback. Reading an endpoint during an active scan does not
 restart that scan.
 
 Standby cancels pending lookup and scan work. After an explicit wake, an
@@ -45,6 +47,9 @@ The standard loading dialog shows its loading title once and one count of
 playable videos found. Internal scan counters remain available for diagnostics
 and stall detection; they are not a second visible count or downloaded bytes.
 Unchanged polling does not reset the 60-second stall timeout.
+The loading window has Cancel for pointer/touch and Back/Esc. Q cancels the
+pending request before exiting on PC. Late results cannot reopen the window or
+start a video after cancellation; strict kiosk keeps its local-input lock.
 Catalog polling does not start a second scan. Explicit Refresh requests a new
 scan, and source changes preserve existing item IDs.
 
