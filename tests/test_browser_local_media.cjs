@@ -1096,12 +1096,17 @@ async function builtUi(devicePath) {
                 (v) => v.currentTime > 0.1 && !v.error
             )
         );
-        await page.evaluate(() => {
+        // Playback may start from the first batch while the second file is
+        // still being read. Wait for the row this test intends to select.
+        await page.waitForFunction(() => window.curList.length === 2);
+        const selectedChannel = await page.evaluate(() => {
+            const id = window.curList[1];
             window.playChannel(window.catIndex, 1, true);
+            return id;
         });
-        await page.waitForFunction(() => window.primaryIndex === 1);
-        const selectedChannel = await page.evaluate(
-            () => window.curList[window.primaryIndex]
+        await page.waitForFunction(
+            (id) => window.curList[window.primaryIndex] === id,
+            selectedChannel
         );
         const before = await page.evaluate(() => ({
             catalog: window.cList,
@@ -1160,6 +1165,14 @@ async function builtUi(devicePath) {
                 );
                 throw error;
             });
+        // Cold reload can resume the saved file before other rows arrive.
+        // Compare membership only after that background catalogue is complete.
+        await page.waitForFunction(
+            (expected) =>
+                window.cList.length === expected.length &&
+                expected.every((id) => window.cList.includes(id)),
+            before.catalog
+        );
         const after = await page.evaluate(() => ({
             catalog: window.cList,
             provider: window.stbGetItem("ottplayprov"),
