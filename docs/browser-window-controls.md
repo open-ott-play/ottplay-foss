@@ -50,6 +50,8 @@ system before they reach the player.
 ### Random item on PC
 
 Press **R** to play a random different channel or video from the current list.
+**Page Up** retains the PC rewind action, including semantic rewind commands
+from native remotes; R no longer shares that action.
 When a channel or media list is open, selection stays within that displayed list;
 from the main video view it uses the current channel category or active video
 sequence. With only one playable item, R leaves it playing. The command does not

@@ -46,7 +46,7 @@ var pcKeys = {
     RED: 90,
     RETURN: 8,
     RIGHT: 39,
-    RW: 0,
+    RW: 33,
     SETUP: 192,
     STOP: 83,
     TOOLS: 84,

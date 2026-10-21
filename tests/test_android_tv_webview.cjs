@@ -472,11 +472,28 @@ try {
         ].sort()
     );
 
-    for (const adapter of ["pc", "android"]) {
+    for (const adapter of ["pc", "pc2", "android"]) {
         const source = read(`src/devices/${adapter}/device.ts`);
         const object = /var \w*Keys = (\{[\s\S]*?\});/.exec(source);
         assert.ok(object, `${adapter}: real adapter key map exists`);
         const keyMap = vm.runInNewContext(`(${object[1]})`);
+        if (/^pc/.test(adapter)) {
+            assert.equal(
+                keyMap.RANDOM,
+                82,
+                `${adapter}: physical R selects randomly`
+            );
+            assert.equal(
+                keyMap.RW,
+                33,
+                `${adapter}: Page Up retains semantic rewind`
+            );
+            assert.notEqual(
+                keyMap.RW,
+                keyMap.RANDOM,
+                `${adapter}: native rewind cannot trigger random playback`
+            );
+        }
         const w = {
             document: { activeElement: null },
             keys: keyMap,
