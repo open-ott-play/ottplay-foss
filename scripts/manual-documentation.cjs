@@ -56,10 +56,10 @@ function contentContract(text) {
     );
     return {
         code,
+        headings: [...prose.matchAll(/^(#{1,6}) /gm)].map((match) => match[1]),
         literals: [...prose.matchAll(/`([^`\n]+)`/g)]
             .map((match) => match[1])
             .sort(),
-        headings: [...prose.matchAll(/^(#{1,6}) /gm)].map((match) => match[1]),
     };
 }
 
@@ -149,10 +149,10 @@ if (require.main === module) {
         );
 }
 module.exports = {
-    localizedFile,
-    sourceDigest,
     checkManualContent,
+    localizedFile,
     manualFiles,
     navigation,
     reconcileNavigation,
+    sourceDigest,
 };
