@@ -1,84 +1,69 @@
-# Вики документации OTT-play
+<a id="ott-play-documentation-wiki"></a>
 
-[English](Home.md) · [Русское руководство](../../README.ru.md) · [Все языки интерфейса](../readme/README.md)
+# Wiki документации OTT-play
 
-Это версионируемый индекс документации в репозитории исходного кода. GitHub
-показывает эти Markdown-файлы напрямую; инструкции, схемы и код проходят один
-review. Отдельная [GitHub Wiki](https://github.com/open-ott-play/ottplay-foss/wiki)
-публикуется из этих исходников; внизу каждой страницы указана ревизия.
-[Как обновить публикацию](../wiki-publishing.md).
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="Home.md" lang="en" dir="ltr">English</a> · <a href="Home.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="Home.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="Home.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="Home.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="Home.es.md" lang="es" dir="ltr">Español</a> · <a href="Home.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="Home.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="Home.he.md" lang="he" dir="rtl">עברית</a> · <a href="Home.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="Home.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="Home.it.md" lang="it" dir="ltr">Italiano</a> · <a href="Home.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="Home.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="Home.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="Home.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="Home.pt.md" lang="pt" dir="ltr">Português</a> · <a href="Home.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="Home.th.md" lang="th" dir="ltr">ไทย</a> · <a href="Home.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="Home.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="Home.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="Home.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="Home.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
 
-## Начало работы и установка
+[README](../../README.ru.md) · [Все языки интерфейса](../readme/README.md)
 
-- [Полное практическое руководство RU](../../README.ru.md) и [EN](../../README.md).
-- [Краткие инструкции для всех 88 языков](../readme/README.md): переведённые
-  подписи интерфейса и шаги навигации. Это не 88 переводов инженерных руководств;
-  подробные инструкции поддерживаются на английском и русском.
-- [Android Full/API 22 и обновления](../android-distributions.md),
-  [сборка Android](../../android/README.md), [Capacitor iOS/Android](../capacitor-mobile.md).
-- [Локальная доставка macOS](../macos-local-delivery.md),
-  [подпись и обновление Tauri](../tauri-updater-notarize.md),
-  [локальные HTTP-инстансы](../local-http-deployment.md).
+Это главная страница версионируемой документации в репозитории исходников. GitHub отображает эти Markdown-страницы напрямую; их хранение здесь позволяет проверять инструкции, схемы и тесты вместе с кодом. Отдельная [GitHub Wiki](https://github.com/open-ott-play/ottplay-foss/wiki) экспортируется из этих исходников и указывает исходную ревизию на каждой странице. См. [инструкцию публикации](../wiki-publishing.md).
 
-## Процесс и результат
+<a id="start-and-install"></a>
 
-- [Браузерная приёмка и проверка кандидата](../browser-compatibility.ru.md)
-  ([English](../browser-compatibility.md)): цели проверок, цветные схемы,
-  проверка точного пакета и отдельные локальные результаты.
+## Запуск и установка
 
-- [Отчёт с цветными диаграммами](../implementation-report.ru.md)
-  ([English](../implementation-report.md)): ход работы, исправленные ошибки,
-  измерения и оставшиеся условия выпуска.
+- [Практическое руководство](../../README.ru.md), доступное на [24 языках документации](../manual-translations.md).
+- [Локализованные краткие инструкции для всех 88 языков интерфейса](../readme/README.md). Они используют переведённые подписи интерфейса и шаги навигации. Это не 88 переведённых инженерных руководств. Основное руководство и парные руководства по возможностям полностью доступны на 24 языках.
+- [Пакеты и обновления Android Full/API 22](../android-distributions.md), [сборка Android](../../android/README.md) и [Capacitor iOS/Android](../capacitor-mobile.md).
+- [Настольная поставка для macOS](../macos-local-delivery.md), [подпись и обновление Tauri](../tauri-updater-notarize.md) и [локальные HTTP-экземпляры](../local-http-deployment.md).
+
+<a id="process-and-results"></a>
+
+## Процесс и результаты
+
+- [Квалификация браузеров и проверка кандидата](../browser-compatibility.ru.md) ([Русский](../browser-compatibility.ru.md)): настроенные цели, цветные схемы, проверки точных пакетов и отдельные локальные результаты.
+
+- [Отчёт о реализации и цветные схемы](../implementation-report.ru.md) ([Русский](../implementation-report.ru.md)): проверенные изменения, исправленные регрессии, измеренные результаты и оставшиеся условия выпуска.
+
+<a id="use-the-new-capabilities"></a>
 
 ## Новые возможности
 
-- [Реализованные функции и границы платформ](../roadmap-delivery.ru.md)
-  ([English](../roadmap-delivery.md)).
-- [Пределы качества, резервные потоки и восстановление эфира](../playback-stream-policy.ru.md)
-  ([English](../playback-stream-policy.md)).
-- [Ручная XMLTV-привязка и доступность классического интерфейса](../guide-binding-accessibility.ru.md)
-  ([English](../guide-binding-accessibility.md)).
-- [Проверка изображения и звука с here.now](../audio-video-check.ru.md)
-  ([English](../audio-video-check.md)): **Информация → Звук → Воспроизвести**,
-  ожидаемые тоны, схема хостинга и возврат к эфиру. Ролик загружается по запросу,
-  требует интернета и отсутствует в пакетах плеера. Отдельное онлайн-демо
-  с движущейся таблицей беззвучно.
-- [Каталог фильмов и сериалов Xtream](../xtream-media.ru.md) ([English](../xtream-media.md)).
-- [Handoff между плеерами одного источника](../remote-handoff.ru.md) ([English](../remote-handoff.md)).
-- [Журнал настроек и восстановление](../settings-recovery.ru.md) ([English](../settings-recovery.md)).
-- [Надёжное управление, возобновление профилей и handoff](https://github.com/open-ott-play/ottplay-control-server/blob/9b28c08eefca3948c78336e7e16a45e6fc492e31/docs/reliable-control.ru.md)
-  ([English](https://github.com/open-ott-play/ottplay-control-server/blob/9b28c08eefca3948c78336e7e16a45e6fc492e31/docs/reliable-control.md)).
-  Нужны согласованная версия контроллера/CLI и настроенные разрешения.
-- [Сохранение языка и роли аудио/субтитров в нативном Android](https://github.com/open-ott-play/ottplay-android/blob/be0d8008c75b0badede7022dbb9096e11914227f/docs/TRACK-PREFERENCES.ru.md)
-  ([English](https://github.com/open-ott-play/ottplay-android/blob/be0d8008c75b0badede7022dbb9096e11914227f/docs/TRACK-PREFERENCES.md)).
-  Kotlin-приложение устанавливается отдельно от Capacitor APK этого репозитория.
+- [Поставка возможностей и границы платформ](../roadmap-delivery.ru.md) ([Русский](../roadmap-delivery.ru.md)).
+- [Пределы качества, явные резервные источники эфира и ограниченное восстановление](../playback-stream-policy.ru.md) ([Русский](../playback-stream-policy.ru.md)).
+- [Ручная привязка XMLTV и доступность классических элементов](../guide-binding-accessibility.ru.md) ([Русский](../guide-binding-accessibility.ru.md)).
+- [Размещённая в сети проверка изображения и звука](../audio-video-check.ru.md) ([Русский](../audio-video-check.ru.md)): **Информация → Аудио → Воспроизвести**, ожидаемые сигналы, схема размещения и возврат к прямому эфиру. Ролик загружается по требованию, нуждается в интернете и отсутствует в пакетах плеера. Отдельная сетевая демонстрация движущегося шаблона работает без звука.
+- [Библиотека фильмов и сериалов Xtream](../xtream-media.ru.md) ([Русский](../xtream-media.ru.md)).
+- [Передача состояния плеера в пределах одного источника](../remote-handoff.ru.md) ([Русский](../remote-handoff.ru.md)).
+- [Локальный журнал настроек и восстановление](../settings-recovery.ru.md) ([Русский](../settings-recovery.ru.md)).
+- [Надёжное управление, возобновляемые профили и передача](https://github.com/open-ott-play/ottplay-control-server/blob/9b28c08eefca3948c78336e7e16a45e6fc492e31/docs/reliable-control.md) ([Русский](https://github.com/open-ott-play/ottplay-control-server/blob/9b28c08eefca3948c78336e7e16a45e6fc492e31/docs/reliable-control.ru.md)). Нужны соответствующая ревизия контроллера/CLI и настроенные права.
+- [Семантические предпочтения аудио и субтитров в нативном Android](https://github.com/open-ott-play/ottplay-android/blob/be0d8008c75b0badede7022dbb9096e11914227f/docs/TRACK-PREFERENCES.md) ([Русский](https://github.com/open-ott-play/ottplay-android/blob/be0d8008c75b0badede7022dbb9096e11914227f/docs/TRACK-PREFERENCES.ru.md)). Нативное Kotlin-приложение отделено от Capacitor APK этого репозитория.
 
-## Источники, настройка и диагностика
+<a id="configure-sources-and-inspect-problems"></a>
 
-- [Plex](../plex-provider.md), [серверная медиатека](../synology-library.md),
-  [архитектура программы передач](../guide-architecture.md),
-  [диагностика hosted EPG](../hosted-epg-diagnostics.md).
-- [Оформление интерфейса](../interface-settings.md),
-  [история и авторы тем](../interface-history.md), [локализация и клавиатуры](../localization.md).
-- [Удалённая рабочая панель](../remote-workbench.md),
-  [диагностика исполнения](../runtime-debug.md), [разрешения и очистка логов](../diagnostic-security.md).
-- [Проверки нативных устройств](../mode-b-device-smoke.md),
-  [Tauri](../mode-b-tauri-smoke.md), [оконные кнопки браузера](../browser-window-controls.md).
+## Настройка источников и разбор проблем
 
-- [Измеренный объём новых функций](../roadmap-size.ru.md), исходные данные и SVG-график.
+- [Вход в Plex и воспроизведение](../plex-provider.md), [серверная медиатека](../synology-library.md), [архитектура телегида](../guide-architecture.md) и [диагностика размещённого EPG](../hosted-epg-diagnostics.md).
+- [Настройки интерфейса](../interface-settings.md), [история дизайна и благодарности](../interface-history.md) и [языковые каталоги и клавиатуры](../localization.md).
+- [Удалённое рабочее окружение](../remote-workbench.md), [диагностика выполнения](../runtime-debug.md) и [согласие на диагностику, удаление чувствительных данных и хранение](../diagnostic-security.md).
+- [Проверки нативных устройств](../mode-b-device-smoke.md), [проверки устройств Tauri](../mode-b-tauri-smoke.md) и [управление окном браузера](../browser-window-controls.md).
 
-## Разработка и выпуски
+- [Измеренная стоимость возможностей](../roadmap-size.ru.md), исходные данные и график SVG.
 
-- [Архитектура и владение ресурсами](../architecture.md),
-  [сеансы воспроизведения](../playback-session-architecture.md),
-  [сборка ES5](../build-pipeline.md), [имена ресурсов](../asset-layout.md).
-- [Политика релизов](../../RELEASING.md), [инструкция оператора](../release-workflow.md),
-  [фаззинг RC](../../FUZZING.md), [приватность](../privacy-policy.md), [лицензия MIT](../../LICENSE).
+<a id="develop-and-release"></a>
 
-Если поменялись подписи интерфейса или общий шаблон краткого запуска, выполните
-`npm run docs:generate`, затем `npm run check:docs`. Обновляйте EN/RU-руководства
-парой. Ограничения платформ должны стоять рядом с описанием функции; локальные
-тесты не заменяют проверки реального устройства. Схемы хранятся в репозитории:
-[пример SVG привязки XMLTV](../images/guide-binding.svg). Проверка ссылок
-подтверждает наличие локальных файлов, но не доступность внешних сайтов и не
-все якоря заголовков Markdown.
+## Разработка и выпуск
+
+- [Архитектура и владение](../architecture.md), [сеансы воспроизведения](../playback-session-architecture.md) и [классическая сборка ES5](../build-pipeline.md).
+- [Имена runtime-ресурсов](../asset-layout.md), [политика релизов](../../RELEASING.md), [инструкция оператора релиза](../release-workflow.md) и [фаззинг RC](../../FUZZING.md).
+- [Политика конфиденциальности](../privacy-policy.md) и [лицензия MIT](../../LICENSE).
+
+При изменении документации запускайте `npm run docs:generate`, если меняется подпись интерфейса или шаблон краткой инструкции, затем `npm run check:docs`. Поддерживайте полноту всех переводов, указывайте ограничения рядом с заявлениями о возможностях и отличайте локальную проверку от испытаний на физических устройствах. Схемы — проверяемые файлы репозитория; см. [SVG привязки телегида](../images/guide-binding.svg) и схемы по ссылкам из руководств. Проверка валидирует относительные пути к файлам, а не доступность внешних сайтов или каждый якорь заголовка Markdown.

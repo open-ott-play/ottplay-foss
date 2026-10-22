@@ -1,0 +1,59 @@
+<a id="browser-generations-and-operating-systems"></a>
+
+# Generazioni di browser e sistemi operativi
+
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="browser-compatibility.md" lang="en" dir="ltr">English</a> · <a href="browser-compatibility.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="browser-compatibility.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="browser-compatibility.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="browser-compatibility.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="browser-compatibility.es.md" lang="es" dir="ltr">Español</a> · <a href="browser-compatibility.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="browser-compatibility.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="browser-compatibility.he.md" lang="he" dir="rtl">עברית</a> · <a href="browser-compatibility.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="browser-compatibility.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="browser-compatibility.it.md" lang="it" dir="ltr">Italiano</a> · <a href="browser-compatibility.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="browser-compatibility.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="browser-compatibility.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="browser-compatibility.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="browser-compatibility.pt.md" lang="pt" dir="ltr">Português</a> · <a href="browser-compatibility.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="browser-compatibility.th.md" lang="th" dir="ltr">ไทย</a> · <a href="browser-compatibility.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="browser-compatibility.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="browser-compatibility.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="browser-compatibility.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="browser-compatibility.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
+[Risultati misurati](implementation-report.it.md#browser-gate-integration)
+
+![Qualificazione browser configurata: 35 destinazioni, 166 esecuzioni di scenari](diagrams/browser-qualification.svg)
+
+I controlli esistenti su dispositivi, media, ES5/worker legacy, interfaccia nativa e HLS nativo Apple restano obbligatori. Il workflow TypeScript condiviso esegue inoltre gli scenari Plex sull’esatto archivio Mode A confezionato: due flussi localizzati di caricamento/ricaricamento, persistenza delle proporzioni HLS.js e Video.js tra cambi di media/ricaricamenti, e fine naturale dell’episodio in chiosco rigoroso con HLS.js. Gli scenari multimediali usano decodifica reale; tutti usano DOM e input reali. Solo dati Plex e sorgente multimediale sono fixture locali sintetiche.
+
+La fixture delle proporzioni rimultiplexa il transport stream H.264/AAC versionato in rappresentazioni fMP4 separate. Le intestazioni di inizializzazione usano il marchio `iso6` e durate film/traccia pari a zero, come richiesto da [RFC 8216 sezione 3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.3). La sample entry AVC usa anche i bit riservati richiesti nel conteggio SPS e la costante con segno `-1` nel campo finale `pre_defined`. Ciò corregge la sintassi del contenitore generata dal muxer di fixture fissato. Un contratto controlla le intestazioni e rifiuta box malformati, dimostrando che parametri del codec, ID delle tracce, scale temporali e byte dei frammenti restano invariati. Valida l’input sintetico; da solo non prova la riproduzione nel browser né sostituisce la matrice RC completa.
+
+Le pull request richiedono Chromium, Firefox e WebKit correnti su Linux, Chromium su Windows e WebKit su macOS. Build nightly e beta richiedono le stesse cinque destinazioni. La qualificazione RC richiede tutte le 35 destinazioni dichiarate: tre generazioni esatte Playwright/browser su Linux, Windows e macOS, oltre a Chrome/Edge stabile installato sui tre sistemi e Chrome/Edge beta su Linux. Le due destinazioni WebKit storiche macOS (Playwright 1.62.1 e 1.63.0) usano `macos-15-intel`; le ricevute registrano l’architettura reale del processo e rifiutano runner ARM. La diagnosi MSE diretta ha rilevato che gli stessi byte H.264 di inizializzazione e media completavano su Intel con 1.63 e ARM con 1.64, mentre WebKit più vecchio nella VM ARM macOS 15 si bloccava prima di `updateend`. Cambiare contenitori, usare ManagedMediaSource o aprire una finestra browser non ha risolto il blocco. Le due destinazioni richiedono ancora tutti e cinque gli scenari originali di riproduzione/UI. La scelta del runner non è un’affermazione su ogni dispositivo macOS fisico o Safari nativo. Rigenerare l’inventario deve mantenere queste eccezioni revisionate; il contratto del profilo ne rifiuta la rimozione.
+
+Tutte e tre le generazioni Linux WebKit usano esplicitamente il runner x64 `ubuntu-26.04`. Il confronto revisionato dei runtime ufficiali ha riprodotto il fallimento della transizione in chiosco rigoroso su Ubuntu 24.04, mentre lo stesso candidato e i cinque scenari invariati sono passati quattro volte consecutive su Ubuntu 26.04. Si sceglie un runtime supportato coerente, senza sostituire singole librerie multimediali né indebolire le asserzioni di riproduzione. Le altre destinazioni Linux mantengono i runner esistenti. Vedi [qualificazione del runtime Linux WebKit](linux-webkit-runtime.md) per sorgente, artefatto, risultati e limiti esatti. Matrice RC completa e accettazione nativa confezionata separata restano necessarie.
+
+Le versioni provate vengono registrate a runtime. Firefox di Playwright è la sua build modificata, non un’affermazione su Firefox ESR nativo; WebKit non è Safari. La matrice non sostituisce la qualificazione su TV fisiche o shell native.
+
+L’inventario completo ha **35 destinazioni di piattaforma: 32 compatibili HLS e tre Windows WebKit solo UI**. Queste ultime richiedono comunque entrambi i flussi localizzati di caricamento/ricaricamento; la loro build WebKit non ha né MediaSource né HLS nativo. È un limite dichiarato, non copertura di riproduzione superata. I tre ID precisi sono revisionati in `scripts/browser-compatibility-profile.cjs`. Una sonda delle capacità deve confermare il limite prima dei test UI. Se MSE, incluso ManagedMediaSource, o HLS nativo diventa disponibile, il controllo fallisce finché il profilo non viene aggiornato. Ogni altra destinazione richiede supporto MSE sia H.264 sia AAC e tutti e cinque gli scenari invariati; perdere una capacità causa errore invece di scegliere una suite ridotta. La sonda carica la libreria HLS del candidato e controlla il backend scelto dal valore predefinito della sua istanza fissata: MediaSource, poi ManagedMediaSource, poi WebKitMediaSource. La ricevuta indica backend e versione HLS; cambiare versione o valore predefinito richiede revisione esplicita del contratto della sonda.
+
+Un RC completo richiede quindi **166 esecuzioni riuscite di scenari** (32 × 5 + 3 × 2), con 35 ricevute delle destinazioni. Il sottoinsieme PR/nightly/beta resta di cinque destinazioni e 25 esecuzioni. Ogni ricevuta registra l’insieme preciso degli scenari, la sonda delle capacità e copertura HLS superata oppure motivo esplicito di mancato supporto. Sono requisiti configurati, non l’affermazione che un particolare RC li abbia già completati. Il limite è confermato dalla [configurazione di build WebKit Windows](https://github.com/WebKit/WebKit/blob/56453fdfe0b0ca6258c23e6453b34f70b885d13f/Source/cmake/OptionsWin.cmake#L75) usata da Playwright 1.64 e dalla sonda runtime fissata.
+
+Entrambi i percorsi scaricano l’ID esatto dell’artefatto del job produttore nell’esecuzione corrente. Checksum dell’archivio, commit sorgente, hash di bundle/provider confezionati, tipi e percorsi dei file vengono verificati prima di servire una nuova directory estratta. I controlli di rilascio verificano anche la ricevuta di build congelata. I job browser non ricompilano il codice provato; installano solo dipendenze di produzione. Il server di test richiede ancora l’inventario completo dei provider dal sorgente; il compilatore si carica solo quando si assembla davvero un bundle, non quando si leggono le costanti dell’inventario. Evidenze fallite, saltate, obsolete o mancanti fanno fallire il controllo condiviso; tracce, identità reale del runtime e digest del candidato vengono conservati per ogni destinazione.
+
+I sette file generati di inventario/lock provengono da `venus-os-ci-toolkit/scripts/prepare_browser_compatibility.py`. I pacchetti applicativi e quelli dei browser storici hanno lockfile separati. I runner ospitati da GitHub restano predefiniti; il workflow condiviso mantiene la selezione di riserva Linux predisposta, mentre Windows/macOS richiedono il loro OS nativo.
+
+Il verdetto condiviso di rilascio verifica ogni destinazione selezionata con SHA sorgente, esecuzione, tentativo, canale e ID preciso dell’artefatto candidato. RC non può usare le evidenze beta delle cinque destinazioni. La promozione stabile usa i byte dell’RC accettato. Dopo un errore, riesegui tutto il workflow di qualificazione; le ricevute di tentativi precedenti non possono completare una nuova qualificazione.
+
+<a id="from-source-to-accepted-candidate"></a>
+
+## Dal sorgente al candidato accettato
+
+![Sorgente, verifica del pacchetto, controlli delle capacità ed evidenze](diagrams/candidate-verification-flow.svg)
+
+1. Compila il sorgente revisionato e confeziona i file Mode A risultanti. Conserva checksum dell’archivio e identità sorgente con il candidato.
+2. Prima dell’estrazione verifica dimensione limitata dell’archivio, percorsi sicuri, tipi, sorgente/versione e inventario completo degli hash entry/provider. La qualificazione di rilascio controlla anche la ricevuta congelata.
+3. Sonda versione reale del browser e capacità multimediali. Seleziona il profilo dichiarato; una discrepanza fallisce invece di ridurre silenziosamente la copertura.
+4. Esegui l’esatto insieme di scenari sui file estratti senza ricompilare. Ogni scenario deve essere eseguito una sola volta, senza salti, errori o tentativi ripetuti.
+5. Conserva runtime, capacità, digest del candidato e risultati. Il controllo condiviso verifica destinazioni richieste e corrispondenza di esecuzione/tentativo/sorgente prima di accettare le evidenze. Coordinamento del rilascio e accettazione dei dispositivi restano condizioni separate.
+
+<a id="what-has-been-measured-locally"></a>
+
+## Cosa è stato misurato localmente
+
+![Verifica locale: suite separate per dispositivi e browser su pacchetti](diagrams/browser-verification-results.svg)
+
+Al sorgente `c52f4d07`, l’esecuzione completa Chromium per dispositivi/browser ha superato 196 test con un salto previsto per HLS nativo. Separatamente, lo stesso archivio Mode A ha superato cinque scenari in ciascuno di Chromium 156.0.8078.4, Firefox 157.0 e WebKit 27.2: 15 successi, nessun salto o nuovo tentativo. Sono suite diverse; i conteggi non sono una percentuale di copertura né provano il successo di tutte le 35 destinazioni ospitate.
+
+Le [ricevute salvate](evidence/post779-local-acceptance/summary.json) identificano l’host reale macOS 26.7.1. Lo distinguono esplicitamente dall’etichetta di profilo `macos-15` e non qualificano un rilascio. Per ripetere il controllo su Mac, installa dipendenze bloccate e browser Playwright 1.64.0, compila il sorgente corrente e lancia la [ricetta salvata](evidence/post779-local-acceptance/reproduce.sh) passando la directory del repository. Confeziona la build esistente, verifica il candidato, sonda ogni browser e salva nuove ricevute sotto `.compatibility/`. Richiede la porta 4189 e rifiuta di sovrascrivere una directory `browser-candidate-web` esistente. Mantieni invariato il sorgente tra compilazione e ricetta. I risultati CI ospitati e dei dispositivi fisici sono tracciati separatamente nel [rapporto d’implementazione](implementation-report.it.md).

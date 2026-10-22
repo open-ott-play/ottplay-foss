@@ -15,6 +15,12 @@ const {
     languageAssets,
     readDictionary,
 } = require("../scripts/localization-catalog.cjs");
+const {
+    checkManualContent,
+    manualFiles,
+    reconcileNavigation,
+    sourceDigest,
+} = require("../scripts/manual-documentation.cjs");
 const root = path.resolve(__dirname, "..");
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-readme-docs-"));
 try {
@@ -82,14 +88,119 @@ try {
             "[missing](missing.md)",
             "![missing image](image.svg)",
             "[escape](../outside.md)",
+            '<a href="missing-language.md" lang="ja">日本語</a>',
             "```md\n[example](not-real.md)\n```",
         ].join("\n")
     );
     const errors = checkLinks(fixture, "links.md");
-    assert.equal(errors.length, 3);
+    assert.equal(errors.length, 4);
     assert(errors.some((error) => error.includes("missing.md")));
     assert(errors.some((error) => error.includes("image.svg")));
     assert(errors.some((error) => error.includes("escapes repository")));
+    assert(errors.some((error) => error.includes("missing-language.md")));
+    const contentRoot = path.join(fixture, "manual-content");
+    fs.mkdirSync(contentRoot);
+    const source =
+        "# Guide\n\nUse `--check`.\n\n## Run\n\n```sh\nnpm run check\n```\n";
+    const translated =
+        "# ガイド\n\n`--check` を使用します。\n\n## 実行\n\n```sh\nnpm run check\n```\n";
+    const manifest = {
+        documents: ["README.md"],
+        languages: [{ code: "en" }, { code: "ja" }],
+        sourceSha256: { "README.md": sourceDigest(source) },
+    };
+    const sourceFile = path.join(contentRoot, "README.md");
+    const translatedFile = path.join(contentRoot, "README.ja.md");
+    fs.writeFileSync(sourceFile, source);
+    fs.writeFileSync(translatedFile, translated);
+    assert.deepEqual(checkManualContent(contentRoot, manifest), []);
+    fs.writeFileSync(sourceFile, source.replace("Use", "Always use"));
+    assert(
+        checkManualContent(contentRoot, manifest).some((error) =>
+            error.includes("source changed")
+        )
+    );
+    fs.writeFileSync(sourceFile, source);
+    fs.writeFileSync(
+        translatedFile,
+        translated.replace("npm run check", "npm run deploy")
+    );
+    assert(
+        checkManualContent(contentRoot, manifest).some((error) =>
+            error.includes("code differ")
+        )
+    );
+    fs.writeFileSync(translatedFile, translated.replace("--check", "--write"));
+    assert(
+        checkManualContent(contentRoot, manifest).some((error) =>
+            error.includes("literals differ")
+        )
+    );
+    fs.writeFileSync(translatedFile, translated.replace("## 実行\n", ""));
+    assert(
+        checkManualContent(contentRoot, manifest).some((error) =>
+            error.includes("headings differ")
+        )
+    );
+    fs.writeFileSync(translatedFile, translated);
+    fs.writeFileSync(
+        sourceFile,
+        source +
+            "\n<!-- language-navigation:start -->\n<p>Updated navigation</p>\n<!-- language-navigation:end -->\n"
+    );
+    assert.deepEqual(
+        checkManualContent(contentRoot, manifest),
+        [],
+        "navigation refresh must not invalidate reviewed source content"
+    );
+    const heredoc =
+        "# Guide\n\n```sh\ncat <<EOF\nfirst\n\n\nsecond\nEOF\n```\n";
+    const modifiedHeredoc = heredoc.replace(
+        "first\n\n\nsecond",
+        "first\n\nsecond"
+    );
+    manifest.sourceSha256["README.md"] = sourceDigest(heredoc);
+    fs.writeFileSync(sourceFile, heredoc);
+    fs.writeFileSync(translatedFile, modifiedHeredoc);
+    assert.notEqual(
+        sourceDigest(heredoc),
+        sourceDigest(modifiedHeredoc),
+        "blank lines in executable examples are meaningful"
+    );
+    assert(
+        checkManualContent(contentRoot, manifest).some((error) =>
+            error.includes("code differ")
+        )
+    );
+    const manuals = path.join(fixture, "manual-navigation");
+    for (const file of manualFiles()) {
+        const absolute = path.join(manuals, file);
+        fs.mkdirSync(path.dirname(absolute), { recursive: true });
+        fs.writeFileSync(
+            absolute,
+            "# Test\n\n<!-- language-navigation:start -->\n<!-- language-navigation:end -->\n"
+        );
+    }
+    assert.equal(reconcileNavigation(manuals).length, manualFiles().length);
+    assert.deepEqual(reconcileNavigation(manuals, true), []);
+    assert.deepEqual(reconcileNavigation(manuals), []);
+    const stale = path.join(manuals, "README.md");
+    fs.writeFileSync(
+        stale,
+        fs.readFileSync(stale, "utf8").replace("العربية", "stale")
+    );
+    const before = fs.readFileSync(stale, "utf8");
+    fs.rmSync(path.join(manuals, "README.ar.md"));
+    assert(
+        reconcileNavigation(manuals, true).some((error) =>
+            error.includes("Missing complete manual")
+        )
+    );
+    assert.equal(
+        fs.readFileSync(stale, "utf8"),
+        before,
+        "a missing manual must prevent a partial rewrite"
+    );
 } finally {
     fs.rmSync(fixture, { force: true, recursive: true });
 }

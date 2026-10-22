@@ -1,6 +1,16 @@
 # Reliability and media improvements
 
-[Русский](roadmap-delivery.ru.md) · [Wiki](wiki/Home.md) · [Architecture](architecture.md)
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="roadmap-delivery.md" lang="en" dir="ltr">English</a> · <a href="roadmap-delivery.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="roadmap-delivery.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="roadmap-delivery.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="roadmap-delivery.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="roadmap-delivery.es.md" lang="es" dir="ltr">Español</a> · <a href="roadmap-delivery.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="roadmap-delivery.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="roadmap-delivery.he.md" lang="he" dir="rtl">עברית</a> · <a href="roadmap-delivery.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="roadmap-delivery.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="roadmap-delivery.it.md" lang="it" dir="ltr">Italiano</a> · <a href="roadmap-delivery.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="roadmap-delivery.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="roadmap-delivery.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="roadmap-delivery.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="roadmap-delivery.pt.md" lang="pt" dir="ltr">Português</a> · <a href="roadmap-delivery.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="roadmap-delivery.th.md" lang="th" dir="ltr">ไทย</a> · <a href="roadmap-delivery.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="roadmap-delivery.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="roadmap-delivery.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="roadmap-delivery.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="roadmap-delivery.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
+[Wiki](wiki/Home.md) · [Architecture](architecture.md)
 
 This guide describes the implementation at the source revision of this page, not
 the capabilities of an older installed release. Player, control service/CLI and native Android app
@@ -52,7 +62,8 @@ speed and device playback are separate acceptance checks.
 The player ships 88 translation catalogs. The seven new quality/media labels
 are translated in every catalog; other new menus reuse existing translated
 labels. Catalog checks cover key parity, placeholders and reviewed exceptions.
-English and Russian engineering guides explain the same implementation limits.
+The paired engineering guides explain the same implementation limits in
+[24 documentation languages](manual-translations.md).
 [Localized entry points](readme/README.md) are quick-start guides, not claims
 that every historical engineering document has 88 full translations.
 

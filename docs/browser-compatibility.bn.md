@@ -1,0 +1,59 @@
+<a id="browser-generations-and-operating-systems"></a>
+
+# ব্রাউজারের প্রজন্ম ও অপারেটিং সিস্টেম
+
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="browser-compatibility.md" lang="en" dir="ltr">English</a> · <a href="browser-compatibility.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="browser-compatibility.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="browser-compatibility.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="browser-compatibility.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="browser-compatibility.es.md" lang="es" dir="ltr">Español</a> · <a href="browser-compatibility.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="browser-compatibility.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="browser-compatibility.he.md" lang="he" dir="rtl">עברית</a> · <a href="browser-compatibility.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="browser-compatibility.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="browser-compatibility.it.md" lang="it" dir="ltr">Italiano</a> · <a href="browser-compatibility.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="browser-compatibility.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="browser-compatibility.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="browser-compatibility.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="browser-compatibility.pt.md" lang="pt" dir="ltr">Português</a> · <a href="browser-compatibility.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="browser-compatibility.th.md" lang="th" dir="ltr">ไทย</a> · <a href="browser-compatibility.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="browser-compatibility.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="browser-compatibility.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="browser-compatibility.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="browser-compatibility.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
+[পরিমাপ করা ফলাফল](implementation-report.bn.md#browser-gate-integration)
+
+![কনফিগার করা ব্রাউজার যোগ্যতা যাচাই: 35টি লক্ষ্য, 166টি দৃশ্যপট চালনা](diagrams/browser-qualification.svg)
+
+বিদ্যমান ডিভাইস, মিডিয়া, পুরোনো ES5/worker, নেটিভ UI এবং Apple নেটিভ HLS পরীক্ষা বাধ্যতামূলক থাকে। শেয়ার করা TypeScript workflow ঠিক সেই প্যাকেজ করা Mode A আর্কাইভের ওপর Plex দৃশ্যপটও চালায়: দুটি স্থানীয়কৃত লোড/রিলোড প্রবাহ, মিডিয়া বদল বা রিলোডের সময় HLS.js ও Video.js-এ আসপেক্ট অনুপাত ধরে রাখা এবং HLS.js দিয়ে কঠোর কিয়স্ক মোডে পর্বের স্বাভাবিক সমাপ্তি। মিডিয়া দৃশ্যপটে প্রকৃত ডিকোডিং হয়; সব দৃশ্যপট প্রকৃত DOM ও ইনপুট ব্যবহার করে। কেবল Plex ডেটা ও মিডিয়ার উৎস স্থানীয় কৃত্রিম পরীক্ষার ডেটা।
+
+আসপেক্ট অনুপাতের ফিক্সচার রিপোজিটরিতে সংরক্ষিত H.264/AAC ট্রান্সপোর্ট স্ট্রিমকে আলাদা fMP4 সংস্করণে পুনরায় প্যাকেজ করে। এর প্রারম্ভিক হেডারে [RFC 8216-এর 3.3 অনুচ্ছেদ](https://www.rfc-editor.org/rfc/rfc8216#section-3.3) অনুযায়ী `iso6` ব্র্যান্ড এবং শূন্য মুভি/ট্র্যাক সময়কাল থাকে। AVC স্যাম্পল এন্ট্রিও SPS সংখ্যায় প্রয়োজনীয় সংরক্ষিত বিট এবং শেষ `pre_defined` ফিল্ডে চিহ্নযুক্ত ধ্রুবক `-1` ব্যবহার করে। এতে পিন করা ফিক্সচার মাল্টিপ্লেক্সারের তৈরি কন্টেইনার সিনট্যাক্স সংশোধিত হয়। ফিক্সচার চুক্তি হেডার পরীক্ষা করে, বিকৃত বক্স প্রত্যাখ্যান করে এবং নিশ্চিত করে যে কোডেক প্যারামিটার সেট, ট্র্যাক ID, টাইমস্কেল ও মিডিয়া খণ্ডের বাইট অপরিবর্তিত। এটি কৃত্রিম ইনপুট যাচাই করে; একা ব্রাউজারে প্লেব্যাক প্রমাণ করে না বা সম্পূর্ণ RC ম্যাট্রিক্সের বিকল্প হয় না।
+
+Pull request-এর জন্য Linux-এ বর্তমান Chromium, Firefox ও WebKit, Windows-এ Chromium এবং macOS-এ WebKit আবশ্যক। nightly ও beta বিল্ডেও এই পাঁচটি লক্ষ্য প্রয়োজন। RC যোগ্যতার জন্য ঘোষিত সব 35টি লক্ষ্য প্রয়োজন: Linux, Windows ও macOS-এ Playwright/ব্রাউজারের তিনটি নির্দিষ্ট প্রজন্ম, তিন সিস্টেমে ইনস্টল করা স্থিতিশীল Chrome/Edge এবং Linux-এ beta Chrome/Edge। ঐতিহাসিক দুটি macOS WebKit লক্ষ্য (Playwright 1.62.1 ও 1.63.0) `macos-15-intel` ব্যবহার করে; তাদের প্রমাণপত্র প্রকৃত প্রসেস আর্কিটেকচার লিখে রাখে এবং ARM runner প্রত্যাখ্যান করে। সরাসরি MSE রোগনির্ণয়ে দেখা যায়, একই H.264 সূচনা ও মিডিয়া বাইট Intel-এ 1.63 এবং ARM-এ 1.64 দিয়ে শেষ হয়, কিন্তু macOS 15 ARM VM-এর পুরোনো WebKit `updateend`-এর আগে আটকে যায়। কন্টেইনার বদল, ManagedMediaSource ব্যবহার বা ব্রাউজার উইন্ডো খোলা সমস্যাটি মেটায়নি। এই দুই লক্ষ্যেও মূল পাঁচটি প্লেব্যাক/UI দৃশ্যপট আবশ্যক। runner-এর এই নির্বাচন সব বাস্তব macOS ডিভাইস বা নেটিভ Safari সম্পর্কে দাবি নয়। ইনভেন্টরি আবার তৈরির সময় পর্যালোচিত runner overrides ধরে রাখতে হবে; প্রোফাইল চুক্তি সেগুলি সরানো প্রত্যাখ্যান করে।
+
+Linux WebKit-এর তিন প্রজন্মই স্পষ্টভাবে `ubuntu-26.04` x64 runner ব্যবহার করে। আনুষ্ঠানিক রানটাইমের পর্যালোচিত তুলনা Ubuntu 24.04-এ কঠোর কিয়স্ক স্থানান্তরের ব্যর্থতা পুনরুৎপাদন করেছে, কিন্তু একই প্রার্থী ও অপরিবর্তিত পাঁচ দৃশ্যপট Ubuntu 26.04-এ পরপর চারবার সফল হয়েছে। এতে পৃথক মাল্টিমিডিয়া লাইব্রেরি বদল বা প্লেব্যাক অ্যাসারশন শিথিল না করে সামঞ্জস্যপূর্ণ সমর্থিত রানটাইম নির্বাচন করা হয়। অন্য Linux ব্রাউজার লক্ষ্য বর্তমান runner রাখে। নির্দিষ্ট সোর্স, আর্টিফ্যাক্ট, তুলনার ফলাফল ও সীমার জন্য [Linux WebKit রানটাইম যোগ্যতা](linux-webkit-runtime.md) দেখুন। সম্পূর্ণ RC ম্যাট্রিক্স এবং প্যাকেজ করা নেটিভ সংস্করণের পৃথক গ্রহণযোগ্যতা পরীক্ষা বাধ্যতামূলক থাকে।
+
+পরীক্ষিত পণ্যের সংস্করণ চালনার সময় নথিবদ্ধ হয়। Playwright Firefox হলো তার প্যাচ করা বিল্ড, নেটিভ Firefox ESR সম্পর্কে দাবি নয়; WebKit Safari নয়। এই ম্যাট্রিক্স বাস্তব TV বা নেটিভ শেলে যোগ্যতা পরীক্ষার বিকল্প নয়।
+
+পূর্ণ ইনভেন্টরিতে **35টি প্ল্যাটফর্ম লক্ষ্য আছে: HLS-সমর্থিত 32টি এবং কেবল UI পরীক্ষার তিনটি Windows WebKit লক্ষ্য**। শেষের তিনটিতেও দুটি স্থানীয়কৃত লোড/রিলোড প্রবাহ আবশ্যক; তাদের WebKit বিল্ডে MediaSource বা নেটিভ HLS কোনোটিই নেই। এটি ঘোষিত সীমা, সফল প্লেব্যাক কভারেজ নয়। তিনটি নির্দিষ্ট লক্ষ্য ID `scripts/browser-compatibility-profile.cjs`-এ পর্যালোচনা করা হয়। UI পরীক্ষার আগে সক্ষমতা probe-কে সীমাটি নিশ্চিত করতে হবে। MSE (ManagedMediaSource-সহ) বা নেটিভ HLS পাওয়া গেলে প্রোফাইল উন্নীত না হওয়া পর্যন্ত gate ব্যর্থ হবে। অন্য প্রতিটি লক্ষ্যে H.264 ও AAC দুটির MSE সমর্থন এবং অপরিবর্তিত পাঁচ দৃশ্যপট আবশ্যক; সক্ষমতা হারালে ছোট suite বেছে না নিয়ে ব্যর্থ হতে হবে। probe প্রার্থীর HLS লাইব্রেরি লোড করে পিন করা instance-এর default নির্বাচিত backend পরীক্ষা করে: MediaSource, তারপর ManagedMediaSource, তারপর WebKitMediaSource। প্রমাণপত্রে backend ও HLS সংস্করণ লেখা থাকে; default বা সংস্করণ বদলালে probe চুক্তির স্পষ্ট পর্যালোচনা প্রয়োজন।
+
+তাই পূর্ণ RC-তে 35টি লক্ষ্য প্রমাণপত্রসহ **166টি সফল দৃশ্যপট চালনা** (32 × 5 + 3 × 2) আবশ্যক। PR/nightly/beta উপসেট পাঁচ লক্ষ্য ও 25টি চালনাই থাকে। প্রতিটি প্রমাণপত্রে নির্দিষ্ট দৃশ্যপটের সেট, সক্ষমতা probe এবং সফল HLS কভারেজ বা অসমর্থনের স্পষ্ট কারণ থাকে। এগুলি কনফিগার করা শর্ত, কোনো নির্দিষ্ট RC ইতিমধ্যে পূরণ করেছে এমন দাবি নয়। Playwright 1.64-এর ব্যবহৃত [WebKit Windows বিল্ড কনফিগারেশন](https://github.com/WebKit/WebKit/blob/56453fdfe0b0ca6258c23e6453b34f70b885d13f/Source/cmake/OptionsWin.cmake#L75) এবং পিন করা রানটাইম probe সীমাটি নিশ্চিত করে।
+
+উভয় পথই বর্তমান run-এর উৎপাদক job-এর নির্দিষ্ট আর্টিফ্যাক্ট ID ডাউনলোড করে। সদ্য নিষ্কাশিত ডিরেক্টরি পরিবেশনের আগে আর্কাইভ checksum, সোর্স commit, প্যাকেজ করা bundle/provider hash, ফাইলের ধরন ও পথ যাচাই হয়। রিলিজ পরীক্ষা স্থির করা বিল্ড প্রমাণপত্রও যাচাই করে। ব্রাউজার job পরীক্ষিত কোড পুনরায় বিল্ড করে না এবং কেবল production dependencies ইনস্টল করে। পরীক্ষা সার্ভারের এখনও সোর্সের সম্পূর্ণ provider ইনভেন্টরি প্রয়োজন; compiler কেবল প্রকৃত bundle তৈরির সময় লোড হয়, ইনভেন্টরি constants পড়ার সময় নয়। ব্যর্থ, বাদ দেওয়া, পুরোনো বা অনুপস্থিত দৃশ্যপটের প্রমাণ শেয়ার করা gate ব্যর্থ করে; প্রতিটি লক্ষ্যের trace, প্রকৃত রানটাইম পরিচয় ও প্রার্থীর digest সংরক্ষণ করা হয়।
+
+উৎপন্ন সাতটি ইনভেন্টরি/lock ফাইল `venus-os-ci-toolkit/scripts/prepare_browser_compatibility.py` থেকে আসে। অ্যাপ্লিকেশন প্যাকেজ ও ঐতিহাসিক ব্রাউজার প্যাকেজের lockfile আলাদা। GitHub-hosted runner-ই default থাকে; শেয়ার করা workflow প্রস্তুত Linux ব্যাকআপ নির্বাচন রাখে, আর Windows/macOS লক্ষ্য নিজ নিজ নেটিভ OS চায়।
+
+শেয়ার করা রিলিজ সিদ্ধান্ত প্রতিটি নির্বাচিত লক্ষ্য এবং তার সোর্স SHA, run, attempt, channel ও নির্দিষ্ট প্রার্থী আর্টিফ্যাক্ট ID যাচাই করে। RC পাঁচ লক্ষ্যের beta প্রমাণ ব্যবহার করতে পারে না। stable-এ উন্নীত করার সময় গৃহীত RC-এর বাইট ব্যবহৃত হয়। ব্যর্থ হলে সম্পূর্ণ যোগ্যতা workflow আবার চালান; পুরোনো attempt-এর প্রমাণপত্র নতুন যোগ্যতা সম্পূর্ণ করতে পারে না।
+
+<a id="from-source-to-accepted-candidate"></a>
+
+## সোর্স থেকে গৃহীত প্রার্থী
+
+![সোর্স, প্যাকেজ যাচাই, সক্ষমতা পরীক্ষা ও প্রমাণ](diagrams/candidate-verification-flow.svg)
+
+1. পর্যালোচিত সোর্স বিল্ড করে তৈরি Mode A ফাইল প্যাকেজ করুন। প্রার্থীর সঙ্গে আর্কাইভ checksum ও সোর্স পরিচয় রাখুন।
+2. নিষ্কাশনের আগে আর্কাইভ আকারের সীমা, নিরাপদ পথ, ফাইলের ধরন, সোর্স/সংস্করণ ও সম্পূর্ণ entry/provider hash ইনভেন্টরি যাচাই করুন। রিলিজ যোগ্যতা স্থির করা বিল্ড প্রমাণপত্রও পরীক্ষা করে।
+3. প্রকৃত ব্রাউজার সংস্করণ ও মিডিয়া সক্ষমতা probe করুন। ঘোষিত প্রোফাইল নির্বাচন করুন; সক্ষমতা না মিললে নীরবে কভারেজ কমানোর বদলে ব্যর্থ হতে হবে।
+4. নিষ্কাশিত ফাইলে পুনরায় বিল্ড ছাড়া নির্দিষ্ট দৃশ্যপটের সেট চালান। প্রতিটি দৃশ্যপট ঠিক একবার সফল হতে হবে, বাদ দেওয়া, ব্যর্থতা বা পুনঃচেষ্টা চলবে না।
+5. রানটাইম, সক্ষমতা, প্রার্থীর digest ও ফলাফল রাখুন। শেয়ার করা gate প্রমাণ গ্রহণের আগে আবশ্যক লক্ষ্য এবং run/attempt/সোর্সের মিল যাচাই করে। রিলিজ সমন্বয় ও ডিভাইস গ্রহণযোগ্যতা পৃথক শর্ত থাকে।
+
+<a id="what-has-been-measured-locally"></a>
+
+## স্থানীয়ভাবে যা পরিমাপ করা হয়েছে
+
+![স্থানীয় ইন্টিগ্রেশন যাচাই: ডিভাইস ও প্যাকেজ করা ব্রাউজারের পৃথক suite](diagrams/browser-verification-results.svg)
+
+সোর্স `c52f4d07`-এ সম্পূর্ণ Chromium ডিভাইস-ব্রাউজার run-এ 196টি পরীক্ষা সফল হয়, একটি নেটিভ HLS পরীক্ষা প্রত্যাশামতো বাদ যায়। আলাদাভাবে একই প্যাকেজ করা Mode A আর্কাইভ Chromium 156.0.8078.4, Firefox 157.0 ও WebKit 27.2-এর প্রতিটিতে পাঁচটি দৃশ্যপট পার করে: 15টি সফল, বাদ বা পুনঃচেষ্টা নেই। এগুলি আলাদা suite; সংখ্যাগুলি কভারেজের শতাংশ বা hosted সব 35টি লক্ষ্য সফল হওয়ার প্রমাণ নয়।
+
+[সংরক্ষিত প্রমাণপত্র](evidence/post779-local-acceptance/summary.json) প্রকৃত macOS 26.7.1 host শনাক্ত করে। এগুলি তাকে `macos-15` প্রোফাইল লেবেল থেকে স্পষ্টভাবে পৃথক করে এবং কোনো রিলিজকে যোগ্য বলে না। Mac-এ এই স্থানীয় পরীক্ষা আবার করতে locked dependencies ও Playwright 1.64.0 ব্রাউজার ইনস্টল করুন, বর্তমান সোর্স বিল্ড করুন, তারপর রিপোজিটরি ডিরেক্টরি argument হিসেবে দিয়ে [সংরক্ষিত পদ্ধতি](evidence/post779-local-acceptance/reproduce.sh) চালান। এটি বর্তমান বিল্ড প্যাকেজ করে, প্রার্থী পরীক্ষা করে, প্রতিটি ব্রাউজার probe করে এবং নতুন প্রমাণপত্র `.compatibility/`-এ রাখে। পোর্ট 4189 প্রয়োজন এবং বিদ্যমান `browser-candidate-web` ডিরেক্টরি overwrite করা হয় না। বিল্ড ও পদ্ধতি চালানোর মাঝখানে সোর্স বদলাবেন না। hosted CI ও বাস্তব ডিভাইসের ফলাফল [বাস্তবায়ন প্রতিবেদনে](implementation-report.bn.md) পৃথকভাবে রাখা হয়।

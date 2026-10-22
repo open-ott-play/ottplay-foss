@@ -8,15 +8,18 @@ the player. They cover opening the demo, selecting the interface language,
 loading an M3U playlist and finding settings. Commands, product names and
 explicitly marked links to English/Russian manuals are shared. These are
 **localized quick starts, not 88 full translated engineering manuals**.
-The complete practical guides and new feature documentation are maintained in
-English and Russian. Automated catalog parity does not replace native-speaker
+The main manual and paired feature guides have complete editions in
+[24 documentation languages](../manual-translations.md). Other engineering references
+retain their existing languages. Automated catalog parity does not replace native-speaker
 review; please report unclear or incorrect translations.
 
 Ниже — 88 краткие инструкции с реальными переведёнными подписями интерфейса:
 демо, выбор языка, загрузка M3U и поиск настроек. Команды, названия продуктов и
 явно обозначенные ссылки на EN/RU-руководства общие. Это **локализованный краткий
-запуск, а не 88 полных переводов инженерных руководств**. Полные практические
-руководства и документация новых функций поддерживаются на английском и русском.
+запуск, а не 88 полных переводов инженерных руководств**. Основное практическое
+руководство и парные руководства по функциям доступны на
+[24 языках документации](../manual-translations.md). Языки остальных инженерных
+справочников не изменились.
 Проверка совпадения каталогов не заменяет вычитку носителем языка.
 
 ## Languages · Языки

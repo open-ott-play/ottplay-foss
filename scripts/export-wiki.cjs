@@ -28,25 +28,42 @@ const repository = "https://github.com/open-ott-play/ottplay-foss";
 const wiki = repository + "/wiki/";
 const raw =
     "https://raw.githubusercontent.com/wiki/open-ott-play/ottplay-foss/";
+const existingSources = new Map();
 const pages = {
     "docs/wiki/_Sidebar.md": "_Sidebar",
     "docs/wiki/Home.md": "Home",
     "docs/wiki/Home.ru.md": "Home-RU",
 };
-for (const name of [
-    "roadmap-delivery",
-    "implementation-report",
-    "browser-compatibility",
-    "roadmap-size",
-    "playback-stream-policy",
-    "guide-binding-accessibility",
-    "audio-video-check",
-    "xtream-media",
-    "remote-handoff",
-    "settings-recovery",
-]) {
-    pages["docs/" + name + ".md"] = name;
-    pages["docs/" + name + ".ru.md"] = name + "-RU";
+if (sourceExists("docs/manual-languages.json")) {
+    const inventory = JSON.parse(sourceBytes("docs/manual-languages.json"));
+    for (const source of inventory.documents.filter((file) =>
+        file.startsWith("docs/")
+    )) {
+        for (const { code } of inventory.languages) {
+            const file =
+                code === "en" ? source : source.replace(/\.md$/, `.${code}.md`);
+            const name = path.posix.basename(source, ".md");
+            const suffix =
+                code === "en" ? "" : `-${code === "ru" ? "RU" : code}`;
+            pages[file] = name + suffix;
+        }
+    }
+} else {
+    for (const name of [
+        "roadmap-delivery",
+        "implementation-report",
+        "browser-compatibility",
+        "roadmap-size",
+        "playback-stream-policy",
+        "guide-binding-accessibility",
+        "audio-video-check",
+        "xtream-media",
+        "remote-handoff",
+        "settings-recovery",
+    ]) {
+        pages["docs/" + name + ".md"] = name;
+        pages["docs/" + name + ".ru.md"] = name + "-RU";
+    }
 }
 function sourceBytes(file) {
     return cp.execFileSync("git", ["show", revision + ":" + file], {
@@ -55,40 +72,48 @@ function sourceBytes(file) {
     });
 }
 function sourceExists(file) {
-    return (
+    if (existingSources.has(file)) return existingSources.get(file);
+    const exists =
         cp.spawnSync("git", ["cat-file", "-e", revision + ":" + file], {
             cwd: root,
             stdio: "ignore",
-        }).status === 0
-    );
+        }).status === 0;
+    existingSources.set(file, exists);
+    return exists;
 }
 const assets = new Set();
 fs.mkdirSync(destination, { recursive: true });
 for (const [source, page] of Object.entries(pages)) {
     let content = sourceBytes(source).toString("utf8");
+    function rewrittenLink(href, image = false) {
+        if (/^(?:[a-z]+:|#|\/\/)/i.test(href)) return href;
+        const hash = href.indexOf("#");
+        const fragment = hash < 0 ? "" : href.slice(hash);
+        const relative = hash < 0 ? href : href.slice(0, hash);
+        const resolved = path.posix.normalize(
+            path.posix.join(path.posix.dirname(source), relative)
+        );
+        if (resolved.startsWith("../") || !sourceExists(resolved))
+            throw new Error(
+                "Missing documentation link: " + source + " -> " + href
+            );
+        let url;
+        if (pages[resolved]) url = wiki + pages[resolved];
+        else if (image && /\.svg$/.test(resolved)) {
+            assets.add(resolved);
+            url = raw + "assets/" + path.posix.basename(resolved);
+        } else url = repository + "/blob/" + revision + "/" + resolved;
+        return url + fragment;
+    }
     content = content.replace(
         /(!?\[[^\]\n]*\]\()([^\s)]+)(\))/g,
-        (match, prefix, href, suffix) => {
-            if (/^(?:[a-z]+:|#|\/\/)/i.test(href)) return match;
-            const hash = href.indexOf("#");
-            const fragment = hash < 0 ? "" : href.slice(hash);
-            const relative = hash < 0 ? href : href.slice(0, hash);
-            const resolved = path.posix.normalize(
-                path.posix.join(path.posix.dirname(source), relative)
-            );
-            if (resolved.startsWith("../") || !sourceExists(resolved))
-                throw new Error(
-                    "Missing documentation link: " + source + " -> " + href
-                );
-            let url;
-            if (pages[resolved]) url = wiki + pages[resolved];
-            else if (prefix.startsWith("![") && /\.svg$/.test(resolved)) {
-                const name = "assets/" + path.posix.basename(resolved);
-                assets.add(resolved);
-                url = raw + name;
-            } else url = repository + "/blob/" + revision + "/" + resolved;
-            return prefix + url + fragment + suffix;
-        }
+        (match, prefix, href, suffix) =>
+            prefix + rewrittenLink(href, prefix.startsWith("![")) + suffix
+    );
+    // Language switchers use HTML anchors to preserve bidi direction metadata.
+    content = content.replace(
+        /(<a\s+[^>]*?href=")([^"]+)(")/g,
+        (match, prefix, href, suffix) => prefix + rewrittenLink(href) + suffix
     );
     if (page !== "_Sidebar")
         content +=

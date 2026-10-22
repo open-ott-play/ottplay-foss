@@ -1,6 +1,16 @@
 # From feature list to verified behavior
 
-[Русский](implementation-report.ru.md) · [Feature contracts](roadmap-delivery.md) · [Size evidence](roadmap-size.md)
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="implementation-report.md" lang="en" dir="ltr">English</a> · <a href="implementation-report.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="implementation-report.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="implementation-report.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="implementation-report.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="implementation-report.es.md" lang="es" dir="ltr">Español</a> · <a href="implementation-report.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="implementation-report.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="implementation-report.he.md" lang="he" dir="rtl">עברית</a> · <a href="implementation-report.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="implementation-report.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="implementation-report.it.md" lang="it" dir="ltr">Italiano</a> · <a href="implementation-report.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="implementation-report.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="implementation-report.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="implementation-report.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="implementation-report.pt.md" lang="pt" dir="ltr">Português</a> · <a href="implementation-report.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="implementation-report.th.md" lang="th" dir="ltr">ไทย</a> · <a href="implementation-report.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="implementation-report.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="implementation-report.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="implementation-report.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="implementation-report.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
+[Feature contracts](roadmap-delivery.md) · [Size evidence](roadmap-size.md)
 
 This report records the implementation and hardening process, not a release
 announcement. The measured player snapshot is `652726f8`; the separately built
@@ -20,7 +30,9 @@ player, control service/CLI and independent native Android application.
 Ownership was assigned by component so simultaneous changes could be reviewed
 and integrated without replacing another component's work. New UI reused
 existing translated labels or added catalog entries across all 88 languages;
-full engineering guides were written in English and Russian.
+full engineering guides were originally written in English and Russian. The
+main manual and paired feature guides now have complete editions in
+[24 documentation languages](manual-translations.md).
 
 Implementation was followed by independent cross-review and executable
 regressions. A reported problem was checked against the actual callback,

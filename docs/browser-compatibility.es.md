@@ -1,0 +1,59 @@
+<a id="browser-generations-and-operating-systems"></a>
+
+# Generaciones de navegadores y sistemas operativos
+
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="browser-compatibility.md" lang="en" dir="ltr">English</a> · <a href="browser-compatibility.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="browser-compatibility.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="browser-compatibility.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="browser-compatibility.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="browser-compatibility.es.md" lang="es" dir="ltr">Español</a> · <a href="browser-compatibility.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="browser-compatibility.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="browser-compatibility.he.md" lang="he" dir="rtl">עברית</a> · <a href="browser-compatibility.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="browser-compatibility.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="browser-compatibility.it.md" lang="it" dir="ltr">Italiano</a> · <a href="browser-compatibility.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="browser-compatibility.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="browser-compatibility.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="browser-compatibility.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="browser-compatibility.pt.md" lang="pt" dir="ltr">Português</a> · <a href="browser-compatibility.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="browser-compatibility.th.md" lang="th" dir="ltr">ไทย</a> · <a href="browser-compatibility.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="browser-compatibility.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="browser-compatibility.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="browser-compatibility.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="browser-compatibility.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
+[Resultados medidos](implementation-report.es.md#browser-gate-integration)
+
+![Cualificación de navegadores configurada: 35 destinos, 166 ejecuciones de escenarios](diagrams/browser-qualification.svg)
+
+Las comprobaciones existentes de dispositivos, medios, ES5/workers heredados, interfaz nativa y HLS nativo de Apple siguen siendo obligatorias. El workflow TypeScript compartido también ejecuta escenarios Plex contra el archivo Mode A empaquetado exacto: dos flujos localizados de carga/recarga, persistencia de relación de aspecto de HLS.js y Video.js entre cambios de medio/recargas y finalización natural de episodios en quiosco estricto con HLS.js. Los escenarios multimedia usan decodificación real; todos usan DOM y entrada reales. Solo los datos Plex y la fuente multimedia son fixtures locales sintéticos.
+
+El fixture de aspecto remultiplexa el flujo de transporte H.264/AAC versionado en representaciones fMP4 separadas. Sus encabezados de inicialización usan la marca `iso6` y duraciones de película/pista cero, como exige [RFC 8216, sección 3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.3). La entrada de muestra AVC usa además los bits reservados requeridos en el recuento SPS y la constante con signo `-1` en su campo final `pre_defined`. Esto corrige la sintaxis de contenedor emitida por el multiplexor de fixtures fijado. Un contrato del fixture comprueba los encabezados y rechaza cajas malformadas, demostrando que conjuntos de parámetros del códec, ID de pistas, escalas de tiempo y bytes de fragmentos multimedia no cambian. Valida la entrada sintética; por sí solo no demuestra reproducción en el navegador ni sustituye la matriz RC completa.
+
+Los pull requests exigen Chromium, Firefox y WebKit actuales en Linux, Chromium en Windows y WebKit en macOS. Las compilaciones nightly y beta requieren esos cinco destinos. La cualificación RC exige los 35 destinos declarados: tres generaciones exactas de Playwright/navegador en Linux, Windows y macOS, más Chrome/Edge estable instalado en los tres sistemas y Chrome/Edge beta en Linux. Los dos destinos históricos de WebKit en macOS (Playwright 1.62.1 y 1.63.0) usan `macos-15-intel`; sus comprobantes registran la arquitectura real del proceso y rechazan un runner ARM. El diagnóstico MSE directo encontró que los mismos bytes de inicialización H.264 y medios completaban en Intel con 1.63 y ARM con 1.64, mientras WebKit antiguo en la VM ARM de macOS 15 se detenía antes de `updateend`. Cambiar contenedores, usar ManagedMediaSource o abrir una ventana no resolvió el bloqueo. Esos destinos siguen exigiendo los cinco escenarios originales de reproducción/UI. La elección de runner no afirma nada sobre todos los dispositivos macOS físicos ni Safari nativo. Regenerar el inventario debe conservar estas excepciones revisadas; el contrato del perfil rechaza eliminarlas.
+
+Las tres generaciones WebKit de Linux usan explícitamente el runner x64 `ubuntu-26.04`. La comparación revisada de runtimes oficiales reprodujo el fallo de transición de quiosco estricto en Ubuntu 24.04, mientras el mismo candidato y cinco escenarios sin cambios pasaron cuatro veces consecutivas en Ubuntu 26.04. Se elige así un runtime compatible coherente, sin sustituir bibliotecas multimedia sueltas ni relajar aserciones de reproducción. Los demás destinos Linux conservan sus runners. Consulta [la cualificación del runtime WebKit de Linux](linux-webkit-runtime.md) para el código, artefacto, resultados y límites exactos. La matriz RC completa y la aceptación nativa empaquetada separada siguen siendo obligatorias.
+
+Las versiones probadas se registran durante la ejecución. Firefox de Playwright es su compilación parcheada, no una afirmación sobre Firefox ESR nativo; WebKit no es Safari. La matriz no sustituye la cualificación en televisores físicos o shells nativos.
+
+El inventario completo tiene **35 destinos de plataforma: 32 compatibles con HLS y tres WebKit de Windows solo para UI**. Estos últimos siguen exigiendo los dos flujos localizados de carga/recarga; su WebKit no tiene MediaSource ni HLS nativo. Es una limitación declarada, no cobertura de reproducción superada. Los tres ID exactos se revisan en `scripts/browser-compatibility-profile.cjs`. Una sonda debe confirmar esa limitación antes de sus pruebas UI. Si MSE, incluido ManagedMediaSource, o HLS nativo está disponible, la puerta falla hasta actualizar el perfil. Todos los demás destinos requieren compatibilidad MSE con H.264 y AAC y los cinco escenarios sin cambios; perder una capacidad falla en vez de seleccionar una suite menor. La sonda carga la biblioteca HLS del candidato y comprueba el backend seleccionado por el valor predeterminado de su instancia fijada: MediaSource, luego ManagedMediaSource, luego WebKitMediaSource. El comprobante identifica backend y versión HLS; cambiar valor predeterminado o versión exige revisar explícitamente el contrato de la sonda.
+
+Por tanto, un RC completo exige **166 ejecuciones correctas de escenarios** (32 × 5 + 3 × 2) y 35 comprobantes de destinos. El subconjunto PR/nightly/beta mantiene cinco destinos y 25 ejecuciones. Cada comprobante registra el conjunto exacto, la sonda de capacidades y cobertura HLS superada o motivo explícito de incompatibilidad. Son requisitos configurados, no una afirmación de que un RC concreto ya los haya completado. La limitación la confirman la [configuración de compilación WebKit Windows](https://github.com/WebKit/WebKit/blob/56453fdfe0b0ca6258c23e6453b34f70b885d13f/Source/cmake/OptionsWin.cmake#L75) usada por Playwright 1.64 y la sonda de runtime fijada.
+
+Ambas rutas descargan el ID exacto del artefacto del job productor en la ejecución actual. Antes de servir un directorio recién extraído, verifican sumas del archivo, commit fuente, hashes de bundle/proveedores empaquetados, tipos y rutas de archivos. Las comprobaciones de publicación también verifican el comprobante de compilación congelado. Los jobs de navegador no recompilan el código probado; solo instalan dependencias de producción. El servidor de pruebas sigue necesitando el inventario completo de proveedores desde el código; el compilador solo se carga al ensamblar un bundle real, no al leer constantes del inventario. Una evidencia de escenario fallida, omitida, obsoleta o ausente hace fallar la puerta compartida; se conservan trazas, identidad real del runtime y digest del candidato por destino.
+
+Los siete archivos generados de inventario/bloqueo proceden de `venus-os-ci-toolkit/scripts/prepare_browser_compatibility.py`. Los paquetes de aplicación y navegadores históricos tienen lockfiles separados. Los runners alojados por GitHub siguen siendo predeterminados; el workflow compartido conserva la selección de reserva Linux preparada, mientras Windows/macOS requieren su sistema operativo nativo.
+
+El veredicto de publicación compartido verifica cada destino seleccionado y su SHA fuente, ejecución, intento, canal e ID exacto de artefacto candidato. RC no puede usar las evidencias beta de cinco destinos. La promoción estable consume los bytes del RC aceptado. Tras un fallo, vuelve a ejecutar todo el workflow de cualificación; comprobantes de intentos anteriores no completan una cualificación nueva.
+
+<a id="from-source-to-accepted-candidate"></a>
+
+## Del código al candidato aceptado
+
+![Código, verificación de paquetes, comprobación de capacidades y evidencias](diagrams/candidate-verification-flow.svg)
+
+1. Compila el código revisado y empaqueta los archivos Mode A resultantes. Guarda suma del archivo e identidad del código con el candidato.
+2. Antes de extraer, verifica tamaño acotado del archivo, rutas seguras, tipos, fuente/versión e inventario completo de hashes de entrada/proveedores. La cualificación de publicación comprueba además el comprobante congelado.
+3. Sondea la versión real del navegador y sus capacidades multimedia. Selecciona el perfil declarado; una discrepancia falla en vez de reducir silenciosamente la cobertura.
+4. Ejecuta el conjunto exacto contra los archivos extraídos, sin recompilar. Exige cada escenario exactamente una vez, sin omisiones, fallos ni reintentos.
+5. Conserva runtime, capacidades, digest del candidato y resultados. La puerta compartida comprueba destinos obligatorios y coincidencia de ejecución/intento/fuente antes de aceptar las evidencias. La coordinación de publicación y la aceptación de dispositivos siguen siendo condiciones separadas.
+
+<a id="what-has-been-measured-locally"></a>
+
+## Qué se ha medido localmente
+
+![Verificación local de integración: suites separadas de dispositivos y navegadores empaquetados](diagrams/browser-verification-results.svg)
+
+En el código `c52f4d07`, la ejecución Chromium completa para dispositivos/navegador superó 196 pruebas con una omisión prevista de HLS nativo. Por separado, el mismo archivo Mode A empaquetado superó cinco escenarios en cada Chromium 156.0.8078.4, Firefox 157.0 y WebKit 27.2: 15 éxitos, sin omisiones ni reintentos. Son suites distintas; sus cifras no son un porcentaje de cobertura ni prueban que pasaran los 35 destinos alojados.
+
+Los [comprobantes guardados](evidence/post779-local-acceptance/summary.json) identifican el host real macOS 26.7.1. Lo distinguen explícitamente de la etiqueta de perfil `macos-15` y no cualifican una publicación. Para repetir la comprobación en un Mac, instala las dependencias bloqueadas y navegadores Playwright 1.64.0, compila el código actual y ejecuta la [receta guardada](evidence/post779-local-acceptance/reproduce.sh) con el directorio del repositorio como argumento. Empaqueta la compilación existente, comprueba el candidato, sondea cada navegador y guarda nuevos comprobantes en `.compatibility/`. Requiere el puerto 4189 y rechaza sobrescribir un directorio `browser-candidate-web` existente. No cambies el código entre compilar y ejecutar la receta. Los resultados CI alojados y de dispositivos físicos se registran por separado en el [informe de implementación](implementation-report.es.md).

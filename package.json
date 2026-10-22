@@ -29,6 +29,7 @@
     "check:test-inventory": "node scripts/check-test-inventory.cjs",
     "dev": "vite",
     "dev:native": "npm run build && vite --mode native",
+    "docs:manuals": "node scripts/manual-documentation.cjs",
     "docs:generate": "node scripts/generate-readmes.cjs",
     "fix": "ultracite fix",
     "lint": "biome check . && npm run lint:correctness",

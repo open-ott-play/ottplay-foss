@@ -28,12 +28,18 @@ git -C ../ottplay-wiki push
 
 For an existing wiki checkout, fetch and fast-forward it before exporting.
 The wiki must have its first page created through GitHub once, before cloning.
-Check both the English and Russian home pages and the rendered SVG chart after
-publishing. A published guide is not a claim that a beta or physical-device test
+The exporter reads the complete-manual inventory from the selected source commit
+and exports all 24 language editions. It also rewrites HTML language switchers.
+Older commits without that inventory retain the original EN/RU export behavior.
+Check a home page in each direction (LTR and RTL), its language switcher and the
+rendered SVG chart after publishing. A published guide is not a claim that a beta or physical-device test
 has completed; each feature guide documents its limits.
 
 Существующий клон вики сначала обновите через fetch и fast-forward. До первого
 клонирования создайте стартовую страницу в интерфейсе GitHub. После публикации
-проверьте главные страницы EN/RU и отображение SVG. Публикация инструкции не
+проверьте главные страницы с письмом слева направо и справа налево,
+переключатели языков и отображение SVG. Экспорт включает все 24 языковые версии
+из списка руководств выбранного коммита. Для старых коммитов без этого списка
+сохраняется прежний экспорт EN/RU. Публикация инструкции не
 означает выпуск беты или успешную проверку на физическом устройстве: ограничения
 указаны в руководствах.

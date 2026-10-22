@@ -1,5 +1,15 @@
 # OTT-play FOSS
 
+<!-- language-navigation:start -->
+<p dir="ltr">
+<a href="README.md" lang="en" dir="ltr">English</a> · <a href="README.ar.md" lang="ar" dir="rtl">العربية</a> · <a href="README.bn.md" lang="bn" dir="ltr">বাংলা</a> · <a href="README.cs.md" lang="cs" dir="ltr">Čeština</a> · <a href="README.de.md" lang="de" dir="ltr">Deutsch</a> · <a href="README.es.md" lang="es" dir="ltr">Español</a> · <a href="README.fa.md" lang="fa" dir="rtl">فارسی</a> · <a href="README.fr.md" lang="fr" dir="ltr">Français</a>
+<br>
+<a href="README.he.md" lang="he" dir="rtl">עברית</a> · <a href="README.hi.md" lang="hi" dir="ltr">हिन्दी</a> · <a href="README.id.md" lang="id" dir="ltr">Bahasa Indonesia</a> · <a href="README.it.md" lang="it" dir="ltr">Italiano</a> · <a href="README.ja.md" lang="ja" dir="ltr">日本語</a> · <a href="README.ko.md" lang="ko" dir="ltr">한국어</a> · <a href="README.nl.md" lang="nl" dir="ltr">Nederlands</a> · <a href="README.pl.md" lang="pl" dir="ltr">Polski</a>
+<br>
+<a href="README.pt.md" lang="pt" dir="ltr">Português</a> · <a href="README.ru.md" lang="ru" dir="ltr">Русский</a> · <a href="README.th.md" lang="th" dir="ltr">ไทย</a> · <a href="README.tr.md" lang="tr" dir="ltr">Türkçe</a> · <a href="README.uk.md" lang="uk" dir="ltr">Українська</a> · <a href="README.vi.md" lang="vi" dir="ltr">Tiếng Việt</a> · <a href="README.zh-Hans.md" lang="zh-Hans" dir="ltr">简体中文</a> · <a href="README.zh-Hant.md" lang="zh-Hant" dir="ltr">繁體中文</a>
+</p>
+<!-- language-navigation:end -->
+
 Local files without Internet: see [Local videos and offline playback](docs/offline-media.md).
 
 [![OTT-play FOSS channel browser in a perspective view](docs/images/hero.png)](docs/images/studio-2026-default.png)
@@ -8,7 +18,7 @@ Local files without Internet: see [Local videos and offline playback](docs/offli
 Open the image for the original, flat view; this is not a capture of a live subscription.
 [Image source and regeneration](docs/images/README.md).*
 
-[Русское руководство](README.ru.md) · [Quick starts in 88 languages](docs/readme/README.md) · [Documentation wiki](docs/wiki/Home.md)
+[Quick starts in 88 languages](docs/readme/README.md) · [Documentation wiki](docs/wiki/Home.md)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15593/badge)](https://www.bestpractices.dev/projects/15593)
 
@@ -90,7 +100,7 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1`, consent-based remote inspection and an on-demand hosted audio/video check
 - **Keyboard accessibility**: Named classic dialogs, Tab focus containment and return, selected channel semantics and polite status announcements. These improvements do not establish full WCAG or device screen-reader conformance.
 - **24 device types**: Per-device remote control key mappings
-- **88 interface languages**: Matching catalogs, [localized quick starts](docs/readme/README.md) and [CLDR-checked keyboard alphabets](docs/localization.md). Full engineering manuals are maintained in English and Russian.
+- **88 interface languages**: Matching catalogs, [localized quick starts](docs/readme/README.md) and [CLDR-checked keyboard alphabets](docs/localization.md). The main manual and paired feature guides are available in [24 documentation languages](docs/manual-translations.md); other engineering references retain their existing languages.
 
 The [delivery guide](docs/roadmap-delivery.md) describes the implemented feature
 set in this source revision, platform boundaries, diagrams and verification.
@@ -1161,7 +1171,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 - [Documentation wiki](./docs/wiki/Home.md) / [Вики по-русски](./docs/wiki/Home.ru.md) — task-oriented navigation and maintenance rules.
 - [Implementation report](./docs/implementation-report.md) / [Процесс и результат](./docs/implementation-report.ru.md) — colored diagrams, verified behavior, measured cost and release gates.
 - [Delivery guide](./docs/roadmap-delivery.md) / [Руководство по новым возможностям](./docs/roadmap-delivery.ru.md) — features, limitations and verification.
-- [Quick starts in 88 interface languages](./docs/readme/README.md) — generated from the shipped UI translations; full engineering manuals are EN/RU.
+- [Quick starts in 88 interface languages](./docs/readme/README.md) — generated from the shipped UI translations; the main manual and paired feature guides are available in [24 documentation languages](docs/manual-translations.md).
 - [Quality limits and live recovery](./docs/playback-stream-policy.md) / [По-русски](./docs/playback-stream-policy.ru.md).
 - [Manual XMLTV mapping and classic accessibility](./docs/guide-binding-accessibility.md) / [По-русски](./docs/guide-binding-accessibility.ru.md).
 - [Hosted audio/video check](./docs/audio-video-check.md) / [По-русски](./docs/audio-video-check.ru.md).

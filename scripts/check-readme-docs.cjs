@@ -2,6 +2,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { checkGenerated, expectedReadmes } = require("./generate-readmes.cjs");
+const {
+    manualFiles,
+    checkManualContent,
+    reconcileNavigation,
+} = require("./manual-documentation.cjs");
 const root = path.resolve(__dirname, "..");
 
 function checkLinks(repository, file) {
@@ -13,8 +18,15 @@ function checkLinks(repository, file) {
     const link =
         /!?\[(?:\\.|[^\]\\])*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+["'][^)]*)?\)/g;
     const errors = [];
-    for (const match of text.matchAll(link)) {
-        const url = match[1] || match[2];
+    const destinations = [...text.matchAll(link)].map(
+        (match) => match[1] || match[2]
+    );
+    destinations.push(
+        ...[...text.matchAll(/<a\b[^>]*\bhref="([^"]+)"/gi)].map(
+            (match) => match[1]
+        )
+    );
+    for (const url of destinations) {
         if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(url)) continue;
         const target = decodeURIComponent(url.split(/[?#]/)[0]);
         if (!target) continue;
@@ -66,11 +78,14 @@ function checkDocumentation(repository = root) {
             "xtream-media",
         ].flatMap((name) => [`docs/${name}.md`, `docs/${name}.ru.md`]),
         ...generated.keys(),
+        ...manualFiles(),
     ];
     return [
         ...countErrors,
+        ...reconcileNavigation(repository),
+        ...checkManualContent(repository),
         ...checkGenerated(repository),
-        ...files.flatMap((file) => checkLinks(repository, file)),
+        ...[...new Set(files)].flatMap((file) => checkLinks(repository, file)),
     ];
 }
 
