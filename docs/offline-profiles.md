@@ -24,7 +24,7 @@ ott d1 profile import 2 kids.json
 ott d1 profile load 2
 ```
 
-First connect the originals through **Settings → Local videos → Add folder**
+First select **Settings → Provider → Local videos**, then connect the originals through **Add folder**
 or **Add files**, and play the desired video before saving. Wait until folder scanning finishes before saving or binding a profile. These operations use the completed catalog already in memory; they never start a second scan or interrupt playback. A request made during scanning is rejected with a retry message. `profile save`
 snapshots the active local library and selected file; it does not select the
 saved slot. If a profile is already loaded, saving copies its source subset,

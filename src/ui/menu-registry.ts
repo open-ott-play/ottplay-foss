@@ -188,15 +188,6 @@ function createScreenMenuRegistry() {
                 sourceIndex: -1,
                 title: nas.title(),
             });
-        if (host.__ottLocalMedia && host.__ottLocalMedia.available())
-            records.push({
-                action: host.popLocalMedia,
-                detail: host.__ottLocalMedia.title(),
-                id: "media.local",
-                legacyId: "popLocalMedia",
-                sourceIndex: -1,
-                title: host.__ottLocalMedia.title(),
-            });
         return records;
     }
     function available(record: ScreenMenuRecord, host: any): boolean {

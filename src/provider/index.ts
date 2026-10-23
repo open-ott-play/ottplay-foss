@@ -630,11 +630,6 @@ export function optionsList(fn?: () => void): void {
         }
     }
     var viewOptions = optionsArr.slice();
-    if ((window as any).__ottLocalMedia)
-        viewOptions.unshift({
-            action: (window as any).popLocalMedia,
-            name: (window as any).__ottLocalMedia.title(),
-        });
     listDataArray = [];
     viewOptions.forEach(function (opt: any) {
         listDataArray.push(_(opt.name || ""));

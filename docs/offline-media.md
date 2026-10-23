@@ -9,8 +9,9 @@ a web update. Refresh `build-info.json` and the offline shell after assembling
 the production directory.
 
 **Local videos** plays files from connected local sources without making an
-additional OTT copy. Open **Settings → Local videos**, or select **Local videos**
-from the provider list. Its controls use the player's normal settings list:
+additional OTT copy. Select **Local videos** from **Settings → Provider**.
+There are no duplicate Local videos entries in Menu or the main Settings list.
+Its controls use the player's normal settings list:
 **Add folder**, **Add files**, **Grant access** when needed, **Refresh**,
 **Play local videos**, **Start with file…** and **Reconnect** for browser
 folders, and **Disconnect** for each source. There is no separate
