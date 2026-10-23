@@ -85,9 +85,12 @@
 
 - Saved folder references are device-specific. Reconnect moved/removable sources and grant filesystem access when the operating system or browser asks. Access to a server library requires a network connection.
 - Existing imported media copies remain readable. Connecting a new direct source does not automatically remove old copies.
+- Servers using the distrusted emSign intermediate keys must install a trusted replacement certificate chain. Keep TLS certificate verification enabled.
 
 ### Security
 
+- Update `rustls-webpki` to 0.103.16 and `webpki-roots` / `webpki-root-certs` to 1.0.10 to reject distrusted emSign certificate paths and remove the affected trust anchor.
+- Resolve the optional updater ZIP dependency to 9.0.0 through a provenance-checked, manifest-only patch of the published updater. Preserve the Windows ZIP-disabled/raw MSI/NSIS policy. Regression tests exercise the production extraction method and verify that privileged mode bits are cleared and archive symlinks cannot escape the destination.
 - Keep source media read-only when disconnecting a linked folder. Validate media/source IDs and restrict HTTP imports to generated identifiers and supported extensions; add adversarial path and deletion regression tests.
 
 ## [1.1.57] - 2026-10-18
