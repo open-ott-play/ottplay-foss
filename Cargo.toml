@@ -17,3 +17,6 @@ tao = { path = "vendor/tao-0.35.3" }
 
 # Keep the legacy Blocks API while fixing its uninhabited foreign static type.
 block = { path = "vendor/block-0.1.6" }
+
+# Keep updater API and target features while resolving its optional ZIP backend safely.
+tauri-plugin-updater = { path = "vendor/tauri-plugin-updater-2.12.0" }
