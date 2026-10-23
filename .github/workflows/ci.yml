@@ -387,6 +387,9 @@ jobs:
       browser-artifact-id: ${{ needs.build.outputs.browser-artifact-id }}
       browser-artifact-path: browser-candidate
       browser-prepare-command: |
+        if [ "${RUNNER_OS:-}" = "Linux" ] && [ "${RUNNER_ENVIRONMENT:-}" = "github-hosted" ]; then
+          sudo env CI="$CI" python3 scripts/ci-apt-mirror.py
+        fi
         # Synthetic HLS media requires the locked mux.js dev dependency.
         npm ci --include=dev --ignore-scripts
         PYTHON=python3
