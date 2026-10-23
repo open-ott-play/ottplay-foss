@@ -5,11 +5,7 @@
   "archiveSha256": "7a5cad8ed5948d988e1018ecd31e27cacedbf72ce3fb972940c3e4bf51639e4b",
   "upstreamCommit": "5baf71a47292d8490f0ba3d53f15224e55c48327",
   "license": "Apache-2.0 OR MIT",
-  "advisories": [
-    "RUSTSEC-2026-0367",
-    "RUSTSEC-2026-0368",
-    "RUSTSEC-2026-0369"
-  ],
+  "advisories": ["RUSTSEC-2026-0367", "RUSTSEC-2026-0368", "RUSTSEC-2026-0369"],
   "files": {
     ".cargo_vcs_info.json": "2ff00a15cf330da46249d23cc234a3093c0645246fcf8646e0da3b04702551d3",
     "CHANGELOG.md": "06a3a3f2abc85f1b200c0ae2e641bd208c03b98ad382a164934fc0d2571ac90a",
