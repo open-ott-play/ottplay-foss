@@ -57,7 +57,10 @@ jobs:
       - name: Check installer harness and native dependency constraints
         run: |
           python tests/test_windows_installers.py
+          python scripts/check-updater-backport.py
           python scripts/check-updater-features.py
+      - name: Exercise updater ZIP extraction on Windows
+        run: cargo test --locked --manifest-path tests/updater-zip-regression/Cargo.toml
       - name: Bundle MSI and NSIS without signing or publishing
         working-directory: src-tauri
         run: npx --no-install tauri build --ci --bundles "nsis,msi" -- --locked

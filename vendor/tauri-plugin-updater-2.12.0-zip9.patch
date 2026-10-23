@@ -1,0 +1,21 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -185,6 +185,6 @@
+ ]
+ 
+ [target.'cfg(target_os = "windows")'.dependencies.zip]
+-version = "4"
++version = "9"
+ optional = true
+ default-features = false
+--- a/Cargo.toml.orig
++++ b/Cargo.toml.orig
+@@ -57,7 +57,7 @@
+ percent-encoding = "2.3"
+ 
+ [target."cfg(target_os = \"windows\")".dependencies]
+-zip = { version = "4", default-features = false, optional = true }
++zip = { version = "9", default-features = false, optional = true }
+ windows-sys = { version = "0.60.0", features = [
+   "Win32_Foundation",
+   "Win32_UI_WindowsAndMessaging",
