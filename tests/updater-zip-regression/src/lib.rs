@@ -249,3 +249,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod tls;

@@ -1,0 +1,67 @@
+--- a/src/updater.rs
++++ b/src/updater.rs
+@@ -124,6 +124,22 @@
+                 }),
+         }
+     }
++}
++
++// OTTPlay policy: updater metadata and artifacts always require valid TLS.
++// Apply this after callbacks. Preconfigured connectors may carry a custom
++// verifier, so restore the supported backend before enforcing both flags.
++fn enforce_tls_verification(builder: ClientBuilder) -> ClientBuilder {
++    #[cfg(feature = "rustls-tls")]
++    let builder = builder.tls_backend_rustls();
++    #[cfg(all(
++        not(feature = "rustls-tls"),
++        any(feature = "native-tls", feature = "native-tls-vendored")
++    ))]
++    let builder = builder.tls_backend_native();
++    builder
++        .danger_accept_invalid_certs(false)
++        .danger_accept_invalid_hostnames(false)
+ }
+ 
+ pub type OnBeforeExit = Arc<dyn Fn() + Send + Sync + 'static>;
+@@ -495,12 +511,6 @@
+             }
+ 
+             let mut request = ClientBuilder::new().user_agent(UPDATER_USER_AGENT);
+-            if self.context.config.dangerous_accept_invalid_certs {
+-                request = request.danger_accept_invalid_certs(true);
+-            }
+-            if self.context.config.dangerous_accept_invalid_hostnames {
+-                request = request.danger_accept_invalid_hostnames(true);
+-            }
+             if let Some(timeout) = self.timeout {
+                 request = request.timeout(timeout);
+             }
+@@ -516,6 +526,7 @@
+             if let Some(ref configure_client) = self.context.configure_client {
+                 request = configure_client(request);
+             }
++            request = enforce_tls_verification(request);
+ 
+             let response = request
+                 .build()?
+@@ -689,12 +700,6 @@
+         }
+ 
+         let mut request = ClientBuilder::new().user_agent(UPDATER_USER_AGENT);
+-        if self.context.config.dangerous_accept_invalid_certs {
+-            request = request.danger_accept_invalid_certs(true);
+-        }
+-        if self.context.config.dangerous_accept_invalid_hostnames {
+-            request = request.danger_accept_invalid_hostnames(true);
+-        }
+         if let Some(timeout) = self.timeout {
+             request = request.timeout(timeout);
+         }
+@@ -707,6 +712,7 @@
+         if let Some(ref configure_client) = self.context.configure_client {
+             request = configure_client(request);
+         }
++        request = enforce_tls_verification(request);
+         let response = request
+             .build()?
+             .get(self.download_url.clone())

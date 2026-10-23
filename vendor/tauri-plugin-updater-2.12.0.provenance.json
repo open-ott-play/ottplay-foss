@@ -34,9 +34,13 @@
   },
   "patchedFiles": {
     "Cargo.toml": "fe25ae9c1ef07f7bb16191687977f52fd12efbe99553736e729c6770e87f45ae",
-    "Cargo.toml.orig": "e642ddd1c1ed098c74be1789649d2a7e0c6670871838e3d873ca21a0170bc447"
+    "Cargo.toml.orig": "e642ddd1c1ed098c74be1789649d2a7e0c6670871838e3d873ca21a0170bc447",
+    "src/updater.rs": "7dbb20655bf1614592a92d6b90bcdb6380aa2fd812065204775f6965e9ecbebb"
   },
   "omittedFiles": {
     "Cargo.lock": "Published development lockfile is not used by downstream crates. Application and regression dependencies are locked in their own workspaces."
+  },
+  "localPolicies": {
+    "tls": "Certificate and hostname validation use the feature-selected backend after optional client configuration in metadata checks and artifact downloads. Public API shape is retained; preconfigured TLS connectors and insecure verification flags are not honored. Root-certificate additions remain supported."
   }
 }

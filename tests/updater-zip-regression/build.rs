@@ -18,4 +18,25 @@ fn main() {
         generated,
     )
     .expect("write extracted production method");
+
+    let tls_start = "fn enforce_tls_verification(builder: ClientBuilder) -> ClientBuilder {";
+    let tls_end = "\n}\n";
+    assert_eq!(
+        text.matches(tls_start).count(),
+        1,
+        "review changed TLS policy"
+    );
+    let tls_body = text
+        .split_once(tls_start)
+        .unwrap()
+        .1
+        .split_once(tls_end)
+        .unwrap()
+        .0;
+    let tls = format!("{tls_start}{tls_body}\n}}\n");
+    fs::write(
+        PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("tls_policy.rs"),
+        tls,
+    )
+    .expect("write extracted production TLS policy");
 }

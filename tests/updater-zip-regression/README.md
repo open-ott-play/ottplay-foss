@@ -27,3 +27,16 @@ The app's Windows updater keeps ZIP support **disabled** and continues to use
 the raw MSI/NSIS flow. `check-updater-features.py` verifies this target-specific
 policy and the existing native Windows CI still builds, installs and uninstalls
 both package types. These tests do not replace that full application check.
+
+## Strict TLS policy
+
+The same isolated crate compiles `enforce_tls_verification` directly from the
+vendored production source. HTTPS tests create ephemeral certificates and a
+loopback-only server: a trusted certificate for `localhost` succeeds, an
+untrusted certificate fails, and a trusted certificate for a different hostname
+fails. A custom preconfigured TLS connector cannot replace the normal verifier,
+while explicit root-certificate additions still pass the positive test. The
+default test feature matches the application’s Rustls backend with its ring
+provider. `check-updater-backport.py` also requires this helper immediately after
+both optional client callbacks and reconstructs the exact upstream source.
+The tests create no persistent private keys and make no external requests.
