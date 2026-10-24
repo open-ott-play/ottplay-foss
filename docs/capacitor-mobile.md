@@ -31,6 +31,13 @@ may override orientation. Device signing, background playback, real streams and
 physical-device PiP require device validation; unsigned CI compilation alone does
 not establish those behaviors.
 
+For the outbound command server, see [discovery and one-time approval](remote-command-server.md#discovery-and-one-time-approval).
+Capacitor uses the browser discovery path, not Tauri's native DNS lookup. Supply
+an absolute HTTPS deployment profile and allow the actual WebView origin on the
+metadata and public pairing endpoints. The native command-polling bridge does not
+bypass Fetch requirements for pairing, and the hosted Home profile is not copied
+into a generic APK/IPA. Existing saved connections survive a player update.
+
 Use [the device checklist](mode-b-device-smoke.md) and
 `./scripts/smoke-capacitor-device.sh --check-native --check-ios-tools` for setup.
 `--build-sync` builds iOS; `--open-ios` opens Xcode. Queue probing remains available

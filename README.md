@@ -731,6 +731,14 @@ Player supports 24 device types. Detection: by URL `/f/{device_id}/` first, then
 
 For a separate multi-device service, use [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) and the **Command server** section in **Settings → Remote control**. Enter its IP/address and this player's device access code; saving both starts polling automatically for volume, channel and other commands. An IP without a port uses HTTP port 8081. Clear the address or select **Disconnect** to stop. This outbound connection supports acknowledged delivery and does not require a local listener. See [connection and compatibility details](docs/remote-command-server.md). The examples below describe the existing local-proxy/listener mode.
 
+**Find command server** can discover a controller and request operator approval
+instead of copying a device token. Tauri checks native DNS first and can fall back
+from an empty result to an explicit deployment profile; browser/LG/Capacitor
+players use the browser profile path. Home discovery metadata can be hosted on
+here.now independently of the controller. Generic builds do not automatically
+include that Home profile, and saved connections are not replaced by an update.
+See [platform behavior, profile setup and troubleshooting](docs/remote-command-server.md#discovery-and-one-time-approval).
+
 Local HTTP remote control is **off by default** in the browser/OTT server player, Tauri, and Capacitor. Enable it in **Player settings → Remote control** to generate a secret device code. Commands are JSON objects with a `"command"` field; HTTP requests require `Authorization: Bearer <device-code>`.
 
 ### Architecture

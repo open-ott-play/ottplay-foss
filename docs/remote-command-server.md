@@ -27,7 +27,11 @@ Volume, channel selection, notifications and provider selection use the existing
 - Capacitor: the existing native HTTP bridge carries both methods. Android Play and iOS transport restrictions remain enforced.
 - An HTTPS web page cannot poll a plain HTTP server. The UI explains the failure; use an HTTP player page on the trusted LAN or an HTTPS command-server endpoint.
 
-The public player address is https://ott.2560801.xyz/. A browser loaded from that HTTPS address needs HTTPS for this connection. Local player installations use HTTP ports 8443–8446. The central OTT server's command routes remain disabled; the command server is a separate process/service.
+The [hosted player](https://player.ottplay.here.now/) needs an HTTPS command-server
+endpoint. Local player installations use HTTP ports 8443–8446. The central OTT
+server's command routes remain disabled; the command server is a separate
+process/service. Hosting discovery metadata on here.now does not move that service
+or remove the player's need to reach its advertised controller address.
 
 ## Discovery and one-time approval
 
@@ -38,21 +42,85 @@ command server** (shortcut **6**, or LEFT/RIGHT and OK) deliberately retries dis
 and can stage a replacement for incorrect manual settings. Nothing is replaced until
 the selected server grants approval. **Cancel pairing** retires pending callbacks.
 
-Tauri calls `discover_control_servers` for DNS-SD `_ottplay-ctrl._tcp` records from
-the network's discovery domains. The command returns
-`{version:1, servers:[{id,domain,address}]}` with HTTPS base addresses. Browsers cannot
-read system DNS, so deployments may set `window.__OTT_CONTROL_DISCOVERY_URL__` to
-their discovery endpoint before loading the player. Loopback browser installations
-also try the same-origin `/api/control-discovery` endpoint. Other origins require an
-explicit deployment profile. Shared player code contains no personal discovery domain.
-The installed frontend exposes `window.__OTT_CONTROL_DISCOVERY_VERSION__ = 1` for
-deployment compatibility checks; this does not enable a connection.
+### Lookup by platform
 
-A valid but empty native DNS result also tries the deployment discovery URL when
-one is configured. A nonempty native result keeps priority; malformed native
-metadata fails without falling back. The fallback shares the original discovery
-timeout and still requires the same operator-approved pairing before saving any
-connection settings.
+- **Tauri:** `discover_control_servers` reads DNS-SD `_ottplay-ctrl._tcp` records
+  from the network's discovery domains first. A valid nonempty result takes
+  priority over the deployment profile. A valid empty result tries the configured
+  profile URL once; without that profile it stops as unavailable, even on a
+  loopback origin. Malformed native metadata fails without fallback. A rejected or
+  thrown native call takes the browser lookup path described below.
+- **Browser, PWA and LG webOS browser:** use the explicit deployment profile when
+  present. Otherwise, only pages on `localhost`, `127.0.0.1` or `[::1]` try
+  `/api/control-discovery` on their own origin. That route belongs to the local
+  OTT Server and can discover through its host; a static web server need not
+  provide it. Other page origins require an explicit profile. Browsers do not
+  call the Tauri native DNS command.
+- **Capacitor iOS/Android:** uses the browser lookup and Fetch pairing path too.
+  The native HTTP bridge used by ordinary command polling does not replace this
+  discovery transport. A packaged app must receive its own deployment profile;
+  installing the app does not copy the hosted website's profile.
+
+Empty or invalid metadata from the browser lookup stops the attempt; it does not
+start another lookup loop. Native lookup and its profile fallback share one
+15-second discovery deadline. Each HTTP request is bounded to eight seconds.
+Neither finding a server nor loading a profile enables remote control by itself.
+
+### Deployment profile and here.now
+
+Before the player initializes, a deployment may set a string URL:
+
+```javascript
+// Example custom deployment; replace with its actual published metadata URL.
+window.__OTT_CONTROL_DISCOVERY_URL__ =
+    "https://player.example.net/control-discovery.json";
+```
+
+The response is public metadata, for example:
+
+```json
+{
+  "version": 1,
+  "servers": [{
+    "id": "home._ottplay-ctrl._tcp.example.net.",
+    "domain": "example.net",
+    "address": "https://control.example.net/ott-control"
+  }]
+}
+```
+
+Use the actual controller descriptor; inventing an ID does not register a server.
+The list is bounded to 16 entries. Every advertised controller must have an HTTPS
+base address without embedded credentials, query or fragment. A metadata-level
+`pairing_url` cannot override the selected controller's `/api/pairings` route.
+
+The companion [web deployment repository](https://github.com/open-ott-play/ottplay-web-vitrine)
+owns the Home profile. Its generated `local/hosted.js` selects an absolute
+`https://player.ottplay.here.now/local/control-discovery.<sha256>.json` URL.
+The fingerprint identifies the metadata version. Use the
+[Home discovery setup and runbook](https://github.com/open-ott-play/ottplay-web-vitrine/blob/main/docs/home-control-discovery.md)
+for the exact URL and deployment checks; do not replace `<sha256>` with an
+arbitrary value.
+Generic player builds contain the lookup mechanism, not this Home-specific
+configuration. Publishing the website does not update a native app's bundled
+frontend or its separately supplied profile.
+
+Prefer absolute HTTPS URLs when sharing a profile across hosted, local and native
+players. A relative URL resolves against the **player page**, not the script that
+sets it. The metadata URL may have a query, but cannot contain credentials or a
+fragment; HTTP is accepted only for same-origin metadata. Cross-origin Fetch
+requires CORS on the metadata endpoint and on the controller's public pairing
+endpoints. Static metadata loading successfully does not prove pairing is allowed,
+since the endpoints can be on different origins. An opaque `Origin: null` needs
+the controller's `allow_null_origin` option, which also covers its public device
+discovery/pairing routes. Non-null WebView origins need an explicit allowed origin.
+Redirects are not a supported way to forward discovery or pairing.
+
+The frontend exposes `window.__OTT_CONTROL_DISCOVERY_VERSION__ = 1` for deployment
+compatibility checks. This marker neither enables a connection nor identifies the
+exact build containing the native-empty-result fallback. Site publication,
+fingerprint retention and cache handling are documented in the companion
+[release workflow](https://github.com/open-ott-play/ottplay-web-vitrine/blob/main/docs/release-workflow.md).
 
 Network DNS/search domains and the deployment discovery profile are trusted
 installation configuration. HTTPS proves control of the advertised hostname, not
@@ -91,6 +159,39 @@ instead of sending pairing credentials through XHR. An AbortController is also
 required so cancellation and timeouts stop the underlying request. Same-origin HTTP metadata
 discovery remains available on local installations, and existing manually configured
 command connections and provider transports retain their behavior.
+
+### Troubleshooting discovery
+
+1. **No automatic attempt after an update:** saved address/token/enablement or an
+   earlier attempt in this page session suppresses automatic lookup. Use **Find
+   command server** deliberately; do not erase a working connection to test a
+   new deployment profile. Pending discovery leaves that connection intact.
+2. **No server found:** check which platform path above ran. Native empty plus no
+   profile is terminal. In a browser, a 404 from `/api/control-discovery` means the
+   local host does not supply the route; configure the deployment profile or enter
+   the controller manually. A valid empty list is not a connection success.
+3. **Invalid response or URL:** check version `1`, the server descriptor and the
+   actual metadata response rather than an HTML fallback page. Non-string profile
+   values and insecure controller addresses cannot trigger pairing. A malformed
+   native result is not retried against the profile to hide the error.
+4. **Metadata loads but approval fails:** inspect the selected controller's
+   reachability, TLS and public-pairing CORS for the actual page/WebView origin.
+   On older LG browsers, verify Fetch, Request, AbortController and support for
+   `redirect: "error"`; otherwise use the offered manual configuration path.
+   The here.now hostname supplies no extra native or TLS capability.
+5. **Timeout, cancellation or changed settings:** correct the network/profile and
+   use **Find command server** for a new attempt. Late responses from the previous
+   attempt cannot save a connection. Keep the displayed approval code private and
+   approve it only for the expected player on the intended controller.
+
+For an already connected player, `ott PLAYER caps` and
+`ott PLAYER inspect --view ui,media` provide capability/build observations without
+re-pairing. Test fresh discovery in a separate test installation/profile if the
+existing connection must remain untouched. The source regression suite
+`node tests/test_control_discovery.cjs` covers native priority/empty/error cases,
+invalid profiles, approval, cancellation and deadlines, including ES5 parsing.
+Those checks do not establish successful discovery or playback on a physical LG
+TV, iPhone, Android device or a particular network.
 
 ## Compatibility maintenance
 
