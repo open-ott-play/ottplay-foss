@@ -493,6 +493,7 @@ for (const viewport of [
         );
         expect(box.height).toBeLessThanOrEqual(viewport.height * 0.4 + 1);
         await page.screenshot({
+            animations: "disabled",
             path: testInfo.outputPath("camera-notification.png"),
         });
         expect(frames).toHaveLength(1);
