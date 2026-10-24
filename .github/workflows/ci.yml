@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: open-ott-play/ottplay-control-server
-          ref: 5d5b6d2aa50fa0e2714aace0c3cbe2d847995774
+          ref: cdffc23b372144e5a7d6486082d57b79cea2b5ef
           path: .control-current
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
