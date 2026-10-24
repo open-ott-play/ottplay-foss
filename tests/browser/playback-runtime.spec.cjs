@@ -1719,13 +1719,18 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
         }, name);
     const start = () =>
         page.evaluate(() => window.stbPlay("/feedback-fixture.mp4"));
+    await page.evaluate(() => window.infoBarHide());
     await start();
     await expect(label).toContainText("Connecting");
+    await expect(label).toBeVisible();
+    await expect(busy).toBeVisible();
     // The ordinary resolution/bitrate ticker must not erase active feedback.
     await page.clock.fastForward(20000);
     await expect(label).toContainText("Connecting");
     await event("waiting");
     await expect(label).toContainText("Buffering");
+    await expect(label).toBeVisible();
+    await expect(busy).toBeVisible();
     await page.clock.fastForward(10000);
     await expect(label).toContainText("timed out");
     await expect(busy).toBeHidden();

@@ -5,7 +5,7 @@ const ts = require("typescript");
 const { JSDOM } = require("jsdom");
 function fixture() {
     const dom = new JSDOM(
-        '<div id="buffering"></div><div id="video_res"></div><video></video>',
+        '<style>#buffering {display:none}</style><div id="buffering"></div><div id="video_res"></div><video></video>',
         { runScripts: "outside-only" }
     );
     const w = dom.window;
@@ -39,7 +39,8 @@ function fixture() {
         },
         api,
         busy: () =>
-            w.document.getElementById("buffering").style.display !== "none",
+            w.getComputedStyle(w.document.getElementById("buffering"))
+                .display !== "none",
         event: (name) => video.dispatchEvent(new w.Event(name)),
         text: () => w.document.getElementById("video_res").textContent,
         timers,

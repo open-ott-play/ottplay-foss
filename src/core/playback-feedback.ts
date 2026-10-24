@@ -9,9 +9,17 @@
         timer = null;
     }
     function render(message: string, busy: boolean): void {
+        // Use the existing compact footer so status remains visible after its
+        // normal auto-hide; do not steal focus from a channel/settings list.
+        if (
+            message &&
+            typeof host.showChannelInfo === "function" &&
+            !(host.$ && host.$("#list").is(":visible"))
+        )
+            host.showChannelInfo(1);
         var spinner = document.getElementById("buffering");
         var label = document.getElementById("video_res");
-        if (spinner) spinner.style.display = busy ? "" : "none";
+        if (spinner) spinner.style.display = busy ? "block" : "none";
         if (label) label.textContent = message;
     }
     function fail(message?: string): void {
