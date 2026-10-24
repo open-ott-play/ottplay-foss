@@ -589,6 +589,8 @@ src/
 
 若需要獨立多裝置服務，請使用[OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server)和**設定 → 遠端控制**中的**命令伺服器**部分。輸入其IP/地址和本播放器裝置存取碼；兩者儲存後自動開始輪詢音量、頻道及其他命令。未帶埠的IP使用HTTP 8081。清除地址或選擇**斷開連線**即可停止。此出站連線支援確認交付，不需要本機監聽器。參見[連線與相容性詳情](docs/remote-command-server.md)。下方範例介紹現有本機代理/監聽器模式。
 
+**尋找命令伺服器**可以找到控制器並請求操作員核准，無須複製裝置權杖。Tauri先檢查原生DNS；如果結果為空，可以回退至明確設定的部署設定檔。瀏覽器、LG和Capacitor播放器使用瀏覽器設定檔路徑。Home探索中繼資料可以獨立於控制器託管在here.now上。通用組建不會自動包含此Home設定檔，更新也不會取代已儲存的連線。參見[平台行為、設定檔設定及疑難排解](docs/remote-command-server.md#discovery-and-one-time-approval)。
+
 瀏覽器/OTT伺服器播放器、Tauri和Capacitor中的本機HTTP遠端控制均**預設關閉**。在**播放器設定 → 遠端控制**中啟用以生成秘密裝置碼。命令是帶`"command"`欄位的JSON物件；HTTP請求需要`Authorization: Bearer <device-code>`。
 
 <a id="architecture"></a>

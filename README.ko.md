@@ -589,6 +589,8 @@ src/
 
 별도 다중 장치 서비스는 [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server)와 **설정 → 원격 제어**의 **명령 서버** 영역을 사용하세요. IP/주소와 이 플레이어의 장치 접근 코드를 입력하고 둘 다 저장하면 음량, 채널 등 명령 폴링이 자동 시작됩니다. 포트 없는 IP는 HTTP 8081을 사용합니다. 주소를 지우거나 **연결 해제**로 중지합니다. 이 아웃바운드 연결은 확인된 전달을 지원하며 로컬 리스너가 필요하지 않습니다. [연결 및 호환성 상세](docs/remote-command-server.md)를 참고하세요. 아래 예시는 기존 로컬 프록시/리스너 모드입니다.
 
+**명령 서버 찾기**를 사용하면 장치 토큰을 복사하지 않고 컨트롤러를 찾아 운영자 승인을 요청할 수 있습니다. Tauri는 네이티브 DNS를 먼저 확인하며 결과가 비어 있으면 명시적으로 설정된 배포 프로필로 대체할 수 있습니다. 브라우저, LG 및 Capacitor 플레이어는 브라우저 프로필 경로를 사용합니다. Home 검색 메타데이터는 컨트롤러와 별도로 here.now에서 호스팅할 수 있습니다. 일반 빌드에는 해당 Home 프로필이 자동으로 포함되지 않으며, 업데이트해도 저장된 연결은 교체되지 않습니다. [플랫폼별 동작, 프로필 설정 및 문제 해결](docs/remote-command-server.md#discovery-and-one-time-approval)을 참조하세요.
+
 로컬 HTTP 원격 제어는 브라우저/OTT 서버 플레이어, Tauri, Capacitor 모두 **기본적으로 꺼져 있습니다**. **플레이어 설정 → 원격 제어**에서 켜면 비밀 장치 코드가 생성됩니다. 명령은 `"command"` 필드가 있는 JSON 객체이며 HTTP 요청에는 `Authorization: Bearer <device-code>`가 필요합니다.
 
 <a id="architecture"></a>

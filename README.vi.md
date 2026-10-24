@@ -591,6 +591,8 @@ Trình phát hỗ trợ 24 loại thiết bị. Phát hiện theo URL `/f/{devic
 
 Để có dịch vụ nhiều thiết bị riêng, dùng [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) và mục **Máy chủ lệnh** trong **Cài đặt → Điều khiển từ xa**. Nhập IP/địa chỉ cùng mã truy cập thiết bị của trình phát này; lưu cả hai tự bắt đầu hỏi lệnh âm lượng, kênh và lệnh khác. IP không có cổng dùng HTTP 8081. Xóa địa chỉ hoặc chọn **Ngắt kết nối** để dừng. Kết nối đi ra này hỗ trợ giao lệnh có xác nhận và không cần bộ lắng nghe cục bộ. Xem [kết nối và tương thích](docs/remote-command-server.md). Ví dụ bên dưới mô tả chế độ proxy/bộ lắng nghe cục bộ hiện có.
 
+**Tìm máy chủ lệnh** cho phép tìm bộ điều khiển và yêu cầu người vận hành phê duyệt mà không cần sao chép token thiết bị. Tauri kiểm tra DNS gốc trước và có thể chuyển sang hồ sơ triển khai được cấu hình rõ ràng nếu kết quả trống; trình phát trên trình duyệt, LG và Capacitor sử dụng đường dẫn hồ sơ của trình duyệt. Siêu dữ liệu khám phá Home có thể được lưu trữ trên here.now độc lập với bộ điều khiển. Các bản dựng dùng chung không tự động bao gồm hồ sơ Home này và bản cập nhật không thay thế các kết nối đã lưu. Xem [hành vi theo nền tảng, thiết lập hồ sơ và khắc phục sự cố](docs/remote-command-server.md#discovery-and-one-time-approval).
+
 Điều khiển HTTP cục bộ **mặc định tắt** trong trình phát trình duyệt/OTT server, Tauri và Capacitor. Bật ở **Cài đặt trình phát → Điều khiển từ xa** để tạo mã thiết bị bí mật. Lệnh là đối tượng JSON có trường `"command"`; yêu cầu HTTP cần `Authorization: Bearer <device-code>`.
 
 <a id="architecture"></a>

@@ -591,6 +591,8 @@ Přehrávač podporuje 24 typů zařízení. Detekce: nejprve URL `/f/{device_id
 
 Pro samostatnou službu s více zařízeními použijte [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) a část **Příkazový server** v **Nastavení → Dálkové ovládání**. Zadejte IP/adresu a přístupový kód tohoto přehrávače; uložení obou automaticky spustí dotazování na hlasitost, kanál a další příkazy. IP bez portu používá HTTP port 8081. Pro zastavení smažte adresu nebo zvolte **Odpojit**. Toto odchozí spojení podporuje potvrzené doručení a nepotřebuje místní naslouchání. Viz [připojení a kompatibilita](docs/remote-command-server.md). Následující příklady popisují dosavadní režim místního proxy/naslouchání.
 
+Funkce **Najít příkazový server** dokáže vyhledat řadič a požádat o schválení operátorem bez kopírování tokenu zařízení. Tauri nejprve zkouší nativní DNS a při prázdném výsledku může přejít na výslovně nastavený profil nasazení; přehrávače v prohlížeči, LG a Capacitor používají cestu přes profil prohlížeče. Metadata vyhledávání Home lze hostovat na here.now nezávisle na řadiči. Obecná sestavení profil Home automaticky neobsahují a aktualizace nenahrazuje uložená připojení. Viz [chování platforem, nastavení profilu a řešení problémů](docs/remote-command-server.md#discovery-and-one-time-approval).
+
 Místní dálkové ovládání HTTP je **standardně vypnuté** v prohlížeči/přehrávači OTT serveru, Tauri a Capacitoru. Zapněte jej přes **Nastavení přehrávače → Dálkové ovládání**, čímž vytvoříte tajný kód zařízení. Příkazy jsou objekty JSON s polem `"command"`; HTTP požadavky vyžadují `Authorization: Bearer <device-code>`.
 
 <a id="architecture"></a>

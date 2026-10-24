@@ -591,6 +591,8 @@ Pemutar mendukung 24 jenis perangkat. Deteksi: pertama melalui URL `/f/{device_i
 
 Untuk layanan multiperangkat terpisah, gunakan [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) dan bagian **Server perintah** dalam **Pengaturan → Kendali jarak jauh**. Masukkan IP/alamat dan kode akses perangkat pemutar ini; menyimpan keduanya otomatis memulai polling perintah volume, saluran, dan lainnya. IP tanpa port memakai HTTP port 8081. Kosongkan alamat atau pilih **Putuskan** untuk berhenti. Sambungan keluar ini mendukung pengiriman terkonfirmasi dan tidak membutuhkan listener lokal. Lihat [detail koneksi dan kompatibilitas](docs/remote-command-server.md). Contoh berikut menjelaskan mode proxy/listener lokal yang sudah ada.
 
+**Cari server perintah** dapat menemukan pengontrol dan meminta persetujuan operator tanpa menyalin token perangkat. Tauri memeriksa DNS native terlebih dahulu dan, jika hasilnya kosong, dapat beralih ke profil deployment yang dikonfigurasi secara eksplisit; pemutar browser, LG, dan Capacitor menggunakan jalur profil browser. Metadata penemuan Home dapat dihosting di here.now secara terpisah dari pengontrol. Build umum tidak otomatis menyertakan profil Home tersebut, dan pembaruan tidak mengganti koneksi yang tersimpan. Lihat [perilaku platform, pengaturan profil, dan pemecahan masalah](docs/remote-command-server.md#discovery-and-one-time-approval).
+
 Kendali HTTP lokal **mati secara default** pada pemutar browser/OTT server, Tauri, dan Capacitor. Aktifkan dalam **Pengaturan pemutar → Kendali jarak jauh** untuk menghasilkan kode perangkat rahasia. Perintah adalah objek JSON dengan kolom `"command"`; permintaan HTTP membutuhkan `Authorization: Bearer <device-code>`.
 
 <a id="architecture"></a>

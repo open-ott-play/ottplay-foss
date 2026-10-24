@@ -591,6 +591,8 @@ Oynatıcı 24 cihaz türünü destekler. Algılama sırası: önce URL `/f/{devi
 
 Ayrı bir çok cihazlı hizmet için [OTT-play Control Server](https://github.com/open-ott-play/ottplay-control-server) ve **Ayarlar → Uzaktan kontrol** içindeki **Komut sunucusu** bölümünü kullanın. IP/adresi ve bu oynatıcının cihaz erişim kodunu girin; ikisini kaydetmek ses, kanal ve diğer komutlar için yoklamayı otomatik başlatır. Portsuz IP, HTTP 8081 kullanır. Durdurmak için adresi temizleyin veya **Bağlantıyı kes** seçin. Bu dışarıya doğru bağlantı onaylı teslim destekler ve yerel dinleyici gerektirmez. [Bağlantı ve uyumluluk ayrıntılarına](docs/remote-command-server.md) bakın. Aşağıdaki örnekler mevcut yerel proxy/dinleyici modunu açıklar.
 
+**Komut sunucusunu bul**, cihaz belirtecini kopyalamadan bir denetleyici bulup operatör onayı istemenizi sağlar. Tauri önce yerel DNS'i kontrol eder ve sonuç boşsa açıkça yapılandırılmış bir dağıtım profiline geçebilir; tarayıcı, LG ve Capacitor oynatıcıları tarayıcı profili yolunu kullanır. Home keşif meta verileri, denetleyiciden bağımsız olarak here.now üzerinde barındırılabilir. Genel derlemeler bu Home profilini otomatik olarak içermez ve güncellemeler kayıtlı bağlantıları değiştirmez. [Platform davranışı, profil kurulumu ve sorun giderme](docs/remote-command-server.md#discovery-and-one-time-approval) bölümüne bakın.
+
 Yerel HTTP uzaktan kontrol tarayıcı/OTT sunucu oynatıcısı, Tauri ve Capacitor'da **varsayılan olarak kapalıdır**. Gizli cihaz kodu üretmek için **Oynatıcı ayarları → Uzaktan kontrol** içinde açın. Komutlar `"command"` alanı olan JSON nesneleridir; HTTP istekleri `Authorization: Bearer <device-code>` gerektirir.
 
 <a id="architecture"></a>
