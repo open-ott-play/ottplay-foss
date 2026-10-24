@@ -115,11 +115,13 @@ const ctx = {
                       ? loadRemoteHelper("remote-archive")
                       : name === "./remote-plex"
                         ? loadRemoteHelper("remote-plex")
-                        : name === "./remote-restart"
-                          ? loadRemoteHelper("remote-restart")
-                          : name === "../utils/caseless"
-                            ? casingContext.exports
-                            : { handleCommand: () => "accepted" },
+                        : name === "./remote-notifications"
+                          ? loadRemoteHelper("remote-notifications")
+                          : name === "./remote-restart"
+                            ? loadRemoteHelper("remote-restart")
+                            : name === "../utils/caseless"
+                              ? casingContext.exports
+                              : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };
@@ -1367,6 +1369,45 @@ function checkRemoteEpgCatalog() {
         },
     });
     const aspectRuntime = (await call("capabilities")).data.player.runtime;
+    const notificationCaps = (await call("capabilities")).data.notifications;
+    assert.deepEqual(JSON.parse(JSON.stringify(notificationCaps)), {
+        operations: ["get", "set"],
+        version: 1,
+    });
+    const noticeStore = new Map();
+    const noticeTransitions = [];
+    host.stbGetPersistedItem = (key) => noticeStore.get(key) ?? null;
+    host.stbSetItem = (key, value) => noticeStore.set(key, value);
+    host.__ottRemoteNotifications = {
+        poll() {},
+        setEnabled: (enabled) => noticeTransitions.push(enabled),
+    };
+    host.__ottKiosk = { enabled: () => true };
+    host.stbIsStandby = () => true;
+    const muted = await call("notifications", {
+        enabled: false,
+        operation: "set",
+        runtime: aspectRuntime,
+        version: 1,
+    });
+    assert.equal(muted.status, "ok");
+    assert.equal(muted.data.persisted, true);
+    assert.equal(noticeStore.get("sNotificationsEnabled"), "0");
+    assert.deepEqual(noticeTransitions, [false]);
+    assert.equal(
+        (
+            await call("notifications", {
+                enabled: true,
+                operation: "set",
+                runtime: "wrong-runtime",
+                version: 1,
+            })
+        ).data.error,
+        "runtime_mismatch"
+    );
+    assert.equal(noticeStore.get("sNotificationsEnabled"), "0");
+    delete host.stbIsStandby;
+
     host.__ottKiosk = { enabled: () => true };
     assert.equal(
         (await call("aspect", { operation: "get", runtime: aspectRuntime }))

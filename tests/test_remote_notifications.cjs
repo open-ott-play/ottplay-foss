@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { JSDOM } = require("jsdom");
 const load = require("./helpers/remote-notifications.cjs");
 
-function fixture() {
+function fixture(onAbort, extraGlobals = {}) {
     let clock = 1000000;
     let sequence = 0;
     const jobs = new Map();
@@ -19,11 +19,13 @@ function fixture() {
     w.stbIsStandby = () => false;
     const client = load({
         Date: { now: () => clock },
+        ...extraGlobals,
     }).createRemoteNotifications(w, (request, complete) => {
         const call = { aborted: false, complete, request };
         requests.push(call);
         return () => {
             call.aborted = true;
+            if (onAbort) onAbort(call);
         };
     });
     function configure(
@@ -93,6 +95,12 @@ function fixture() {
     assert.equal(url.pathname, "/proxy/api/notifications");
     assert.equal(url.searchParams.get("device_id"), "tv");
     assert.equal(url.searchParams.get("active"), "true");
+    assert.equal(
+        url.searchParams.has("enabled"),
+        false,
+        "first poll stays compatible with older servers"
+    );
+    assert.equal(h.client.enabled(), true);
     assert.match(url.searchParams.get("runtime"), /^[A-Za-z0-9_.:-]{1,128}$/);
     assert.equal(call.request.headers.Authorization, "Bearer device-token");
     assert.equal(call.request.timeoutMs, 8000);
@@ -416,6 +424,345 @@ for (const invalid of [
     h.dom.window.close();
 }
 
+{
+    const h = fixture();
+    h.client.setEnabled(false);
+    h.configure();
+    assert.equal(
+        h.client.enabled(),
+        false,
+        "reconnect preserves installation preference"
+    );
+    const off = h.poll();
+    const offUrl = new URL(off.request.url);
+    assert.equal(offUrl.searchParams.get("active"), "false");
+    assert.equal(
+        offUrl.searchParams.has("enabled"),
+        false,
+        "unnegotiated off heartbeat uses legacy shape"
+    );
+    h.reply([h.item()]);
+    assert.equal(
+        h.w.document.querySelector(".remote-notify"),
+        null,
+        "disabled gate rejects legacy-server events"
+    );
+    assert.equal(h.jobs.size, 0);
+    h.dom.window.close();
+}
+
+{
+    const h = fixture();
+    h.configure();
+    h.poll();
+    h.reply([h.item()], { capabilities: { enabled: true } });
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 1);
+    assert.equal(h.jobs.size, 1);
+    h.client.setEnabled(false);
+    assert.equal(h.client.enabled(), false);
+    assert.equal(
+        h.w.document.querySelectorAll(".remote-notify").length,
+        0,
+        "off clears immediately"
+    );
+    assert.equal(h.jobs.size, 0, "off cancels banner timers");
+    const off = h.poll();
+    const offUrl = new URL(off.request.url);
+    assert.equal(offUrl.searchParams.get("enabled"), "false");
+    assert.equal(offUrl.searchParams.get("active"), "false");
+    h.client.setEnabled(false);
+    assert.equal(
+        off.aborted,
+        false,
+        "idempotent policy application does not cancel its own heartbeat"
+    );
+    h.reply([], { capabilities: { enabled: true } });
+    h.advance(5000);
+    const again = h.poll();
+    assert.equal(
+        new URL(again.request.url).searchParams.get("enabled"),
+        "false",
+        "off does not stop notification heartbeats"
+    );
+    h.dom.window.close();
+}
+
+{
+    const h = fixture();
+    h.configure();
+    const inFlight = h.poll();
+    const old = h.item();
+    h.client.setEnabled(false);
+    assert.equal(
+        inFlight.aborted,
+        true,
+        "off aborts the current notification request"
+    );
+    h.reply([old], { capabilities: { enabled: true } }, inFlight);
+    assert.equal(
+        h.w.document.querySelector(".remote-notify"),
+        null,
+        "late completion cannot repopulate cleared cards"
+    );
+    const disabled = h.poll();
+    assert.equal(
+        new URL(disabled.request.url).searchParams.has("enabled"),
+        false,
+        "stale completion cannot negotiate capabilities"
+    );
+    h.reply([], { capabilities: { enabled: true } });
+    const offRuntime = new URL(disabled.request.url).searchParams.get(
+        "runtime"
+    );
+    h.client.setEnabled(true);
+    const on = h.poll();
+    const onUrl = new URL(on.request.url);
+    assert.equal(onUrl.searchParams.get("enabled"), "true");
+    assert.equal(onUrl.searchParams.get("active"), "true");
+    assert.notEqual(
+        onUrl.searchParams.get("runtime"),
+        offRuntime,
+        "enable retires the disabled queue"
+    );
+    assert.notEqual(
+        onUrl.searchParams.get("runtime"),
+        old.runtime,
+        "enable cannot replay the old active queue"
+    );
+    h.reply([old, h.item({ id: "c".repeat(32), message: "New event" })], {
+        capabilities: { enabled: true },
+    });
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 1);
+    assert.equal(
+        h.w.document.querySelector(".remote-notify-message").textContent,
+        "New event"
+    );
+    h.dom.window.close();
+}
+
+{
+    const h = fixture();
+    h.configure();
+    h.poll();
+    h.reply([], { capabilities: { enabled: true } });
+    h.configure();
+    let request = h.poll();
+    assert.equal(
+        new URL(request.request.url).searchParams.get("enabled"),
+        "true",
+        "same server reconnect keeps negotiation"
+    );
+    h.configure("https://other.invalid/api/webhook/commands", "other-token");
+    request = h.poll();
+    assert.equal(
+        new URL(request.request.url).searchParams.has("enabled"),
+        false,
+        "new endpoint negotiates independently"
+    );
+    h.reply([], { capabilities: { enabled: true } });
+    h.configure("https://other.invalid/api/webhook/commands", "rotated-token");
+    request = h.poll();
+    assert.equal(
+        new URL(request.request.url).searchParams.has("enabled"),
+        false,
+        "new authority cannot inherit prior capabilities"
+    );
+    h.dom.window.close();
+}
+
+{
+    let pendingNotice;
+    const h = fixture((call) =>
+        h.reply([pendingNotice], { capabilities: { enabled: true } }, call)
+    );
+    h.configure();
+    h.poll();
+    pendingNotice = h.item();
+    h.client.setEnabled(false);
+    assert.equal(
+        h.w.document.querySelector(".remote-notify"),
+        null,
+        "synchronous abort completion sees retired generation"
+    );
+    const heartbeat = h.poll();
+    assert.equal(
+        new URL(heartbeat.request.url).searchParams.has("enabled"),
+        false,
+        "synchronous stale response cannot negotiate"
+    );
+    h.dom.window.close();
+}
+
 console.log(
     "Remote notifications: literal bounded banners, activity, expiry, runtime isolation and optional endpoint backoff passed"
 );
+
+function mediaFixture() {
+    const loads = [];
+    const h = fixture(undefined, {
+        notificationMedia: {
+            loadNotificationMedia(w, options, complete) {
+                const pending = { aborted: false, complete, options };
+                loads.push(pending);
+                return () => {
+                    pending.aborted = true;
+                };
+            },
+            supportsNotificationMedia: () => true,
+            validNotificationMedia: (item) => item && item.kind === "image",
+        },
+    });
+    const images = [];
+    const create = h.w.document.createElement.bind(h.w.document);
+    h.w.document.createElement = function (tag) {
+        const node = create(tag);
+        if (tag === "img") images.push(node);
+        return node;
+    };
+    h.configure();
+    h.poll();
+    const media = {
+        bytes: 100,
+        content_type: "image/jpeg",
+        height: 180,
+        id: "e".repeat(32),
+        kind: "image",
+        width: 320,
+    };
+    const caps = { capabilities: { enabled: true, media: ["jpeg-v1"] } };
+    return { caps, h, images, loads, media };
+}
+{
+    const { h, loads, media, caps } = mediaFixture();
+    h.reply([h.item({ media })], caps);
+    assert.equal(loads.length, 1);
+    h.client.setEnabled(false);
+    assert.equal(loads[0].aborted, true);
+    let revoked = 0;
+    loads[0].complete({
+        dispose: () => revoked++,
+        height: 180,
+        remainingMs: 1000,
+        url: "blob:stale",
+        width: 320,
+    });
+    assert.equal(revoked, 1, "late image URL is disposed after disable");
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 0);
+}
+{
+    const { h, loads, media, caps } = mediaFixture();
+    h.reply([h.item({ media })], caps);
+    let revoked = 0;
+    loads[0].complete({
+        dispose: () => revoked++,
+        height: 180,
+        remainingMs: 1000,
+        url: "blob:frame",
+        width: 320,
+    });
+    const image = h.w.document.querySelector(".remote-notify");
+    // The pending image is intentionally not inserted until decode succeeds.
+    assert.equal(image.querySelector("img"), null);
+    h.advance(1000, true);
+    assert.equal(revoked, 1, "media expires before its parent text card");
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 1);
+    h.advance(4000, true);
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 0);
+}
+{
+    const { h, loads, media, caps } = mediaFixture();
+    h.reply([h.item({ media }), h.item({ id: "b".repeat(32), media })], caps);
+    assert.equal(loads.length, 2);
+    assert.equal(
+        loads[0].aborted,
+        true,
+        "only newest media request remains active"
+    );
+    h.client.suspend();
+    assert.equal(loads[1].aborted, true);
+}
+{
+    const { h, loads, media } = mediaFixture();
+    h.reply([h.item({ media })]);
+    assert.equal(
+        loads.length,
+        0,
+        "media is never fetched without server capability"
+    );
+    h.advance(5000);
+    const poll = h.poll();
+    assert.equal(new URL(poll.request.url).searchParams.has("media"), false);
+}
+{
+    const { h, caps } = mediaFixture();
+    h.reply([], caps);
+    h.advance(5000);
+    const poll = h.poll();
+    assert.equal(
+        new URL(poll.request.url).searchParams.get("media"),
+        "jpeg-v1"
+    );
+    poll.complete({ body: "unsupported query", status: 400 });
+    h.advance(5000);
+    const legacy = h.poll();
+    assert.equal(
+        new URL(legacy.request.url).searchParams.has("enabled"),
+        false
+    );
+    assert.equal(new URL(legacy.request.url).searchParams.has("media"), false);
+}
+console.log(
+    "PASS image notification gate: negotiation, one owner, expiry, stale completion and downgrade"
+);
+
+{
+    const { h, loads, media, caps, images } = mediaFixture();
+    h.reply([h.item({ media })], caps);
+    let revoked = 0;
+    loads[0].complete({
+        dispose: () => revoked++,
+        height: 180,
+        remainingMs: 2000,
+        url: "blob:decoded-frame",
+        width: 320,
+    });
+    Object.defineProperty(images[0], "naturalWidth", { value: 320 });
+    Object.defineProperty(images[0], "naturalHeight", { value: 180 });
+    images[0].onload();
+    assert.equal(h.w.document.querySelectorAll(".remote-notify img").length, 1);
+    assert.equal(
+        h.w.document
+            .querySelector(".remote-notify")
+            .classList.contains("remote-notify-with-image"),
+        true
+    );
+    h.client.setEnabled(false);
+    assert.equal(revoked, 1);
+    assert.equal(images[0].getAttribute("src"), null);
+    assert.equal(images[0].onload, null);
+    assert.equal(h.w.document.querySelectorAll(".remote-notify img").length, 0);
+}
+
+{
+    const { h, loads, media, caps, images } = mediaFixture();
+    h.reply([h.item({ media })], caps);
+    let revoked = 0;
+    loads[0].complete({
+        dispose: () => revoked++,
+        height: 180,
+        remainingMs: 1000,
+        url: "blob:slow-decode",
+        width: 320,
+    });
+    const onload = images[0].onload;
+    Object.defineProperty(images[0], "naturalWidth", { value: 320 });
+    Object.defineProperty(images[0], "naturalHeight", { value: 180 });
+    h.advance(1001, false);
+    onload();
+    assert.equal(
+        h.w.document.querySelector(".remote-notify-image"),
+        null,
+        "expired decode cannot attach before delayed timer runs"
+    );
+    assert.equal(revoked, 1);
+}

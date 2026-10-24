@@ -16,7 +16,30 @@ module.exports = function load(globals = {}) {
         },
     }).outputText;
     acorn.parse(code, { ecmaVersion: 5 });
-    const context = { exports: {}, ...globals };
+    const mediaCode = ts.transpileModule(
+        fs.readFileSync(
+            path.join(__dirname, "../../src/plugins/notification-media.ts"),
+            "utf8"
+        ),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText;
+    acorn.parse(mediaCode, { ecmaVersion: 5 });
+    const media = { exports: {}, ...globals };
+    vm.runInNewContext(mediaCode, media);
+    const context = {
+        exports: {},
+        require(name) {
+            if (name === "./notification-media")
+                return globals.notificationMedia || media.exports;
+            throw new Error("Unexpected import " + name);
+        },
+        ...globals,
+    };
     vm.runInNewContext(code, context);
     return context.exports;
 };

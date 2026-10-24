@@ -94,6 +94,19 @@ assert.equal(
     false
 );
 assert.equal(api.accept({ action: "aspect", params: {} }), false);
+assert.equal(
+    api.accept({ action: "notifications", params: { runtime } }),
+    true
+);
+assert.equal(
+    api.accept({
+        action: "notifications",
+        params: { runtime: "other-runtime" },
+    }),
+    false
+);
+assert.equal(api.accept({ action: "notifications", params: {} }), false);
+
 assert.equal(api.accept({ action: "play" }), true);
 assert.equal(
     api.accept({ action: "categories", params: { op: "list", runtime } }),
@@ -207,6 +220,7 @@ for (const [action, params] of [
     ["vportal_search", { query: "fixture" }],
     ["kiosk", { mode: "status" }],
     ["aspect", { operation: "get", runtime }],
+    ["notifications", { operation: "get", runtime }],
 ]) {
     api.execute(
         { action, id: readId, params },

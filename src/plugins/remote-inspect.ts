@@ -24,6 +24,7 @@ export function installRemoteInspection(w: any): any {
         "input",
         "playback",
         "aspect",
+        "notifications",
         "play_catalog",
         "play_archive_catalog",
         "playback_handoff_import",
@@ -200,6 +201,7 @@ export function installRemoteInspection(w: any): any {
             !(item.action === "plex_library" && params.op !== "play") &&
             !(item.action === "favorites" && params.op !== "play") &&
             !(item.action === "aspect" && params.operation !== "set") &&
+            !(item.action === "notifications" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
             !(
                 item.action === "plex_queue" &&
@@ -234,6 +236,7 @@ export function installRemoteInspection(w: any): any {
                     item.action !== "categories" &&
                     item.action !== "inspect" &&
                     item.action !== "aspect" &&
+                    item.action !== "notifications" &&
                     item.action !== "plex_library" &&
                     item.action !== "favorites") ||
                 !!(item.params && item.params.runtime === runtime())

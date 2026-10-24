@@ -327,6 +327,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { readNotificationsEnabled } from "./commands/remote-notifications";
 import { executeRemoteRequest } from "./commands/remote-requests";
 import { remotePlayerInfo } from "./commands/remote-restart";
 // Key handler
@@ -2126,6 +2127,9 @@ function onStbReady(): void {
         installSettingsFacade(window as any);
         (window as any).__ottKiosk.init();
         (window as any).__ottLocalHttpRemote.init();
+        (window as any).__ottRemoteNotifications.setEnabled(
+            readNotificationsEnabled(window)
+        );
         (window as any).__ottCommandServer.configure({
             address: settings.commandServerAddress,
             enabled: settings.commandServerEnabled === 1,

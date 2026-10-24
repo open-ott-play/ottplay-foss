@@ -66,3 +66,55 @@ Compact 640×360 window with installed-app titlebar spacing:
 320×568 portrait viewport:
 
 ![Portrait notification layout](images/remote-notifications/portrait.png)
+
+## Per-install receive switch
+
+One durable installation setting, `sNotificationsEnabled`, controls both text
+and camera snapshots. A missing value means enabled. It is not a provider or
+media-profile preference, is not exported with profiles, and profile/local
+backup restore cannot overwrite it.
+
+The runtime-fenced `notifications` RPC accepts
+`{version:1, operation:"get", runtime}` or
+`{version:1, operation:"set", runtime, enabled:boolean}`. A successful reply
+contains `{version:1, runtime, operation, enabled, persisted:true}`. A set first
+writes and verifies persistent storage; only then does it change the receiver.
+The command works during standby and strict kiosk without waking the player.
+Storage failure is reported, not presented as a saved preference.
+
+Turning reception off aborts pending notification/media requests, removes cards
+and image URLs, and retires the viewing-session identity. Command reception
+continues, so remote re-enable remains possible. Turning reception back on starts
+a fresh session: expired or previous-session events are not replayed.
+
+The first poll uses the legacy `runtime` and `active` query only. A controller
+may advertise `capabilities:{enabled:true,media:["jpeg-v1"]}` in its response.
+Only then are the corresponding `enabled` and `media=jpeg-v1` query parameters
+sent. Disabled reception always advertises `active=false`, including to older
+controllers. A controller rollback rejecting optional fields triggers a legacy
+retry instead of breaking the command lane.
+
+## Motion snapshots
+
+The initial media format is one JPEG snapshot, not a second video stream.
+Motion-cleared events are filtered by the controller; light, outlet and occupancy
+off events are unaffected. The player does not infer event types from translated
+message text.
+
+An optional `media` descriptor contains an opaque 32-hex `id`, `kind:"image"`,
+`content_type:"image/jpeg"`, `width` (1–640), `height` (1–360), and `bytes`
+(1–163840). No camera URL or credentials are sent to the player. It obtains
+`/api/notifications/media?id=…&runtime=…` under the configured controller base,
+preserving an optional `device_id`, and sends device authorization in a header.
+The response is bounded to 224 KiB JSON with the same identity/dimensions/length,
+`data_base64`, `server_time` and `expires_at` (seconds).
+
+Media requires a bounded, abortable Fetch stream, rejected redirects and temporary
+Blob URLs. The controller must allow the authorized browser request through
+CORS. Unsupported browser/WebView transports retain text only; the client never
+uses the unbounded command-string transport or an unauthenticated image URL.
+Only one image request/preview is owned at a time. New media retires the previous
+preview; expiry, off, standby, hidden state and reconfiguration dispose it. JPEG
+frame dimensions are checked before browser decode. Late async callbacks cannot
+attach images to a retired receiver/session. Snapshots are never written to
+persistent storage and do not change the primary player source or audio.

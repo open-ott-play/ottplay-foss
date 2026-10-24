@@ -11,6 +11,7 @@ import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
 import { executeRemoteHandoff } from "./remote-handoff";
+import { executeRemoteNotifications } from "./remote-notifications";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
@@ -366,6 +367,13 @@ export function executeRemoteRequest(
         executeRemoteHandoff(w, request, done);
         return;
     }
+    if (request.action === "notifications")
+        return executeRemoteNotifications(
+            w,
+            remotePlayerInfo(w).runtime,
+            params,
+            done
+        );
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
     if (request.action === "favorites")
@@ -889,6 +897,11 @@ export function executeRemoteRequest(
             params,
             request.action === "capabilities"
                 ? function (result: any) {
+                      if (result.status === "ok" && result.data)
+                          result.data.notifications = {
+                              operations: ["get", "set"],
+                              version: 1,
+                          };
                       if (
                           result.status === "ok" &&
                           result.data &&

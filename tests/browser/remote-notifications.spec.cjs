@@ -297,3 +297,165 @@ for (const viewport of [
         }
     });
 }
+
+for (const viewport of [
+    { height: 360, width: 640 },
+    { height: 1080, width: 1920 },
+]) {
+    test(`JPEG notification and durable receive gate ${viewport.width}x${viewport.height}`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        await page.setViewportSize(viewport);
+        const origin = new URL(baseURL).origin;
+        const polls = [];
+        const frames = [];
+        let jpeg;
+        let delivered = false;
+        const imageId = "f".repeat(32);
+        await context.route("**/*", async (route) => {
+            const url = new URL(route.request().url());
+            if (url.origin !== origin) return route.abort("blockedbyclient");
+            if (url.pathname === "/camera-fixture/api/notifications") {
+                polls.push(Object.fromEntries(url.searchParams));
+                const now = Date.now() / 1000;
+                const send =
+                    !delivered &&
+                    url.searchParams.get("active") === "true" &&
+                    url.searchParams.get("media") === "jpeg-v1";
+                if (send) delivered = true;
+                return route.fulfill({
+                    json: {
+                        capabilities: { enabled: true, media: ["jpeg-v1"] },
+                        notifications: send
+                            ? [
+                                  {
+                                      duration_ms: 15000,
+                                      expires_at: now + 15,
+                                      id: "e".repeat(32),
+                                      media: {
+                                          bytes: jpeg.bytes,
+                                          content_type: "image/jpeg",
+                                          height: 90,
+                                          id: imageId,
+                                          kind: "image",
+                                          width: 160,
+                                      },
+                                      message: "Motion detected",
+                                      runtime: url.searchParams.get("runtime"),
+                                      severity: "info",
+                                      title: "Front door",
+                                  },
+                              ]
+                            : [],
+                        poll_after_ms: 5000,
+                        server_time: now,
+                        version: 1,
+                    },
+                });
+            }
+            if (url.pathname === "/camera-fixture/api/notifications/media") {
+                frames.push(url.toString());
+                expect(route.request().headers().authorization).toBe(
+                    "Bearer camera_fixture_" + "b".repeat(32)
+                );
+                const now = Date.now() / 1000;
+                return route.fulfill({
+                    json: {
+                        bytes: jpeg.bytes,
+                        content_type: "image/jpeg",
+                        data_base64: jpeg.data,
+                        expires_at: now + 15,
+                        height: 90,
+                        id: imageId,
+                        runtime: url.searchParams.get("runtime"),
+                        server_time: now,
+                        version: 1,
+                        width: 160,
+                    },
+                });
+            }
+            if (url.pathname.startsWith("/camera-fixture/"))
+                return route.fulfill({
+                    json: { commands: [], server_time: Date.now() / 1000 },
+                });
+            return route.continue();
+        });
+        await context.routeWebSocket("**/*", (socket) => socket.close());
+        await page.goto("/f/pc/");
+        await page.waitForFunction(
+            () =>
+                !!window.__ottCommandServer &&
+                !document.body.classList.contains("booting")
+        );
+        jpeg = await page.evaluate(() => {
+            const canvas = document.createElement("canvas");
+            canvas.width = 160;
+            canvas.height = 90;
+            const paint = canvas.getContext("2d");
+            paint.fillStyle = "#234d64";
+            paint.fillRect(0, 0, 160, 90);
+            paint.fillStyle = "#c5ddaa";
+            paint.fillRect(45, 15, 70, 75);
+            const data = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
+            return { bytes: atob(data).length, data };
+        });
+        const rpc = (action, params = {}) =>
+            page.evaluate(
+                ({ action, params }) =>
+                    new Promise((resolve) =>
+                        executeRemoteRequest({ action, params }, resolve)
+                    ),
+                { action, params }
+            );
+        const caps = (await rpc("capabilities")).data;
+        const primary = await page.locator("#video").getAttribute("src");
+        await page.evaluate(
+            (address) =>
+                window.__ottCommandServer.configure({
+                    address,
+                    enabled: true,
+                    token: "camera_fixture_" + "b".repeat(32),
+                }),
+            origin + "/camera-fixture"
+        );
+        const image = page.locator(".remote-notify-image");
+        await expect(image).toBeVisible({ timeout: 15000 });
+        expect(frames).toHaveLength(1);
+        expect(polls[0].media).toBeUndefined();
+        expect(await page.locator("#video").getAttribute("src")).toBe(primary);
+        const result = await rpc("notifications", {
+            enabled: false,
+            operation: "set",
+            runtime: caps.player.runtime,
+            version: 1,
+        });
+        expect(result.data).toMatchObject({ enabled: false, persisted: true });
+        await expect(page.locator(".remote-notify")).toHaveCount(0);
+        await expect
+            .poll(() =>
+                polls.some((p) => p.active === "false" && p.enabled === "false")
+            )
+            .toBe(true);
+        expect(
+            (
+                await rpc("notifications", {
+                    operation: "get",
+                    runtime: caps.player.runtime,
+                    version: 1,
+                })
+            ).data.enabled
+        ).toBe(false);
+        await rpc("notifications", {
+            enabled: true,
+            operation: "set",
+            runtime: caps.player.runtime,
+            version: 1,
+        });
+        await page.waitForTimeout(5500);
+        expect(frames).toHaveLength(1);
+        await expect(image).toHaveCount(0);
+        expect(await page.locator("#video").getAttribute("src")).toBe(primary);
+    });
+}

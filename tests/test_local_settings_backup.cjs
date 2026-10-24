@@ -58,6 +58,7 @@ for (const profile of ["typescript", "static-core"]) {
             ["commandServerEnabled", "1"],
             ["sLocalHttpEnabled", localConsent],
             ["sLocalHttpDeviceCode", "this-device-code"],
+            ["sNotificationsEnabled", "0"],
             ["m3u:m3uArr", providerPayload],
             ["ottplayStorageFallback", "pending"],
             ["ottplayStorageFallback.0", "internal-marker-part"],
@@ -167,6 +168,7 @@ for (const profile of ["typescript", "static-core"]) {
         assert(!upload.data.d.includes("stb_settings_backup"));
         assert(!upload.data.d.includes("ottplayStorageFallback"));
         assert(!upload.data.d.includes("internal-marker-part"));
+        assert(!upload.data.d.includes("sNotificationsEnabled"));
         c[names[0]]();
         const saved = JSON.parse(stored.get("stb_settings_backup"));
         assert.deepEqual(saved, { "m3u:m3uArr": providerPayload });
@@ -188,6 +190,7 @@ for (const profile of ["typescript", "static-core"]) {
                 "ottplayStorageFallback.0": "imported-marker-part",
                 sLocalHttpDeviceCode: "copied-device-code",
                 sLocalHttpEnabled: "1",
+                sNotificationsEnabled: "1",
                 stb_settings_backup: JSON.stringify({
                     commandServerToken: copiedToken,
                 }),
@@ -213,6 +216,7 @@ for (const profile of ["typescript", "static-core"]) {
         );
         assert.equal(stored.get("commandServerEnabled"), "0");
         assert.equal(stored.get("sLocalHttpEnabled"), localConsent);
+        assert.equal(stored.get("sNotificationsEnabled"), "0");
         assert.equal(stored.get("sLocalHttpDeviceCode"), "this-device-code");
         assert.equal(stored.get("stb_settings_backup"), undefined);
         assert.equal(stored.get("m3u:m3uArr"), providerPayload);

@@ -1027,6 +1027,7 @@ export function stbGetAllItems(): Record<string, string> {
             key === "__ottKioskV1" ||
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
+            key === "sNotificationsEnabled" ||
             isStorageMetadataKey(key)
         )
             delete items[key];
@@ -1040,6 +1041,7 @@ export function isPortableSettingsKey(key: string): boolean {
         key !== "__ottKioskV1" &&
         key !== "offlineProfileBindings" &&
         key !== "__ottStandbyV1" &&
+        key !== "sNotificationsEnabled" &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
     );
@@ -1058,6 +1060,7 @@ export function portableSettingsSnapshot(
             key === "__ottKioskV1" ||
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
+            key === "sNotificationsEnabled" ||
             isStorageMetadataKey(key)
         )
             delete result[key];
@@ -1114,6 +1117,7 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
             return (
                 key !== "offlineProfileBindings" &&
                 key !== "__ottStandbyV1" &&
+                key !== "sNotificationsEnabled" &&
                 !isStorageMetadataKey(key)
             );
         })

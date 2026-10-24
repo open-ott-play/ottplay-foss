@@ -2,8 +2,18 @@ import type {
     CommandServerRequest,
     CommandServerResponse,
 } from "./command-server";
+import {
+    loadNotificationMedia,
+    supportsNotificationMedia,
+    validNotificationMedia,
+} from "./notification-media";
 
 var sessionSequence = 0;
+interface NotificationBanner {
+    disposeMedia?: (() => void) | null;
+    element: any;
+    timer: any;
+}
 
 /** Optional, ephemeral banners. Failure must never interrupt remote control. */
 export function createRemoteNotifications(
@@ -16,6 +26,9 @@ export function createRemoteNotifications(
     var address = "";
     var token = "";
     var runtime = "";
+    var receiveEnabled = true;
+    var supportsEnabled = false;
+    var supportsImages = false;
     var generation = 0;
     var activityEpoch = 0;
     var lastActive = false;
@@ -24,9 +37,17 @@ export function createRemoteNotifications(
     var nextPoll = 0;
     var seen: Record<string, boolean> = Object.create(null);
     var order: string[] = [];
-    var banners: Array<{ element: any; timer: any }> = [];
+    var banners: NotificationBanner[] = [];
+    var mediaOwner: NotificationBanner | null = null;
 
-    function clearBanner(banner: { element: any; timer: any }): void {
+    function clearMedia(banner: NotificationBanner): void {
+        var dispose = banner.disposeMedia;
+        banner.disposeMedia = null;
+        if (mediaOwner === banner) mediaOwner = null;
+        if (dispose) dispose();
+    }
+    function clearBanner(banner: NotificationBanner): void {
+        clearMedia(banner);
         w.clearTimeout(banner.timer);
         if (banner.element.parentNode)
             banner.element.parentNode.removeChild(banner.element);
@@ -61,6 +82,7 @@ export function createRemoteNotifications(
         try {
             var document = w.document;
             return !!(
+                receiveEnabled &&
                 document &&
                 document.hidden !== true &&
                 document.visibilityState !== "hidden" &&
@@ -88,7 +110,20 @@ export function createRemoteNotifications(
             } catch (_error) {}
         }
     }
+    function setEnabled(next: boolean): void {
+        if (typeof next !== "boolean" || next === receiveEnabled) return;
+        receiveEnabled = next;
+        activityEpoch++;
+        lastActive = false;
+        // Invalidate callbacks before cancellation can synchronously complete.
+        stop();
+        newSession();
+    }
     function configure(nextAddress: string, nextToken: string): void {
+        if (nextAddress !== address || nextToken !== token) {
+            supportsEnabled = false;
+            supportsImages = false;
+        }
         stop();
         newSession();
         lastActive = false;
@@ -136,6 +171,112 @@ export function createRemoteNotifications(
         order.push(id);
         while (order.length > 64) delete seen[order.shift()!];
     }
+    function attachImage(
+        banner: NotificationBanner,
+        item: any,
+        remaining: number
+    ): void {
+        if (
+            !supportsImages ||
+            !validNotificationMedia(item.media) ||
+            !supportsNotificationMedia(w) ||
+            !receiveEnabled ||
+            !isActive()
+        )
+            return;
+        if (mediaOwner) clearMedia(mediaOwner);
+        mediaOwner = banner;
+        var current = generation,
+            activity = activityEpoch;
+        var image = w.document.createElement("img");
+        image.className = "remote-notify-image";
+        image.alt = "";
+        image.draggable = false;
+        image.setAttribute("aria-hidden", "true");
+        var disposed = false,
+            abort: (() => void) | null = null;
+        var result: any = null,
+            expiry: any = null,
+            receivedAt = 0,
+            receivedMonotonic: number | null = null;
+        function valid(): boolean {
+            var now = monotonic();
+            var elapsed = Math.max(
+                0,
+                Date.now() - receivedAt,
+                now !== null && receivedMonotonic !== null
+                    ? now - receivedMonotonic
+                    : 0
+            );
+            return (
+                (!result || elapsed < result.remainingMs) &&
+                !disposed &&
+                current === generation &&
+                activity === activityEpoch &&
+                mediaOwner === banner &&
+                receiveEnabled &&
+                isActive() &&
+                !!banner.element.parentNode
+            );
+        }
+        banner.disposeMedia = function () {
+            if (disposed) return;
+            disposed = true;
+            w.clearTimeout(expiry);
+            if (abort) abort();
+            image.onload = image.onerror = null;
+            image.removeAttribute("src");
+            if (image.parentNode) image.parentNode.removeChild(image);
+            banner.element.classList.remove("remote-notify-with-image");
+            if (result) result.dispose();
+        };
+        abort = loadNotificationMedia(
+            w,
+            {
+                address: address,
+                media: item.media,
+                remainingMs: remaining,
+                runtime: runtime,
+                token: token,
+            },
+            function (loaded) {
+                if (!loaded) {
+                    clearMedia(banner);
+                    return;
+                }
+                if (!valid()) {
+                    loaded.dispose();
+                    return;
+                }
+                result = loaded;
+                receivedAt = Date.now();
+                receivedMonotonic = monotonic();
+                expiry = w.setTimeout(function () {
+                    clearMedia(banner);
+                }, loaded.remainingMs);
+                image.onload = function () {
+                    if (
+                        !valid() ||
+                        image.naturalWidth !== loaded.width ||
+                        image.naturalHeight !== loaded.height
+                    ) {
+                        clearMedia(banner);
+                        return;
+                    }
+                    banner.element.insertBefore(
+                        image,
+                        banner.element.lastChild
+                    );
+                    banner.element.classList.add("remote-notify-with-image");
+                };
+                image.onerror = function () {
+                    clearMedia(banner);
+                };
+                image.src = loaded.url;
+            }
+        );
+        if (disposed && abort) abort();
+    }
     function show(item: any, remaining: number): void {
         // Recheck at delivery: a screen can sleep while the request is in flight.
         if (!isActive()) return;
@@ -168,7 +309,7 @@ export function createRemoteNotifications(
         if (item.title) part("title", item.title, content);
         part("message", item.message, content);
         container.appendChild(element);
-        var banner = { element: element, timer: null as any };
+        var banner: NotificationBanner = { element: element, timer: null };
         banners.push(banner);
         banner.timer = w.setTimeout(
             function () {
@@ -176,6 +317,7 @@ export function createRemoteNotifications(
             },
             Math.min(item.duration_ms, remaining)
         );
+        attachImage(banner, item, Math.min(item.duration_ms, remaining));
     }
     function poll(): void {
         var active = isActive();
@@ -203,7 +345,11 @@ export function createRemoteNotifications(
             "runtime=" +
             encodeURIComponent(runtime) +
             "&active=" +
-            String(active);
+            String(active) +
+            (supportsEnabled ? "&enabled=" + String(receiveEnabled) : "") +
+            (supportsImages && supportsNotificationMedia(w)
+                ? "&media=jpeg-v1"
+                : "");
         var finished = false;
         pending = true;
         nextPoll = started + 5000;
@@ -212,8 +358,16 @@ export function createRemoteNotifications(
             finished = true;
             pending = false;
             cancel = null;
-            // Older servers and transient failures quietly back off this lane only.
+            // An older controller after a rollback must get a legacy retry.
             nextPoll = Date.now() + 60000;
+            if (
+                response &&
+                (response.status === 400 || response.status === 404) &&
+                (supportsEnabled || supportsImages)
+            ) {
+                supportsEnabled = supportsImages = false;
+                nextPoll = Date.now() + 5000;
+            }
             if (
                 !response ||
                 response.status !== 200 ||
@@ -233,8 +387,17 @@ export function createRemoteNotifications(
                 )
                     return;
                 nextPoll = Date.now() + data.poll_after_ms;
+                supportsEnabled = !!(
+                    data.capabilities && data.capabilities.enabled === true
+                );
+                supportsImages = !!(
+                    data.capabilities &&
+                    Array.isArray(data.capabilities.media) &&
+                    data.capabilities.media.indexOf("jpeg-v1") !== -1
+                );
                 data.notifications.forEach(function (item: any) {
-                    if (!valid(item) || seen[item.id]) return;
+                    if (!receiveEnabled || !valid(item) || seen[item.id])
+                        return;
                     // Mark dropped/expired items too; waking must not replay a stale event.
                     remember(item.id);
                     var currentMonotonic = monotonic();
@@ -278,7 +441,11 @@ export function createRemoteNotifications(
         });
     var api = {
         configure: configure,
+        enabled: function () {
+            return receiveEnabled;
+        },
         poll: poll,
+        setEnabled: setEnabled,
         stop: stop,
         suspend: suspend,
     };

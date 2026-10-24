@@ -88,6 +88,29 @@
         }
         .remote-notify-icon::before { content: "i"; }
         .remote-notify-content { flex: 1 1 auto; min-width: 0; }
+        .remote-notify-with-image > .remote-notify-icon { display: none; }
+        .remote-notify-image {
+            flex: 0 0 auto;
+            width: 6.5em;
+            height: 3.65625em;
+            max-width: 35%;
+            margin-right: 0.8em;
+            border-radius: 0.35em;
+            background: #111;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        @media (min-width: 1280px) and (min-height: 650px) {
+            .notify.remote-notify-with-image { display: block; }
+            .remote-notify-image {
+                display: block;
+                width: 100%;
+                height: auto;
+                max-width: 100%;
+                max-height: 22vh;
+                margin: 0 0 0.7em;
+            }
+        }
         .remote-notify-label {
             margin-bottom: 0.3em;
             color: #a7d4ff;
