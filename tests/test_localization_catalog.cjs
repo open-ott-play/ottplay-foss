@@ -952,6 +952,7 @@ try {
             normalizeSearchText: (value) => value.toLowerCase(),
             PLAYER_VERSION: "test",
             renderButtonHint: () => "",
+            readNotificationsEnabled: () => true,
             setTimeout: () => 1,
             showPage() {},
             stbGetItem: (key) => stored[key],
@@ -1049,6 +1050,7 @@ try {
             __ottKiosk: { init: noop },
             __ottLocalHttpRemote: { init: noop },
             __ottRemoteDiagnostics: {},
+            __ottRemoteNotifications: { setEnabled: noop },
             __ottStandby: {
                 blocked: () => false,
                 current: (generation) => generation === 0,
@@ -1088,6 +1090,7 @@ try {
             popupArray: [],
             popupDetail: [],
             renderButtonHint: () => "",
+            readNotificationsEnabled: () => true,
             savedPopup: { popupActions: [], popupArray: [], popupDetail: [] },
             setTimeout: (callback, delay) => {
                 queue.push({ callback, delay });
