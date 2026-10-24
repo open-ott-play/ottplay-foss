@@ -867,12 +867,14 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — رفتن به کانال تصادفی
 
+این فرمان قدیمی کانال‌های مجاز را از فهرست یا دستهٔ فعلی انتخاب می‌کند. شماره‌های کانال و بازه‌ها به جایگاه‌ها در همان فهرست اشاره دارند؛ [سیاست انتخاب تصادفی امن](docs/remote-command-server.md#safe-random-playback) را ببینید.
+
 </div>
 
 <div dir="ltr">
 
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -891,7 +893,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | فیلد | نوع | پیش‌فرض | شرح |
 |---|---|---|---|
-| `random_range` | [start, end] | همهٔ کانال‌ها | بازه با شروع از 1 |
+| `random_range` | [start, end] | فهرست فعلی | بازه با شروع از 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

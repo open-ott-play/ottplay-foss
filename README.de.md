@@ -689,8 +689,10 @@ Teilzeichenfolgensuche ohne Beachtung der Groß-/Kleinschreibung. Der erste Tref
 
 #### `random_channel` — Zufälligen Kanal wählen
 
+Dieser ältere Befehl wählt zulässige Kanäle aus der aktuellen Liste/Kategorie. Kanalnummern und Bereiche beziehen sich auf Positionen in dieser Liste; siehe [Regeln für die sichere Zufallsauswahl](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Feld | Typ | Standard | Beschreibung |
 |---|---|---|---|
-| `random_range` | [start, end] | alle Kanäle | Bereich, ab 1 |
+| `random_range` | [start, end] | aktuelle Liste | Bereich, ab 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

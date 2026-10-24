@@ -691,8 +691,10 @@ Hledání podřetězce nerozlišuje velikost písmen. Platí první shoda.
 
 #### `random_channel` — Přepnout na náhodný kanál
 
+Tento starší příkaz vybírá způsobilé kanály z aktuálního seznamu či kategorie. Čísla kanálů a rozsahy označují pozice v tomto seznamu; viz [pravidla bezpečného náhodného výběru](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Pole | Typ | Výchozí | Popis |
 |---|---|---|---|
-| `random_range` | [start, end] | všechny kanály | Rozsah počítaný od 1 |
+| `random_range` | [start, end] | aktuální seznam | Rozsah počítaný od 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

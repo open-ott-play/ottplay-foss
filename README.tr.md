@@ -691,8 +691,10 @@ Büyük/küçük harfe duyarsız alt dize araması. İlk eşleşme kazanır.
 
 #### `random_channel` — Rastgele kanala geç
 
+Bu eski komut, geçerli liste veya kategoriden uygun kanalları seçer. Kanal numaraları ve aralıklar bu listedeki konumları belirtir; [güvenli rastgele seçim kurallarına](docs/remote-command-server.md#safe-random-playback) bakın.
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Alan | Tür | Varsayılan | Açıklama |
 |---|---|---|---|
-| `random_range` | [start, end] | tüm kanallar | 1 tabanlı aralık |
+| `random_range` | [start, end] | geçerli liste | 1 tabanlı aralık |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

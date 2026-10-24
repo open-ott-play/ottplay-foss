@@ -689,8 +689,10 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — 切换到随机频道
 
+此旧版命令从当前列表或分类中选择符合条件的频道。频道编号和范围指的是该列表中的位置；请参阅[安全随机选择规则](docs/remote-command-server.md#safe-random-playback)。
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `random_range` | [起点, 终点] | 全部频道 | 从1开始的范围 |
+| `random_range` | [起点, 终点] | 当前列表 | 从1开始的范围 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

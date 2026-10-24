@@ -691,8 +691,10 @@ Zoeken op deeltekst zonder onderscheid tussen hoofdletters. De eerste overeenkom
 
 #### `random_channel` — Naar een willekeurige zender wisselen
 
+Deze oudere opdracht kiest toegestane zenders uit de huidige lijst of categorie. Zendernummers en bereiken verwijzen naar posities in die lijst; zie de [regels voor veilige willekeurige selectie](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Veld | Type | Standaard | Beschrijving |
 |---|---|---|---|
-| `random_range` | [start, end] | alle zenders | Bereik beginnend bij 1 |
+| `random_range` | [start, end] | huidige lijst | Bereik beginnend bij 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

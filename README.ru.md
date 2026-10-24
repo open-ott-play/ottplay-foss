@@ -689,8 +689,10 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — переключить на случайный канал
 
+Эта прежняя команда выбирает допустимые каналы из текущего списка или категории. Номера каналов и диапазоны обозначают позиции в этом списке; см. [правила безопасного случайного выбора](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Поле | Тип | По умолчанию | Описание |
 |---|---|---|---|
-| `random_range` | [start, end] | все каналы | Диапазон, начиная с 1 |
+| `random_range` | [start, end] | текущий список | Диапазон, начиная с 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

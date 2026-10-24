@@ -691,8 +691,10 @@ Pencarian substring tanpa membedakan huruf besar/kecil. Kecocokan pertama dipaka
 
 #### `random_channel` — Ganti ke saluran acak
 
+Perintah lama ini memilih saluran yang memenuhi syarat dari daftar atau kategori saat ini. Nomor saluran dan rentang merujuk pada posisi dalam daftar tersebut; lihat [kebijakan pemilihan acak yang aman](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Kolom | Tipe | Default | Deskripsi |
 |---|---|---|---|
-| `random_range` | [start, end] | semua saluran | Rentang dimulai dari 1 |
+| `random_range` | [start, end] | daftar saat ini | Rentang dimulai dari 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

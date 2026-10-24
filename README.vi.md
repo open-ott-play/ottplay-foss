@@ -691,8 +691,10 @@ Tìm chuỗi con không phân biệt hoa thường. Dùng kết quả khớp đ�
 
 #### `random_channel` — Đổi sang kênh ngẫu nhiên
 
+Lệnh cũ này chọn các kênh đủ điều kiện từ danh sách hoặc danh mục hiện tại. Số kênh và khoảng số chỉ vị trí trong danh sách đó; xem [quy tắc chọn ngẫu nhiên an toàn](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Trường | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `random_range` | [start, end] | mọi kênh | Khoảng bắt đầu từ 1 |
+| `random_range` | [start, end] | danh sách hiện tại | Khoảng bắt đầu từ 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

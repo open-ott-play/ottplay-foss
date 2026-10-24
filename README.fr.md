@@ -689,8 +689,10 @@ Recherche de sous-chaîne insensible à la casse. La première correspondance es
 
 #### `random_channel` — Choisir une chaîne aléatoire
 
+Cette ancienne commande sélectionne les chaînes admissibles dans la liste ou catégorie actuelle. Les numéros de chaîne et les plages désignent les positions dans cette liste ; voir les [règles de sélection aléatoire sûre](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Champ | Type | Valeur par défaut | Description |
 |---|---|---|---|
-| `random_range` | [start, end] | toutes les chaînes | Plage commençant à 1 |
+| `random_range` | [start, end] | liste actuelle | Plage commençant à 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

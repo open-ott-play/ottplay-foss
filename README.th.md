@@ -689,8 +689,10 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — สุ่มเปลี่ยนช่อง
 
+คำสั่งแบบเดิมนี้เลือกช่องที่เข้าเกณฑ์จากรายการหรือหมวดหมู่ปัจจุบัน หมายเลขช่องและช่วงหมายถึงตำแหน่งในรายการนั้น ดู [กฎการสุ่มเลือกอย่างปลอดภัย](docs/remote-command-server.md#safe-random-playback)
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | ฟิลด์ | ชนิด | ค่าเริ่มต้น | คำอธิบาย |
 |---|---|---|---|
-| `random_range` | [start, end] | ทุกช่อง | ช่วงเริ่มนับจาก 1 |
+| `random_range` | [start, end] | รายการปัจจุบัน | ช่วงเริ่มนับจาก 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

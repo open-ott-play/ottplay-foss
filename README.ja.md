@@ -689,8 +689,10 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — ランダムなチャンネルに変更
 
+この従来のコマンドは、現在のリストまたはカテゴリから選択可能なチャンネルを選びます。チャンネル番号と範囲は、そのリスト内の位置を表します。[安全なランダム選択のルール](docs/remote-command-server.md#safe-random-playback)を参照してください。
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | フィールド | 型 | 既定値 | 説明 |
 |---|---|---|---|
-| `random_range` | [開始, 終了] | 全チャンネル | 1始まりの範囲 |
+| `random_range` | [開始, 終了] | 現在のリスト | 1始まりの範囲 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

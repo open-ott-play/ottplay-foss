@@ -692,8 +692,10 @@ Pesquisa de substring sem distinguir maiúsculas. Ganha a primeira correspondên
 
 #### `random_channel` — Mudar para um canal aleatório
 
+Este comando antigo seleciona canais elegíveis da lista ou categoria atual. Os números dos canais e os intervalos indicam posições nessa lista; consulte a [política de seleção aleatória segura](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -708,7 +710,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Campo | Tipo | Predefinição | Descrição |
 |---|---|---|---|
-| `random_range` | [start, end] | todos os canais | Intervalo começando em 1 |
+| `random_range` | [start, end] | lista atual | Intervalo começando em 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

@@ -689,8 +689,10 @@ Búsqueda de subcadena sin distinguir mayúsculas. Se usa la primera coincidenci
 
 #### `random_channel` — cambiar a canal aleatorio
 
+Este comando heredado selecciona canales aptos de la lista o categoría actual. Los números de canal y los intervalos indican posiciones en esa lista; consulte la [política de selección aleatoria segura](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -705,7 +707,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Campo | Tipo | Predeterminado | Descripción |
 |---|---|---|---|
-| `random_range` | [start, end] | todos los canales | Intervalo que empieza en 1 |
+| `random_range` | [start, end] | lista actual | Intervalo que empieza en 1 |
 
 <a id="change_provider--switch-iptv-provider"></a>
 

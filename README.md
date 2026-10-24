@@ -833,8 +833,10 @@ Case-insensitive substring search. First match wins.
 
 #### `random_channel` — Switch to random channel
 
+This legacy command selects eligible channels from the current list/category. Channel numbers and ranges refer to positions in that list; see the [safe random policy](docs/remote-command-server.md#safe-random-playback).
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -849,7 +851,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `random_range` | [start, end] | all channels | 1-based range |
+| `random_range` | [start, end] | current list | 1-based range |
 
 #### `change_provider` — Switch IPTV provider
 

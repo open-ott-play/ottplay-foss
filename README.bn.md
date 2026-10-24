@@ -691,8 +691,10 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 #### `random_channel` — দৈব চ্যানেলে যাওয়া
 
+এই পুরোনো কমান্ডটি বর্তমান তালিকা বা বিভাগ থেকে উপযুক্ত চ্যানেল বেছে নেয়। চ্যানেলের নম্বর ও পরিসর ওই তালিকার অবস্থান বোঝায়; দেখুন [নিরাপদ এলোমেলো নির্বাচনের নিয়ম](docs/remote-command-server.md#safe-random-playback)।
+
 ```bash
-# Random from all channels
+# Random from the current channel list
 curl -X POST http://192.168.1.50:8081/api/webhook/commands \
   -H "Authorization: Bearer $OTTPLAY_QUEUE_HTTP_TOKEN" \
   -H "Content-Type: application/json" \
@@ -707,7 +709,7 @@ curl -X POST http://192.168.1.50:8081/api/webhook/commands \
 
 | ফিল্ড | ধরন | ডিফল্ট | বিবরণ |
 |---|---|---|---|
-| `random_range` | [start, end] | সব চ্যানেল | 1 থেকে গণনা করা পরিসর |
+| `random_range` | [start, end] | বর্তমান তালিকা | 1 থেকে গণনা করা পরিসর |
 
 <a id="change_provider--switch-iptv-provider"></a>
 
