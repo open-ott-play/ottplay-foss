@@ -540,8 +540,15 @@ check(
             }
             for (const profile of [
                 undefined,
+                null,
                 "",
+                false,
+                0,
+                true,
+                42,
                 {},
+                [],
+                ["https://controller.example/discovery"],
                 "http://unsafe.example/discovery",
                 "https://user:secret@example.test/discovery",
             ]) {

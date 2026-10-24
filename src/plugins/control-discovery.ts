@@ -326,20 +326,18 @@ export function createControlDiscovery(
             finish("error", "The discovery response is invalid.");
             return;
         }
-        if (!servers.length && typeof profile === "string" && profile) {
-            // Keep the original discovery deadline and require the same pairing.
-            browserDiscover();
+        if (!servers.length) {
+            // The browser path validates the profile without extending the deadline.
+            if (profile) browserDiscover();
+            else
+                finish(
+                    "unavailable",
+                    "No command server was found on this network."
+                );
             return;
         }
         w.clearTimeout(deadlineTimer);
         deadlineTimer = null;
-        if (!servers.length) {
-            finish(
-                "unavailable",
-                "No command server was found on this network."
-            );
-            return;
-        }
         var expected = generation;
         var single = servers.length === 1;
         notify(
