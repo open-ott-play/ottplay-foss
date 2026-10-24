@@ -61,6 +61,32 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+## [1.1.60] - Development line
+
+### Changes
+
+- Fall back from a valid empty Tauri DNS discovery result to an explicitly
+  configured deployment profile. Keep nonempty native results authoritative
+  and reject malformed results without fallback.
+- Document discovery, pairing and troubleshooting across Tauri, browser/LG and
+  Capacitor players, including the separately hosted Home discovery catalog.
+
+### Upgrade
+
+- Install the official build for your platform to receive the native discovery
+  fallback. The Home catalog and deployment profile are published separately;
+  updating a generic installation does not add them automatically. Configure an
+  explicit deployment profile or enter the controller manually when needed.
+- Existing saved pairings and connection settings are preserved. Use **Find
+  command server** deliberately when selecting a replacement controller.
+
+### Security
+
+- Discovery catalogs contain public server descriptors only. Credentials and
+  pairing approval remain part of the controller connection, not the catalog.
+  The fallback retains URL validation, trusted discovery inputs and operator
+  approval; it does not bypass the existing trust or pairing checks.
+
 ## [1.1.59] - Development line
 
 ### Changes
