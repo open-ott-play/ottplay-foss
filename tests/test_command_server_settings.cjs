@@ -246,6 +246,7 @@ function fixture(initial = []) {
     );
     w.eval(assignment("__ottControlDiscovery"));
     w.eval(assignment("settingsCommands"));
+    w.readNotificationsEnabled = () => true;
     w.eval(bootSource);
     const controller = w.__ottCommandServer;
     function open() {

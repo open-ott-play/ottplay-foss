@@ -664,8 +664,8 @@ function mediaFixture() {
     // The pending image is intentionally not inserted until decode succeeds.
     assert.equal(image.querySelector("img"), null);
     h.advance(1000, true);
-    assert.equal(revoked, 1, "media expires before its parent text card");
-    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 1);
+    assert.equal(revoked, 1, "media expiry removes the entire media card");
+    assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 0);
     h.advance(4000, true);
     assert.equal(h.w.document.querySelectorAll(".remote-notify").length, 0);
 }

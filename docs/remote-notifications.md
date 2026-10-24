@@ -99,7 +99,7 @@ retry instead of breaking the command lane.
 
 ## Motion snapshots
 
-The initial media format is one JPEG snapshot, not a second video stream.
+The initial media format is one JPEG snapshot, not a second video stream. A media notification creates no label, title, message or icon DOM nodes. Its card stays hidden until JPEG decoding succeeds, then displays only the complete image edge to edge inside the thin rounded border. Width is bounded by the normal card width, viewport width and 40% of viewport height while preserving the validated JPEG aspect ratio, including 4:3 and portrait images. Resizing recomputes these bounds. Fetch/decode failure, expiry or replacement removes the media card entirely; no empty frame or text fallback remains. Standalone notifications without a media descriptor retain the normal text layout (including controller-side text fallback when no snapshot was obtained).
 Motion-cleared events are filtered by the controller; light, outlet and occupancy
 off events are unaffected. The player does not infer event types from translated
 message text. Motion templates use the title `Motion` and the entity name alone
@@ -116,8 +116,10 @@ The response is bounded to 224 KiB JSON with the same identity/dimensions/length
 
 Media requires a bounded, abortable Fetch stream, rejected redirects and temporary
 Blob URLs. The controller must allow the authorized browser request through
-CORS. Unsupported browser/WebView transports retain text only; the client never
-uses the unbounded command-string transport or an unauthenticated image URL.
+CORS. Unsupported browser/WebView transports do not advertise JPEG support and
+receive ordinary text notifications. If an unusable media descriptor nevertheless
+arrives, its hidden card is removed. The client never uses the unbounded
+command-string transport or an unauthenticated image URL.
 Only one image request/preview is owned at a time. New media retires the previous
 preview; expiry, off, standby, hidden state and reconfiguration dispose it. JPEG
 frame dimensions are checked before browser decode. Late async callbacks cannot

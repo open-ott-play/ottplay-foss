@@ -88,28 +88,19 @@
         }
         .remote-notify-icon::before { content: "i"; }
         .remote-notify-content { flex: 1 1 auto; min-width: 0; }
-        .remote-notify-with-image > .remote-notify-icon { display: none; }
-        .remote-notify-image {
-            flex: 0 0 auto;
-            width: 6.5em;
-            height: 3.65625em;
-            max-width: 35%;
-            margin-right: 0.8em;
-            border-radius: 0.35em;
-            background: #111;
-            object-fit: contain;
-            pointer-events: none;
+        .notify.remote-notify-with-image {
+            display: block;
+            padding: 0;
+            overflow: hidden;
         }
-        @media (min-width: 1280px) and (min-height: 650px) {
-            .notify.remote-notify-with-image { display: block; }
-            .remote-notify-image {
-                display: block;
-                width: 100%;
-                height: auto;
-                max-width: 100%;
-                max-height: 22vh;
-                margin: 0 0 0.7em;
-            }
+        .remote-notify-with-image > .remote-notify-icon,
+        .remote-notify-with-image > .remote-notify-content { display: none; }
+        .remote-notify-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            pointer-events: none;
         }
         .remote-notify-label {
             margin-bottom: 0.3em;
@@ -164,6 +155,7 @@
             .notify.remote-notify { padding: 0.6em 0.8em; }
             .remote-notify-message { max-height: 1.4em; -webkit-line-clamp: 1; }
         }
+        .notify.remote-notify-with-image { padding: 0; }
         @keyframes remoteNotifyIn {
             from { opacity: 0; transform: translateY(-0.4em); }
             to { opacity: 1; transform: translateY(0); }

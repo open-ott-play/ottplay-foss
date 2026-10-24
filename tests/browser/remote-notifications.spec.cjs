@@ -299,10 +299,24 @@ for (const viewport of [
 }
 
 for (const viewport of [
-    { height: 360, width: 640 },
-    { height: 1080, width: 1920 },
+    { height: 360, imageHeight: 90, imageWidth: 160, width: 640 },
+    { height: 1080, imageHeight: 90, imageWidth: 160, width: 1920 },
+    { height: 360, imageHeight: 120, imageWidth: 160, width: 640 },
+    { height: 1080, imageHeight: 120, imageWidth: 160, width: 1920 },
+    { height: 360, imageHeight: 160, imageWidth: 90, width: 640 },
+    { height: 1080, imageHeight: 160, imageWidth: 90, width: 1920 },
+    { height: 568, imageHeight: 160, imageWidth: 90, width: 320 },
+    { height: 540, imageHeight: 120, imageWidth: 160, width: 960 },
+    { failed: true, height: 360, imageHeight: 90, imageWidth: 160, width: 640 },
+    {
+        failed: true,
+        height: 1080,
+        imageHeight: 90,
+        imageWidth: 160,
+        width: 1920,
+    },
 ]) {
-    test(`JPEG notification and durable receive gate ${viewport.width}x${viewport.height}`, async ({
+    test(`JPEG notification and durable receive gate ${viewport.width}x${viewport.height} image ${viewport.imageWidth}x${viewport.imageHeight}${viewport.failed ? " failed snapshot" : ""}`, async ({
         page,
         context,
         baseURL,
@@ -312,6 +326,10 @@ for (const viewport of [
         const polls = [];
         const frames = [];
         let jpeg;
+        let finishImage;
+        const imageReady = new Promise((resolve) => {
+            finishImage = resolve;
+        });
         let delivered = false;
         const imageId = "f".repeat(32);
         await context.route("**/*", async (route) => {
@@ -337,10 +355,10 @@ for (const viewport of [
                                       media: {
                                           bytes: jpeg.bytes,
                                           content_type: "image/jpeg",
-                                          height: 90,
+                                          height: viewport.imageHeight,
                                           id: imageId,
                                           kind: "image",
-                                          width: 160,
+                                          width: viewport.imageWidth,
                                       },
                                       message: "Front door",
                                       runtime: url.searchParams.get("runtime"),
@@ -357,9 +375,12 @@ for (const viewport of [
             }
             if (url.pathname === "/camera-fixture/api/notifications/media") {
                 frames.push(url.toString());
+                await imageReady;
                 expect(route.request().headers().authorization).toBe(
                     "Bearer camera_fixture_" + "b".repeat(32)
                 );
+                if (viewport.failed)
+                    return route.fulfill({ body: "Unavailable", status: 503 });
                 const now = Date.now() / 1000;
                 return route.fulfill({
                     json: {
@@ -367,12 +388,12 @@ for (const viewport of [
                         content_type: "image/jpeg",
                         data_base64: jpeg.data,
                         expires_at: now + 15,
-                        height: 90,
+                        height: viewport.imageHeight,
                         id: imageId,
                         runtime: url.searchParams.get("runtime"),
                         server_time: now,
                         version: 1,
-                        width: 160,
+                        width: viewport.imageWidth,
                     },
                 });
             }
@@ -389,18 +410,18 @@ for (const viewport of [
                 !!window.__ottCommandServer &&
                 !document.body.classList.contains("booting")
         );
-        jpeg = await page.evaluate(() => {
+        jpeg = await page.evaluate(({ imageWidth, imageHeight }) => {
             const canvas = document.createElement("canvas");
-            canvas.width = 160;
-            canvas.height = 90;
+            canvas.width = imageWidth;
+            canvas.height = imageHeight;
             const paint = canvas.getContext("2d");
             paint.fillStyle = "#234d64";
-            paint.fillRect(0, 0, 160, 90);
+            paint.fillRect(0, 0, imageWidth, imageHeight);
             paint.fillStyle = "#c5ddaa";
             paint.fillRect(45, 15, 70, 75);
             const data = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
             return { bytes: atob(data).length, data };
-        });
+        }, viewport);
         const rpc = (action, params = {}) =>
             page.evaluate(
                 ({ action, params }) =>
@@ -421,11 +442,56 @@ for (const viewport of [
             origin + "/camera-fixture"
         );
         const image = page.locator(".remote-notify-image");
+        await expect.poll(() => frames.length, { timeout: 15000 }).toBe(1);
+        await expect(page.locator(".remote-notify-message")).toHaveCount(0);
+        await expect(page.locator(".remote-notify-with-image")).toHaveCount(0);
+        finishImage();
+        if (viewport.failed) {
+            await expect.poll(() => frames.length).toBe(1);
+            await page.waitForTimeout(200);
+            await expect(image).toHaveCount(0);
+            await expect(page.locator(".remote-notify-with-image")).toHaveCount(
+                0
+            );
+            await expect(page.locator(".remote-notify-message")).toHaveCount(0);
+            await expect(page.locator(".remote-notify")).toHaveCount(0);
+            expect(await page.locator("#video").getAttribute("src")).toBe(
+                primary
+            );
+            return;
+        }
         await expect(image).toBeVisible({ timeout: 15000 });
-        await expect(page.locator(".remote-notify-title")).toHaveText("Motion");
-        await expect(page.locator(".remote-notify-message")).toHaveText(
-            "Front door"
+        await expect(page.locator(".remote-notify-title")).toHaveCount(0);
+        await expect(page.locator(".remote-notify-message")).toHaveCount(0);
+        await expect(page.locator(".remote-notify-label")).toHaveCount(0);
+        await expect(page.locator(".remote-notify-icon")).toHaveCount(0);
+        const geometry = await image.evaluate((img) => {
+            const card = img.parentElement;
+            const outer = card.getBoundingClientRect();
+            const inner = img.getBoundingClientRect();
+            const style = getComputedStyle(card);
+            return {
+                border: parseFloat(style.borderLeftWidth),
+                dx: inner.x - outer.x,
+                dy: inner.y - outer.y,
+                fit: getComputedStyle(img).objectFit,
+                height: outer.height - inner.height,
+                padding: style.padding,
+                width: outer.width - inner.width,
+            };
+        });
+        expect(geometry.padding).toBe("0px");
+        expect(geometry.border).toBe(1);
+        expect(geometry.dx).toBeCloseTo(1, 0);
+        expect(geometry.dy).toBeCloseTo(1, 0);
+        expect(geometry.width).toBeCloseTo(2, 0);
+        expect(geometry.height).toBeCloseTo(2, 0);
+        const box = await image.boundingBox();
+        expect(box.width / box.height).toBeCloseTo(
+            viewport.imageWidth / viewport.imageHeight,
+            2
         );
+        expect(box.height).toBeLessThanOrEqual(viewport.height * 0.4 + 1);
         await page.screenshot({
             path: testInfo.outputPath("camera-notification.png"),
         });

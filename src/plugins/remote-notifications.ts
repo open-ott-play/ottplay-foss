@@ -182,9 +182,11 @@ export function createRemoteNotifications(
             !supportsNotificationMedia(w) ||
             !receiveEnabled ||
             !isActive()
-        )
+        ) {
+            clearBanner(banner);
             return;
-        if (mediaOwner) clearMedia(mediaOwner);
+        }
+        if (mediaOwner) clearBanner(mediaOwner);
         mediaOwner = banner;
         var current = generation,
             activity = activityEpoch;
@@ -219,10 +221,21 @@ export function createRemoteNotifications(
                 !!banner.element.parentNode
             );
         }
+        function resize(): void {
+            var font =
+                parseFloat(w.getComputedStyle(banner.element).fontSize) || 14;
+            banner.element.style.width =
+                Math.min(
+                    24 * font,
+                    w.innerWidth - 24,
+                    w.innerHeight * 0.4 * (result.width / result.height)
+                ) + "px";
+        }
         banner.disposeMedia = function () {
             if (disposed) return;
             disposed = true;
             w.clearTimeout(expiry);
+            w.removeEventListener("resize", resize);
             if (abort) abort();
             image.onload = image.onerror = null;
             image.removeAttribute("src");
@@ -241,7 +254,7 @@ export function createRemoteNotifications(
             },
             function (loaded) {
                 if (!loaded) {
-                    clearMedia(banner);
+                    clearBanner(banner);
                     return;
                 }
                 if (!valid()) {
@@ -252,7 +265,7 @@ export function createRemoteNotifications(
                 receivedAt = Date.now();
                 receivedMonotonic = monotonic();
                 expiry = w.setTimeout(function () {
-                    clearMedia(banner);
+                    clearBanner(banner);
                 }, loaded.remainingMs);
                 image.onload = function () {
                     if (
@@ -260,7 +273,7 @@ export function createRemoteNotifications(
                         image.naturalWidth !== loaded.width ||
                         image.naturalHeight !== loaded.height
                     ) {
-                        clearMedia(banner);
+                        clearBanner(banner);
                         return;
                     }
                     banner.element.insertBefore(
@@ -268,9 +281,12 @@ export function createRemoteNotifications(
                         banner.element.lastChild
                     );
                     banner.element.classList.add("remote-notify-with-image");
+                    banner.element.style.display = "block";
+                    resize();
+                    w.addEventListener("resize", resize);
                 };
                 image.onerror = function () {
-                    clearMedia(banner);
+                    clearBanner(banner);
                 };
                 image.src = loaded.url;
             }
@@ -297,17 +313,23 @@ export function createRemoteNotifications(
             parent.appendChild(child);
             return child;
         }
-        part("icon", "", element).setAttribute("aria-hidden", "true");
-        var content = part("content", "", element);
-        part(
-            "label",
-            { critical: "Alert", info: "Home update", warning: "Attention" }[
-                item.severity as "info" | "warning" | "critical"
-            ],
-            content
-        );
-        if (item.title) part("title", item.title, content);
-        part("message", item.message, content);
+        var media = validNotificationMedia(item.media);
+        if (media) element.style.display = "none";
+        else {
+            part("icon", "", element).setAttribute("aria-hidden", "true");
+            var content = part("content", "", element);
+            part(
+                "label",
+                {
+                    critical: "Alert",
+                    info: "Home update",
+                    warning: "Attention",
+                }[item.severity as "info" | "warning" | "critical"],
+                content
+            );
+            if (item.title) part("title", item.title, content);
+            part("message", item.message, content);
+        }
         container.appendChild(element);
         var banner: NotificationBanner = { element: element, timer: null };
         banners.push(banner);
@@ -317,7 +339,8 @@ export function createRemoteNotifications(
             },
             Math.min(item.duration_ms, remaining)
         );
-        attachImage(banner, item, Math.min(item.duration_ms, remaining));
+        if (media)
+            attachImage(banner, item, Math.min(item.duration_ms, remaining));
     }
     function poll(): void {
         var active = isActive();
