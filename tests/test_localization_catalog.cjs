@@ -951,8 +951,8 @@ try {
             metadataText: String,
             normalizeSearchText: (value) => value.toLowerCase(),
             PLAYER_VERSION: "test",
-            renderButtonHint: () => "",
             readNotificationsEnabled: () => true,
+            renderButtonHint: () => "",
             setTimeout: () => 1,
             showPage() {},
             stbGetItem: (key) => stored[key],
@@ -1089,8 +1089,8 @@ try {
             popupActions: [],
             popupArray: [],
             popupDetail: [],
-            renderButtonHint: () => "",
             readNotificationsEnabled: () => true,
+            renderButtonHint: () => "",
             savedPopup: { popupActions: [], popupArray: [], popupDetail: [] },
             setTimeout: (callback, delay) => {
                 queue.push({ callback, delay });
