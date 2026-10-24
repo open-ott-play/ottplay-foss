@@ -2431,6 +2431,9 @@ export function stbSubtitleExists(): number {
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
 function startCorePipEngine(url: string, engineLoaded = false): void {
+    // Loading an optional engine is part of this same lease, not another play.
+    // Advancing twice makes the original lease unable to pause or dispose it.
+    var session = engineLoaded ? _corePipSession : ++_corePipSession;
     var requestedMode =
         playerMode === 3 ? coreAutoMode(url, videoPip) : playerMode;
     var local = !!(
@@ -2443,10 +2446,8 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         requestedMode === 1 &&
         typeof (window as any).__ottLoadMediaEngine === "function"
     ) {
-        var pendingSession = ++_corePipSession;
         loadCoreMediaEngine("hls", function () {
-            if (pendingSession === _corePipSession)
-                startCorePipEngine(url, true);
+            if (session === _corePipSession) startCorePipEngine(url, true);
         });
         return;
     }
@@ -2459,7 +2460,6 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
             (window as any).__ottLocalMedia &&
             (window as any).__ottLocalMedia.isPlaybackUrl(url)
         );
-    var session = ++_corePipSession;
     if (_corePipAutoCancel) _corePipAutoCancel();
     _corePipAutoCancel = null;
     if (hlsPipInstance) {

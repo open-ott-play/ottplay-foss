@@ -14,13 +14,16 @@
         if (
             message &&
             typeof host.showChannelInfo === "function" &&
-            !(
-                host.$ &&
-                (host.$("#list").is(":visible") ||
-                    host.$("#info1").is(":visible"))
-            )
-        )
-            host.showChannelInfo(1);
+            !(host.$ && host.$("#list").is(":visible"))
+        ) {
+            // A queued slideUp still reports :visible until its completion.
+            // Finish it before deciding whether the footer needs reopening;
+            // otherwise that old animation can hide newly rendered status.
+            var footer = host.$ && host.$("#info1");
+            if (footer && typeof footer.stop === "function")
+                footer.stop(true, true);
+            if (!footer || !footer.is(":visible")) host.showChannelInfo(1);
+        }
         var spinner = document.getElementById("buffering");
         var status = document.getElementById("playback_status");
         var label = status || document.getElementById("video_res");

@@ -405,6 +405,18 @@ for (const kind of ["native", "hls"]) {
                             return video?.currentTime > 0.1 && !video.paused;
                         });
                     });
+                    // Lazy readiness must retain the original PiP lease; an
+                    // orphaned decoder can render but cannot be stopped by standby.
+                    await expect
+                        .poll(() =>
+                            page.evaluate(() =>
+                                window
+                                    .__ottCoreBackend()
+                                    .current("pip")
+                                    .diagnosticEngine()
+                            )
+                        )
+                        .toBe(kind === "hls" ? "hls.js" : "html5");
                     for (const lane of Object.values(media.lanes)) {
                         await expect.poll(() => lane.active).toBeGreaterThan(0);
                         const before = lane.bytes;

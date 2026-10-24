@@ -293,9 +293,29 @@ for (const provider of ["m3u", "vportal"]) {
         expect(after).toBeGreaterThan(before);
         expect(after - before).toBeLessThan(10);
         if (provider === "vportal") {
-            const bar = await page.locator("#progress_div").boundingBox();
-            expect(bar.height).toBeGreaterThanOrEqual(24);
-            const y = bar.y + bar.height / 2;
+            async function seekReadyBar() {
+                // currentTime changes before an HLS seek has decoded its target.
+                // Strict kiosk intentionally rejects gestures during that loading
+                // phase; wait for admission and use the settled footer geometry.
+                await expect
+                    .poll(() =>
+                        page.evaluate(() => {
+                            const video = document.querySelector("video");
+                            return (
+                                !video.seeking &&
+                                video.readyState >= 2 &&
+                                typeof window.__ottKiosk.beginSeek() ===
+                                    "function"
+                            );
+                        })
+                    )
+                    .toBe(true);
+                const box = await page.locator("#progress_div").boundingBox();
+                expect(box.height).toBeGreaterThanOrEqual(24);
+                return box;
+            }
+            let bar = await seekReadyBar();
+            let y = bar.y + bar.height / 2;
             const currentItem = await page.evaluate(
                 () => window.__ottMedia.current().ref.itemId
             );
@@ -307,6 +327,8 @@ for (const provider of ["m3u", "vportal"]) {
                     )
                 )
                 .toBeGreaterThan(85);
+            bar = await seekReadyBar();
+            y = bar.y + bar.height / 2;
             await page.touchscreen.tap(bar.x + bar.width * 0.25, y);
             await expect
                 .poll(() =>
@@ -315,6 +337,8 @@ for (const provider of ["m3u", "vportal"]) {
                     )
                 )
                 .toBeLessThan(35);
+            bar = await seekReadyBar();
+            y = bar.y + bar.height / 2;
             await touch("touchStart", [[bar.x + bar.width * 0.25, y]]);
             await touch("touchMove", [[bar.x + bar.width * 0.6, y]]);
             await touch("touchEnd", []);

@@ -2060,6 +2060,49 @@ test("screen suspension cancels a queued stream retry before resuming a fresh le
     );
     w.stbStop();
 });
+test("lazy PiP keeps its owning lease through engine readiness and releases the decoder", () => {
+    const { w, players } = fixture();
+    const callbacks = [];
+    w.playerMode = 1;
+    w.__ottLoadMediaEngine = (engine, callback) => callbacks.push(callback);
+    w.stbPlayPip("https://fixture.test/pip.m3u8");
+    const handle = w.__ottCoreBackend().current("pip");
+    assert.equal(callbacks.length, 1);
+    callbacks[0](true);
+    assert.equal(
+        handle.diagnosticEngine(),
+        "hls.js",
+        "loaded engine still belongs to original PiP lease"
+    );
+    players[0].events.manifest();
+    assert.equal(w.videoPip.paused, false);
+    w.stbStopPip();
+    assert.equal(players[0].destroyCalls, 1);
+    assert.equal(w.videoPip.paused, true);
+    assert.equal(w.videoPip.src, "");
+    assert.equal(w.videoPip.loadCalls, 1);
+    callbacks[0](true);
+    assert.equal(
+        players.length,
+        1,
+        "late readiness cannot restore stopped PiP"
+    );
+});
+test("stopping pending lazy PiP invalidates readiness before engine construction", () => {
+    const { w, players } = fixture();
+    let ready;
+    w.playerMode = 1;
+    w.__ottLoadMediaEngine = (_engine, callback) => {
+        ready = callback;
+    };
+    w.stbPlayPip("https://fixture.test/pip.m3u8");
+    w.stbStopPip();
+    ready(true);
+    assert.equal(players.length, 0);
+    assert.equal(w.videoPip.paused, true);
+    assert.equal(w.videoPip.src, "");
+});
+
 test("PiP diagnostics use their own attached engine and clear on stop", () => {
     const { w } = fixture();
     w.playerMode = 1;

@@ -1728,8 +1728,24 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
     // The ordinary resolution/bitrate ticker must not erase active feedback.
     await page.clock.fastForward(20000);
     await expect(label).toContainText("Connecting");
+    // Reproduce a hide started before this status update. The still-animating
+    // footer is :visible until slideUp completes, even with a new message.
+    expect(
+        await page.evaluate(() => {
+            window.$("#info1").stop(true, true).show();
+            window.$.fx.off = false;
+            window.$("#info1").slideUp(60000);
+            window.$.fx.off = true;
+            return (
+                window.$("#info1").is(":animated") &&
+                window.$("#info1").is(":visible")
+            );
+        })
+    ).toBe(true);
     await event("waiting");
     await expect(label).toContainText("Buffering");
+    // Completing any remaining old hide must not win over the newer status.
+    await page.evaluate(() => window.$("#info1").stop(true, true));
     await expect(label).toBeVisible();
     await expect(busy).toBeVisible();
     await page.evaluate(() => {
