@@ -48,6 +48,12 @@ explicit deployment profile. Shared player code contains no personal discovery d
 The installed frontend exposes `window.__OTT_CONTROL_DISCOVERY_VERSION__ = 1` for
 deployment compatibility checks; this does not enable a connection.
 
+A valid but empty native DNS result also tries the deployment discovery URL when
+one is configured. A nonempty native result keeps priority; malformed native
+metadata fails without falling back. The fallback shares the original discovery
+timeout and still requires the same operator-approved pairing before saving any
+connection settings.
+
 Network DNS/search domains and the deployment discovery profile are trusted
 installation configuration. HTTPS proves control of the advertised hostname, not
 the controller operator's identity. An untrusted network or profile could nominate

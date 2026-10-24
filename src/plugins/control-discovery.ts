@@ -293,7 +293,7 @@ export function createControlDiscovery(
             }
         );
     }
-    function accept(value: any): void {
+    function accept(value: any, profileFallback?: boolean): void {
         try {
             if (
                 !value ||
@@ -324,6 +324,12 @@ export function createControlDiscovery(
             });
         } catch (_error) {
             finish("error", "The discovery response is invalid.");
+            return;
+        }
+        var profile = profileFallback && w.__OTT_CONTROL_DISCOVERY_URL__;
+        if (!servers.length && typeof profile === "string" && profile) {
+            // Keep the original discovery deadline and require the same pairing.
+            browserDiscover();
             return;
         }
         w.clearTimeout(deadlineTimer);
@@ -432,7 +438,7 @@ export function createControlDiscovery(
                 try {
                     nativeDiscover().then(
                         function (value) {
-                            if (current(expected)) accept(value);
+                            if (current(expected)) accept(value, true);
                         },
                         function () {
                             if (current(expected)) browserDiscover();
