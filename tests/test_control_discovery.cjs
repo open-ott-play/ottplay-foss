@@ -460,134 +460,231 @@ check(
         passed++;
         console.log("PASS discovery: " + name);
     }
-    await nativeCheck("empty native DNS uses the profile and still requires approval", async () => {
-        const empty = { servers: [], version: 1 };
-        const f = fixture({}, () => Promise.resolve(empty));
-        f.controller.start();
-        await Promise.resolve();
-        assert.equal(f.calls.length, 1);
-        assert.equal(f.calls[0].request.method, "GET");
-        assert.equal(f.calls[0].request.url, f.w.__OTT_CONTROL_DISCOVERY_URL__);
-        assert.equal(f.calls[0].request.headers.Authorization, undefined);
-        assert.equal(f.calls[0].request.secureControl, true);
-        assert.equal(f.applied.length, 0);
-        f.respond({ servers: [server], version: 1 });
-        assert.equal(f.calls.length, 2);
-        assert.equal(f.calls[1].request.method, "POST");
-        assert.equal(f.calls[1].request.url, server.address + "/api/pairings");
-        assert.equal(f.applied.length, 0);
-        f.respond(receipt, 201);
-        f.tick(2000);
-        f.respond(approval);
-        assert.equal(f.applied.length, 1);
-        assert.equal(f.settings.address, server.address);
-        assert.equal(f.settings.token, approval.token);
-        assert.equal(f.controller.status().state, "connected");
-    });
-    await nativeCheck("nonempty native DNS retains priority over the profile", async () => {
-        for (const servers of [[server], [server, { ...server, id: "other.example." }]]) {
-            const f = fixture({}, () => Promise.resolve({ servers, version: 1 }));
+    await nativeCheck(
+        "empty native DNS uses the profile and still requires approval",
+        async () => {
+            const empty = { servers: [], version: 1 };
+            const f = fixture({}, () => Promise.resolve(empty));
             f.controller.start();
-            await Promise.resolve();
-            assert.equal(f.calls.filter((call) => call.request.method === "GET").length, 0);
-            assert.equal(f.calls.length, servers.length === 1 ? 1 : 0);
-            assert.equal(f.controller.status().state, servers.length === 1 ? "pairing" : "choose");
-            assert.equal(f.applied.length, 0);
-        }
-    });
-    await nativeCheck("native fallback rejects malformed DNS and never invents a profile", async () => {
-        for (const value of [null, {}, { version: 2, servers: [] }, { version: 1, servers: {} },
-            { version: 1, servers: [{ ...server, address: "http://unsafe.example" }] }]) {
-            const f = fixture({}, () => Promise.resolve(value));
-            f.controller.start();
-            await Promise.resolve();
-            assert.equal(f.controller.status().state, "error");
-            assert.equal(f.calls.length, 0);
-        }
-        for (const profile of [undefined, "", {}, "http://unsafe.example/discovery", "https://user:secret@example.test/discovery"]) {
-            const f = fixture({}, () => Promise.resolve({ servers: [], version: 1 }));
-            f.w.__OTT_CONTROL_DISCOVERY_URL__ = profile;
-            f.w.location = new URL("http://127.0.0.1:8443/");
-            f.controller.start();
-            await Promise.resolve();
-            assert.ok(["error", "unavailable"].includes(f.controller.status().state));
-            assert.equal(f.calls.length, 0);
-            assert.equal(f.applied.length, 0);
-        }
-    });
-    await nativeCheck("empty or invalid profile responses stop without another lookup", async () => {
-        for (const value of [{ version: 1, servers: [] }, { version: 2, servers: [] }]) {
-            const f = fixture({}, () => Promise.resolve({ servers: [], version: 1 }));
-            f.controller.start();
-            await Promise.resolve();
-            f.respond(value);
-            f.tick(20000);
-            assert.equal(f.calls.length, 1);
-            assert.equal(f.applied.length, 0);
-            assert.ok(["error", "unavailable"].includes(f.controller.status().state));
-            assert.equal(f.timers.size, 0);
-        }
-    });
-    await nativeCheck("saved and deliberately disconnected settings suppress native fallback", async () => {
-        for (const config of [{ address: server.address }, { token: approval.token },
-            { enabled: true }, { address: server.address, token: approval.token, enabled: false }]) {
-            let lookups = 0;
-            const f = fixture(config, () => {
-                lookups++;
-                return Promise.resolve({ servers: [], version: 1 });
-            });
-            f.controller.start();
-            await Promise.resolve();
-            assert.equal(lookups, 0);
-            assert.equal(f.calls.length, 0);
-            assert.equal(f.applied.length, 0);
-            for (const key of Object.keys(config)) assert.equal(f.settings[key], config[key]);
-        }
-    });
-    await nativeCheck("stale empty native results cannot begin profile discovery", async () => {
-        for (const cancel of [
-            (f) => f.controller.cancel(),
-            (f) => f.tick(15000),
-            (f) => { f.settings.address = "https://manual.example"; },
-            (f) => f.setUuid("changed_device"),
-        ]) {
-            let resolve;
-            const f = fixture({}, () => new Promise((done) => { resolve = done; }));
-            f.controller.start();
-            cancel(f);
-            resolve({ servers: [], version: 1 });
-            await Promise.resolve();
-            assert.equal(f.calls.length, 0);
-            assert.equal(f.applied.length, 0);
-        }
-        const pending = [];
-        const f = fixture({}, () => new Promise((done) => pending.push(done)));
-        f.controller.start();
-        f.controller.start(true);
-        pending[0]({ servers: [], version: 1 });
-        await Promise.resolve();
-        assert.equal(f.calls.length, 0);
-        pending[1]({ servers: [], version: 1 });
-        await Promise.resolve();
-        assert.equal(f.calls.length, 1);
-    });
-    await nativeCheck("profile fallback keeps the original deadline and ignores canceled replies", async () => {
-        for (const cancel of [(f) => f.controller.cancel(), (f) => f.tick(3000)]) {
-            let resolve;
-            const f = fixture({}, () => new Promise((done) => { resolve = done; }));
-            f.controller.start();
-            f.tick(12000);
-            resolve({ servers: [], version: 1 });
             await Promise.resolve();
             assert.equal(f.calls.length, 1);
-            cancel(f);
-            assert.equal(f.calls[0].aborted, true);
-            f.respond({ servers: [server], version: 1 }, 200, f.calls[0]);
-            assert.equal(f.calls.length, 1);
+            assert.equal(f.calls[0].request.method, "GET");
+            assert.equal(
+                f.calls[0].request.url,
+                f.w.__OTT_CONTROL_DISCOVERY_URL__
+            );
+            assert.equal(f.calls[0].request.headers.Authorization, undefined);
+            assert.equal(f.calls[0].request.secureControl, true);
             assert.equal(f.applied.length, 0);
-            assert.equal(f.timers.size, 0);
+            f.respond({ servers: [server], version: 1 });
+            assert.equal(f.calls.length, 2);
+            assert.equal(f.calls[1].request.method, "POST");
+            assert.equal(
+                f.calls[1].request.url,
+                server.address + "/api/pairings"
+            );
+            assert.equal(f.applied.length, 0);
+            f.respond(receipt, 201);
+            f.tick(2000);
+            f.respond(approval);
+            assert.equal(f.applied.length, 1);
+            assert.equal(f.settings.address, server.address);
+            assert.equal(f.settings.token, approval.token);
+            assert.equal(f.controller.status().state, "connected");
         }
-    });
+    );
+    await nativeCheck(
+        "nonempty native DNS retains priority over the profile",
+        async () => {
+            for (const servers of [
+                [server],
+                [server, { ...server, id: "other.example." }],
+            ]) {
+                const f = fixture({}, () =>
+                    Promise.resolve({ servers, version: 1 })
+                );
+                f.controller.start();
+                await Promise.resolve();
+                assert.equal(
+                    f.calls.filter((call) => call.request.method === "GET")
+                        .length,
+                    0
+                );
+                assert.equal(f.calls.length, servers.length === 1 ? 1 : 0);
+                assert.equal(
+                    f.controller.status().state,
+                    servers.length === 1 ? "pairing" : "choose"
+                );
+                assert.equal(f.applied.length, 0);
+            }
+        }
+    );
+    await nativeCheck(
+        "native fallback rejects malformed DNS and never invents a profile",
+        async () => {
+            for (const value of [
+                null,
+                {},
+                { servers: [], version: 2 },
+                { servers: {}, version: 1 },
+                {
+                    servers: [{ ...server, address: "http://unsafe.example" }],
+                    version: 1,
+                },
+            ]) {
+                const f = fixture({}, () => Promise.resolve(value));
+                f.controller.start();
+                await Promise.resolve();
+                assert.equal(f.controller.status().state, "error");
+                assert.equal(f.calls.length, 0);
+            }
+            for (const profile of [
+                undefined,
+                "",
+                {},
+                "http://unsafe.example/discovery",
+                "https://user:secret@example.test/discovery",
+            ]) {
+                const f = fixture({}, () =>
+                    Promise.resolve({ servers: [], version: 1 })
+                );
+                f.w.__OTT_CONTROL_DISCOVERY_URL__ = profile;
+                f.w.location = new URL("http://127.0.0.1:8443/");
+                f.controller.start();
+                await Promise.resolve();
+                assert.ok(
+                    ["error", "unavailable"].includes(
+                        f.controller.status().state
+                    )
+                );
+                assert.equal(f.calls.length, 0);
+                assert.equal(f.applied.length, 0);
+            }
+        }
+    );
+    await nativeCheck(
+        "empty or invalid profile responses stop without another lookup",
+        async () => {
+            for (const value of [
+                { servers: [], version: 1 },
+                { servers: [], version: 2 },
+            ]) {
+                const f = fixture({}, () =>
+                    Promise.resolve({ servers: [], version: 1 })
+                );
+                f.controller.start();
+                await Promise.resolve();
+                f.respond(value);
+                f.tick(20000);
+                assert.equal(f.calls.length, 1);
+                assert.equal(f.applied.length, 0);
+                assert.ok(
+                    ["error", "unavailable"].includes(
+                        f.controller.status().state
+                    )
+                );
+                assert.equal(f.timers.size, 0);
+            }
+        }
+    );
+    await nativeCheck(
+        "saved and deliberately disconnected settings suppress native fallback",
+        async () => {
+            for (const config of [
+                { address: server.address },
+                { token: approval.token },
+                { enabled: true },
+                {
+                    address: server.address,
+                    enabled: false,
+                    token: approval.token,
+                },
+            ]) {
+                let lookups = 0;
+                const f = fixture(config, () => {
+                    lookups++;
+                    return Promise.resolve({ servers: [], version: 1 });
+                });
+                f.controller.start();
+                await Promise.resolve();
+                assert.equal(lookups, 0);
+                assert.equal(f.calls.length, 0);
+                assert.equal(f.applied.length, 0);
+                for (const key of Object.keys(config))
+                    assert.equal(f.settings[key], config[key]);
+            }
+        }
+    );
+    await nativeCheck(
+        "stale empty native results cannot begin profile discovery",
+        async () => {
+            for (const cancel of [
+                (f) => f.controller.cancel(),
+                (f) => f.tick(15000),
+                (f) => {
+                    f.settings.address = "https://manual.example";
+                },
+                (f) => f.setUuid("changed_device"),
+            ]) {
+                let resolve;
+                const f = fixture(
+                    {},
+                    () =>
+                        new Promise((done) => {
+                            resolve = done;
+                        })
+                );
+                f.controller.start();
+                cancel(f);
+                resolve({ servers: [], version: 1 });
+                await Promise.resolve();
+                assert.equal(f.calls.length, 0);
+                assert.equal(f.applied.length, 0);
+            }
+            const pending = [];
+            const f = fixture(
+                {},
+                () => new Promise((done) => pending.push(done))
+            );
+            f.controller.start();
+            f.controller.start(true);
+            pending[0]({ servers: [], version: 1 });
+            await Promise.resolve();
+            assert.equal(f.calls.length, 0);
+            pending[1]({ servers: [], version: 1 });
+            await Promise.resolve();
+            assert.equal(f.calls.length, 1);
+        }
+    );
+    await nativeCheck(
+        "profile fallback keeps the original deadline and ignores canceled replies",
+        async () => {
+            for (const cancel of [
+                (f) => f.controller.cancel(),
+                (f) => f.tick(3000),
+            ]) {
+                let resolve;
+                const f = fixture(
+                    {},
+                    () =>
+                        new Promise((done) => {
+                            resolve = done;
+                        })
+                );
+                f.controller.start();
+                f.tick(12000);
+                resolve({ servers: [], version: 1 });
+                await Promise.resolve();
+                assert.equal(f.calls.length, 1);
+                cancel(f);
+                assert.equal(f.calls[0].aborted, true);
+                f.respond({ servers: [server], version: 1 }, 200, f.calls[0]);
+                assert.equal(f.calls.length, 1);
+                assert.equal(f.applied.length, 0);
+                assert.equal(f.timers.size, 0);
+            }
+        }
+    );
     let resolve;
     const f = fixture(
         {},
