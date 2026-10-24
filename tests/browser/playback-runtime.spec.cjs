@@ -1800,3 +1800,83 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
     expect(await page.evaluate(() => window.__ottStandby.blocked())).toBe(true);
     expect(errors).toEqual([]);
 });
+
+test("fresh Chrome without native HLS or a saved engine uses lazy MSE through the normal channel path", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    const engines = [];
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("request", (request) => {
+        const path = new URL(request.url()).pathname;
+        if (/\/js\/(hls.min|shaka-player.compiled)\.js$/.test(path))
+            engines.push(path);
+    });
+    await context.route("**/*", (route) => {
+        const url = new URL(route.request().url());
+        if (url.hostname === "playlist.test")
+            return route.fulfill({
+                body: '#EXTM3U\n#EXTINF:-1 tvg-id="fresh" group-title="Test",Fresh HLS\nhttps://media.test/fresh/index.m3u8\n',
+                contentType: "text/plain",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        if (url.hostname === "media.test") {
+            const segment = url.pathname.endsWith(".ts");
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.join(
+                        mediaRoot,
+                        segment ? "segment00.ts" : "index.m3u8"
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        // Model desktop generations without native HLS; keep real MSE codecs,
+        // media decoding and all normal provider/default-engine initialization.
+        const canPlayType = HTMLMediaElement.prototype.canPlayType;
+        HTMLMediaElement.prototype.canPlayType = function (mime) {
+            return /(?:mpegurl|m3u8)/i.test(mime)
+                ? ""
+                : canPlayType.call(this, mime);
+        };
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "m3u");
+        localStorage.setItem(
+            "m3um3uArr",
+            JSON.stringify({
+                active: 0,
+                M3Us: [{ www: "https://playlist.test/fresh.m3u" }],
+            })
+        );
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => {
+        const media = document.querySelector("video");
+        return (
+            media &&
+            !media.paused &&
+            media.currentTime > 0 &&
+            media.videoWidth > 0 &&
+            media.getVideoPlaybackQuality().totalVideoFrames > 0
+        );
+    });
+    expect(await page.evaluate(() => window.playerMode)).toBe(1);
+    expect(
+        await page.evaluate(() => window.providerHasItemValue("sPlayers"))
+    ).toBe(false);
+    expect(engines).toEqual(["/js/hls.min.js"]);
+    expect(errors).toEqual([]);
+});

@@ -1735,6 +1735,25 @@ test("Shaka is requested alone and DASH never reaches native after a failed down
     assert.equal(requests.length, 2);
 });
 
+test("fresh Chrome selects lazy HLS without a saved player preference", () => {
+    const f = fixture({ hlsMissing: true, nativeHls: false, tauri: false });
+    const runtime = fixture().w.Hls;
+    const requests = [];
+    f.w.__ottLoadMediaEngine = (engine, ready) =>
+        requests.push({ engine, ready });
+    f.w.setPlayerMode(0);
+    f.w.setPlayer();
+    assert.equal(f.w.playerMode, 1);
+    assert.equal(f.preferences.sPlayers, undefined);
+    f.w.stbPlay("fresh.m3u8");
+    assert.equal(requests[0].engine, "hls");
+    assert.equal(f.w.hlsInstance, null);
+    f.w.Hls = runtime;
+    requests[0].ready(true);
+    assert(f.w.hlsInstance);
+    assert.match(f.w.video.src, /^blob:hls-/);
+});
+
 let failures = 0;
 for (const [name, callback] of cases) {
     try {

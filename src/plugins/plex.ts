@@ -1853,102 +1853,136 @@ function createPlexClient(
                     finish(playable);
                     return;
                 }
-                var active: any = {
-                    id: clientId + "-" + ++sequence,
-                    started: false,
-                    url: "",
-                };
-                session = active;
-                var params: any = {
-                    audioBoost: 100,
-                    directPlay: 0,
-                    directStream: 1,
-                    fastSeek: 1,
-                    maxVideoBitrate: 12000,
-                    mediaIndex: 0,
-                    partIndex: 0,
-                    path: requestPath,
-                    protocol: "hls",
-                    session: active.id,
-                    videoQuality: 100,
-                    videoResolution: "1920x1080",
-                    "X-Plex-Client-Identifier": clientId,
-                    "X-Plex-Platform": "Chrome",
-                    "X-Plex-Product": "OTTPlay",
-                };
                 var videoCodec = codec(media, true);
-                var mse = false;
+                var negotiated = false;
+                function transcode(): void {
+                    if (finished || negotiated || !current(token)) return;
+                    negotiated = true;
+                    var active: any = {
+                        id: clientId + "-" + ++sequence,
+                        started: false,
+                        url: "",
+                    };
+                    session = active;
+                    var params: any = {
+                        audioBoost: 100,
+                        directPlay: 0,
+                        directStream: 1,
+                        fastSeek: 1,
+                        maxVideoBitrate: 12000,
+                        mediaIndex: 0,
+                        partIndex: 0,
+                        path: requestPath,
+                        protocol: "hls",
+                        session: active.id,
+                        videoQuality: 100,
+                        videoResolution: "1920x1080",
+                        "X-Plex-Client-Identifier": clientId,
+                        "X-Plex-Platform": "Chrome",
+                        "X-Plex-Product": "OTTPlay",
+                    };
+                    var mse = false;
+                    try {
+                        if (
+                            /^hvc1\./.test(videoCodec) &&
+                            w.Hls &&
+                            typeof w.Hls.isSupported === "function" &&
+                            w.Hls.isSupported() &&
+                            w.MediaSource &&
+                            w.MediaSource.isTypeSupported(
+                                'video/mp4; codecs="' + videoCodec + '"'
+                            )
+                        ) {
+                            mse = true;
+                            params["X-Plex-Client-Profile-Extra"] =
+                                "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mp4&videoCodec=h264,hevc&audioCodec=aac&replace=true)";
+                            if (
+                                Number(media.width) > 0 &&
+                                Number(media.height) > 0
+                            )
+                                params.videoResolution =
+                                    media.width + "x" + media.height;
+                        }
+                    } catch (_) {
+                        /* Unknown decoder capability keeps the compatible profile. */
+                    }
+                    request(
+                        "/video/:/transcode/universal/decision",
+                        params,
+                        token,
+                        function (decision, decisionError) {
+                            if (
+                                finished ||
+                                !current(token) ||
+                                session !== active
+                            )
+                                return;
+                            if (
+                                decisionError ||
+                                !decision ||
+                                Number(
+                                    decision.transcodeDecisionCode || 1001
+                                ) >= 2000
+                            ) {
+                                release();
+                                finish(null);
+                                return;
+                            }
+                            playable.stream_url = active.url = url(
+                                "/video/:/transcode/universal/start.m3u8",
+                                params
+                            );
+                            playable.__ottPlexPlayback = {
+                                mime: "application/vnd.apple.mpegurl",
+                                type: "hls",
+                            };
+                            if (mse) playable.__ottPlexPlayback.engine = "mse";
+                            active.started = true;
+                            try {
+                                finish(playable);
+                            } catch (error) {
+                                if (session === active) release();
+                                throw error;
+                            }
+                            if (session !== active) return;
+                            active.timer = w.setInterval(function () {
+                                if (session !== active || active.pending)
+                                    return;
+                                var finished = false;
+                                var ping = control(
+                                    "/video/:/transcode/universal/ping",
+                                    active,
+                                    function () {
+                                        finished = true;
+                                        active.pending = null;
+                                    }
+                                );
+                                if (!finished && session === active)
+                                    active.pending = ping;
+                            }, 30000);
+                        }
+                    );
+                }
+                var loadHls = false;
                 try {
-                    if (
+                    loadHls =
                         /^hvc1\./.test(videoCodec) &&
-                        w.Hls &&
-                        typeof w.Hls.isSupported === "function" &&
-                        w.Hls.isSupported() &&
+                        !w.Hls &&
+                        typeof w.__ottLoadMediaEngine === "function" &&
                         w.MediaSource &&
                         w.MediaSource.isTypeSupported(
                             'video/mp4; codecs="' + videoCodec + '"'
-                        )
-                    ) {
-                        mse = true;
-                        params["X-Plex-Client-Profile-Extra"] =
-                            "add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mp4&videoCodec=h264,hevc&audioCodec=aac&replace=true)";
-                        if (Number(media.width) > 0 && Number(media.height) > 0)
-                            params.videoResolution =
-                                media.width + "x" + media.height;
-                    }
-                } catch (_) {
-                    /* Unknown decoder capability keeps the compatible profile. */
-                }
-                request(
-                    "/video/:/transcode/universal/decision",
-                    params,
-                    token,
-                    function (decision, decisionError) {
-                        if (finished || !current(token) || session !== active)
-                            return;
-                        if (
-                            decisionError ||
-                            !decision ||
-                            Number(decision.transcodeDecisionCode || 1001) >=
-                                2000
-                        ) {
-                            release();
-                            finish(null);
-                            return;
-                        }
-                        playable.stream_url = active.url = url(
-                            "/video/:/transcode/universal/start.m3u8",
-                            params
                         );
-                        playable.__ottPlexPlayback = {
-                            mime: "application/vnd.apple.mpegurl",
-                            type: "hls",
-                        };
-                        if (mse) playable.__ottPlexPlayback.engine = "mse";
-                        active.started = true;
-                        try {
-                            finish(playable);
-                        } catch (error) {
-                            if (session === active) release();
-                            throw error;
-                        }
-                        if (session !== active) return;
-                        active.timer = w.setInterval(function () {
-                            if (session !== active || active.pending) return;
-                            var finished = false;
-                            var ping = control(
-                                "/video/:/transcode/universal/ping",
-                                active,
-                                function () {
-                                    finished = true;
-                                    active.pending = null;
-                                }
-                            );
-                            if (!finished && session === active)
-                                active.pending = ping;
-                        }, 30000);
+                } catch (_) {
+                    /* Unknown capability retains the compatible profile. */
+                }
+                if (loadHls) {
+                    try {
+                        w.__ottLoadMediaEngine("hls", transcode);
+                    } catch (_) {
+                        transcode();
                     }
-                );
+                } else transcode();
             });
         }
         if (releasing) waiting.push(run);

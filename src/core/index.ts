@@ -2676,8 +2676,7 @@ export function setPlayer(): void {
         video &&
         !providerHasItemValue("sPlayers") &&
         !video!.canPlayType("application/vnd.apple.mpegurl") &&
-        typeof Hls !== "undefined" &&
-        Hls.isSupported()
+        coreHlsAvailable()
     ) {
         playerMode = 1;
     }

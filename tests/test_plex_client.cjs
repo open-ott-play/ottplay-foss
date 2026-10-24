@@ -1484,6 +1484,78 @@ test("HEVC HLS preserves source resolution only when the actual MSE codec is sup
     }
 });
 
+test("first HEVC resolution lazily loads HLS before negotiating and ignores a retired resolve", () => {
+    for (const cancel of [false, true]) {
+        const f = fixture({}, { mse: () => true });
+        delete f.host.Hls;
+        const loads = [];
+        f.host.__ottLoadMediaEngine = (engine, done) =>
+            loads.push({ done, engine });
+        let played;
+        f.client.resolve(film, (value) => {
+            played = value;
+        });
+        last(f).reply(
+            metadata({
+                audioCodec: "opus",
+                container: "mkv",
+                height: 2160,
+                videoCodec: "hevc",
+                width: 3840,
+            })
+        );
+        assert.equal(loads.length, 1);
+        assert.equal(loads[0].engine, "hls");
+        assert.equal(
+            f.requests.length,
+            1,
+            "No server negotiation precedes the required codec decision"
+        );
+        if (cancel) f.client.cancel();
+        f.host.Hls = { isSupported: () => true };
+        loads[0].done(true);
+        if (cancel) {
+            assert.equal(f.requests.length, 1);
+            assert.equal(played, undefined);
+        } else {
+            assert.equal(
+                parsed(f).searchParams.get("videoResolution"),
+                "3840x2160"
+            );
+            assert(parsed(f).searchParams.has("X-Plex-Client-Profile-Extra"));
+        }
+        f.client.dispose();
+    }
+});
+
+test("HEVC loader failure keeps compatible transcoding and non-HEVC never loads HLS", () => {
+    const f = fixture({}, { mse: () => true });
+    delete f.host.Hls;
+    let done;
+    f.host.__ottLoadMediaEngine = (_engine, callback) => {
+        done = callback;
+    };
+    f.client.resolve(film, () => {});
+    last(f).reply(
+        metadata({ audioCodec: "opus", container: "mkv", videoCodec: "hevc" })
+    );
+    done(false);
+    assert(!parsed(f).searchParams.has("X-Plex-Client-Profile-Extra"));
+    f.client.dispose();
+    const ordinary = fixture();
+    delete ordinary.host.Hls;
+    ordinary.host.__ottLoadMediaEngine = () => {
+        throw new Error("Unexpected engine download");
+    };
+    ordinary.client.resolve(film, () => {});
+    last(ordinary).reply(metadata());
+    assert.equal(
+        parsed(ordinary).pathname,
+        "/video/:/transcode/universal/decision"
+    );
+    ordinary.client.dispose();
+});
+
 test("HLS heartbeat survives browsing, never overlaps, stops on replacement and cannot revive disposed playback", () => {
     const f = fixture();
     let played;
