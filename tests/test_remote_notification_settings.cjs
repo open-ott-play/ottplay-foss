@@ -274,3 +274,35 @@ for (const options of [
 console.log(
     "PASS actual storage notification policy: known absence, blocked reads, durable cookie fallback, corruption and recovery quarantine"
 );
+
+for (const broken of ["%", "deleted"]) {
+    const f = realStorage({
+        blocked: true,
+        initial: { sNotificationsEnabled: "0" },
+    });
+    f.w.stbSetItem("sNotificationsEnabled", "0");
+    assert.equal(f.api.stbGetNotificationSetting(), "0");
+    f.w.document.cookie =
+        broken === "deleted"
+            ? "sNotificationsEnabled=; Max-Age=0; path=/"
+            : "sNotificationsEnabled=%; path=/";
+    assert.throws(
+        () => f.api.stbGetNotificationSetting(),
+        /storage_unavailable/
+    );
+    assert.equal(
+        readNotificationsEnabled(f.w),
+        false,
+        "unreadable override never resets saved OFF"
+    );
+    let reply;
+    executeRemoteNotifications(
+        f.w,
+        "runtime-1",
+        params(),
+        (value) => (reply = value)
+    );
+    assert.equal(reply.data.error, "storage_unavailable");
+    f.dom.window.close();
+}
+console.log("PASS notification cookie override corruption fails closed");

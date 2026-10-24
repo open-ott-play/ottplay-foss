@@ -1007,10 +1007,12 @@ export function stbGetNotificationSetting(): string | null {
     var overrides = readStorageFallback(cookies);
     var key = "sNotificationsEnabled";
     if (overrides === null) throw new Error("storage_unavailable");
-    if (overrides.indexOf(key) >= 0)
-        return Object.prototype.hasOwnProperty.call(cookies, key)
-            ? cookies[key]
-            : null;
+    if (overrides.indexOf(key) >= 0) {
+        // A marked override without a readable value is not a new installation.
+        if (!Object.prototype.hasOwnProperty.call(cookies, key))
+            throw new Error("storage_unavailable");
+        return cookies[key];
+    }
     try {
         var backing = window.localStorage;
         if (backing) return backing.getItem(key);
