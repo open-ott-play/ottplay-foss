@@ -306,7 +306,7 @@ for (const viewport of [
         page,
         context,
         baseURL,
-    }) => {
+    }, testInfo) => {
         await page.setViewportSize(viewport);
         const origin = new URL(baseURL).origin;
         const polls = [];
@@ -422,6 +422,9 @@ for (const viewport of [
         );
         const image = page.locator(".remote-notify-image");
         await expect(image).toBeVisible({ timeout: 15000 });
+        await page.screenshot({
+            path: testInfo.outputPath("camera-notification.png"),
+        });
         expect(frames).toHaveLength(1);
         expect(polls[0].media).toBeUndefined();
         expect(await page.locator("#video").getAttribute("src")).toBe(primary);

@@ -180,6 +180,7 @@ test("durable notification OFF survives reload and ON receives only a new sessio
     await expect(page.locator(".remote-notify-message")).toHaveText(
         "Before disabling"
     );
+    const originalRuntime = (await h.rpc("capabilities")).data.player.runtime;
     expect((await h.policy("get")).data).toMatchObject({
         enabled: true,
         persisted: true,
@@ -203,6 +204,21 @@ test("durable notification OFF survives reload and ON receives only a new sessio
     expect((await h.policy("get")).data).toMatchObject({
         enabled: false,
         persisted: true,
+    });
+    expect(
+        await h.rpc("notifications", {
+            operation: "get",
+            runtime: originalRuntime,
+            version: 1,
+        })
+    ).toEqual({
+        data: {
+            error: "runtime_mismatch",
+            operation: "get",
+            runtime: originalRuntime,
+            version: 1,
+        },
+        status: "rejected",
     });
     await expect(page.locator(".remote-notify")).toHaveCount(0);
     const disabledRuntime = h.polls.at(-1).runtime;
@@ -229,17 +245,21 @@ test("profile import and local backup cannot overwrite the installation opt-out"
         const snapshot = JSON.parse(window.exportSettings());
         snapshot.settings.sNotificationsEnabled = "1";
         snapshot.settings.notificationsEnabled = 1;
-        window.__notificationImportResult = null;
-        window.importSettings(
-            JSON.stringify(snapshot),
-            (ok) => (window.__notificationImportResult = ok)
+        localStorage.removeItem("notificationFixtureImportResult");
+        window.importSettings(JSON.stringify(snapshot), (ok) =>
+            localStorage.setItem("notificationFixtureImportResult", String(ok))
         );
     });
     await expect(page.locator("#dialogbox")).toBeVisible();
+    const reloaded = page.waitForEvent("domcontentloaded");
     await page.keyboard.press("Enter");
-    await expect
-        .poll(() => page.evaluate(() => window.__notificationImportResult))
-        .toBe(true);
+    await reloaded;
+    await h.ready();
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem("notificationFixtureImportResult")
+        )
+    ).toBe("true");
     expect(
         await page.evaluate(() => localStorage.getItem("sNotificationsEnabled"))
     ).toBe("0");
