@@ -2105,6 +2105,59 @@ test("shared Shaka policy applies on Android with no RAM hint and preserves qual
     w.stbStop();
 });
 
+test("repeated Play on ready media does not create a feedback deadline; pause and resume does", () => {
+    const { w } = fixture();
+    const timers = new Map();
+    let serial = 0;
+    const label = { textContent: "" },
+        spinner = { style: {} };
+    w.document.getElementById = (id) => (id === "buffering" ? spinner : label);
+    w.setTimeout = (fn, ms) => {
+        timers.set(++serial, { fn, ms });
+        return serial;
+    };
+    w.clearTimeout = (id) => timers.delete(id);
+    vm.runInContext(
+        ts.transpileModule(
+            fs.readFileSync(
+                path.join(root, "src/core/playback-feedback.ts"),
+                "utf8"
+            ),
+            {
+                compilerOptions: { target: ts.ScriptTarget.ES5 },
+            }
+        ).outputText,
+        w
+    );
+    w.__ottPlaybackFeedback.bind(w.video);
+    w.playerMode = 0;
+    w.stbPlay("https://fixture.test/film.mp4");
+    w.video.readyState = 4;
+    w.video.paused = false;
+    for (const callback of w.video.listeners.playing) callback();
+    assert.equal(timers.size, 0);
+    w.stbResume();
+    w.stbResume();
+    assert.equal(
+        timers.size,
+        0,
+        "ready Play must not await a playing event that will not fire"
+    );
+    assert.equal(label.textContent, "");
+    w.stbPause();
+    w.stbResume();
+    assert.equal(timers.size, 1, "a real pause/resume arms startup feedback");
+    const deadline = [...timers.keys()];
+    w.stbResume();
+    assert.deepEqual(
+        [...timers.keys()],
+        deadline,
+        "pending wait is not extended by repeated Play"
+    );
+    w.stbStop();
+    assert.equal(timers.size, 0);
+});
+
 (async () => {
     let failures = 0;
     for (const [name, fn] of cases) {

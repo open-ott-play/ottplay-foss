@@ -327,7 +327,22 @@ function browser(folder, platform) {
         done();
     };
     const inline = inlineScriptSource(read("index.html"));
-    for (const name of ["loadJQ", "loadLibraries", "loadStandardLibraries"])
+    w.eval(
+        "var " +
+            one(
+                inline,
+                (node) =>
+                    ts.isVariableDeclaration(node) &&
+                    node.name.getText() === "mediaEngineLoads"
+            ) +
+            ";"
+    );
+    for (const name of [
+        "loadJQ",
+        "loadLibraries",
+        "loadStandardLibraries",
+        "loadMediaEngine",
+    ])
         w.eval(
             one(
                 inline,
@@ -348,13 +363,40 @@ function browser(folder, platform) {
         assert.equal(guide.resolve("", ["News Extra", "Films"]), "film");
         w.loadJQ();
     });
-    assert.deepEqual(loaded, [
-        "/js/ottplay-core.js",
-        "/js/jquery.min.js",
-        "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
-        "/js/shaka-player.compiled.js",
-    ]);
+    assert.deepEqual(
+        loaded,
+        ["/js/ottplay-core.js", "/js/jquery.min.js"],
+        "Native UI starts without downloading either playback engine"
+    );
     assert.equal(w.fixturePlayerSawEnvironment, true);
+    assert.equal(typeof w.Hls, "undefined");
+    assert.equal(typeof w.shaka, "undefined");
+    w.loadMediaEngine("hls", (ready) => assert.equal(ready, true));
+    assert.deepEqual(
+        loaded,
+        [
+            "/js/ottplay-core.js",
+            "/js/jquery.min.js",
+            "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
+        ],
+        "Demand loads only the selected local native engine"
+    );
+    assert.equal(
+        w.Hls.DefaultConfig.workerPath,
+        "/js/hls.worker.js?v=" + w.__ottMediaRuntimeVersion
+    );
+    assert.equal(typeof w.shaka, "undefined");
+    w.loadMediaEngine("shaka", (ready) => assert.equal(ready, true));
+    assert.deepEqual(
+        loaded,
+        [
+            "/js/ottplay-core.js",
+            "/js/jquery.min.js",
+            "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
+            "/js/shaka-player.compiled.js",
+        ],
+        "Both demanded libraries retain their reviewed local native paths"
+    );
     return dom;
 }
 function jqResult(xhr) {
@@ -406,7 +448,8 @@ async function smoke(folder, platform) {
             "JSDOM must not claim MSE codec support"
         );
         pass(
-            platform + " production boot loads current HLS/Shaka APIs locally"
+            platform +
+                " boot omits engines; explicit demand loads current local HLS/Shaka APIs"
         );
         const names = [
             "System",

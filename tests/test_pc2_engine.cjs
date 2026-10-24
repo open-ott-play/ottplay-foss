@@ -20,13 +20,21 @@ function emitter(target = {}) {
 }
 function fixture() {
     let open;
-    const engineMedia = { autoplay: true, style: {} };
+    const engineMedia = {
+        addEventListener(name, callback) {
+            (this.listeners[name] ||= []).push(callback);
+        },
+        autoplay: true,
+        listeners: {},
+        style: {},
+    };
     const ready = [],
         sources = [],
         players = [],
         events = [],
         preferences = [];
     const w = {
+        _: (value) => value,
         __ottCoreTransport: {
             configure(value) {
                 open = value.engine;
@@ -106,6 +114,7 @@ function fixture() {
     w.window = w;
     vm.runInNewContext(code, w);
     return {
+        engineMedia,
         events,
         open(url = "https://fixture.test/live", lane = "main", position) {
             return open(
@@ -126,12 +135,63 @@ function fixture() {
 }
 {
     const f = fixture(),
+        timers = new Map();
+    let serial = 0;
+    const label = { textContent: "" },
+        spinner = { style: {} };
+    f.w.document = {
+        getElementById: (id) => (id === "buffering" ? spinner : label),
+    };
+    f.w.setTimeout = (fn, ms) => {
+        timers.set(++serial, { fn, ms });
+        return serial;
+    };
+    f.w.clearTimeout = (id) => timers.delete(id);
+    const ts = require("typescript");
+    vm.runInNewContext(
+        ts.transpileModule(
+            fs.readFileSync(
+                path.join(__dirname, "../src/core/playback-feedback.ts"),
+                "utf8"
+            ),
+            {
+                compilerOptions: { target: ts.ScriptTarget.ES5 },
+            }
+        ).outputText,
+        f.w
+    );
+    const lease = f.openRequest(
+        { url: "https://fixture.test/film.mp4" },
+        () => {}
+    );
+    f.ready[0]();
+    f.players[0].readyLevel = 4;
+    for (const callback of f.engineMedia.listeners.playing) callback();
+    assert.equal(timers.size, 0);
+    lease.resume();
+    lease.resume();
+    assert.equal(
+        timers.size,
+        0,
+        "Video.js repeated Play does not create feedback timeout"
+    );
+    assert.equal(label.textContent, "");
+    lease.pause();
+    lease.resume();
+    assert.equal(timers.size, 1, "Video.js pause/resume starts feedback");
+    lease.dispose();
+    assert.equal(timers.size, 0);
+}
+
+{
+    const f = fixture(),
         feedback = [];
     f.w.__ottPlaybackFeedback = {
         begin: (paused) => feedback.push(paused ? "paused" : "begin"),
         bind: () => feedback.push("bind"),
         fail: () => feedback.push("fail"),
         stop: () => feedback.push("stop"),
+        visible: () => false,
     };
     const lease = f.open();
     assert.deepEqual(feedback, ["bind", "begin"]);

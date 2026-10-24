@@ -318,6 +318,7 @@ function fixture(
                     "cancelCoreAutoPlayback",
                     "getDefaultPlayerMode",
                     "isOttplayTestWebView",
+                    "coreHlsAvailable",
                     "normalizePlayerMode",
                     "setPlayerMode",
                     "setPlayer",

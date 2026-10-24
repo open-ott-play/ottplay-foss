@@ -3556,9 +3556,16 @@ function openCoreEngineLease(
         },
         resume: function () {
             if (!active() || !media) return;
+            var waitingForPlayback =
+                media.paused ||
+                media.readyState < 3 ||
+                (window as any).forcePlay === false;
             (window as any).forcePlay = true;
-            if (!pip && (window as any).__ottPlaybackFeedback)
-                (window as any).__ottPlaybackFeedback.begin();
+            var feedback = !pip && (window as any).__ottPlaybackFeedback;
+            // Repeated Play on ready media emits no new playing event. It must
+            // neither create a deadline nor extend an existing buffering wait.
+            if (feedback && waitingForPlayback && !feedback.visible())
+                feedback.begin();
             if (!pip && coreStreamAttempt && coreStreamAttempt.resume()) return;
             playCoreMedia(media);
         },

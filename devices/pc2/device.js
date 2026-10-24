@@ -257,11 +257,14 @@ var keys = {
             },
             resume: function () {
                 if (!alive) return;
+                var waitingForPlayback =
+                    !wantsPlay || player.paused() || player.readyState() < 3;
                 wantsPlay = true;
                 if (!pip) {
                     w.forcePlay = true;
-                    if (w.__ottPlaybackFeedback)
-                        w.__ottPlaybackFeedback.begin();
+                    var feedback = w.__ottPlaybackFeedback;
+                    if (feedback && waitingForPlayback && !feedback.visible())
+                        feedback.begin();
                 }
                 play();
             },

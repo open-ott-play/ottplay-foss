@@ -13,6 +13,7 @@ const source = ts.createSourceFile(
 );
 const selected = new Set([
     "getDefaultPlayerMode",
+    "coreHlsAvailable",
     "normalizePlayerMode",
     "coreAutoMode",
 ]);
