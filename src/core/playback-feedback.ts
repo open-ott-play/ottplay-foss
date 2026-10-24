@@ -14,11 +14,19 @@
         if (
             message &&
             typeof host.showChannelInfo === "function" &&
-            !(host.$ && host.$("#list").is(":visible"))
+            !(
+                host.$ &&
+                (host.$("#list").is(":visible") ||
+                    host.$("#info1").is(":visible"))
+            )
         )
             host.showChannelInfo(1);
         var spinner = document.getElementById("buffering");
-        var label = document.getElementById("video_res");
+        var status = document.getElementById("playback_status");
+        var label = status || document.getElementById("video_res");
+        if (status) status.style.display = message ? "block" : "none";
+        var details = document.getElementById("video_res");
+        if (status && message && details) details.textContent = "";
         if (spinner) spinner.style.display = busy ? "block" : "none";
         if (label) label.textContent = message;
     }

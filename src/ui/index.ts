@@ -744,6 +744,7 @@ export function hideInfoBarWhenReady(): void {
     if (typeof (window as any).stbIsPlaying === "function") {
         if (
             $("#buffering").is(":visible") ||
+            (window as any).__ottPlaybackFeedback?.visible() ||
             !(window as any).stbIsPlaying() ||
             $("#step").is(":visible")
         ) {

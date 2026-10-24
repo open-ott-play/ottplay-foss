@@ -1707,11 +1707,12 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
         () => window.__ottDevice && window.__ottPlaybackFeedback
     );
     await page.evaluate(() => {
+        window.$.fx.off = true;
         window.stbStop();
         window.setPlayerMode(0);
     });
     await page.clock.install();
-    const label = page.locator("#video_res");
+    const label = page.locator("#playback_status");
     const busy = page.locator("#buffering");
     const event = (name) =>
         page.evaluate((name) => {
@@ -1731,8 +1732,28 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
     await expect(label).toContainText("Buffering");
     await expect(label).toBeVisible();
     await expect(busy).toBeVisible();
-    await page.clock.fastForward(10000);
+    await page.evaluate(() => {
+        document.getElementById("programm_descr").textContent =
+            "Programme details";
+        window.showChannelInfo(2);
+    });
+    await expect(page.locator("#descr")).toBeVisible();
+    await event("waiting");
+    await expect(page.locator("#descr")).toBeVisible();
+    await page.evaluate(() => {
+        window.infoBarHide();
+        window.showChannelInfo(1);
+        // A stalled live element can remain unpaused; the ordinary hide poll
+        // must retain the terminal status even when playback reports playing.
+        window.__feedbackIsPlaying = window.stbIsPlaying;
+        window.stbIsPlaying = () => true;
+    });
+    await page.clock.fastForward(16000);
     await expect(label).toContainText("timed out");
+    await expect(label).toBeVisible();
+    await page.evaluate(() => {
+        window.stbIsPlaying = window.__feedbackIsPlaying;
+    });
     await expect(busy).toBeHidden();
     await event("waiting");
     await event("canplay");
