@@ -65,10 +65,10 @@
 
 ### Changes
 
-- Add player-authoritative safe random playback with an 80/20 preference for
+- Add player-authoritative random playback with an 80/20 preference for
   catalog numbers 1–1000, uniform explicit ranges, and fenced large media
-  catalogs. Exclude adult/protected and `[AceStream]` channels, recheck parental
-  and playback restrictions at admission, and preserve manual selections.
+  catalogs. Select eligible channels, exclude the `[AceStream]` marker, recheck
+  existing access and playback restrictions, and preserve manual selections.
 - Fall back from a valid empty Tauri DNS discovery result to an explicitly
   configured deployment profile. Keep nonempty native results authoritative
   and reject malformed results without fallback.

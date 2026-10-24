@@ -251,13 +251,11 @@ ott t1,t2 provider m3u random # select independently on both players
 ott t1 provider m3u "News"    # exact full name first; otherwise random matching title
 ```
 
-Random selection runs inside the player against its current catalog. It excludes
-channels classified as adult by the provider, protected categories, manually
-locked channels, and titles containing the literal `[AceStream]` marker
-(case-insensitive). Temporarily entering the parental PIN does not add those
-channels to the safe pool. An `#EXTGRP:взрослые` playlist group is protected when
-it is the channel's resolved category; the existing `group-title` precedence is
-unchanged.
+Random selection runs inside the player against its current catalog and uses
+only eligible channels. Titles containing the literal `[AceStream]` marker are
+excluded case-insensitively. Existing access restrictions remain in effect,
+including when a local access session is already active. The player retains
+its existing playlist metadata precedence and manual-selection behavior.
 
 Without a range, 80% of selections use eligible catalog numbers 1–1000 and 20%
 use the remaining eligible numbers, uniformly within each group. When one group
@@ -267,8 +265,8 @@ Plex and VPortal; filtering does not renumber them. A title filter prefers exact
 case-insensitive full-name matches, otherwise substring matches. An excluded
 exact match does not fall through to unrelated partial matches.
 
-An empty pool, stale catalog, changed provider, standby, kiosk or parental
-restriction rejects playback without selecting an unsafe alternative. A dispatch
+An empty pool, stale catalog, changed provider, standby, kiosk or access
+restriction rejects playback without selecting an ineligible alternative. A dispatch
 reply confirms admission, not successful decoding. Inspect `ott t1 caps` and
 refresh the catalog or resolve the local restriction before retrying.
 
