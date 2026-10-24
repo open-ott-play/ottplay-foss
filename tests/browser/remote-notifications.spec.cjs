@@ -342,10 +342,10 @@ for (const viewport of [
                                           kind: "image",
                                           width: 160,
                                       },
-                                      message: "Motion detected",
+                                      message: "Front door",
                                       runtime: url.searchParams.get("runtime"),
                                       severity: "info",
-                                      title: "Front door",
+                                      title: "Motion",
                                   },
                               ]
                             : [],
@@ -422,6 +422,10 @@ for (const viewport of [
         );
         const image = page.locator(".remote-notify-image");
         await expect(image).toBeVisible({ timeout: 15000 });
+        await expect(page.locator(".remote-notify-title")).toHaveText("Motion");
+        await expect(page.locator(".remote-notify-message")).toHaveText(
+            "Front door"
+        );
         await page.screenshot({
             path: testInfo.outputPath("camera-notification.png"),
         });

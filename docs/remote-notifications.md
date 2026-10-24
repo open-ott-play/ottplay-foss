@@ -102,7 +102,9 @@ retry instead of breaking the command lane.
 The initial media format is one JPEG snapshot, not a second video stream.
 Motion-cleared events are filtered by the controller; light, outlet and occupancy
 off events are unaffected. The player does not infer event types from translated
-message text.
+message text. Motion templates use the title `Motion` and the entity name alone
+as the message (for example, `Front door`). The controller owns this wording;
+the renderer does not strip suffixes from incoming text.
 
 An optional `media` descriptor contains an opaque 32-hex `id`, `kind:"image"`,
 `content_type:"image/jpeg"`, `width` (1–640), `height` (1–360), and `bytes`
