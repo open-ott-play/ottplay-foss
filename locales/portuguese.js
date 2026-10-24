@@ -118,6 +118,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Idade do marcador: %1 dias",
     "Browse folders": "Navegar por pastas",
     "Buffer Size, s": "Tamanho do buffer, s",
+    "Buffering...": "A carregar na memória intermédia...",
     "Built-in playlist:": "Lista integrada:",
     "Built-in playlists": "Listas integradas",
     "Button %1 function when viewing":
@@ -860,6 +861,7 @@ var keyStrings = {
     Retry: "Tentar novamente",
     "Retry EPG download": "Tentar novamente o download do EPG",
     "Retry same message": "Tentar novamente a mesma mensagem",
+    "Retrying...": "A tentar novamente...",
     "Return to previous channel": "Voltar ao canal anterior",
     Rewind: "Deslocar reprodução",
     "Rewind step by buttons %1/%2": "Intervalo de recuo dos botões %1/%2",
@@ -1019,6 +1021,8 @@ var keyStrings = {
     "Stop playback and return to live": "Parar reprodução e voltar ao direto",
     "Stop screenshots": "Parar capturas de tela",
     "Stream could not be played": "Não foi possível reproduzir o fluxo",
+    "Stream timed out. Select the channel to retry.":
+        "O tempo de espera da transmissão terminou. Selecione o canal para tentar novamente.",
     "Stream type: %1": "Tipo de fluxo: %1",
     "String for search": "Texto de pesquisa",
     "Su Mo Tu We Th Fr Sa": "Do Se Te Qu Qu Se Sá",

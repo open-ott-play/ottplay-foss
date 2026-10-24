@@ -69,3 +69,66 @@ const privateRuntime = require("./helpers/private-runtime.cjs");
 console.log(
     "PASS guide screen: recordings preserve owned schedules with one shallow copy"
 );
+
+{
+    const host = vm.createContext({});
+    host.window = host;
+    privateRuntime(host, "src/guide/screen.ts");
+    let reads = 0,
+        callback;
+    const rows = Array.from({ length: 10000 }, (_, index) => {
+        const row = { end: 200, start: 100, title: "Program " + index };
+        Object.defineProperty(row, "id", {
+            enumerable: true,
+            get() {
+                reads++;
+                return "p" + index;
+            },
+        });
+        return row;
+    });
+    const screen = host.__ottGuideScreen.create({
+        current: () => true,
+        now: () => 150,
+        request(_ref, notify) {
+            callback = notify;
+            notify(rows);
+            return () => {};
+        },
+        select: () => ({ current: rows[0] }),
+    });
+    screen.open({}, 1, 0, 150, () => {});
+    reads = 0;
+    for (let i = 0; i < 100; i++)
+        assert.equal(screen.select("p9999").title, "Program 9999");
+    assert(
+        reads <= 100,
+        "selection must inspect only the selected row, not scan 10k programmes"
+    );
+    const selected = screen.select("p9999");
+    selected.title = "outside mutation";
+    assert.equal(screen.select("p9999").title, "Program 9999");
+    callback([
+        { end: 200, id: "replacement", start: 100, title: "Replacement" },
+    ]);
+    assert.equal(
+        screen.select("p9999"),
+        null,
+        "schedule refresh removes stale IDs"
+    );
+    assert.equal(screen.select("replacement").title, "Replacement");
+    callback([
+        { end: 200, id: "same", start: 100, title: "First" },
+        { end: 201, id: "same", start: 101, title: "Second" },
+    ]);
+    assert.equal(
+        screen.select("same").title,
+        "First",
+        "first duplicate retains old selection semantics"
+    );
+    screen.close();
+    assert.equal(screen.select("same"), null);
+}
+console.log(
+    "PASS indexed guide selection: 10k rows, refresh, duplicate identity and detached data"
+);

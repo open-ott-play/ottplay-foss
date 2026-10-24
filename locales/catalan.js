@@ -122,6 +122,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Antiguitat del marcador: %1 dies",
     "Browse folders": "Explora les carpetes",
     "Buffer Size, s": "Mida de la memòria intermèdia, s",
+    "Buffering...": "S'està omplint la memòria intermèdia...",
     "Built-in playlist:": "Llista de reproducció integrada:",
     "Built-in playlists": "Llistes de reproducció integrades",
     "Button %1 function when viewing":
@@ -874,6 +875,7 @@ var keyStrings = {
     Retry: "Torna-ho a provar",
     "Retry EPG download": "Torna a baixar l’EPG",
     "Retry same message": "Torneu a provar el mateix missatge",
+    "Retrying...": "S'està tornant a provar...",
     "Return to previous channel": "Torna al canal anterior",
     Rewind: "Desplaça la reproducció",
     "Rewind step by buttons %1/%2": "Pas de desplaçament dels botons %1/%2",
@@ -1037,6 +1039,8 @@ var keyStrings = {
         "Atura la reproducció i torna al directe",
     "Stop screenshots": "Atura les captures de pantalla",
     "Stream could not be played": "No s’ha pogut reproduir la transmissió",
+    "Stream timed out. Select the channel to retry.":
+        "S'ha esgotat el temps d'espera de la transmissió. Seleccioneu el canal per tornar-ho a provar.",
     "Stream type: %1": "Tipus de transmissió: %1",
     "String for search": "Text de cerca",
     "Su Mo Tu We Th Fr Sa": "Dg Dl Dt Dc Dj Dv Ds",

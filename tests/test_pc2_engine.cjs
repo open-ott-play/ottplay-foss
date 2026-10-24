@@ -125,6 +125,39 @@ function fixture() {
     };
 }
 {
+    const f = fixture(),
+        feedback = [];
+    f.w.__ottPlaybackFeedback = {
+        begin: (paused) => feedback.push(paused ? "paused" : "begin"),
+        bind: () => feedback.push("bind"),
+        fail: () => feedback.push("fail"),
+        stop: () => feedback.push("stop"),
+    };
+    const lease = f.open();
+    assert.deepEqual(feedback, ["bind", "begin"]);
+    lease.pause();
+    assert.equal(
+        feedback.at(-1),
+        "stop",
+        "pause before Video.js ready clears startup deadline"
+    );
+    f.ready[0]();
+    assert.equal(f.players[0].plays, 0);
+    lease.resume();
+    assert.equal(feedback.at(-1), "begin");
+    f.players[0].emit("error");
+    assert.equal(feedback.at(-1), "fail");
+    lease.dispose();
+    assert.equal(feedback.at(-1), "stop");
+    const beforePip = feedback.length;
+    const pip = f.open("https://fixture.test/pip", "pip");
+    pip.pause();
+    pip.resume();
+    pip.dispose();
+    assert.equal(feedback.length, beforePip, "PiP must not own main feedback");
+}
+
+{
     const f = fixture();
     let owner = null;
     f.w.__ottCoreBackend = () => ({ current: () => owner });

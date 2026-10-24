@@ -44,6 +44,7 @@ assert.equal(
 
 function boot(options = {}) {
     const requests = [];
+    const pendingMedia = [];
     const styles = [];
     const storage = options.storage || {};
     const storageWrites = [];
@@ -161,6 +162,13 @@ function boot(options = {}) {
             assert.equal(context.__ottMediaRuntimeVersion, runtimeVersion);
             if (options.libraryFailures?.includes(name)) {
                 tag.onerror(new Error("Local library unavailable"));
+                return;
+            }
+            if (
+                options.stalledMedia &&
+                /^(hls.min.js|shaka-player.compiled.js)$/.test(name)
+            ) {
+                pendingMedia.push(tag);
                 return;
             }
             if (
@@ -369,11 +377,14 @@ function boot(options = {}) {
         elements,
         finishLanguage,
         messages,
+        pendingMedia,
         requests,
+        starts,
         stoppedTimers,
         storage,
         storageWrites,
         styles,
+        timers,
     };
 }
 
@@ -397,8 +408,6 @@ for (const version of ["1.1.52-beta.6", "1.1.52-beta.7", "1.1.52", "1.1.53"]) {
             "/js/runtime-polyfills.js",
             "/js/ottplay-core.js",
             "/js/jquery-1.11.1.min.js",
-            "/js/hls.min.js",
-            "/js/shaka-player.compiled.js",
             "/dist/player.js",
             "/devices/hisense/device.js",
         ],
@@ -440,6 +449,12 @@ for (const device of ["hisense", "pc"]) {
         result.requests.every(
             (url) => url.indexOf("http://legacy-player.test:8080/") === 0
         )
+    );
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        assert.equal(ready, true)
+    );
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        assert.equal(ready, true)
     );
     assert(result.requests.includes(mediaURL("hls.min.js")));
     assert(
@@ -501,9 +516,15 @@ for (const options of [
                 : "jquery-1.11.1.min.js"
         )
     );
-    assert.equal(result.requests[3], mediaURL("hls.min.js"));
-    assert.equal(result.requests[4], local("shaka-player.compiled.js"));
-    assert(result.requests[5].includes("/dist/player.js?"));
+    assert(result.requests[3].includes("/dist/player.js?"));
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        assert.equal(ready, true)
+    );
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        assert.equal(ready, true)
+    );
+    assert.equal(result.requests[5], mediaURL("hls.min.js"));
+    assert.equal(result.requests[6], local("shaka-player.compiled.js"));
     assert.equal(
         result.context.Hls.DefaultConfig.workerPath,
         mediaURL("hls.worker.js")
@@ -518,6 +539,9 @@ for (const options of [
 const preloadedHls = function Hls() {};
 preloadedHls.DefaultConfig = {};
 const preloaded = boot({ globals: { Hls: preloadedHls, jQuery: {} } });
+preloaded.context.__ottLoadMediaEngine("hls", (ready) =>
+    assert.equal(ready, true)
+);
 assert.equal(preloadedHls.DefaultConfig.workerPath, mediaURL("hls.worker.js"));
 assert(!preloaded.requests.includes(mediaURL("hls.min.js")));
 
@@ -528,7 +552,14 @@ for (const options of [
     { libraryFailures: ["hls.min.js", "shaka-player.compiled.js"] },
 ]) {
     const result = boot(options);
-    assert.match(result.elements["boot-log"].textContent, /→ HTML5/);
+    const engine =
+        options.libraryFailures?.includes("shaka-player.compiled.js") &&
+        !options.libraryFailures?.includes("hls.min.js")
+            ? "shaka"
+            : "hls";
+    result.context.__ottLoadMediaEngine(engine, (ready) =>
+        assert.equal(ready, false)
+    );
     assert(
         result.requests.some((url) =>
             url.includes("/devices/hisense/device.js?")
@@ -581,8 +612,8 @@ for (const userAgent of [
             "LG boot must request the webOS remote and playback adapter"
         );
         assert(
-            result.requests.includes(mediaURL("hls.min.js")),
-            "LG boot must retain the local TV library path even with modern APIs"
+            !result.requests.includes(mediaURL("hls.min.js")),
+            "LG UI starts without downloading an unused MSE engine"
         );
         assert(
             !result.requests.some(
@@ -640,6 +671,12 @@ for (const options of [
     { noObjectURL: true, realLibraries: true, webkitURL: true },
 ]) {
     const result = boot(options);
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        assert.equal(ready, true)
+    );
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        assert.equal(ready, !options.noObjectURL || !!options.webkitURL)
+    );
     assert.equal(typeof result.context.Hls, "function");
     assert.equal(result.context.Hls.version, "1.7.3");
     assert.equal(
@@ -1274,4 +1311,70 @@ for (const globals of profiles) {
 }
 console.log(
     "OK: all 88 boot locales, first-run language/script matching, preference precedence, native/runtime failures, cookie fallback and safe timeout settlement"
+);
+
+// An unavailable engine must not delay UI boot; demand is deduplicated and retryable.
+{
+    const result = boot({ stalledMedia: true });
+    assert.equal(result.starts, 1);
+    assert.equal(
+        result.pendingMedia.length,
+        0,
+        "UI requests neither MSE engine"
+    );
+    const completed = [];
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        completed.push(ready)
+    );
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        completed.push(ready)
+    );
+    assert.equal(
+        result.pendingMedia.length,
+        1,
+        "Concurrent playback shares the download"
+    );
+    assert.equal(
+        result.requests.filter((url) => url.includes("shaka-player")).length,
+        0
+    );
+    assert.deepEqual(
+        completed,
+        [],
+        "Playback waits until its engine is loaded"
+    );
+    const timeout = [...result.timers.values()].find(
+        (timer) => timer.delay === 15000
+    );
+    timeout.callback();
+    assert.deepEqual(
+        completed,
+        [false, false],
+        "Engine wait has a bounded fallback"
+    );
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        completed.push(ready)
+    );
+    assert.equal(
+        result.pendingMedia.length,
+        2,
+        "A later playback retries a failed download"
+    );
+    result.context.Hls = function Hls() {};
+    result.context.Hls.DefaultConfig = {};
+    result.pendingMedia[1].onload();
+    assert.deepEqual(completed, [false, false, true]);
+    result.pendingMedia[0].onload();
+    assert.deepEqual(
+        completed,
+        [false, false, true],
+        "Late completion is ignored"
+    );
+    assert.equal(
+        result.context.Hls.DefaultConfig.workerPath,
+        mediaURL("hls.worker.js")
+    );
+}
+console.log(
+    "OK: UI boot uses zero engine downloads; demand is shared, bounded and retryable"
 );

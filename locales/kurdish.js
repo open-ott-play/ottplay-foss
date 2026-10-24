@@ -120,6 +120,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Temenê nîşankirinê: %1 roj",
     "Browse folders": "Li peldankan bigerin",
     "Buffer Size, s": "Dirêjahiya tamponê, çirke",
+    "Buffering...": "Tê barkirin...",
     "Built-in playlist:": "Lîsteya lêdanê ya çêkirî:",
     "Built-in playlists": "Lîsteyên lêdanê yên çêkirî",
     "Button %1 function when viewing": "Fonksiyona bişkoka %1 dema temaşe dike",
@@ -850,6 +851,7 @@ var keyStrings = {
     Retry: "Dubare biceribîne",
     "Retry EPG download": "Daxistina EPG ji nû ve biceribîne",
     "Retry same message": "Heman peyamê dîsa biceribîne",
+    "Retrying...": "Dîsa tê ceribandin...",
     "Return to previous channel": "Vegere kanala berê",
     Rewind: "Paşve / pêşve biçe",
     "Rewind step by buttons %1/%2":
@@ -1009,6 +1011,8 @@ var keyStrings = {
         "Lêdanê bisekinîne û vegere weşana zindî",
     "Stop screenshots": "Girtina wêneyên ekranê rawestîne",
     "Stream could not be played": "Weşan nehat lêdan",
+    "Stream timed out. Select the channel to retry.":
+        "Dema li benda weşanê qediya. Ji bo dîsa ceribandinê kanalê hilbijêre.",
     "Stream type: %1": "Cureyê weşanê: %1",
     "String for search": "Gotina lêgerînê",
     "Su Mo Tu We Th Fr Sa": "Yekşem Duşem Sêşem Çarşem Pêncşem În Şemî",

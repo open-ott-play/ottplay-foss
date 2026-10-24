@@ -104,7 +104,8 @@ function fixture(script, options = {}) {
         static isSupported() {
             return options.hlsSupported !== false;
         }
-        constructor() {
+        constructor(config) {
+            this.config = config;
             this.handlers = new Map();
             this.destroyed = false;
             hlsInstances.push(this);
@@ -140,7 +141,7 @@ function fixture(script, options = {}) {
     }
     if (!options.noHls) w.Hls = Hls;
     w.watchAutoNativePlayback = (media, url, HlsRef, callbacks) => {
-        assert.equal(HlsRef, Hls);
+        assert(HlsRef === Hls || HlsRef === undefined);
         const watch = {
             callbacks,
             cancelled: false,
@@ -178,6 +179,9 @@ function fixture(script, options = {}) {
                 this.url = url;
                 return Promise.resolve();
             }
+            configure(config) {
+                this.config = config;
+            }
             addEventListener() {}
             destroy() {
                 this.destroyed = true;
@@ -213,6 +217,16 @@ function fixture(script, options = {}) {
         warn: (...args) => errors.push(args),
     };
     if (!options.noRuntime) w.eval(read("js/runtime-polyfills.js"));
+    w.eval(
+        require("typescript")
+            .transpileModule(read("src/core/buffer-policy.ts"), {
+                compilerOptions: {
+                    module: require("typescript").ModuleKind.ES2015,
+                    target: require("typescript").ScriptTarget.ES5,
+                },
+            })
+            .outputText.replace(/^export /gm, "")
+    );
     const run = () => w.eval(script);
     run();
     return {
@@ -694,49 +708,100 @@ async function run() {
         watch.finish("fallback");
         assert.equal(f.hlsInstances.length, 0);
     });
-    test("Auto native starts while its bundled watchdog decoder loads", {
+    test("native PiP applies shared bounded buffers and explicit seconds", {}, async (f) => {
+        ready(f, { ...hls(1), bufferSeconds: 7, engine: 1 });
+        await settle();
+        assert.equal(f.hlsInstances[0].config.maxBufferLength, 7);
+        assert.equal(f.hlsInstances[0].config.backBufferLength, 0);
+        assert.equal(f.hlsInstances[0].config.maxBufferSize, 60000000);
+    });
+    test("native PiP stops indefinite startup and buffering waits", {}, async (f) => {
+        ready(f, direct(1));
+        await settle();
+        f.fireTimers();
+        assert.equal(events(f, "error").length, 1);
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            "Stream could not be played"
+        );
+    });
+    test("native PiP buffering after playback has a fresh bounded deadline", {}, async (f) => {
+        ready(f, direct(1));
+        await settle();
+        video(f).dispatchEvent(new f.w.Event("playing"));
+        video(f).dispatchEvent(new f.w.Event("waiting"));
+        f.fireTimers();
+        assert.equal(events(f, "error").length, 1);
+    });
+    test("native PiP readiness handshake cannot display Loading forever", {}, async (f) => {
+        f.fireTimers();
+        assert.equal(
+            f.w.document.getElementById("ottplay-pip-status").textContent,
+            "Player could not start"
+        );
+    });
+    test("native PiP Shaka receives the shared policy", {
+        shaka: true,
+    }, async (f) => {
+        ready(
+            f,
+            request(1, "https://fixture.invalid/video.mpd", {
+                bufferSeconds: 9,
+                engine: 2,
+            })
+        );
+        await settle();
+        assert.equal(f.shakaInstances[0].config.streaming.bufferingGoal, 9);
+        assert.equal(f.shakaInstances[0].config.streaming.bufferBehind, 0);
+    });
+    test("healthy Auto native HLS downloads no decoder until an actual probe", {
         nativeHls: true,
         noHls: true,
     }, async (f) => {
         ready(f, { ...hls(1), engine: 3 });
         await settle();
         assert.equal(f.plays.length, 1);
-        assert.equal(f.autoWatches.length, 0);
-        f.w.__ottplayPip.play({ ...hls(2), engine: 3 });
-        await loadHls(f);
-        assert.equal(f.plays.length, 2);
         assert.equal(f.autoWatches.length, 1);
-        assert.equal(f.autoWatches[0].url, hls(2).url);
+        assert.equal(
+            f.w.document.querySelector('script[src*="hls.min.js"]'),
+            null
+        );
+        const done = [];
+        f.autoWatches[0].callbacks.loadHls((value) => done.push(value));
+        await loadHls(f);
+        assert.deepEqual(done, [f.Hls]);
         assert.equal(f.hlsInstances.length, 0);
     });
-    test("stopping Auto while its decoder loads cannot install a stale watchdog", {
+    test("stopping Auto before lazy decoder completion leaves playback stopped", {
         nativeHls: true,
         noHls: true,
     }, async (f) => {
         ready(f, { ...hls(1), engine: 3 });
         await settle();
+        const watch = f.autoWatches[0];
+        watch.callbacks.loadHls(() => {});
         f.w.__ottplayPip.stop();
         await loadHls(f);
-        assert.equal(f.autoWatches.length, 0);
+        assert.equal(watch.callbacks.active(), false);
         assert.equal(f.hlsInstances.length, 0);
         assert.equal(f.plays.length, 1);
     });
-    test("Auto retains working native playback if its bundled decoder is unavailable", {
+    test("Auto retains working native playback when a probe decoder is unavailable", {
         nativeHls: true,
         noHls: true,
     }, async (f) => {
         ready(f, { ...hls(1), engine: 3 });
         await settle();
+        const done = [];
+        f.autoWatches[0].callbacks.loadHls((value) => done.push(value));
         f.w.document
             .querySelector('script[src*="hls.min.js"]')
             .dispatchEvent(new f.w.Event("error"));
         await settle();
-        assert.equal(f.autoWatches.length, 0);
+        assert.deepEqual(done, [null]);
         assert.equal(f.plays.length, 1);
         assert.equal(video(f).src, hls(1).url);
         assert.equal(events(f, "error").length, 0);
-        video(f).dispatchEvent(new f.w.Event("error"));
-        assert.equal(events(f, "error").length, 1);
     });
     test("Auto native decoder failure switches once without failing early", {
         nativeHls: true,

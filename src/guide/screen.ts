@@ -29,6 +29,14 @@ function createGuideScreen(ports: GuideScreenPorts) {
                 : ports.current(state.reference))
         );
     }
+    function indexRows(rows: GuideProgramme[]): Record<string, GuideProgramme> {
+        var index: Record<string, GuideProgramme> = Object.create(null);
+        rows.forEach(function (row) {
+            if (!Object.prototype.hasOwnProperty.call(index, row.id))
+                index[row.id] = row;
+        });
+        return index;
+    }
     function selectedChild(): any {
         return state && state.children ? state.owners[state.selectedId] : null;
     }
@@ -119,6 +127,7 @@ function createGuideScreen(ports: GuideScreenPorts) {
                 var current = ports.select(all, playhead, 0).current;
                 state.schedule = schedule;
                 state.rows = visible;
+                state.byId = indexRows(visible);
                 if (
                     !visible.some(function (row) {
                         return row.id === state.selectedId;
@@ -193,6 +202,7 @@ function createGuideScreen(ports: GuideScreenPorts) {
                           : a.start - b.start ||
                             view.order[a.id] - view.order[b.id];
                 });
+                view.byId = indexRows(view.rows);
                 if (!view.owners[view.selectedId])
                     view.selectedId = view.rows.length ? view.rows[0].id : "";
                 notify(snapshot());
@@ -218,9 +228,7 @@ function createGuideScreen(ports: GuideScreenPorts) {
         },
         select: function (id: string) {
             if (!current()) return null;
-            var row = state.rows.filter(function (item: GuideProgramme) {
-                return item.id === id;
-            })[0];
+            var row = state.byId && state.byId[id];
             if (!row) return null;
             state.selectedId = id;
             var child = selectedChild();

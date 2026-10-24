@@ -11,6 +11,7 @@
     var lifecycle = 0;
     var libraries = {};
     var booted = false;
+    var bootTimer = null;
     var labels = {
         loading: "Loading…",
         playback: "Stream could not be played",
@@ -70,8 +71,20 @@
         } catch (_) {}
     }
 
+    function waiting(state, delay) {
+        if (!active(state)) return;
+        status(labels.loading);
+        if (state.waitTimer != null) return;
+        state.waitTimer = setTimeout(function () {
+            state.waitTimer = null;
+            if (active(state)) fail(state);
+        }, delay);
+    }
+
     function release(state) {
         if (!state) return Promise.resolve();
+        if (state.waitTimer != null) clearTimeout(state.waitTimer);
+        state.waitTimer = null;
         var teardown = Promise.resolve();
         var failed = false;
         try { if (state.autoCancel) state.autoCancel(); } catch (_) { failed = true; }
@@ -117,6 +130,8 @@
     }
 
     function stop(session) {
+        if (bootTimer != null) clearTimeout(bootTimer);
+        bootTimer = null;
         if (typeof session === "number") {
             if (session < lastSession) return;
             lastSession = Math.max(lastSession, session);
@@ -187,15 +202,25 @@
                         : ""),
                 window.location.href
             ).href;
+            var settled = false;
+            var timer = setTimeout(failed, 15000);
+            function failed() {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                // Defer deletion until the Promise assignment has completed.
+                Promise.resolve().then(function () { delete libraries[name]; });
+                script.remove();
+                reject(new Error("Bundled player unavailable"));
+            }
             script.onload = function () {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
                 if (name === "hls") configureHlsWorker();
                 resolve();
             };
-            script.onerror = function () {
-                delete libraries[name];
-                script.remove();
-                reject(new Error("Bundled player unavailable"));
-            };
+            script.onerror = failed;
             document.head.appendChild(script);
         });
         return libraries[name];
@@ -221,7 +246,7 @@
                 return;
             }
             try {
-                var player = new window.Hls();
+                var player = new window.Hls(state.buffer.hls);
                 state.hls = player;
                 player.on(window.Hls.Events.MANIFEST_PARSED, function () {
                     if (active(state) && state.hls === player) playVideo(state);
@@ -265,8 +290,7 @@
             configureHlsWorker();
             if (!active(state) || !state.autoNative) return;
             if (
-                !window.Hls ||
-                !window.Hls.isSupported() ||
+                (window.Hls && !window.Hls.isSupported()) ||
                 typeof watchAutoNativePlayback !== "function"
             ) {
                 nativeOnly();
@@ -285,7 +309,7 @@
                     state.video.removeAttribute("src");
                     state.video.load();
                 } catch (_) {}
-                status(labels.loading);
+                waiting(state, 30000);
                 if (fallback) hls(state, false);
                 else direct(state);
             }
@@ -298,14 +322,18 @@
                     fallback: function () {
                         switchEngine(true);
                     },
+                    loadHls: function (done) {
+                        library("hls", "./js/hls.min.js").then(function () {
+                            done(window.Hls || null);
+                        }, function () { done(null); });
+                    },
                     restore: function () {
                         switchEngine(false);
                     },
                 }
             );
         }
-        if (window.Hls) watch();
-        else library("hls", "./js/hls.min.js").then(watch, nativeOnly);
+        watch();
     }
 
     function dash(state) {
@@ -323,6 +351,8 @@
                 }
                 var player = new window.shaka.Player();
                 state.shaka = player;
+                if (typeof player.configure === "function")
+                    player.configure({ streaming: state.buffer.shaka });
                 player.addEventListener("error", function (event) {
                     if (
                         active(state) &&
@@ -394,16 +424,22 @@
             autoNative: false,
             autoCancel: null,
             playbackEpoch: 0,
+            waitTimer: null,
+            buffer: coreBufferPolicy(window, request.url, request.url, request.bufferSeconds, true, true),
         };
         current = state;
-        status(labels.loading);
+        waiting(state, 30000);
         video.onplaying = function () {
             if (!active(state)) return;
+            if (state.waitTimer != null) clearTimeout(state.waitTimer);
+            state.waitTimer = null;
             status("");
             if (state.started) return;
             state.started = true;
             report(state, "playing");
         };
+        video.addEventListener("waiting", function () { waiting(state, 45000); });
+        video.addEventListener("stalled", function () { waiting(state, 45000); });
         video.onerror = function () {
             var code = video.error && video.error.code;
             if (state.autoNative && (code === 3 || code === 4)) return;
@@ -429,7 +465,8 @@
         status(labels.loading);
         if (
             window.__ottRuntimePolyfillsReady !== true ||
-            !/^[a-f0-9]{16}$/.test(window.__ottMediaRuntimeVersion || "")
+            !/^[a-f0-9]{16}$/.test(window.__ottMediaRuntimeVersion || "") ||
+            typeof coreBufferPolicy !== "function"
         ) {
             status(labels.runtime);
             return;
@@ -448,15 +485,23 @@
         window.addEventListener("pagehide", stop);
         try {
             var readyLifecycle = lifecycle;
+            bootTimer = setTimeout(function () {
+                bootTimer = null;
+                if (lifecycle === readyLifecycle && !current) status(labels.startup);
+            }, 30000);
             invoke("pip_player_event", {
                 event: "ready",
                 instance: instance,
                 session: 0,
             }).then(
                 function (request) {
+                    if (bootTimer != null) clearTimeout(bootTimer);
+                    bootTimer = null;
                     if (lifecycle === readyLifecycle) play(request);
                 },
                 function () {
+                    if (bootTimer != null) clearTimeout(bootTimer);
+                    bootTimer = null;
                     if (lifecycle === readyLifecycle) status(labels.startup);
                 }
             );

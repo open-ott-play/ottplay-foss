@@ -1669,3 +1669,108 @@ test("kiosk locks UI selection, retries a stopped channel and restores the lock"
     expect((await rpc("play", { query: "2" })).status).toBe("ok");
     expect(errors).toEqual([]);
 });
+
+test("shipped playback feedback bounds waits and suppresses late events after pause and standby", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", (route) =>
+        new URL(route.request().url()).origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient")
+    );
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+        // Keep real DOM/event handlers and the shipped engine lease, without a
+        // decoder race or external stream deciding when this test is playing.
+        Object.defineProperty(HTMLMediaElement.prototype, "src", {
+            configurable: true,
+            get() {
+                return this.__feedbackSource || "";
+            },
+            set(value) {
+                this.__feedbackSource = String(value);
+            },
+        });
+        HTMLMediaElement.prototype.play = function () {
+            return Promise.resolve();
+        };
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && window.__ottPlaybackFeedback
+    );
+    await page.evaluate(() => {
+        window.stbStop();
+        window.setPlayerMode(0);
+    });
+    await page.clock.install();
+    const label = page.locator("#video_res");
+    const busy = page.locator("#buffering");
+    const event = (name) =>
+        page.evaluate((name) => {
+            document.querySelector("#video").dispatchEvent(new Event(name));
+        }, name);
+    const start = () =>
+        page.evaluate(() => window.stbPlay("/feedback-fixture.mp4"));
+    await start();
+    await expect(label).toContainText("Connecting");
+    // The ordinary resolution/bitrate ticker must not erase active feedback.
+    await page.clock.fastForward(20000);
+    await expect(label).toContainText("Connecting");
+    await event("waiting");
+    await expect(label).toContainText("Buffering");
+    await page.clock.fastForward(10000);
+    await expect(label).toContainText("timed out");
+    await expect(busy).toBeHidden();
+    await event("waiting");
+    await event("canplay");
+    await page.clock.fastForward(1000);
+    await expect(label).toContainText("timed out");
+    await expect(busy).toBeHidden();
+    await event("playing");
+    await expect(label).not.toContainText("timed out");
+
+    await page.evaluate(() => {
+        window.__ottCoreTransport.configure({
+            prepareSource(_url, ready) {
+                window.__feedbackReady = ready;
+                return () => {};
+            },
+        });
+    });
+    await start();
+    expect(await page.locator("#video").evaluate((video) => video.paused)).toBe(
+        true
+    );
+    await page.evaluate(() => window.stbPause());
+    await page.clock.fastForward(31000);
+    await expect(label).not.toContainText("timed out");
+    await expect(busy).toBeHidden();
+    await page.evaluate(() => window.__feedbackReady("/feedback-fixture.mp4"));
+    await event("loadstart");
+    await page.clock.fastForward(31000);
+    await expect(label).not.toContainText("timed out");
+    await expect(busy).toBeHidden();
+    expect(await page.evaluate(() => window.forcePlay)).toBe(false);
+    await page.evaluate(() =>
+        window.__ottCoreTransport.configure({ prepareSource: null })
+    );
+
+    await start();
+    await page.evaluate(() => window.stbSetStandby(true));
+    await event("waiting");
+    await event("loadstart");
+    await event("error");
+    await page.clock.fastForward(46000);
+    await expect(label).toHaveText("");
+    await expect(busy).toBeHidden();
+    expect(await page.evaluate(() => window.__ottStandby.blocked())).toBe(true);
+    expect(errors).toEqual([]);
+});

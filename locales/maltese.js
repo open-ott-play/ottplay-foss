@@ -121,6 +121,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Età tal-bookmark: %1 jiem",
     "Browse folders": "Fittex fil-fowlders",
     "Buffer Size, s": "Daqs tal-buffer, s",
+    "Buffering...": "Qed jimtela l-bafer...",
     "Built-in playlist:": "Lista tad-daqq integrata:",
     "Built-in playlists": "Listi tad-daqq integrati",
     "Button %1 function when viewing": "Funzjoni tal-buttuna %1 waqt il-wiri",
@@ -864,6 +865,7 @@ var keyStrings = {
     Retry: "Erġa’ pprova",
     "Retry EPG download": "Erġa’ pprova tniżżel EPG",
     "Retry same message": "Erġa’ ibgħat l-istess messaġġ",
+    "Retrying...": "Qed jerġa' jipprova...",
     "Return to previous channel": "Erġa’ lura għall-kanal preċedenti",
     Rewind: "Mexxi l-pożizzjoni tad-daqq",
     "Rewind step by buttons %1/%2":
@@ -1020,6 +1022,8 @@ var keyStrings = {
         "Waqqaf id-daqq u erġa’ lura għax-xandira diretta",
     "Stop screenshots": "Waqqaf ritratti tal-iskrin",
     "Stream could not be played": "L-istrim ma setax jindaqq",
+    "Stream timed out. Select the channel to retry.":
+        "Skada l-ħin ta' stennija tal-istrim. Agħżel il-kanal biex terġa' tipprova.",
     "Stream type: %1": "Tip ta’ strim: %1",
     "String for search": "Kliem tat-tfittxija",
     "Su Mo Tu We Th Fr Sa": "Ħad Tne Tli Erb Ħam Ġim Sib",

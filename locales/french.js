@@ -123,6 +123,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Ancienneté du signet : %1 jours",
     "Browse folders": "Parcourir les dossiers",
     "Buffer Size, s": "Taille du tampon, s",
+    "Buffering...": "Mise en mémoire tampon...",
     "Built-in playlist:": "Liste intégrée :",
     "Built-in playlists": "Listes intégrées",
     "Button %1 function when viewing":
@@ -874,6 +875,7 @@ var keyStrings = {
     Retry: "Réessayer",
     "Retry EPG download": "Réessayez le téléchargement de EPG",
     "Retry same message": "Réessayez avec le même message",
+    "Retrying...": "Nouvelle tentative...",
     "Return to previous channel": "Revenir à la chaîne précédente",
     Rewind: "Déplacer la lecture",
     "Rewind step by buttons %1/%2": "Pas de recul des boutons %1/%2",
@@ -1036,6 +1038,8 @@ var keyStrings = {
         "Arrêter la lecture et revenir au direct",
     "Stop screenshots": "Arrêter les captures d'écran",
     "Stream could not be played": "Impossible de lire le flux",
+    "Stream timed out. Select the channel to retry.":
+        "Le délai d'attente du flux est dépassé. Sélectionnez la chaîne pour réessayer.",
     "Stream type: %1": "Type de flux : %1",
     "String for search": "Texte à rechercher",
     "Su Mo Tu We Th Fr Sa": "Di Lu Ma Me Je Ve Sa",

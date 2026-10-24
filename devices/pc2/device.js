@@ -181,6 +181,7 @@ var keys = {
             if (!alive) return;
             w.$(pip ? "#pip_buffering" : "#buffering").hide();
             if (!pip) {
+                if (w.__ottPlaybackFeedback) w.__ottPlaybackFeedback.fail();
                 var error = player.error();
                 w.$("#video_res").text(
                     "Video.js error " + (error ? error.code : 0)
@@ -191,6 +192,10 @@ var keys = {
         on(player.textTracks(), "addtrack", restoreTracks);
         if (!pip) {
             w.forcePlay = wantsPlay;
+            if (w.__ottPlaybackFeedback) {
+                w.__ottPlaybackFeedback.bind(media);
+                w.__ottPlaybackFeedback.begin(!wantsPlay);
+            }
             if (w.__ottDebug && w.__ottDebug.enabled)
                 w.__ottDebug.beginSession(request.url);
         }
@@ -237,19 +242,27 @@ var keys = {
                 if (pip) w.$("#videopip, #pip_buffering").hide();
                 else {
                     w.forcePlay = false;
+                    if (w.__ottPlaybackFeedback) w.__ottPlaybackFeedback.stop();
                     w.$("#buffering").hide();
                 }
             },
             pause: function () {
                 if (!alive) return;
                 wantsPlay = false;
-                if (!pip) w.forcePlay = false;
+                if (!pip) {
+                    w.forcePlay = false;
+                    if (w.__ottPlaybackFeedback) w.__ottPlaybackFeedback.stop();
+                }
                 player.pause();
             },
             resume: function () {
                 if (!alive) return;
                 wantsPlay = true;
-                if (!pip) w.forcePlay = true;
+                if (!pip) {
+                    w.forcePlay = true;
+                    if (w.__ottPlaybackFeedback)
+                        w.__ottPlaybackFeedback.begin();
+                }
                 play();
             },
             sample: function () {

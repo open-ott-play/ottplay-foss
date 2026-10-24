@@ -120,6 +120,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Xatchoʻp yoshi: %1 kun",
     "Browse folders": "Jildlar boʻyicha koʻrish",
     "Buffer Size, s": "Bufer hajmi, s",
+    "Buffering...": "Buferlanmoqda...",
     "Built-in playlist:": "Ichki pleylist:",
     "Built-in playlists": "Ichki pleylistlar",
     "Button %1 function when viewing":
@@ -856,6 +857,7 @@ var keyStrings = {
     Retry: "Qayta urinish",
     "Retry EPG download": "EPG yuklab olishga qayta urinib ko'ring",
     "Retry same message": "Xuddi shu xabarni qaytadan urinib ko'ring",
+    "Retrying...": "Qayta urinilmoqda...",
     "Return to previous channel": "Oldingi kanalga qaytish",
     Rewind: "Vaqt boʻyicha oʻtkazish",
     "Rewind step by buttons %1/%2":
@@ -1014,6 +1016,8 @@ var keyStrings = {
         "Ijroni toʻxtatish va jonli efirga qaytish",
     "Stop screenshots": "Skrinshotlarni to'xtating",
     "Stream could not be played": "Oqimni ijro etib bo‘lmadi",
+    "Stream timed out. Select the channel to retry.":
+        "Oqimni kutish vaqti tugadi. Qayta urinish uchun kanalni tanlang.",
     "Stream type: %1": "Oqim turi: %1",
     "String for search": "Qidiruv soʻrovi",
     "Su Mo Tu We Th Fr Sa": "Ya Du Se Ch Pa Ju Sh",

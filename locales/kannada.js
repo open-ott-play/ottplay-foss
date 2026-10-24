@@ -113,6 +113,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "ಬುಕ್‌ಮಾರ್ಕ್ ವಯಸ್ಸು: %1 ದಿನಗಳು",
     "Browse folders": "ಫೋಲ್ಡರ್‌ಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ",
     "Buffer Size, s": "ಬಫರ್ ಗಾತ್ರ, ರು",
+    "Buffering...": "ಬಫರ್‌ಗೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
     "Built-in playlist:": "ಅಂತರ್ನಿರ್ಮಿತ ಪ್ಲೇಪಟ್ಟಿ:",
     "Built-in playlists": "ಅಂತರ್ನಿರ್ಮಿತ ಪ್ಲೇಪಟ್ಟಿಗಳು",
     "Button %1 function when viewing":
@@ -828,6 +829,7 @@ var keyStrings = {
     Retry: "ಮರುಪ್ರಯತ್ನಿಸಿ",
     "Retry EPG download": "EPG ಡೌನ್‌ಲೋಡ್ ಮರುಪ್ರಯತ್ನಿಸಿ",
     "Retry same message": "ಅದೇ ಸಂದೇಶವನ್ನು ಮರುಪ್ರಯತ್ನಿಸಿ",
+    "Retrying...": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುತ್ತಿದೆ...",
     "Return to previous channel": "ಹಿಂದಿನ ಚಾನಲ್‌ಗೆ ಹಿಂತಿರುಗಿ",
     Rewind: "ಮುಂದಕ್ಕೆ/ಹಿಂದಕ್ಕೆ ಸರಿಸಿ",
     "Rewind step by buttons %1/%2": "%1/%2 ಬಟನ್‌ಗಳಿಂದ ಮುಂದಕ್ಕೆ/ಹಿಂದಕ್ಕೆ ಸರಿಸುವ ಅಂತರ",
@@ -979,6 +981,8 @@ var keyStrings = {
     "Stop playback and return to live": "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಲೈವ್‌ಗೆ ಹಿಂತಿರುಗಿ",
     "Stop screenshots": "ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stream could not be played": "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
+    "Stream timed out. Select the channel to retry.":
+        "ಸ್ಟ್ರೀಮ್‌ನ ಕಾಯುವ ಸಮಯ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಚಾನಲ್ ಆಯ್ಕೆಮಾಡಿ.",
     "Stream type: %1": "ಸ್ಟ್ರೀಮ್ ಪ್ರಕಾರ: %1",
     "String for search": "ಹುಡುಕಾಟ ಪ್ರಶ್ನೆ",
     "Su Mo Tu We Th Fr Sa": "ಭಾನು ಸೋಮ ಮಂಗಳ ಬುಧ ಗುರು ಶುಕ್ರ ಶನಿ",

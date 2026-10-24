@@ -31,6 +31,9 @@ async function main() {
             "Browser runtime changed"
         );
         const page = await browser.newPage();
+        // This isolated about:blank codec probe has no player bootstrap loader.
+        // Explicitly load the candidate asset here; real player pages use the
+        // lazy __ottLoadMediaEngine path inside readBrowserMediaCapabilities.
         await page.addScriptTag({
             path: path.resolve("browser-candidate-web/js/hls.min.js"),
         });

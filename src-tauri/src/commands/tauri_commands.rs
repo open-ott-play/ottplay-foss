@@ -885,6 +885,8 @@ pub struct PipRequest {
     url: String,
     engine: Option<i32>,
     r#loop: bool,
+    #[serde(rename = "bufferSeconds")]
+    buffer_seconds: f64,
     labels: PipLabels,
 }
 
@@ -986,6 +988,7 @@ mod pip_lifecycle_tests {
             url: "https://fixture.invalid/channel.m3u8".into(),
             engine: Some(1),
             r#loop: false,
+            buffer_seconds: 0.0,
             labels: PipLabels::default(),
         }
     }
@@ -1140,6 +1143,7 @@ pub async fn play_pip(
     request_id: Option<u64>,
     r#loop: Option<bool>,
     labels: Option<PipLabels>,
+    buffer_seconds: Option<f64>,
 ) -> Result<PipResult, String> {
     use tauri::Manager;
     let work = app.state::<ottplay_core::background_work::BackgroundWork>().enter().map_err(str::to_string)?;
@@ -1181,6 +1185,7 @@ pub async fn play_pip(
             url,
             engine,
             r#loop: r#loop.unwrap_or(false),
+            buffer_seconds: buffer_seconds.filter(|v| v.is_finite() && *v >= 0.0 && *v <= 120.0).unwrap_or(0.0),
             labels: labels.unwrap_or_default().bounded(),
         };
         let (sender, receiver) = tokio::sync::oneshot::channel();

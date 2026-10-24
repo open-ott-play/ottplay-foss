@@ -5742,6 +5742,11 @@ if (typeof window.__TAURI__ !== "undefined") {
                     } catch (_) {}
                     var demo = (window as any).ottplayDemoActive === true;
                     return {
+                        bufferSeconds:
+                            Number(
+                                (window as any).bufSize ||
+                                    (window as any).sBufSize
+                            ) || 0,
                         engine:
                             demo && /\.mp4(?:[?#]|$)/i.test(absoluteUrl)
                                 ? 0

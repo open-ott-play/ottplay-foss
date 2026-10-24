@@ -947,7 +947,13 @@ for (const action of ["switch", "reload"])
 
 const core = ts
     .transpileModule(
-        ["src/core/native-hls.ts", "src/core/index.ts"].map(read).join("\n"),
+        [
+            "src/core/buffer-policy.ts",
+            "src/core/native-hls.ts",
+            "src/core/index.ts",
+        ]
+            .map(read)
+            .join("\n"),
         {
             compilerOptions: {
                 module: ts.ModuleKind.ES2015,

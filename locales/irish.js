@@ -120,6 +120,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Aois an leabharmhairc: %1 lá",
     "Browse folders": "Brabhsáil fillteáin",
     "Buffer Size, s": "Méid an mhaoláin, soic",
+    "Buffering...": "Á mhaolánú...",
     "Built-in playlist:": "Seinmliosta ionsuite:",
     "Built-in playlists": "Seinmliostaí ionsuite",
     "Button %1 function when viewing":
@@ -858,6 +859,7 @@ var keyStrings = {
     Retry: "Bain triail eile as",
     "Retry EPG download": "Bain triail as íoslódáil EPG arís",
     "Retry same message": "Bain triail eile as an teachtaireacht chéanna",
+    "Retrying...": "Ag iarraidh arís...",
     "Return to previous channel": "Fill ar an gcainéal roimhe seo",
     Rewind: "Bog sa fhíseán",
     "Rewind step by buttons %1/%2": "Céim léime do na cnaipí %1/%2",
@@ -1018,6 +1020,8 @@ var keyStrings = {
         "Stad an athsheinm agus fill ar an gcraoladh beo",
     "Stop screenshots": "Stop gabhálacha scáileáin",
     "Stream could not be played": "Níorbh fhéidir an sruth a sheinm",
+    "Stream timed out. Select the channel to retry.":
+        "Tá teorainn ama an tsrutha caite. Roghnaigh an cainéal chun triail eile a bhaint as.",
     "Stream type: %1": "Cineál srutha: %1",
     "String for search": "Téarma cuardaigh",
     "Su Mo Tu We Th Fr Sa": "Do Lu Má Cé Dé Ao Sa",

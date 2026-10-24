@@ -117,6 +117,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "புக்மார்க் வயது: %1 நாட்கள்",
     "Browse folders": "கோப்புறைகளை உலாவுக",
     "Buffer Size, s": "தாங்கல் அளவு, எஸ்",
+    "Buffering...": "இடையகத்தில் ஏற்றுகிறது...",
     "Built-in playlist:": "உள்ளமைக்கப்பட்ட பிளேலிஸ்ட்:",
     "Built-in playlists": "உள்ளமைக்கப்பட்ட பிளேலிஸ்ட்கள்",
     "Button %1 function when viewing": "பார்க்கும்போது %1 பொத்தானின் செயல்பாடு",
@@ -841,6 +842,7 @@ var keyStrings = {
     Retry: "மீண்டும் முயற்சிக்கவும்",
     "Retry EPG download": "EPG பதிவிறக்கத்தை மீண்டும் முயற்சிக்கவும்",
     "Retry same message": "அதே செய்தியை மீண்டும் முயற்சிக்கவும்",
+    "Retrying...": "மீண்டும் முயற்சிக்கிறது...",
     "Return to previous channel": "முந்தைய சேனலுக்கு திரும்பவும்",
     Rewind: "முன்னால்/பின்னால் நகர்த்து",
     "Rewind step by buttons %1/%2":
@@ -995,6 +997,8 @@ var keyStrings = {
         "பிளேபேக்கை நிறுத்திவிட்டு நேரலைக்குத் திரும்பவும்",
     "Stop screenshots": "ஸ்கிரீன்ஷாட்களை நிறுத்து",
     "Stream could not be played": "ஸ்ட்ரீமை இயக்க முடியவில்லை",
+    "Stream timed out. Select the channel to retry.":
+        "ஒளிபரப்புக்கான காத்திருப்பு நேரம் முடிந்தது. மீண்டும் முயற்சிக்க சேனலைத் தேர்ந்தெடுக்கவும்.",
     "Stream type: %1": "ஸ்ட்ரீம் வகை: %1",
     "String for search": "தேடல் வினவல்",
     "Su Mo Tu We Th Fr Sa": "ஞாயி திங் செவ் புதன் வியா வெள் சனி",

@@ -123,6 +123,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Antigüidade do marcador: %1 días",
     "Browse folders": "Explorar cartafoles",
     "Buffer Size, s": "Tamaño do búfer, s",
+    "Buffering...": "Enchendo o búfer...",
     "Built-in playlist:": "Lista de reprodución integrada:",
     "Built-in playlists": "Listas de reprodución integradas",
     "Button %1 function when viewing":
@@ -869,6 +870,7 @@ var keyStrings = {
     Retry: "Tentar de novo",
     "Retry EPG download": "Volver descargar a EPG",
     "Retry same message": "Tenta de novo a mesma mensaxe",
+    "Retrying...": "Tentando de novo...",
     "Return to previous channel": "Volver á canle anterior",
     Rewind: "Desprazar a reprodución",
     "Rewind step by buttons %1/%2": "Paso de desprazamento dos botóns %1/%2",
@@ -1028,6 +1030,8 @@ var keyStrings = {
         "Deter a reprodución e volver ao directo",
     "Stop screenshots": "Deter capturas de pantalla",
     "Stream could not be played": "Non se puido reproducir a transmisión",
+    "Stream timed out. Select the channel to retry.":
+        "Esgotouse o tempo de espera da emisión. Selecciona a canle para tentalo de novo.",
     "Stream type: %1": "Tipo de transmisión: %1",
     "String for search": "Texto de busca",
     "Su Mo Tu We Th Fr Sa": "Dom Lun Mar Mér Xov Ven Sáb",

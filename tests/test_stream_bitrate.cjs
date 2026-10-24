@@ -7,6 +7,7 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const source = [
     "src/core/auto-playback.ts",
+    "src/core/buffer-policy.ts",
     "src/core/native-hls.ts",
     "src/core/index.ts",
 ]

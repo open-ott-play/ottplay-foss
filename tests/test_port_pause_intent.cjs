@@ -6,7 +6,11 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const core = ts
     .transpileModule(
-        ["src/core/native-hls.ts", "src/core/index.ts"]
+        [
+            "src/core/buffer-policy.ts",
+            "src/core/native-hls.ts",
+            "src/core/index.ts",
+        ]
             .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
             .join("\n"),
         {

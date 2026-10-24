@@ -350,7 +350,9 @@ const { gzipSync } = require("node:zlib");
 // 1031496/318153 -> 1035867/319454, native 1031454/318212 -> 1035825/319513
 // raw/gzip (+4371/+1301). Allocate +4500/+1400, retaining a small release
 // identity reserve; existing global interfaces and provider budgets stay fixed.
-const BUDGET = Object.freeze({ bytes: 1036000, gzipBytes: 319650 });
+// On-demand engine readiness, bounded playback feedback and device/source buffer
+// policy add less than 6 KB raw / 1.8 KB gzip; engine payloads stay off boot.
+const BUDGET = Object.freeze({ bytes: 1042000, gzipBytes: 321450 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -521,7 +523,7 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // once here; all provider assets remain included and their own caps stay fixed.
 // Count the same notification entry growth once; provider limits are unchanged.
 // Count the same +4500/+1400 safe-random entry allocation once; providers unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1170800, gzipBytes: 369050 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1176800, gzipBytes: 370850 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

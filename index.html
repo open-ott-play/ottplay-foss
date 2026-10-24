@@ -1025,43 +1025,52 @@
                 loadStandardLibraries();
             }
 
+            // Media engines are requested by playback, never by interface boot.
+            var mediaEngineLoads = {};
+            function loadMediaEngine(engine, callback) {
+                function available() {
+                    if (engine === "hls") {
+                        if (typeof Hls !== "function") return false;
+                        if (Hls.DefaultConfig)
+                            Hls.DefaultConfig.workerPath = host + "/js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion;
+                        return true;
+                    }
+                    return typeof shaka !== "undefined" && typeof shaka.Player === "function";
+                }
+                if (available()) { callback(true); return; }
+                if (engine !== "hls" && engine !== "shaka") { callback(false); return; }
+                if (engine === "shaka") {
+                    if (!window.URL && window.webkitURL) window.URL = window.webkitURL;
+                    if (!window.URL || typeof window.URL.createObjectURL !== "function") {
+                        callback(false);
+                        return;
+                    }
+                }
+                if (mediaEngineLoads[engine]) {
+                    mediaEngineLoads[engine].push(callback);
+                    return;
+                }
+                var callbacks = mediaEngineLoads[engine] = [callback];
+                var settled = false;
+                var timer;
+                function finish() {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    delete mediaEngineLoads[engine];
+                    var ready = available();
+                    // A failed request is not cached: another playback can retry.
+                    for (var i = 0; i < callbacks.length; i++) callbacks[i](ready);
+                }
+                timer = setTimeout(finish, 15000);
+                loadJS(host + (engine === "hls"
+                    ? "/js/hls.min.js?v=" + window.__ottMediaRuntimeVersion
+                    : "/js/shaka-player.compiled.js"), finish, _head, finish);
+            }
+            window.__ottLoadMediaEngine = loadMediaEngine;
+
             function loadStandardLibraries() {
-                var need = 0;
-                function checkDone() {
-                    if (++need === 2) loadSTB();
-                }
-                function hlsReady() {
-                    if (typeof Hls === "function" && Hls.DefaultConfig)
-                        Hls.DefaultConfig.workerPath = host + "/js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion;
-                    else bootLog("HLS → HTML5");
-                    checkDone();
-                }
-                if (typeof Hls === "undefined") {
-                    // Every platform uses the same pinned local build and worker.
-                    loadJS(host + "/js/hls.min.js?v=" + window.__ottMediaRuntimeVersion, hlsReady, _head, hlsReady);
-                } else hlsReady();
-                // Older WebKit exposes blob URLs under webkitURL. Shaka reads
-                // createObjectURL while loading, before it can report support.
-                if (!window.URL && window.webkitURL) window.URL = window.webkitURL;
-                if (!window.URL || typeof window.URL.createObjectURL !== "function") {
-                    bootLog("Blob URL → HTML5");
-                    checkDone();
-                } else if (
-                    typeof shaka === "undefined" ||
-                    typeof shaka.Player === "undefined"
-                ) {
-                    // Local 3.3.19 has the project's ES5 compatibility fixes.
-                    // A CDN copy would bypass those fixes even at the same version.
-                    loadJS(
-                        host + "/js/shaka-player.compiled.js",
-                        checkDone,
-                        _head,
-                        function () {
-                            bootLog("Shaka → HTML5");
-                            checkDone();
-                        }
-                    );
-                } else checkDone();
+                loadSTB();
             }
 
             function loadJQ() {

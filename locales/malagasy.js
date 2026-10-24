@@ -124,6 +124,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Faharetan'ny maripejy: %1 andro",
     "Browse folders": "Jereo ny lahatahiry",
     "Buffer Size, s": "Haben'ny fitadidiana vonjimaika, s",
+    "Buffering...": "Mampiditra angona vonjimaika...",
     "Built-in playlist:": "Lisitra fandefasana efa tafiditra:",
     "Built-in playlists": "Lisitra fandefasana efa tafiditra",
     "Button %1 function when viewing":
@@ -882,6 +883,7 @@ var keyStrings = {
     Retry: "Andramo indray",
     "Retry EPG download": "Andramo indray ny fisintonana EPG",
     "Retry same message": "Alefaso indray ilay hafatra",
+    "Retrying...": "Manandrana indray...",
     "Return to previous channel": "Miverena amin'ny fantsona teo aloha",
     Rewind: "Mifindra amin'ny fotoana ao amin'ny horonan-tsary",
     "Rewind step by buttons %1/%2": "Dingana famerenana ho an'ny bokotra %1/%2",
@@ -1047,6 +1049,8 @@ var keyStrings = {
         "Atsaharo ny fandefasana ary miverena amin'ny mivantana",
     "Stop screenshots": "Atsaharo ny pikantsary",
     "Stream could not be played": "Tsy afaka nandefa ny fikorianana",
+    "Stream timed out. Select the channel to retry.":
+        "Tapitra ny fotoana niandrasana ny fandefasana. Safidio ny fantsona hanandrana indray.",
     "Stream type: %1": "Karazana fikorianana: %1",
     "String for search": "Teny fikarohana",
     "Su Mo Tu We Th Fr Sa": "Alah Alats Tal Alar Alak Zom Asab",

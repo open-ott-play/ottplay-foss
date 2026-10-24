@@ -358,7 +358,7 @@ for (const legacy of [false, true]) {
     );
 }
 
-test("pc2 missing vendor falls back to ordinary libraries", async ({
+test("pc2 missing vendor loads only the required HLS fallback and plays", async ({
     page,
     context,
     baseURL,
@@ -367,8 +367,21 @@ test("pc2 missing vendor falls back to ordinary libraries", async ({
         missing: true,
     });
     expect(requests).toContain("/js/hls.min.js");
-    expect(requests).toContain("/js/shaka-player.compiled.js");
+    expect(requests).not.toContain("/js/shaka-player.compiled.js");
+    expect(requests.filter((path) => path === "/js/hls.min.js")).toHaveLength(
+        1
+    );
     expect(await page.evaluate(() => typeof window.videojs)).toBe("undefined");
+    expect(
+        await page.evaluate(() =>
+            window.__ottCoreBackend().current().diagnosticEngine()
+        )
+    ).toBe("hls.js");
+    expect(
+        await page.evaluate(
+            () => !window.video.paused && window.video.videoWidth > 0
+        )
+    ).toBe(true);
     expect(await page.evaluate(() => window.__pc2Workers.length)).toBe(1);
     expect(errors).toEqual([]);
 });

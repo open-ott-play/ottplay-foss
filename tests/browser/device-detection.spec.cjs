@@ -3,6 +3,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
+const {
+    readBrowserMediaCapabilities,
+} = require("../../scripts/browser-media-capabilities.cjs");
 const fixtures = require("../fixtures/device-detection.json");
 const runtimeVersion = require("../../js/media-runtime.json").runtimeVersion;
 
@@ -174,6 +177,8 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 );
                 expect(mediaVersions).toEqual([runtimeVersion]);
             } else {
+                expect(loadedScripts).not.toContain("/js/hls.min.js");
+                await page.evaluate(readBrowserMediaCapabilities);
                 expect(loadedScripts).toContain("/js/hls.min.js");
                 expect(
                     await page.evaluate(() => ({

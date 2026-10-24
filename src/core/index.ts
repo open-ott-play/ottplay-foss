@@ -30,6 +30,7 @@ import {
 } from "../storage/index";
 import { listPreviewRect } from "../utils/helpers";
 import { watchAutoNativePlayback } from "./auto-playback";
+import { coreBufferPolicy } from "./buffer-policy";
 import { createNativeHlsTransport, isNativeHlsUrl } from "./native-hls";
 
 /** Reference to the primary <video> DOM element. */
@@ -109,10 +110,31 @@ export function normalizePlayerMode(mode: number): number {
             );
         },
         function () {
-            return typeof Hls !== "undefined" && Hls.isSupported();
+            return coreHlsAvailable();
         }
     );
 }
+/** Availability before download must not rewrite a saved MSE preference. */
+function coreHlsAvailable(): boolean {
+    return typeof Hls !== "undefined"
+        ? !!Hls.isSupported()
+        : typeof (window as any).__ottLoadMediaEngine === "function";
+}
+
+function loadCoreMediaEngine(
+    engine: string,
+    ready: (ok: boolean) => void
+): void {
+    var load = (window as any).__ottLoadMediaEngine;
+    if (typeof load === "function") load(engine, ready);
+    else
+        ready(
+            engine === "hls"
+                ? typeof Hls !== "undefined" && !!Hls.isSupported()
+                : typeof shaka !== "undefined" && !!shaka.Player
+        );
+}
+
 /** Available preload buffer sizes (indexes into a numeric range). */
 export var bufferSizes = [
     "0",
@@ -210,7 +232,7 @@ function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
         },
         isOttplayTestWebView,
         function () {
-            return typeof Hls !== "undefined" && Hls.isSupported();
+            return coreHlsAvailable();
         }
     );
 }
@@ -521,6 +543,8 @@ export function updateCoreVideoInfo(): void {
             if (!mbps) mbps = _coreNativeHls.mbps();
         }
     }
+    // Playback status owns this label until frames resume or playback stops.
+    if ((window as any).__ottPlaybackFeedback?.visible()) return;
     // An unknown bitrate is omitted, never replaced by a network estimate.
     $("#video_res").html(
         res +
@@ -1070,6 +1094,8 @@ function createCoreStreamAttempt(
                 attempts++;
                 countCoreAttempt(session, "streamRetries");
                 report("retrying");
+                if ((window as any).__ottPlaybackFeedback)
+                    (window as any).__ottPlaybackFeedback.retry();
                 restart(endpoints[endpoint], resumePosition);
             },
             Math.min(2000, 500 * Math.max(1, attempts + 1))
@@ -1118,6 +1144,8 @@ function createCoreStreamAttempt(
                 pending = false;
                 ended = true;
                 report(denied ? "access-denied" : "failed");
+                if ((window as any).__ottPlaybackFeedback)
+                    (window as any).__ottPlaybackFeedback.fail();
                 $("#buffering").hide();
                 showShift(
                     denied
@@ -1191,6 +1219,8 @@ function startCoreEngine(
     // Set intent before source preparation, HLS manifests or Shaka attachment.
     (window as any).forcePlay = !paused;
     if (video && paused) video.autoplay = false;
+    if ((window as any).__ottPlaybackFeedback)
+        (window as any).__ottPlaybackFeedback.begin(paused);
     var session = _playSession;
     var plexHint = corePlexPlaybackHint(url);
     if (hlsInstance) {
@@ -1356,8 +1386,57 @@ function startCorePlayback(
     session: number,
     originalUrl: string = url,
     nativeFile = false,
-    forceMse = false
+    forceMse = false,
+    engineLoaded = false
 ): void {
+    if (
+        !engineLoaded &&
+        !nativeFile &&
+        !(
+            (window as any).ottplayDemoActive === true &&
+            /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url)
+        )
+    ) {
+        var requestedPreference = playerMode;
+        var requestedMode = forceMse
+            ? 1
+            : playerMode === 3
+              ? _coreAutoHlsUsed
+                  ? 1
+                  : coreAutoMode(url, video)
+              : playerMode;
+        var engine =
+            requestedMode === 1 ? "hls" : requestedMode === 2 ? "shaka" : "";
+        if (
+            engine &&
+            typeof (window as any).__ottLoadMediaEngine === "function"
+        ) {
+            var attempt = _coreNativeAttempt;
+            loadCoreMediaEngine(engine, function (ok) {
+                if (session !== _playSession || attempt !== _coreNativeAttempt)
+                    return;
+                if (
+                    !ok &&
+                    (engine === "shaka" ||
+                        !video ||
+                        !video.canPlayType("application/vnd.apple.mpegurl"))
+                ) {
+                    coreStreamFailure("network", undefined, position);
+                    return;
+                }
+                startCorePlayback(
+                    url,
+                    position,
+                    session,
+                    originalUrl,
+                    nativeFile,
+                    forceMse,
+                    requestedPreference === playerMode
+                );
+            });
+            return;
+        }
+    }
     countCoreAttempt(session, "engineStarts");
     cancelCoreNativeHls();
     _coreHlsBitrate = null;
@@ -1403,6 +1482,23 @@ function startCorePlayback(
     var limits = streamPolicy
         ? streamPolicy.begin(_pm, _corePlaybackMode !== 0)
         : { maxBitrate: 0, maxHeight: 0 };
+    var owner = streamPolicy && streamPolicy.capture();
+    var bufferPreference = bufSize;
+    try {
+        if (!bufferPreference && typeof window.stbGetItem === "function")
+            bufferPreference = window.stbGetItem("sBufSize");
+    } catch (_) {
+        /* Storage is optional for playback. */
+    }
+    var bufferPolicy = coreBufferPolicy(
+        window,
+        url,
+        originalUrl,
+        bufferPreference,
+        owner ? owner.live : !(position && position > 0)
+    );
+    // Diagnostics contain only policy values, never a media URL or credentials.
+    (window as any).__ottBufferPolicy = bufferPolicy;
     if (useHls) {
         // #167 retry caps are archive-only: live FHD fragments are large and a
         // single timeout was aborting the stream (then video error 3 DECODE).
@@ -1410,13 +1506,13 @@ function startCorePlayback(
             (position && position > 0) ||
             (typeof window.playType === "number" && window.playType > 0);
         var hlsConfig: any = {
-            backBufferLength: 90,
+            backBufferLength: bufferPolicy.hls.backBufferLength,
             capLevelToPlayerSize: false,
             enableWorker: true,
             lowLatencyMode: false,
-            maxBufferLength: 30,
-            maxBufferSize: 120000000,
-            maxMaxBufferLength: 600,
+            maxBufferLength: bufferPolicy.hls.maxBufferLength,
+            maxBufferSize: bufferPolicy.hls.maxBufferSize,
+            maxMaxBufferLength: bufferPolicy.hls.maxMaxBufferLength,
             overrideNative: false,
             startLevel: -1,
         };
@@ -1589,12 +1685,18 @@ function startCorePlayback(
                                 undefined,
                                 failedPosition >= 0 ? failedPosition : undefined
                             );
-                            $("#buffering").hide();
-                            $("#video_res").html(
-                                "<br/>error DECODE" +
-                                    (appendFail ? " (HD Orig)" : "") +
-                                    " — try HD remux / AAC"
-                            );
+                            if (
+                                !(
+                                    window as any
+                                ).__ottPlaybackFeedback?.visible()
+                            ) {
+                                $("#buffering").hide();
+                                $("#video_res").html(
+                                    "<br/>error DECODE" +
+                                        (appendFail ? " (HD Orig)" : "") +
+                                        " — try HD remux / AAC"
+                                );
+                            }
                         }
                     }
                 } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -1679,15 +1781,13 @@ function startCorePlayback(
             ? new shaka.Player()
             : new shaka.Player(video);
         window.player = playbackShaka;
-        if (
-            typeof playbackShaka.configure === "function" &&
-            (limits.maxHeight || limits.maxBitrate)
-        )
+        if (typeof playbackShaka.configure === "function")
             playbackShaka.configure({
                 restrictions: {
                     maxBandwidth: limits.maxBitrate || Infinity,
                     maxHeight: limits.maxHeight || Infinity,
                 },
+                streaming: bufferPolicy.shaka,
             });
         var loaded = function (): void {
             if (
@@ -1798,13 +1898,12 @@ function startCorePlayback(
                 auto &&
                 !_coreAutoHlsUsed &&
                 (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
-                typeof Hls !== "undefined" &&
-                Hls.isSupported()
+                coreHlsAvailable()
             ) {
                 _coreAutoCancel = watchAutoNativePlayback(
                     media,
                     sourceUrl,
-                    Hls,
+                    typeof Hls !== "undefined" ? Hls : null,
                     {
                         active: function () {
                             return active() && playerMode === 3;
@@ -1826,6 +1925,15 @@ function startCorePlayback(
                                 session,
                                 originalUrl
                             );
+                        },
+                        loadHls: function (ready) {
+                            loadCoreMediaEngine("hls", function (ok) {
+                                ready(
+                                    ok && typeof Hls !== "undefined"
+                                        ? Hls
+                                        : null
+                                );
+                            });
                         },
                         monitorDroppedFrames: !!(
                             (window as any).__TAURI__ ||
@@ -1872,6 +1980,8 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 function stopCoreEngine(): void {
+    if ((window as any).__ottPlaybackFeedback)
+        (window as any).__ottPlaybackFeedback.stop();
     coreNativeAttached = false;
     if (video) video.loop = false;
     _coreTransientPlayback = false;
@@ -2320,7 +2430,26 @@ export function stbSubtitleExists(): number {
  *
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
-function startCorePipEngine(url: string): void {
+function startCorePipEngine(url: string, engineLoaded = false): void {
+    var requestedMode =
+        playerMode === 3 ? coreAutoMode(url, videoPip) : playerMode;
+    var local = !!(
+        (window as any).__ottLocalMedia &&
+        (window as any).__ottLocalMedia.isPlaybackUrl(url)
+    );
+    if (
+        !engineLoaded &&
+        !local &&
+        requestedMode === 1 &&
+        typeof (window as any).__ottLoadMediaEngine === "function"
+    ) {
+        var pendingSession = ++_corePipSession;
+        loadCoreMediaEngine("hls", function () {
+            if (pendingSession === _corePipSession)
+                startCorePipEngine(url, true);
+        });
+        return;
+    }
     corePipNativeAttached = false;
     videoPip!.loop = (window as any).ottplayDemoActive === true;
     var demoMp4 =
@@ -2341,7 +2470,9 @@ function startCorePipEngine(url: string): void {
     var canHls = typeof Hls !== "undefined" && Hls.isSupported();
     var mode = auto ? coreAutoMode(url, videoPip) : playerMode;
     var startHls = function (): void {
-        var pipHls = new Hls();
+        var pipHls = new Hls(
+            coreBufferPolicy(window, url, url, bufSize, true, true).hls
+        );
         hlsPipInstance = pipHls;
         pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
             if (session === _corePipSession && hlsPipInstance === pipHls)
@@ -2358,32 +2489,61 @@ function startCorePipEngine(url: string): void {
         if (
             auto &&
             (/\.m3u8(?:[?#]|$)/i.test(url) || isNativeHlsUrl(url)) &&
-            canHls
+            coreHlsAvailable()
         ) {
             var media = videoPip!;
-            _corePipAutoCancel = watchAutoNativePlayback(media, url, Hls, {
-                active: function () {
-                    return (
-                        session === _corePipSession &&
-                        videoPip === media &&
-                        playerMode === 3
-                    );
-                },
-                fallback: function () {
-                    _corePipAutoCancel = null;
-                    media.pause();
-                    corePipNativeAttached = false;
-                    media.removeAttribute("src");
-                    startHls();
-                },
-                restore: function () {
-                    _corePipAutoCancel = null;
-                    media.src = url;
-                    if (session === _corePipSession)
-                        corePipNativeAttached = true;
-                    playCoreMedia(media);
-                },
-            });
+            _corePipAutoCancel = watchAutoNativePlayback(
+                media,
+                url,
+                typeof Hls !== "undefined" ? Hls : null,
+                {
+                    active: function () {
+                        return (
+                            session === _corePipSession &&
+                            videoPip === media &&
+                            playerMode === 3
+                        );
+                    },
+                    fallback: function () {
+                        _corePipAutoCancel = null;
+                        media.pause();
+                        corePipNativeAttached = false;
+                        media.removeAttribute("src");
+                        loadCoreMediaEngine("hls", function (ok) {
+                            if (
+                                session !== _corePipSession ||
+                                videoPip !== media
+                            )
+                                return;
+                            if (
+                                ok &&
+                                typeof Hls !== "undefined" &&
+                                Hls.isSupported()
+                            )
+                                startHls();
+                            else {
+                                media.src = url;
+                                corePipNativeAttached = true;
+                                playCoreMedia(media);
+                            }
+                        });
+                    },
+                    loadHls: function (ready) {
+                        loadCoreMediaEngine("hls", function (ok) {
+                            ready(
+                                ok && typeof Hls !== "undefined" ? Hls : null
+                            );
+                        });
+                    },
+                    restore: function () {
+                        _corePipAutoCancel = null;
+                        media.src = url;
+                        if (session === _corePipSession)
+                            corePipNativeAttached = true;
+                        playCoreMedia(media);
+                    },
+                }
+            );
         }
         playCoreMedia(videoPip!);
     }
@@ -2682,8 +2842,10 @@ export function stbInit(): void {
                 console.log("Event: loadedmetadata");
             });
             video!.addEventListener("canplay", function () {
-                $("#buffering").hide();
-                $("#video_res").text("");
+                if (!host.__ottPlaybackFeedback?.visible()) {
+                    $("#buffering").hide();
+                    $("#video_res").text("");
+                }
                 updateCoreVideoInfo();
                 if (typeof applyChannelPreference === "function") {
                     applyChannelPreference("aAspects", setAspect);
@@ -2720,6 +2882,11 @@ export function stbInit(): void {
                         " player=" +
                         _p
                 );
+                if (
+                    host.__ottPlaybackFeedback?.inactive() ||
+                    host.__ottPlaybackFeedback?.visible()
+                )
+                    return;
                 $("#buffering").hide();
                 $("#video_res").html(
                     "<br/>error " +
@@ -2759,6 +2926,8 @@ export function stbInit(): void {
             ].forEach(function (e) {
                 video!.addEventListener(e, videoEvent);
             });
+            if (host.__ottPlaybackFeedback)
+                host.__ottPlaybackFeedback.bind(video);
             (video as any).__ottCoreEventsBound = true;
         }
         var previousTimer = host.__ottCoreVideoInfoTimer;
@@ -3381,11 +3550,15 @@ function openCoreEngineLease(
             if (!active() || !media) return;
             (window as any).forcePlay = false;
             if (!pip && coreStreamAttempt) coreStreamAttempt.pause();
+            if (!pip && (window as any).__ottPlaybackFeedback)
+                (window as any).__ottPlaybackFeedback.stop();
             media.pause();
         },
         resume: function () {
             if (!active() || !media) return;
             (window as any).forcePlay = true;
+            if (!pip && (window as any).__ottPlaybackFeedback)
+                (window as any).__ottPlaybackFeedback.begin();
             if (!pip && coreStreamAttempt && coreStreamAttempt.resume()) return;
             playCoreMedia(media);
         },

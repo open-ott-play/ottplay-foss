@@ -123,6 +123,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Edad ng bookmark: %1 araw",
     "Browse folders": "Mag-browse ng mga folder",
     "Buffer Size, s": "Laki ng buffer, s",
+    "Buffering...": "Nagba-buffer...",
     "Built-in playlist:": "Built-in na playlist:",
     "Built-in playlists": "Mga built-in na playlist",
     "Button %1 function when viewing": "Function ng %1 button habang nanonood",
@@ -867,6 +868,7 @@ var keyStrings = {
     Retry: "Subukan muli",
     "Retry EPG download": "Subukan muli EPG download",
     "Retry same message": "Subukang muli ang parehong mensahe",
+    "Retrying...": "Sinusubukang muli...",
     "Return to previous channel": "Bumalik sa nakaraang channel",
     Rewind: "Lumipat sa oras ng video",
     "Rewind step by buttons %1/%2":
@@ -1030,6 +1032,8 @@ var keyStrings = {
         "Ihinto ang playback at bumalik sa direktang pagsasahimpapawid",
     "Stop screenshots": "Ihinto ang mga screenshot",
     "Stream could not be played": "Hindi ma-play ang stream",
+    "Stream timed out. Select the channel to retry.":
+        "Naubos ang oras ng paghihintay sa stream. Piliin ang channel upang subukang muli.",
     "Stream type: %1": "Uri ng stream: %1",
     "String for search": "Query sa paghahanap",
     "Su Mo Tu We Th Fr Sa": "Lin Lun Mar Miy Huw Biy Sab",

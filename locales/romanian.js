@@ -121,6 +121,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Vechimea marcajului: %1 zile",
     "Browse folders": "Răsfoiește folderele",
     "Buffer Size, s": "Dimensiune buffer, s",
+    "Buffering...": "Se încarcă în memoria tampon...",
     "Built-in playlist:": "Listă de redare încorporată:",
     "Built-in playlists": "Liste de redare încorporate",
     "Button %1 function when viewing":
@@ -867,6 +868,7 @@ var keyStrings = {
     Retry: "Reîncearcă",
     "Retry EPG download": "Reîncercați descărcarea EPG",
     "Retry same message": "Reîncercați același mesaj",
+    "Retrying...": "Se încearcă din nou...",
     "Return to previous channel": "Revino la canalul anterior",
     Rewind: "Derulare",
     "Rewind step by buttons %1/%2": "Pasul derulării cu butoanele %1/%2",
@@ -1025,6 +1027,8 @@ var keyStrings = {
         "Oprește redarea și revino la transmisia în direct",
     "Stop screenshots": "Opriți capturile de ecran",
     "Stream could not be played": "Fluxul nu a putut fi redat",
+    "Stream timed out. Select the channel to retry.":
+        "A expirat timpul de așteptare al fluxului. Selectați canalul pentru a încerca din nou.",
     "Stream type: %1": "Tip de flux: %1",
     "String for search": "Text de căutat",
     "Su Mo Tu We Th Fr Sa": "Du Lu Ma Mi Jo Vi Sâ",

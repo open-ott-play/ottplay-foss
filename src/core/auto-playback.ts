@@ -9,6 +9,7 @@ export function watchAutoNativePlayback(
     url: string,
     HlsRef: any,
     options: {
+        loadHls?: (ready: (hls: any) => void) => void;
         active: () => boolean;
         fallback: () => void;
         monitorDroppedFrames?: boolean;
@@ -18,6 +19,7 @@ export function watchAutoNativePlayback(
     var disposed = false;
     var decided = false;
     var probing = false;
+    var loadingHls = false;
     var probe: any = null;
     var checkTimer: ReturnType<typeof setTimeout> | null = null;
     var probeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -141,6 +143,16 @@ export function watchAutoNativePlayback(
 
     function startProbe(): void {
         if (!current() || decided || probing || !audioWithoutVideo()) return;
+        if (!HlsRef && options.loadHls && !loadingHls) {
+            loadingHls = true;
+            options.loadHls(function (loaded) {
+                if (!current()) return;
+                HlsRef = loaded;
+                // Only one attempt per watcher; a new playback may retry download.
+                if (HlsRef) startProbe();
+            });
+            return;
+        }
         if (!HlsRef || !HlsRef.isSupported || !HlsRef.isSupported()) return;
         probing = true;
         // Local HLS proxies may replace their playback session on every master

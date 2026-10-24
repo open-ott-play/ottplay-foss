@@ -65,6 +65,13 @@
 
 ### Changes
 
+- Start the interface before downloading playback engines; load HLS or DASH
+  support only when the selected source needs it. Bound loading and playback
+  feedback, preserve pause/standby during recovery, and apply device/source
+  buffer profiles with existing manual preferences preserved.
+- Index programme selection in the guide to avoid full-list scans on each
+  navigation action.
+
 - Add player-authoritative random playback with an 80/20 preference for
   catalog numbers 1–1000, uniform explicit ranges, and fenced large media
   catalogs. Select eligible channels, exclude the `[AceStream]` marker, recheck

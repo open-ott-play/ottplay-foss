@@ -115,6 +115,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Bookmark age: %1 days",
     "Browse folders": "Browse folders",
     "Buffer Size, s": "Buffer size, s",
+    "Buffering...": "Buffering...",
     "Built-in playlist:": "Built-in playlist:",
     "Built-in playlists": "Built-in playlists",
     "Button %1 function when viewing":
@@ -836,6 +837,7 @@ var keyStrings = {
     Retry: "Retry",
     "Retry EPG download": "Retry EPG download",
     "Retry same message": "Retry same message",
+    "Retrying...": "Retrying...",
     "Return to previous channel": "Return to the previous channel",
     Rewind: "Seek",
     "Rewind step by buttons %1/%2": "Rewind step for buttons %1/%2",
@@ -988,6 +990,8 @@ var keyStrings = {
     "Stop playback and return to live": "Stop playback and return to live",
     "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Stream could not be played",
+    "Stream timed out. Select the channel to retry.":
+        "Stream timed out. Select the channel to retry.",
     "Stream type: %1": "Stream type: %1",
     "String for search": "Search query",
     "Su Mo Tu We Th Fr Sa": "Su Mo Tu We Th Fr Sa",

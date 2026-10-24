@@ -7,6 +7,7 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "..");
 const source = [
     "src/core/auto-playback.ts",
+    "src/core/buffer-policy.ts",
     "src/core/native-hls.ts",
     "src/playback/stream-policy.ts",
     "src/core/index.ts",
@@ -1632,6 +1633,106 @@ test("changing engine mode immediately cancels a pending CSS PiP probe", () => {
     assert.equal(f.players.length, 1);
     assert.equal(f.w.videoPip.playCalls, plays);
     assert.equal(f.timers.size, 0);
+});
+
+test("lazy engine loading preserves saved preference and attaches only after readiness", () => {
+    const f = fixture({ hlsMissing: true, savedPlayerMode: 1 });
+    const loadedHls = fixture().w.Hls;
+    const requests = [];
+    f.w.__ottLoadMediaEngine = (engine, ready) =>
+        requests.push({ engine, ready });
+    f.w.setPlayerMode(1);
+    assert.equal(f.w.playerMode, 1);
+    f.w.stbPlay("lazy.m3u8");
+    assert.deepEqual(
+        requests.map((request) => request.engine),
+        ["hls"]
+    );
+    assert.equal(f.w.video.src, "");
+    assert.equal(f.w.hlsInstance, null);
+    f.w.Hls = loadedHls;
+    requests[0].ready(true);
+    assert(
+        f.w.hlsInstance,
+        "MSE is attached only after the constructor is ready"
+    );
+});
+
+test("lazy completion cannot revive a stopped or replaced playback", () => {
+    for (const action of ["stop", "replace"]) {
+        const f = fixture({ hlsMissing: true, savedPlayerMode: 1 });
+        const requests = [];
+        f.w.__ottLoadMediaEngine = (engine, ready) =>
+            requests.push({ engine, ready });
+        f.w.setPlayerMode(1);
+        f.w.stbPlay("stale.m3u8");
+        if (action === "stop") f.w.stbStop();
+        else f.w.stbPlay("current.m3u8");
+        requests[0].ready(false);
+        assert.equal(f.w.video.src, "");
+        if (action === "replace") {
+            requests[1].ready(false);
+            assert.equal(
+                f.w.video.src,
+                "current.m3u8",
+                "Failed engine falls back on current source"
+            );
+        }
+    }
+});
+
+test("native files never request an engine and native HLS loads only for an actual probe", () => {
+    const f = fixture({ hlsMissing: true });
+    const requests = [];
+    f.w.__ottLoadMediaEngine = (engine, ready) =>
+        requests.push({ engine, ready });
+    f.w.stbPlay("local.mp4");
+    assert.equal(requests.length, 0);
+    assert.equal(f.w.video.src, "local.mp4");
+    f.w.stbPlay("native.m3u8");
+    ready(f.w.video, true);
+    f.advance(1500);
+    assert.equal(
+        requests.length,
+        0,
+        "Working native video does not download a probe engine"
+    );
+    ready(f.w.video, false);
+    f.advance(1500);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].engine, "hls");
+    f.w.stbStop();
+    f.w.Hls = fixture().w.Hls;
+    requests[0].ready(true);
+    assert.equal(
+        f.w.video.src,
+        "",
+        "Cancelled probe must not reattach a decoder"
+    );
+});
+
+test("Shaka is requested alone and DASH never reaches native after a failed download", () => {
+    const f = fixture({ savedPlayerMode: 2 });
+    const runtime = f.w.shaka;
+    delete f.w.shaka;
+    const requests = [];
+    f.w.__ottLoadMediaEngine = (engine, ready) =>
+        requests.push({ engine, ready });
+    f.w.stbPlay("delayed.mpd");
+    assert.equal(requests[0].engine, "shaka");
+    assert.equal(f.w.video.src, "");
+    f.w.shaka = runtime;
+    requests[0].ready(true);
+    assert.equal(f.shakaPlayers.length, 1);
+    assert.equal(f.shakaPlayers[0].url, "delayed.mpd");
+    delete f.w.shaka;
+    f.w.stbPlay("failed.mpd");
+    requests[1].ready(false);
+    assert.notEqual(f.w.video.src, "failed.mpd");
+    assert(f.messages.includes("Reconnecting…"));
+    f.w.stbStop();
+    f.advance(3000);
+    assert.equal(requests.length, 2);
 });
 
 let failures = 0;

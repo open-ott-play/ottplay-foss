@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const source = [
     "src/core/standby.ts",
     "src/plugins/access-media.ts",
+    "src/core/buffer-policy.ts",
     "src/core/native-hls.ts",
     "src/playback/stream-policy.ts",
     "src/core/index.ts",
@@ -2072,6 +2073,35 @@ test("PiP diagnostics use their own attached engine and clear on stop", () => {
     w.stbStopPip();
     assert.equal(pip.diagnosticEngine(), null);
     assert.equal(main.diagnosticEngine(), "hls.js");
+    w.stbStop();
+});
+
+test("shared HLS policy uses measured RAM, source identity and saved seconds without changing retries", () => {
+    const { w, players } = fixture();
+    w.navigator = { deviceMemory: 2, userAgent: "Android" };
+    w.playerMode = 1;
+    w.stbGetItem = (key) => (key === "sBufSize" ? "7" : null);
+    w.stbPlay("https://engine/ace/manifest.m3u8?id=abc");
+    const config = players[0].config;
+    assert.equal(config.maxBufferLength, 7);
+    assert.equal(config.maxBufferSize, 32000000);
+    assert.equal(config.backBufferLength, 15);
+    assert.equal(config.maxMaxBufferLength, 120);
+    assert.equal(config.fragLoadingMaxRetry, undefined);
+    assert.equal(w.__ottBufferPolicy.profile, "low-memory/acestream");
+    assert.equal(JSON.stringify(w.__ottBufferPolicy).includes("abc"), false);
+    w.stbStop();
+});
+test("shared Shaka policy applies on Android with no RAM hint and preserves quality settings", () => {
+    const { w, shakas } = fixture();
+    w.ott_device = "android";
+    w.playerMode = 2;
+    w.sStreamMaxHeight = 720;
+    w.stbPlay("https://media/live.mpd");
+    assert.equal(shakas[0].config.streaming.bufferingGoal, 30);
+    assert.equal(shakas[0].config.streaming.bufferBehind, 30);
+    assert.equal(shakas[0].config.streaming.rebufferingGoal, 2);
+    assert.equal(shakas[0].config.restrictions.maxHeight, 720);
     w.stbStop();
 });
 

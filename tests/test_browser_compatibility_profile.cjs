@@ -131,7 +131,7 @@ test("loss of required MSE or either codec cannot downgrade a full media profile
 
 // Compare every available-API combination against the actual pinned HLS helper.
 // A dependency or player preference change must explicitly update this contract.
-test("capability probe follows the candidate HLS instance backend, including fallback order", () => {
+test("capability probe follows the candidate HLS instance backend, including fallback order", async () => {
     const fs = require("node:fs");
     const path = require("node:path");
     const vm = require("node:vm");
@@ -187,7 +187,7 @@ test("capability probe follows the candidate HLS instance backend, including fal
             ["MediaSource", "ManagedMediaSource", "WebKitMediaSource"].find(
                 (name) => scope[name] && scope[name] === selected
             ) || "none";
-        const result = vm.runInNewContext(
+        const result = await vm.runInNewContext(
             "(" + readBrowserMediaCapabilities.toString() + ")()",
             {
                 document: { createElement: () => ({ canPlayType: () => "" }) },
@@ -203,7 +203,7 @@ test("capability probe follows the candidate HLS instance backend, including fal
         );
     }
     for (const preference of [undefined, true]) {
-        assert.throws(
+        await assert.rejects(
             () =>
                 vm.runInNewContext(
                     "(" + readBrowserMediaCapabilities.toString() + ")()",
@@ -277,4 +277,52 @@ test("frontend WebKit host guard rejects another distro, version or architecture
     ]) {
         assert.throws(() => verifyHost(platform, architecture, source));
     }
+});
+
+test("codec diagnostics explicitly load HLS with bounded failure and preserve cold boot", async () => {
+    const vm = require("node:vm");
+    const {
+        readBrowserMediaCapabilities,
+    } = require("../scripts/browser-media-capabilities.cjs");
+    const callbacks = [];
+    const timers = new Map();
+    const window = {
+        __ottLoadMediaEngine: (engine, done) => {
+            assert.equal(engine, "hls");
+            callbacks.push(done);
+        },
+    };
+    const context = {
+        clearTimeout: (id) => timers.delete(id),
+        document: { createElement: () => ({ canPlayType: () => "" }) },
+        setTimeout: (done) => {
+            timers.set(1, done);
+            return 1;
+        },
+        window,
+    };
+    const run = () =>
+        vm.runInNewContext(
+            "(" + readBrowserMediaCapabilities.toString() + ")()",
+            context
+        );
+    assert.equal(callbacks.length, 0);
+    const pending = run();
+    window.Hls = {
+        DefaultConfig: { preferManagedMediaSource: false },
+        version: "fixture",
+    };
+    callbacks.shift()(true);
+    assert.equal((await pending).hlsVersion, "fixture");
+    assert.equal(timers.size, 0);
+    delete window.Hls;
+    const failed = run();
+    callbacks.shift()(false);
+    await assert.rejects(failed, /failed to load/);
+    const timedOut = run();
+    timers.get(1)();
+    await assert.rejects(timedOut, /failed to load/);
+    callbacks.shift()(true);
+    delete window.__ottLoadMediaEngine;
+    await assert.rejects(run(), /loader is unavailable/);
 });

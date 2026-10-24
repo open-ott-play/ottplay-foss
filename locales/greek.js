@@ -121,6 +121,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Ηλικία σελιδοδείκτη: %1 ημέρες",
     "Browse folders": "Περιήγηση σε φακέλους",
     "Buffer Size, s": "Μέγεθος buffer, s",
+    "Buffering...": "Αποθήκευση στην προσωρινή μνήμη...",
     "Built-in playlist:": "Ενσωματωμένη λίστα αναπαραγωγής:",
     "Built-in playlists": "Ενσωματωμένες λίστες αναπαραγωγής",
     "Button %1 function when viewing":
@@ -875,6 +876,7 @@ var keyStrings = {
     Retry: "Επανάληψη",
     "Retry EPG download": "Δοκιμάστε ξανά τη λήψη του EPG",
     "Retry same message": "Δοκιμάστε ξανά το ίδιο μήνυμα",
+    "Retrying...": "Νέα προσπάθεια...",
     "Return to previous channel": "Επιστροφή στο προηγούμενο κανάλι",
     Rewind: "Μετακίνηση",
     "Rewind step by buttons %1/%2": "Βήμα μετακίνησης με τα πλήκτρα %1/%2",
@@ -1034,6 +1036,8 @@ var keyStrings = {
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
     "Stop screenshots": "Διακοπή στιγμιότυπων οθόνης",
     "Stream could not be played": "Δεν ήταν δυνατή η αναπαραγωγή της ροής",
+    "Stream timed out. Select the channel to retry.":
+        "Έληξε το χρονικό όριο της ροής. Επιλέξτε το κανάλι για νέα προσπάθεια.",
     "Stream type: %1": "Τύπος ροής: %1",
     "String for search": "Όρος αναζήτησης",
     "Su Mo Tu We Th Fr Sa": "Κυ Δε Τρ Τε Πε Πα Σα",

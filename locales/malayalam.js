@@ -115,6 +115,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "ബുക്ക്മാർക്ക് പ്രായം: %1 ദിവസം",
     "Browse folders": "ഫോൾഡറുകൾ ബ്രൗസ് ചെയ്യുക",
     "Buffer Size, s": "ബഫർ വലുപ്പം, എസ്",
+    "Buffering...": "ബഫറിലേക്ക് ലോഡ് ചെയ്യുന്നു...",
     "Built-in playlist:": "ബിൽറ്റ്-ഇൻ പ്ലേലിസ്റ്റ്:",
     "Built-in playlists": "ബിൽറ്റ്-ഇൻ പ്ലേലിസ്റ്റുകൾ",
     "Button %1 function when viewing":
@@ -834,6 +835,7 @@ var keyStrings = {
     Retry: "വീണ്ടും ശ്രമിക്കുക",
     "Retry EPG download": "EPG ഡൗൺലോഡ് ചെയ്യാൻ വീണ്ടും ശ്രമിക്കുക",
     "Retry same message": "അതേ സന്ദേശം വീണ്ടും അയയ്‌ക്കുക",
+    "Retrying...": "വീണ്ടും ശ്രമിക്കുന്നു...",
     "Return to previous channel": "മുമ്പത്തെ ചാനലിലേക്ക് മടങ്ങുക",
     Rewind: "മുന്നോട്ട്/പിന്നോട്ട് നീക്കുക",
     "Rewind step by buttons %1/%2":
@@ -987,6 +989,8 @@ var keyStrings = {
     "Stop playback and return to live": "പ്ലേബാക്ക് നിർത്തി ലൈവിലേക്ക് മടങ്ങുക",
     "Stop screenshots": "സ്ക്രീൻഷോട്ടുകൾ നിർത്തുക",
     "Stream could not be played": "സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
+    "Stream timed out. Select the channel to retry.":
+        "സ്ട്രീമിനായി കാത്തിരിക്കാനുള്ള സമയം കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കാൻ ചാനൽ തിരഞ്ഞെടുക്കുക.",
     "Stream type: %1": "സ്ട്രീം തരം: %1",
     "String for search": "തിരയൽ അന്വേഷണം",
     "Su Mo Tu We Th Fr Sa": "ഞാ തി ചൊ ബു വ്യാ വെ ശനി",

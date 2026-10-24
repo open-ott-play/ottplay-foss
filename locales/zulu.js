@@ -122,6 +122,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Ubudala bebhukhimakhi: izinsuku ezingu-%1",
     "Browse folders": "Phequlula amafolda",
     "Buffer Size, s": "Usayizi webhafa, imizuz",
+    "Buffering...": "Kulayishwa idatha...",
     "Built-in playlist:": "Uhlu lokudlala olwakhelwe ngaphakathi:",
     "Built-in playlists": "Izinhlu zokudlala ezakhelwe ngaphakathi",
     "Button %1 function when viewing":
@@ -869,6 +870,7 @@ var keyStrings = {
     Retry: "Zama futhi",
     "Retry EPG download": "Zama ukulanda i-EPG futhi",
     "Retry same message": "Thumela umlayezo ofanayo futhi",
+    "Retrying...": "Kuzanywa futhi...",
     "Return to previous channel": "Buyela esiteshini esedlule",
     Rewind: "Hambisa isikhathi sokudlala",
     "Rewind step by buttons %1/%2":
@@ -1028,6 +1030,8 @@ var keyStrings = {
         "Misa ukudlala bese ubuyela kokubukhoma",
     "Stop screenshots": "Misa izithombe-skrini",
     "Stream could not be played": "Ukusakaza akukwazanga ukudlalwa",
+    "Stream timed out. Select the channel to retry.":
+        "Isikhathi sokulinda ukusakaza siphelile. Khetha isiteshi ukuze uzame futhi.",
     "Stream type: %1": "Uhlobo lokusakaza: %1",
     "String for search": "Umbuzo wokusesha",
     "Su Mo Tu We Th Fr Sa": "Son Mso Bil Tha Sin Hla Mgq",

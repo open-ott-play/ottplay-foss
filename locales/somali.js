@@ -120,6 +120,7 @@ var keyStrings = {
     "Bookmark age: %1 days": "Da'da calaamadda: %1 maalmood",
     "Browse folders": "Dhex mar galalka",
     "Buffer Size, s": "Cabbirka kaydka sugitaanka, ilb",
+    "Buffering...": "Xogta ayaa la kaydinayaa...",
     "Built-in playlist:": "Liiska daarista ee ku dhex jira:",
     "Built-in playlists": "Liisaska daarista ee ku dhex jira",
     "Button %1 function when viewing": "Shaqada badhanka %1 marka la daawanayo",
@@ -866,6 +867,7 @@ var keyStrings = {
     Retry: "Mar kale isku day",
     "Retry EPG download": "Mar kale soo deji EPG",
     "Retry same message": "Isku day fariin isku mid ah",
+    "Retrying...": "Mar kale ayaa la isku dayayaa...",
     "Return to previous channel": "Ku noqo kanaalkii hore",
     Rewind: "U wareeg waqtiga",
     "Rewind step by buttons %1/%2":
@@ -1021,6 +1023,8 @@ var keyStrings = {
         "Jooji daarista oo ku noqo baahinta tooska ah",
     "Stop screenshots": "Jooji sawir-qaadista shaashadda",
     "Stream could not be played": "Baahinta waa la daari waayey",
+    "Stream timed out. Select the channel to retry.":
+        "Waqtigii sugitaanka baahinta wuu dhammaaday. Dooro kanaalka si aad mar kale isugu daydo.",
     "Stream type: %1": "Nooca baahinta: %1",
     "String for search": "Ereyga raadinta",
     "Su Mo Tu We Th Fr Sa": "Axa Isn Tal Arb Kha Jim Sab",

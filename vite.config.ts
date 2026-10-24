@@ -148,10 +148,10 @@ function stagePlayerAssets(
     }
 }
 
-function autoPlaybackScript(srcRoot: string): string {
+function autoPlaybackScript(srcRoot: string, name = "auto-playback"): string {
     // PiP and the classic main bundle execute the same compiled watchdog.
     return readFileSync(
-        join(srcRoot, "build/core/auto-playback.js"),
+        join(srcRoot, "build/core/" + name + ".js"),
         "utf8"
     ).replace(/^export /gm, "");
 }
@@ -203,6 +203,11 @@ function stageTauriFrontend(
     writeFileSync(
         join(stageDir, "auto-playback.js"),
         autoPlaybackScript(srcRoot)
+    );
+
+    writeFileSync(
+        join(stageDir, "buffer-policy.js"),
+        autoPlaybackScript(srcRoot, "buffer-policy")
     );
 
     // Nested dist/player.js so /dist/player.js resolves
@@ -288,7 +293,8 @@ export default defineConfig(({ mode }) => ({
                     if (
                         pathname !== "/pip.html" &&
                         pathname !== "/pip-player.js" &&
-                        pathname !== "/auto-playback.js"
+                        pathname !== "/auto-playback.js" &&
+                        pathname !== "/buffer-policy.js"
                     ) {
                         next();
                         return;
@@ -301,8 +307,12 @@ export default defineConfig(({ mode }) => ({
                     );
                     res.setHeader("Cache-Control", "no-store");
                     res.end(
-                        pathname === "/auto-playback.js"
-                            ? autoPlaybackScript(__dirname)
+                        pathname === "/auto-playback.js" ||
+                            pathname === "/buffer-policy.js"
+                            ? autoPlaybackScript(
+                                  __dirname,
+                                  pathname.slice(1, -3)
+                              )
                             : readFileSync(
                                   resolve(
                                       __dirname,

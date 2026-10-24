@@ -19,6 +19,7 @@ function compile(source) {
 }
 const core = [
     "src/utils/helpers.ts",
+    "src/core/buffer-policy.ts",
     "src/core/native-hls.ts",
     "src/plugins/access-media.ts",
     "src/core/index.ts",

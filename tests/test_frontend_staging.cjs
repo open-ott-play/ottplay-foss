@@ -129,6 +129,10 @@ try {
         "src/build/core/auto-playback.js",
         "export function watchAutoNativePlayback() { return 'same shared helper'; }\n"
     );
+    write(
+        "src/build/core/buffer-policy.js",
+        "export function coreBufferPolicy() { return 'shared policy'; }\n"
+    );
     context.stageTauriFrontend(
         path.join(fixture, "src"),
         path.join(fixture, "dist"),
@@ -183,6 +187,10 @@ try {
         fs.readFileSync(path.join(fixture, "stage/auto-playback.js"), "utf8"),
         "function watchAutoNativePlayback() { return 'same shared helper'; }\n",
         "PiP loads the compiled shared watchdog as a classic script"
+    );
+    assert.equal(
+        fs.readFileSync(path.join(fixture, "stage/buffer-policy.js"), "utf8"),
+        "function coreBufferPolicy() { return 'shared policy'; }\n"
     );
     assert.equal(
         exists("stage/demo"),
