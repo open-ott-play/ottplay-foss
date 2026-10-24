@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Update Tokio to 1.53.3 in the application, fuzz and updater-regression lockfiles
+  to address RUSTSEC-2026-0386 without changing unrelated dependency selections.
+
 - Extend the footer timeline click/touch target upward by half its height without changing its appearance; nearby timeline clicks seek instead of expanding programme information.
 
 - Keep cumulative Ctrl/Alt/Command-arrow seek feedback across 500 ms transport batches. A valid external seek cancels earlier pending keyboard work and supplies the next seek base; rejected requests leave pending work intact. Preserve finite-media seek feedback and pending offsets when background catalog publication replaces only list containers.
