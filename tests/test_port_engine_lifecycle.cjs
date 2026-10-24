@@ -2109,9 +2109,13 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     const { w } = fixture();
     const timers = new Map();
     let serial = 0;
-    const label = { textContent: "" },
+    const label = { style: {}, textContent: "" },
+        details = { textContent: "" },
         spinner = { style: {} };
-    w.document.getElementById = (id) => (id === "buffering" ? spinner : label);
+    w.document.getElementById = (id) =>
+        ({ buffering: spinner, playback_status: label, video_res: details })[
+            id
+        ] || null;
     w.setTimeout = (fn, ms) => {
         timers.set(++serial, { fn, ms });
         return serial;

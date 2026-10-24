@@ -137,10 +137,16 @@ function fixture() {
     const f = fixture(),
         timers = new Map();
     let serial = 0;
-    const label = { textContent: "" },
+    const label = { style: {}, textContent: "" },
+        details = { textContent: "" },
         spinner = { style: {} };
     f.w.document = {
-        getElementById: (id) => (id === "buffering" ? spinner : label),
+        getElementById: (id) =>
+            ({
+                buffering: spinner,
+                playback_status: label,
+                video_res: details,
+            })[id] || null,
     };
     f.w.setTimeout = (fn, ms) => {
         timers.set(++serial, { fn, ms });
