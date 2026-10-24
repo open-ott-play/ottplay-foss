@@ -230,6 +230,14 @@ function remote(f) {
                     );
                 },
             };
+        if (name === "./remote-notifications")
+            return {
+                executeRemoteNotifications() {
+                    throw new Error(
+                        "Plex provider settings must not change notifications"
+                    );
+                },
+            };
         if (name === "./remote-handoff")
             return {
                 executeRemoteHandoff() {
