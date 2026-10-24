@@ -97,7 +97,7 @@ base address without embedded credentials, query or fragment. A metadata-level
 The companion [web deployment repository](https://github.com/open-ott-play/ottplay-web-vitrine)
 owns the Home profile. Its generated `local/hosted.js` selects an absolute
 `https://player.ottplay.here.now/local/control-discovery.<sha256>.json` URL.
-The fingerprint identifies the metadata version. Use the
+The fingerprint identifies the exact metadata content. Use the
 [Home discovery setup and runbook](https://github.com/open-ott-play/ottplay-web-vitrine/blob/main/docs/home-control-discovery.md)
 for the exact URL and deployment checks; do not replace `<sha256>` with an
 arbitrary value.
