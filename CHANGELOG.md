@@ -58,6 +58,51 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+## [1.1.59] - Development line
+
+### Changes
+
+- Show Home Assistant events as bounded notification banners when connected to
+  a compatible remote controller. Preserve playback, keyboard focus and strict
+  kiosk restrictions; banners do not offer actions or wake the player.
+- Display notifications only while the player reports an active, visible,
+  non-standby session. Clear banners on standby or background entry and discard
+  expired messages and messages from an earlier activity session. Events received
+  while inactive are not replayed on wake.
+- Support the shared notification path in browser, Tauri and Capacitor builds.
+  Honor Android screen state where available; visibility and standby checks on
+  other platforms do not establish whether the physical display is powered on.
+
+- Isolate optional notification errors from ordinary remote commands, so a
+  banner failure cannot stop command acknowledgement or the next poll.
+
+- Keep notification cards compact in quarter-screen desktop windows and mobile
+  viewports, with independent typography, bounded text previews and a
+  translucent background tied to footer opacity, plus uniform severity outlines.
+- Add English severity labels: Home update, Attention and Alert. The controller
+  supplies event titles and messages; configure their language at the source.
+  Incoming event text and entity names are not translated by the player.
+
+### Upgrade
+
+- Update both the remote controller and every player that should show banners.
+  Keep remote control enabled; older controllers or players continue ordinary
+  remote control but do not provide this notification feature.
+- Configure the integration on the controller using the
+  [Home Assistant setup guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/home-assistant.md). Keep the long-lived token
+  in a private file on the server, and select explicit event types, entity IDs
+  and target devices before enabling delivery. No Home Assistant token belongs
+  in player settings. Notification delivery is temporary and has no offline
+  backlog or guarantee that a person saw the banner.
+
+### Security
+
+- Render titles and messages as bounded plain text, never HTML or executable
+  actions. The Home Assistant token stays on the controller; players receive
+  only the configured notification fields. Treat those fields as information
+  visible to everyone watching the selected screen and filter private events
+  and message templates accordingly.
+
 ## [1.1.58] - 2026-10-19
 
 ### Changes
