@@ -87,6 +87,12 @@ const baseline = JSON.parse(
     fs.readFileSync(path.join(fixtures, "before-js.json"))
 ).player;
 let unacknowledgedExits = 0;
+const refusedRandomNames = [
+    "missing-random_channel",
+    "random_range-47",
+    "random_range-49",
+];
+const refusedRandomSelections = [];
 const expectedPlayer = baseline.map((expected, index) => {
     // Wire parsing remains compatible. The application refuses unloading work
     // on this legacy lane, which cannot acknowledge a result before the effect.
@@ -97,11 +103,28 @@ const expectedPlayer = baseline.map((expected, index) => {
         unacknowledgedExits++;
         return { ...expected, result: "unsupported" };
     }
+    // Historical wire syntax stays valid, but this host has no channels or
+    // admission. The last range also exceeds the selector's safe-integer bound.
+    if (refusedRandomNames.includes(expected.name)) {
+        assert.equal(expected.result, "accepted");
+        assert.equal(JSON.parse(cmds[index].body).command, "random_channel");
+        refusedRandomSelections.push(expected.name);
+        return { ...expected, result: "rejected" };
+    }
     return expected;
 });
 assert.equal(unacknowledgedExits, 3, "only known legacy exit effects change");
+assert.deepEqual(refusedRandomSelections, refusedRandomNames);
 assert.deepEqual(player, expectedPlayer);
 const policy = require("./load-wire.cjs")();
+for (const name of refusedRandomNames)
+    assert.equal(
+        policy.validPlayerCommand(
+            JSON.parse(cmds.find((command) => command.name === name).body)
+        ),
+        true,
+        `${name} retains historical wire acceptance`
+    );
 for (const v of [NaN, Infinity, -Infinity])
     assert.equal(
         policy.validPlayerCommand({ command: "exit_player", volume: v }),
@@ -144,5 +167,5 @@ assert.equal(
     false
 );
 console.log(
-    "PASS 81 wire contracts with explicit unacknowledged-exit refusal and ES5/non-JSON/envelope boundaries"
+    "PASS 81 wire contracts with explicit random-admission/exit refusal and ES5/non-JSON/envelope boundaries"
 );
