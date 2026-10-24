@@ -1,9 +1,9 @@
 const notificationKey = "sNotificationsEnabled";
 
 function persistedValue(w: any): string | null {
-    if (typeof w.stbGetPersistedItem !== "function")
+    if (typeof w.stbGetNotificationSetting !== "function")
         throw new Error("storage_unavailable");
-    var value = w.stbGetPersistedItem(notificationKey);
+    var value = w.stbGetNotificationSetting();
     if (value !== null && value !== "0" && value !== "1")
         throw new Error("storage_unavailable");
     return value;
@@ -48,6 +48,7 @@ export function executeRemoteNotifications(
         params.version !== 1 ||
         (operation !== "get" && operation !== "set") ||
         typeof params.runtime !== "string" ||
+        !/^[a-z0-9-]{1,64}$/.test(params.runtime) ||
         Object.keys(params).sort().join(",") !==
             (operation === "set"
                 ? "enabled,operation,runtime,version"
@@ -58,6 +59,7 @@ export function executeRemoteNotifications(
         return;
     }
     if (params.runtime !== runtime) {
+        runtime = params.runtime;
         fail("runtime_mismatch");
         return;
     }
@@ -73,7 +75,6 @@ export function executeRemoteNotifications(
     }
     var enabled: boolean;
     try {
-        enabled = persistedValue(w) !== "0";
         if (operation === "set") {
             var expected = params.enabled ? "1" : "0";
             w.stbSetItem(notificationKey, expected);
@@ -82,7 +83,7 @@ export function executeRemoteNotifications(
                 return;
             }
             enabled = expected === "1";
-        }
+        } else enabled = persistedValue(w) !== "0";
     } catch (_) {
         fail("storage_unavailable");
         return;

@@ -998,6 +998,27 @@ export function stbGetPersistedItem(key: string): string | null {
         : null;
 }
 
+/** Strict notification policy read: unavailable storage is not an absent opt-out. */
+export function stbGetNotificationSetting(): string | null {
+    if (settingsRecoveryRequired()) throw new Error("storage_unavailable");
+    // A hidden/corrupt cookie override can supersede localStorage. Do not guess.
+    document.cookie;
+    var cookies = readStorageCookies();
+    var overrides = readStorageFallback(cookies);
+    var key = "sNotificationsEnabled";
+    if (overrides === null) throw new Error("storage_unavailable");
+    if (overrides.indexOf(key) >= 0)
+        return Object.prototype.hasOwnProperty.call(cookies, key)
+            ? cookies[key]
+            : null;
+    try {
+        var backing = window.localStorage;
+        if (backing) return backing.getItem(key);
+    } catch (_unavailable) {}
+    if (Object.prototype.hasOwnProperty.call(cookies, key)) return cookies[key];
+    throw new Error("storage_unavailable");
+}
+
 /**
  * Backward-compatible alias — store an item in the underlying storage.
  * @see StorageAdapter.set

@@ -343,7 +343,9 @@ const { gzipSync } = require("node:zlib");
 // Reserve 100 entry gzip bytes for this presentation feature and candidate
 // identity variation, including the separately checked beta metadata;
 // retain raw and per-provider limits and count this reserve once in the total.
-const BUDGET = Object.freeze({ bytes: 1022000, gzipBytes: 315550 });
+// JPEG notification transport and durable per-install receive policy add about
+// 9 KB raw / 2.5 KB gzip on Node 22; reserve +9500/+2700, including native/identity variance.
+const BUDGET = Object.freeze({ bytes: 1031500, gzipBytes: 318250 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -512,7 +514,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // The same reviewed Node 22.23.3 UI preflight totals 364883 gzip bytes,
 // before a candidate suffix. Count the 100-byte entry reserve
 // once here; all provider assets remain included and their own caps stay fixed.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1156800, gzipBytes: 364950 });
+// Count the same notification entry growth once; provider limits are unchanged.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1166300, gzipBytes: 367650 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

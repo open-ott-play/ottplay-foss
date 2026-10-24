@@ -80,7 +80,10 @@ The runtime-fenced `notifications` RPC accepts
 contains `{version:1, runtime, operation, enabled, persisted:true}`. A set first
 writes and verifies persistent storage; only then does it change the receiver.
 The command works during standby and strict kiosk without waking the player.
-Storage failure is reported, not presented as a saved preference.
+Storage failure is reported, not presented as a saved preference. Startup
+distinguishes an absent preference from an unreadable durable store and disables
+reception in the latter case. A rejected stale-runtime request echoes its
+validated original runtime, so the controller can acknowledge the failure.
 
 Turning reception off aborts pending notification/media requests, removes cards
 and image URLs, and retires the viewing-session identity. Command reception

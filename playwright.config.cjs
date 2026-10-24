@@ -32,6 +32,7 @@ module.exports = defineConfig({
         "remote-diagnostics.spec.cjs",
         "remote-screenshot.spec.cjs",
         "remote-notifications.spec.cjs",
+        "notification-persistence.spec.cjs",
         "remote-plex.spec.cjs",
         "remote-favorites.spec.cjs",
         "remote-doctor.spec.cjs",

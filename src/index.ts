@@ -190,6 +190,7 @@ import {
     stbDelItem,
     stbGetAllItems,
     stbGetItem,
+    stbGetNotificationSetting,
     stbGetPersistedItem,
     stbSetItem,
     storage,
@@ -5637,6 +5638,7 @@ if (window.__TAURI__ || window.__TAURI_INTERNALS__) {
     });
 }
 (window as any).stbGetPersistedItem = stbGetPersistedItem;
+(window as any).stbGetNotificationSetting = stbGetNotificationSetting;
 window.stbSetItem = stbSetItem;
 window.stbDelItem = stbDelItem;
 window.stbClearAllItems = stbClearAllItems;

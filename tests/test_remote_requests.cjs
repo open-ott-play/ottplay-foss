@@ -1376,7 +1376,8 @@ function checkRemoteEpgCatalog() {
     });
     const noticeStore = new Map();
     const noticeTransitions = [];
-    host.stbGetPersistedItem = (key) => noticeStore.get(key) ?? null;
+    host.stbGetNotificationSetting = () =>
+        noticeStore.get("sNotificationsEnabled") ?? null;
     host.stbSetItem = (key, value) => noticeStore.set(key, value);
     host.__ottRemoteNotifications = {
         poll() {},
