@@ -255,6 +255,7 @@ function remote(f) {
             [
                 "../utils/caseless",
                 "./index",
+                "./random-channel",
                 "./remote-profiles",
                 "./remote-plex",
                 "./remote-favorites",

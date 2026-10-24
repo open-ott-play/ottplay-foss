@@ -7,6 +7,7 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
@@ -279,7 +280,7 @@ function remoteMediaRows(
     });
     return valid && snapshot.active() ? result : null;
 }
-function remoteMediaRestricted(w: any): boolean {
+function remoteMediaRestricted(w: any, channels = true): boolean {
     try {
         if (
             (w.__ottKiosk && w.__ottKiosk.enabled()) ||
@@ -287,8 +288,8 @@ function remoteMediaRestricted(w: any): boolean {
             (w.__ottParental
                 ? w.__ottParental.needs("providers") ||
                   w.__ottParental.needs("settings") ||
-                  w.__ottParental.needs("channels")
-                : (w.sPSprovs || w.sPSoptions || w.sPSchannels) &&
+                  (channels && w.__ottParental.needs("channels"))
+                : (w.sPSprovs || w.sPSoptions || (channels && w.sPSchannels)) &&
                   w.parentPIN !== "*" &&
                   !w.parentAccess)
         )
@@ -427,6 +428,35 @@ export function executeRemoteRequest(
             data: { error: message, matches: matches || [] },
             status: "rejected",
         });
+    }
+    function randomReply(
+        ids: any[],
+        include: (id: any) => boolean,
+        current: () => boolean,
+        media = false,
+        group = -1
+    ): void {
+        var selected = randomChannels.play(
+            w,
+            ids,
+            params.random,
+            include,
+            function () {
+                return (
+                    current() &&
+                    !remoteMediaRestricted(w, false) &&
+                    (request.expires_at === undefined ||
+                        request.expires_at > Date.now() / 1000)
+                );
+            },
+            media,
+            group
+        );
+        if (selected) reply({ channel: selected, dispatched: true });
+        else
+            reject(
+                "No eligible channels are available, or playback is restricted by the player."
+            );
     }
     function volume(): number | null {
         var value =
@@ -806,6 +836,77 @@ export function executeRemoteRequest(
                 playRuntime,
                 activeProvider()
             );
+        if (params.random !== undefined) {
+            var randomGroup =
+                playReceipt &&
+                remoteMediaGroup(playSnapshot, playReceipt.category || "all");
+            var driver = w.__ottActiveProviderDriver;
+            if (
+                !remoteMediaKeys(params, ["catalog", "random"]) ||
+                !randomChannels.valid(params.random) ||
+                !randomGroup ||
+                w.commandChannelsReady !== true ||
+                !remoteMediaRows(w, playSnapshot, randomGroup, "", 0, 0) ||
+                (driver &&
+                    typeof driver.catalogLoading === "function" &&
+                    driver.catalogLoading())
+            ) {
+                reject(
+                    "The complete random-selection catalogue is unavailable."
+                );
+                return;
+            }
+            var randomMembers: Record<string, boolean> = Object.create(null);
+            randomGroup.members.forEach(function (id: any) {
+                randomMembers[String(id)] = true;
+            });
+            var boundSearch = caselessKey(playReceipt.search || "");
+            randomReply(
+                playSnapshot.canonicalIds,
+                function (id) {
+                    return (
+                        !!randomMembers[String(id)] &&
+                        includes(
+                            String(
+                                (w.channels[id] &&
+                                    w.channels[id].channel_name) ||
+                                    ""
+                            ),
+                            boundSearch
+                        )
+                    );
+                },
+                function () {
+                    return (
+                        playSnapshot.active() &&
+                        playReceipt.expires > Date.now() &&
+                        !!remoteMediaRows(
+                            w,
+                            playSnapshot,
+                            randomGroup,
+                            "",
+                            0,
+                            0
+                        ) &&
+                        playReceipt.runtime === remotePlayerInfo(w).runtime &&
+                        w.__ottActiveProviderDriver === driver &&
+                        !remoteMediaIncomplete(w) &&
+                        !(
+                            driver &&
+                            typeof driver.catalogLoading === "function" &&
+                            driver.catalogLoading()
+                        )
+                    );
+                },
+                true,
+                w.__ottChannels.index(
+                    playReceipt.category && playReceipt.category !== "all"
+                        ? playReceipt.category
+                        : "system:all"
+                )
+            );
+            return;
+        }
         if (
             !remoteMediaKeys(params, ["catalog", "id"]) ||
             !remoteMediaText(params.id, 2048) ||
@@ -902,6 +1003,8 @@ export function executeRemoteRequest(
                               operations: ["get", "set"],
                               version: 1,
                           };
+                      if (result.status === "ok" && result.data)
+                          result.data.random = { version: 1 };
                       if (
                           result.status === "ok" &&
                           result.data &&
@@ -1241,7 +1344,12 @@ export function executeRemoteRequest(
                     ? driver.saveRemoteSettings(params)
                     : "Plex settings are unavailable on this player.";
             if (typeof plexSettings === "string") reject(plexSettings);
-            else reply({ fields: plexSettings, provider: "plex", saved: true });
+            else
+                reply({
+                    fields: plexSettings,
+                    provider: "plex",
+                    saved: true,
+                });
             return;
         }
         var schemas: Record<string, string[]> = {
@@ -1356,7 +1464,9 @@ export function executeRemoteRequest(
         var identity = w.__ottSourceIdentity;
         if (!identity || typeof identity.current !== "function") {
             done({
-                data: { error: "Update the player for server EPG queries." },
+                data: {
+                    error: "Update the player for server EPG queries.",
+                },
                 status: "unsupported",
             });
             return;
@@ -1456,10 +1566,38 @@ export function executeRemoteRequest(
                 };
             }
             reply({
-                archive: { revision: remoteEpgCatalog.revision, version: 1 },
+                archive: {
+                    revision: remoteEpgCatalog.revision,
+                    version: 1,
+                },
                 catalog: remoteEpgCatalog.token,
                 channels: metadata,
             });
+            return;
+        }
+        if (request.action === "play_catalog" && params.random !== undefined) {
+            if (
+                !remoteMediaKeys(params, ["catalog", "random"]) ||
+                !randomChannels.valid(params.random) ||
+                !receiptCurrent() ||
+                params.catalog !== remoteEpgCatalog.token
+            ) {
+                reject(
+                    "Channels or provider changed. Retry the random selection."
+                );
+                return;
+            }
+            randomReply(
+                rows.map(function (row) {
+                    return row.id;
+                }),
+                function () {
+                    return true;
+                },
+                receiptCurrent,
+                false,
+                w.__ottChannels ? w.__ottChannels.index("system:all") : -1
+            );
             return;
         }
         if (
@@ -1640,7 +1778,11 @@ export function executeRemoteRequest(
         if (!entries || !entries.length) return;
         var current = w.OttPlayCore.guideScheduleSelection(
             entries.map(function (entry: any) {
-                return { end: entry.time_to, row: entry, start: entry.time };
+                return {
+                    end: entry.time_to,
+                    row: entry,
+                    start: entry.time,
+                };
             }),
             asOf,
             0

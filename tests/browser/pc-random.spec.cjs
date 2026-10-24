@@ -27,7 +27,13 @@ async function boot(page, context, baseURL) {
                     "/random-fixture/index.m3u8?id=two\n" +
                     '#EXTINF:-1 group-title="Other group",Outside\n' +
                     origin +
-                    "/random-fixture/index.m3u8?id=outside\n",
+                    "/random-fixture/index.m3u8?id=outside\n" +
+                    "#EXTINF:-1,Protected fixture\n#EXTGRP:взрослые\n" +
+                    origin +
+                    "/random-fixture/index.m3u8?id=adult\n" +
+                    '#EXTINF:-1 group-title="Other group",Fixture [AceStream]\n' +
+                    origin +
+                    "/random-fixture/index.m3u8?id=ace\n",
                 contentType: "application/vnd.apple.mpegurl",
             });
         if (url.pathname === "/nas/config")
@@ -114,6 +120,106 @@ async function channelState(page) {
         order: window.curList.slice(),
     }));
 }
+
+test("remote random uses the bundled dispatcher, current metadata and parental admission", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const errors = await boot(page, context, baseURL);
+    const call = (action, params = {}) =>
+        page.evaluate(
+            ({ action, params }) =>
+                new Promise((resolve) => {
+                    window.executeRemoteRequest({ action, params }, resolve);
+                }),
+            { action, params }
+        );
+    expect((await call("capabilities")).data.random).toEqual({ version: 1 });
+    const { data: catalog } = await call("epg_catalog");
+    const adult = catalog.channels.find(
+        (row) => row.name === "Protected fixture"
+    );
+    const ace = catalog.channels.find((row) =>
+        row.name.includes("[AceStream]")
+    );
+    const target = catalog.channels.find((row) => row.name === "Fixture Two");
+    expect(adult).toBeTruthy();
+    expect(ace).toBeTruthy();
+    for (const row of [adult, ace]) {
+        expect(
+            (
+                await call("play_catalog", {
+                    catalog: catalog.catalog,
+                    random: { range: [row.number, row.number] },
+                })
+            ).status
+        ).toBe("rejected");
+    }
+    await page.evaluate(() =>
+        window.channelsList(window.catIndex, window.primaryIndex)
+    );
+    await expect(page.locator("#list")).toBeVisible();
+    const reply = await call("play_catalog", {
+        catalog: catalog.catalog,
+        random: { range: [target.number, target.number] },
+    });
+    expect(reply).toEqual({
+        data: {
+            channel: {
+                id: target.id,
+                name: target.name,
+                number: target.number,
+            },
+            dispatched: true,
+        },
+        status: "ok",
+    });
+    await expect(page.locator("#list")).not.toBeVisible();
+    await page.waitForFunction(() => window.video.currentTime > 0.1);
+
+    // No entered PIN and no continuation: effective parental locks still deny the adult selector.
+    await page.evaluate(() => {
+        window.settings.psChannels = 1;
+        window.parentPIN = "1234";
+    });
+    expect(
+        (
+            await call("play_catalog", {
+                catalog: catalog.catalog,
+                random: { mode: "adult" },
+            })
+        ).status
+    ).toBe("rejected");
+    await expect(page.locator("#dialogbox")).not.toBeVisible();
+    await page.evaluate(() => {
+        window.parentPIN = "*";
+    });
+    expect(
+        (
+            await call("play_catalog", {
+                catalog: catalog.catalog,
+                random: { mode: "adult" },
+            })
+        ).data.channel.id
+    ).toBe(adult.id);
+    expect(
+        (
+            await call("play_catalog", {
+                catalog: catalog.catalog,
+                random: { range: [adult.number, adult.number] },
+            })
+        ).status
+    ).toBe("rejected");
+    await page.evaluate(() => {
+        window.__ottCommandChannelLoad++;
+    });
+    expect(
+        (await call("play_catalog", { catalog: catalog.catalog, random: {} }))
+            .status
+    ).toBe("rejected");
+    expect(errors).toEqual([]);
+});
 
 test("PC R changes only the current channel list and respects keyboard owners", async ({
     page,

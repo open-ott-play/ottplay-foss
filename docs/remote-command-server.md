@@ -237,6 +237,47 @@ The previous command-only API remains compatible with older servers and players,
 except that unacknowledged `exit_player` is now explicitly unsupported. Modern
 `command: exit_player` uses the acknowledged native exit path; it never toggles standby.
 
+### Safe random playback
+
+Update the player, controller and CLI together for safe random selection. The
+player advertises `caps.random.version: 1`; older players must be updated instead
+of receiving an unverified random fallback.
+
+```sh
+ott t1 R                      # same as: ott t1 random
+ott t1 random 1 1000          # uniform selection within this inclusive range
+ott t1 provider m3u R         # switch provider, then select from its complete All catalog
+ott t1,t2 provider m3u random # select independently on both players
+ott t1 provider m3u "News"    # exact full name first; otherwise random matching title
+```
+
+Random selection runs inside the player against its current catalog. It excludes
+channels classified as adult by the provider, protected categories, manually
+locked channels, and titles containing the literal `[AceStream]` marker
+(case-insensitive). Temporarily entering the parental PIN does not add those
+channels to the safe pool. An `#EXTGRP:взрослые` playlist group is protected when
+it is the channel's resolved category; the existing `group-title` precedence is
+unchanged.
+
+Without a range, 80% of selections use eligible catalog numbers 1–1000 and 20%
+use the remaining eligible numbers, uniformly within each group. When one group
+is empty, selection uses the other. An explicit range is uniform across eligible
+numbers in that range. Numbers come from the complete All catalog, including
+Plex and VPortal; filtering does not renumber them. A title filter prefers exact
+case-insensitive full-name matches, otherwise substring matches. An excluded
+exact match does not fall through to unrelated partial matches.
+
+An empty pool, stale catalog, changed provider, standby, kiosk or parental
+restriction rejects playback without selecting an unsafe alternative. A dispatch
+reply confirms admission, not successful decoding. Inspect `ott t1 caps` and
+refresh the catalog or resolve the local restriction before retrying.
+
+The negotiated request is `play_catalog` with
+`{"catalog":"RECEIPT","random":{}}`; optional `search` and `[from,to]` `range`
+belong inside `random`. Existing `{"catalog":"RECEIPT","id":"ID"}` requests
+retain manual-selection behavior. The older `random_channel` command retains
+its current-list scope with the same safe filter.
+
 ### Named controls and platform capabilities
 
 `ott NAME caps` reports the current player version, public page-runtime identity,

@@ -65,6 +65,10 @@
 
 ### Changes
 
+- Add player-authoritative safe random playback with an 80/20 preference for
+  catalog numbers 1–1000, uniform explicit ranges, and fenced large media
+  catalogs. Exclude adult/protected and `[AceStream]` channels, recheck parental
+  and playback restrictions at admission, and preserve manual selections.
 - Fall back from a valid empty Tauri DNS discovery result to an explicitly
   configured deployment profile. Keep nonempty native results authoritative
   and reject malformed results without fallback.
@@ -73,6 +77,8 @@
 
 ### Upgrade
 
+- Update the controller and player together to use capability-checked remote
+  random selection, including provider changes and large media catalogs.
 - Install the official build for your platform to receive the native discovery
   fallback. The Home catalog and deployment profile are published separately;
   updating a generic installation does not add them automatically. Configure an

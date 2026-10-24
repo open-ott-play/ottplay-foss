@@ -108,6 +108,7 @@ assert.equal(
 const delivered = [];
 let volume = 40;
 const w = {
+    __ottParental: { needs: () => false },
     cats: { first: ["a"], second: ["b", "zero"] },
     catsArray: ["first", "second"],
     channels: {
@@ -116,8 +117,11 @@ const w = {
         zero: { channel_name: "Zero" },
     },
     curList: ["a", "b", "zero"],
+    parentalArray: [],
     playChannel(...args) {
-        delivered.push(args);
+        if (args[3]) assert.equal(args[3](), true);
+        delivered.push(args.slice(0, 3));
+        return true;
     },
     stbGetVolume() {
         return volume;
@@ -139,6 +143,24 @@ const cmdContext = {
     exports: {},
     require(name) {
         if (name === "../localization") return localeRuntime;
+        if (name === "./random-channel") {
+            const helper = {
+                exports: {},
+                require: () => ({
+                    caselessKey: (value) => value.toLowerCase(),
+                }),
+            };
+            vm.runInNewContext(
+                emit(
+                    fs.readFileSync(
+                        path.join(root, "src/commands/random-channel.ts"),
+                        "utf8"
+                    )
+                ),
+                helper
+            );
+            return helper.exports;
+        }
         if (name === "../shared/wire-contracts")
             return require("./load-wire.cjs")();
         assert.equal(name, "../provider");
@@ -488,12 +510,18 @@ try {
     const played = [];
     let providerAvailable = false;
     Object.assign(host, {
+        __ottParental: { needs: () => false },
         cats: { main: ["one"] },
         catsArray: ["main"],
         channels: { one: { channel_name: "Первый" } },
         commandChannelsReady: true,
         curList: ["one"],
-        playChannel: (...args) => played.push(args),
+        parentalArray: [],
+        playChannel: (...args) => {
+            if (args[3]) assert.equal(args[3](), true);
+            played.push(args.slice(0, 3));
+            return true;
+        },
         stbGetVolume: () => 40,
         stbSetVolume() {},
     });
@@ -502,6 +530,7 @@ try {
         exports: {},
         require(name) {
             if (name === "../localization") return host;
+            if (name === "./random-channel") return cmdContext.require(name);
             if (name === "../shared/wire-contracts")
                 return require("./load-wire.cjs")();
             assert.equal(name, "../provider");
@@ -575,20 +604,14 @@ try {
         "Channel #%1 not in any category",
         "1"
     );
-    expectMessage(
-        { command: "random_channel" },
-        "Random channel not in any category"
-    );
+    assert.equal(command({ command: "random_channel" }), "rejected");
     host.cats.main = ["one"];
     command({ channel_number: 1, command: "channel_by_number" });
     assert.equal(last().textContent, host._("Channel #%1", "1") + ": Первый");
-    command({ command: "random_channel" });
-    assert.equal(last().textContent, host._("Random #%1", "1") + ": Первый");
-    expectMessage(
-        { command: "random_channel", random_range: [2, 3] },
-        "Invalid range: %1-%2",
-        "2",
-        "3"
+    assert.equal(command({ command: "random_channel" }), "accepted");
+    assert.equal(
+        command({ command: "random_channel", random_range: [2, 3] }),
+        "rejected"
     );
     expectMessage(
         { channel_name: "Отсутствующий", command: "channel_by_name" },

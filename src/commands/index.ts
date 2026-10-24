@@ -5,6 +5,7 @@ import {
 } from "../localization";
 import { checkProviderUrl, selectProviderByIndex } from "../provider";
 import { type Command, validPlayerCommand } from "../shared/wire-contracts";
+import { randomChannels } from "./random-channel";
 
 export type { Command } from "../shared/wire-contracts";
 
@@ -82,19 +83,14 @@ function findChannelIndices(chId: number): [number, number] {
     return [-1, -1];
 }
 
-/** Numbered and random commands share category lookup and playback feedback. */
-function playListedChannel(index: number, random: boolean): void {
+/** Numbered commands retain their existing category lookup and feedback. */
+function playListedChannel(index: number): void {
     var w = window;
     var chId = w.curList[index];
     var indices = findChannelIndices(chId);
     if (indices[0] === -1) {
         showPopup(
-            _(
-                random
-                    ? "Random channel not in any category"
-                    : "Channel #%1 not in any category",
-                formatLocaleNumber(index + 1)
-            )
+            _("Channel #%1 not in any category", formatLocaleNumber(index + 1))
         );
         return;
     }
@@ -104,10 +100,8 @@ function playListedChannel(index: number, random: boolean): void {
     var chName =
         w.channels && w.channels[chId] ? w.channels[chId].channel_name : "";
     showPopup(
-        _(
-            random ? "Random #%1" : "Channel #%1",
-            formatLocaleNumber(index + 1)
-        ) + (chName ? ": " + chName : "")
+        _("Channel #%1", formatLocaleNumber(index + 1)) +
+            (chName ? ": " + chName : "")
     );
 }
 
@@ -137,7 +131,7 @@ function channelByNumber(num: number): void {
         );
         return;
     }
-    playListedChannel(idx, false);
+    playListedChannel(idx);
 }
 
 /**
@@ -188,39 +182,31 @@ function channelByName(name: string): void {
  * @param rangeStart - Optional 1-based start of range.
  * @param rangeEnd   - Optional 1-based end of range.
  */
-function randomChannel(rangeStart?: number, rangeEnd?: number): void {
+function randomChannel(rangeStart?: number, rangeEnd?: number): boolean {
     var w = window;
     if (!(w.curList && w.curList.length)) {
         showPopup(_("No channels loaded"));
-        return;
+        return false;
     }
 
-    var total = w.curList.length;
-    var startIdx: number;
-    var endIdx: number;
-
-    if (rangeStart !== undefined && rangeEnd !== undefined) {
-        // Convert 1-based to 0-based, clamp to valid range
-        startIdx = Math.max(0, rangeStart - 1);
-        endIdx = Math.min(total - 1, rangeEnd - 1);
-        if (startIdx > endIdx) {
-            showPopup(
-                _(
-                    "Invalid range: %1-%2",
-                    formatLocaleNumber(rangeStart),
-                    formatLocaleNumber(rangeEnd)
-                )
+    var ids = w.curList,
+        channels = w.channels,
+        load = w.__ottCommandChannelLoad;
+    return !!randomChannels.play(
+        w,
+        ids,
+        rangeStart === undefined ? {} : { range: [rangeStart, rangeEnd] },
+        function () {
+            return true;
+        },
+        function () {
+            return (
+                w.curList === ids &&
+                w.channels === channels &&
+                w.__ottCommandChannelLoad === load
             );
-            return;
         }
-    } else {
-        startIdx = 0;
-        endIdx = total - 1;
-    }
-
-    var pickIdx =
-        startIdx + Math.floor(Math.random() * (endIdx - startIdx + 1));
-    playListedChannel(pickIdx, true);
+    );
 }
 
 /**
@@ -387,11 +373,12 @@ export function handleCommand(cmd: Command): string {
             break;
 
         case "random_channel":
-            if (cmd.random_range && cmd.random_range.length === 2) {
-                randomChannel(cmd.random_range[0], cmd.random_range[1]);
-            } else {
-                randomChannel();
-            }
+            if (
+                !(cmd.random_range
+                    ? randomChannel(cmd.random_range[0], cmd.random_range[1])
+                    : randomChannel())
+            )
+                return "rejected";
             break;
 
         case "change_provider":

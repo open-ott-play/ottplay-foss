@@ -92,7 +92,9 @@ const ctx = {
     Date,
     exports: {},
     require: (name) =>
-        name === "./remote-favorites" || name === "./remote-favorites-contract"
+        name === "./remote-favorites" ||
+        name === "./remote-favorites-contract" ||
+        name === "./random-channel"
             ? loadRemoteHelper(name.slice(2))
             : name === "../provider"
               ? {

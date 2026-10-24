@@ -94,6 +94,7 @@ const CLASSIC_MODULES = [
     "build/plugins/local-media.js",
     "build/provider/assets.js",
     "build/provider/index.js",
+    "build/commands/random-channel.js",
     "build/commands/index.js",
     "build/commands/remote-profiles.js",
     "build/commands/remote-handoff.js",
