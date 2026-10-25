@@ -228,6 +228,7 @@ function remote(f) {
                 "remote-provider-settings",
                 "remote-legacy-settings",
                 "remote-provider-fields",
+                "remote-settings-dispatch",
             ])
                 runtime(f.host, "src/plugins/" + part + ".ts");
             const module = { exports: {} };
@@ -253,6 +254,12 @@ function remote(f) {
                                     f.host.checkProviderUrl(url),
                                 isProviderAllowed: () =>
                                     f.remoteAllowed !== false,
+                            };
+                        if (dependency === "../utils/helpers")
+                            return {
+                                getScriptDOM() {
+                                    throw new Error("Fixture preloads the settings dispatcher");
+                                },
                             };
                         if (dependency === "./remote-restart")
                             return {
