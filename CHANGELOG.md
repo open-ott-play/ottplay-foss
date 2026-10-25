@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Treat unknown or unbounded media duration as unavailable diagnostic metadata,
+  preserving valid playback-progress evidence for the main and PiP streams.
+  Keep rejecting invalid clocks, positions, identities and malformed durations.
 - Clear obsolete stream timeout feedback when video actually advances. Keep
   status in the existing metadata line and allow normal footer auto-hide.
 - Install independent macOS instance apps so the default player can reopen

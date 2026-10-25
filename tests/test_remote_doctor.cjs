@@ -323,6 +323,70 @@ test("missing or throwing producers give bounded unknown evidence without leakin
     f.dom.window.close();
 });
 
+test("unknown durations do not invalidate main or PiP samples for any media kind", () => {
+    for (const kind of ["live", "vod", "archive", "none", "unknown"])
+        for (const lane of ["main", "pip"])
+            for (const duration of [NaN, Infinity, null, undefined]) {
+                const f = fixture();
+                f.state.target.kind = kind;
+                if (kind === "none") f.state.target = null;
+                if (kind === "unknown") f.readers.readPlayback = () => null;
+                if (lane === "pip") f.state.pip = { ...f.state.lane, id: 8 };
+                const state = lane === "main" ? f.state.lane : f.state.pip;
+                state.duration = duration;
+                const result = collect(f.w, f.readers);
+                const sampled = result.media.lanes.find(
+                    (row) => row.lane === lane
+                );
+                assert.equal(result.media.kind, kind);
+                assert.equal(sampled.duration, null);
+                assert.equal(sampled.position, 12.5);
+                assert.equal(
+                    result.reasons.includes("invalid_sample"),
+                    false,
+                    `${kind} ${lane} duration ${String(duration)}`
+                );
+                f.dom.window.close();
+            }
+});
+
+test("invalid duration values and required numbers still invalidate samples", () => {
+    for (const lane of ["main", "pip"])
+        for (const duration of [
+            -Infinity,
+            -1,
+            315576001,
+            "Infinity",
+            "90",
+            true,
+            {},
+        ]) {
+            const f = fixture();
+            if (lane === "pip") f.state.pip = { ...f.state.lane, id: 8 };
+            (lane === "main" ? f.state.lane : f.state.pip).duration = duration;
+            const result = collect(f.w, f.readers);
+            assert.equal(
+                result.media.lanes.find((row) => row.lane === lane).duration,
+                null
+            );
+            assert.ok(result.reasons.includes("invalid_sample"));
+            f.dom.window.close();
+        }
+    for (const value of [NaN, Infinity, -Infinity, -1, "10", true])
+        for (const field of ["position", "id"]) {
+            const f = fixture();
+            f.state.lane.duration = Infinity;
+            f.state.lane[field] = value;
+            const result = collect(f.w, f.readers);
+            assert.equal(
+                result.media.lanes[0][field === "id" ? "handleId" : field],
+                null
+            );
+            assert.ok(result.reasons.includes("invalid_sample"));
+            f.dom.window.close();
+        }
+});
+
 test("invalid primitives, secret handle IDs and arbitrary capabilities are rejected", () => {
     const f = fixture();
     Object.assign(f.state, {

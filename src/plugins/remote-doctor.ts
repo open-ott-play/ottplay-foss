@@ -250,6 +250,12 @@ export function collectRemoteDoctor(
         }
         return value;
     }
+    function duration(value: any): number | null {
+        // Media duration is unknown before metadata and unbounded for live input.
+        if (typeof value === "number" && (isNaN(value) || value === Infinity))
+            return null;
+        return number(value, 315576000);
+    }
     function boolean(value: any): boolean | null {
         if (value === null || value === undefined) return null;
         if (typeof value === "boolean") return value;
@@ -498,7 +504,7 @@ export function collectRemoteDoctor(
                         : null
                 );
                 return {
-                    duration: number(raw && raw.duration, 315576000),
+                    duration: duration(raw && raw.duration),
                     handleId: number(raw && raw.id, 9007199254740991, true),
                     lane: lane,
                     phase: raw
