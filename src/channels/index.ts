@@ -3434,6 +3434,8 @@ export function searchMedia(e: MediaHistoryEntry): void {
  */
 export function sortChannels(mode: number): void {
     sSortAbc = mode;
+    if ((window as any).__ottExtraSettings)
+        (window as any).__ottExtraSettings.changed("sortAlphabetically");
 }
 
 /* ---------------------------------------------------------------------------

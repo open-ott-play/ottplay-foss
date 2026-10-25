@@ -674,33 +674,28 @@ function createEdemProviderDriver(
             if (!active()) return false;
             var previous = settings(),
                 version = ++operation;
-            if (
+            var unchanged =
                 previous.key === value.key &&
                 previous.list === value.list &&
                 previous.cdn === value.cdn &&
-                previous.portal === value.portal
-            )
-                return true;
+                previous.portal === value.portal;
+            function current() {
+                return active() && version === operation;
+            }
+            var writes = {
+                edcdn: value.cdn,
+                key: value.key,
+                list: String(value.list),
+                vpurl: value.portal,
+            };
+            if (!ports.commit(writes, current, current) || !current())
+                return false;
+            if (unchanged) return true;
             loads.dispose();
-            if (!active() || version !== operation) return false;
+            if (!current()) return false;
             var expectedMedia = mediaRevision + 1;
             mediaCancel();
-            if (
-                !active() ||
-                version !== operation ||
-                expectedMedia !== mediaRevision
-            )
-                return false;
-            var fields = ["key", "list", "cdn", "portal"],
-                keys = ["key", "list", "edcdn", "vpurl"];
-            for (var i = 0; i < fields.length; i++) {
-                if ((previous as any)[fields[i]] !== (value as any)[fields[i]])
-                    ports.storage.set(
-                        keys[i],
-                        String((value as any)[fields[i]])
-                    );
-                if (!active() || version !== operation) return false;
-            }
+            if (!current() || expectedMedia !== mediaRevision) return false;
             if (previous.portal !== value.portal) {
                 mediaRows = [];
                 mediaParams = null;
@@ -769,6 +764,9 @@ function mountEdemProvider(
         dialog: any = null,
         previousDialog: any = null,
         pageIndex: number | null = null;
+    driver.settingsChanged = function () {
+        editor++;
+    };
     var title = "Edem.tv / iLook.tv";
     var remotePortal: any = null;
     var remotePortalLink = "";

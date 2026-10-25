@@ -761,7 +761,20 @@ function createM3uProviderDriver(
             if (!active()) return false;
             var next = normalizeM3uConfiguration(value, fixedSlot);
             var operation = ++revision;
-            if (identity(next) !== identity(configuration())) {
+            var changed = identity(next) !== identity(configuration());
+            function current() {
+                return active() && operation === revision;
+            }
+            if (
+                !ports.commit(
+                    { m3uArr: JSON.stringify(next) },
+                    current,
+                    current
+                ) ||
+                !current()
+            )
+                return false;
+            if (changed) {
                 closeHostedGuide();
                 lifetimes.dispose();
                 if (!active() || operation !== revision) return false;
@@ -769,7 +782,6 @@ function createM3uProviderDriver(
                 catalogIdentity = "";
                 guideSources = Object.create(null);
             }
-            ports.storage.set("m3uArr", JSON.stringify(next));
             if (!active() || operation !== revision) return false;
             publish("configuration");
             return active() && operation === revision;
@@ -777,7 +789,7 @@ function createM3uProviderDriver(
         saveCredentials: function (value: ProviderCredentials) {
             var config = configuration();
             config.M3Us[config.active].www = value.playlist || "";
-            driver.saveConfiguration(config);
+            return driver.saveConfiguration(config);
         },
         storageKey: function (key: string) {
             var slot = configuration().active;

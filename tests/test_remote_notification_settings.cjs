@@ -18,8 +18,16 @@ const context = {
     require: () => ({ remotePlayerInfo: (w) => ({ runtime: w.runtime }) }),
 };
 vm.runInNewContext(code, context);
-const { executeRemoteNotifications, readNotificationsEnabled } =
-    context.exports;
+const { readNotificationsEnabled } = context.exports;
+const optionalContext = { window: {} };
+const optionalCode = ts.transpileModule(
+    fs.readFileSync("src/plugins/remote-notification-settings.ts", "utf8"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+acorn.parse(optionalCode, { ecmaVersion: 5 });
+vm.runInNewContext(optionalCode, optionalContext);
+const executeRemoteNotifications =
+    optionalContext.window.__ottRemoteNotificationSettings.execute;
 function fixture(value = null) {
     const events = [];
     const stored = new Map(

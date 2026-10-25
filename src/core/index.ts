@@ -3368,13 +3368,15 @@ export function unload(): void {
 }
 
 /**
- * Auto-start the player if the `stb_autorun` setting is "1".
- * Called on page load to check whether to begin playback immediately.
+ * Legacy player-initialization helper. This does not configure OS startup.
+ * Prefer the registered key; preserve old installs only when it is absent.
  *
  * Side effects: Calls startPlayer() if autorun is enabled.
  */
 export function setAutorun(): void {
-    var autorun = window.stbGetItem ? window.stbGetItem("stb_autorun") : null;
+    var autorun = window.stbGetItem ? window.stbGetItem("sAutorun") : null;
+    if (autorun == null && window.stbGetItem)
+        autorun = window.stbGetItem("stb_autorun");
     if (autorun === "1" && typeof window.startPlayer === "function") {
         window.startPlayer();
     }

@@ -536,10 +536,24 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
-    "remote-settings": Object.freeze({ bytes: 20000, gzipBytes: 6800 }),
+    // Provider scalar codecs and the paginated Plex folder collection reuse normal
+    // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
+    // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
+    "remote-provider-fields": Object.freeze({ bytes: 18000, gzipBytes: 6200 }),
+    // Move the typed factory/dispatcher into the lifecycle asset, and the remote-only
+    // handoff/notification handlers out of startup. Combined Node22: base15851/5206,
+    // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
+    "remote-settings": Object.freeze({ bytes: 17500, gzipBytes: 5800 }),
+    // Existing UI/debug owners stay in startup; typed extras, CAS and ACK handling
+    // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
+    "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
+    "remote-settings-lifecycle": Object.freeze({
+        bytes: 31000,
+        gzipBytes: 10000,
+    }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1210600, gzipBytes: 382950 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1264100, gzipBytes: 400950 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

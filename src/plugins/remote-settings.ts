@@ -7,6 +7,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         store: any = null,
         context: any = null;
     var receipts: any[] = [];
+    var fields: any = null;
     var tokens = /^[A-Za-z0-9_.:-]{1,128}$/;
     var ids = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
     function token(prefix: string): string {
@@ -27,6 +28,35 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
     function host(): any {
         return w.__ottPlayerSettingsHost;
     }
+    function lifecycle(): any {
+        return w.__ottRemoteSettingsLifecycle;
+    }
+    function lifecycleField(id: string): boolean {
+        return /^(ottplaylang|ottplaylangmode|commandServerAddress|commandServerToken|commandServerEnabled|localCmdUrl|localHttpDeviceCode|localHttpEnabled|deviceUuid|swopBaseUrl)$/.test(
+            id
+        );
+    }
+    function extras(): any {
+        return (
+            w.__ottExtraSettings ||
+            (w.__ottRemoteSettingsExtras &&
+                w.__ottRemoteSettingsExtras.create(w))
+        );
+    }
+    function capture(id: string): any {
+        var extra = extras();
+        if (
+            extra &&
+            extra.schema.some(function (entry: any) {
+                return entry.id === id;
+            })
+        )
+            return extra.capture(id);
+        return lifecycleField(id) && lifecycle()
+            ? lifecycle().capture(id)
+            : store.capture(id);
+    }
+
     function refresh(): any {
         var h = host(),
             active = w.__ottActiveProviderDriver;
@@ -39,13 +69,14 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                     ? active.configuration()
                     : null;
         } catch (_) {}
+        var selected =
+            config && (active.id === "kb-team" ? config.slot : config.active);
         var profile =
-            config &&
-            typeof config.active === "number" &&
-            config.active >= 0 &&
-            config.active < 15 &&
-            Math.floor(config.active) === config.active
-                ? config.active + 1
+            typeof selected === "number" &&
+            selected >= 0 &&
+            selected < 15 &&
+            selected % 1 === 0
+                ? selected + 1
                 : null;
         var next = JSON.stringify([readRuntime(), h.source(), config]);
         if (
@@ -55,18 +86,23 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             store !== h.store
         ) {
             identity = next;
+            if (driver !== active) fields = null;
             driver = active;
             store = h.store;
             receipts = [];
             context = {
                 profile: profile,
                 provider:
-                    active && /^[a-z0-9_-]{1,32}$/.test(active.id)
+                    active &&
+                    /^[a-z0-9][a-z0-9_./-]{0,31}$/.test(active.id) &&
+                    !/\.\.|\/\/|\/$/.test(active.id)
                         ? active.id
                         : null,
                 token: token("context:"),
             };
         }
+        if (!fields && active && w.__ottRemoteProviderFields)
+            fields = w.__ottRemoteProviderFields.create(w, active);
         return context;
     }
     function locked(): boolean {
@@ -81,10 +117,16 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         );
     }
     function definition(id: string): any {
-        var schema = host().schema;
+        var schema = definitions();
         for (var i = 0; i < schema.length; i++)
             if (schema[i].id === id) return schema[i];
         return null;
+    }
+    function definitions(): any[] {
+        return host().schema.concat(
+            fields ? fields.schema : [],
+            extras() ? extras().schema : []
+        );
     }
     function providerReady(): boolean {
         var active = w.__ottActiveProviderDriver;
@@ -101,6 +143,17 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         }
     }
     function describe(entry: any): any {
+        if (entry.extraField) return extras().descriptor(entry.id);
+        if (entry.providerField) {
+            var description = JSON.parse(JSON.stringify(entry.descriptor));
+            if (locked())
+                description.access = {
+                    read: true,
+                    reason: "policy_restricted",
+                    write: false,
+                };
+            return description;
+        }
         var id = entry.id,
             rules = entry.rules || {},
             fallback = entry.defaultValue;
@@ -109,10 +162,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 id
             );
         var unavailable = entry.scope === "provider" && !providerReady();
-        var lifecycle =
-            /^(commandServerAddress|commandServerToken|commandServerEnabled|localCmdUrl|localHttpDeviceCode|localHttpEnabled|deviceUuid|swopBaseUrl)$/.test(
-                id
-            );
+        var requiresLifecycle = lifecycleField(id);
         var constraints: any = {};
         var type = Array.isArray(fallback)
             ? "string_array"
@@ -133,6 +183,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         } else {
             constraints.max_utf8_bytes = 4096;
             if (type === "string_array") constraints.max_items = 64;
+            if (rules.values) constraints.values = rules.values.slice();
         }
         if (rules.language)
             constraints.values = [""].concat(
@@ -141,26 +192,32 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             );
         var access: any = {
             read: !sensitive && !unavailable,
-            write: !unavailable && !lifecycle && !locked(),
+            write:
+                !unavailable &&
+                (!requiresLifecycle || !!lifecycle()) &&
+                !locked(),
         };
         if (!access.write)
             access.reason = unavailable
                 ? "unsupported"
-                : lifecycle
+                : requiresLifecycle && !lifecycle()
                   ? "lifecycle_required"
                   : "policy_restricted";
         var result: any = {
             access: access,
-            apply: /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage)$/.test(
-                id
-            )
-                ? "next_stream"
-                : /^(hdmiSupport|autorun)$/.test(id) ||
-                    entry.effects.some(function (name: string) {
-                        return typeof w[name] !== "function";
-                    })
-                  ? "manual"
-                  : "immediate",
+            apply:
+                requiresLifecycle && lifecycle()
+                    ? "after_ack"
+                    : /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage)$/.test(
+                            id
+                        )
+                      ? "next_stream"
+                      : /^(hdmiSupport|autorun)$/.test(id) ||
+                          entry.effects.some(function (name: string) {
+                              return typeof w[name] !== "function";
+                          })
+                        ? "manual"
+                        : "immediate",
             constraints: constraints,
             description:
                 "The saved preference is used by subsequent player actions and UI updates; saving does not restart current playback.",
@@ -176,6 +233,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (/^preferred(?:Audio|Subtitle)Language$/.test(id))
             result.description =
                 "Used when tracks are selected for the next stream, unless that channel has an explicit track preference. Saving does not switch the current track.";
+        if (result.apply === "after_ack")
+            result.description =
+                "Saved atomically with its companion fields, then applied after acknowledgement. Failed connection changes roll back; use the group transition to confirm the outcome.";
         if (result.apply === "manual")
             result.description =
                 id === "hdmiSupport"
@@ -208,6 +268,8 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             result.description =
                 "1 to 120 seconds sets the buffer; 0 or a value above 120 uses automatic buffering. Applies to the next stream.";
         }
+        if (/^(autorun|hdmiSupport)$/.test(id))
+            result.access = { read: true, reason: "unsupported", write: false };
         if (id === "uiFontScale") result.unit = "percent";
         return result;
     }
@@ -239,7 +301,10 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         };
         if (descriptor.sensitive) {
             result.redacted = true;
-            result.configured = capture.raw !== null && capture.raw !== "";
+            result.configured =
+                typeof capture.configured === "boolean"
+                    ? capture.configured
+                    : capture.raw !== null && capture.raw !== "";
         } else if (
             !bounded(capture.value) ||
             (capture.valid && !bounded(capture.stored))
@@ -271,7 +336,11 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                     return text(part, 4096);
                 });
     }
-    function request(request: any, done: (result: any) => void): void {
+    function request(
+        request: any,
+        done: (result: any) => void,
+        afterReply?: any
+    ): void {
         var params = request.params || {},
             op = params.op,
             completed = false;
@@ -307,6 +376,16 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 return;
             }
             respond({ data: data, status: "ok" });
+        }
+        function savedReply(capture: any, application: any): void {
+            reply({
+                application: application,
+                changed:
+                    JSON.stringify(receipt.capture.value) !==
+                    JSON.stringify(capture.value),
+                persisted: true,
+                setting: remember(params.id, capture, descriptor),
+            });
         }
         if (busy) {
             fail("revision_conflict");
@@ -354,7 +433,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                     return;
                 }
                 var offset = 0,
-                    schema = host().schema;
+                    schema = definitions();
                 if (params.cursor !== undefined) {
                     if (
                         typeof params.cursor !== "string" ||
@@ -420,7 +499,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                     });
                     return;
                 }
-                var captured = store.capture(params.id);
+                var captured = entry.providerField
+                    ? fields.capture(params.id)
+                    : capture(params.id);
                 if (refresh().token !== sourceToken) {
                     fail("source_changed");
                     return;
@@ -449,7 +530,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 fail(
                     descriptor.access.reason === "lifecycle_required"
                         ? "unsupported"
-                        : descriptor.access.reason
+                        : descriptor.access.reason === "local_action_required"
+                          ? "local_only"
+                          : descriptor.access.reason
                 );
                 return;
             }
@@ -483,6 +566,94 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             }
             function admitted(): boolean {
                 return sourceCurrent() && !locked();
+            }
+            if (entry.providerField) {
+                var originalHost = host(),
+                    originalDriver = driver;
+                try {
+                    var saved = fields.save(
+                        params.id,
+                        params.value,
+                        receipt.capture,
+                        function () {
+                            return (
+                                host() === originalHost &&
+                                driver === originalDriver &&
+                                w.__ottActiveProviderDriver ===
+                                    originalDriver &&
+                                params.runtime === readRuntime() &&
+                                !locked() &&
+                                !(
+                                    typeof request.expires_at === "number" &&
+                                    Date.now() >= request.expires_at * 1000
+                                )
+                            );
+                        }
+                    );
+                    // A verified own write may change the configuration fingerprint.
+                    // Retain its admitted token and invalidate older revisions.
+                    refresh();
+                    context.token = sourceToken;
+                    receipts = [];
+                    savedReply(
+                        saved.capture,
+                        saved.effectFailed
+                            ? { reason: "effect_failed", state: "failed" }
+                            : { reason: descriptor.apply, state: "deferred" }
+                    );
+                } catch (error) {
+                    var reason = (error as any).message;
+                    fail(
+                        /^(invalid_value|revision_conflict|source_changed|storage_failed)$/.test(
+                            reason
+                        )
+                            ? reason
+                            : "storage_failed"
+                    );
+                }
+                return;
+            }
+            if (entry.extraField) {
+                try {
+                    var extraSaved = extras().save(
+                        params.id,
+                        params.value,
+                        receipt.capture,
+                        admitted,
+                        afterReply
+                    );
+                    savedReply(extraSaved.capture, extraSaved.application);
+                } catch (error) {
+                    var extraReason = (error as any).message;
+                    fail(
+                        /^(invalid_value|revision_conflict|source_changed|storage_failed|unsupported|local_only|policy_restricted)$/.test(
+                            extraReason
+                        )
+                            ? extraReason
+                            : "storage_failed"
+                    );
+                }
+                return;
+            }
+            if (lifecycleField(params.id) && lifecycle()) {
+                var applied = lifecycle().save(
+                    params.id,
+                    params.value,
+                    receipt.capture,
+                    admitted,
+                    afterReply
+                );
+                if (applied.reason) {
+                    fail(applied.reason);
+                    return;
+                }
+                reply({
+                    application: applied.application,
+                    changed: applied.changed,
+                    persisted: true,
+                    setting: remember(params.id, applied.capture, descriptor),
+                });
+                return;
             }
             var draft = store.begin(true, receipt.capture);
             if (!draft.set(params.id, params.value)) {
@@ -525,14 +696,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 application.reason = descriptor.apply;
             if (draft.error())
                 application = { reason: "effect_failed", state: "failed" };
-            reply({
-                application: application,
-                changed:
-                    JSON.stringify(receipt.capture.value) !==
-                    JSON.stringify(after.value),
-                persisted: true,
-                setting: remember(params.id, after, descriptor),
-            });
+            savedReply(after, application);
         } catch (_) {
             fail("storage_failed");
         } finally {

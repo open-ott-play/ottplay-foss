@@ -617,6 +617,18 @@ function createStalkerProviderDriver(
             var operation = ++revision;
             var previous = before.portals[before.active];
             var selected = next.portals[next.active];
+            function current() {
+                return active() && operation === revision;
+            }
+            if (
+                !ports.commit(
+                    { stalker_data: JSON.stringify(next) },
+                    current,
+                    current
+                ) ||
+                !current()
+            )
+                return false;
             if (
                 next.active !== before.active ||
                 selected.portal !== previous.portal ||
@@ -629,7 +641,6 @@ function createStalkerProviderDriver(
                 loaded = null;
                 catalog = helpers.emptyCatalog();
             }
-            ports.storage.set("stalker_data", JSON.stringify(next));
             return active() && operation === revision;
         },
         saveCredentials: function (value) {
@@ -668,6 +679,9 @@ function mountStalkerProviderSettings(
     owner: DriverLifetime
 ) {
     var revision = 0;
+    driver.settingsChanged = function () {
+        revision++;
+    };
     function text(value: string): string {
         return value
             .replace(/&/g, "&amp;")

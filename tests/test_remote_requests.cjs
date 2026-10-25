@@ -88,17 +88,21 @@ const code = ts.transpileModule(
     }
 ).outputText;
 acorn.parse(code, { ecmaVersion: 5 });
+let remoteRuntimeHelper;
 const ctx = {
     Date,
     exports: {},
     require: (name) =>
         name === "./remote-settings"
             ? {
-                  executeRemoteSettings(w, request, done) {
+                  executeRemoteSettings(w, request, done, afterReply) {
                       for (const part of [
                           "remote-settings",
                           "remote-provider-settings",
                           "remote-legacy-settings",
+                          "remote-settings-dispatch",
+                          "remote-handoff",
+                          "remote-notification-settings",
                       ]) {
                           const plugin = ts.transpileModule(
                               fs.readFileSync(
@@ -115,7 +119,7 @@ const ctx = {
                       }
                       return loadRemoteHelper(
                           "remote-settings"
-                      ).executeRemoteSettings(w, request, done);
+                      ).executeRemoteSettings(w, request, done, afterReply);
                   },
               }
             : name === "./remote-favorites" ||
@@ -146,7 +150,9 @@ const ctx = {
                           : name === "./remote-notifications"
                             ? loadRemoteHelper("remote-notifications")
                             : name === "./remote-restart"
-                              ? loadRemoteHelper("remote-restart")
+                              ? remoteRuntimeHelper ||
+                                (remoteRuntimeHelper =
+                                    loadRemoteHelper("remote-restart"))
                               : name === "../utils/caseless"
                                 ? casingContext.exports
                                 : { handleCommand: () => "accepted" },
@@ -1426,7 +1432,7 @@ function checkRemoteEpgCatalog() {
         runtime: aspectRuntime,
         version: 1,
     });
-    assert.equal(muted.status, "ok");
+    assert.equal(muted.status, "ok", JSON.stringify(muted));
     assert.equal(muted.data.persisted, true);
     assert.equal(noticeStore.get("sNotificationsEnabled"), "0");
     assert.deepEqual(noticeTransitions, [false]);

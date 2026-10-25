@@ -14,6 +14,7 @@ import {
     exportSettingsUI,
     importSettingsUI,
 } from "./settings/transfer-ui";
+import { validDeviceToken, validSwopClientId } from "./shared/wire-contracts";
 import { showSettingsRecovery } from "./storage/recovery-ui";
 import {
     hasTmdbService,
@@ -1576,7 +1577,8 @@ function onPlayerStart(): void {}
 /** One bounded owner for runtime locale downloads, including late scripts. */
 function loadInterfaceLanguage(
     code: string,
-    done: (loaded: boolean) => void
+    done: (loaded: boolean, reason?: string) => void,
+    current?: () => boolean
 ): () => void {
     var w = window as any,
         request = {},
@@ -1587,6 +1589,11 @@ function loadInterfaceLanguage(
     function finish(loaded: boolean): void {
         if (finished || w.__ottLanguagePending !== request) {
             if (loaded) w.keyStrings = w.__ottBootDictionary;
+            if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                done(false, "superseded");
+            }
             return;
         }
         finished = true;
@@ -1594,6 +1601,7 @@ function loadInterfaceLanguage(
         w.__ottLanguagePending = null;
         loaded =
             loaded &&
+            (!current || current()) &&
             w.keyStrings !== previous &&
             w.keyStrings &&
             typeof w.keyStrings.lang === "string";
@@ -2136,15 +2144,64 @@ function onStbReady(): void {
         // Sync PlayerSettings → window.* for settings submenu compatibility
         installSettingsFacade(window as any);
         (window as any).__ottKiosk.init();
-        (window as any).__ottLocalHttpRemote.init();
+        var recoverySettings: any = {};
+        ["command_server", "local_http", "language", "swop"].forEach(
+            function (group) {
+                try {
+                    var raw = storage.get("__ottRemoteLifecycleToken_" + group);
+                    var record = raw && raw.length <= 32768 && JSON.parse(raw);
+                    if (
+                        record &&
+                        record.version === 1 &&
+                        record.state === "pending" &&
+                        record.previous &&
+                        typeof record.previous === "object"
+                    )
+                        recoverySettings[group] = record.previous;
+                } catch (_) {}
+            }
+        );
+        var previousHttp = recoverySettings.local_http;
+        if (previousHttp)
+            (window as any).__ottLocalHttpRemote
+                .configure(
+                    {
+                        code: previousHttp.localHttpDeviceCode,
+                        enabled: previousHttp.localHttpEnabled === 1,
+                        url: previousHttp.localCmdUrl,
+                    },
+                    false
+                )
+                .catch(function () {});
+        else (window as any).__ottLocalHttpRemote.init();
         (window as any).__ottRemoteNotifications.setEnabled(
             readNotificationsEnabled(window)
         );
-        (window as any).__ottCommandServer.configure({
-            address: settings.commandServerAddress,
-            enabled: settings.commandServerEnabled === 1,
-            token: settings.commandServerToken,
-        });
+        // Keep the prior route alive while recovery loads; desired bytes stay intact.
+        var initialControl = recoverySettings.command_server || settings;
+        (window as any).__ottCommandServer.configure(
+            {
+                address: initialControl.commandServerAddress,
+                enabled: initialControl.commandServerEnabled === 1,
+                token: initialControl.commandServerToken,
+            },
+            !recoverySettings.command_server
+        );
+        // A crash after saving but before acknowledgement resumes the guarded
+        // transition. Its private journal is never a portable setting.
+        if (Object.keys(recoverySettings).length)
+            getScriptDOM(
+                hostUrl +
+                    "/dist/remote-settings-lifecycle.js?" +
+                    PLAYER_VERSION,
+                function () {
+                    var w = window as any;
+                    if (w.__ottRemoteLifecycleFields)
+                        w.__ottRemoteLifecycleFields.restore(w, function () {
+                            return remotePlayerInfo(w).runtime;
+                        });
+                }
+            );
         // Start connection-authorized diagnostics after saved settings and the
         // controller's initial configure callback have completed.
         if (!(window as any).__ottRemoteDiagnostics) initRemoteDiagnostics();
@@ -6282,7 +6339,7 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
               }
             : undefined
     ),
-    function (config: any): void {
+    function (config: any, save = true): void {
         remoteControlConnection = {
             address: config.address,
             enabled: false,
@@ -6290,12 +6347,13 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
         };
         try {
             if (
-                !saveSettings({ commandServerEnabled: 0 }) ||
-                !saveSettings({
-                    commandServerAddress: config.address,
-                    commandServerEnabled: config.enabled ? 1 : 0,
-                    commandServerToken: config.token,
-                })
+                save &&
+                (!saveSettings({ commandServerEnabled: 0 }) ||
+                    !saveSettings({
+                        commandServerAddress: config.address,
+                        commandServerEnabled: config.enabled ? 1 : 0,
+                        commandServerToken: config.token,
+                    }))
             )
                 throw new Error("Command server settings could not be saved");
             remoteControlConnection.enabled = config.enabled === true;
@@ -6329,6 +6387,20 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
     },
     remoteInspection.accept
 );
+
+(window as any).__ottRemoteLifecyclePorts = {
+    applyLanguageMetadata: applyLanguageMetadata,
+    detectLanguage: function () {
+        var detect = (window as any).__ottDetectLanguage;
+        return typeof detect === "function" ? detect() : "_eng";
+    },
+    languageNames: languageNames,
+    loadLanguage: loadInterfaceLanguage,
+    normalizeAddress: normalizeCommandServerAddress,
+    storage: storage,
+    validDeviceToken: validDeviceToken,
+    validSwopClientId: validSwopClientId,
+};
 
 installRemoteScreenshot(window, {
     getConfig: function () {

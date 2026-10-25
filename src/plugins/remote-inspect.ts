@@ -19,6 +19,8 @@ export function installRemoteInspection(w: any): any {
         "profile_import",
         "provider_settings",
         "player_settings",
+        "player_settings_patch",
+        "plex_folders",
         "kiosk",
         "restart",
         "lifecycle",
@@ -201,7 +203,12 @@ export function installRemoteInspection(w: any): any {
             !(item.action === "categories" && params.op !== "select") &&
             !(item.action === "plex_library" && params.op !== "play") &&
             !(item.action === "favorites" && params.op !== "play") &&
-            !(item.action === "player_settings" && params.op !== "set") &&
+            !(
+                (item.action === "player_settings" ||
+                    item.action === "player_settings_patch") &&
+                params.op !== "set"
+            ) &&
+            !(item.action === "plex_folders" && params.op === "list") &&
             !(item.action === "aspect" && params.operation !== "set") &&
             !(item.action === "notifications" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
@@ -235,6 +242,8 @@ export function installRemoteInspection(w: any): any {
                 );
             var boundSettings =
                 item.action === "player_settings" ||
+                item.action === "player_settings_patch" ||
+                item.action === "plex_folders" ||
                 ((item.action === "provider_settings" ||
                     item.action === "settings_compare") &&
                     item.params &&

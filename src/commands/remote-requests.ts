@@ -11,8 +11,6 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
-import { executeRemoteHandoff } from "./remote-handoff";
-import { executeRemoteNotifications } from "./remote-notifications";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
@@ -363,25 +361,18 @@ export function executeRemoteRequest(
     var w = window as any;
     var params = request.params || {};
     if (
-        request.action === "playback_handoff_export" ||
-        request.action === "playback_handoff_import"
-    ) {
-        executeRemoteHandoff(w, request, done);
-        return;
-    }
-    if (
-        ["player_settings", "provider_settings", "settings_compare"].indexOf(
-            request.action
-        ) >= 0
+        [
+            "player_settings",
+            "player_settings_patch",
+            "provider_settings",
+            "settings_compare",
+            "plex_folders",
+            "playback_handoff_export",
+            "playback_handoff_import",
+            "notifications",
+        ].indexOf(request.action) >= 0
     )
-        return executeRemoteSettings(w, request, done);
-    if (request.action === "notifications")
-        return executeRemoteNotifications(
-            w,
-            remotePlayerInfo(w).runtime,
-            params,
-            done
-        );
+        return executeRemoteSettings(w, request, done, afterReply);
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
     if (request.action === "favorites")

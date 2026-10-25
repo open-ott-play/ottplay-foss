@@ -17,7 +17,7 @@ function remoteSettingsLocked(w: any): boolean {
               !w.parentAccess
           );
 }
-function remoteCheckpoint(w: any): void {
+export function remoteCheckpoint(w: any): void {
     var playback = w.__ottClassicPlayback;
     if (!playback || !playback.snapshot || !playback.checkpoint) return;
     if (
@@ -839,6 +839,24 @@ export function executeRemoteControl(
                       version: 1,
                   }
                 : undefined,
+            player_settings_patch: w.__ottRemoteLifecyclePorts
+                ? {
+                      groups: ["command_server", "local_http"],
+                      max_fields: 3,
+                      version: 1,
+                  }
+                : undefined,
+            plex_folders:
+                w.__ottActiveProviderDriver &&
+                w.__ottActiveProviderDriver.id === "plex"
+                    ? {
+                          max_items: 1000,
+                          max_page_size: 10,
+                          operations: ["list", "add", "remove", "clear"],
+                          setting_id: "plexFolderPaths",
+                          version: 1,
+                      }
+                    : undefined,
             plex_library: plexQueue.libraryCapability,
             plex_library_truncation: { version: 1 },
             plex_queue: plexQueue.capability,

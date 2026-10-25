@@ -105,7 +105,7 @@ export function createCommandServer(
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ) => () => void,
-    persist: (config: CommandServerConfig) => void,
+    persist: (config: CommandServerConfig, save?: boolean) => void,
     dispatch: (command: any) => string | void,
     execute?: (
         request: any,
@@ -200,10 +200,12 @@ export function createCommandServer(
     function discardScreenshots(): void {
         if (purgeScreenshots(true, Date.now())) schedule(0);
     }
+    var failure = "";
     function status(): any {
         return {
             address: config.address,
             enabled: config.enabled,
+            failure: failure,
             generation: generation,
             message: message,
             state: state,
@@ -211,6 +213,7 @@ export function createCommandServer(
     }
     function update(next: string, text: string): void {
         state = next;
+        if (next !== "error") failure = "";
         message = text;
         if (listener) listener();
     }
@@ -257,6 +260,7 @@ export function createCommandServer(
         failures++;
         var denied =
             response && (response.status === 401 || response.status === 403);
+        failure = denied ? "authorization_failed" : "network_error";
         update(
             "error",
             denied
@@ -642,6 +646,8 @@ export function createCommandServer(
                                     item.action === "favorites" ||
                                     item.action === "playback" ||
                                     item.action === "player_settings" ||
+                                    item.action === "player_settings_patch" ||
+                                    item.action === "plex_folders" ||
                                     item.action === "provider_settings" ||
                                     item.action === "settings_compare"
                                 )
@@ -754,7 +760,7 @@ export function createCommandServer(
         else if (responses.length) request("POST", undefined, responses[0]);
         else request("GET");
     }
-    function configure(next: CommandServerConfig): void {
+    function configure(next: CommandServerConfig, save = true): void {
         stop();
         config = {
             address: String(next.address || "").trim(),
@@ -783,7 +789,7 @@ export function createCommandServer(
         seenAddress = normalizedAddress;
         seenToken = config.token;
         // Revoke locally before validation/storage. Invalid edits cannot retain a live connection.
-        persist(config);
+        persist(config, save);
         if (!next.enabled) {
             update("disconnected", "Disconnected");
             return;
@@ -811,13 +817,13 @@ export function createCommandServer(
                     "This HTTPS player cannot connect to an HTTP server. Use an HTTPS server or open the player over HTTP."
                 );
             config.enabled = true;
-            persist(config);
+            persist(config, save);
             notifications.configure(config.address, config.token);
             update("connecting", "Connecting...");
             poll();
         } catch (error) {
             config.enabled = false;
-            persist(config);
+            persist(config, save);
             update(
                 "error",
                 error instanceof Error
@@ -837,6 +843,13 @@ export function createCommandServer(
             };
         },
         discardScreenshots: discardScreenshots,
+        matches: function (value: any): boolean {
+            return (
+                config.address === value.address &&
+                config.enabled === value.enabled &&
+                config.token === value.token
+            );
+        },
         poll: poll,
         status: status,
         subscribe: function (next: (() => void) | null): void {

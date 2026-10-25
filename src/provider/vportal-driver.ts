@@ -464,6 +464,10 @@ function mountVPortalProvider(
     owner: DriverLifetime
 ): void {
     var revision = 0;
+    driver.settingsChanged = function () {
+        revision++;
+        closeEditorClient();
+    };
     var attached: any = null;
     var editorClient: any = null;
     function closeEditorClient(): void {

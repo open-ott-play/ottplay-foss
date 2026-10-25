@@ -6,6 +6,9 @@ function mountM3uProviderSettings(
     _store: DriverStorage
 ): void {
     var editorRevision = 0;
+    driver.settingsChanged = function () {
+        editorRevision++;
+    };
     var mediaRevision = 0;
     var client: any = null;
     var mediaKey = "";

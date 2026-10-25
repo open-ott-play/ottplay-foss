@@ -1,6 +1,6 @@
-# Remote settings coverage and remaining adapter work
+# Remote settings coverage and platform boundaries
 
-The `player_settings` version 1 API uses the existing typed settings registry and source-bound draft. This inventory is an implementation handoff, not a claim that every persisted configuration field is already covered.
+The `player_settings` version 1 API uses the existing typed settings registry and source-bound draft. This inventory separates editable preferences, provider fields, dedicated operations and concrete platform limitations.
 
 ## Registry preferences
 
@@ -10,16 +10,22 @@ The `player_settings` version 1 API uses the existing typed settings registry an
 
 A remote write captures raw saved bytes, source, runtime and per-key revision. It commits through `settingsStore.begin(true, capture)` and confirms the persisted value before reporting success. Existing UI drafts conflict if the same preference changes, including an A→B→A sequence. Missing or invalid stored values are distinguished from effective defaults. Secrets omit current, default and persisted values. Application preferences remain accessible without a loaded catalogue; provider preferences require a usable current provider storage binding.
 
-## Required follow-on adapters
+## Provider adapters
 
-- **M3U profile fields:** `src/provider/m3u-settings.ts` owns the name, playlist URL and archive-hours editor; `src/provider/m3u-driver.ts` owns `configuration()` / `saveConfiguration()` and the `m3um3uArr` JSON record. Existing `profile_settings` covers `name` (string), `playlist` (string/URL) and `history_hours` (integer). The persisted compatibility field `M3Us[n].medUrl` (string) is still consumed by the media reader but is no longer offered by the current three-field editor. `medSourceId` is derived identity, not an independent user setting. A required adapter for `medUrl` must preserve source identity and media invalidation rather than writing the JSON directly.
-- **Plex:** `src/provider/plex-driver.ts` owns its editor, `credentials()`, `saveCredentials()` and `saveRemoteSettings()`. Storage is `plexcfg`; the normalized configuration contains server/token, playback mode (`auto`, `original`, `compatible`) and optional folder IDs. Existing `provider_settings` covers server/token. Required follow-on coverage is playback mode and selected folders, preserving server-change folder invalidation, normal URL/token validation, and catalogue retirement. Token/server values may contain secrets and must not appear in schema defaults or diagnostics. Folder IDs require the driver's actual selected-folder codec rather than display labels.
-- **Edem:** `src/provider/edem-driver.ts` owns `EdemSettings`, `settings()`, `saveSettings()` and the four-entry editor. The string fields are access `key`, CDN `cdn` and `portal`; `list` is an integer selection. They map through the Edem storage prefix to `key`, `edcdn`, `vpurl`, `list`. Current save logic cancels loads and clears media caches, but writes individual fields without a transaction/readback. A reliable remote adapter therefore also needs verified persistence/rollback in the shared driver save path, not a superficial generic setter.
-- **Stalker:** `src/provider/stalker-driver.ts` owns 15 slots in `stalkerstalker_data` and `saveConfiguration()`. The existing typed profile lane covers string name/server/MAC. A generic per-field facade may compose this lane with source/CAS binding; it must retain MAC and endpoint validation and active-slot reload rules.
-- **Xtream / OTTClub / named providers:** `src/provider/drivers.ts` owns credentials and provider-specific codecs. Existing `provider_settings` covers Xtream server/username/password and OTTClub host/key. Named providers have further credential shapes and optional integer playback mode. Enumerate the selected driver's supported credential fields instead of exposing arbitrary storage. Keep provider URL policy and driver `saveCredentials()` semantics.
-- **VPortal:** this change adds off-active compare/write for 15 name/link slots in `vportalprofiles`, using a detached instance of the real VPortal driver. It never mounts a provider or fetches a catalogue. Generated `sections` are cache data. A changed active slot invalidates the current driver and reloads only while awake; standby returns `reload_required: true`. A missing name preserves the existing VPortal name, including legacy M3U-link migration.
-- **Interface language:** `src/index.ts` language selection owns `ottplaylang` plus `ottplaylangmode` (`system` / `manual`). It downloads the selected dictionary before committing the selection and updates interface metadata. These are not in the 88-preference registry; required remote coverage must reuse the asynchronous language loader and report actual completion/failure, not merely set saved strings.
-- **Remote connection settings:** registry strings `commandServerAddress`, `commandServerToken`, `localCmdUrl`, `localHttpDeviceCode`, `swopBaseUrl`, `deviceUuid`, plus `commandServerEnabled` and `localHttpEnabled`, have lifecycle implications. `src/index.ts` constructs `__ottCommandServer` and `__ottLocalHttpRemote`; their save callbacks revoke enabled state before replacing credentials, reconfigure native listeners, update runtime authority and retire diagnostic sessions. The initial schema marks these `lifecycle_required`. Required follow-on writes must route through those controllers, with response delivery coordinated before disconnect/rebind. Never claim raw registry persistence has reconfigured the connection.
+The lazy `remote-provider-fields.js` asset exposes scalar adapters for the current provider and the separate paginated Plex folder collection. The inventory and command examples are in [Individual provider settings](../remote-provider-settings.md).
+
+- M3U profile name, playlist, archive hours and compatibility media URL use `saveConfiguration()`. The shared M3U save now verifies a transaction before publishing configuration or retiring a catalogue; `medSourceId` remains derived state.
+- Plex server/token and playback mode use `saveCredentials()` and its real normalizer. Folder selection uses source-bound list/add/remove/clear, supports all 1000 selected roots and feeds the saved roots to the next catalogue scan. Empty selection means all libraries. Legacy two-field setup validation moved into the optional provider-settings asset with a thin active-owner adapter retained on the driver.
+- Edem key/CDN/portal/list and Stalker profile settings now use transactional shared save paths. Edem, catalogue and playlist providers invalidate requests only after verified persistence.
+- Xtream, OTTCLUB, named-playlist, generic operator and catalogue providers expose only the fields their real credential codec supports. KBC exposes its saved playlist slot; device-derived MAC values remain outside the account-setting schema.
+- VPortal name/link fields target the current slot. Its existing off-active compare/write lane remains available without provider switching or wake-up.
+
+A private driver settings port binds remote receipts to saved bytes and revision. It is installed on first remote settings access; normal startup does not load the adapter. The provider UI's existing revision guard invalidates open local drafts after a verified remote write. Values and credentials are never included in operation-history evidence.
+
+## Language and connection lifecycle
+
+- **Interface language:** `ottplaylang` and `ottplaylangmode` use the shared dictionary loader through the optional lifecycle adapter. Desired code/mode are committed together, application occurs after acknowledgment, and dictionary failure restores the previous tuple. A stale language load cannot publish after ownership changes.
+- **Remote connection settings:** `command_server` and `local_http` patches bind all three companion fields and apply through actual connection/listener owners after acknowledgment. Active scalar address/credential edits require `atomic_patch_required`. The command server must authenticate within 30 seconds; failure uses a guarded rollback. Missing ACK and crash recovery retain the same desired/previous tuple ownership. SWOP base/UUID changes retire existing sessions and verify identity aliases. See [lifecycle runbook](../remote-settings-lifecycle.md).
 
 ## Other typed operations and actions
 
@@ -29,7 +35,7 @@ Canonical favourites, hidden channels, channel locks and ordering belong to chan
 
 ## Verification expectations
 
-Coverage is complete only when every intended user setting has a descriptor and a supported adapter (or a concrete platform limitation), with tests for scope changes, concurrent UI drafts, failed persistence and truthful application status. Keep this inventory visible until follow-on gaps are implemented; do not document the initial registry API as universal coverage.
+Coverage is complete only when every intended user setting has a descriptor and a supported adapter (or a concrete platform limitation), with tests for scope changes, concurrent UI drafts, failed persistence and truthful application status. The tests exercise the registry, provider codecs, folder collection, lifecycle transitions and interface/debug extras. Device-specific filesystem grants and absent platform implementations remain explicit limits.
 
 ## Application timing audit
 
@@ -37,4 +43,10 @@ The registry's media-selection preferences (`players`, `bufSize`, `streamMaxHeig
 
 The five subtitle appearance fields await the existing appearance module before saving; their normal apply hook then runs synchronously. Interface size, list position, colour, PiP layout, timezone, editor and sleep timer use their declared existing effects. A missing runtime hook is reported as manual application. Fields without an apply hook are active policy values for later key handling, list rendering, infobar events, history limits and access checks; success does not assert that the current video changed.
 
-`hdmiSupport` remains a legacy preference with no direct HDMI operation in the current build. `autorun` needs follow-on platform work: the current `setAutorun()` reads `stb_autorun`, whereas the registered preference uses `sAutorun`. Their descriptors therefore report manual/platform application rather than claiming that current playback or platform startup changed. Do not silently rewrite either legacy key in this adapter.
+`hdmiSupport` has no HDMI apply operation, and `autorun` has no operating-system startup owner in this build. Both remain readable but their descriptors reject remote writes as unsupported. The compatibility initialization helper now reads registered `sAutorun` first, falling back to `stb_autorun` only when absent; it does not configure OS startup.
+
+## Interface, local-library and diagnostic preferences
+
+The optional `remote-settings-extras.js` adapter adds `noSelProv`, `noProvParam`, `localMediaEndpoint`, `debugEnabled`, `debugHud` and `sortAlphabetically`. See [interface and diagnostic settings](../remote-settings-extras.md) for examples. Visibility changes preserve the normal PIN restrictions and checkpoint playback before acknowledged reload. Browser library URLs use the real URL validator and catalogue invalidation owner. Debug settings invoke the real collector/HUD lifecycle; alphabetical ordering uses the current provider's storage and render path.
+
+Native Tauri/Capacitor file pickers and filesystem grants remain device-local actions. Their library endpoint descriptor reports `local_action_required`; writing a browser URL cannot grant native file access. Credentials are never returned in descriptors, values or failures.

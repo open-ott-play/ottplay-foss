@@ -334,6 +334,8 @@ function ottDebugSetHud(on: boolean): void {
     try {
         if (typeof localStorage !== "undefined") {
             localStorage.setItem("ottplay_debug_hud", on ? "1" : "0");
+            if ((window as any).__ottExtraSettings)
+                (window as any).__ottExtraSettings.changed("debugHud");
         }
     } catch (_e) {}
     if (!_ottDbgEnabled) return;
@@ -1145,11 +1147,11 @@ function ottDebugInstallApi(enabled: boolean): void {
     };
 }
 
-function ottDebugEnable(): void {
+function ottDebugEnable(preserveHud?: boolean): void {
     _ottDbgLocal = true;
     (window as any).__OTT_DEBUG__ = true;
     if (_ottDbgEnabled) {
-        ottDebugSetHud(true);
+        if (!preserveHud) ottDebugSetHud(true);
         return;
     }
     ottDebugActivate(true);

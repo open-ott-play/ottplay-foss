@@ -293,6 +293,71 @@ function fixture() {
     };
 }
 check(
+    "capture arrays bind each field without rejecting their own committed writes",
+    () => {
+        const f = fixture();
+        const captures = [f.store.capture("layout"), f.store.capture("logo")];
+        const draft = f.store.begin(true, captures);
+        assert.equal(draft.set("layout", 2), true);
+        assert.equal(draft.set("logo", 2), true);
+        assert.equal(draft.commit(), true);
+        assert.equal(f.data.get("layout-old"), "2");
+        assert.equal(f.data.get("one:logo-old"), "2");
+    }
+);
+check(
+    "capture arrays reject companion raw edits and ABA before any write",
+    () => {
+        for (const edit of [
+            (f) => f.data.set("one:logo-old", "2"),
+            (f) => {
+                f.store.observe("logo", 2);
+                f.store.observe("logo", 1);
+            },
+        ]) {
+            const f = fixture();
+            const captures = [
+                f.store.capture("layout"),
+                f.store.capture("logo"),
+            ];
+            edit(f);
+            const draft = f.store.begin(true, captures);
+            draft.set("layout", 2);
+            draft.set("logo", 2);
+            assert.equal(draft.commit(), false);
+            assert.equal(f.writes.length, 0);
+        }
+    }
+);
+check(
+    "capture arrays retain rollback and source guards after an earlier field writes",
+    () => {
+        for (const mode of ["second-failure", "source-switch", "second-ABA"]) {
+            const f = fixture();
+            const captures = [
+                f.store.capture("layout"),
+                f.store.capture("logo"),
+            ];
+            const draft = f.store.begin(true, captures);
+            draft.set("layout", 2);
+            draft.set("logo", 2);
+            if (mode === "second-failure") f.fail("one:logo-old");
+            else
+                f.reenter(() => {
+                    if (mode === "source-switch") f.source("two");
+                    else {
+                        f.store.observe("logo", 2);
+                        f.store.observe("logo", 1);
+                    }
+                });
+            assert.equal(draft.commit(), false);
+            assert.equal(f.store.get("layout"), 1);
+            assert.equal(f.effects.length, 0);
+            assert.equal(f.data.has("two:logo-old"), false);
+        }
+    }
+);
+check(
     "field versions detect ABA changes without exposing values or unrelated edits",
     () => {
         const f = fixture(),

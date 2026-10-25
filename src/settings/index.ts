@@ -12,6 +12,7 @@ import { languageNames } from "../localization/assets";
  */
 import { storage } from "../storage/index";
 import {
+    commitSettingsWrites,
     createSettingsStore,
     type SettingDefinition,
     type SettingsDraft,
@@ -159,6 +160,8 @@ export interface PlayerSettings {
     noSmall: number;
     okFun: number;
     osdOpacity: number;
+    ottplaylang: string;
+    ottplaylangmode: string;
     pageSize: number;
     parentPin: string;
     permanentTime: number;
@@ -264,6 +267,8 @@ export function defaultSettings(): PlayerSettings {
         noSmall: 0,
         okFun: 0,
         osdOpacity: 7,
+        ottplaylang: "",
+        ottplaylangmode: "system",
         pageSize: 25,
         parentPin: "1234",
         permanentTime: 0,
@@ -402,7 +407,11 @@ function defineSetting(
                 var pair = value.split(",").map(Number);
                 return pair[0] <= 360 && pair[1] <= 100;
             }
-            if (typeof fallback === "string") return typeof value === "string";
+            if (typeof fallback === "string")
+                return (
+                    typeof value === "string" &&
+                    (!rules.values || rules.values.indexOf(value) >= 0)
+                );
             if (
                 typeof value !== "number" ||
                 !isFinite(value) ||
@@ -727,6 +736,10 @@ export const settingsSchema: SettingDefinition[] = [
         },
         ["setColor"]
     ),
+    defineSetting("ottplaylang", "ottplaylang", { language: "interface" }),
+    defineSetting("ottplaylangmode", "ottplaylangmode", {
+        values: ["manual", "system"],
+    }),
     defineSetting("commandServerAddress", "commandServerAddress", {}),
     defineSetting("commandServerToken", "commandServerToken", {}),
     defineSetting("localCmdUrl", "sLocalCmdUrl", {}),
@@ -874,6 +887,7 @@ export function installSettingsFacade(target: Record<string, any>): void {
     bindSettingsFacade(target, true);
     target.settings = settings;
     target.__ottPlayerSettingsHost = {
+        commit: commitSettingsWrites,
         languages: Object.keys(languageNames),
         schema: settingsSchema,
         source: settingsSource,
