@@ -94,6 +94,11 @@
         }
         .remote-notify-icon::before { content: "i"; }
         .remote-notify-content { flex: 1 1 auto; min-width: 0; }
+        .remote-notify-label, .remote-notify-title {
+            animation: remoteNotifyFold 480ms ease-in-out 980ms forwards;
+        }
+        .remote-notify-label { max-height: 1.4em; overflow: hidden; }
+        .remote-notify-title { animation-delay: 1460ms; }
         .notify.remote-notify-with-image {
             display: block;
             padding: 0;
@@ -177,12 +182,16 @@
                 clip-path: inset(46% 0 round 1em);
             }
         }
+        @keyframes remoteNotifyFold {
+            to { max-height: 0; margin-bottom: 0; opacity: 0; transform: translateY(-0.5em); }
+        }
         @keyframes remoteNotifyFade {
             from { opacity: 1; }
             to { opacity: 0.04; }
         }
         @media (prefers-reduced-motion: reduce) {
-            .notify.remote-notify, .notify.remote-notify.remote-notify-out { animation: none; }
+            .notify.remote-notify, .notify.remote-notify.remote-notify-out,
+            .remote-notify-label, .remote-notify-title { animation: none; }
         }
         @keyframes notifyIn {
             from {

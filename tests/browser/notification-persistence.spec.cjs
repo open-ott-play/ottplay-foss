@@ -515,6 +515,51 @@ test("remote banner slides and reveals, holds then fades without restarting or e
     expect(h.errors).toEqual([]);
 });
 
+test("remote banner folds its label then title upward and retains its message", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const h = await timedBanner(page, context, baseURL);
+    async function stage(time) {
+        return h.banner.evaluate((element, time) => {
+            for (const animation of element.getAnimations({ subtree: true })) {
+                animation.pause();
+                animation.currentTime = time;
+            }
+            const label = element.querySelector(".remote-notify-label");
+            const title = element.querySelector(".remote-notify-title");
+            const message = element.querySelector(".remote-notify-message");
+            return {
+                labelHeight: label.getBoundingClientRect().height,
+                labelOpacity: Number(getComputedStyle(label).opacity),
+                messageHeight: message.getBoundingClientRect().height,
+                messageText: message.textContent,
+                messageY: message.getBoundingClientRect().y,
+                titleHeight: title.getBoundingClientRect().height,
+                titleOpacity: Number(getComputedStyle(title).opacity),
+            };
+        }, time);
+    }
+    const full = await stage(979);
+    const labelGone = await stage(1460);
+    expect(labelGone.labelHeight).toBe(0);
+    expect(labelGone.labelOpacity).toBe(0);
+    expect(labelGone.titleOpacity).toBe(1);
+    expect(labelGone.titleHeight).toBeGreaterThan(0);
+    expect(labelGone.messageY).toBeLessThan(full.messageY);
+    const compact = await stage(1940);
+    expect(compact.titleHeight).toBe(0);
+    expect(compact.titleOpacity).toBe(0);
+    expect(compact.messageY).toBeLessThan(labelGone.messageY);
+    expect(compact.messageHeight).toBeGreaterThan(0);
+    expect(compact.messageText).toBe("Before disabling");
+    expect(await stage(4500)).toEqual(compact);
+    await page.clock.runFor(5000);
+    await expect(h.banner).toHaveCount(0);
+    expect(h.errors).toEqual([]);
+});
+
 test("remote banner reduced motion keeps configured alpha and the original expiry", async ({
     page,
     context,
