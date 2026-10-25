@@ -133,6 +133,18 @@ for (const body of [
 ]) {
     assert.throws(() => map(request(base + "/api/responses", "POST", body)));
 }
+for (const noncanonical of [
+    base + "/",
+    base.replace("player.example", "PLAYER.example"),
+    "https://player.example:443/ott-control",
+]) {
+    config.bases = [noncanonical];
+    assert.throws(
+        () => map(request(base + "/api/discovery")),
+        /Invalid hosted/
+    );
+}
+config.bases = [base, old];
 config.endpoint = "https://evil.example/api/device-transport";
 assert.throws(
     () => map(request(base + "/api/webhook/commands")),

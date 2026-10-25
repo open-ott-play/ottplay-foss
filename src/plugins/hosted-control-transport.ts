@@ -35,7 +35,9 @@
             /\/(?:\.|%2e)/i.test(url.pathname)
         )
             return fail();
-        return url.origin + url.pathname.replace(/\/+$/, "");
+        var canonical = url.origin + url.pathname.replace(/\/+$/, "");
+        if (canonical !== value) return fail();
+        return canonical;
     }
     function map(request: any): any {
         var config =

@@ -856,3 +856,5 @@ For an explicitly configured public alias, hosted pairing also supplies
 to the selected address. Existing direct clients omit this field and retain
 canonical discovery. Do not change global DNS discovery to an unsupported
 proxy endpoint merely to rename the hosted address.
+
+Hosted transport bases must use canonical HTTPS URLs without a trailing slash or an explicit default port. Noncanonical configuration is rejected so discovery and transport bind exactly the same server address.
