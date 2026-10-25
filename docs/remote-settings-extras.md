@@ -1,9 +1,10 @@
 # Remaining interface and diagnostic preferences
 
-These settings use the same typed `player_settings` protocol as ordinary preferences. Read a setting before writing it; the CLI carries its runtime, source and revision receipt into the write. Existing parental and kiosk restrictions still apply.
+These settings use the same typed `player_settings` protocol as ordinary preferences. Read a setting before writing it; the CLI carries its runtime, source and revision receipt into the write. Existing parental and kiosk restrictions still apply. The exact `notificationsEnabled` preference follows the existing notification-control policy, including kiosk mode.
 
 | Setting | Values | Scope and application |
 | --- | --- | --- |
+| `notificationsEnabled` | `0` off, `1` on (default) | Application; applies the text and image receiver immediately |
 | `noSelProv` | `0` show, `1` hide | Application; reload after the acknowledgement |
 | `noProvParam` | `0` show, `1` hide | Application; reload after the acknowledgement |
 | `localMediaEndpoint` | HTTP(S) URL or empty string | Browser media library; next library read |
@@ -42,3 +43,5 @@ Alphabetical ordering is saved under the current provider's storage scope. Switc
 A revision conflict means another setting owner changed the value or scope. Read it again instead of replaying the old receipt. A storage failure produces no owner effect. If storage succeeds but an owner effect fails, the result explicitly reports a saved value with `effect_failed`; inspect the current value before retrying.
 
 If a field is missing, update the matching player, controller and CLI. Static and offline packages must include the matching optional settings assets. See [typed settings](remote-player-settings.md) and [provider settings and Plex folders](remote-provider-settings.md).
+
+The notification preference uses the receiver's revision as well as saved bytes. Even a same-value legacy/local setter invalidates an older typed receipt, so an interrupted experiment cannot undo a newer decision. See [bounded performance capture](performance-capture.md).

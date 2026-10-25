@@ -81,6 +81,22 @@ function fixture(bridge = false) {
         },
         window: w,
     };
+    const originalRequire = context.require;
+    const feature = { exports: {}, require: originalRequire };
+    vm.runInNewContext(
+        ts.transpileModule(
+            fs.readFileSync("src/commands/remote-feature.ts", "utf8"),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.CommonJS,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText,
+        feature
+    );
+    context.require = (name) =>
+        name === "./remote-feature" ? feature.exports : originalRequire(name);
     function installDispatch() {
         vm.runInNewContext(code, context);
     }

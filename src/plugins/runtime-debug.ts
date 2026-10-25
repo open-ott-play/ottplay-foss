@@ -90,9 +90,7 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
     var epoch = 0;
     var disposed = false;
     var suspended = false;
-    var timer: any = null;
     var started = 0;
-    var previousTick = 0;
     var lastClock = 0;
     var sequence = 0;
     var dropped = 0;
@@ -151,13 +149,11 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
         }
         return null;
     }
-    function clearTimer(): void {
-        if (timer !== null) w.clearTimeout(timer);
-        timer = null;
-    }
     function retire(): void {
         epoch++;
-        clearTimer();
+        try {
+            if (w.__ottPerfCapture) w.__ottPerfCapture.retire("disconnected");
+        } catch (_) {}
         listeners.forEach(function (remove) {
             remove();
         });
@@ -205,34 +201,10 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
     function visible(): boolean {
         return !!(w.document && w.document.visibilityState === "visible");
     }
-    function tick(): void {
-        timer = null;
-        var generation = epoch;
-        if (!sync() || suspended || generation !== epoch) return;
-        var now = clock();
-        if (visible() && previousTick) {
-            var delay = Math.max(0, now - previousTick - 1000);
-            counters.loopDelayMs = delay;
-            counters.loopMaxDelayMs = Math.max(
-                counters.loopMaxDelayMs || 0,
-                delay
-            );
-            count("loopSamples");
-            if (delay >= 250) {
-                count("loopLongDelays");
-                record("loop_delay");
-            }
-        }
-        previousTick = visible() ? now : 0;
-        timer = w.setTimeout(tick, 1000);
-    }
     function begin(): void {
         started = clock();
-        previousTick = 0;
         counters = {
             errorCount: 0,
-            loopLongDelays: 0,
-            loopSamples: 0,
             rejectionCount: 0,
         };
         record("started");
@@ -250,23 +222,21 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
             record("unhandled_rejection");
         });
         listen(w.document, "visibilitychange", function () {
-            previousTick = 0;
             record(visible() ? "visible" : "hidden");
         });
         listen(w, "pagehide", function () {
             record("suspended");
             suspended = true;
-            previousTick = 0;
-            clearTimer();
+            try {
+                if (w.__ottPerfCapture)
+                    w.__ottPerfCapture.retire("page_hidden");
+            } catch (_) {}
             if (cancelRead) cancelRead();
         });
         listen(w, "pageshow", function () {
             if (!sync()) return;
             suspended = false;
-            previousTick = 0;
             record("resumed");
-            clearTimer();
-            timer = w.setTimeout(tick, 1000);
         });
         ["error", "waiting", "stalled", "playing", "ended"].forEach(
             function (type) {
@@ -286,7 +256,6 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
                 );
             }
         );
-        timer = w.setTimeout(tick, 1000);
     }
     function sync(): boolean {
         var next = config();
@@ -431,6 +400,19 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
             put(metrics, key, counters[key]);
         });
         put(metrics, "uptimeMs", clock() - started);
+        try {
+            var performance =
+                w.__ottPerfCapture && w.__ottPerfCapture.metrics();
+            if (performance)
+                [
+                    "loopDelayMs",
+                    "loopMaxDelayMs",
+                    "loopSamples",
+                    "loopLongDelays",
+                ].forEach(function (key) {
+                    put(metrics, key, performance[key]);
+                });
+        } catch (_) {}
         try {
             var control =
                 w.__ottCommandServer && w.__ottCommandServer.debugSnapshot();
@@ -585,10 +567,20 @@ export function installRuntimeDebug(w: any, deps: DebugDependencies): any {
         });
     }
     var api = {
+        available: function () {
+            return !!config() && !suspended;
+        },
         configurationChanged: sync,
+        configurationRevision: function () {
+            sync();
+            return epoch;
+        },
         dispose: function () {
             disposed = true;
             retire();
+        },
+        recordPerformanceDelay: function () {
+            if (sync() && !suspended && visible()) record("loop_delay");
         },
         snapshot: snapshot,
     };

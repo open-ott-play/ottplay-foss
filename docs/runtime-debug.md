@@ -32,7 +32,9 @@ sequence numbers expose ordering. Disconnecting or changing the controller
 credentials clears history and removes the timers/listeners. Reload loses this
 history; save a bundle before requesting a restart.
 
-A single one-second timer measures foreground JavaScript scheduling delay. Hidden
+An explicit [performance capture](performance-capture.md) lease enables the
+one-second timer for foreground JavaScript scheduling delay. Outside the lease,
+scheduling metrics are omitted and no diagnostic scheduling timer runs. Hidden
 and page-suspended intervals are excluded; a delay of at least 250 ms records
 `loop_delay`. Delay is an observation of scheduling, not proof of its cause.
 Available JS heap estimates, CPU concurrency, connectivity and command
@@ -56,6 +58,10 @@ without changing the preference. Preparation, stop, suspension, retired leases
 and device engines without this diagnostic capability report `null`. No source
 URL is read or exported. Attachment does not prove successful decoding; correlate
 it with the same generation/handle's media counters and actual captured frames.
+
+Updated players retain `debug_versions: [1, 2]` for older clients and advertise
+version 3 separately as `debug_attempts: {version: 3}`. Updated `debug --engine`
+clients select version 3 only with that marker.
 
 Explicitly requested version 3 preserves the version 2 engine identity and adds
 nullable `attempt` and `lastAttempt` observations per lane.

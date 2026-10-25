@@ -11,6 +11,7 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
+import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
@@ -360,6 +361,8 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (request.action === "perf_capture")
+        return executeRemotePerformance(w, request, done);
     if (
         [
             "player_settings",

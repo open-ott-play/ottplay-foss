@@ -540,6 +540,9 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
+    // Existing startup and complete legacy limits do not grow for this feature.
+    "perf-capture": Object.freeze({ bytes: 17000, gzipBytes: 6800 }),
     // Provider scalar codecs and the paginated Plex folder collection reuse normal
     // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
     // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
@@ -558,8 +561,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
 // Carry the approved 96-byte VOD checkpoint allowance into the complete
-// payload exactly once; retain every optional-module and raw-byte limit.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1264100, gzipBytes: 401046 });
+// payload exactly once, alongside the independently bounded optional capture.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1281100, gzipBytes: 407846 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

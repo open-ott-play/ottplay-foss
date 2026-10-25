@@ -1,5 +1,5 @@
 import { checkProviderUrl, isProviderAllowed } from "../provider";
-import { getScriptDOM } from "../utils/helpers";
+import { loadRemoteFeature } from "./remote-feature";
 import { remoteCheckpoint, remotePlayerInfo } from "./remote-restart";
 
 /** Keep the full settings dispatcher off the startup path, including in standby. */
@@ -116,45 +116,7 @@ export function executeRemoteSettings(
         }
     }
     if (w.__ottRemoteSettingsDispatch) dispatch();
-    else {
-        var state = w.__ottRemoteSettingsLoad;
-        if (state) state.waiters.push(dispatch);
-        else {
-            state = w.__ottRemoteSettingsLoad = { waiters: [dispatch] };
-            var settled = false;
-            var settle = function (reason?: string): void {
-                if (settled) return;
-                settled = true;
-                w.clearTimeout(timeout);
-                delete w.__ottRemoteSettingsLoad;
-                var pending = state.waiters;
-                state.waiters = [];
-                pending.forEach(function (next: (error?: string) => void) {
-                    try {
-                        next(reason);
-                    } catch (_) {}
-                });
-            };
-            var timeout = w.setTimeout(function () {
-                settle("unsupported");
-            }, 15000);
-            try {
-                getScriptDOM(
-                    String(w.host || "").replace(/\/$/, "") +
-                        "/dist/remote-settings-lifecycle.js?" +
-                        encodeURIComponent(w.__cv || ""),
-                    function () {
-                        settle();
-                    },
-                    function () {
-                        settle("unsupported");
-                    }
-                );
-            } catch (_) {
-                settle("unsupported");
-            }
-        }
-    }
+    else loadRemoteFeature(w, "remote-settings-lifecycle", dispatch);
     return function () {
         active = false;
         if (typeof cancel === "function") cancel();

@@ -84,6 +84,14 @@ function fixture() {
         stbGetItem: read,
         stbSetItem: write,
     };
+    w.stbGetNotificationSetting = () => read("sNotificationsEnabled");
+    w.__ottRemoteNotifications =
+        require("./helpers/remote-notifications.cjs")().createRemoteNotifications(
+            w,
+            () => {
+                throw new Error("unexpected network");
+            }
+        );
     vm.runInNewContext(extra, { window: w });
     const api = w.__ottRemoteSettingsExtras.create(w, () => {
         effects.push("checkpoint");
@@ -156,9 +164,9 @@ function test(name, run) {
     passed++;
     console.log("PASS extra settings: " + name);
 }
-test("six typed fields expose platform limitations and redact the browser URL", () => {
+test("typed fields expose platform limitations and redact the browser URL", () => {
     const f = fixture();
-    assert.equal(f.api.schema.length, 6);
+    assert.equal(f.api.schema.length, 7);
     assert.equal(f.api.descriptor("localMediaEndpoint").sensitive, true);
     f.state.native = true;
     const d = f.api.descriptor("localMediaEndpoint");
@@ -382,7 +390,7 @@ test("typed facade exposes extras and confirms persisted writes without a catalo
     const f = fixture();
     const schema = f.request({ op: "schema" });
     assert.equal(schema.status, "ok");
-    assert.equal(schema.data.settings.length, 6);
+    assert.equal(schema.data.settings.length, 7);
     f.w.__ottActiveProviderDriver = null;
     const get = f.get("noSelProv");
     assert.equal(get.data.setting.storage, "default");
@@ -477,3 +485,73 @@ test("visibility acknowledgement captures its restart owner and rechecks after c
     }
 });
 console.log("PASS " + passed + " extra settings scenarios");
+
+test("notification policy alone remains editable in kiosk/PIN mode and confirms its real owner", () => {
+    const f = fixture();
+    f.state.blocked = true;
+    f.state.pin = true;
+    const get = f.get("notificationsEnabled");
+    assert.equal(get.data.descriptor.access.write, true);
+    assert.equal(get.data.setting.value, 1);
+    assert.equal(get.data.setting.effective_value, 1);
+    const set = f.remoteSet(get, 0);
+    assert.equal(set.status, "ok");
+    assert.equal(set.data.persisted, true);
+    assert.equal(set.data.setting.persisted_value, 0);
+    assert.equal(set.data.setting.effective_value, 0);
+    assert.deepEqual(set.data.application, { state: "completed" });
+    assert.equal(f.w.__ottRemoteNotifications.enabled(), false);
+    for (const id of [
+        "noSelProv",
+        "noProvParam",
+        "debugEnabled",
+        "sortAlphabetically",
+    ]) {
+        const before = f.get(id);
+        assert.equal(before.data.descriptor.access.write, false);
+        assert.notEqual(f.remoteSet(before, 1).status, "ok");
+    }
+});
+test("same-value local or legacy notification setter and ABA invalidate stale typed receipts", () => {
+    const f = fixture();
+    const first = f.get("notificationsEnabled");
+    f.w.__ottRemoteNotifications.setEnabled(true);
+    assert.equal(f.remoteSet(first, 0).data.reason, "revision_conflict");
+    assert.equal(f.data.has("sNotificationsEnabled"), false);
+    const second = f.get("notificationsEnabled");
+    f.w.__ottRemoteNotifications.setEnabled(false);
+    f.w.__ottRemoteNotifications.setEnabled(true);
+    assert.equal(f.remoteSet(second, 0).data.reason, "revision_conflict");
+    const legacy = { window: {} };
+    vm.runInNewContext(
+        compile("src/plugins/remote-notification-settings.ts"),
+        legacy
+    );
+    f.data.set("sNotificationsEnabled", "1");
+    const before = f.get("notificationsEnabled");
+    let result;
+    legacy.window.__ottRemoteNotificationSettings.execute(
+        f.w,
+        "page-123",
+        { enabled: true, operation: "set", runtime: "page-123", version: 1 },
+        (r) => (result = r)
+    );
+    assert.equal(result.status, "ok");
+    assert.equal(f.remoteSet(before, 0).data.reason, "revision_conflict");
+});
+test("notification save failure has no owner effect and an external change is never rolled back", () => {
+    const f = fixture();
+    f.state.reject = "sNotificationsEnabled";
+    const before = f.get("notificationsEnabled"),
+        revision = f.w.__ottRemoteNotifications.policyRevision();
+    assert.notEqual(f.remoteSet(before, 0).status, "ok");
+    assert.equal(f.w.__ottRemoteNotifications.policyRevision(), revision);
+    assert.equal(f.w.__ottRemoteNotifications.enabled(), true);
+    f.state.reject = null;
+    const own = f.remoteSet(f.get("notificationsEnabled"), 0);
+    assert.equal(own.status, "ok");
+    const restore = f.get("notificationsEnabled");
+    f.w.__ottRemoteNotifications.setEnabled(false);
+    assert.equal(f.remoteSet(restore, 1).data.reason, "revision_conflict");
+    assert.equal(f.w.__ottRemoteNotifications.enabled(), false);
+});

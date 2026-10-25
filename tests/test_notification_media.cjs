@@ -475,6 +475,31 @@ async function load(h) {
             "missing hosted asset never falls back to leaking a direct request"
         );
     }
+    {
+        const phases = [];
+        const h = fixture({ phase: (...args) => phases.push(args) });
+        const { results } = await load(h);
+        assert(results[0]);
+        assert.deepEqual(phases, [
+            ["fetch", false],
+            ["fetch", true],
+            ["base64", false],
+            ["base64", true],
+            ["validation", false],
+            ["validation", true],
+            ["blob", false],
+            ["blob", true],
+        ]);
+        results[0].dispose();
+        const safe = fixture({
+            phase: () => {
+                throw Error("observer unavailable");
+            },
+        });
+        const observed = await load(safe);
+        assert(observed.results[0]);
+        observed.results[0].dispose();
+    }
     console.log(
         "PASS notification media: ES5, capabilities, bounded JPEG validation/transport, authorization, redirects, expiry, cancellation and URL disposal"
     );

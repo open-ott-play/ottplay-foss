@@ -4,6 +4,15 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
     var versions: any = {};
     var definitions = [
         {
+            apply: "immediate",
+            description:
+                "Receive home notifications and camera images. Shares the existing notification-control policy.",
+            fallback: 1,
+            id: "notificationsEnabled",
+            key: "sNotificationsEnabled",
+            notification: true,
+        },
+        {
             apply: "after_ack",
             description:
                 "Hide the provider chooser. Reloads the player after acknowledgement.",
@@ -72,7 +81,8 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
             owner.libraryIdentity().indexOf("browser:") === 0
         );
     }
-    function locked(): boolean {
+    function locked(id?: string): boolean {
+        if (id === "notificationsEnabled") return false;
         return !!(
             (w.__ottKiosk && w.__ottKiosk.enabled()) ||
             (w.__ottParental
@@ -86,7 +96,7 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
     function descriptor(id: string): any {
         var d = definition(id),
             owner = w.__ottActiveProviderDriver;
-        var reason = locked() ? "policy_restricted" : "";
+        var reason = locked(id) ? "policy_restricted" : "";
         if (
             d.provider &&
             (!owner ||
@@ -97,6 +107,16 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
         if (d.secret && !localMedia())
             reason = media() ? "local_action_required" : "unsupported";
         if (d.debug && !w.__ottDebug) reason = "unsupported";
+        var receiver = w.__ottRemoteNotifications;
+        if (
+            d.notification &&
+            (!receiver ||
+                typeof receiver.setEnabled !== "function" ||
+                typeof receiver.enabled !== "function" ||
+                typeof receiver.policyRevision !== "function" ||
+                typeof receiver.poll !== "function")
+        )
+            reason = "unsupported";
         if (
             d.apply === "after_ack" &&
             (typeof w.restart !== "function" ||
@@ -129,7 +149,11 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                 ? owner.storageKey(d.key)
                 : d.key;
         var target = d.debug ? w.localStorage : w;
-        var read = d.debug ? target.getItem : w.stbGetItem;
+        var read = d.debug
+            ? target.getItem
+            : d.notification
+              ? w.stbGetNotificationSetting
+              : w.stbGetItem;
         var write = d.debug ? target.setItem : w.stbSetItem;
         var remove = d.debug ? target.removeItem : w.stbDelItem;
         if (
@@ -147,7 +171,10 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                       read === target.getItem &&
                       write === target.setItem &&
                       remove === target.removeItem
-                    : read === w.stbGetItem &&
+                    : read ===
+                          (d.notification
+                              ? w.stbGetNotificationSetting
+                              : w.stbGetItem) &&
                       write === w.stbSetItem &&
                       remove === w.stbDelItem)
             );
@@ -179,13 +206,15 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
         }
     }
     function effectOwner(d: any): any {
-        return d.secret
-            ? media()
-            : d.debug
-              ? w.__ottDebug
-              : d.provider
-                ? w.sortChannels
-                : w.restart;
+        return d.notification
+            ? w.__ottRemoteNotifications
+            : d.secret
+              ? media()
+              : d.debug
+                ? w.__ottDebug
+                : d.provider
+                  ? w.sortChannels
+                  : w.restart;
     }
     function capture(id: string): any {
         var d = definition(id),
@@ -193,12 +222,22 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
             raw = port.read(),
             version = revision(id);
         var owner = effectOwner(d),
-            ownerRevision = d.secret && owner && owner.settingsRevision();
+            ownerRevision =
+                owner &&
+                (d.secret
+                    ? owner.settingsRevision()
+                    : d.notification
+                      ? owner.policyRevision()
+                      : null);
         function ownerCurrent(): boolean {
             return (
                 owner === effectOwner(d) &&
-                (!d.secret ||
-                    ownerRevision === (owner && owner.settingsRevision()))
+                (!(d.secret || d.notification) ||
+                    ownerRevision ===
+                        (owner &&
+                            (d.secret
+                                ? owner.settingsRevision()
+                                : owner.policyRevision())))
             );
         }
         var stored = d.secret ? raw : raw === "0" ? 0 : raw === "1" ? 1 : null;
@@ -213,6 +252,8 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                     ownerCurrent()
                 );
             },
+            effective:
+                d.notification && owner ? (owner.enabled() ? 1 : 0) : undefined,
             id: id,
             owner: owner,
             ownerCurrent: ownerCurrent,
@@ -263,7 +304,7 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                 port.current() &&
                 before.ownerCurrent() &&
                 admitted() &&
-                !locked() &&
+                !locked(id) &&
                 revision(id) === before.version
             );
         }
@@ -292,7 +333,7 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                         return (
                             saved.current() &&
                             admitted() &&
-                            !locked() &&
+                            !locked(id) &&
                             w.restart === restart
                         );
                     }
@@ -301,6 +342,11 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
                     if (current()) restart.call(w);
                 });
                 application = { reason: "after_ack", state: "deferred" };
+            } else if (d.notification) {
+                before.owner.setEnabled(value === 1);
+                before.owner.poll();
+                if (before.owner.enabled() !== (value === 1))
+                    throw new Error("effect_failed");
             } else if (d.secret) {
                 media().didRestoreLibrary();
                 application = { reason: "manual", state: "deferred" };
@@ -322,7 +368,7 @@ function createRemoteExtraSettings(w: any, checkpoint?: (w: any) => void): any {
             !port.current() ||
             !admitted() ||
             port.read() !== expected ||
-            (d.secret && before.owner !== media())
+            ((d.secret || d.notification) && before.owner !== effectOwner(d))
         )
             throw new Error("source_changed");
         return {

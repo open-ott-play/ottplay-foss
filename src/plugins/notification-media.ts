@@ -17,11 +17,21 @@ export interface NotificationMediaResult {
 export interface NotificationMediaOptions {
     address: string;
     media: NotificationMediaDescriptor;
+    phase?(name: string, finished: boolean): void;
     remainingMs: number;
     runtime: string;
     token: string;
 }
 var BODY_LIMIT = 224 * 1024;
+function tracePhase(
+    options: NotificationMediaOptions,
+    name: string,
+    finished: boolean
+): void {
+    try {
+        if (options.phase) options.phase(name, finished);
+    } catch (_) {}
+}
 function integer(value: any, max: number): boolean {
     return (
         typeof value === "number" &&
@@ -132,11 +142,15 @@ function decode(
         !/^[A-Za-z0-9+/]+={0,2}$/.test(data.data_base64)
     )
         return null;
+    tracePhase(options, "base64", false);
     var binary = w.atob(data.data_base64);
     if (binary.length !== media.bytes) return null;
     var bytes = new Uint8Array(binary.length);
     for (var i = 0; i < bytes.length; i++) bytes[i] = binary.charCodeAt(i);
+    tracePhase(options, "base64", true);
+    tracePhase(options, "validation", false);
     var size = jpegSize(bytes);
+    tracePhase(options, "validation", true);
     return size && size.width === media.width && size.height === media.height
         ? {
               bytes: bytes,
@@ -194,6 +208,7 @@ export function loadNotificationMedia(
         cancelTransport();
         var result: NotificationMediaResult | null = null;
         try {
+            if (body !== undefined) tracePhase(options, "fetch", true);
             var bytes =
                 body && elapsed() < options.remainingMs
                     ? decode(w, body, options, elapsed())
@@ -206,9 +221,11 @@ export function loadNotificationMedia(
                 typeof api.revokeObjectURL === "function" &&
                 typeof w.Blob === "function"
             ) {
+                tracePhase(options, "blob", false);
                 var url = api.createObjectURL(
                     new w.Blob([bytes.bytes], { type: "image/jpeg" })
                 );
+                tracePhase(options, "blob", true);
                 var disposed = false;
                 result = {
                     dispose: function () {
@@ -315,6 +332,7 @@ export function loadNotificationMedia(
             },
             Math.min(8000, options.remainingMs)
         );
+        tracePhase(options, "fetch", false);
         w.fetch(request)
             .then(function (response: any) {
                 if (done) return;

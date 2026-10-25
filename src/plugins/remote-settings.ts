@@ -315,6 +315,11 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             result.value = capture.value;
             if (capture.raw !== null && capture.valid)
                 result.persisted_value = capture.stored;
+            if (
+                id === "notificationsEnabled" &&
+                (capture.effective === 0 || capture.effective === 1)
+            )
+                result.effective_value = capture.effective;
             if (id === "players" && w.ott_device === "lg/webos")
                 result.effective_value = 3;
             if (
@@ -565,7 +570,12 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 );
             }
             function admitted(): boolean {
-                return sourceCurrent() && !locked();
+                return (
+                    sourceCurrent() &&
+                    ((entry.extraField &&
+                        params.id === "notificationsEnabled") ||
+                        !locked())
+                );
             }
             if (entry.providerField) {
                 var originalHost = host(),

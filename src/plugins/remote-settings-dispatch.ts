@@ -245,7 +245,7 @@ function executeRemoteSettingsDispatch(
         if (
             request.action === "player_settings" &&
             (params.op === "schema" ||
-                /^(noSelProv|noProvParam|localMediaEndpoint|debugEnabled|debugHud|sortAlphabetically)$/.test(
+                /^(noSelProv|noProvParam|localMediaEndpoint|debugEnabled|debugHud|sortAlphabetically|notificationsEnabled)$/.test(
                     params.id || ""
                 ))
         )

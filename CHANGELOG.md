@@ -8,6 +8,11 @@
 - Save VPortal and Plex video progress alongside the channel selection during
   playback, so reopening the player restores the selected film and its saved
   position across the shared TV, browser and native player builds.
+- Add explicitly started, bounded performance captures with playback/HLS timing,
+  buffer ranges, optional event-loop observations and content-free notification
+  correlation. Keep the diagnostic scheduling timer off outside the capture.
+  Add typed notification-policy revisions for safe A–B–A restoration, and retain
+  older debug capability compatibility while exposing version 3 attempts.
 - Let updated remote clients play or preview the first 500 items of a larger
   Plex library and report the limit explicitly. Shuffle applies to those
   selected items; legacy clients and invalid or incomplete responses retain

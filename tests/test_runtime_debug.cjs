@@ -308,26 +308,34 @@ async function test(name, run) {
         );
         f.close();
     });
-    await test("foreground lag is measured; hidden and suspended intervals are not false stalls", async () => {
+    await test("optional performance metrics are allowlisted and disappear after lease retirement", async () => {
         const f = fixture();
         f.enable();
-        f.fire(1100);
-        f.fire(3100);
-        let data = await f.api.snapshot();
-        assert.equal(data.metrics.loopDelayMs, 1000);
-        assert.equal(data.metrics.loopLongDelays, 1);
-        Object.defineProperty(f.w.document, "visibilityState", {
-            configurable: true,
-            value: "hidden",
-        });
-        f.w.document.dispatchEvent(new f.w.Event("visibilitychange"));
-        f.fire(100000);
+        assert.equal(f.timers.size, 0);
+        assert.equal((await f.api.snapshot()).metrics.loopSamples, undefined);
+        let active = true;
+        f.w.__ottPerfCapture = {
+            metrics: () =>
+                active
+                    ? {
+                          loopDelayMs: 1000,
+                          loopLongDelays: 1,
+                          loopMaxDelayMs: 1000,
+                          loopSamples: 2,
+                          secret,
+                      }
+                    : null,
+            retire: () => {
+                active = false;
+            },
+        };
         assert.equal((await f.api.snapshot()).metrics.loopLongDelays, 1);
+        assert(!JSON.stringify(await f.api.snapshot()).includes(secret));
         f.w.dispatchEvent(new f.w.Event("pagehide"));
         assert.equal(f.timers.size, 0);
         await assert.rejects(f.api.snapshot(), /unavailable/);
         f.w.dispatchEvent(new f.w.Event("pageshow"));
-        assert.equal(f.timers.size, 1);
+        assert.equal((await f.api.snapshot()).metrics.loopSamples, undefined);
         f.close();
     });
     await test("credential change clears history and disabled/disposed collector removes listeners", async () => {
@@ -342,7 +350,7 @@ async function test(name, run) {
         let data = await f.api.snapshot();
         assert.equal(data.events.length, 1);
         assert.equal(data.metrics.errorCount, 0);
-        assert.equal(f.timers.size, 1);
+        assert.equal(f.timers.size, 0);
         f.replace({ enabled: false });
         assert.equal(f.timers.size, 0);
         f.w.dispatchEvent(new f.w.Event("error"));
@@ -412,7 +420,7 @@ async function test(name, run) {
         resolve(producer);
         await Promise.resolve();
         await Promise.resolve();
-        assert.equal(f.timers.size, 1);
+        assert.equal(f.timers.size, 0);
         f.close();
     });
     await test("wrong native platform is invalid and runtime replacement cancels its result", async () => {

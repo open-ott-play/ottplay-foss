@@ -10,6 +10,7 @@ import {
 
 var sessionSequence = 0;
 interface NotificationBanner {
+    diagnostic?: any;
     disposeMedia?: (() => void) | null;
     element: any;
     exitTimer?: any;
@@ -28,6 +29,7 @@ export function createRemoteNotifications(
     var token = "";
     var runtime = "";
     var receiveEnabled = true;
+    var policyRevision = 0;
     var supportsEnabled = false;
     var supportsImages = false;
     var generation = 0;
@@ -41,13 +43,35 @@ export function createRemoteNotifications(
     var banners: NotificationBanner[] = [];
     var mediaOwner: NotificationBanner | null = null;
 
+    function diagnostic(media: any): any {
+        try {
+            return (
+                w.__ottPerfSink &&
+                w.__ottPerfSink.notification(media, function () {
+                    return banners.length;
+                })
+            );
+        } catch (_) {
+            return null;
+        }
+    }
+    function stage(trace: any, name: string, reason?: string): void {
+        try {
+            if (trace) trace.stage(name, reason);
+        } catch (_) {}
+    }
+    function phase(trace: any, name: string, finished: boolean): void {
+        try {
+            if (trace) trace.phase(name, finished);
+        } catch (_) {}
+    }
     function clearMedia(banner: NotificationBanner): void {
         var dispose = banner.disposeMedia;
         banner.disposeMedia = null;
         if (mediaOwner === banner) mediaOwner = null;
         if (dispose) dispose();
     }
-    function clearBanner(banner: NotificationBanner): void {
+    function clearBanner(banner: NotificationBanner, reason = "hidden"): void {
         clearMedia(banner);
         w.clearTimeout(banner.timer);
         w.clearTimeout(banner.exitTimer);
@@ -55,9 +79,12 @@ export function createRemoteNotifications(
             banner.element.parentNode.removeChild(banner.element);
         var index = banners.indexOf(banner);
         if (index !== -1) banners.splice(index, 1);
+        stage(banner.diagnostic, "hidden", reason);
     }
     function clear(): void {
-        banners.slice().forEach(clearBanner);
+        banners.slice().forEach(function (banner) {
+            clearBanner(banner, "stopped");
+        });
     }
     function newSession(): void {
         // Not a secret: bind ephemeral server queues to this active viewing session.
@@ -113,7 +140,9 @@ export function createRemoteNotifications(
         }
     }
     function setEnabled(next: boolean): void {
-        if (typeof next !== "boolean" || next === receiveEnabled) return;
+        if (typeof next !== "boolean") return;
+        policyRevision++;
+        if (next === receiveEnabled) return;
         receiveEnabled = next;
         activityEpoch++;
         lastActive = false;
@@ -122,6 +151,7 @@ export function createRemoteNotifications(
         newSession();
     }
     function configure(nextAddress: string, nextToken: string): void {
+        policyRevision++;
         if (nextAddress !== address || nextToken !== token) {
             supportsEnabled = false;
             supportsImages = false;
@@ -189,7 +219,7 @@ export function createRemoteNotifications(
             clearBanner(banner);
             return;
         }
-        if (mediaOwner) clearBanner(mediaOwner);
+        if (mediaOwner) clearBanner(mediaOwner, "superseded");
         mediaOwner = banner;
         var current = generation,
             activity = activityEpoch;
@@ -236,6 +266,7 @@ export function createRemoteNotifications(
                     w.innerWidth - 24,
                     w.innerHeight * 0.4 * (result.width / result.height)
                 ) + "px";
+            stage(banner.diagnostic, "updated");
         }
         banner.disposeMedia = function () {
             if (disposed) return;
@@ -254,12 +285,18 @@ export function createRemoteNotifications(
             {
                 address: address,
                 media: item.media,
+                phase: banner.diagnostic
+                    ? function (name, finished) {
+                          phase(banner.diagnostic, name, finished);
+                      }
+                    : undefined,
                 remainingMs: remaining,
                 runtime: runtime,
                 token: token,
             },
             function (loaded) {
                 if (!loaded) {
+                    stage(banner.diagnostic, "dropped", "media_error");
                     clearBanner(banner);
                     return;
                 }
@@ -271,9 +308,10 @@ export function createRemoteNotifications(
                 receivedAt = Date.now();
                 receivedMonotonic = monotonic();
                 expiry = w.setTimeout(function () {
-                    clearBanner(banner);
+                    clearBanner(banner, "expired");
                 }, loaded.remainingMs);
                 image.onload = function () {
+                    phase(banner.diagnostic, "image_load_decode", true);
                     if (
                         !valid() ||
                         image.naturalWidth !== loaded.width ||
@@ -282,6 +320,7 @@ export function createRemoteNotifications(
                         clearBanner(banner);
                         return;
                     }
+                    stage(banner.diagnostic, "image_loaded");
                     if (!animate(mediaRemaining())) return;
                     banner.element.insertBefore(
                         image,
@@ -289,24 +328,33 @@ export function createRemoteNotifications(
                     );
                     banner.element.classList.add("remote-notify-with-image");
                     banner.element.style.display = "block";
+                    stage(banner.diagnostic, "shown");
                     resize();
                     w.addEventListener("resize", resize);
                 };
                 image.onerror = function () {
+                    stage(banner.diagnostic, "dropped", "media_error");
                     clearBanner(banner);
                 };
+                phase(banner.diagnostic, "image_load_decode", false);
                 image.src = loaded.url;
             }
         );
         if (disposed && abort) abort();
     }
-    function show(item: any, remaining: number): void {
+    function show(item: any, remaining: number, trace: any): void {
         // Recheck at delivery: a screen can sleep while the request is in flight.
-        if (!isActive()) return;
+        if (!isActive()) {
+            stage(trace, "dropped", "hidden");
+            return;
+        }
         var document = w.document;
         var container = document.getElementById("notifications");
-        if (!container) return;
-        while (banners.length >= 3) clearBanner(banners[0]);
+        if (!container) {
+            stage(trace, "dropped", "unsupported");
+            return;
+        }
+        while (banners.length >= 3) clearBanner(banners[0], "capacity");
         var element = document.createElement("div");
         element.className =
             "notify remote-notify remote-notify-" + item.severity;
@@ -339,8 +387,13 @@ export function createRemoteNotifications(
             part("message", item.message, content);
         }
         container.appendChild(element);
-        var banner: NotificationBanner = { element: element, timer: null };
+        var banner: NotificationBanner = {
+            diagnostic: trace,
+            element: element,
+            timer: null,
+        };
         banners.push(banner);
+        stage(trace, "dom_created");
         var lifetime = Math.min(item.duration_ms, remaining);
         var createdAt = Date.now(),
             createdMonotonic = monotonic();
@@ -373,10 +426,13 @@ export function createRemoteNotifications(
             return true;
         }
         banner.timer = w.setTimeout(function () {
-            clearBanner(banner);
+            clearBanner(banner, "expired");
         }, lifetime);
         if (media) attachImage(banner, item, lifetime, animate);
-        else animate(lifetime);
+        else {
+            animate(lifetime);
+            stage(trace, "shown");
+        }
     }
     function poll(): void {
         var active = isActive();
@@ -455,8 +511,24 @@ export function createRemoteNotifications(
                     data.capabilities.media.indexOf("jpeg-v1") !== -1
                 );
                 data.notifications.forEach(function (item: any) {
-                    if (!receiveEnabled || !valid(item) || seen[item.id])
+                    var trace = diagnostic(
+                        item && validNotificationMedia(item.media)
+                            ? item.media
+                            : null
+                    );
+                    stage(trace, "received");
+                    if (!receiveEnabled || !valid(item) || seen[item.id]) {
+                        stage(
+                            trace,
+                            "dropped",
+                            !receiveEnabled
+                                ? "disabled"
+                                : !valid(item)
+                                  ? "invalid"
+                                  : "duplicate"
+                        );
                         return;
+                    }
                     // Mark dropped/expired items too; waking must not replay a stale event.
                     remember(item.id);
                     var currentMonotonic = monotonic();
@@ -475,7 +547,13 @@ export function createRemoteNotifications(
                         currentActivity === activityEpoch &&
                         remaining > 0
                     )
-                        show(item, remaining);
+                        show(item, remaining, trace);
+                    else
+                        stage(
+                            trace,
+                            "dropped",
+                            remaining <= 0 ? "expired" : "hidden"
+                        );
                 });
             } catch (_error) {}
         }
@@ -502,6 +580,9 @@ export function createRemoteNotifications(
         configure: configure,
         enabled: function () {
             return receiveEnabled;
+        },
+        policyRevision: function () {
+            return policyRevision;
         },
         poll: poll,
         setEnabled: setEnabled,

@@ -374,9 +374,6 @@ function ottDebugBufferAhead(v: HTMLVideoElement): number {
                 ahead = buf.end(i) - t;
                 break;
             }
-            if (buf.start(i) > t) {
-                ahead = Math.max(ahead, buf.end(i) - t);
-            }
         }
         return Math.round(ahead * 100) / 100;
     } catch (_e) {
@@ -936,7 +933,8 @@ function ottDebugAttachHls(hls: any): void {
 
     listen(Ev.FRAG_LOADED, function (_e: any, data: any) {
         var frag = data && data.frag;
-        var stats = data && data.stats;
+        var stats =
+            data && ((data.part && data.part.stats) || (frag && frag.stats));
         ottDebugPush("hls", "FRAG_LOADED", {
             level: frag && frag.level,
             loadMs:

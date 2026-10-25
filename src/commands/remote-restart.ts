@@ -809,6 +809,7 @@ export function executeRemoteControl(
                 : null,
             aspect: remoteAspectCapabilities(w),
             debug: w.__ottRuntimeDebug ? { version: 1 } : undefined,
+            debug_attempts: w.__ottRuntimeDebug ? { version: 3 } : undefined,
             debug_versions: w.__ottRuntimeDebug ? [1, 2] : undefined,
             favorites: remoteFavoritesCapability,
             input: Object.keys(remoteKeys).filter(function (key) {
@@ -830,6 +831,16 @@ export function executeRemoteControl(
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.capabilities()
                 : null,
+            perf_capture: w.__ottRuntimeDebug
+                ? {
+                      default_duration_seconds: 120,
+                      max_bytes: 524288,
+                      max_duration_seconds: 600,
+                      max_events: 1024,
+                      max_read_events: 64,
+                      version: 1,
+                  }
+                : undefined,
             playback: playback,
             player: remotePlayerInfo(w),
             player_settings: w.__ottPlayerSettingsHost

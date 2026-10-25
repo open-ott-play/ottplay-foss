@@ -643,6 +643,45 @@ test("snapshot is an allowlisted URL-free observation even while disabled", () =
     }
 });
 
+test("fragment statistics come from the pinned HLS owner and buffer gaps are not playable", () => {
+    const f = fixture();
+    try {
+        const { hls } = fakeHls();
+        const events = [];
+        f.attach(hls);
+        const release = f.w.__ottDebug.capture((e) => events.push(e));
+        hls.emit("frag-loaded", {
+            frag: {
+                level: 1,
+                sn: 2,
+                stats: { loaded: 42, loading: { end: 30, start: 10 } },
+            },
+            stats: { loaded: 999 },
+        });
+        hls.emit("frag-loaded", {
+            frag: { level: 1, sn: 3, stats: { loaded: 42 } },
+            part: { stats: { loaded: 7, loading: { end: 25, start: 20 } } },
+        });
+        const values = events.filter((e) => e.msg === "FRAG_LOADED");
+        assert.equal(values.length, 2);
+        assert.equal(values[0].data.size, 42);
+        assert.equal(values[0].data.loadMs, 20);
+        assert.equal(values[1].data.size, 7);
+        const video = f.w.document.getElementById("video");
+        Object.defineProperty(video, "buffered", {
+            value: {
+                end: (i) => (i ? 20 : 2),
+                length: 2,
+                start: (i) => (i ? 8 : 0),
+            },
+        });
+        assert.equal(f.w.__ottDebug.snapshot().video.bufferAhead, 0);
+        release();
+    } finally {
+        f.close();
+    }
+});
+
 (async () => {
     let failed = 0;
     for (const { body, name } of tests) {
