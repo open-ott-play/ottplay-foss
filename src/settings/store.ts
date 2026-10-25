@@ -358,8 +358,13 @@ export function createSettingsStore(
     }
     function begin(
         persistCurrent = false,
-        expected?: SettingsCapture
+        expected?: SettingsCapture | SettingsCapture[]
     ): SettingsDraft {
+        var expectedCaptures = expected
+            ? Array.isArray(expected)
+                ? expected
+                : [expected]
+            : [];
         // A failed catalog load must not prevent editing the new source's
         // preferences. Hydrate its scope before taking a fresh draft snapshot.
         if (ports.context() !== context) reload("provider");
@@ -398,7 +403,9 @@ export function createSettingsStore(
                 function current(): boolean {
                     return (
                         active() &&
-                        (!expected || expected.current()) &&
+                        expectedCaptures.every(function (capture) {
+                            return capture.current();
+                        }) &&
                         admitted()
                     );
                 }
@@ -433,15 +440,16 @@ export function createSettingsStore(
                     });
                     writes = additional.slice();
                     changes.forEach(function (id) {
-                        var entry = definitions[id],
-                            storage =
-                                expected && expected.id === id
-                                    ? expected.storage
-                                    : ports.storage(entry);
-                        var before =
-                            expected && expected.id === id
-                                ? expected.raw
-                                : storage.read();
+                        var entry = definitions[id];
+                        var captured = expectedCaptures.filter(
+                            function (capture) {
+                                return capture.id === id;
+                            }
+                        )[0];
+                        var storage = captured
+                            ? captured.storage
+                            : ports.storage(entry);
+                        var before = captured ? captured.raw : storage.read();
                         // Preserve the old value without re-persisting a legacy
                         // plaintext credential if a later write fails.
                         var rollback = entry.protectRollback

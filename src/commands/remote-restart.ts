@@ -839,6 +839,13 @@ export function executeRemoteControl(
                       version: 1,
                   }
                 : undefined,
+            player_settings_patch: w.__ottRemoteLifecyclePorts
+                ? {
+                      groups: ["command_server", "local_http"],
+                      max_fields: 3,
+                      version: 1,
+                  }
+                : undefined,
             plex_folders:
                 w.__ottActiveProviderDriver &&
                 w.__ottActiveProviderDriver.id === "plex"

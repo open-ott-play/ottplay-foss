@@ -541,10 +541,17 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
     // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
     "remote-provider-fields": Object.freeze({ bytes: 18000, gzipBytes: 6200 }),
-    "remote-settings": Object.freeze({ bytes: 21000, gzipBytes: 6800 }),
+    // Move the typed factory/dispatcher into the lifecycle asset, and the remote-only
+    // handoff/notification handlers out of startup. Combined Node22: base15851/5206,
+    // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
+    "remote-settings": Object.freeze({ bytes: 17500, gzipBytes: 5800 }),
+    "remote-settings-lifecycle": Object.freeze({
+        bytes: 31000,
+        gzipBytes: 10000,
+    }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1223600, gzipBytes: 387150 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1251100, gzipBytes: 396150 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

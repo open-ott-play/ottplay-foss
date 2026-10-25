@@ -28,6 +28,20 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
     function host(): any {
         return w.__ottPlayerSettingsHost;
     }
+    function lifecycle(): any {
+        return w.__ottRemoteSettingsLifecycle;
+    }
+    function lifecycleField(id: string): boolean {
+        return /^(ottplaylang|ottplaylangmode|commandServerAddress|commandServerToken|commandServerEnabled|localCmdUrl|localHttpDeviceCode|localHttpEnabled|deviceUuid|swopBaseUrl)$/.test(
+            id
+        );
+    }
+    function capture(id: string): any {
+        return lifecycleField(id) && lifecycle()
+            ? lifecycle().capture(id)
+            : store.capture(id);
+    }
+
     function refresh(): any {
         var h = host(),
             active = w.__ottActiveProviderDriver;
@@ -129,10 +143,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 id
             );
         var unavailable = entry.scope === "provider" && !providerReady();
-        var lifecycle =
-            /^(commandServerAddress|commandServerToken|commandServerEnabled|localCmdUrl|localHttpDeviceCode|localHttpEnabled|deviceUuid|swopBaseUrl)$/.test(
-                id
-            );
+        var requiresLifecycle = lifecycleField(id);
         var constraints: any = {};
         var type = Array.isArray(fallback)
             ? "string_array"
@@ -153,6 +164,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         } else {
             constraints.max_utf8_bytes = 4096;
             if (type === "string_array") constraints.max_items = 64;
+            if (rules.values) constraints.values = rules.values.slice();
         }
         if (rules.language)
             constraints.values = [""].concat(
@@ -161,26 +173,32 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             );
         var access: any = {
             read: !sensitive && !unavailable,
-            write: !unavailable && !lifecycle && !locked(),
+            write:
+                !unavailable &&
+                (!requiresLifecycle || !!lifecycle()) &&
+                !locked(),
         };
         if (!access.write)
             access.reason = unavailable
                 ? "unsupported"
-                : lifecycle
+                : requiresLifecycle && !lifecycle()
                   ? "lifecycle_required"
                   : "policy_restricted";
         var result: any = {
             access: access,
-            apply: /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage)$/.test(
-                id
-            )
-                ? "next_stream"
-                : /^(hdmiSupport|autorun)$/.test(id) ||
-                    entry.effects.some(function (name: string) {
-                        return typeof w[name] !== "function";
-                    })
-                  ? "manual"
-                  : "immediate",
+            apply:
+                requiresLifecycle && lifecycle()
+                    ? "after_ack"
+                    : /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage)$/.test(
+                            id
+                        )
+                      ? "next_stream"
+                      : /^(hdmiSupport|autorun)$/.test(id) ||
+                          entry.effects.some(function (name: string) {
+                              return typeof w[name] !== "function";
+                          })
+                        ? "manual"
+                        : "immediate",
             constraints: constraints,
             description:
                 "The saved preference is used by subsequent player actions and UI updates; saving does not restart current playback.",
@@ -196,6 +214,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (/^preferred(?:Audio|Subtitle)Language$/.test(id))
             result.description =
                 "Used when tracks are selected for the next stream, unless that channel has an explicit track preference. Saving does not switch the current track.";
+        if (result.apply === "after_ack")
+            result.description =
+                "Saved atomically with its companion fields, then applied after acknowledgement. Failed connection changes roll back; use the group transition to confirm the outcome.";
         if (result.apply === "manual")
             result.description =
                 id === "hdmiSupport"
@@ -294,7 +315,11 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                     return text(part, 4096);
                 });
     }
-    function request(request: any, done: (result: any) => void): void {
+    function request(
+        request: any,
+        done: (result: any) => void,
+        afterReply?: any
+    ): void {
         var params = request.params || {},
             op = params.op,
             completed = false;
@@ -455,7 +480,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 }
                 var captured = entry.providerField
                     ? fields.capture(params.id)
-                    : store.capture(params.id);
+                    : capture(params.id);
                 if (refresh().token !== sourceToken) {
                     fail("source_changed");
                     return;
@@ -563,6 +588,26 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                             : "storage_failed"
                     );
                 }
+                return;
+            }
+            if (lifecycleField(params.id) && lifecycle()) {
+                var applied = lifecycle().save(
+                    params.id,
+                    params.value,
+                    receipt.capture,
+                    admitted,
+                    afterReply
+                );
+                if (applied.reason) {
+                    fail(applied.reason);
+                    return;
+                }
+                reply({
+                    application: applied.application,
+                    changed: applied.changed,
+                    persisted: true,
+                    setting: remember(params.id, applied.capture, descriptor),
+                });
                 return;
             }
             var draft = store.begin(true, receipt.capture);

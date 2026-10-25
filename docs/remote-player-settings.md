@@ -32,7 +32,7 @@ Secret descriptors omit defaults, and secret reads omit current/stored/effective
 ott t1 setting KEY --value-file /absolute/private/value.txt
 ```
 
-Connection and device-identity fields that require their existing lifecycle workflow are advertised as such; the generic API does not claim that changing saved bytes reconnects a controller or rebinds a native listener.
+Interface language, connection groups and device identity use acknowledged lifecycle adapters. Active address/credential changes use an atomic group patch, with guarded rollback on connection failure. See [remote language and connection settings](remote-settings-lifecycle.md) for commands, private JSON examples and transition troubleshooting.
 
 For fields exposed by each provider and the Plex folder collection, see [provider settings](remote-provider-settings.md).
 
@@ -65,6 +65,6 @@ Omit `name` to retain that VPortal slot's current name. The CLI compares the sav
 - **Policy restricted:** use the player's normal kiosk/PIN workflow. Remote authorization does not bypass its local policy.
 - **Storage failed:** the value was not confirmed. Read it before retrying; inspect device storage availability. Effects are not applied before verified persistence.
 - **Saved, effect failed:** persistence succeeded but application did not. Diagnose the renderer/native effect and avoid repeatedly rewriting the same value.
-- **Optional module unavailable:** verify that `dist/remote-settings.js` belongs to the same deployed build. Native packages and offline asset inventories must include it. VPortal configuration also requires the matching `provider-vportal.js` asset; loading the configuration codec does not start its media requests.
+- **Optional module unavailable:** verify that `dist/remote-settings.js` and `dist/remote-settings-lifecycle.js` belong to the same deployed build. Native packages and offline asset inventories must include it. VPortal configuration also requires the matching `provider-vportal.js` asset; loading the configuration codec does not start its media requests.
 
 For the controller wire contract, operator permissions and preset migration, see the [control server typed settings guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/player-settings.md). The [development coverage inventory](development/remote-settings-coverage.md) identifies remaining provider-specific and lifecycle adapters; this initial API is not presented as universal coverage of every configuration field.

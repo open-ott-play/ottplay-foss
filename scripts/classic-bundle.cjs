@@ -100,7 +100,6 @@ const CLASSIC_MODULES = [
     "build/commands/random-channel.js",
     "build/commands/index.js",
     "build/commands/remote-profiles.js",
-    "build/commands/remote-handoff.js",
     "build/commands/remote-plex.js",
     "build/commands/remote-settings.js",
     "build/commands/remote-favorites-contract.js",
@@ -137,6 +136,11 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-screenshot.js",
     "build/plugins/remote-doctor.js",
     "build/plugins/remote-inspect.js",
+    "build/plugins/remote-settings-dispatch.js",
+    "build/plugins/remote-settings-host.js",
+    "build/plugins/remote-settings-lifecycle.js",
+    "build/plugins/remote-notification-settings.js",
+    "build/plugins/remote-handoff.js",
     "build/plugins/remote-settings.js",
     "build/plugins/remote-provider-settings.js",
     "build/plugins/remote-provider-fields.js",
@@ -172,9 +176,16 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
         "build/plugins/remote-plex-folders.js",
     ],
     "remote-settings": [
-        "build/plugins/remote-settings.js",
+        "build/plugins/remote-notification-settings.js",
+        "build/plugins/remote-handoff.js",
         "build/plugins/remote-provider-settings.js",
         "build/plugins/remote-legacy-settings.js",
+    ],
+    "remote-settings-lifecycle": [
+        "build/plugins/remote-settings.js",
+        "build/plugins/remote-settings-dispatch.js",
+        "build/plugins/remote-settings-host.js",
+        "build/plugins/remote-settings-lifecycle.js",
     ],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
@@ -249,8 +260,14 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottPlexQueueFactory",
     ]),
     "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
+    "build/plugins/remote-handoff.js": Object.freeze([
+        "window.__ottRemoteHandoff",
+    ]),
     "build/plugins/remote-legacy-settings.js": Object.freeze([
         "window.__ottRemoteLegacySettings",
+    ]),
+    "build/plugins/remote-notification-settings.js": Object.freeze([
+        "window.__ottRemoteNotificationSettings",
     ]),
     "build/plugins/remote-plex-folders.js": Object.freeze([
         "window.__ottRemotePlexFolders",
@@ -260,6 +277,15 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/plugins/remote-provider-settings.js": Object.freeze([
         "window.__ottRemoteProviderSettings",
+    ]),
+    "build/plugins/remote-settings-dispatch.js": Object.freeze([
+        "window.__ottRemoteSettingsDispatch",
+    ]),
+    "build/plugins/remote-settings-host.js": Object.freeze([
+        "window.__ottRemoteLifecycleHostFactory",
+    ]),
+    "build/plugins/remote-settings-lifecycle.js": Object.freeze([
+        "window.__ottRemoteLifecycleFields",
     ]),
     "build/plugins/remote-settings.js": Object.freeze([
         "window.__ottPlayerSettingsFactory",
