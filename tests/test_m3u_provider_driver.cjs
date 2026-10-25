@@ -1162,9 +1162,12 @@ test("catalog teardown, editor save and injected hashing reentry preserve newer 
         abort();
         f.mount("demo");
     };
-    const before = f.saved.get("m3um3uArr");
     key(f, 1, "https://changed.test/");
-    assert.equal(f.saved.get("m3um3uArr"), before);
+    assert.equal(
+        JSON.parse(f.saved.get("m3um3uArr")).M3Us[0].www,
+        "https://changed.test/",
+        "save commits before teardown; replacement owner receives no stale effects"
+    );
     assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
     assert.equal(f.reloads, 0);
     const h = fixture(),

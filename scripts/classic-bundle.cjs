@@ -139,6 +139,8 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-inspect.js",
     "build/plugins/remote-settings.js",
     "build/plugins/remote-provider-settings.js",
+    "build/plugins/remote-provider-fields.js",
+    "build/plugins/remote-plex-folders.js",
     "build/plugins/remote-legacy-settings.js",
     "build/plugins/runtime-debug.js",
     "build/plugins/dash-exo-player.js",
@@ -165,6 +167,10 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     xtream: ["build/provider/xtream-media.js"],
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
+    "remote-provider-fields": [
+        "build/plugins/remote-provider-fields.js",
+        "build/plugins/remote-plex-folders.js",
+    ],
     "remote-settings": [
         "build/plugins/remote-settings.js",
         "build/plugins/remote-provider-settings.js",
@@ -245,6 +251,12 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
     "build/plugins/remote-legacy-settings.js": Object.freeze([
         "window.__ottRemoteLegacySettings",
+    ]),
+    "build/plugins/remote-plex-folders.js": Object.freeze([
+        "window.__ottRemotePlexFolders",
+    ]),
+    "build/plugins/remote-provider-fields.js": Object.freeze([
+        "window.__ottRemoteProviderFields",
     ]),
     "build/plugins/remote-provider-settings.js": Object.freeze([
         "window.__ottRemoteProviderSettings",

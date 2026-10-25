@@ -521,7 +521,11 @@ test("inactive profile and name edits preserve the active session; abort reentry
     config.active = 1;
     assert.equal(f.driver.saveConfiguration(config), false);
     assert.equal(f.driver.credentials().server, "https://newest.test/");
-    assert.equal(f.driver.configuration().active, 0);
+    assert.equal(
+        f.driver.configuration().active,
+        1,
+        "the committed profile is visible to the newer edit"
+    );
 });
 
 test("a credentials draft from another profile cannot overwrite the selected one", () => {

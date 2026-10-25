@@ -328,9 +328,20 @@ function createCatalogProviderDriver(
                 : "";
         },
         saveCredentials: function (value) {
-            if (!active()) return;
+            if (!active()) return false;
             var version = ++operation;
             var previous = credentials();
+            function current() {
+                return active() && version === operation;
+            }
+            var values: any = {};
+            values[id === "ottclub" ? "ottkey" : "key"] = value.username;
+            if (id !== "itv")
+                values[id === "ottclub" ? "ottwww" : "server"] = value.server;
+            if (id !== "ottclub" && value.mode !== undefined)
+                values.mpeg = String(value.mode);
+            if (!ports.commit(values, current, current) || !current())
+                return false;
             if (
                 value.server !== previous.server ||
                 value.username !== previous.username
@@ -347,17 +358,7 @@ function createCatalogProviderDriver(
                 )
                     catalog = helpers.emptyCatalog();
             }
-            ports.storage.set(
-                id === "ottclub" ? "ottkey" : "key",
-                value.username
-            );
-            if (id !== "itv")
-                ports.storage.set(
-                    id === "ottclub" ? "ottwww" : "server",
-                    value.server
-                );
-            if (id !== "ottclub" && value.mode !== undefined)
-                ports.storage.set("mpeg", String(value.mode));
+            return current();
         },
         stream: function (channelId) {
             return active() && catalog.channels && catalog.channels[channelId]
@@ -455,6 +456,9 @@ function mountCatalogProviderSettings(
             : host._("Access key is required!");
     }
     var editor = 0;
+    driver.settingsChanged = function () {
+        editor++;
+    };
     function replay() {
         host.playChannel(host.catIndex, host.primaryIndex);
     }

@@ -361,7 +361,7 @@ function createOwnedPlaylistDriver(
             return ports.core.operatorVodRoot(id, url, credentials().username);
         },
         saveCredentials: function (value) {
-            if (!active()) return;
+            if (!active()) return false;
             var selected = Number(value.playlist);
             if (
                 id === "kb-team" &&
@@ -369,12 +369,47 @@ function createOwnedPlaylistDriver(
                     selected > 2 ||
                     Math.floor(selected) !== selected)
             )
-                return;
+                return false;
             var operation = ++revision;
             var changed =
                 id === "kb-team"
                     ? String(slot) !== value.playlist
                     : credentials().username !== value.username;
+            function current() {
+                return active() && operation === revision;
+            }
+            var writes: any[] =
+                id === "antifriz"
+                    ? [
+                          {
+                              after: value.username,
+                              before: ports.storage.get("key"),
+                              key: "key",
+                          },
+                      ]
+                    : [
+                          {
+                              after: String(selected),
+                              before: ports.storage.get("v_list"),
+                              key: "v_list",
+                          },
+                          {
+                              after: String(selected),
+                              before: ports.storageFor!("kbc" + selected).get(
+                                  "v_list"
+                              ),
+                              key: "v_list",
+                              prefix: "kbc" + selected,
+                          },
+                      ];
+            if (id === "antifriz" && value.mode !== undefined)
+                writes.push({
+                    after: String(value.mode),
+                    before: ports.storage.get("mpeg"),
+                    key: "mpeg",
+                });
+            if (!ports.commit(writes, current, current) || !current())
+                return false;
             if (changed) {
                 catalogs.dispose();
                 if (!active() || operation !== revision) return;
@@ -384,15 +419,8 @@ function createOwnedPlaylistDriver(
                 if (!active() || operation !== revision) return;
                 catalog = helpers.emptyCatalog();
             }
-            if (id === "antifriz") {
-                ports.storage.set("key", value.username);
-                if (value.mode !== undefined)
-                    ports.storage.set("mpeg", String(value.mode));
-            } else {
-                slot = selected;
-                ports.storage.set("v_list", String(slot));
-                ports.storageFor("kbc" + slot).set("v_list", String(slot));
-            }
+            if (id === "kb-team") slot = selected;
+            return current();
         },
         storageKey: function (key) {
             return (id === "kb-team" ? "kbc" + slot : "az") + key;
@@ -482,6 +510,9 @@ function mountOwnedPlaylistDriver(
 ): void {
     var editor = 0,
         panel = 0;
+    driver.settingsChanged = function () {
+        editor++;
+    };
     var cancelPanel = function () {};
     var slot = driver.configuration!().slot;
     var lists = ["IPTV #1", "IPTV #2", "IPTV #3"];

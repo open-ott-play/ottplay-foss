@@ -227,6 +227,7 @@ function remote(f) {
                 "remote-settings",
                 "remote-provider-settings",
                 "remote-legacy-settings",
+                "remote-provider-fields",
             ])
                 runtime(f.host, "src/plugins/" + part + ".ts");
             const module = { exports: {} };
@@ -1143,7 +1144,10 @@ test("Plex first playable batch starts the normal list while remaining files app
     assert.equal(starts, 1);
     assert.deepEqual(Array.from(f.host.cList), ["plex-1", "plex-2"]);
     assert.equal(f.driver.stream("plex-2"), "plex:request");
-    assert.deepEqual(JSON.parse(JSON.stringify(client.scan.folders)), []);
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(client.scan.folders)),
+        config.folders
+    );
 });
 
 test("Plex projected channels preserve normalized adult admission metadata on initial and appended items", () => {
@@ -1218,7 +1222,7 @@ test("Plex reload invalidates late scan results and preserves an active playlist
     assert.equal(f.driver.catalogError(), false);
 });
 
-test("A new or legacy Plex profile immediately scans all libraries without a folder picker", () => {
+test("Plex uses saved folder roots and defaults to all libraries without a folder picker", () => {
     for (const configured of [
         config,
         {
@@ -1233,7 +1237,10 @@ test("A new or legacy Plex profile immediately scans all libraries without a fol
         f.clients[0].ready();
         assert.equal(starts, 1);
         assert.equal(f.clients.length, 1);
-        assert.deepEqual(Array.from(f.clients[0].scan.folders), []);
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(f.clients[0].scan.folders)),
+            configured.folders || []
+        );
         assert.notEqual(f.host.listCaption.innerHTML, "Folders");
         f.host.__ottEditProvider();
         assert(!f.host.listArray.some((row) => /Folders/.test(row)));

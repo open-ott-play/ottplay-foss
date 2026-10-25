@@ -34,7 +34,10 @@ export function executeRemoteSettings(
         var data: any = {
             error: "Remote settings are unavailable or changed while loading.",
         };
-        if (request.action === "player_settings") {
+        if (
+            request.action === "player_settings" ||
+            request.action === "plex_folders"
+        ) {
             data.version = 1;
             data.op = params.op;
             data.runtime = params.runtime || runtime;
@@ -140,7 +143,15 @@ export function executeRemoteSettings(
         if (!valid()) return;
         try {
             var policy = { allowed: isProviderAllowed, url: checkProviderUrl };
-            if (request.action === "player_settings") {
+            if (request.action === "plex_folders") {
+                var folders =
+                    w.__ottRemotePlexFolderSession ||
+                    (w.__ottRemotePlexFolderSession =
+                        w.__ottRemotePlexFolders.create(w, function () {
+                            return remotePlayerInfo(w).runtime;
+                        }));
+                folders.request(request, respond);
+            } else if (request.action === "player_settings") {
                 var api =
                     w.__ottRemotePlayerSettings ||
                     (w.__ottRemotePlayerSettings =
@@ -211,6 +222,28 @@ export function executeRemoteSettings(
                 } catch (_) {
                     fail("unsupported");
                 }
+            } else if (
+                request.action === "plex_folders" ||
+                (request.action === "provider_settings" &&
+                    params.provider === "plex") ||
+                (request.action === "player_settings" &&
+                    source &&
+                    (params.op === "schema" ||
+                        /^(provider|m3u|plex|edem|stalker|vportal)/.test(
+                            params.id || ""
+                        )))
+            ) {
+                ensure(
+                    "remote-provider-fields",
+                    function () {
+                        return (
+                            !!w.__ottRemoteProviderFields &&
+                            (request.action !== "plex_folders" ||
+                                !!w.__ottRemotePlexFolders)
+                        );
+                    },
+                    execute
+                );
             } else execute();
         }
     );

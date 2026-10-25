@@ -370,9 +370,12 @@ export function executeRemoteRequest(
         return;
     }
     if (
-        ["player_settings", "provider_settings", "settings_compare"].indexOf(
-            request.action
-        ) >= 0
+        [
+            "player_settings",
+            "provider_settings",
+            "settings_compare",
+            "plex_folders",
+        ].indexOf(request.action) >= 0
     )
         return executeRemoteSettings(w, request, done);
     if (request.action === "notifications")

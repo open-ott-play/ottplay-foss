@@ -642,6 +642,7 @@ export function createCommandServer(
                                     item.action === "favorites" ||
                                     item.action === "playback" ||
                                     item.action === "player_settings" ||
+                                    item.action === "plex_folders" ||
                                     item.action === "provider_settings" ||
                                     item.action === "settings_compare"
                                 )

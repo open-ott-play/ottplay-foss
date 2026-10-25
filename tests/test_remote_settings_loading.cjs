@@ -88,9 +88,21 @@ function fixture() {
             },
         };
     }
+    function installFields() {
+        w.__ottRemoteProviderFields = {};
+        w.__ottRemotePlexFolders = {
+            create: () => ({
+                request(request, done) {
+                    calls.push("folders:" + request.params.op);
+                    done({ data: {}, status: "ok" });
+                },
+            }),
+        };
+    }
     return {
         calls,
         install,
+        installFields,
         run(
             action = "player_settings",
             params = { id: "bufSize", op: "get", runtime: state.runtime },
@@ -276,6 +288,94 @@ check(
             );
             if (outcome === "cancelled") assert.equal(released, 1);
         }
+    }
+);
+check(
+    "provider schema, scalar, folder and legacy Plex writes share one optional load",
+    () => {
+        const f = fixture();
+        f.install();
+        const schema = f.run("player_settings", {
+            op: "schema",
+            runtime: f.state.runtime,
+        });
+        const scalar = f.run("player_settings", {
+            id: "providerUsername",
+            op: "get",
+            runtime: f.state.runtime,
+        });
+        const folders = f.run("plex_folders", {
+            op: "list",
+            runtime: f.state.runtime,
+        });
+        const legacy = f.run("provider_settings", {
+            provider: "plex",
+            settings: { server: "https://plex.test", token: "private" },
+        });
+        assert.equal(f.scripts.length, 1);
+        assert(
+            f.scripts[0].src.includes("remote-provider-fields.js?beta-test")
+        );
+        assert.equal(f.calls.length, 0);
+        const loaded = f.scripts[0].onload;
+        f.installFields();
+        loaded();
+        loaded();
+        assert.deepEqual(f.calls, [
+            "player_settings",
+            "player_settings",
+            "folders:list",
+            "write",
+        ]);
+        for (const result of [schema, scalar, folders, legacy])
+            assert.equal(result.replies.length, 1);
+    }
+);
+check(
+    "provider optional load failure and source replacement cannot dispatch writes",
+    () => {
+        for (const outcome of [
+            "failed",
+            "runtime",
+            "source",
+            "expired",
+            "cancelled",
+        ]) {
+            const f = fixture();
+            f.install();
+            const result = f.run(
+                "plex_folders",
+                { op: "clear", runtime: f.state.runtime },
+                { expires_at: 2 }
+            );
+            if (outcome === "failed") f.scripts[0].onerror();
+            else {
+                if (outcome === "runtime") f.state.runtime = "new-runtime";
+                if (outcome === "source") f.state.scope = "another-profile";
+                if (outcome === "expired") f.state.clock = 3000;
+                if (outcome === "cancelled") result.cancel();
+                f.installFields();
+                f.scripts[0].onload();
+            }
+            assert.equal(f.calls.length, 0);
+            assert.equal(
+                result.replies.length,
+                outcome === "cancelled" ? 0 : 1
+            );
+            if (result.replies.length)
+                assert.notEqual(result.replies[0].status, "ok");
+        }
+    }
+);
+check(
+    "application repairs do not wait for provider assets or a loaded catalogue",
+    () => {
+        const f = fixture();
+        f.install();
+        delete f.w.__ottActiveProviderDriver;
+        const result = f.run();
+        assert.equal(f.scripts.length, 0);
+        assert.equal(result.replies[0].status, "ok");
     }
 );
 console.log("OK: " + passed + " remote settings loader scenarios");

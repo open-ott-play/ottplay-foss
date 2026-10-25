@@ -537,10 +537,14 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // measurement: legacy1173877/370305, remote-settings18027/6062, all1198914/379320.
 // Each optional feature pays its own bounded cost; existing caps remain unchanged.
 const OPTIONAL_BUDGETS = Object.freeze({
-    "remote-settings": Object.freeze({ bytes: 20000, gzipBytes: 6800 }),
+    // Provider scalar codecs and the paginated Plex folder collection reuse normal
+    // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
+    // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
+    "remote-provider-fields": Object.freeze({ bytes: 18000, gzipBytes: 6200 }),
+    "remote-settings": Object.freeze({ bytes: 21000, gzipBytes: 6800 }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1204600, gzipBytes: 380950 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1223600, gzipBytes: 387150 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

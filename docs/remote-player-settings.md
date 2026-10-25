@@ -34,6 +34,8 @@ ott t1 setting KEY --value-file /absolute/private/value.txt
 
 Connection and device-identity fields that require their existing lifecycle workflow are advertised as such; the generic API does not claim that changing saved bytes reconnects a controller or rebinds a native listener.
 
+For fields exposed by each provider and the Plex folder collection, see [provider settings](remote-provider-settings.md).
+
 ## VPortal configuration
 
 VPortal configuration uses a separate `vportal_settings` capability and its existing driver codec. A provider-config file can target one of its 15 slots even while another provider is active:
@@ -57,7 +59,7 @@ Omit `name` to retain that VPortal slot's current name. The CLI compares the sav
 
 ## Troubleshooting
 
-- **Unsupported setting or capability:** update the player, control server and all CLI Python modules together. Refresh the player's capability list. The API lists registered preferences; provider configuration uses dedicated adapters.
+- **Unsupported setting or capability:** update the player, control server and all CLI Python modules together. Refresh the player's capability list. The API lists registered preferences and active-provider fields; Plex folders use their collection adapter.
 - **Revision conflict:** another local or remote change occurred, or the two-minute receipt expired. Read the setting again and decide whether the intended write is still appropriate.
 - **Source/runtime changed:** a provider/profile switch or page reload invalidated the read. Obtain a new read from the current instance.
 - **Policy restricted:** use the player's normal kiosk/PIN workflow. Remote authorization does not bypass its local policy.
