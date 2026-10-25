@@ -164,5 +164,77 @@
       "effect_failed"
     ]
   },
-  "alias_pattern": "^[A-Za-z0-9_.+\\-]{1,64}$"
+  "alias_pattern": "^[A-Za-z0-9_.+\\-]{1,64}$",
+  "invalid_descriptor_overrides": [
+    {
+      "constraints": {
+        "minimum": 9,
+        "maximum": 3
+      }
+    },
+    {
+      "choices": [
+        {
+          "value": 1,
+          "label": "One",
+          "aliases": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "choices": [
+        {
+          "value": 1,
+          "label": "One",
+          "aliases": [
+            "HLS",
+            "hls"
+          ]
+        }
+      ]
+    },
+    {
+      "choices": [
+        {
+          "value": 1,
+          "label": "One",
+          "aliases": [
+            "ß"
+          ]
+        }
+      ]
+    },
+    {
+      "sensitive": true
+    },
+    {
+      "access": {
+        "read": true,
+        "write": true,
+        "reason": "unknown"
+      }
+    }
+  ],
+  "invalid_applications": [
+    {
+      "state": "completed",
+      "reason": "effect_failed"
+    },
+    {
+      "state": "deferred"
+    },
+    {
+      "state": "failed"
+    },
+    {
+      "state": "failed",
+      "reason": "next_stream"
+    },
+    {
+      "state": "deferred",
+      "reason": "automatic_buffer"
+    }
+  ]
 }
