@@ -290,13 +290,18 @@ function detailProg(): void {
     var accent =
         (typeof curColor === "string" && curColor) || wdet.curColor || "gold";
     var media = e.__ottMediaItem;
-    var icon = media ? media.logo_30x30 : e.icon;
+    if (media)
+        e = {
+            descr: media.description,
+            icon: media.logo_30x30,
+            name: media.title || e.channel_name,
+        };
     if (media || (e.time_to && e.time_to >= Date.now() / 1e3)) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
             '<div id="_name"><div class="ott-channel-detail-accent">' +
-            metadataText(media ? media.title || e.channel_name : e.name) +
+            metadataText(e.name) +
             "</div>" +
             (media
                 ? ""
@@ -312,10 +317,10 @@ function detailProg(): void {
                   ")</div>") +
             "</div>" +
             '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
-            (wdet.sThumbnail && metadataCssUrl(icon)
+            (wdet.sThumbnail && metadataCssUrl(e.icon)
                 ? '<div class="img ott-channel-thumbnail"></div>'
                 : "") +
-            metadataHtml(media ? media.description : e.descr) +
+            metadataHtml(e.descr) +
             "</div></div>";
         if (!media && e.nextpr && nextCountL) {
             // Gold: absolute to listDetail bottom (yellow footer border).
@@ -349,7 +354,7 @@ function detailProg(): void {
                 Math.floor(200 * getViewportHeightScale()) + "px";
             thumbnail.style.margin = Math.floor(thumbnailWidth / 15) + "px";
             thumbnail.style.backgroundImage =
-                'url("' + metadataCssUrl(icon) + '")';
+                'url("' + metadataCssUrl(e.icon) + '")';
         }
         $("#_nextpr").css({
             "max-height":
