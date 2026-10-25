@@ -1604,12 +1604,6 @@ function startCorePlayback(
                               : hlsInstance.currentLevel;
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
-                        console.log(
-                            "[HLS] MEDIA_ERROR: drop level " +
-                                failed +
-                                " cap=" +
-                                cap
-                        );
                         hlsInstance.autoLevelCapping = cap;
                         if (typeof hlsInstance.removeLevel === "function") {
                             hlsInstance.removeLevel(failed);
@@ -1622,16 +1616,6 @@ function startCorePlayback(
                             return;
                         }
                         hlsInstance.currentLevel = cap;
-                    } else {
-                        // hls-proxy always exposes a single STREAM-INF, so
-                        // drop-level never runs for proxied live channels.
-                        console.log(
-                            "[HLS] MEDIA_ERROR: skip drop level (levels=" +
-                                lvls.length +
-                                " failed=" +
-                                failed +
-                                ")"
-                        );
                     }
                     if (recovery.media()) {
                         cancelCoreSeek();
@@ -1682,9 +1666,6 @@ function startCorePlayback(
                             !limits.maxHeight &&
                             !limits.maxBitrate
                         ) {
-                            console.log(
-                                "[HLS] MEDIA_ERROR twice, fallback native HTML5"
-                            );
                             _corePlaybackMode = 0;
                             countCoreAttempt(session, "nativeFallbacks");
                             countCoreAttempt(session, "engineStarts");
@@ -1698,13 +1679,6 @@ function startCorePlayback(
                             if ((window as any).forcePlay !== false)
                                 playCoreMedia(video!);
                         } else {
-                            console.log(
-                                "[HLS] MEDIA_ERROR twice, no native HLS" +
-                                    (det ? " details=" + det : "") +
-                                    (appendFail
-                                        ? " (HD Orig often mp2/ac3 + strict Chrome decode)"
-                                        : "")
-                            );
                             coreStreamFailure(
                                 "decode",
                                 undefined,
@@ -1730,9 +1704,6 @@ function startCorePlayback(
                     // purged segments, proxy HTML error pages).
                     var det = String((data && data.details) || "");
                     if (!recovery.network(det)) {
-                        console.log(
-                            "[HLS] unrecoverable network/parse, destroying"
-                        );
                         coreStreamFailure(
                             window.OttPlayCore.playbackParsingFailure(det)
                                 ? "parse"
@@ -1749,7 +1720,6 @@ function startCorePlayback(
                         );
                     }
                 } else {
-                    console.log("[HLS] unrecoverable, destroying");
                     coreStreamFailure("decode");
                     hlsInstance.destroy();
                     hlsInstance = null;
@@ -1938,9 +1908,6 @@ function startCorePlayback(
                             media.pause();
                             coreNativeAttached = false;
                             media.removeAttribute("src");
-                            console.log(
-                                "[Auto] native HLS incompatible, using hls.js"
-                            );
                             startCorePlayback(
                                 url,
                                 nextPosition,
