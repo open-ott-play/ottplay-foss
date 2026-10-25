@@ -222,6 +222,51 @@ const remoteCode = ts.transpileModule(
 function remote(f) {
     f.host.exports = {};
     f.host.require = (name) => {
+        if (name === "./remote-settings") {
+            for (const part of [
+                "remote-settings",
+                "remote-provider-settings",
+                "remote-legacy-settings",
+            ])
+                runtime(f.host, "src/plugins/" + part + ".ts");
+            const module = { exports: {} };
+            vm.runInNewContext(
+                ts.transpileModule(
+                    fs.readFileSync(
+                        path.join(root, "src/commands/remote-settings.ts"),
+                        "utf8"
+                    ),
+                    {
+                        compilerOptions: {
+                            module: ts.ModuleKind.CommonJS,
+                            target: ts.ScriptTarget.ES5,
+                        },
+                    }
+                ).outputText,
+                {
+                    exports: module.exports,
+                    require(dependency) {
+                        if (dependency === "../provider")
+                            return {
+                                checkProviderUrl: (url) =>
+                                    f.host.checkProviderUrl(url),
+                                isProviderAllowed: () =>
+                                    f.remoteAllowed !== false,
+                            };
+                        if (dependency === "./remote-restart")
+                            return {
+                                remotePlayerInfo: () => ({
+                                    runtime: "fixture-runtime",
+                                }),
+                            };
+                        throw new Error(
+                            "Unexpected settings dependency: " + dependency
+                        );
+                    },
+                }
+            );
+            return module.exports;
+        }
         if (name === "./remote-screenshot")
             return {
                 executeRemoteScreenshot() {
