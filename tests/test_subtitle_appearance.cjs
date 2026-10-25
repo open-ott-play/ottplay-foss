@@ -99,6 +99,104 @@ console.log(
     "PASS subtitle appearance defaults, validation, per-video scale and reset"
 );
 
+// Static player typography uses authored values, never the previous scaled result.
+{
+    function rule(value, selector = ".label", priority = "") {
+        return {
+            selectorText: selector,
+            style: {
+                fontSize: value,
+                getPropertyPriority: () => priority,
+                setProperty(name, next, nextPriority) {
+                    assert.equal(name, "font-size");
+                    assert.equal(nextPriority, priority);
+                    this.fontSize = next;
+                    this.writes = (this.writes || 0) + 1;
+                },
+            },
+        };
+    }
+    const px = rule("20px", ".label", "important");
+    const vh = rule("3vh");
+    const vw = rule("4vw");
+    const pt = rule("12pt");
+    const complex = rule("clamp(13px, 1.15vw, 20px)");
+    const relative = ["1.2em", "120%", "inherit", "larger"].map((value) =>
+        rule(value)
+    );
+    const cue = rule("24px", "video::cue");
+    const external = rule("36px");
+    const unknownInline = rule("18px");
+    const runtime = rule("11px");
+    const sheets = [
+        {
+            cssRules: [px, { cssRules: [vh, vw, pt] }, cue, ...relative],
+            href: "https://player.example/styles/player.css?v=1",
+        },
+        {
+            cssRules: [complex],
+            href: null,
+            ownerNode: { id: "ott-interface-style" },
+        },
+        {
+            get cssRules() {
+                assert.fail("cross-origin CSS must not be inspected");
+            },
+            href: "https://external.example/styles/player.css",
+        },
+        { cssRules: [external], href: "https://player.example/videojs.css" },
+        { cssRules: [unknownInline], href: null, ownerNode: { id: "other" } },
+    ];
+    const fontHost = {
+        document: { styleSheets: sheets },
+        location: new URL("https://player.example/f/pc/"),
+        settings: { uiFontScale: 50 },
+        URL,
+    };
+    fontHost.window = fontHost;
+    vm.runInNewContext(code, fontHost);
+    const scaleFonts = fontHost.__ottSubtitleAppearance.scaleFonts;
+    scaleFonts();
+    assert.equal(px.style.fontSize, "10px");
+    assert.equal(vh.style.fontSize, "1.5vh");
+    assert.equal(vw.style.fontSize, "2vw");
+    assert.equal(pt.style.fontSize, "6pt");
+    assert.equal(complex.style.fontSize, "clamp(6.5px, 0.575vw, 10px)");
+    fontHost.settings.uiFontScale = 150;
+    sheets.push({
+        cssRules: [runtime],
+        href: null,
+        ownerNode: { id: "ott-tauri-loading-logs-style" },
+    });
+    scaleFonts();
+    assert.equal(px.style.fontSize, "30px");
+    assert.equal(
+        runtime.style.fontSize,
+        "16.5px",
+        "late trusted style is discovered"
+    );
+    fontHost.settings.uiFontScale = 100;
+    scaleFonts();
+    assert.equal(px.style.fontSize, "20px");
+    assert.equal(vh.style.fontSize, "3vh");
+    assert.equal(vw.style.fontSize, "4vw");
+    assert.equal(pt.style.fontSize, "12pt");
+    assert.equal(complex.style.fontSize, "clamp(13px, 1.15vw, 20px)");
+    assert.equal(runtime.style.fontSize, "11px");
+    for (const untouched of [cue, external, unknownInline, ...relative])
+        assert.equal(untouched.style.writes, undefined);
+    fontHost.settings.uiFontScale = 0;
+    scaleFonts();
+    assert.equal(
+        px.style.fontSize,
+        "20px",
+        "invalid scale is treated as the default"
+    );
+}
+console.log(
+    "PASS interface font scaling preserves authored values, nested rules and excluded typography"
+);
+
 const entry = fs.readFileSync("src/index.ts", "utf8");
 const ast = ts.createSourceFile(
     "entry.ts",

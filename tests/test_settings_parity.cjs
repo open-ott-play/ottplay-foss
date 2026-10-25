@@ -402,6 +402,73 @@ function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
 }
 
+for (const profile of [
+    "server",
+    "tauri",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    const { w, stored, typed, calls } = fixture(profile);
+    assert.equal(
+        typed().uiFontScale,
+        100,
+        profile + ": existing installs retain the original text size"
+    );
+    assert.equal(stored.has("sUiFontScale"), false);
+    vm.runInContext(
+        "var scaleDraft = beginSettingsDraft(); scaleDraft.set('uiFontScale', 137); scaleDraft.commit();",
+        w
+    );
+    assert.equal(stored.get("sUiFontScale"), "137");
+    assert.equal(w.sUiFontScale, 137);
+    assert.ok(calls.includes("font"), "saving applies the new text scale");
+    vm.runInContext("loadSettings();", w);
+    assert.equal(
+        typed().uiFontScale,
+        137,
+        "restart preserves an exact API value"
+    );
+    w.settingsInterface();
+    const row = w.listArray.find((item) => item.settingId === "uiFontScale");
+    assert.ok(row, profile + ": Interface settings exposes text scaling");
+    assert.equal(
+        row.settingValues[row.val],
+        137,
+        "opening the menu preserves non-preset percentages"
+    );
+    row.val = row.settingValues.indexOf(80);
+    save(w);
+    assert.equal(typed().uiFontScale, 80);
+    assert.equal(stored.get("sUiFontScale"), "80");
+    w.settingsInterface();
+    w.listArray.find((item) => item.settingId === "uiFontScale").val = 0;
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(
+        typed().uiFontScale,
+        80,
+        "cancel does not change the saved text scale"
+    );
+    for (const value of [49, 201, 50.5, NaN, Infinity, "80"]) {
+        w.invalidScale = value;
+        assert.equal(
+            vm.runInContext(
+                "var invalidDraft = beginSettingsDraft(); var accepted = invalidDraft.set('uiFontScale', invalidScale); invalidDraft.cancel(); accepted;",
+                w
+            ),
+            false
+        );
+    }
+    for (const value of ["49", "201", "bad"]) {
+        stored.set("sUiFontScale", value);
+        vm.runInContext("loadSettings();", w);
+        assert.equal(
+            typed().uiFontScale,
+            100,
+            "invalid persisted scale falls back to 100%"
+        );
+    }
+}
+
 // Media-language rows appear only for managed engines, with persisted codes
 // independent of translated/native display names and the interface locale.
 for (const managed of [false, true]) {

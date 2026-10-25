@@ -46,6 +46,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property pageSize          - Number of items per page in channel list.
  * @property fontShift         - Font size adjustment shift.
  * @property fontSize          - Base font size index.
+ * @property uiFontScale       - Interface text scale in percent (50–200).
  * @property arrowFun          - Remote arrow key function mapping.
  * @property rewFun            - Rewind button function mapping.
  * @property pnFun             - P+/P- button function mapping.
@@ -199,6 +200,7 @@ export interface PlayerSettings {
     swopBaseUrl: string;
     thumbnail: number;
     timezone: number;
+    uiFontScale: number;
     useGraphicalIndicators: number;
     volumeStep: number;
     yFun: number;
@@ -303,6 +305,7 @@ export function defaultSettings(): PlayerSettings {
         swopBaseUrl: "",
         thumbnail: 1,
         timezone: 0,
+        uiFontScale: 100,
         useGraphicalIndicators: 0,
         volumeStep: 5,
         yFun: 1,
@@ -731,6 +734,9 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("deviceUuid", "sDeviceUuid", {}),
     defineSetting("localHttpEnabled", "sLocalHttpEnabled"),
     defineSetting("commandServerEnabled", "commandServerEnabled"),
+    defineSetting("uiFontScale", "sUiFontScale", { range: [50, 200] }, [
+        "setFontSize",
+    ]),
 ];
 function settingsSource(): string {
     var w = typeof window === "undefined" ? {} : (window as any);

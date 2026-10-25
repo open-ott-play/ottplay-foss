@@ -21,6 +21,11 @@ upstream links and the earlier OTT-play lineage in English.
   remain available. Text size is constrained by the row box, as before, so large
   glyphs cannot push the last configured row off screen. Native builds retain
   their corresponding OS font families.
+  **Interface settings → Font size, %** controls the shared interface text scale.
+  The default is **100%**; the allowed range is **50–200%**. The menu offers
+  ten-percent steps and preserves an exact percentage set remotely. This is an
+  application preference, so switching providers does not reset it. Subtitle
+  appearance has its own font-size control.
 - **Layout:** list side, reduced-video mode and scrollbar visibility remain
   independent of the theme. The preview and its opaque mask use one shared
   rectangle. Resizing recalculates both row and logo/progress geometry.

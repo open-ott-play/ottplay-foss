@@ -19,6 +19,77 @@
     var watching = false;
     var observer: any = null;
     var observed: HTMLVideoElement[] = [];
+    var fontUnits = /(^|[^a-z\d_-])(-?\d*\.?\d+)(px|vh|vw|pt)\b/gi;
+    function scaleFonts(): void {
+        var doc = host.document;
+        if (!doc || !doc.styleSheets || !host.location) return;
+        var value = (host.settings || {}).uiFontScale;
+        var scale =
+            typeof value === "number" &&
+            value >= 50 &&
+            value <= 200 &&
+            value % 1 === 0
+                ? value / 100
+                : 1;
+        function visit(rules: any): void {
+            for (var i = 0; rules && i < rules.length; i++) {
+                var rule = rules[i],
+                    css = rule.style;
+                if (
+                    css &&
+                    css.fontSize &&
+                    css.fontSize.search(fontUnits) >= 0 &&
+                    !/::cue|shaka-text|vjs-text-track/.test(
+                        rule.selectorText || ""
+                    )
+                ) {
+                    var original =
+                        css.__ottFontBase ||
+                        (css.__ottFontBase = [
+                            css.fontSize,
+                            css.getPropertyPriority("font-size"),
+                        ]);
+                    css.setProperty(
+                        "font-size",
+                        scale === 1
+                            ? original[0]
+                            : original[0].replace(
+                                  fontUnits,
+                                  function (
+                                      _match: string,
+                                      prefix: string,
+                                      number: string,
+                                      unit: string
+                                  ) {
+                                      return (
+                                          prefix + Number(number) * scale + unit
+                                      );
+                                  }
+                              ),
+                        original[1]
+                    );
+                }
+                visit(rule.cssRules);
+            }
+        }
+        for (var i = 0; i < doc.styleSheets.length; i++) {
+            var sheet = doc.styleSheets[i];
+            try {
+                var url = new URL(sheet.href, host.location.href);
+                if (
+                    (!sheet.href &&
+                        sheet.ownerNode &&
+                        /^(ott-interface|ott-tauri-loading-logs)-style$/.test(
+                            sheet.ownerNode.id
+                        )) ||
+                    (sheet.href &&
+                        url.origin === host.location.origin &&
+                        /\/styles\/player\.css$/.test(url.pathname))
+                )
+                    visit(sheet.cssRules);
+            } catch (_) {}
+        }
+    }
     function index(values: any, key: string, max: number): number {
         var n = values && values[key];
         return typeof n === "number" &&
@@ -89,6 +160,7 @@
             .join("");
     }
     function apply(): void {
+        scaleFonts();
         var doc = host.document;
         if (!doc || !doc.querySelectorAll || !doc.createElement) return;
         var videos = doc.querySelectorAll("video"),
@@ -225,6 +297,19 @@
             return host.__ottAppearanceHost.languages[code];
         });
         var noyes = [label("no"), label("yes")];
+        var fontScales: number[] = [];
+        for (var scale = 50; scale <= 200; scale += 10) fontScales.push(scale);
+        // Keep an exact value supplied by the remote settings API selectable.
+        var currentScale = w.sUiFontScale;
+        if (
+            fontScales.indexOf(currentScale) < 0 &&
+            currentScale >= 50 &&
+            currentScale <= 200
+        )
+            fontScales.push(currentScale);
+        fontScales.sort(function (a, b) {
+            return a - b;
+        });
         var tz = (w.arrTimezone || ["system", "0"]).slice();
         tz[0] = w._(tz[0]) || tz[0];
         host.__ottAppearanceHost.list(
@@ -289,6 +374,14 @@
                     ]
                 ),
                 choice(label("Timezone"), "timezone", tz),
+                {
+                    name: label("Font size") + ", %",
+                    settingId: "uiFontScale",
+                    settingValues: fontScales,
+                    values: fontScales.map(function (value) {
+                        return value + "%";
+                    }),
+                },
                 choice(label("Sleep timer"), "sleepTimeout", [
                     label("off"),
                     label("30 minutes"),
@@ -450,5 +543,6 @@
         declarations: declarations,
         interface: interfaceSettings,
         open: open,
+        scaleFonts: scaleFonts,
     };
 })(window as any);
