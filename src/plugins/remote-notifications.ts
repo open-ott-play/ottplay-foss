@@ -311,6 +311,7 @@ export function createRemoteNotifications(
         element.className =
             "notify remote-notify remote-notify-" + item.severity;
         element.dir = "auto";
+        element.style.top = Math.floor(Math.random() * 6) + "px";
         element.setAttribute("role", "status");
         function part(kind: string, value: string, parent: any): any {
             var child = document.createElement("div");

@@ -560,6 +560,40 @@ test("remote banner folds its label then title upward and retains its message", 
     expect(h.errors).toEqual([]);
 });
 
+test("new remote banners keep a bounded independent downward offset", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    await page.addInitScript(() => {
+        Math.random = () => 0.99;
+    });
+    const h = await timedBanner(page, context, baseURL, {
+        durationMs: 15000,
+        once: false,
+    });
+    expect(
+        await h.banner.evaluate((element) => getComputedStyle(element).top)
+    ).toBe("5px");
+    await page.evaluate(() => {
+        Math.random = () => 0;
+    });
+    await page.clock.runFor(5000);
+    await page.evaluate(() => window.__ottRemoteNotifications.poll());
+    await expect(h.banner).toHaveCount(2);
+    expect(
+        await h.banner
+            .first()
+            .evaluate((element) => getComputedStyle(element).top)
+    ).toBe("5px");
+    expect(
+        await h.banner
+            .last()
+            .evaluate((element) => getComputedStyle(element).top)
+    ).toBe("0px");
+    expect(h.errors).toEqual([]);
+});
+
 test("remote banner reduced motion keeps configured alpha and the original expiry", async ({
     page,
     context,

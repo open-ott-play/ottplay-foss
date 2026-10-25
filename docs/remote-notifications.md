@@ -30,7 +30,10 @@ for 500 ms, then gradually become more transparent until expiry. The final
 As fading begins, the text moves upward: the label folds away over 480 ms,
 then the title folds away over the next 480 ms. The message stays visible in
 the compact card until its original expiry. Reduced-motion mode keeps all
-three text rows static.
+three text rows static. Each new card also receives a fixed random downward
+offset of 0–5 CSS pixels, independently of its entrance and exit transforms.
+Offsets do not accumulate or move already displayed cards; this small variation
+is not a guarantee against display burn-in.
 Images use their actual display time for this animation; loading an image never
 extends the original expiry. A short remaining lifetime can truncate the
 entrance or hold. Inactivity and explicit clearing still remove cards immediately.
