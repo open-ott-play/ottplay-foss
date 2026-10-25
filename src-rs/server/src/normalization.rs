@@ -166,7 +166,15 @@ struct GenerationState {
 struct Generations {
     state: GenerationState,
     path: PathBuf,
-    _owner: std::fs::File,
+    _owner: GenerationOwner,
+}
+struct GenerationOwner(std::fs::File);
+impl Drop for GenerationOwner {
+    fn drop(&mut self) {
+        // A child can briefly inherit this open file description before exec.
+        // Release ownership now instead of waiting for its last descriptor.
+        let _ = self.0.unlock();
+    }
 }
 impl Generations {
     fn open(directory: &std::path::Path) -> Result<Self> {
@@ -188,6 +196,7 @@ impl Generations {
         owner
             .try_lock()
             .map_err(|_| anyhow::anyhow!("normalization directory already in use"))?;
+        let owner = GenerationOwner(owner);
         let state: GenerationState = match std::fs::File::open(&path) {
             Ok(file) => {
                 use std::io::Read;
@@ -2233,6 +2242,39 @@ mod tests {
         drop(second);
         std::fs::write(directory.join(".generation"), "invalid").unwrap();
         assert!(Generations::open(&directory).is_err());
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn generation_owner_releases_lock_while_a_child_retains_its_descriptor() {
+        struct ChildGuard(std::process::Child);
+        impl Drop for ChildGuard {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+        let directory =
+            std::env::temp_dir().join(format!("ott-owner-drop-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        let first = Generations::open(&directory).unwrap();
+        let mut child = ChildGuard(
+            std::process::Command::new("sleep")
+                .arg("30")
+                .stdin(std::process::Stdio::from(
+                    first._owner.0.try_clone().unwrap(),
+                ))
+                .spawn()
+                .unwrap(),
+        );
+        assert!(child.0.try_wait().unwrap().is_none());
+        assert!(Generations::open(&directory).is_err());
+        assert!(Generations::open(&directory).is_err());
+        drop(first);
+        let second = Generations::open(&directory).unwrap();
+        assert!(child.0.try_wait().unwrap().is_none());
+        drop(second);
+        drop(child);
         std::fs::remove_dir_all(directory).unwrap();
     }
     #[test]
