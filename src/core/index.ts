@@ -1634,10 +1634,6 @@ function startCorePlayback(
                         );
                     }
                     if (recovery.media()) {
-                        console.log(
-                            "[HLS] trying recoverMediaError" +
-                                (data.details ? " (" + data.details + ")" : "")
-                        );
                         cancelCoreSeek();
                         hlsInstance.recoverMediaError();
                         if (
@@ -1746,7 +1742,6 @@ function startCorePlayback(
                         hlsInstance.destroy();
                         hlsInstance = null;
                     } else {
-                        console.log("[HLS] trying startLoad");
                         hlsInstance.startLoad(
                             _corePendingSeek || !hlsInstance.hasEnoughToStart
                                 ? hlsInstance.config.startPosition
@@ -3107,8 +3102,7 @@ export function stbInit(): void {
 }
 
 /**
- * Log all video events to the console for debugging.
- * On 'error' events, also logs the MediaError code and message.
+ * Forward video events to the debug collector and report media errors.
  *
  * @param event - Raw video DOM event.
  *
@@ -3116,7 +3110,6 @@ export function stbInit(): void {
  */
 function videoEvent(event: Event): void {
     if (event && event.type) {
-        console.log("[video] event: " + event.type);
         if (event.type === "error") {
             var me = video ? video!.error : null;
             if (me)

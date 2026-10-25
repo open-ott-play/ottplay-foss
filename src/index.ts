@@ -2621,7 +2621,6 @@ function setupTauriEpgCacheReady(): void {
         .listen("epg-cache-ready", function (_ev: any) {
             if ((window as any).__ottStandby?.blocked()) return;
             try {
-                console.log("[Tauri] epg-cache-ready — refilling EPG");
                 invalidateEpgCache(true);
                 // Visible channel list: re-queue observeCurrentProgramme via showPage.
                 if (
@@ -2764,7 +2763,6 @@ function _playChannel(
                 );
         })
     ) {
-        console.log("[playChannel] blocked by parental");
         return;
     }
     if (kiosk && !kiosk.admit(requestedId)) return;
