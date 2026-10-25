@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Let updated remote clients play or preview the first 500 items of a larger
+  Plex library and report the limit explicitly. Shuffle applies to those
+  selected items; legacy clients and invalid or incomplete responses retain
+  their previous behavior.
 - Expose native and in-band HLS caption tracks in the subtitle menu, retain
   explicit selections including Off, and keep preview track ownership isolated.
 - Add subtitle font, size, text colour, outline and background controls using

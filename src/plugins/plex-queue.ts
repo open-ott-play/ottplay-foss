@@ -136,6 +136,7 @@ function createRemotePlexQueue(
         var readOnly = op === "preview" || (libraryRequest && op === "list");
         var selectedLibrary: any = null;
         var listedLibraries: any[] | null = null;
+        var libraryTruncated = false;
         function libraryResult(error?: string, nested?: any): any {
             var result: any = {
                 op: op,
@@ -149,6 +150,7 @@ function createRemotePlexQueue(
                 result.library = selectedLibrary;
                 result.shuffled = params.shuffle === true;
                 result.queue = nested;
+                if (libraryTruncated) result.truncated = true;
             }
             return result;
         }
@@ -626,6 +628,9 @@ function createRemotePlexQueue(
                                         finish(collection.error);
                                         return;
                                     }
+                                    libraryTruncated =
+                                        params.allow_truncate === true &&
+                                        collection.truncated === true;
                                     var records = collection.items.slice();
                                     if (!records.length) {
                                         finish("Plex queue is empty.");
@@ -655,7 +660,8 @@ function createRemotePlexQueue(
                                     prepare(records);
                                 },
                                 current,
-                                deadline
+                                deadline,
+                                params.allow_truncate === true
                             );
                         },
                         current,

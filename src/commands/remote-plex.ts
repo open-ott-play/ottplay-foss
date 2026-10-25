@@ -6,6 +6,10 @@ function validLibraryRequest(params: any, runtime: string): boolean {
     if (["preview", "play"].indexOf(params.op) < 0) return false;
     var id = typeof params.library_id === "string";
     var expected = id ? "library_id,op,runtime" : "op,query,runtime";
+    if (params.allow_truncate !== undefined) {
+        if (params.allow_truncate !== true) return false;
+        expected = "allow_truncate," + expected;
+    }
     if (
         (keys !== expected && keys !== expected + ",shuffle") ||
         (params.shuffle !== undefined && typeof params.shuffle !== "boolean")

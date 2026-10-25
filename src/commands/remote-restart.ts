@@ -833,6 +833,7 @@ export function executeRemoteControl(
             playback: playback,
             player: remotePlayerInfo(w),
             plex_library: plexQueue.libraryCapability,
+            plex_library_truncation: { version: 1 },
             plex_queue: plexQueue.capability,
             screenshot: remoteScreenshotSnapshot(w),
             version: 1,

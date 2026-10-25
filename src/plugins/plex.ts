@@ -759,6 +759,7 @@ function createPlexClient(
             items: any[];
             records: any[];
             error?: string;
+            truncated?: true;
         }) => void,
         guard?: () => boolean,
         limits?: {
@@ -766,6 +767,7 @@ function createPlexClient(
             limit: number;
             deadline: number;
             type?: string;
+            truncate?: boolean;
         }
     ): () => void {
         if (cancelCollection) cancelCollection();
@@ -780,6 +782,8 @@ function createPlexClient(
         var offset = 0;
         var pages = 0;
         var total: number | null = null;
+        var truncate = !!(limits && limits.kind === "items" && limits.truncate);
+        var requestedSize = 200;
         var characters = 0;
         var collected: any[] = [];
         var catalog: any[] = [];
@@ -811,9 +815,17 @@ function createPlexClient(
             if (!valid) cancelOwned();
             return valid;
         }
-        function finish(error: boolean | string = false): void {
+        function finish(
+            error: boolean | string = false,
+            truncated = false
+        ): void {
             if (!active()) return;
-            var result = error
+            var result: {
+                items: any[];
+                records: any[];
+                error?: string;
+                truncated?: true;
+            } = error
                 ? {
                       error:
                           typeof error === "string"
@@ -825,6 +837,7 @@ function createPlexClient(
                       records: [],
                   }
                 : { items: collected, records: catalog };
+            if (!error && truncated) result.truncated = true;
             cancelOwned();
             done(result);
         }
@@ -887,9 +900,14 @@ function createPlexClient(
                         })
                     )
                         throw new Error();
+                    // The optional lookahead proves overflow only. Its ID and
+                    // type are checked above; it is not prepared for playback.
+                    var selectedRows = truncate
+                        ? rows.slice(0, limits!.limit - collected.length)
+                        : rows;
                     if (
                         limits &&
-                        rows.some(function (row) {
+                        selectedRows.some(function (row) {
                             return !hasPlayablePart(row);
                         })
                     ) {
@@ -899,12 +917,12 @@ function createPlexClient(
                         return;
                     }
                     page = records(
-                        data,
+                        truncate ? { Metadata: selectedRows } : data,
                         path,
                         { "X-Plex-Container-Start": offset },
                         false
                     );
-                    if (limits && page.length !== rows.length)
+                    if (limits && page.length !== selectedRows.length)
                         throw new Error();
                 }
             } catch (_) {
@@ -920,11 +938,11 @@ function createPlexClient(
             if (
                 count === null ||
                 count !== rows.length ||
-                count > 200 ||
+                count > requestedSize ||
                 start !== offset ||
                 (data.totalSize !== undefined && reported === null) ||
                 (reported !== null &&
-                    (reported > 100000 ||
+                    (reported > (truncate ? 9007199254740991 : 100000) ||
                         reported < offset + count ||
                         (total !== null && total !== reported))) ||
                 offset + count > 100000
@@ -934,6 +952,7 @@ function createPlexClient(
             }
             if (
                 limits &&
+                !truncate &&
                 ((reported !== null && reported > limits.limit) ||
                     offset + count > limits.limit)
             ) {
@@ -980,11 +999,26 @@ function createPlexClient(
                 catalog.push(record);
                 if (playable) collected.push(record);
             });
+            if (truncate)
+                rows.slice(page.length).forEach(function (row) {
+                    var id = "item:/library/metadata/" + row.ratingKey;
+                    if (seen[id]) duplicate = true;
+                    seen[id] = true;
+                });
             if ((limits && duplicate) || characters > 8 * 1024 * 1024) {
                 finish(true);
                 return;
             }
             offset += count;
+            if (
+                truncate &&
+                collected.length === limits!.limit &&
+                ((total !== null && total > limits!.limit) ||
+                    offset > limits!.limit)
+            ) {
+                finish(false, true);
+                return;
+            }
             if (
                 (total !== null && offset === total) ||
                 (total === null && count === 0)
@@ -1010,8 +1044,17 @@ function createPlexClient(
             if (attempt === 1) pages++;
             var owner: any = { xhr: null };
             pendingPage = owner;
+            // A known total proves overflow without loading an extra item.
+            // Otherwise read at most one validated lookahead item, preserving
+            // the distinction between exactly 500 and an incomplete catalogue.
+            requestedSize = truncate
+                ? Math.min(
+                      200,
+                      limits!.limit - offset + (total === null ? 1 : 0)
+                  )
+                : 200;
             var params = {
-                "X-Plex-Container-Size": 200,
+                "X-Plex-Container-Size": requestedSize,
                 "X-Plex-Container-Start": offset,
             };
             function complete(
@@ -1046,7 +1089,7 @@ function createPlexClient(
                     },
                     headers: {
                         Accept: "application/json",
-                        "X-Plex-Container-Size": "200",
+                        "X-Plex-Container-Size": String(requestedSize),
                         "X-Plex-Container-Start": String(offset),
                     },
                     success: function (raw: any) {
@@ -2010,7 +2053,8 @@ function createPlexClient(
             library: any,
             done: (result: any) => void,
             guard: () => boolean,
-            deadline: number
+            deadline: number,
+            truncate = false
         ) {
             return collect(
                 target(
@@ -2026,6 +2070,7 @@ function createPlexClient(
                     deadline: deadline,
                     kind: "items",
                     limit: 500,
+                    truncate: truncate,
                     type: library.type,
                 }
             );
