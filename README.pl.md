@@ -75,6 +75,7 @@ Syntetyczną planszę testową można odtworzyć przez `scripts/generate-demo-me
 - **Kierowanie do urządzeń**: adresowanie UUID w instalacjach wielourządzeniowych
 - **Lokalne proxy**: opcjonalny lokalny serwer poleceń do całkowicie lokalnej automatyzacji (bez serwera centralnego)
 - **Integracja kontrolera**: operatorzy ograniczeni do urządzeń/działań, opcjonalne trwałe wyniki poleceń, wznawialne stosowanie profili Local/Home oraz przekazywanie odtwarzania live/archiwum z tego samego źródła przez zgodny [serwer sterowania](https://github.com/open-ott-play/ottplay-control-server). Wymagają aktualnego kontrolera/CLI; samodzielna karta przeglądarki ich nie dostarcza.
+- **Typowane preferencje zdalne**: wykrywaj ustawienia, odczytuj wartości zapisane i obowiązujące oraz zapisuj z kontrolą instancji wykonawczej, źródła i rewizji; zobacz [ustawienia zdalne i konfigurację VPortal](docs/remote-player-settings.md).
 - **Debugowanie**: opcjonalny HUD odtwarzania/log pierścieniowy przez `?debug=1`, zdalna inspekcja za zgodą i hostowany test audio/wideo na żądanie
 - **Dostępność klawiatury**: nazwane klasyczne okna dialogowe, zatrzymywanie i przywracanie fokusu Tab, semantyka zaznaczonego kanału i nieprzerywające komunikaty stanu. Te ulepszenia nie oznaczają pełnej zgodności z WCAG ani czytnikami ekranu urządzeń.
 - **24 typy urządzeń**: mapowania klawiszy pilota zależne od urządzenia

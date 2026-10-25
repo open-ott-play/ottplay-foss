@@ -75,6 +75,7 @@ Syntetický testovací obraz lze vytvořit znovu pomocí `scripts/generate-demo-
 - **Směrování podle zařízení**: adresování UUID pro více zařízení
 - **Místní proxy**: volitelný místní příkazový server pro zcela místní automatizaci (bez centrálního serveru)
 - **Integrace kontroleru**: operátoři omezení na zařízení/akce, volitelné trvalé výsledky příkazů, obnovitelné použití předvoleb Local/Home a předání živého/archivního přehrávání stejného zdroje přes odpovídající [řídicí server](https://github.com/open-ott-play/ottplay-control-server). Vyžadují aktualizovaný kontroler/CLI; samostatná karta prohlížeče je neposkytuje.
+- **Typované vzdálené předvolby**: Zjistěte dostupná nastavení, přečtěte uložené i účinné hodnoty a ukládejte s kontrolou běhové instance, zdroje a revize; viz [vzdálená nastavení a konfigurace VPortal](docs/remote-player-settings.md).
 - **Ladění**: volitelný HUD přehrávání/kruhový log přes `?debug=1`, vzdálená inspekce se souhlasem a hostovaná kontrola zvuku/videa na vyžádání
 - **Přístupnost klávesnice**: pojmenované klasické dialogy, zachycení a návrat fokusu Tab, sémantika vybraného kanálu a nevtíravá oznámení stavu. Tato vylepšení neprokazují plnou shodu s WCAG ani čtečkami obrazovky zařízení.
 - **24 typů zařízení**: mapování dálkového ovladače podle zařízení

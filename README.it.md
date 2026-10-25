@@ -73,6 +73,7 @@ Il monoscopio sintetico si rigenera con `scripts/generate-demo-media.sh` (richie
 - **Instradamento per dispositivo**: indirizzamento UUID per installazioni con più dispositivi.
 - **Proxy locale**: server di comandi opzionale per automazione interamente locale (nessun server centrale necessario).
 - **Integrazione controller**: operatori limitati per dispositivo/azione, risultati persistenti opzionali dei comandi, applicazione riprendibile dei profili Local/Home e trasferimento di live/archivio della stessa fonte tramite il [server di controllo](https://github.com/open-ott-play/ottplay-control-server) corrispondente. Richiedono controller/CLI aggiornati; una scheda browser autonoma non li fornisce.
+- **Preferenze remote tipizzate**: scopri le impostazioni, leggi i valori salvati ed effettivi e salva verificando istanza di esecuzione, sorgente e revisione; consulta [impostazioni remote e configurazione VPortal](docs/remote-player-settings.md).
 - **Debug**: HUD/registro circolare opzionali tramite `?debug=1`, ispezione remota con consenso e verifica audio/video ospitata su richiesta.
 - **Accessibilità da tastiera**: dialoghi classici nominati, contenimento e restituzione del focus Tab, semantica del canale selezionato e annunci di stato discreti. Questi miglioramenti non attestano conformità completa WCAG o con gli screen reader dei dispositivi.
 - **24 tipi di dispositivo**: mappature del telecomando specifiche.

@@ -76,6 +76,7 @@ O padrão de teste sintético pode ser regenerado com `scripts/generate-demo-med
 - **Encaminhamento por dispositivo**: endereçamento por UUID para configurações com vários dispositivos
 - **Proxy local**: servidor de comandos local opcional para automação 100% local (sem servidor central)
 - **Integração com controlador**: operadores limitados a dispositivos/ações, resultados de comandos duráveis opcionais, aplicação retomável de predefinições Local/Home e passagem de direto/arquivo da mesma origem através do [servidor de controlo](https://github.com/open-ott-play/ottplay-control-server) correspondente. Exigem o controlador/CLI atualizado; um separador autónomo do navegador não os fornece.
+- **Preferências remotas tipadas**: descubra as configurações, leia os valores salvos e efetivos e salve verificando a instância de execução, a origem e a revisão; consulte [configurações remotas e configuração do VPortal](docs/remote-player-settings.md).
 - **Depuração**: HUD de reprodução/registo circular ativado por `?debug=1`, inspeção remota com consentimento e verificação alojada de áudio/vídeo a pedido
 - **Acessibilidade de teclado**: diálogos clássicos nomeados, contenção e reposição do foco Tab, semântica do canal selecionado e anúncios de estado não intrusivos. Estas melhorias não estabelecem conformidade total com WCAG ou leitores de ecrã dos dispositivos.
 - **24 tipos de dispositivos**: associações de teclas do comando por dispositivo
