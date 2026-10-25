@@ -995,8 +995,10 @@ function setFontSize(): void {
     var t = window.innerWidth / 1280;
     // Portrait browsers must not size text for a landscape TV of the same height.
     // Keep row geometry and touch targets; only cap glyphs by the available width.
-    var portrait = window.innerWidth < window.innerHeight;
-    var textScale = portrait ? Math.min(e, window.innerWidth / 720) : e;
+    var textCap =
+        window.innerWidth < window.innerHeight
+            ? (28 * window.innerWidth) / 720
+            : Infinity;
     // Companion OTT setFontSize uses 90-chrome for glyph size; showPage rows
     // use 130-chrome / live #listIn via listRowHeight. fontShift shrinks
     // glyphs inside the row line-box. Clamp to the real row box so WKWebView
@@ -1012,12 +1014,10 @@ function setFontSize(): void {
     r = Math.max(r, 16 * e);
     // Keep glyphs inside the integer row box (WKWebView expands on overflow).
     // 0.98 uses the spare line-box under the 25th row after the +1 step bump.
-    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98));
-    if (portrait) r = Math.min(r, 28 * textScale);
+    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98), textCap);
     $("#list, #testFont, #permanentTime").css("font-size", r + "px");
 
-    r = Math.max(r, 22 * e);
-    if (portrait) r = Math.min(r, 28 * textScale);
+    r = Math.min(Math.max(r, 22 * e), textCap);
     if ($i1El) $i1El.css("font-size", r + "px");
     $("#numprog, #dialogbox").css("font-size", r + "px");
 
