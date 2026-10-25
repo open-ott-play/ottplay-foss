@@ -532,7 +532,15 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     gzipBytes: 370850,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1184600, gzipBytes: 374150 });
+// Typed remote settings move legacy compare/provider writes out of startup and add
+// registry/CAS plus detached VPortal configuration adapters. Node22 initial native
+// measurement: legacy1173877/370305, remote-settings18027/6062, all1198914/379320.
+// Each optional feature pays its own bounded cost; existing caps remain unchanged.
+const OPTIONAL_BUDGETS = Object.freeze({
+    "remote-settings": Object.freeze({ bytes: 20000, gzipBytes: 6800 }),
+    "subtitle-appearance": OPTIONAL_BUDGET,
+});
+const TOTAL_BUDGET = Object.freeze({ bytes: 1204600, gzipBytes: 380950 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
@@ -602,10 +610,13 @@ function inspectBundleSets(root, artifacts = ARTIFACTS, providerKinds) {
         const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
             (name) => {
                 const file = path.join(directory, name + ".js");
+                const budget = OPTIONAL_BUDGETS[name];
+                if (!budget)
+                    throw new Error("Unbudgeted optional bundle: " + name);
                 return measureBundle(
                     fs.readFileSync(path.join(root, file)),
                     file,
-                    OPTIONAL_BUDGET
+                    budget
                 );
             }
         );
@@ -664,6 +675,7 @@ function writeBundleReport(
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
+        optionalBudgets: OPTIONAL_BUDGETS,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
                 modules.includes(file)
@@ -703,6 +715,7 @@ module.exports = {
     LEGACY_TOTAL_BUDGET,
     measureBundle,
     OPTIONAL_BUDGET,
+    OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
     writeBundleReport,

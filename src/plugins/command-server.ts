@@ -640,7 +640,10 @@ export function createCommandServer(
                                     item.action === "plex_queue" ||
                                     item.action === "plex_library" ||
                                     item.action === "favorites" ||
-                                    item.action === "playback"
+                                    item.action === "playback" ||
+                                    item.action === "player_settings" ||
+                                    item.action === "provider_settings" ||
+                                    item.action === "settings_compare"
                                 )
                                     executionItem = Object.assign({}, item, {
                                         expires_at:

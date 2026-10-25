@@ -832,11 +832,21 @@ export function executeRemoteControl(
                 : null,
             playback: playback,
             player: remotePlayerInfo(w),
+            player_settings: w.__ottPlayerSettingsHost
+                ? {
+                      max_page_size: 20,
+                      operations: ["schema", "get", "set"],
+                      version: 1,
+                  }
+                : undefined,
             plex_library: plexQueue.libraryCapability,
             plex_library_truncation: { version: 1 },
             plex_queue: plexQueue.capability,
             screenshot: remoteScreenshotSnapshot(w),
             version: 1,
+            vportal_settings: w.__ottPlayerSettingsHost
+                ? { version: 1 }
+                : undefined,
         });
         return;
     }

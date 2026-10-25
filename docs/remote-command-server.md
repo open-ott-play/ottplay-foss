@@ -820,3 +820,7 @@ and an explicit `false` downgrades to ordinary kiosk without releasing the targe
 `status` and `off` reject extra fields. Results include boolean `strict`.
 `query` is a channel number
 or name substring, limited to 1024 UTF-8 bytes. Read results expose metadata only.
+
+## Typed player preferences
+
+Use `ott t1 settings` to discover supported preferences, `ott t1 setting bufSize` to read one, or `ott t1 setting bufSize 3` to save with type and revision checks. [Typed settings and independent VPortal configuration](remote-player-settings.md) describes stored versus effective values, scope, conflicts, standby behavior and troubleshooting.

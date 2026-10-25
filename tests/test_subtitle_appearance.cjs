@@ -110,22 +110,25 @@ const loaderSource = ast.statements
     .filter(
         (node) =>
             (ts.isFunctionDeclaration(node) &&
-                ["loadSubtitleAppearance", "openSubtitleAppearance"].includes(
-                    node.name?.text
-                )) ||
+                [
+                    "loadSubtitleAppearance",
+                    "openSubtitleAppearance",
+                    "notifySubtitleAppearanceReady",
+                ].includes(node.name?.text)) ||
             (ts.isVariableStatement(node) &&
                 node.declarationList.declarations.some((item) =>
                     [
                         "subtitleAppearanceLoading",
                         "subtitleAppearanceGeneration",
                         "subtitleAppearanceOpen",
+                        "subtitleAppearanceReady",
                     ].includes(item.name.getText(ast))
                 )) ||
             (ts.isExpressionStatement(node) &&
                 ts.isBinaryExpression(node.expression) &&
                 node.expression.left
                     .getText(ast)
-                    .includes(".applySubtitleAppearance"))
+                    .match(/\.(applySubtitleAppearance|__ottAppearanceHost)/))
     )
     .map((node) => node.getText(ast))
     .join("\n");
@@ -142,6 +145,7 @@ function loaderFixture() {
             listOwner: () => ({ active: () => f.active }),
         },
         clearTimeout: (id) => timers.delete(id),
+        createSettingsPage() {},
         document: {
             createElement: () => ({}),
             head: {
@@ -156,8 +160,10 @@ function loaderFixture() {
             },
         },
         hostUrl: "https://player.example",
+        languageNames: {},
         PLAYER_VERSION: "test-version",
         p_pref: "source-one",
+        setListArrays() {},
         setTimeout: (fn) => {
             timers.set(++nextTimer, fn);
             return nextTimer;
@@ -298,3 +304,40 @@ console.log(
     assert.equal(watching.size, 1);
 }
 console.log("PASS subtitle observer releases a replaced engine video");
+
+{
+    const { f, calls } = loaderFixture();
+    const results = [];
+    f.__ottAppearanceHost.ready((ready) => results.push(ready));
+    const cancel = f.__ottAppearanceHost.ready(() =>
+        assert.fail("cancelled readiness callback")
+    );
+    f.openSubtitleAppearance("open");
+    cancel();
+    assert.equal(
+        calls.length,
+        1,
+        "UI and remote readiness share one asset load"
+    );
+    f.ready();
+    assert.deepEqual(results, [true]);
+    assert.equal(
+        f.opened,
+        1,
+        "readiness callback preserves the pending UI open"
+    );
+    f.__ottAppearanceHost.ready((ready) => results.push(ready));
+    assert.deepEqual(results, [true, true]);
+    assert.equal(calls.length, 1);
+}
+{
+    const { f, calls } = loaderFixture();
+    const results = [];
+    f.__ottAppearanceHost.ready((ready) => results.push(ready));
+    calls[0].onerror();
+    assert.deepEqual(results, [false]);
+    assert.equal(f.opened, 0);
+}
+console.log(
+    "PASS shared subtitle readiness: single load, cancelled observers, preserved UI open, explicit failure"
+);

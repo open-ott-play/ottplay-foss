@@ -7,6 +7,7 @@ const ts = require("typescript");
 const {
     ARTIFACTS,
     BUDGET,
+    OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -57,11 +58,32 @@ try {
                 path.join(root, path.dirname(file), name + ".js"),
                 source
             );
+    assert.deepEqual(
+        Object.keys(OPTIONAL_BUDGETS).sort(),
+        Object.keys(CLASSIC_OPTIONAL_BUNDLES).sort()
+    );
+    assert.deepEqual(OPTIONAL_BUDGETS["subtitle-appearance"], {
+        bytes: 7800,
+        gzipBytes: 3300,
+    });
+    for (const name of Object.keys(OPTIONAL_BUDGETS)) {
+        const file = path.join(root, "dist", name + ".js");
+        fs.writeFileSync(file, "x".repeat(OPTIONAL_BUDGETS[name].bytes + 1));
+        assert.throws(() => inspectBundleSets(root), /bytes .* exceeds budget/);
+        fs.writeFileSync(file, source);
+    }
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
     assert.equal(sets[0].providers.length, 8);
-    assert.equal(sets[0].total.bytes, measurement.bytes * 10);
-    assert.equal(sets[0].total.gzipBytes, measurement.gzipBytes * 10);
+    assert.equal(
+        sets[0].total.bytes,
+        measurement.bytes * (9 + Object.keys(CLASSIC_OPTIONAL_BUNDLES).length)
+    );
+    assert.equal(
+        sets[0].total.gzipBytes,
+        measurement.gzipBytes *
+            (9 + Object.keys(CLASSIC_OPTIONAL_BUNDLES).length)
+    );
     const extra = path.join(root, "dist/provider-old.js");
     fs.writeFileSync(extra, source);
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
@@ -121,8 +143,15 @@ try {
     const playSets = inspectBundleSets(root, playArtifacts, playKinds);
     assert.equal(playSets.length, 2);
     assert.equal(playSets[0].providers.length, 4);
-    assert.equal(playSets[0].total.bytes, measurement.bytes * 6);
-    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 6);
+    assert.equal(
+        playSets[0].total.bytes,
+        measurement.bytes * (5 + Object.keys(CLASSIC_OPTIONAL_BUNDLES).length)
+    );
+    assert.equal(
+        playSets[0].total.gzipBytes,
+        measurement.gzipBytes *
+            (5 + Object.keys(CLASSIC_OPTIONAL_BUNDLES).length)
+    );
     // Android's configured output may be outside the repository entirely.
     // Both inventories are relative to that output root, not the default dist.
     const androidArtifacts = ["player.js", "dist/player.js"];
@@ -216,7 +245,23 @@ try {
         ),
         source
     );
+    assert.equal(
+        fs.readFileSync(
+            path.join(nativeStage, "dist/remote-settings.js"),
+            "utf8"
+        ),
+        source
+    );
+    assert.equal(
+        fs.readFileSync(
+            path.join(mobileStage, "dist/remote-settings.js"),
+            "utf8"
+        ),
+        source
+    );
     packaging.removeDuplicatePlayerAssets(mobileStage);
+    assert(!fs.existsSync(path.join(mobileStage, "remote-settings.js")));
+    assert(fs.existsSync(path.join(mobileStage, "dist/remote-settings.js")));
     assert(!fs.existsSync(path.join(mobileStage, "subtitle-appearance.js")));
     assert(
         fs.existsSync(path.join(mobileStage, "dist/subtitle-appearance.js"))
@@ -245,7 +290,10 @@ try {
         Array.from(androidSets, (set) => set.entry),
         androidArtifacts
     );
-    assert.equal(androidSets[1].total.bytes, measurement.bytes * 6);
+    assert.equal(
+        androidSets[1].total.bytes,
+        measurement.bytes * (5 + Object.keys(CLASSIC_OPTIONAL_BUNDLES).length)
+    );
     const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
     fs.unlinkSync(externalChunk);
     assert.throws(
