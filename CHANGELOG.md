@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Clear obsolete stream timeout feedback when video actually advances. Keep
+  status in the existing metadata line and allow normal footer auto-hide.
+- Install independent macOS instance apps so the default player can reopen
+  while other instances remain running. Preserve existing ports and WebKit
+  profiles, with reviewed migration and rollback before replacing the copies.
+
 - Update Tokio to 1.53.3 in the application, fuzz and updater-regression lockfiles
   to address RUSTSEC-2026-0386 without changing unrelated dependency selections.
 

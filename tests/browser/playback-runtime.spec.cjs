@@ -1712,72 +1712,92 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
         window.setPlayerMode(0);
     });
     await page.clock.install();
-    const label = page.locator("#playback_status");
+    const label = page.locator("#video_res");
     const busy = page.locator("#buffering");
+    const footer = page.locator("#info1");
     const event = (name) =>
         page.evaluate((name) => {
             document.querySelector("#video").dispatchEvent(new Event(name));
         }, name);
     const start = () =>
         page.evaluate(() => window.stbPlay("/feedback-fixture.mp4"));
-    await page.evaluate(() => window.infoBarHide());
+    await page.evaluate(() => {
+        const video = document.querySelector("#video");
+        Object.defineProperty(video, "videoWidth", {
+            configurable: true,
+            value: 640,
+        });
+        Object.defineProperty(video, "videoHeight", {
+            configurable: true,
+            value: 360,
+        });
+        video.dispatchEvent(new Event("canplay"));
+        window.$("#info1").stop(true, true);
+        window.showChannelInfo(1);
+        window.$("#info1").stop(true, true);
+    });
+    const ordinaryHeight = (await footer.boundingBox()).height;
     await start();
+    await event("loadstart");
+    await expect(page.locator("#playback_status")).toHaveCount(0);
     await expect(label).toContainText("Connecting");
     await expect(label).toBeVisible();
     await expect(busy).toBeVisible();
-    // The ordinary resolution/bitrate ticker must not erase active feedback.
-    await page.clock.fastForward(20000);
-    await expect(label).toContainText("Connecting");
-    // Reproduce a hide started before this status update. The still-animating
-    // footer is :visible until slideUp completes, even with a new message.
-    expect(
-        await page.evaluate(() => {
-            window.$("#info1").stop(true, true).show();
-            window.$.fx.off = false;
-            window.$("#info1").slideUp(60000);
-            window.$.fx.off = true;
-            return (
-                window.$("#info1").is(":animated") &&
-                window.$("#info1").is(":visible")
-            );
-        })
-    ).toBe(true);
+    expect((await footer.boundingBox()).height).toBeLessThanOrEqual(
+        ordinaryHeight + 1
+    );
+    const geometry = await label.evaluate((el) => {
+        const rect = el.getBoundingClientRect(),
+            column = el.parentElement.getBoundingClientRect();
+        return {
+            columnRight: column.right,
+            height: rect.height,
+            overflow: getComputedStyle(el).textOverflow,
+            right: rect.right,
+            whiteSpace: getComputedStyle(el).whiteSpace,
+        };
+    });
+    expect(geometry.whiteSpace).toBe("nowrap");
+    expect(geometry.overflow).toBe("ellipsis");
+    expect(geometry.right).toBeLessThanOrEqual(geometry.columnRight + 1);
+    await page.clock.fastForward(6000);
+    await expect(footer).toBeHidden();
+    // A later buffering event updates the compact label without reopening OSD.
     await event("waiting");
     await expect(label).toContainText("Buffering");
-    // Completing any remaining old hide must not win over the newer status.
-    await page.evaluate(() => window.$("#info1").stop(true, true));
-    await expect(label).toBeVisible();
-    await expect(busy).toBeVisible();
-    await page.evaluate(() => {
-        document.getElementById("programm_descr").textContent =
-            "Programme details";
-        window.showChannelInfo(2);
-    });
-    await expect(page.locator("#descr")).toBeVisible();
-    await event("waiting");
-    await expect(page.locator("#descr")).toBeVisible();
-    await page.evaluate(() => {
-        window.infoBarHide();
-        window.showChannelInfo(1);
-        // A stalled live element can remain unpaused; the ordinary hide poll
-        // must retain the terminal status even when playback reports playing.
-        window.__feedbackIsPlaying = window.stbIsPlaying;
-        window.stbIsPlaying = () => true;
-    });
-    await page.clock.fastForward(16000);
-    await expect(label).toContainText("timed out");
-    await expect(label).toBeVisible();
-    await page.evaluate(() => {
-        window.stbIsPlaying = window.__feedbackIsPlaying;
-    });
+    await expect(footer).toBeHidden();
+    await page.clock.fastForward(24000);
+    await expect(label).toHaveText("Error!");
+    await expect(label).toHaveAttribute("title", /timed out/);
+    await expect(label).toHaveAttribute("aria-label", /timed out/);
     await expect(busy).toBeHidden();
+    await page.evaluate(() => window.showChannelInfo(1));
+    await expect(label).toBeVisible();
+    expect((await footer.boundingBox()).height).toBeLessThanOrEqual(
+        ordinaryHeight + 1
+    );
+    await page.clock.fastForward(6000);
+    await expect(footer).toBeHidden();
     await event("waiting");
     await event("canplay");
-    await page.clock.fastForward(1000);
-    await expect(label).toContainText("timed out");
-    await expect(busy).toBeHidden();
+    await expect(label).toHaveText("Error!");
+    await expect(footer).toBeHidden();
     await event("playing");
-    await expect(label).not.toContainText("timed out");
+    // An event alone cannot clear a terminal error; require real forward time.
+    await expect(label).toHaveText("Error!");
+    await page.evaluate(() => {
+        const video = document.querySelector("#video");
+        Object.defineProperty(video, "paused", {
+            configurable: true,
+            value: false,
+        });
+        video.currentTime = 1;
+        video.dispatchEvent(new Event("timeupdate"));
+        delete video.paused;
+    });
+    await expect(label).toContainText("640x360");
+    await expect(label).not.toHaveAttribute("title", /timed out/);
+    await expect(label).not.toHaveClass(/playback-feedback/);
 
     await page.evaluate(() => {
         window.__ottCoreTransport.configure({
@@ -1793,12 +1813,12 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
     );
     await page.evaluate(() => window.stbPause());
     await page.clock.fastForward(31000);
-    await expect(label).not.toContainText("timed out");
+    await expect(label).not.toHaveText("Error!");
     await expect(busy).toBeHidden();
     await page.evaluate(() => window.__feedbackReady("/feedback-fixture.mp4"));
     await event("loadstart");
     await page.clock.fastForward(31000);
-    await expect(label).not.toContainText("timed out");
+    await expect(label).not.toHaveText("Error!");
     await expect(busy).toBeHidden();
     expect(await page.evaluate(() => window.forcePlay)).toBe(false);
     await page.evaluate(() =>
@@ -1894,5 +1914,132 @@ test("fresh Chrome without native HLS or a saved engine uses lazy MSE through th
         await page.evaluate(() => window.providerHasItemValue("sPlayers"))
     ).toBe(false);
     expect(engines).toEqual(["/js/hls.min.js"]);
+    expect(errors).toEqual([]);
+});
+
+test("healthy HLS playback clears stalled feedback without growing or pinning the footer", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    test.setTimeout(75000);
+    const origin = new URL(baseURL).origin;
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", (route) => {
+        const url = new URL(route.request().url());
+        if (
+            url.pathname.startsWith("/feedback-media/") ||
+            url.pathname.startsWith("/demo/")
+        ) {
+            const segment = url.pathname.endsWith(".ts");
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.join(
+                        mediaRoot,
+                        segment ? "segment00.ts" : "index.m3u8"
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        }
+        return url.origin === origin
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            // Preserve the actual decoder and clock; only repeat the short
+            // checked-in fixture long enough to cross the old failure deadline.
+            this.muted = true;
+            this.loop = true;
+            return play.call(this);
+        };
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => window.__ottDevice && window.__ottPlaybackFeedback
+    );
+    await page.evaluate(() => {
+        window.$.fx.off = true;
+        window.stbStop();
+        window.setPlayerMode(1);
+        const media = document.querySelector("#video");
+        window.__healthyFeedbackUpdates = 0;
+        media.addEventListener(
+            "timeupdate",
+            () => window.__healthyFeedbackUpdates++
+        );
+        window.stbPlay(location.origin + "/feedback-media/index.m3u8");
+    });
+    await page.waitForFunction(() => {
+        const media = document.querySelector("#video");
+        return (
+            !media.paused &&
+            media.currentTime > 0 &&
+            media.videoWidth > 0 &&
+            media.getVideoPlaybackQuality().totalVideoFrames > 0 &&
+            !window.__ottPlaybackFeedback.visible()
+        );
+    });
+    const footer = page.locator("#info1");
+    const label = page.locator("#video_res");
+    await page.evaluate(() => {
+        window.$("#info1").stop(true, true);
+        window.showChannelInfo(1);
+        window.$("#info1").stop(true, true);
+    });
+    const height = (await footer.boundingBox()).height;
+    const before = await page.locator("#video").evaluate((media) => ({
+        frames: media.getVideoPlaybackQuality().totalVideoFrames,
+        updates: window.__healthyFeedbackUpdates,
+    }));
+    await page.evaluate(() => {
+        const media = document.querySelector("#video");
+        // Model transports which keep rendering after `stalled` without a new
+        // `playing` event. Suppress loop-generated delivery to the controller;
+        // the actual decoder, media clock and timeupdate events stay untouched.
+        media.addEventListener(
+            "playing",
+            (event) => event.stopImmediatePropagation(),
+            true
+        );
+        media.dispatchEvent(new Event("stalled"));
+    });
+    await expect(label).toContainText("Buffering");
+    await expect(page.locator("#playback_status")).toHaveCount(0);
+    expect((await footer.boundingBox()).height).toBeLessThanOrEqual(height + 1);
+    await expect
+        .poll(() => page.evaluate(() => window.__ottPlaybackFeedback.visible()))
+        .toBe(false);
+    await expect(label).not.toHaveClass(/playback-feedback/);
+    await expect(page.locator("#buffering")).toBeHidden();
+    await expect(footer).toBeHidden();
+
+    // Real media keeps advancing past the previous stalled-event deadline.
+    // No currentTime setter, fake clock, synthetic playing or timeupdate events.
+    await page.waitForTimeout(46000);
+    const after = await page.locator("#video").evaluate((media) => ({
+        feedback: window.__ottPlaybackFeedback.visible(),
+        frames: media.getVideoPlaybackQuality().totalVideoFrames,
+        paused: media.paused,
+        updates: window.__healthyFeedbackUpdates,
+    }));
+    expect(after.frames).toBeGreaterThan(before.frames + 100);
+    expect(after.updates).toBeGreaterThan(before.updates + 10);
+    expect(after.paused).toBe(false);
+    expect(after.feedback).toBe(false);
+    await expect(footer).toBeHidden();
+    await expect(label).not.toHaveAttribute("title", /timed out/);
+    await page.evaluate(() => window.showChannelInfo(1));
+    expect((await footer.boundingBox()).height).toBeLessThanOrEqual(height + 1);
+    await expect(label).not.toHaveText("Error!");
     expect(errors).toEqual([]);
 });

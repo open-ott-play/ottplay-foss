@@ -72,6 +72,67 @@ these are not web-player origins. Instance isolation also depends on launcher
 environment and storage identity. In particular, setting `OTTPLAY_INSTANCE=1`
 does not reproduce the default application's storage context.
 
+### Independent native instance applications
+
+Older instance launchers execute the binary inside `OttPlay FOSS.app`. macOS
+therefore registers every running instance as the main application, despite the
+launcher's different name. When the default player is closed, opening it again
+can merely activate another instance. Separate settings alone do not fix that
+LaunchServices identity collision.
+
+`scripts/install-ottplay-extra-instances.sh` now delegates to
+`scripts/install-ottplay-instance-apps.py`. It creates local copies of the
+installed main bundle, with their own executable paths and bundle identifiers
+`com.ottplay.foss.inst2` through `inst4`. The official main application remains
+unchanged. The copies are signed locally with an ad-hoc signature; that signature
+does not replace verification of the main application's release provenance.
+
+This migration helper requires **macOS 14 or later**, because its verified
+profile migration uses named UUID WebKit data stores. It rejects older or
+unrecognized macOS versions before preparing files or applying changes. This
+restriction applies to this helper; it does not change the player's supported
+macOS versions. Older default-store layouts require a separately verified
+migration procedure.
+
+Close all native players before preparing a migration. The installer preserves
+the existing instance numbers and queue ports from recognized launchers; it does
+not replace a custom launcher whose configuration it cannot recognize. Changing
+the macOS bundle identifier also changes the parent WebKit directory. On the
+first migration the installer copies each instance's existing named WebKit data
+store, retaining its exact UUID, into the new bundle namespace. Original stores
+remain untouched. An existing destination store is preserved, never replaced by
+an older copy. An existing instance with no recognized store stops preparation
+instead of silently opening an empty profile.
+
+Use a new private work directory for each update:
+
+```sh
+scripts/install-ottplay-extra-instances.sh prepare \
+  --work-dir "$HOME/ottplay-instance-update-01"
+# Review plan.json in that directory before applying the prepared copies.
+scripts/install-ottplay-extra-instances.sh apply \
+  --work-dir "$HOME/ottplay-instance-update-01"
+```
+
+Preparation records the main bundle, existing copies, and source/destination
+store fingerprints. Apply rechecks them, refuses running players or a replayed
+transaction, keeps the previous application bundles as backups, and rolls back
+the applications and newly copied stores if a swap fails. It does not launch a
+player. After swapping, it force-refreshes only these three paths in
+LaunchServices so cached launcher metadata cannot retain the old environment.
+If registration fails, it restores the applications and re-registers their
+original metadata. Verify saved profiles, remote identities and playback after reopening;
+also test closing and reopening the default player while the other three remain
+open. Keep the migration backup until these checks pass.
+
+These are managed copies, not links to the main executable. After installing a
+new main application, repeat the prepare/apply procedure to refresh them. Their
+`OTTPLAY_MANAGED_INSTANCE=1` environment disables the native self-updater, because
+installing the canonical archive directly over a copy would remove its separate
+bundle identity and environment. The default player retains its normal updater.
+The existing coordinated delivery toolkits must explicitly incorporate this
+refresh; replacing the main bundle alone no longer updates the copied binaries.
+
 Before starting, require:
 
 - macOS, CPython 3.12 or later (also required by the pinned controller CLI),

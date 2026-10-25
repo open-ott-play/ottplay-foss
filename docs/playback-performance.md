@@ -32,6 +32,14 @@ active deadline. Expiry ends the spinner and shows an error; a late successful
 playback can still recover. Transport retry limits remain owned by the existing
 engine/source policy. Pause, stop and standby cancel feedback immediately.
 
+Network `stalled` events do not by themselves mean that buffered video has
+stopped playing. Confirmed playback position progress clears obsolete waiting
+and timeout feedback, including recovery without another `playing` event.
+Seeking and events from a replaced source are not evidence of recovery.
+Feedback uses the existing compact resolution/status area, without an extra
+footer row. Full error details remain available in its accessible label and
+tooltip; feedback does not reopen or pin the information footer.
+
 ## Catalogue scope and verification
 
 Classic FOSS builds index visible programme IDs when a guide snapshot changes.

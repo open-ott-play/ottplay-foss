@@ -742,10 +742,11 @@ export function uiInit(): void {
  */
 export function hideInfoBarWhenReady(): void {
     if (typeof (window as any).stbIsPlaying === "function") {
+        var status = (window as any).__ottPlaybackFeedback?.visible();
         if (
-            $("#buffering").is(":visible") ||
-            (window as any).__ottPlaybackFeedback?.visible() ||
-            !(window as any).stbIsPlaying() ||
+            (!status &&
+                ($("#buffering").is(":visible") ||
+                    !(window as any).stbIsPlaying())) ||
             $("#step").is(":visible")
         ) {
             infoTimeout = setTimeout(hideInfoBarWhenReady, 5000);

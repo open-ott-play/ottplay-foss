@@ -787,16 +787,16 @@ body {
     font-size: 16px;
     opacity: 0.75;
 }
-#playback_status {
-    clear: both;
-    display: none;
-    padding-top: 0.3em;
-    overflow-wrap: break-word;
-    white-space: normal;
-}
 #video_res {
     font-size: 16px;
     opacity: 0.75;
+}
+#video_res.playback-feedback {
+    /* One existing metadata line; full details remain in title/aria-label. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 1;
 }
 #descr {
     padding: 0px 100px;

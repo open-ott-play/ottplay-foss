@@ -2926,7 +2926,7 @@ export function stbInit(): void {
                 video!.addEventListener(e, videoEvent);
             });
             if (host.__ottPlaybackFeedback)
-                host.__ottPlaybackFeedback.bind(video);
+                host.__ottPlaybackFeedback.bind(video, updateCoreVideoInfo);
             (video as any).__ottCoreEventsBound = true;
         }
         var previousTimer = host.__ottCoreVideoInfoTimer;
@@ -3564,7 +3564,7 @@ function openCoreEngineLease(
             // Repeated Play on ready media emits no new playing event. It must
             // neither create a deadline nor extend an existing buffering wait.
             if (feedback && waitingForPlayback && !feedback.visible())
-                feedback.begin();
+                feedback.begin(false, true);
             if (!pip && coreStreamAttempt && coreStreamAttempt.resume()) return;
             playCoreMedia(media);
         },

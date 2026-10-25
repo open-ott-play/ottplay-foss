@@ -2152,13 +2152,15 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     const { w } = fixture();
     const timers = new Map();
     let serial = 0;
-    const label = { style: {}, textContent: "" },
-        details = { textContent: "" },
+    const label = {
+            removeAttribute() {},
+            setAttribute() {},
+            style: {},
+            textContent: "",
+        },
         spinner = { style: {} };
     w.document.getElementById = (id) =>
-        ({ buffering: spinner, playback_status: label, video_res: details })[
-            id
-        ] || null;
+        ({ buffering: spinner, video_res: label })[id] || null;
     w.setTimeout = (fn, ms) => {
         timers.set(++serial, { fn, ms });
         return serial;
@@ -2181,7 +2183,10 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     w.stbPlay("https://fixture.test/film.mp4");
     w.video.readyState = 4;
     w.video.paused = false;
-    for (const callback of w.video.listeners.playing) callback();
+    w.video.currentTime = 0;
+    for (const callback of w.video.listeners.loadstart) callback();
+    w.video.currentTime = 1;
+    for (const callback of w.video.listeners.timeupdate) callback();
     assert.equal(timers.size, 0);
     w.stbResume();
     w.stbResume();
@@ -2193,7 +2198,11 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     assert.equal(label.textContent, "");
     w.stbPause();
     w.stbResume();
-    assert.equal(timers.size, 1, "a real pause/resume arms startup feedback");
+    assert.equal(
+        [...timers.values()].filter((timer) => timer.ms >= 30000).length,
+        1,
+        "a real pause/resume arms one startup deadline"
+    );
     const deadline = [...timers.keys()];
     w.stbResume();
     assert.deepEqual(

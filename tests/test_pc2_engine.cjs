@@ -137,15 +137,18 @@ function fixture() {
     const f = fixture(),
         timers = new Map();
     let serial = 0;
-    const label = { style: {}, textContent: "" },
-        details = { textContent: "" },
+    const label = {
+            removeAttribute() {},
+            setAttribute() {},
+            style: {},
+            textContent: "",
+        },
         spinner = { style: {} };
     f.w.document = {
         getElementById: (id) =>
             ({
                 buffering: spinner,
-                playback_status: label,
-                video_res: details,
+                video_res: label,
             })[id] || null,
     };
     f.w.setTimeout = (fn, ms) => {
@@ -172,7 +175,10 @@ function fixture() {
     );
     f.ready[0]();
     f.players[0].readyLevel = 4;
-    for (const callback of f.engineMedia.listeners.playing) callback();
+    f.engineMedia.currentTime = 0;
+    for (const callback of f.engineMedia.listeners.loadstart) callback();
+    f.engineMedia.currentTime = 1;
+    for (const callback of f.engineMedia.listeners.timeupdate) callback();
     assert.equal(timers.size, 0);
     lease.resume();
     lease.resume();
@@ -184,7 +190,11 @@ function fixture() {
     assert.equal(label.textContent, "");
     lease.pause();
     lease.resume();
-    assert.equal(timers.size, 1, "Video.js pause/resume starts feedback");
+    assert.equal(
+        [...timers.values()].filter((timer) => timer.ms >= 30000).length,
+        1,
+        "Video.js pause/resume starts one deadline"
+    );
     lease.dispose();
     assert.equal(timers.size, 0);
 }

@@ -264,7 +264,7 @@ var keys = {
                     w.forcePlay = true;
                     var feedback = w.__ottPlaybackFeedback;
                     if (feedback && waitingForPlayback && !feedback.visible())
-                        feedback.begin();
+                        feedback.begin(false, true);
                 }
                 play();
             },

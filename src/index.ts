@@ -1053,7 +1053,7 @@ function setFontSize(): void {
     $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
     $("#progress, #progress_r").css({ height: 8 * e + "px" });
     $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
-    $("#current_s, #video_res, #playback_status").css({
+    $("#current_s, #video_res").css({
         "font-size": 16 * e + "px",
     });
     $("#descr").css({

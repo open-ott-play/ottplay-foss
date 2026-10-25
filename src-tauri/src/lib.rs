@@ -31,8 +31,16 @@ pub fn run() {
     let command_queues = commands::queue::new_shared();
     let background = ottplay_core::background_work::BackgroundWork::default();
     // No listener starts at launch; settings explicitly configure optional HTTP.
-    tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
+    let builder = tauri::Builder::default();
+    // Managed local copies have a distinct bundle identity and WebKit store.
+    // Installing the canonical updater archive over one would erase that
+    // identity. Update the main app, then refresh the instance copies instead.
+    let builder = if std::env::var("OTTPLAY_MANAGED_INSTANCE").as_deref() == Ok("1") {
+        builder
+    } else {
+        builder.plugin(tauri_plugin_updater::Builder::new().build())
+    };
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin({
             // Persist main window position/size across launches (Mode B frameless).
