@@ -658,18 +658,6 @@ export function optionsList(fn?: () => void): void {
             providerSelectionUnlockCount = 0;
     };
     listKeyHandlerFn = function (key: number): boolean {
-        console.log(
-            "DBG optionsList handler: key=" +
-                key +
-                " keys.ENTER=" +
-                keys.ENTER +
-                " selIndex=" +
-                selIndex +
-                " action=" +
-                (viewOptions[selIndex]
-                    ? typeof viewOptions[selIndex].action
-                    : "undefined")
-        );
         switch (key) {
             case keys.RETURN:
                 // Legacy stbPlayer.js:4329: popupList(optionsList) pre-selects Settings

@@ -118,6 +118,7 @@ const CLASSIC_MODULES = [
     "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
+    "build/plugins/hosted-control-transport.js",
     "build/plugins/notification-media.js",
     "build/plugins/remote-notifications.js",
     "build/plugins/command-server.js",
@@ -161,6 +162,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     xtream: ["build/provider/xtream-media.js"],
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
+    "control-transport": ["build/plugins/hosted-control-transport.js"],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
 const providerModules = new Set([
@@ -224,6 +226,10 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
     "build/playback/stream-policy.js": Object.freeze([
         "window.__ottStreamPolicy",
+    ]),
+    "build/plugins/hosted-control-transport.js": Object.freeze([
+        "window.__ottControlTransport",
+        "window.__OTT_CONTROL_TRANSPORT_VERSION__",
     ]),
     "build/plugins/native-http.js": Object.freeze([
         "window.installTauriHttpTransport",

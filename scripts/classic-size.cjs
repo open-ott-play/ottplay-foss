@@ -532,7 +532,13 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     gzipBytes: 370850,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1184600, gzipBytes: 374150 });
+// The opt-in hosted transport is a separately measured optional asset.
+// Existing entry, provider and subtitle limits are unchanged.
+const OPTIONAL_BUDGETS = Object.freeze({
+    "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    "subtitle-appearance": OPTIONAL_BUDGET,
+});
+const TOTAL_BUDGET = Object.freeze({ bytes: 1190600, gzipBytes: 376150 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
@@ -602,10 +608,13 @@ function inspectBundleSets(root, artifacts = ARTIFACTS, providerKinds) {
         const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
             (name) => {
                 const file = path.join(directory, name + ".js");
+                const budget = OPTIONAL_BUDGETS[name];
+                if (!budget)
+                    throw new Error("Missing optional budget: " + name);
                 return measureBundle(
                     fs.readFileSync(path.join(root, file)),
                     file,
-                    OPTIONAL_BUDGET
+                    budget
                 );
             }
         );
@@ -664,6 +673,7 @@ function writeBundleReport(
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
+        optionalBudgets: OPTIONAL_BUDGETS,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
                 modules.includes(file)
@@ -703,6 +713,7 @@ module.exports = {
     LEGACY_TOTAL_BUDGET,
     measureBundle,
     OPTIONAL_BUDGET,
+    OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
     writeBundleReport,

@@ -820,3 +820,39 @@ and an explicit `false` downgrades to ordinary kiosk without releasing the targe
 `status` and `off` reject extra fields. Results include boolean `strict`.
 `query` is a channel number
 or name substring, limited to 1024 UTF-8 bytes. Read results expose metadata only.
+
+### Hosted command transport
+
+A hosted deployment can proxy player traffic through its own HTTPS origin when
+its hosting service does not forward a caller's Authorization header. The
+release ships `dist/control-transport.js` as a separate optional asset. Load it
+synchronously after the deployment profile and before the player scripts.
+Deployments opt in with reviewed public addresses only:
+
+```js
+window.__OTTPLAY_HOSTED__.controlTransport = {
+  version: 1,
+  endpoint: "/ott-control/api/device-transport",
+  bases: ["https://player.example/ott-control", "https://control.example/ott-control"]
+};
+```
+
+The adapter matches exact base paths. Other manually configured controllers
+continue to use the direct transport. For matched requests it sends a versioned
+JSON envelope to the same-origin endpoint, including the device token in the
+HTTPS body and preserving the original method, path, query and JSON payload.
+No token belongs in this profile, a URL, or a shared proxy header. Missing or
+invalid adapter configuration fails without a direct fallback for these routes.
+
+The controller must support `/api/device-transport` before the site opts in.
+Only the fixed pairing, device poll/ack/result, notifications and device
+runtime-diagnostics routes are accepted. Administrative command submission,
+pairing approval and arbitrary upstream addresses are excluded. The response
+retains the original HTTP status, content type, diagnostics epoch and body;
+notification images retain their existing size and lifetime checks.
+
+For an explicitly configured public alias, hosted pairing also supplies
+`server_address`. The controller must validate the alias and bind its approval
+to the selected address. Existing direct clients omit this field and retain
+canonical discovery. Do not change global DNS discovery to an unsupported
+proxy endpoint merely to rename the hosted address.

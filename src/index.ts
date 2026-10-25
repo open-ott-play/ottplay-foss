@@ -1534,9 +1534,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
  * Called at the beginning of startPlayer(). Emits a performance stamp
  * and logs to console. Stub for future startup logic.
  */
-function onPlayerStart(): void {
-    console.log("onPlayerStart");
-}
+function onPlayerStart(): void {}
 
 // Language selection
 
@@ -1919,8 +1917,6 @@ export function startPlayer(): void {
     onPlayerStart();
 
     try {
-        console.log("startPlayer");
-
         // OTTPLAY_FULL_ONLY_BEGIN
         if (launchEl && !isPlayDistribution()) {
             launchEl.innerHTML +=
@@ -2053,7 +2049,6 @@ function loadStartupLanguage(): boolean {
     }
     var launchEl = document.getElementById("launch");
     if (!lang) {
-        console.log("TRACE no lang, calling selectLang()");
         if (launchEl) {
             launchEl.style.display = "none";
             if (typeof (window as any).clearBootHide === "function")
@@ -2079,7 +2074,6 @@ function loadStartupLanguage(): boolean {
         setTimeout(ready, 0);
         return true;
     }
-    console.log("TRACE lang=" + lang + ", loading langJS");
     loadInterfaceLanguage(lang, function (loaded) {
         if (!current()) return;
         if (loaded) ready();
@@ -2204,8 +2198,6 @@ function onStbReady(): void {
         startupError(document.getElementById("launch"), "onStbReady", e);
     }
 }
-
-console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
@@ -2816,12 +2808,6 @@ function _playChannel(
                   : "prompt"
         );
     }
-    console.log(
-        "[playChannel] channelId=" +
-            channelId +
-            " url=" +
-            getChannelUrl(channelId)
-    );
     if (
         w.__ottClassicPlayback &&
         typeof w.__ottClassicPlayback.command === "function"
@@ -6452,6 +6438,7 @@ function initRemoteDiagnostics(): void {
         : undefined
 );
 (window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
+(window as any).__OTT_CONTROL_TRANSPORT_CLIENT_VERSION__ = 1;
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so

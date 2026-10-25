@@ -60,8 +60,12 @@ try {
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
     assert.equal(sets[0].providers.length, 8);
-    assert.equal(sets[0].total.bytes, measurement.bytes * 10);
-    assert.equal(sets[0].total.gzipBytes, measurement.gzipBytes * 10);
+    const optionalCount = Object.keys(CLASSIC_OPTIONAL_BUNDLES).length;
+    assert.equal(sets[0].total.bytes, measurement.bytes * (9 + optionalCount));
+    assert.equal(
+        sets[0].total.gzipBytes,
+        measurement.gzipBytes * (9 + optionalCount)
+    );
     const extra = path.join(root, "dist/provider-old.js");
     fs.writeFileSync(extra, source);
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
@@ -121,8 +125,14 @@ try {
     const playSets = inspectBundleSets(root, playArtifacts, playKinds);
     assert.equal(playSets.length, 2);
     assert.equal(playSets[0].providers.length, 4);
-    assert.equal(playSets[0].total.bytes, measurement.bytes * 6);
-    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 6);
+    assert.equal(
+        playSets[0].total.bytes,
+        measurement.bytes * (5 + optionalCount)
+    );
+    assert.equal(
+        playSets[0].total.gzipBytes,
+        measurement.gzipBytes * (5 + optionalCount)
+    );
     // Android's configured output may be outside the repository entirely.
     // Both inventories are relative to that output root, not the default dist.
     const androidArtifacts = ["player.js", "dist/player.js"];
@@ -245,7 +255,10 @@ try {
         Array.from(androidSets, (set) => set.entry),
         androidArtifacts
     );
-    assert.equal(androidSets[1].total.bytes, measurement.bytes * 6);
+    assert.equal(
+        androidSets[1].total.bytes,
+        measurement.bytes * (5 + optionalCount)
+    );
     const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
     fs.unlinkSync(externalChunk);
     assert.throws(

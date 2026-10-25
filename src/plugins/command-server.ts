@@ -855,6 +855,19 @@ export function createCommandServerTransport(
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ): () => void {
+        try {
+            if (w.__OTTPLAY_HOSTED__ && w.__OTTPLAY_HOSTED__.controlTransport) {
+                if (!w.__ottControlTransport) throw new Error();
+                request = w.__ottControlTransport.map(request);
+            }
+        } catch (_) {
+            complete({
+                body: "",
+                error: "hosted_control_unavailable",
+                status: 0,
+            });
+            return function () {};
+        }
         request.remoteControl = true;
         var done = false;
         var xhr: any = null;
