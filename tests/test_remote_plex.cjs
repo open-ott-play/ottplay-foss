@@ -177,6 +177,64 @@ function test(name, fn) {
     groups++;
     console.log("PASS " + name);
 }
+test("shared queue admission rejects malformed requests in both wrapper and loaded controller", () => {
+    const h = setup();
+    const create = h.c.__ottPlexQueueFactory.create;
+    let loaded;
+    h.c.__ottPlexQueueFactory.create = (...args) => {
+        loaded = create(...args);
+        return loaded;
+    };
+    h.call("preview", ["1"]);
+    h.prepare(["1"]);
+    assert(loaded);
+    const requests = [
+        { op: "unknown" },
+        { ids: ["1"], op: "status" },
+        { op: "preview" },
+        { ids: [1], op: "play" },
+        { ids: ["1"], op: "next" },
+        { ids: ["1"], op: "play", runtime: "stale" },
+    ];
+    for (const target of [h.queue, loaded])
+        for (const params of requests) {
+            const replies = [];
+            target.execute(
+                { params: { runtime: "runtime-fixture", ...params } },
+                (reply) => replies.push(reply)
+            );
+            assert.equal(replies[0].status, "rejected");
+            assert.equal(h.requests.length, 0);
+        }
+    assert.equal(h.c.calls.filter((call) => call[0] === "play").length, 0);
+    assert.deepEqual(plain(h.queue.capability), contract.capability);
+});
+test("a loaded controller without its shared validator rejects every operation before side effects", () => {
+    const h = setup();
+    const loaded = h.c.__ottPlexQueueFactory.create(h.c, "runtime-fixture");
+    for (const action of ["plex_queue", "plex_library"])
+        for (const op of [
+            "status",
+            "stop",
+            "preview",
+            "play",
+            "next",
+            "previous",
+        ]) {
+            const replies = [];
+            loaded.execute(
+                {
+                    action,
+                    params: { ids: ["1"], op, runtime: "runtime-fixture" },
+                },
+                (reply) => replies.push(reply)
+            );
+            assert.equal(replies[0].status, "rejected");
+            assert.equal(h.requests.length, 0);
+        }
+    assert.equal(h.c.calls.filter((call) => call[0] === "play").length, 0);
+    assert.equal(loaded.snapshot().active, false);
+});
 test("explicit saved Plex queue preserves provider until preflight, starts at zero, advances exactly and stops", () => {
     const h = setup();
     const ids = ["78777", "78776", "78775"];
@@ -1116,6 +1174,165 @@ test("library supports the 500-item boundary without partial publication", () =>
     assert.equal(request.replies[0].data.queue.ids.length, 500);
     assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
 });
+test("opted-in library queues retain 499 and 500 items and cap larger libraries before shuffling", () => {
+    for (const op of ["preview", "play"])
+        for (const total of [499, 500, 501, 100001]) {
+            const h = setup();
+            h.c.Math = Object.create(Math);
+            h.c.Math.random = () => 0;
+            const request = h.library(
+                op,
+                { library_id: "16" },
+                { allow_truncate: true, shuffle: true }
+            );
+            libraryInventory(h);
+            h.page(episodes(h, 1, 200), 0, total);
+            h.tickPage();
+            h.page(episodes(h, 201, 200), 200, total);
+            h.tickPage();
+            assert.equal(
+                h.requests[0].headers["X-Plex-Container-Size"],
+                "100",
+                "A known total needs no excluded lookahead item"
+            );
+            h.page(episodes(h, 401, Math.min(total - 400, 100)), 400, total);
+            const selected = Math.min(total, 500);
+            const ids = Array.from({ length: selected - 1 }, (_, i) =>
+                String(i + 2)
+            ).concat("1");
+            if (op === "play") {
+                assert.deepEqual(plain(h.queue.snapshot().ids), ids);
+                assert.equal(h.requests.length, 1);
+                assert.equal(
+                    new URL(h.requests[0].url).pathname,
+                    "/library/metadata/2"
+                );
+                h.resolve("2");
+                assert.equal(
+                    h.c.calls.filter((x) => x[0] === "play").length,
+                    1
+                );
+            }
+            const response = request.replies[0];
+            assert.equal(response.status, "ok");
+            assert.deepEqual(response.data.queue.ids, ids);
+            assert.equal(
+                response.data.truncated,
+                total > 500 ? true : undefined
+            );
+            assert.equal(response.data.shuffled, true);
+            assert.equal(h.requests.length, 0);
+        }
+});
+test("unknown library totals distinguish exactly 500 from a validated excluded item", () => {
+    for (const more of [false, true]) {
+        const h = setup();
+        const request = h.library(
+            "preview",
+            { library_id: "16" },
+            { allow_truncate: true }
+        );
+        libraryInventory(h);
+        h.page(episodes(h, 1, 200), 0, null);
+        h.tickPage();
+        h.page(episodes(h, 201, 200), 200, null);
+        h.tickPage();
+        assert.equal(h.requests[0].headers["X-Plex-Container-Size"], "101");
+        h.page(episodes(h, 401, 100), 400, null);
+        assert.equal(request.replies.length, 0);
+        h.tickPage();
+        assert.equal(h.requests[0].headers["X-Plex-Container-Start"], "500");
+        assert.equal(h.requests[0].headers["X-Plex-Container-Size"], "1");
+        const extra = { ratingKey: "501", type: "episode" };
+        h.page(more ? [extra] : [], 500, null);
+        assert.equal(request.replies[0].status, "ok");
+        assert.equal(request.replies[0].data.queue.ids.length, 500);
+        assert.equal(
+            request.replies[0].data.truncated,
+            more ? true : undefined
+        );
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 0);
+    }
+    const h = setup();
+    const request = h.library(
+        "preview",
+        { library_id: "16" },
+        { allow_truncate: true }
+    );
+    libraryInventory(h);
+    h.page(episodes(h, 1, 200), 0, null);
+    h.tickPage();
+    h.page(episodes(h, 201, 200), 200, null);
+    h.tickPage();
+    h.page(
+        episodes(h, 401, 100).concat({ ratingKey: "501", type: "episode" }),
+        400,
+        null
+    );
+    assert.equal(request.replies[0].status, "ok");
+    assert.equal(request.replies[0].data.queue.ids.length, 500);
+    assert.equal(request.replies[0].data.truncated, true);
+    assert.equal(h.requests.length, 0);
+});
+test("a capped library validates selected rows and page integrity instead of converting failures to partial success", () => {
+    for (const failure of [
+        "selected-unavailable",
+        "duplicate-selected",
+        "duplicate-lookahead",
+        "invalid-lookahead",
+        "wrong-offset",
+        "wrong-total",
+        "unsafe-total",
+        "too-many-rows",
+        "network",
+        "context",
+    ]) {
+        const h = setup();
+        const request = h.library(
+            "play",
+            { library_id: "16" },
+            { allow_truncate: true }
+        );
+        libraryInventory(h);
+        h.page(episodes(h, 1, 200), 0, null);
+        h.tickPage();
+        h.page(episodes(h, 201, 200), 200, null);
+        h.tickPage();
+        const rows = episodes(h, 401, 101);
+        if (failure === "selected-unavailable") rows[99].Media = [];
+        if (failure === "duplicate-selected") rows[99].ratingKey = "400";
+        if (failure === "duplicate-lookahead") rows[100].ratingKey = "500";
+        if (failure === "invalid-lookahead") rows[100].ratingKey = "0501";
+        if (failure === "too-many-rows") rows.push(...episodes(h, 502, 1));
+        if (failure === "network") {
+            h.requests.shift().error({ status: 403 }, "error");
+        } else {
+            if (failure === "context")
+                h.c.__ottActiveProviderDriver = { id: "new" };
+            h.page(
+                rows,
+                failure === "wrong-offset" ? 399 : 400,
+                failure === "wrong-total"
+                    ? 500
+                    : failure === "unsafe-total"
+                      ? 9007199254740992
+                      : null
+            );
+        }
+        if (failure !== "context") {
+            assert.equal(request.replies[0].status, "rejected", failure);
+            assert.equal(request.replies[0].data.truncated, undefined, failure);
+        }
+        assert.equal(h.requests.length, 0, failure);
+        assert.equal(
+            h.c.calls.filter((x) => x[0] === "play").length,
+            0,
+            failure
+        );
+        assert.equal(h.queue.snapshot().active, false, failure);
+    }
+});
 test("library selection refuses ambiguous, missing and unsupported targets", () => {
     for (const [rows, selector, error] of [
         [
@@ -1153,6 +1370,7 @@ test("library strict request schema rejects aliases, extra fields and malformed 
     for (const [op, selector, extra] of [
         ["list", { query: "x" }],
         ["list", {}, { shuffle: false }],
+        ["list", {}, { allow_truncate: true }],
         ["preview", {}],
         ["play", { library_id: "16", query: "x" }],
         ["play", { library_id: "16", query: undefined }],
@@ -1165,6 +1383,9 @@ test("library strict request schema rejects aliases, extra fields and malformed 
         ["play", { library_id: "16\n" }],
         ["play", { library_id: 16 }],
         ["play", { library_id: "16" }, { shuffle: "true" }],
+        ["play", { library_id: "16" }, { allow_truncate: false }],
+        ["play", { library_id: "16" }, { allow_truncate: "true" }],
+        ["play", { library_id: "16" }, { allow_truncate: null }],
         ["play", { library_id: "16" }, { ids: ["1"] }],
     ]) {
         const h = setup(),

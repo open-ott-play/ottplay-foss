@@ -455,6 +455,79 @@ test("catalog labels stay nonblank without exposing filesystem parents or changi
     assert.equal(f.host.mediaRecords[1].title, "Untitled folder");
 });
 
+test("file labels and directory categories independently keep their first valid Part", () => {
+    const f = fixture();
+    f.client.load(
+        { path: "/library/metadata/10/children", plexSource: source },
+        () => {}
+    );
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                {
+                    Media: [
+                        null,
+                        "invalid",
+                        {
+                            Part: [
+                                null,
+                                { file: 5 },
+                                {
+                                    file: "https://host.invalid/ignored/Remote.mp4",
+                                },
+                            ],
+                        },
+                        {
+                            Part: [
+                                { file: "/private/First/.." },
+                                {
+                                    file: "C:\\private\\Second\\Visible\t File.mkv",
+                                },
+                                { file: "/private/Third/Too late.mp4" },
+                            ],
+                        },
+                    ],
+                    ratingKey: "1",
+                    type: "movie",
+                },
+                {
+                    Media: { Part: { file: "/private/First/another.mp4" } },
+                    ratingKey: "2",
+                    title: " Preferred\t title ",
+                    type: "movie",
+                },
+                {
+                    Media: {
+                        Part: [
+                            { file: "Filename.mp4" },
+                            { file: "/private/Second/later.mp4" },
+                        ],
+                    },
+                    ratingKey: "3",
+                    type: "movie",
+                },
+            ],
+            size: 3,
+            totalSize: 3,
+        },
+    });
+    const rows = f.host.mediaRecords;
+    assert.deepEqual(
+        Array.from(rows, (row) => row.title),
+        ["Visible File.mkv", "Preferred title", "Filename.mp4"]
+    );
+    assert.deepEqual(
+        Array.from(rows, (row) => row.__ottMediaFileDirectory.name),
+        ["First", "First", "Second"]
+    );
+    assert.equal(
+        rows[0].__ottMediaFileDirectory.id,
+        rows[1].__ottMediaFileDirectory.id
+    );
+    assert(!JSON.stringify(rows).includes("private"));
+    assert(!JSON.stringify(rows).includes("host.invalid"));
+});
+
 test("collection capability uses the same flat route contract as collection", () => {
     const f = fixture();
     for (const target of [
