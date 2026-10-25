@@ -562,6 +562,12 @@ function createRemoteProviderFields(w: any, driver: any): any {
         var definition = find(name),
             normalized = normalize(definition, requested),
             next = model();
+        if (
+            kind === "plex" &&
+            definition.field === "server" &&
+            next.server !== normalized
+        )
+            delete next.folders;
         selected(next)[definition.field] =
             definition.id === "plexPlayback"
                 ? ["auto", "original", "compatible"].indexOf(normalized)

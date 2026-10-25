@@ -63,6 +63,36 @@ test("real Plex codec retains folders when only changing mode", () => {
     assert.equal(saved.token, "private-token");
     assert.equal(f.requests.length, 0);
 });
+test("Plex server replacement clears old folder roots and rejects their prior receipt", () => {
+    const folders = [
+        { path: "/library/sections/2/all", title: "Old server films" },
+    ];
+    const f = setup("plex", {
+        plexcfg: JSON.stringify({
+            address: "https://old-plex.test",
+            folders,
+            playback: "auto",
+            token: "private-token",
+        }),
+    });
+    const old = f.api.folderSnapshot();
+    f.set("providerPassword", "replacement-token");
+    assert.deepEqual(JSON.parse(f.saved.get("plexcfg")).folders, folders);
+    f.set("providerServer", "https://old-plex.test/");
+    assert.deepEqual(JSON.parse(f.saved.get("plexcfg")).folders, folders);
+    f.set("providerServer", "https://new-plex.test/");
+    assert.equal(
+        JSON.parse(f.saved.get("plexcfg")).address,
+        "https://new-plex.test"
+    );
+    assert.deepEqual(clone(f.api.folderSnapshot().items), []);
+    assert.equal(old.capture.current(), false);
+    assert.throws(
+        () => f.api.saveFolders(folders, old.capture, () => true),
+        /revision_conflict/
+    );
+    assert.equal(f.requests.length, 0);
+});
 test("real Edem transaction changes one key and confirms actual storage", () => {
     const f = setup("edem", {
         ededcdn: "cdn.example.test",
