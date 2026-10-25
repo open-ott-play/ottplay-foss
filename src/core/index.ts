@@ -1372,16 +1372,16 @@ function startCoreEngine(
 /** The registered normalization routes require separate rendition playback. */
 function coreNormalizedMse(url: string): boolean {
     try {
-        if (typeof URL !== "function") return false;
         var parsed = new URL(url);
         return (
-            /^(https?:)$/.test(parsed.protocol) &&
-            !parsed.username &&
-            !parsed.password &&
-            !parsed.search &&
-            !parsed.hash &&
-            /^\/normalize\/(?:play\/[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{32,128}|lease\/[a-f0-9]{32}\/[a-f0-9]{32})\/master\.m3u8$/.test(
-                parsed.pathname
+            !(
+                parsed.username ||
+                parsed.password ||
+                parsed.search ||
+                parsed.hash
+            ) &&
+            /^https?:\/normalize\/(?:play\/[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{32,128}|lease\/[a-f0-9]{32}\/[a-f0-9]{32})\/master\.m3u8$/.test(
+                parsed.protocol + parsed.pathname
             )
         );
     } catch (_) {
