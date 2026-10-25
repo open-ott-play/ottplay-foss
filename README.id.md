@@ -75,6 +75,7 @@ Pola uji sintetis dapat dibuat ulang dengan `scripts/generate-demo-media.sh` (me
 - **Perutean per perangkat**: pengalamatan berbasis UUID untuk konfigurasi banyak perangkat
 - **Proxy lokal**: server perintah lokal opsional untuk otomatisasi 100% lokal (tanpa server pusat)
 - **Integrasi pengontrol**: operator dengan cakupan perangkat/tindakan, hasil perintah persisten opsional, penerapan preset Local/Home yang dapat dilanjutkan, serta pengalihan langsung/arsip dari sumber yang sama melalui [server kontrol](https://github.com/open-ott-play/ottplay-control-server) yang sesuai. Membutuhkan pengontrol/CLI yang diperbarui; tab browser mandiri tidak menyediakannya.
+- **Preferensi jarak jauh bertipe**: temukan pengaturan, baca nilai tersimpan dan efektif, lalu simpan dengan pemeriksaan instans runtime, sumber, dan revisi; lihat [pengaturan jarak jauh dan konfigurasi VPortal](docs/remote-player-settings.md).
 - **Debug**: HUD pemutaran/log melingkar opsional melalui `?debug=1`, inspeksi jarak jauh berdasarkan persetujuan, dan pemeriksaan audio/video terhosting sesuai permintaan
 - **Aksesibilitas keyboard**: dialog klasik bernama, pembatasan dan pengembalian fokus Tab, semantik saluran terpilih, dan pengumuman status yang tidak mengganggu. Peningkatan ini tidak membuktikan kepatuhan penuh WCAG atau pembaca layar perangkat.
 - **24 jenis perangkat**: pemetaan tombol remote per perangkat
