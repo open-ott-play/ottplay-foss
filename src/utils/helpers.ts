@@ -140,14 +140,32 @@ export function listInContentHeight(): number {
     }
 }
 
-/**
- * Always honor List settings `pageSize` (OTT default 25).
- * Do not shrink pageSize to invent a "fit" cap — keep the cursor on-screen
- * by paging/scrolling like OTT/`setFontSize`, not by reducing row count.
- * Kept as a named helper for call-site compatibility.
- */
+/** Read the validated application text scale, including older unset profiles. */
+export function uiFontScale(): number {
+    var value = (window as any).sUiFontScale;
+    return typeof value === "number" &&
+        value >= 50 &&
+        value <= 200 &&
+        Math.floor(value) === value
+        ? value / 100
+        : 1;
+}
+
+/** Scale authored absolute units, leaving inherited and relative sizes alone. */
+export function uiFontSize(value: string): string {
+    var scale = uiFontScale();
+    if (scale === 1) return value;
+    return value.replace(
+        /(^|[^a-z\d_-])(-?\d*\.?\d+)(px|vh|vw|pt)\b/gi,
+        function (_match, prefix, number, unit) {
+            return prefix + Number(number) * scale + unit;
+        }
+    );
+}
+
+/** Preserve the saved row count while making enlarged text fit visible pages. */
 export function listFitPageSize(wanted: number): number {
-    return Math.max(1, wanted | 0);
+    return Math.max(1, Math.floor((wanted | 0) / Math.max(1, uiFontScale())));
 }
 
 /**
@@ -248,6 +266,8 @@ if (typeof window !== "undefined") {
     (window as any).getViewportHeightScale = getViewportHeightScale;
     (window as any).listInContentHeight = listInContentHeight;
     (window as any).listFitPageSize = listFitPageSize;
+    (window as any).uiFontScale = uiFontScale;
+    (window as any).uiFontSize = uiFontSize;
     (window as any).listRowHeight = listRowHeight;
     (window as any).packListRowBoxes = packListRowBoxes;
 }

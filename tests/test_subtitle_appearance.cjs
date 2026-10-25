@@ -2,6 +2,35 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
+const helperSource = fs.readFileSync("src/utils/helpers.ts", "utf8");
+const helperAst = ts.createSourceFile(
+    "helpers.ts",
+    helperSource,
+    ts.ScriptTarget.Latest,
+    true
+);
+const scaleSource = helperAst.statements
+    .filter(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            ["uiFontScale", "uiFontSize"].includes(node.name?.text)
+    )
+    .map((node) => node.getText(helperAst))
+    .join("\n");
+const scaleCode = ts
+    .transpileModule(scaleSource, {
+        compilerOptions: {
+            module: ts.ModuleKind.ES2015,
+            target: ts.ScriptTarget.ES5,
+        },
+    })
+    .outputText.replace(/^export /gm, "");
+function bindScale(target) {
+    Object.defineProperty(target, "sUiFontScale", {
+        get: () => target.settings.uiFontScale,
+    });
+    vm.runInNewContext(scaleCode, target);
+}
 const source = fs.readFileSync("src/ui/subtitle-appearance.ts", "utf8");
 const code = ts.transpileModule(source, {
     compilerOptions: {
@@ -16,6 +45,7 @@ const host = {
     window: null,
 };
 host.window = host;
+bindScale(host);
 vm.runInNewContext(code, host);
 const api = host.__ottSubtitleAppearance;
 const media = (width, height, vw = 1920, vh = 1080) => ({
@@ -154,6 +184,7 @@ console.log(
         URL,
     };
     fontHost.window = fontHost;
+    bindScale(fontHost);
     vm.runInNewContext(code, fontHost);
     const scaleFonts = fontHost.__ottSubtitleAppearance.scaleFonts;
     scaleFonts();

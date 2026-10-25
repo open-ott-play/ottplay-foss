@@ -555,10 +555,8 @@ declare var getScriptDOM: (
  * @param code - The raw code string (e.g. "d:someEncodedData").
  *
  * Side effects: Calls providerSetItem('dealerData', ...) on match.
- * Logs to console for debugging.
  */
 function doDealer(code: string): void {
-    console.log("[dealer] code:", code);
     try {
         if (typeof code === "string") {
             var parts = code.split(":");

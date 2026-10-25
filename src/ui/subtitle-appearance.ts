@@ -19,18 +19,9 @@
     var watching = false;
     var observer: any = null;
     var observed: HTMLVideoElement[] = [];
-    var fontUnits = /(^|[^a-z\d_-])(-?\d*\.?\d+)(px|vh|vw|pt)\b/gi;
     function scaleFonts(): void {
         var doc = host.document;
         if (!doc || !doc.styleSheets || !host.location) return;
-        var value = (host.settings || {}).uiFontScale;
-        var scale =
-            typeof value === "number" &&
-            value >= 50 &&
-            value <= 200 &&
-            value % 1 === 0
-                ? value / 100
-                : 1;
         function visit(rules: any): void {
             for (var i = 0; rules && i < rules.length; i++) {
                 var rule = rules[i],
@@ -38,7 +29,6 @@
                 if (
                     css &&
                     css.fontSize &&
-                    css.fontSize.search(fontUnits) >= 0 &&
                     !/::cue|shaka-text|vjs-text-track/.test(
                         rule.selectorText || ""
                     )
@@ -49,25 +39,9 @@
                             css.fontSize,
                             css.getPropertyPriority("font-size"),
                         ]);
-                    css.setProperty(
-                        "font-size",
-                        scale === 1
-                            ? original[0]
-                            : original[0].replace(
-                                  fontUnits,
-                                  function (
-                                      _match: string,
-                                      prefix: string,
-                                      number: string,
-                                      unit: string
-                                  ) {
-                                      return (
-                                          prefix + Number(number) * scale + unit
-                                      );
-                                  }
-                              ),
-                        original[1]
-                    );
+                    var size = host.uiFontSize(original[0]);
+                    if (css.fontSize !== size)
+                        css.setProperty("font-size", size, original[1]);
                 }
                 visit(rule.cssRules);
             }
@@ -92,11 +66,7 @@
     }
     function index(values: any, key: string, max: number): number {
         var n = values && values[key];
-        return typeof n === "number" &&
-            isFinite(n) &&
-            Math.floor(n) === n &&
-            n >= 0 &&
-            n <= max
+        return typeof n === "number" && n >= 0 && n <= max && n % 1 === 0
             ? n
             : 0;
     }
@@ -214,7 +184,8 @@
         }
     }
     function open(): void {
-        var page = host.__ottAppearanceHost.page(
+        var ui = host.__ottAppearanceHost;
+        var page = ui.page(
             host,
             "settingsSubtitles",
             "Subtitle appearance",
@@ -223,55 +194,46 @@
         );
         var label = page.label,
             defaults = [label("Player default")];
-        var rows = [
-            page.choice(
-                label("Font type"),
-                keys[0],
-                defaults.concat(["Arial", "Georgia", "Courier New"])
-            ),
-            page.choice(
-                label("Font size"),
-                keys[1],
-                defaults.concat(["75%", "100%", "125%", "150%", "200%"])
-            ),
-            page.choice(
-                label("Text color"),
-                keys[2],
-                defaults.concat([
-                    "#FFFFFF",
-                    "#FFFF00",
-                    "#000000",
-                    "#00FFFF",
-                    "#00FF00",
-                ])
-            ),
-            page.choice(
-                label("Outline thickness"),
-                keys[3],
-                defaults.concat([label("Off"), "1 px", "2 px", "3 px"])
-            ),
-            page.choice(
-                label("Background opacity"),
-                keys[4],
-                defaults.concat(["0%", "25%", "50%", "75%", "100%"])
-            ),
-            {
-                cur: label("select"),
-                name: label("Reset to default"),
-                val: 0,
-                values: function () {
-                    rows.forEach(function (row: any) {
-                        if (row.settingId) row.val = 0;
-                    });
-                    host.showPage();
-                },
-            },
+        var labels = [
+            "Font type",
+            "Font size",
+            "Text color",
+            "Outline thickness",
+            "Background opacity",
         ];
-        host.__ottAppearanceHost.list(host, page.rows(rows));
+        var options = [
+            ["Arial", "Georgia", "Courier New"],
+            ["75%", "100%", "125%", "150%", "200%"],
+            colors.slice(1).map(function (color) {
+                return color.toUpperCase();
+            }),
+            [label("Off"), "1 px", "2 px", "3 px"],
+            ["0%", "25%", "50%", "75%", "100%"],
+        ];
+        var rows: any[] = labels.map(function (name, i) {
+            return page.choice(
+                label(name),
+                keys[i],
+                defaults.concat(options[i])
+            );
+        });
+        rows.push({
+            cur: label("select"),
+            name: label("Reset to default"),
+            val: 0,
+            values: function () {
+                rows.forEach(function (row: any) {
+                    if (row.settingId) row.val = 0;
+                });
+                host.showPage();
+            },
+        });
+        ui.list(host, page.rows(rows));
         page.attach();
     }
     function interfaceSettings(): void {
         var w = window as any;
+        var ui = host.__ottAppearanceHost;
         var showPlayerChoice =
             w.ott_device !== "lg/webos" &&
             !(w.ott_device === "pc2" && typeof w.videojs === "function");
@@ -280,7 +242,7 @@
          * Conditionally saves PiP, OSD opacity, volume step, and editor
          * settings based on capability. Calls all apply-functions after saving.
          */
-        var page = host.__ottAppearanceHost.page(
+        var page = ui.page(
             w,
             "settingsInterface",
             "Interface settings",
@@ -290,29 +252,19 @@
         var choice = page.choice;
         var label = page.label;
 
-        var mediaLanguageCodes = Object.keys(
-            host.__ottAppearanceHost.languages
-        );
+        var mediaLanguageCodes = Object.keys(ui.languages);
         var mediaLanguageLabels = mediaLanguageCodes.map(function (code) {
-            return host.__ottAppearanceHost.languages[code];
+            return ui.languages[code];
         });
         var noyes = [label("no"), label("yes")];
         var fontScales: number[] = [];
-        for (var scale = 50; scale <= 200; scale += 10) fontScales.push(scale);
-        // Keep an exact value supplied by the remote settings API selectable.
-        var currentScale = w.sUiFontScale;
-        if (
-            fontScales.indexOf(currentScale) < 0 &&
-            currentScale >= 50 &&
-            currentScale <= 200
-        )
-            fontScales.push(currentScale);
-        fontScales.sort(function (a, b) {
-            return a - b;
-        });
+        // Include exact remote values while keeping the selector ascending.
+        for (var scale = 50; scale <= 200; scale++)
+            if (scale % 10 === 0 || scale === w.sUiFontScale)
+                fontScales.push(scale);
         var tz = (w.arrTimezone || ["system", "0"]).slice();
         tz[0] = w._(tz[0]) || tz[0];
-        host.__ottAppearanceHost.list(
+        ui.list(
             w,
             page.rows([
                 choice(w._("Interface theme"), "interfaceTheme", [
@@ -361,17 +313,26 @@
                 choice(
                     label("Font type"),
                     "fontSize",
-                    w.__ottNativeFontOptions || [
-                        '<span style="font-family:Helvetica, Arial, sans-serif;">' +
-                            label("system") +
-                            "</span>",
-                        '<span style="font-family:Roboto;">Roboto</span>',
-                        '<span style="font-family:RobotoCondensed;">Roboto Condensed</span>',
-                        '<span style="font-family:Caveat;">Caveat</span>',
-                        '<span style="font-family:Liberation;">Liberation</span>',
-                        '<span style="font-family:Gabriela;">Gabriela</span>',
-                        '<span style="font-family:PTSansNarrow;">PTSansNarrow</span>',
-                    ]
+                    w.__ottNativeFontOptions ||
+                        [
+                            label("system"),
+                            "Roboto",
+                            "Roboto Condensed",
+                            "Caveat",
+                            "Liberation",
+                            "Gabriela",
+                            "PTSansNarrow",
+                        ].map(function (name, i) {
+                            return (
+                                '<span style="font-family:' +
+                                (i
+                                    ? name.replace(" ", "")
+                                    : "Helvetica, Arial, sans-serif") +
+                                ';">' +
+                                name +
+                                "</span>"
+                            );
+                        })
                 ),
                 choice(label("Timezone"), "timezone", tz),
                 {
@@ -498,7 +459,7 @@
                 choice(label("Buffer Size, s"), "bufSize", w.bufferSizes),
             ])
         );
-        host.__ottAppearanceHost.list(
+        ui.list(
             w,
             w.listArray.filter(function (row: any): boolean {
                 if (

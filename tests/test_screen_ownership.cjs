@@ -409,6 +409,7 @@ function layoutFixture(w) {
         getListItemFn: (row) => row,
         getViewportWidthScale: () => 1,
         listArray: ["One"],
+        listFitPageSize: (wanted) => wanted,
         listInElement: listIn,
         listKeyHandler: () => false,
         listRowHeight: () => 20,

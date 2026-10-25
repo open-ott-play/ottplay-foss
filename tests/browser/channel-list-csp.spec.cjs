@@ -3343,3 +3343,121 @@ test("portrait player settings keep Save visible and persist the selected engine
         await fixture.close();
     }
 });
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(
+        profile +
+            ": UI font scaling is proportional, reversible and keeps settings reachable",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile, {});
+            const { page } = fixture;
+            try {
+                for (const viewport of [
+                    { height: 720, width: 1280 },
+                    { height: 1230, width: 722 },
+                    { height: 800, width: 360 },
+                ]) {
+                    await page.setViewportSize(viewport);
+                    for (const theme of [0, 1, 2]) {
+                        await page.evaluate((theme) => {
+                            saveSettings({
+                                interfaceTheme: theme,
+                                uiFontScale: 100,
+                            });
+                            window.setFontSize();
+                            _channelsList(0, 0);
+                            if (!document.getElementById("font-scale-static")) {
+                                const probe = document.createElement("span");
+                                probe.id = "font-scale-static";
+                                probe.className = "epg-time";
+                                probe.textContent = "12:34";
+                                document.body.appendChild(probe);
+                                const notification =
+                                    document.createElement("span");
+                                notification.id = "font-scale-notify";
+                                notification.className = "notify remote-notify";
+                                notification.style.visibility = "hidden";
+                                document.body.appendChild(notification);
+                            }
+                        }, theme);
+                        const measure = () =>
+                            page.evaluate(() => {
+                                const result = {};
+                                for (const id of [
+                                    "list",
+                                    "listCaption",
+                                    "listPodval",
+                                    "dialogbox",
+                                    "info1",
+                                    "listTime",
+                                    "font-scale-static",
+                                    "font-scale-notify",
+                                ]) {
+                                    result[id] = parseFloat(
+                                        getComputedStyle(
+                                            document.getElementById(id)
+                                        ).fontSize
+                                    );
+                                }
+                                return result;
+                            });
+                        const baseline = await measure();
+                        for (const percent of [50, 150, 200, 100]) {
+                            expect(
+                                await page.evaluate(
+                                    (percent) =>
+                                        saveSettings({ uiFontScale: percent }),
+                                    percent
+                                )
+                            ).toBe(true);
+                            await expect
+                                .poll(() =>
+                                    page.evaluate(
+                                        () =>
+                                            !!window.__ottSubtitleAppearance
+                                                ?.scaleFonts
+                                    )
+                                )
+                                .toBe(true);
+                            const actual = await measure();
+                            for (const id of Object.keys(baseline)) {
+                                expect(
+                                    actual[id],
+                                    profile + ": " + id + " at " + percent
+                                ).toBeCloseTo(
+                                    (baseline[id] * percent) / 100,
+                                    0
+                                );
+                            }
+                            await page.evaluate(() => {
+                                window.stbOptions();
+                                window.selIndex = window.listArray.length - 1;
+                                window.showPage();
+                            });
+                            const save = page
+                                .locator("#listIn .btn")
+                                .filter({ hasText: "Save Settings" });
+                            await expect(save).toBeVisible();
+                            await expect
+                                .poll(async () => {
+                                    const bounds = await save.boundingBox();
+                                    return (
+                                        !!bounds &&
+                                        bounds.y >= 0 &&
+                                        bounds.y + bounds.height <=
+                                            viewport.height
+                                    );
+                                })
+                                .toBe(true);
+                            await page.evaluate(() => _channelsList(0, 0));
+                        }
+                    }
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}

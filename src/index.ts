@@ -20,6 +20,7 @@ import {
     listPreviewRect,
     metadataCssUrl,
     metadataText,
+    uiFontScale,
 } from "./utils/helpers";
 /**
  * OTT-play FOSS — main entry point.
@@ -669,7 +670,6 @@ var TMDb: any = {
                 $("#dialogbox").html(
                     "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
                 );
-                console.log("getTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
                 if (TMDb.locale() !== api_lang) return;
@@ -787,7 +787,6 @@ var TMDb: any = {
                 $("#dialogbox").html(
                     "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
                 );
-                console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
                 if (TMDb.locale() !== api_lang) return;
@@ -989,6 +988,10 @@ function initUIReferences(): void {
  */
 function setFontSize(): void {
     pageSize = settings.pageSize;
+    var fontScale = uiFontScale();
+    var appearance = (window as any).__ottSubtitleAppearance;
+    if (appearance && appearance.scaleFonts) appearance.scaleFonts();
+    else if (fontScale !== 1) loadSubtitleAppearance();
     setListPos();
     var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
@@ -1015,14 +1018,17 @@ function setFontSize(): void {
     // Keep glyphs inside the integer row box (WKWebView expands on overflow).
     // 0.98 uses the spare line-box under the 25th row after the +1 step bump.
     r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98), textCap);
-    $("#list, #testFont, #permanentTime").css("font-size", r + "px");
+    $("#list, #testFont, #permanentTime").css(
+        "font-size",
+        r * fontScale + "px"
+    );
 
     r = Math.min(Math.max(r, 22 * e), textCap);
-    if ($i1El) $i1El.css("font-size", r + "px");
-    $("#numprog, #dialogbox").css("font-size", r + "px");
+    if ($i1El) $i1El.css("font-size", r * fontScale + "px");
+    $("#numprog, #dialogbox").css("font-size", r * fontScale + "px");
 
     r = Math.min(r, 28 * e);
-    $("#listCaption, #listPodval").css("font-size", r + "px");
+    $("#listCaption, #listPodval").css("font-size", r * fontScale + "px");
     $("#permanentTime")
         .toggle(settings.permanentTime !== 0 && !isListVisible)
         .toggleClass("osd", settings.permanentTime !== 2)
@@ -1045,10 +1051,13 @@ function setFontSize(): void {
         right: 20 * t + "px",
         top: 20 * e + "px",
     });
-    $("#launch").css({ "font-size": 20 * e + "px", padding: 100 * e + "px" });
+    $("#launch").css({
+        "font-size": 20 * e * fontScale + "px",
+        padding: 100 * e + "px",
+    });
     $("logo").css({ margin: 100 * e + "px" });
-    $("#listTime").css("font-size", 22 * e + "px");
-    $("#list_s").css({ "font-size": 16 * e + "px" });
+    $("#listTime").css("font-size", 22 * e * fontScale + "px");
+    $("#list_s").css({ "font-size": 16 * e * fontScale + "px" });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
     $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
     $("#channel").css({
@@ -1058,9 +1067,12 @@ function setFontSize(): void {
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
     $("#progress, #progress_r").css({ height: 8 * e + "px" });
-    $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
+    $("#data").css({
+        "font-size": 22 * e * fontScale + "px",
+        width: 80 * t + "px",
+    });
     $("#current_s, #video_res").css({
-        "font-size": 16 * e + "px",
+        "font-size": 16 * e * fontScale + "px",
     });
     $("#descr").css({
         margin: "0px 0px " + 20 * e + "px 0px",
@@ -1111,7 +1123,7 @@ function setFontSize(): void {
     try {
         var n = $("#testFont"),
             i = n.css("font-size");
-        n.css("font-size", 22 * e).text("9");
+        n.css("font-size", 22 * e * fontScale).text("9");
         var a = n.width();
         n.text("").css("font-size", i);
         var o = a * 7;
@@ -1172,6 +1184,7 @@ function setFontSize(): void {
     } catch (ex) {
         console.error(ex);
     }
+    if (isListVisible) showPage();
 }
 
 /**
@@ -1540,9 +1553,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
  * Called at the beginning of startPlayer(). Emits a performance stamp
  * and logs to console. Stub for future startup logic.
  */
-function onPlayerStart(): void {
-    console.log("onPlayerStart");
-}
+function onPlayerStart(): void {}
 
 // Language selection
 
@@ -1925,8 +1936,6 @@ export function startPlayer(): void {
     onPlayerStart();
 
     try {
-        console.log("startPlayer");
-
         // OTTPLAY_FULL_ONLY_BEGIN
         if (launchEl && !isPlayDistribution()) {
             launchEl.innerHTML +=
@@ -2059,7 +2068,6 @@ function loadStartupLanguage(): boolean {
     }
     var launchEl = document.getElementById("launch");
     if (!lang) {
-        console.log("TRACE no lang, calling selectLang()");
         if (launchEl) {
             launchEl.style.display = "none";
             if (typeof (window as any).clearBootHide === "function")
@@ -2085,7 +2093,6 @@ function loadStartupLanguage(): boolean {
         setTimeout(ready, 0);
         return true;
     }
-    console.log("TRACE lang=" + lang + ", loading langJS");
     loadInterfaceLanguage(lang, function (loaded) {
         if (!current()) return;
         if (loaded) ready();
@@ -2210,8 +2217,6 @@ function onStbReady(): void {
         startupError(document.getElementById("launch"), "onStbReady", e);
     }
 }
-
-console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
@@ -2713,14 +2718,6 @@ function _playChannel(
     if (w.__ottMedia && w.__ottMedia.cancelRequest)
         w.__ottMedia.cancelRequest();
     else if (w.providerMediaClient) w.providerMediaClient.cancel();
-    console.log(
-        "[playChannel] catIdx=" +
-            catIdx +
-            " chIdx=" +
-            chIdx +
-            " catsArray.length=" +
-            catsArray.length
-    );
     if (catsArray[catIdx] === undefined) {
         infoBox(
             _(
@@ -2822,12 +2819,6 @@ function _playChannel(
                   : "prompt"
         );
     }
-    console.log(
-        "[playChannel] channelId=" +
-            channelId +
-            " url=" +
-            getChannelUrl(channelId)
-    );
     if (
         w.__ottClassicPlayback &&
         typeof w.__ottClassicPlayback.command === "function"
@@ -3974,6 +3965,8 @@ if (typeof window.__TAURI__ !== "undefined") {
                 "  -webkit-app-region: no-drag;\n" +
                 "}\n";
             (document.head || document.documentElement).appendChild(style);
+            var appearance = (window as any).__ottSubtitleAppearance;
+            if (appearance && appearance.scaleFonts) appearance.scaleFonts();
         }
 
         function ensurePanel(): void {

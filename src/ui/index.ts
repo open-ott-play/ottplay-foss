@@ -33,6 +33,7 @@ import {
     getThumbnail,
     getViewportHeightScale,
     getViewportWidthScale,
+    listFitPageSize,
     listRowHeight,
     packListRowBoxes,
     time2time,
@@ -929,9 +930,9 @@ export function showPage(): void {
             : listArray && listArray.length
               ? listArray
               : [];
-    // Always honor List settings pageSize (OTT). Cursor stays on-screen via
-    // paging in changeSelect — never by shrinking pageSize.
-    var pageSz = Math.max(1, settings.pageSize | 0 || 25);
+    // Preserve the configured row count; enlarged fonts reduce only this page's
+    // visible rows. Selection still pages across the complete list.
+    var pageSz = listFitPageSize(settings.pageSize || 25);
     (window as any).listPageSize = pageSz;
     var pageStart = Math.floor(selIndex / pageSz) * pageSz;
     var pageEnd = Math.min(pageStart + pageSz, dataArr.length);

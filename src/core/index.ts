@@ -52,7 +52,6 @@ export function setPlayerMode(v: number): void {
     var nextMode = normalizePlayerMode(v);
     if (nextMode !== playerMode) cancelCoreAutoPlayback(true);
     playerMode = nextMode;
-    console.log("[setPlayerMode] playerMode=" + playerMode);
 }
 /** Human-readable labels for each playerMode value. */
 export var playerModeNames =
@@ -1499,7 +1498,6 @@ function startCorePlayback(
             : mode === 2 && !_forceNative
               ? "shaka"
               : "html5";
-    console.log("[stbPlay] playerMode=" + playerMode + " (" + _pm + ")");
     var useHls =
         mode === 1 &&
         !_forceNative &&
@@ -2971,12 +2969,6 @@ export function stbInit(): void {
             video!.addEventListener("loadstart", function () {
                 $("#buffering").show();
                 $("#video_res").text(_("Loading..."));
-            });
-            video!.addEventListener("loadeddata", function () {
-                console.log("Event: loadeddata");
-            });
-            video!.addEventListener("loadedmetadata", function () {
-                console.log("Event: loadedmetadata");
             });
             video!.addEventListener("canplay", function () {
                 if (!host.__ottPlaybackFeedback?.visible()) {
