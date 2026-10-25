@@ -258,7 +258,9 @@ function remote(f) {
                         if (dependency === "../utils/helpers")
                             return {
                                 getScriptDOM() {
-                                    throw new Error("Fixture preloads the settings dispatcher");
+                                    throw new Error(
+                                        "Fixture preloads the settings dispatcher"
+                                    );
                                 },
                             };
                         if (dependency === "./remote-restart")
