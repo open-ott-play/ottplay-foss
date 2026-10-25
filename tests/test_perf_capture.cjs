@@ -222,6 +222,12 @@ function fixture(options = {}) {
         token: "SECRET",
     };
     const context = { Date: w.Date, exports: {}, Promise, window: w };
+    context.require = () => ({
+        loadRemoteFeature() {
+            throw Error("unexpected detail load");
+        },
+    });
+    vm.runInNewContext(code("runtime-debug-details"), context);
     vm.runInNewContext(runtime, context);
     w.__ottRuntimeDebug = context.exports.installRuntimeDebug(w, {
         getConfig: () => config,
@@ -694,6 +700,72 @@ test("throwing performance clock selects explicit wall fallback", () => {
         throw Error("clock unsupported");
     };
     assert.equal(f.request("start").data.session.clock, "wall_fallback");
+    f.close();
+});
+test("partial WebKit getters and unavailable quality use the truthful source", () => {
+    const f = fixture();
+    f.request("start");
+    f.media.getVideoPlaybackQuality = undefined;
+    f.media.webkitDecodedFrameCount = 1;
+    Object.defineProperty(f.media, "webkitDroppedFrameCount", {
+        configurable: true,
+        get() {
+            throw Error("getter unavailable");
+        },
+    });
+    f.advance(1000);
+    let frame = all(f)
+        .events.filter((e) => e.kind === "sample")
+        .at(-1).data.frames;
+    assert.equal(frame.source, "webkit");
+    assert.equal(frame.total, 1);
+    assert.equal(frame.dropped, null);
+    f.media.getVideoPlaybackQuality = () => ({
+        corruptedVideoFrames: NaN,
+        droppedVideoFrames: NaN,
+        totalVideoFrames: NaN,
+    });
+    Object.defineProperty(f.media, "webkitDroppedFrameCount", { value: 0 });
+    f.advance(1000);
+    frame = all(f)
+        .events.filter((e) => e.kind === "sample")
+        .at(-1).data.frames;
+    assert.equal(frame.source, "webkit");
+    assert.equal(frame.total, 1);
+    assert.equal(frame.dropped, 0);
+    f.close();
+});
+test("a thrown clock read invalidates the recovery boundary", () => {
+    const f = fixture();
+    f.request("start");
+    const now = f.w.performance.now;
+    f.w.performance.now = () => {
+        throw Error("clock transient failure");
+    };
+    const n = f.w.__ottPerfSink.notification(null, () => 0);
+    n.phase("fetch", false);
+    f.advance(1000, false);
+    f.w.performance.now = now;
+    n.phase("fetch", true);
+    n.phase("base64", false);
+    f.advance(20, false);
+    n.phase("base64", true);
+    n.stage("shown");
+    const event = all(f)
+        .events.filter((e) => e.kind === "notification")
+        .at(-1);
+    assert.equal(event.data.fetch_ms, null);
+    assert.equal(event.data.base64_ms, 20);
+    f.close();
+});
+test("fallback HTML observation retains the main playback generation", () => {
+    const f = fixture();
+    f.backend.current = () => null;
+    f.request("start");
+    f.advance(1000);
+    const event = all(f).events.find((e) => e.kind === "sample");
+    assert.equal(event.generation, 1);
+    assert.equal(event.handle_id, null);
     f.close();
 });
 (async () => {

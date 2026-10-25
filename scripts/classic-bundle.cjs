@@ -151,6 +151,7 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-plex-folders.js",
     "build/plugins/remote-legacy-settings.js",
     "build/plugins/runtime-debug.js",
+    "build/plugins/runtime-debug-details.js",
     "build/plugins/perf-sensors.js",
     "build/plugins/perf-capture.js",
     "build/plugins/dash-exo-player.js",
@@ -200,6 +201,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
         "build/plugins/remote-settings-host.js",
         "build/plugins/remote-settings-lifecycle.js",
     ],
+    "runtime-debug-details": ["build/plugins/runtime-debug-details.js"],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
 const providerModules = new Set([
@@ -313,6 +315,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/plugins/remote-settings.js": Object.freeze([
         "window.__ottPlayerSettingsFactory",
+    ]),
+    "build/plugins/runtime-debug-details.js": Object.freeze([
+        "window.__ottRuntimeDebugDetails",
     ]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([

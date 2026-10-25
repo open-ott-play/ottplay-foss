@@ -15,11 +15,28 @@ const output = ts.transpileModule(
 ).outputText;
 acorn.parse(output, { ecmaVersion: 5 });
 const exportsObject = {};
-vm.runInNewContext(output, { Date, exports: exportsObject, Promise });
+const detailCode = ts.transpileModule(
+    fs.readFileSync("src/plugins/runtime-debug-details.ts", "utf8"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+acorn.parse(detailCode, { ecmaVersion: 5 });
+const pureDetails = { window: {} };
+vm.runInNewContext(detailCode, pureDetails);
+vm.runInNewContext(output, {
+    Date,
+    exports: exportsObject,
+    Promise,
+    require: () => ({
+        loadRemoteFeature: (w, _feature, done) => {
+            w.__ottLoadDebugDetails = done;
+        },
+    }),
+});
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const secret = "https://private.invalid/?token=DO-NOT-EXPORT";
 function fixture(native) {
     const w = new JSDOM("<!doctype html><video id='video'></video>").window;
+    w.__ottRuntimeDebugDetails = pureDetails.window.__ottRuntimeDebugDetails;
     let time = 100,
         serial = 0,
         currentRuntime = "runtime-1";
@@ -148,6 +165,41 @@ async function test(name, run) {
                 (e, i, es) => !i || es[i - 1].sequence < e.sequence
             )
         );
+        f.close();
+    });
+    await test("details load only for an explicit snapshot and retain retirement/native guards", async () => {
+        let calls = 0;
+        const f = fixture(() => {
+            calls++;
+            return Promise.resolve(producer);
+        });
+        f.w.Capacitor = { getPlatform: () => "android" };
+        f.enable();
+        delete f.w.__ottRuntimeDebugDetails;
+        assert.equal(f.w.__ottLoadDebugDetails, undefined);
+        const pending = f.api.snapshot(3);
+        assert.equal(calls, 0);
+        assert.equal(typeof f.w.__ottLoadDebugDetails, "function");
+        f.w.__ottRuntimeDebugDetails =
+            pureDetails.window.__ottRuntimeDebugDetails;
+        f.w.__ottLoadDebugDetails();
+        assert.equal((await pending).version, 3);
+        assert.equal(calls, 1);
+        delete f.w.__ottRuntimeDebugDetails;
+        const stale = f.api.snapshot();
+        const rejected = assert.rejects(stale, /unavailable/);
+        f.replace({ address: "new", enabled: true, token: "new" });
+        f.w.__ottRuntimeDebugDetails =
+            pureDetails.window.__ottRuntimeDebugDetails;
+        f.w.__ottLoadDebugDetails();
+        await rejected;
+        assert.equal(calls, 1);
+        delete f.w.__ottRuntimeDebugDetails;
+        const failed = f.api.snapshot();
+        const failure = assert.rejects(failed, /unavailable/);
+        f.w.__ottLoadDebugDetails("unsupported");
+        await failure;
+        assert.equal(calls, 1);
         f.close();
     });
     await test("engine identity accepts only the attached owner's bounded enum", async () => {
@@ -372,7 +424,7 @@ async function test(name, run) {
         assert(!JSON.stringify(data).includes("private"));
         f.close();
         assert.equal(
-            exportsObject.projectNativeDebug({
+            pureDetails.window.__ottRuntimeDebugDetails.native({
                 metrics: {},
                 platform: "evil",
                 version: 1,

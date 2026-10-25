@@ -96,6 +96,10 @@ try {
         assert.throws(() => inspectBundleSets(root), /bytes .* exceeds budget/);
         fs.writeFileSync(file, source);
     }
+    assert.deepEqual(OPTIONAL_BUDGETS["runtime-debug-details"], {
+        bytes: 3800,
+        gzipBytes: 1900,
+    });
     assert.deepEqual(OPTIONAL_BUDGETS["perf-capture"], {
         bytes: 17000,
         gzipBytes: 6800,

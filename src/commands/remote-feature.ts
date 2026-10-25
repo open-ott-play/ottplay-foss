@@ -3,7 +3,10 @@ import { getScriptDOM } from "../utils/helpers";
 /** Fixed internal feature names; independent bounded queues, no request URLs. */
 export function loadRemoteFeature(
     w: any,
-    feature: "perf-capture" | "remote-settings-lifecycle",
+    feature:
+        | "perf-capture"
+        | "remote-settings-lifecycle"
+        | "runtime-debug-details",
     done: (error?: string) => void
 ): void {
     var loads = w.__ottRemoteFeatureLoads || (w.__ottRemoteFeatureLoads = {});

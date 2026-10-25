@@ -558,11 +558,13 @@ const OPTIONAL_BUDGETS = Object.freeze({
         bytes: 31000,
         gzipBytes: 10000,
     }),
+    // Pure legacy snapshot projections move out of startup; no new polling.
+    "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
 // Carry the approved 96-byte VOD checkpoint allowance into the complete
 // payload exactly once, alongside the independently bounded optional capture.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1281100, gzipBytes: 407846 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1284900, gzipBytes: 409746 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

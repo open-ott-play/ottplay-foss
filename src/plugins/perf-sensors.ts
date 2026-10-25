@@ -115,6 +115,10 @@ function createPerformanceSensors(w: any, ports: any): any {
                 generation = integer(attachment.generation);
             }
         }
+        if (generation === null && lane === "main" && w.__ottClassicPlayback) {
+            var playback = w.__ottClassicPlayback.snapshot();
+            generation = playback ? integer(playback.generation) : null;
+        }
         if (!media && w.document)
             media = w.document.getElementById(
                 lane === "main" ? "video" : "videopip"
@@ -409,20 +413,19 @@ function createPerformanceSensors(w: any, ports: any): any {
                     value.dropped = integer(quality.droppedVideoFrames);
                     value.corrupted = integer(quality.corruptedVideoFrames);
                 }
-                if (
-                    value.total !== null ||
-                    value.dropped !== null ||
-                    value.corrupted !== null
-                )
-                    value.source = "quality";
-            }
-            if (value.source === "unsupported") {
-                value.total = integer(media.webkitDecodedFrameCount);
-                value.dropped = integer(media.webkitDroppedFrameCount);
-                if (value.total !== null || value.dropped !== null)
-                    value.source = "webkit";
             }
         } catch (_) {}
+        if (
+            value.total === null &&
+            value.dropped === null &&
+            value.corrupted === null
+        ) {
+            try {
+                value.source = "webkit";
+                value.total = integer(media.webkitDecodedFrameCount);
+                value.dropped = integer(media.webkitDroppedFrameCount);
+            } catch (_) {}
+        }
         if (
             value.total === null &&
             value.dropped === null &&

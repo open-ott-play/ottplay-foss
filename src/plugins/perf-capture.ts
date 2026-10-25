@@ -53,6 +53,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
             value = rawClock();
         } catch (_) {
             regression++;
+            recoveringClock = true;
             return { at: elapsed, revision: regression };
         }
         if (!finite(value) || value < lastRaw) {

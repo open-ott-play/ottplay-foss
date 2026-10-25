@@ -21,6 +21,11 @@ inside that observation; it does not require the separate Android maintenance
 agent or `--lane native`. `doctor` remains useful for the loaded JavaScript build
 identity and UI ownership. `ott PLAYER` lists debug when the player advertises it.
 
+The first snapshot loads the inert `dist/runtime-debug-details.js` projector.
+Static and native packages must include this optional asset. Its bounded loading
+wait rechecks the connection and runtime before observing media or requesting
+native metrics. Loading details does not start performance capture.
+
 ## Evidence collected
 
 While remote control is enabled, a bounded in-memory ring retains the most recent
