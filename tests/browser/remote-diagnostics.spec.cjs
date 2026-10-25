@@ -1231,3 +1231,87 @@ test("token and controller address changes retire capture and isolate new runtim
     ).toBe(false);
     expect(server.errors).toEqual([]);
 });
+
+test("hosted control uses a private same-origin envelope and preserves response headers", async ({
+    page,
+}) => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const origin = "https://hosted-control.fixture.invalid";
+    const calls = [];
+    await page.route(origin + "/**", async (route) => {
+        const request = route.request();
+        if (request.url() === origin + "/") {
+            return route.fulfill({
+                contentType: "text/html",
+                body: "<!doctype html><title>Control fixture</title>",
+            });
+        }
+        calls.push({
+            method: request.method(),
+            headers: request.headers(),
+            body: request.postDataJSON(),
+        });
+        return route.fulfill({
+            status: 409,
+            headers: {
+                "content-type": "application/json",
+                "X-OTT-Diagnostics-Epoch": EPOCH,
+            },
+            body: '{"state":"stale"}',
+        });
+    });
+    await page.goto(origin);
+    await page.evaluate((origin) => {
+        window.__OTTPLAY_HOSTED__ = {
+            controlTransport: {
+                version: 1,
+                endpoint: "/ott-control/api/device-transport",
+                bases: [origin + "/ott-control"],
+            },
+        };
+    }, origin);
+    await page.addScriptTag({
+        content: fs.readFileSync(
+            path.resolve(__dirname, "../../dist/control-transport.js"),
+            "utf8"
+        ),
+    });
+    const result = await page.evaluate(
+        async ({ origin, token, epoch }) => {
+            const request = window.__ottControlTransport.map({
+                url: origin + "/ott-control/api/v2/diagnostics/events",
+                method: "POST",
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/json",
+                    "X-OTT-Diagnostics-Epoch": epoch,
+                },
+                body: JSON.stringify({ events: [] }),
+            });
+            const response = await fetch(request.url, request);
+            return {
+                status: response.status,
+                epoch: response.headers.get("X-OTT-Diagnostics-Epoch"),
+                body: await response.json(),
+            };
+        },
+        { origin, token: DEVICE_TOKEN, epoch: EPOCH }
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].headers.authorization).toBeUndefined();
+    expect(calls[0].body).toEqual({
+        version: 1,
+        method: "POST",
+        path: "/api/v2/diagnostics/events",
+        token: DEVICE_TOKEN,
+        headers: { "X-OTT-Diagnostics-Epoch": EPOCH },
+        body: { events: [] },
+    });
+    expect(result).toEqual({
+        status: 409,
+        epoch: EPOCH,
+        body: { state: "stale" },
+    });
+});
