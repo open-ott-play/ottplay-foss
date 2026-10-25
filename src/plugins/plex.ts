@@ -84,7 +84,7 @@ function plexContainer(value: any, host: any): any {
                 xml.documentElement.nodeName !== "MediaContainer"
             )
                 throw new Error("Invalid Plex XML");
-            var convert = function (node: any, depth = 0): any {
+            var convert = function (node: any, depth: number): any {
                 if (depth > 16) throw new Error("Invalid Plex XML");
                 var result: any = Object.create(null);
                 for (var i = 0; i < node.attributes.length; i++)
@@ -101,7 +101,7 @@ function plexContainer(value: any, host: any): any {
                 }
                 return result;
             };
-            value = { MediaContainer: convert(xml.documentElement) };
+            value = { MediaContainer: convert(xml.documentElement, 0) };
         }
     }
     if (
@@ -207,7 +207,7 @@ function createPlexClient(
         if (typeof w.infoBox === "function")
             w.infoBox(translate("Plex connection failed"));
     }
-    function url(path: string, params: any = {}): string {
+    function url(path: string, params: any): string {
         var pairs: string[] = [];
         Object.keys(params).forEach(function (key) {
             pairs.push(
@@ -391,6 +391,32 @@ function createPlexClient(
         var part = media && plexRows(media.Part)[0];
         return !!(part && plexPath(part.key));
     }
+    function fileValue(
+        item: any,
+        pick: (file: string) => any,
+        objectsOnly?: boolean
+    ): any {
+        var media = plexRows(item.Media);
+        for (var m = 0; m < media.length; m++) {
+            if (objectsOnly && (!media[m] || typeof media[m] !== "object"))
+                continue;
+            var parts = plexRows(media[m] && media[m].Part);
+            for (var p = 0; p < parts.length; p++) {
+                if (objectsOnly && (!parts[p] || typeof parts[p] !== "object"))
+                    continue;
+                var file = parts[p] && parts[p].file;
+                // Part.file is a filesystem path, never a playback URL.
+                if (
+                    typeof file !== "string" ||
+                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
+                )
+                    continue;
+                var value = pick(file);
+                if (value) return value;
+            }
+        }
+        return null;
+    }
     function itemTitle(item: any): string {
         function text(value: any): string {
             return typeof value === "string" || typeof value === "number"
@@ -405,60 +431,41 @@ function createPlexClient(
             var title = text(names[i]);
             if (title) return title;
         }
-        var media = plexRows(item.Media);
-        for (var m = 0; m < media.length; m++) {
-            if (!media[m] || typeof media[m] !== "object") continue;
-            var parts = plexRows(media[m].Part);
-            for (var p = 0; p < parts.length; p++) {
-                if (!parts[p] || typeof parts[p] !== "object") continue;
-                var file = parts[p].file;
-                // Part.file is a filesystem path, never a playback URL. Only
-                // its final component belongs in the visible catalog label.
-                if (
-                    typeof file !== "string" ||
-                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
-                )
-                    continue;
-                var filename = text(file.split(/[\\/]/).pop());
-                if (filename && filename !== "." && filename !== "..")
-                    return filename;
-            }
-        }
-        return "";
+        return (
+            fileValue(
+                item,
+                function (file: string) {
+                    // Only the final path component belongs in the catalog label.
+                    var filename = text(file.split(/[\\/]/).pop());
+                    if (filename && filename !== "." && filename !== "..")
+                        return filename;
+                },
+                true
+            ) || ""
+        );
     }
     function fileDirectory(item: any): any {
-        var media = plexRows(item.Media);
-        for (var m = 0; m < media.length; m++) {
-            var parts = plexRows(media[m] && media[m].Part);
-            for (var p = 0; p < parts.length; p++) {
-                var file = parts[p] && parts[p].file;
-                if (
-                    typeof file !== "string" ||
-                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
-                )
-                    continue;
-                var path = file.replace(/\\/g, "/").split("/");
-                path.pop();
-                var name = path[path.length - 1];
-                if (!name || name === "." || name === "..") continue;
-                // Keep server mount paths out of category IDs and visible labels.
-                var value = path.join("/"),
-                    left = 5381,
-                    right = 52711;
-                for (var i = 0; i < value.length; i++) {
-                    left = ((left << 5) + left) ^ value.charCodeAt(i);
-                    right = ((right << 5) - right + value.charCodeAt(i)) | 0;
-                }
-                return {
-                    id:
-                        (left >>> 0).toString(36) +
-                        "-" +
-                        (right >>> 0).toString(36),
-                    name: name.replace(/[\u0000-\u001f\u007f]/g, " "),
-                };
+        return fileValue(item, function (file: string) {
+            var path = file.replace(/\\/g, "/").split("/");
+            path.pop();
+            var name = path[path.length - 1];
+            if (!name || name === "." || name === "..") return;
+            // Keep server mount paths out of category IDs and visible labels.
+            var value = path.join("/"),
+                left = 5381,
+                right = 52711;
+            for (var i = 0; i < value.length; i++) {
+                left = ((left << 5) + left) ^ value.charCodeAt(i);
+                right = ((right << 5) - right + value.charCodeAt(i)) | 0;
             }
-        }
-        return null;
+            return {
+                id:
+                    (left >>> 0).toString(36) +
+                    "-" +
+                    (right >>> 0).toString(36),
+                name: name.replace(/[\u0000-\u001f\u007f]/g, " "),
+            };
+        });
     }
     function records(
         container: any,
@@ -604,7 +611,7 @@ function createPlexClient(
                 (!options.isCurrent || options.isCurrent())
             );
         }
-        function finish(data: any, failed = false): void {
+        function finish(data: any, failed?: boolean): void {
             if (!active()) return;
             var rows: any[] = [];
             try {
@@ -759,6 +766,7 @@ function createPlexClient(
             items: any[];
             records: any[];
             error?: string;
+            truncated?: true;
         }) => void,
         guard?: () => boolean,
         limits?: {
@@ -766,6 +774,7 @@ function createPlexClient(
             limit: number;
             deadline: number;
             type?: string;
+            truncate?: boolean;
         }
     ): () => void {
         if (cancelCollection) cancelCollection();
@@ -780,6 +789,12 @@ function createPlexClient(
         var offset = 0;
         var pages = 0;
         var total: number | null = null;
+        var library = limits && limits.kind === "libraries";
+        var cap =
+            limits && limits.kind === "items" && limits.truncate
+                ? limits.limit
+                : 0;
+        var requestedSize = 200;
         var characters = 0;
         var collected: any[] = [];
         var catalog: any[] = [];
@@ -811,9 +826,14 @@ function createPlexClient(
             if (!valid) cancelOwned();
             return valid;
         }
-        function finish(error: boolean | string = false): void {
+        function finish(error?: boolean | string, truncated?: boolean): void {
             if (!active()) return;
-            var result = error
+            var result: {
+                items: any[];
+                records: any[];
+                error?: string;
+                truncated?: true;
+            } = error
                 ? {
                       error:
                           typeof error === "string"
@@ -825,6 +845,7 @@ function createPlexClient(
                       records: [],
                   }
                 : { items: collected, records: catalog };
+            if (!error && truncated) result.truncated = true;
             cancelOwned();
             done(result);
         }
@@ -832,9 +853,8 @@ function createPlexClient(
             var number = Number(value);
             return value !== null &&
                 value !== "" &&
-                isFinite(number) &&
                 number >= 0 &&
-                Math.floor(number) === number
+                number % 1 === 0
                 ? number
                 : null;
         }
@@ -848,7 +868,7 @@ function createPlexClient(
             var page: any[];
             try {
                 rows = items(data);
-                if (limits && limits.kind === "libraries") {
+                if (library) {
                     page = rows.map(function (row) {
                         var id = row && String(row.key);
                         if (
@@ -887,24 +907,22 @@ function createPlexClient(
                         })
                     )
                         throw new Error();
-                    if (
-                        limits &&
-                        rows.some(function (row) {
-                            return !hasPlayablePart(row);
-                        })
-                    ) {
+                    // The optional lookahead proves overflow only. Its ID and
+                    // type are checked above; it is not prepared for playback.
+                    var selectedRows = cap ? rows.slice(0, cap - offset) : rows;
+                    if (limits && !selectedRows.every(hasPlayablePart)) {
                         finish(
                             "One or more Plex items are unavailable or not playable."
                         );
                         return;
                     }
                     page = records(
-                        data,
+                        cap ? { Metadata: selectedRows } : data,
                         path,
                         { "X-Plex-Container-Start": offset },
                         false
                     );
-                    if (limits && page.length !== rows.length)
+                    if (limits && page.length !== selectedRows.length)
                         throw new Error();
                 }
             } catch (_) {
@@ -918,13 +936,12 @@ function createPlexClient(
             var reported =
                 data.totalSize === undefined ? null : integer(data.totalSize);
             if (
-                count === null ||
                 count !== rows.length ||
-                count > 200 ||
+                count > requestedSize ||
                 start !== offset ||
                 (data.totalSize !== undefined && reported === null) ||
                 (reported !== null &&
-                    (reported > 100000 ||
+                    (reported > (cap ? 9007199254740991 : 100000) ||
                         reported < offset + count ||
                         (total !== null && total !== reported))) ||
                 offset + count > 100000
@@ -934,14 +951,11 @@ function createPlexClient(
             }
             if (
                 limits &&
+                !cap &&
                 ((reported !== null && reported > limits.limit) ||
                     offset + count > limits.limit)
             ) {
-                finish(
-                    limits.kind === "libraries"
-                        ? "too_many_libraries"
-                        : "too_many_items"
-                );
+                finish(library ? "too_many_libraries" : "too_many_items");
                 return;
             }
             if (reported !== null) total = reported;
@@ -957,7 +971,6 @@ function createPlexClient(
             if (count) seenPages[signature] = true;
             var duplicate = false;
             page.forEach(function (record) {
-                var library = limits && limits.kind === "libraries";
                 var playable =
                     library ||
                     (record.request &&
@@ -980,11 +993,27 @@ function createPlexClient(
                 catalog.push(record);
                 if (playable) collected.push(record);
             });
+            // The validated request/page size permits at most one lookahead.
+            // It is never reused: this page either completes or is rejected.
+            if (
+                cap &&
+                rows.length > page.length &&
+                seen["item:/library/metadata/" + rows[page.length].ratingKey]
+            )
+                duplicate = true;
             if ((limits && duplicate) || characters > 8 * 1024 * 1024) {
                 finish(true);
                 return;
             }
             offset += count;
+            if (
+                cap &&
+                collected.length === cap &&
+                Math.max(total || 0, offset) > cap
+            ) {
+                finish(false, true);
+                return;
+            }
             if (
                 (total !== null && offset === total) ||
                 (total === null && count === 0)
@@ -997,11 +1026,11 @@ function createPlexClient(
                 // callbacks. Collection never walks into child directories.
                 timer = w.setTimeout(function () {
                     timer = null;
-                    next();
+                    next(1);
                 }, 0);
             }
         }
-        function next(attempt = 1): void {
+        function next(attempt: number): void {
             if (!active()) return;
             if (Date.now() >= deadline) {
                 finish(true);
@@ -1010,14 +1039,20 @@ function createPlexClient(
             if (attempt === 1) pages++;
             var owner: any = { xhr: null };
             pendingPage = owner;
+            // A known total proves overflow without loading an extra item.
+            // Otherwise read at most one validated lookahead item, preserving
+            // the distinction between exactly 500 and an incomplete catalogue.
+            requestedSize = cap
+                ? Math.min(200, cap - offset + (total === null ? 1 : 0))
+                : 200;
             var params = {
-                "X-Plex-Container-Size": 200,
+                "X-Plex-Container-Size": requestedSize,
                 "X-Plex-Container-Start": offset,
             };
             function complete(
                 data: any,
-                error = false,
-                retryable = false
+                error?: boolean,
+                retryable?: boolean
             ): void {
                 if (!active() || pendingPage !== owner) return;
                 pendingPage = null;
@@ -1046,7 +1081,7 @@ function createPlexClient(
                     },
                     headers: {
                         Accept: "application/json",
-                        "X-Plex-Container-Size": "200",
+                        "X-Plex-Container-Size": String(requestedSize),
                         "X-Plex-Container-Start": String(offset),
                     },
                     success: function (raw: any) {
@@ -1073,7 +1108,7 @@ function createPlexClient(
         }
         cancelCollection = cancelOwned;
         if (!path) finish(true);
-        else next();
+        else next(1);
         return cancelOwned;
     }
     /** Build the profile playlist progressively, independently of playback and remote queues. */
@@ -1244,14 +1279,14 @@ function createPlexClient(
             categories[path] = ancestors;
             roots.push(path);
         }
-        function later(run: () => void, delay = 0): void {
+        function later(run: () => void, delay: number): void {
             if (active())
                 timer = w.setTimeout(function () {
                     timer = null;
                     if (active()) run();
                 }, delay);
         }
-        function next(attempt = 1): void {
+        function next(attempt: number): void {
             if (!active()) return;
             if (!roots.length) return finish();
             if (pages >= maxPages)
@@ -1263,8 +1298,8 @@ function createPlexClient(
             pendingScan = owner;
             function complete(
                 raw: any,
-                failed = false,
-                retryable = false
+                failed?: boolean,
+                retryable?: boolean
             ): void {
                 if (!active() || pendingScan !== owner) return;
                 pendingScan = null;
@@ -1576,7 +1611,9 @@ function createPlexClient(
                     total = null;
                 } else if (!count)
                     return finish("Invalid Plex response", "invalid_response");
-                later(next);
+                later(function () {
+                    next(1);
+                }, 0);
             }
             try {
                 var xhr = jq.ajax({
@@ -1618,7 +1655,7 @@ function createPlexClient(
                 enqueue(plexFolderPath(folder.path), folder.title);
             });
             if (!folders.length) enqueue("/library/sections", "");
-            next();
+            next(1);
         }
         return cancelOwned;
     }
@@ -1844,7 +1881,7 @@ function createPlexClient(
                     (config!.playback === "auto" && supports(media)) ||
                     !media.videoCodec
                 ) {
-                    playable.stream_url = url(path);
+                    playable.stream_url = url(path, {});
                     playable.__ottNativeFile = true;
                     playable.__ottPlexPlayback = {
                         mime: originalMime(media),
@@ -2010,7 +2047,8 @@ function createPlexClient(
             library: any,
             done: (result: any) => void,
             guard: () => boolean,
-            deadline: number
+            deadline: number,
+            truncate?: boolean
         ) {
             return collect(
                 target(
@@ -2026,6 +2064,7 @@ function createPlexClient(
                     deadline: deadline,
                     kind: "items",
                     limit: 500,
+                    truncate: truncate,
                     type: library.type,
                 }
             );

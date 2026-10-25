@@ -1370,8 +1370,15 @@ function checkRemoteEpgCatalog() {
             return true;
         },
     });
-    const aspectRuntime = (await call("capabilities")).data.player.runtime;
-    const notificationCaps = (await call("capabilities")).data.notifications;
+    const currentCaps = (await call("capabilities")).data;
+    const aspectRuntime = currentCaps.player.runtime;
+    const notificationCaps = currentCaps.notifications;
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(currentCaps.plex_library_truncation)),
+        {
+            version: 1,
+        }
+    );
     assert.deepEqual(JSON.parse(JSON.stringify(notificationCaps)), {
         operations: ["get", "set"],
         version: 1,

@@ -1,37 +1,3 @@
-/** The library resolver shares the queue owner, including lazy loading. */
-function validLibraryRequest(params: any, runtime: string): boolean {
-    if (!params || params.runtime !== runtime) return false;
-    var keys = Object.keys(params).sort().join(",");
-    if (params.op === "list") return keys === "op,runtime";
-    if (["preview", "play"].indexOf(params.op) < 0) return false;
-    var id = typeof params.library_id === "string";
-    var expected = id ? "library_id,op,runtime" : "op,query,runtime";
-    if (
-        (keys !== expected && keys !== expected + ",shuffle") ||
-        (params.shuffle !== undefined && typeof params.shuffle !== "boolean")
-    )
-        return false;
-    if (id)
-        return (
-            /^[1-9][0-9]{0,19}$/.test(params.library_id) &&
-            !/\s/.test(params.library_id)
-        );
-    if (
-        typeof params.query !== "string" ||
-        !params.query.trim() ||
-        /[\u0000-\u001f\u007f]/.test(params.query)
-    )
-        return false;
-    try {
-        return (
-            encodeURIComponent(params.query).replace(/%[0-9A-F]{2}/g, "x")
-                .length <= 256
-        );
-    } catch (_) {
-        return false;
-    }
-}
-
 /** Keep Plex implementation lazy while capability discovery stays synchronous. */
 export function remotePlexQueue(w: any, runtime: string): any {
     if (w.__ottPlexQueue) return w.__ottPlexQueue;
@@ -52,6 +18,65 @@ export function remotePlexQueue(w: any, runtime: string): any {
         operations: ["list", "preview", "play"],
         version: 1,
     };
+    function validRequest(
+        params: any,
+        kind: "library" | "queue" | "ids"
+    ): boolean {
+        if (kind === "ids")
+            return (
+                Array.isArray(params) &&
+                !!params.length &&
+                params.length <= 500 &&
+                params.every(function (id: any) {
+                    return (
+                        typeof id === "string" && /^[1-9][0-9]{0,19}$/.test(id)
+                    );
+                })
+            );
+        if (!params || params.runtime !== runtime) return false;
+        var op = params.op;
+        var playing = op === "play" || op === "preview";
+        var keys = Object.keys(params).sort().join(",");
+        if (kind !== "library")
+            return (
+                capability.operations.indexOf(op) >= 0 &&
+                (keys === "op,runtime" ||
+                    (playing && keys === "ids,op,runtime"))
+            );
+        if (op === "list") return keys === "op,runtime";
+        if (!playing) return false;
+        var libraryId = params.library_id;
+        var id = typeof libraryId === "string";
+        var expected = id ? "library_id,op,runtime" : "op,query,runtime";
+        if (params.allow_truncate === true)
+            expected = "allow_truncate," + expected;
+        if (
+            (keys !== expected && keys !== expected + ",shuffle") ||
+            (params.shuffle !== undefined &&
+                typeof params.shuffle !== "boolean")
+        )
+            return false;
+        if (id)
+            return (
+                /^[1-9][0-9]{0,19}$/.test(libraryId) && !/\s/.test(libraryId)
+            );
+        var query = params.query;
+        if (
+            typeof query !== "string" ||
+            !query.trim() ||
+            /[\u0000-\u001f\u007f]/.test(query)
+        )
+            return false;
+        try {
+            return (
+                encodeURIComponent(query).replace(/%[0-9A-F]{2}/g, "x")
+                    .length <= 256
+            );
+        } catch (_) {
+            return false;
+        }
+    }
+
     function snapshot(): any {
         if (controller) return controller.snapshot();
         var view: any = {
@@ -94,26 +119,11 @@ export function remotePlexQueue(w: any, runtime: string): any {
                 status: "rejected",
             });
         }
-        if (library && !validLibraryRequest(params, runtime)) {
+        if (!validRequest(params, library ? "library" : "queue")) {
             reject(unavailable);
             return;
         }
         if (controller) return controller.execute(request, done);
-        if (
-            !library &&
-            (params.runtime !== runtime ||
-                capability.operations.indexOf(op) < 0 ||
-                Object.keys(params).some(function (key) {
-                    return (
-                        key !== "op" &&
-                        key !== "runtime" &&
-                        ((op !== "play" && op !== "preview") || key !== "ids")
-                    );
-                }))
-        ) {
-            reject(unavailable);
-            return;
-        }
         if (op === "status") {
             done({ data: snapshot(), status: "ok" });
             return;
@@ -135,17 +145,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
             reject(unavailable);
             return;
         }
-        if (
-            !library &&
-            (!Array.isArray(params.ids) ||
-                !params.ids.length ||
-                params.ids.length > 500 ||
-                params.ids.some(function (id: any) {
-                    return (
-                        typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id)
-                    );
-                }))
-        ) {
+        if (!library && !validRequest(params.ids, "ids")) {
             reject("Plex queue is empty.");
             return;
         }
@@ -215,7 +215,7 @@ export function remotePlexQueue(w: any, runtime: string): any {
                 w,
                 runtime,
                 failure,
-                validLibraryRequest
+                validRequest
             );
             cancelInner = controller.execute(request, done);
         }
