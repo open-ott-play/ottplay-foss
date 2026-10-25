@@ -67,6 +67,73 @@ async function expectProgramme(page, expected, openedAt) {
     );
     await expect(page.locator("#begin_time")).toHaveText(info.currentClock);
     await expect(page.locator("#nbegin_time")).toHaveText(info.nextClock);
+    // Check glyph bounds, not the clock element's declared width: text can
+    // overflow that box and touch the programme title on TV browsers.
+    await page.evaluate(() => window.showChannelInfo(1));
+    await expect(page.locator("#info1")).toBeVisible();
+    const withoutFlexGap = await page.addStyleTag({
+        content:
+            "#info1, #info1 * { gap: 0 !important; column-gap: 0 !important; row-gap: 0 !important; }",
+    });
+    try {
+        for (const metricsAvailable of [true, false]) {
+            if (!metricsAvailable) {
+                // A missing font-measurement probe must leave usable fallback
+                // geometry. Keep the same node so the normal layout is restored.
+                await page.evaluate(() => {
+                    document.getElementById("testFont").id =
+                        "unavailableTestFont";
+                    window.setFontSize();
+                });
+            }
+            const rows = await page.evaluate(() =>
+                [
+                    ["begin_time", "programm_name"],
+                    ["nbegin_time", "nprogramm_name"],
+                ].map(([clockId, titleId]) => {
+                    const clock = document.getElementById(clockId);
+                    const title = document.getElementById(titleId);
+                    const range = document.createRange();
+                    range.selectNodeContents(clock);
+                    const glyphs = range.getBoundingClientRect();
+                    const name = title.getBoundingClientRect();
+                    return {
+                        clockId,
+                        fontSize: parseFloat(getComputedStyle(clock).fontSize),
+                        gap: name.left - glyphs.right,
+                        glyphWidth: glyphs.width,
+                        sameRow:
+                            glyphs.bottom > name.top &&
+                            glyphs.top < name.bottom,
+                    };
+                })
+            );
+            await test
+                .info()
+                .attach(`programme-spacing-metrics-${metricsAvailable}`, {
+                    body: JSON.stringify(rows, null, 2),
+                    contentType: "application/json",
+                });
+            for (const row of rows) {
+                const label = `${row.clockId}, metrics=${metricsAvailable}`;
+                expect(row.glyphWidth, label).toBeGreaterThan(0);
+                expect(row.sameRow, label).toBe(true);
+                expect(
+                    row.gap,
+                    `${label} must not touch its title`
+                ).toBeGreaterThanOrEqual(row.fontSize * 0.2);
+            }
+        }
+    } finally {
+        await page.evaluate(() => {
+            const probe = document.getElementById("unavailableTestFont");
+            if (probe) {
+                probe.id = "testFont";
+                window.setFontSize();
+            }
+        });
+        await withoutFlexGap.evaluate((style) => style.remove());
+    }
     return info;
 }
 
@@ -514,6 +581,8 @@ for (const layout of ["/f/pc/", "/f/"]) {
         context,
         baseURL,
     }) => {
+        if (layout === "/f/")
+            await page.setViewportSize({ height: 1080, width: 1920 });
         const origin = new URL(baseURL).origin;
         const fragments = [];
         const segment = fs.readFileSync(

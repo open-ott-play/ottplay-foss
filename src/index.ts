@@ -1052,16 +1052,6 @@ function setFontSize(): void {
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
     $("#progress, #progress_r").css({ height: 8 * e + "px" });
-    $("#begin_time, #end_time").css({
-        "font-size": 22 * e + "px",
-        width: 70 * t + "px",
-    });
-    $("#programm_name").css({ width: 900 * t + "px" });
-    $("#nbegin_time, #nend_time").css({
-        "font-size": 20 * e + "px",
-        width: 70 * t + "px",
-    });
-    $("#nprogramm_name").css({ width: 900 * t + "px" });
     $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
     $("#current_s, #video_res, #playback_status").css({
         "font-size": 16 * e + "px",
@@ -1133,29 +1123,33 @@ function setFontSize(): void {
         var n2 = $("#testFont"),
             i2 = n2.css("font-size"),
             l2 = $i1El ? $i1El.css("font-size") : "22px";
+        var fontPx = parseFloat(l2) || 22 * e;
         n2.css("font-size", l2).text("9");
-        var a2 = n2.width();
-        n2.text("").css("font-size", i2);
-        if (a2) {
-            // Finite-media programme clocks include seconds (HH:mm:ss).
-            var w = a2 * 8;
-            // ~2 inline-block HTML whitespace gaps between begin/name/end
-            var gap = Math.max(8, Math.round(a2));
-            $("#channel_number").css({ width: w + "px" });
-            $("#begin_time, #end_time").css({
-                "font-size": "inherit",
-                width: w + "px",
-            });
-            // Legacy: channel.width - digitWidth*12 (= begin + end columns)
-            var chW = $("#channel").width() || 1040 * t;
-            var nameW = Math.max(40, chW - w * 2 - gap);
-            $("#programm_name").css({ width: nameW + "px" });
-            $("#nbegin_time, #nend_time").css({
-                "font-size": "inherit",
-                width: w + "px",
-            });
-            $("#nprogramm_name").css({ width: nameW + "px" });
+        var a2 = n2.width() || fontPx * 0.625;
+        var clockWidth = 0;
+        // Digits need not be tabular, and the colon can be wider than a digit.
+        for (var digit = 0; digit < 10; digit++) {
+            var pair = String(digit) + digit;
+            n2.text(pair + ":" + pair + ":" + pair);
+            clockWidth = Math.max(clockWidth, n2.width() || 0);
         }
+        n2.text("").css("font-size", i2);
+        // The half-em padding is inside each start clock's border box.
+        // Do not rely on HTML whitespace to separate the clock and title.
+        var w = Math.ceil(Math.max(clockWidth, a2 * 8) + fontPx * 0.5);
+        // ~2 inline-block HTML whitespace gaps between begin/name/end
+        var gap = Math.max(8, Math.round(a2));
+        $("#channel_number").css({ width: a2 * 8 + "px" });
+        $("#begin_time, #end_time, #nbegin_time, #nend_time").css({
+            "font-size": "inherit",
+            width: w + "px",
+        });
+        // Reserve both time columns and the inline whitespace in the row.
+        var chW = $("#channel").width() || 1040 * t;
+        var nameW = Math.max(40, chW - w * 2 - gap);
+        $("#programm_name, #nprogramm_name").css({
+            width: nameW + "px",
+        });
     } catch (ex) {
         console.error(ex);
     }

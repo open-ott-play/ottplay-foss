@@ -727,15 +727,17 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 #begin_time {
+    box-sizing: border-box;
     display: inline-block;
-    width: 70px;
+    width: 120px;
+    padding-right: 0.5em;
     font-size: 22px;
     vertical-align: bottom;
     color: #e8e8e8;
 }
 #end_time {
     display: inline-block;
-    width: 70px;
+    width: 120px;
     font-size: 22px;
     vertical-align: bottom;
     color: #e8e8e8;
@@ -743,21 +745,23 @@ body {
 }
 #programm_name {
     display: inline-block;
-    width: 900px;
+    width: 780px;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
 }
 #nbegin_time {
+    box-sizing: border-box;
     display: inline-block;
-    width: 70px;
+    width: 120px;
+    padding-right: 0.5em;
     font-size: 20px;
     vertical-align: bottom;
     color: #a8a8b8;
 }
 #nend_time {
     display: inline-block;
-    width: 70px;
+    width: 120px;
     font-size: 20px;
     vertical-align: bottom;
     color: #a8a8b8;
@@ -765,7 +769,7 @@ body {
 }
 #nprogramm_name {
     display: inline-block;
-    width: 900px;
+    width: 780px;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
