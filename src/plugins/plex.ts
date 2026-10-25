@@ -207,7 +207,7 @@ function createPlexClient(
         if (typeof w.infoBox === "function")
             w.infoBox(translate("Plex connection failed"));
     }
-    function url(path: string, params: any = {}): string {
+    function url(path: string, params: any): string {
         var pairs: string[] = [];
         Object.keys(params).forEach(function (key) {
             pairs.push(
@@ -391,6 +391,32 @@ function createPlexClient(
         var part = media && plexRows(media.Part)[0];
         return !!(part && plexPath(part.key));
     }
+    function fileValue(
+        item: any,
+        pick: (file: string) => any,
+        objectsOnly?: boolean
+    ): any {
+        var media = plexRows(item.Media);
+        for (var m = 0; m < media.length; m++) {
+            if (objectsOnly && (!media[m] || typeof media[m] !== "object"))
+                continue;
+            var parts = plexRows(media[m] && media[m].Part);
+            for (var p = 0; p < parts.length; p++) {
+                if (objectsOnly && (!parts[p] || typeof parts[p] !== "object"))
+                    continue;
+                var file = parts[p] && parts[p].file;
+                // Part.file is a filesystem path, never a playback URL.
+                if (
+                    typeof file !== "string" ||
+                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
+                )
+                    continue;
+                var value = pick(file);
+                if (value) return value;
+            }
+        }
+        return null;
+    }
     function itemTitle(item: any): string {
         function text(value: any): string {
             return typeof value === "string" || typeof value === "number"
@@ -405,60 +431,41 @@ function createPlexClient(
             var title = text(names[i]);
             if (title) return title;
         }
-        var media = plexRows(item.Media);
-        for (var m = 0; m < media.length; m++) {
-            if (!media[m] || typeof media[m] !== "object") continue;
-            var parts = plexRows(media[m].Part);
-            for (var p = 0; p < parts.length; p++) {
-                if (!parts[p] || typeof parts[p] !== "object") continue;
-                var file = parts[p].file;
-                // Part.file is a filesystem path, never a playback URL. Only
-                // its final component belongs in the visible catalog label.
-                if (
-                    typeof file !== "string" ||
-                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
-                )
-                    continue;
-                var filename = text(file.split(/[\\/]/).pop());
-                if (filename && filename !== "." && filename !== "..")
-                    return filename;
-            }
-        }
-        return "";
+        return (
+            fileValue(
+                item,
+                function (file: string) {
+                    // Only the final path component belongs in the catalog label.
+                    var filename = text(file.split(/[\\/]/).pop());
+                    if (filename && filename !== "." && filename !== "..")
+                        return filename;
+                },
+                true
+            ) || ""
+        );
     }
     function fileDirectory(item: any): any {
-        var media = plexRows(item.Media);
-        for (var m = 0; m < media.length; m++) {
-            var parts = plexRows(media[m] && media[m].Part);
-            for (var p = 0; p < parts.length; p++) {
-                var file = parts[p] && parts[p].file;
-                if (
-                    typeof file !== "string" ||
-                    /^[a-z][a-z0-9+.-]*:\/\//i.test(file)
-                )
-                    continue;
-                var path = file.replace(/\\/g, "/").split("/");
-                path.pop();
-                var name = path[path.length - 1];
-                if (!name || name === "." || name === "..") continue;
-                // Keep server mount paths out of category IDs and visible labels.
-                var value = path.join("/"),
-                    left = 5381,
-                    right = 52711;
-                for (var i = 0; i < value.length; i++) {
-                    left = ((left << 5) + left) ^ value.charCodeAt(i);
-                    right = ((right << 5) - right + value.charCodeAt(i)) | 0;
-                }
-                return {
-                    id:
-                        (left >>> 0).toString(36) +
-                        "-" +
-                        (right >>> 0).toString(36),
-                    name: name.replace(/[\u0000-\u001f\u007f]/g, " "),
-                };
+        return fileValue(item, function (file: string) {
+            var path = file.replace(/\\/g, "/").split("/");
+            path.pop();
+            var name = path[path.length - 1];
+            if (!name || name === "." || name === "..") return;
+            // Keep server mount paths out of category IDs and visible labels.
+            var value = path.join("/"),
+                left = 5381,
+                right = 52711;
+            for (var i = 0; i < value.length; i++) {
+                left = ((left << 5) + left) ^ value.charCodeAt(i);
+                right = ((right << 5) - right + value.charCodeAt(i)) | 0;
             }
-        }
-        return null;
+            return {
+                id:
+                    (left >>> 0).toString(36) +
+                    "-" +
+                    (right >>> 0).toString(36),
+                name: name.replace(/[\u0000-\u001f\u007f]/g, " "),
+            };
+        });
     }
     function records(
         container: any,
@@ -1874,7 +1881,7 @@ function createPlexClient(
                     (config!.playback === "auto" && supports(media)) ||
                     !media.videoCodec
                 ) {
-                    playable.stream_url = url(path);
+                    playable.stream_url = url(path, {});
                     playable.__ottNativeFile = true;
                     playable.__ottPlexPlayback = {
                         mime: originalMime(media),

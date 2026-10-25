@@ -20,7 +20,7 @@ function createRemotePlexQueue(
             return "";
         }
     }
-    function title(value: any, maximum = 512): string {
+    function title(value: any, maximum: number): string {
         var input = String(value || "Plex");
         var output = "";
         var bytes = 0;
@@ -94,7 +94,7 @@ function createRemotePlexQueue(
             version: 1,
         };
         if (shown && shown.records && shown.index !== null)
-            result.title = title(shown.records[shown.index].title);
+            result.title = title(shown.records[shown.index].title, 512);
         if (shown && shown.error) result.error = shown.error;
         else if (!shown && lastError) result.error = lastError;
         return result;
@@ -434,7 +434,7 @@ function createRemotePlexQueue(
                             runtime: runtime,
                             state: "ready",
                             titles: records.map(function (record) {
-                                return title(record.title);
+                                return title(record.title, 512);
                             }),
                             version: 1,
                         });
