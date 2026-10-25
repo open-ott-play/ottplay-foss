@@ -66,9 +66,7 @@
     }
     function index(values: any, key: string, max: number): number {
         var n = values && values[key];
-        return typeof n === "number" && n >= 0 && n <= max && n % 1 === 0
-            ? n
-            : 0;
+        return Number.isInteger(n) && n >= 0 && n <= max ? n : 0;
     }
     function declarations(video: HTMLVideoElement, values?: any): string {
         values = values || host.settings || {};
@@ -195,27 +193,21 @@
         var label = page.label,
             defaults = [label("Player default")];
         var labels = [
-            "Font type",
-            "Font size",
-            "Text color",
-            "Outline thickness",
-            "Background opacity",
+            label("Font type"),
+            label("Font size"),
+            label("Text color"),
+            label("Outline thickness"),
+            label("Background opacity"),
         ];
         var options = [
             ["Arial", "Georgia", "Courier New"],
             ["75%", "100%", "125%", "150%", "200%"],
-            colors.slice(1).map(function (color) {
-                return color.toUpperCase();
-            }),
+            ["#FFFFFF", "#FFFF00", "#000000", "#00FFFF", "#00FF00"],
             [label("Off"), "1 px", "2 px", "3 px"],
             ["0%", "25%", "50%", "75%", "100%"],
         ];
         var rows: any[] = labels.map(function (name, i) {
-            return page.choice(
-                label(name),
-                keys[i],
-                defaults.concat(options[i])
-            );
+            return page.choice(name, keys[i], defaults.concat(options[i]));
         });
         rows.push({
             cur: label("select"),
@@ -232,18 +224,17 @@
         page.attach();
     }
     function interfaceSettings(): void {
-        var w = window as any;
         var ui = host.__ottAppearanceHost;
         var showPlayerChoice =
-            w.ott_device !== "lg/webos" &&
-            !(w.ott_device === "pc2" && typeof w.videojs === "function");
+            host.ott_device !== "lg/webos" &&
+            !(host.ott_device === "pc2" && typeof host.videojs === "function");
         /**
          * Persist all interface settings and re-apply them.
          * Conditionally saves PiP, OSD opacity, volume step, and editor
          * settings based on capability. Calls all apply-functions after saving.
          */
         var page = ui.page(
-            w,
+            host,
             "settingsInterface",
             "Interface settings",
             true,
@@ -260,15 +251,15 @@
         var fontScales: number[] = [];
         // Include exact remote values while keeping the selector ascending.
         for (var scale = 50; scale <= 200; scale++)
-            if (scale % 10 === 0 || scale === w.sUiFontScale)
+            if (scale % 10 === 0 || scale === host.sUiFontScale)
                 fontScales.push(scale);
-        var tz = (w.arrTimezone || ["system", "0"]).slice();
-        tz[0] = w._(tz[0]) || tz[0];
+        var tz = (host.arrTimezone || ["system", "0"]).slice();
+        tz[0] = host._(tz[0]) || tz[0];
         ui.list(
-            w,
+            host,
             page.rows([
-                choice(w._("Interface theme"), "interfaceTheme", [
-                    w._("Classic"),
+                choice(host._("Interface theme"), "interfaceTheme", [
+                    host._("Classic"),
                     "PLi-HD",
                     "Studio 2026",
                 ]),
@@ -313,7 +304,7 @@
                 choice(
                     label("Font type"),
                     "fontSize",
-                    w.__ottNativeFontOptions ||
+                    host.__ottNativeFontOptions ||
                         [
                             label("system"),
                             "Roboto",
@@ -371,31 +362,39 @@
                 },
                 {
                     cur: label("select"),
-                    name: w._("Color spectrum") + " (" + w._("Classic") + ")",
+                    name:
+                        host._("Color spectrum") +
+                        " (" +
+                        host._("Classic") +
+                        ")",
                     settingId: "highlightColor",
-                    values: w.colorDialog,
+                    values: host.colorDialog,
                 },
                 {
                     cur: label("select"),
                     name:
-                        w._("Background color of selected item") +
+                        host._("Background color of selected item") +
                         " (" +
-                        w._("Classic") +
+                        host._("Classic") +
                         ")",
                     settingId: "highlightColorSel",
-                    values: w.selColorDialog,
+                    values: host.selColorDialog,
                 },
                 {
                     cur: label("select"),
-                    name: w._("Background color") + " (" + w._("Classic") + ")",
+                    name:
+                        host._("Background color") +
+                        " (" +
+                        host._("Classic") +
+                        ")",
                     settingId: "highlightColorB",
-                    values: w.backColorDialog,
+                    values: host.backColorDialog,
                 },
-                choice(label("Permanent clock on screen"), "permanentTime", [
-                    label("no"),
-                    label("yes"),
-                    label("transparent"),
-                ]),
+                choice(
+                    label("Permanent clock on screen"),
+                    "permanentTime",
+                    noyes.concat([label("transparent")])
+                ),
                 choice(
                     label("Graphical indication"),
                     "useGraphicalIndicators",
@@ -426,7 +425,7 @@
                 choice(
                     label("Type of player for streaming"),
                     "players",
-                    w.playerModeNames
+                    host.playerModeNames
                 ),
                 {
                     name: label("Maximum video height") + " (HLS/Shaka)",
@@ -456,44 +455,48 @@
                         "16 Mbps",
                     ],
                 },
-                choice(label("Buffer Size, s"), "bufSize", w.bufferSizes),
+                choice(label("Buffer Size, s"), "bufSize", host.bufferSizes),
             ])
         );
         ui.list(
-            w,
-            w.listArray.filter(function (row: any): boolean {
+            host,
+            host.listArray.filter(function (row: any): boolean {
                 if (
                     row.settingId === "preferredAudioLanguage" ||
                     row.settingId === "preferredSubtitleLanguage"
                 )
                     return (
-                        !!w.__ottCoreTransport &&
-                        w.stbPlay === w.__ottCoreTransport.play
+                        !!host.__ottCoreTransport &&
+                        host.stbPlay === host.__ottCoreTransport.play
                     );
                 if (row.settingId === "players") {
-                    if (Array.isArray(w.stbPlayers)) row.values = w.stbPlayers;
+                    if (Array.isArray(host.stbPlayers))
+                        row.values = host.stbPlayers;
                     return showPlayerChoice;
                 }
                 if (row.settingId === "bufSize") {
-                    if (w.stbBufferSizes) row.values = w.stbBufferSizes;
-                    return typeof w.stbSetBuffer === "function";
+                    if (host.stbBufferSizes) row.values = host.stbBufferSizes;
+                    return typeof host.stbSetBuffer === "function";
                 }
                 if (row.settingId === "editor")
-                    return typeof w.showEditKey2 === "function";
+                    return typeof host.showEditKey2 === "function";
                 if (row.settingId === "medCount")
                     return (
-                        typeof w.getMediaArray === "function" ||
-                        !!(w.__ottNasLibrary && w.__ottNasLibrary.available())
+                        typeof host.getMediaArray === "function" ||
+                        !!(
+                            host.__ottNasLibrary &&
+                            host.__ottNasLibrary.available()
+                        )
                     );
                 if (row.settingId === "volumeStep")
-                    return typeof w.stbGetVolume === "function";
+                    return typeof host.stbGetVolume === "function";
                 if (row.settingId === "osdOpacity")
-                    return typeof w.stbSetOsdOpacity === "function";
+                    return typeof host.stbSetOsdOpacity === "function";
                 if (
                     row.settingId === "pipSize" ||
                     row.settingId === "pipPosition"
                 )
-                    return typeof w.stbPlayPip === "function";
+                    return typeof host.stbPlayPip === "function";
                 return true;
             })
         );
