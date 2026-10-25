@@ -2,18 +2,17 @@
 function createRemotePlexQueue(
     w: any,
     runtime: string,
-    initialError = "",
-    validateLibrary?: (params: any, runtime: string) => boolean
+    initialError?: string,
+    validateRequest?: (
+        params: any,
+        kind: "library" | "queue" | "ids"
+    ) => boolean
 ): any {
     var lastError = initialError;
     var queue: any = null;
     var pending: any = null;
     var serial = 0;
-    var capability = {
-        max_items: 500,
-        operations: ["play", "preview", "status", "next", "previous", "stop"],
-        version: 1,
-    };
+    var unavailable = "Plex playback is unavailable on this player.";
     function config(): string {
         try {
             return String(w.stbGetItem("plexcfg") || "");
@@ -161,25 +160,10 @@ function createRemotePlexQueue(
             });
         }
         if (
-            libraryRequest &&
-            (!validateLibrary || !validateLibrary(params, runtime))
+            !validateRequest ||
+            !validateRequest(params, libraryRequest ? "library" : "queue")
         ) {
-            reject("Plex playback is unavailable on this player.");
-            return;
-        }
-        if (
-            !libraryRequest &&
-            (params.runtime !== runtime ||
-                capability.operations.indexOf(op) < 0 ||
-                Object.keys(params).some(function (key) {
-                    return (
-                        key !== "op" &&
-                        key !== "runtime" &&
-                        ((op !== "play" && op !== "preview") || key !== "ids")
-                    );
-                }))
-        ) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
         if (op === "status") {
@@ -204,7 +188,7 @@ function createRemotePlexQueue(
             return;
         }
         if (!readOnly && w.commandChannelsReady !== true) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
         var stepping = op === "next" || op === "previous";
@@ -213,17 +197,7 @@ function createRemotePlexQueue(
             : stepping && queue
               ? queue.ids.slice()
               : params.ids;
-        if (
-            !libraryRequest &&
-            (!Array.isArray(ids) ||
-                !ids.length ||
-                ids.length > 500 ||
-                ids.some(function (id: any) {
-                    return (
-                        typeof id !== "string" || !/^[1-9][0-9]{0,19}$/.test(id)
-                    );
-                }))
-        ) {
+        if (!libraryRequest && !validateRequest(ids, "ids")) {
             reject("Plex queue is empty.");
             return;
         }
@@ -245,7 +219,7 @@ function createRemotePlexQueue(
             !w.__ottClassicPlayback ||
             typeof w._playMedia !== "function"
         ) {
-            reject("Plex playback is unavailable on this player.");
+            reject(unavailable);
             return;
         }
         if (pending && readOnly) {
@@ -319,13 +293,10 @@ function createRemotePlexQueue(
                         allowed())) &&
                 (committed || w.__ottMedia.sourceId() === mediaSource) &&
                 w.__ottClassicPlayback.snapshot().generation === generation &&
-                !(
-                    typeof request.expires_at === "number" &&
-                    Date.now() >= request.expires_at * 1000
-                )
+                Date.now() < deadline
             );
         }
-        function finish(error?: string, preview?: any, silent = false): void {
+        function finish(error?: string, preview?: any, silent?: boolean): void {
             if (completed) return;
             completed = true;
             w.clearTimeout(timer);
@@ -629,7 +600,6 @@ function createRemotePlexQueue(
                                         return;
                                     }
                                     libraryTruncated =
-                                        params.allow_truncate === true &&
                                         collection.truncated === true;
                                     var records = collection.items.slice();
                                     if (!records.length) {
@@ -698,7 +668,6 @@ function createRemotePlexQueue(
         return operation.cancel;
     }
     var api = {
-        capability: capability,
         execute: execute,
         retained: function () {
             return !!(queue && queue.source) || !!(pending && pending.owned);

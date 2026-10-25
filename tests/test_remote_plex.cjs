@@ -177,6 +177,64 @@ function test(name, fn) {
     groups++;
     console.log("PASS " + name);
 }
+test("shared queue admission rejects malformed requests in both wrapper and loaded controller", () => {
+    const h = setup();
+    const create = h.c.__ottPlexQueueFactory.create;
+    let loaded;
+    h.c.__ottPlexQueueFactory.create = (...args) => {
+        loaded = create(...args);
+        return loaded;
+    };
+    h.call("preview", ["1"]);
+    h.prepare(["1"]);
+    assert(loaded);
+    const requests = [
+        { op: "unknown" },
+        { ids: ["1"], op: "status" },
+        { op: "preview" },
+        { ids: [1], op: "play" },
+        { ids: ["1"], op: "next" },
+        { ids: ["1"], op: "play", runtime: "stale" },
+    ];
+    for (const target of [h.queue, loaded])
+        for (const params of requests) {
+            const replies = [];
+            target.execute(
+                { params: { runtime: "runtime-fixture", ...params } },
+                (reply) => replies.push(reply)
+            );
+            assert.equal(replies[0].status, "rejected");
+            assert.equal(h.requests.length, 0);
+        }
+    assert.equal(h.c.calls.filter((call) => call[0] === "play").length, 0);
+    assert.deepEqual(plain(h.queue.capability), contract.capability);
+});
+test("a loaded controller without its shared validator rejects every operation before side effects", () => {
+    const h = setup();
+    const loaded = h.c.__ottPlexQueueFactory.create(h.c, "runtime-fixture");
+    for (const action of ["plex_queue", "plex_library"])
+        for (const op of [
+            "status",
+            "stop",
+            "preview",
+            "play",
+            "next",
+            "previous",
+        ]) {
+            const replies = [];
+            loaded.execute(
+                {
+                    action,
+                    params: { ids: ["1"], op, runtime: "runtime-fixture" },
+                },
+                (reply) => replies.push(reply)
+            );
+            assert.equal(replies[0].status, "rejected");
+            assert.equal(h.requests.length, 0);
+        }
+    assert.equal(h.c.calls.filter((call) => call[0] === "play").length, 0);
+    assert.equal(loaded.snapshot().active, false);
+});
 test("explicit saved Plex queue preserves provider until preflight, starts at zero, advances exactly and stops", () => {
     const h = setup();
     const ids = ["78777", "78776", "78775"];
