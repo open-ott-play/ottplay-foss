@@ -706,8 +706,6 @@ function visibilityRevision(key: string, changed?: boolean): number {
 function confirmProviderVisibility(
     key: string,
     scope: string,
-    show: string,
-    hide: string,
     resume: () => void
 ): boolean {
     if ((window as any).__ottParental.needs(scope)) {
@@ -718,13 +716,22 @@ function confirmProviderVisibility(
     var raw = stbGetItem(key),
         enabled = Number.parseInt(raw) || 0,
         revision = visibilityRevision(key);
-    confirmBox(enabled ? show : hide, function () {
-        if (revision !== visibilityRevision(key) || raw !== stbGetItem(key))
-            return;
-        stbSetItem(key, enabled ? "0" : "1");
-        visibilityRevision(key, true);
-        restart();
-    });
+    confirmBox(
+        scope === "providers"
+            ? enabled
+                ? "Show providers?"
+                : "Hide providers?"
+            : enabled
+              ? "Show provider settings?"
+              : "Hide provider settings?",
+        function () {
+            if (revision !== visibilityRevision(key) || raw !== stbGetItem(key))
+                return;
+            stbSetItem(key, enabled ? "0" : "1");
+            visibilityRevision(key, true);
+            restart();
+        }
+    );
     return true;
 }
 
@@ -735,8 +742,6 @@ export function toggleProviderSelectionVisibility(): void {
         confirmProviderVisibility(
             "noSelProv",
             "providers",
-            "Show providers?",
-            "Hide providers?",
             toggleProviderSelectionVisibility
         )
     )
@@ -750,8 +755,6 @@ export function toggleProviderSettingsVisibility(): void {
         confirmProviderVisibility(
             "noProvParam",
             "settings",
-            "Show provider settings?",
-            "Hide provider settings?",
             toggleProviderSettingsVisibility
         )
     )

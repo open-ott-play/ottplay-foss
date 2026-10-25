@@ -882,7 +882,11 @@ test("settings save reentry cannot restart, replay, redraw or alert a replacemen
         f.host.editvar = "changed-key";
         f.host.setEdit();
         assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
-        assert.notDeepEqual(Array.from(f.saved.entries()), before, "save commits before retirement");
+        assert.notDeepEqual(
+            Array.from(f.saved.entries()),
+            before,
+            "save commits before retirement"
+        );
         assert.equal(f.restarts, 0, id + ": retired editor cannot restart");
         assert.equal(
             f.events.filter((event) => ["live", "archive"].includes(event[0]))

@@ -1720,12 +1720,23 @@ function selectLang(forceReload?: boolean, startup?: boolean): void {
         "_mlg",
         "_kin",
     ];
-    var languageHost = window as any;
+    var languageHost = window as any,
+        standby = languageHost.__ottStandby,
+        generation = standby && standby.generation();
     var currentCode = stbGetItem("ottplaylang") || "";
     var cancelled = false,
         query = "",
         visibleCodes: string[] = [];
     var cancelLanguageLoad: (() => void) | undefined;
+    function current(): boolean {
+        return (
+            !cancelled &&
+            listKeyHandlerFn === languageKeyHandler &&
+            (!standby ||
+                (languageHost.__ottStandby === standby &&
+                    standby.current(generation)))
+        );
+    }
     function systemCode(): string {
         return typeof languageHost.__ottDetectLanguage === "function"
             ? languageHost.__ottDetectLanguage()
@@ -1842,11 +1853,12 @@ function selectLang(forceReload?: boolean, startup?: boolean): void {
                 else
                     cancelLanguageLoad = loadInterfaceLanguage(
                         selectedLanguage,
-                        function (loaded) {
-                            if (cancelled) return;
+                        function (loaded, reason) {
+                            if (!current() || reason === "superseded") return;
                             if (loaded) selected();
                             else infoBox(_("Failed to load!"));
-                        }
+                        },
+                        current
                     );
                 return true;
             case keys.EXIT:

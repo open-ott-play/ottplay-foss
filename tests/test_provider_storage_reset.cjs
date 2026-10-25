@@ -249,8 +249,11 @@ for (const [method, key, policy] of [
         context.confirmBox = (message, yes) => {
             prompts++;
             assert.equal(
-                message.startsWith(stored === "1" ? "Show" : "Hide"),
-                true
+                message,
+                (stored === "1" ? "Show" : "Hide") +
+                    (policy === "providers"
+                        ? " providers?"
+                        : " provider settings?")
             );
             confirmed = yes;
         };
