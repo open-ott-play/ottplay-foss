@@ -1437,7 +1437,6 @@ export function publishChannelProgrammeRows(
  */
 export function onChannelsLoaded(): void {
     if ((window as any).__ottStandby?.blocked()) return;
-    console.log("[onChanelsLoaded] cList.length=" + cList.length);
     // Dismiss the old loading dialog before playback can open a PIN or resume
     // prompt. Hiding it afterwards would close the newly created prompt.
     $("#dialogbox").hide();
@@ -1619,7 +1618,6 @@ export function onChannelsLoaded(): void {
     $("#buffering").hide();
     if (typeof (window as any).clearBootHide === "function")
         (window as any).clearBootHide();
-    console.log("player ready!");
     if (
         localRecovery &&
         localRecovery === (window as any).__ottActiveProviderDriver
@@ -3567,6 +3565,7 @@ export function channelsKeyHandler(keyCode: number): boolean {
     var keys = window.keys;
     if (!keys) return false;
     var host = window as any;
+    var selectedChannel = window.channels[window.listArray[window.selIndex]];
     if (
         keyCode === keys.PLAY &&
         $("#listPopUp").is(":visible") &&
@@ -3670,6 +3669,8 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.RED:
         case window.keys ? window.keys.EPG : undefined:
+            if (selectedChannel?.__ottMediaItem)
+                return channelsKeyHandler(keys.N2);
             if (typeof window.epgList === "function") {
                 window.epgList(window.listCatIndex, window.selIndex, true);
             }
@@ -3695,13 +3696,19 @@ export function channelsKeyHandler(keyCode: number): boolean {
 
         case keys.N2:
         case keys.INFO: {
-            var ch = window.channels[window.listArray[window.selIndex]];
+            var ch = selectedChannel;
+            if (
+                ch?.__ottMediaItem &&
+                typeof host.detailListAction === "function"
+            )
+                host.detailListAction();
+            var title = ch?.__ottMediaItem ? ch.channel_name : ch?.name;
             if (
                 ch &&
-                typeof ch.name !== "undefined" &&
+                typeof title !== "undefined" &&
                 typeof window.showProgramInfo === "function"
             ) {
-                window.showProgramInfo(ch.name);
+                window.showProgramInfo(title);
             }
             return true;
         }

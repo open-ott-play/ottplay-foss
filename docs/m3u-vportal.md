@@ -20,6 +20,14 @@ configured only in its standalone provider; M3U is reserved for television.
 
 The standard channel list provides search, favorites, ordering and Actions. Videos can start from the first usable batch while the rest of the portal loads in the background. Selecting a file shows an owned loading dialog; Back cancels it. **Actions → Repeat** controls All / One / Off; **Shuffle / Reset order** uses the existing channel-list actions. See the [shared playlist flow](plex-provider.md).
 
+Highlighting a video shows its title, available description and artwork below
+the preview. This works in **All** and in filtered categories. **Description**
+opens the same metadata in the larger information panel. Media entries do not
+show a television schedule or a "no EPG" warning; ordinary TV channels retain
+their programme-guide behavior. Artwork follows the thumbnail setting, and
+descriptions follow the description setting. Missing metadata leaves no details
+from the previously selected video.
+
 Whole-portal discovery is bounded separately from explicit section and search
 queues. It accepts up to 200,000 returned rows, 10,000 pages/containers and 64 MiB
 of retained catalog metadata, plus a 32 MiB cumulative identity budget. Long
