@@ -1,0 +1,383 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
+const acorn = require("acorn");
+const clone = (value) => JSON.parse(JSON.stringify(value));
+function source(path) {
+    const code = ts.transpileModule(fs.readFileSync(path, "utf8"), {
+        compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
+        },
+    }).outputText;
+    acorn.parse(code, { ecmaVersion: 5 });
+    return code;
+}
+const domain = { exports: {} };
+vm.runInNewContext(source("src/settings/store.ts"), domain);
+const plugin = source("src/plugins/remote-settings.ts");
+function fixture() {
+    const data = new Map(),
+        writes = [],
+        effects = [];
+    let now = 1000000;
+    const f = {
+        config: { active: 0 },
+        locked: false,
+        runtime: "page-123",
+        scope: "m3u:1",
+    };
+    function number(id, max, scope = "application") {
+        return {
+            defaultValue: 0,
+            effects: [id],
+            id,
+            key: id,
+            rules: { range: [0, max] },
+            scope,
+            validate: (v) => Number.isInteger(v) && v >= 0 && v <= max,
+        };
+    }
+    const schema = [
+        number("bufSize", 3600),
+        number("players", 3, "provider"),
+        number("uiFontScale", 200),
+        {
+            defaultValue: "",
+            effects: [],
+            id: "commandServerToken",
+            key: "token",
+            rules: {},
+            scope: "application",
+            validate: (v) => typeof v === "string",
+        },
+        ...Array.from({ length: 22 }, (_, i) => number("option" + i, 10)),
+    ];
+    const store = domain.exports.createSettingsStore(schema, {
+        context: () => f.scope,
+        effect(name) {
+            effects.push([name, Object.fromEntries(data)]);
+            if (f.onEffect) f.onEffect(name);
+            if (f.effectError) throw new Error("PRIVATE effect detail");
+        },
+        storage(entry) {
+            const key =
+                (entry.scope === "provider" ? f.scope + ":" : "") + entry.key;
+            return {
+                read() {
+                    const value = data.get(key) ?? null;
+                    if (f.onRead) f.onRead(key);
+                    return value;
+                },
+                remove() {
+                    data.delete(key);
+                },
+                write(value) {
+                    writes.push([key, value]);
+                    if (f.reject !== key) data.set(key, value);
+                    if (f.onWrite) f.onWrite(key);
+                },
+            };
+        },
+    });
+    const w = {
+        __ottActiveProviderDriver: {
+            configuration: () => f.config,
+            id: "m3u",
+            storageKey: (key) => f.scope + key,
+        },
+        __ottKiosk: { enabled: () => f.locked },
+        __ottParental: { needs: () => f.pinLocked },
+        __ottPlayerSettingsHost: { schema, source: () => f.scope, store },
+    };
+    vm.runInNewContext(plugin, { Date: { now: () => now }, window: w });
+    const api = w.__ottPlayerSettingsFactory.create(w, () => f.runtime);
+    return Object.assign(f, {
+        advance(ms) {
+            now += ms;
+        },
+        data,
+        effects,
+        get(id) {
+            return this.request({ id, op: "get", runtime: this.runtime });
+        },
+        request(params, extra = {}) {
+            let result,
+                replies = 0;
+            api.request(
+                { action: "player_settings", params, ...extra },
+                (r) => {
+                    replies++;
+                    result = clone(r);
+                }
+            );
+            assert.equal(replies, 1);
+            return result;
+        },
+        set(get, value) {
+            return this.request({
+                context: get.data.context.token,
+                id: get.data.setting.id,
+                op: "set",
+                revision: get.data.setting.revision,
+                runtime: get.data.runtime,
+                value,
+            });
+        },
+        store,
+        w,
+        writes,
+    });
+}
+let passed = 0;
+function check(name, run) {
+    run();
+    passed++;
+    console.log("OK: " + name);
+}
+check(
+    "schema is bounded, paginated and source-bound without a loaded catalogue",
+    () => {
+        const f = fixture();
+        f.w.__ottActiveProviderDriver.configuration = () => {
+            throw new Error("catalogue unavailable");
+        };
+        const first = f.request({ op: "schema", runtime: f.runtime });
+        assert.equal(first.status, "ok");
+        assert.equal(first.data.settings.length, 20);
+        const next = f.request({
+            cursor: first.data.next_cursor,
+            op: "schema",
+            runtime: f.runtime,
+        });
+        assert.equal(next.data.settings.length, 6);
+        assert.equal(next.data.next_cursor, null);
+        f.scope = "m3u:2";
+        assert.equal(
+            f.request({
+                cursor: first.data.next_cursor,
+                op: "schema",
+                runtime: f.runtime,
+            }).data.reason,
+            "source_changed"
+        );
+        assert.equal(f.set(f.get("bufSize"), 3).status, "ok");
+    }
+);
+check(
+    "buffer reads default separately and saves exact bytes before effects",
+    () => {
+        const f = fixture(),
+            get = f.get("bufSize");
+        assert.equal(get.data.setting.storage, "default");
+        assert.equal(get.data.setting.persisted_value, undefined);
+        assert.equal(get.data.descriptor.unit, "seconds");
+        const set = f.set(get, 3);
+        assert.equal(set.status, "ok");
+        assert.equal(set.data.persisted, true);
+        assert.equal(set.data.setting.persisted_value, 3);
+        assert.equal(set.data.application.state, "deferred");
+        assert.deepEqual(f.effects, [["bufSize", { bufSize: "3" }]]);
+        assert.equal(
+            f.set(f.get("bufSize"), 121).data.setting.effective_value,
+            0
+        );
+    }
+);
+check("players exposes stable aliases and LG effective automatic mode", () => {
+    const f = fixture();
+    f.w.ott_device = "lg/webos";
+    const get = f.get("players");
+    assert.equal(get.data.descriptor.choices[1].aliases[0], "hls.js");
+    const set = f.set(get, 1);
+    assert.equal(set.data.setting.value, 1);
+    assert.equal(set.data.setting.effective_value, 3);
+    assert.equal(set.data.application.reason, "next_stream");
+});
+check("strict types and ranges reject without saving", () => {
+    for (const value of [-1, 3601, 1.5, "3", null, true, [], {}]) {
+        const f = fixture();
+        assert.equal(f.set(f.get("bufSize"), value).status, "rejected");
+        assert.equal(f.writes.length, 0);
+    }
+});
+check("secrets remain redacted in get, schema and failure", () => {
+    const f = fixture();
+    f.data.set("token", "PRIVATE_TOKEN");
+    const get = f.get("commandServerToken");
+    assert.equal(get.data.setting.redacted, true);
+    assert.equal(get.data.setting.configured, true);
+    assert.equal(get.data.setting.value, undefined);
+    assert.equal(get.data.descriptor.default_value, undefined);
+    assert(!JSON.stringify(f.set(get, "PRIVATE_NEW")).includes("PRIVATE"));
+});
+check(
+    "runtime, provider, profile and saved-byte changes invalidate receipts",
+    () => {
+        for (const mutation of [
+            (f) => {
+                f.runtime = "page-new";
+            },
+            (f) => {
+                f.scope = "m3u:2";
+            },
+            (f) => {
+                f.config.active = 1;
+            },
+            (f) => {
+                f.data.set("bufSize", "8");
+            },
+        ]) {
+            const f = fixture(),
+                get = f.get("bufSize");
+            mutation(f);
+            assert.equal(f.set(get, 3).status, "rejected");
+            assert.equal(f.writes.length, 0);
+        }
+    }
+);
+check(
+    "same-setting ABA changes and expired receipts reject; unrelated edits survive",
+    () => {
+        const f = fixture(),
+            get = f.get("bufSize");
+        f.store.observe("bufSize", 8);
+        f.store.observe("bufSize", 0);
+        assert.equal(f.set(get, 3).data.reason, "revision_conflict");
+        const rollback = f.get("bufSize");
+        f.advance(-1);
+        assert.equal(f.set(rollback, 3).data.reason, "revision_conflict");
+        f.advance(1);
+        const expired = f.get("bufSize");
+        f.advance(120000);
+        assert.equal(f.set(expired, 3).data.reason, "revision_conflict");
+        const fresh = f.get("bufSize");
+        f.store.observe("players", 2);
+        assert.equal(f.set(fresh, 3).status, "ok");
+    }
+);
+check(
+    "open local draft cannot overwrite remote changes; unrelated local changes commit",
+    () => {
+        const f = fixture(),
+            draft = f.store.begin(),
+            independent = f.store.begin();
+        draft.set("bufSize", 4);
+        independent.set("players", 2);
+        assert.equal(f.set(f.get("bufSize"), 3).status, "ok");
+        assert.equal(draft.commit(), false);
+        assert.equal(draft.errorCode(), "concurrent_edit");
+        assert.equal(independent.commit(), true);
+        assert.equal(f.data.get("bufSize"), "3");
+    }
+);
+check("failed persistence applies no runtime or external effects", () => {
+    const f = fixture();
+    f.reject = "bufSize";
+    const set = f.set(f.get("bufSize"), 3);
+    assert.equal(set.data.reason, "storage_failed");
+    assert.equal(f.store.get("bufSize"), 0);
+    assert.deepEqual(f.effects, []);
+});
+check(
+    "effect failure is reported separately after successful durable save",
+    () => {
+        const f = fixture();
+        f.effectError = true;
+        const set = f.set(f.get("bufSize"), 3);
+        assert.equal(set.status, "ok");
+        assert.equal(set.data.persisted, true);
+        assert.deepEqual(set.data.application, {
+            reason: "effect_failed",
+            state: "failed",
+        });
+        assert(!JSON.stringify(set).includes("PRIVATE"));
+    }
+);
+check("kiosk and PIN lock writes but permit schema and redacted reads", () => {
+    for (const key of ["locked", "pinLocked"]) {
+        const f = fixture(),
+            get = f.get("bufSize");
+        f[key] = true;
+        assert.equal(f.get("bufSize").status, "ok");
+        assert.equal(f.set(get, 3).data.reason, "policy_restricted");
+        assert.equal(f.writes.length, 0);
+    }
+});
+check("invalid stored bytes never enter readback", () => {
+    const f = fixture();
+    f.data.set("bufSize", "PRIVATE_INVALID");
+    const get = f.get("bufSize");
+    assert.equal(get.data.setting.storage, "invalid");
+    assert.equal(get.data.setting.persisted_value, undefined);
+    assert(!JSON.stringify(get).includes("PRIVATE"));
+    assert.equal(f.set(get, 3).status, "ok");
+});
+check("receipt can be consumed only once", () => {
+    const f = fixture(),
+        get = f.get("bufSize");
+    assert.equal(f.set(get, 3).status, "ok");
+    assert.equal(f.set(get, 5).data.reason, "revision_conflict");
+    assert.equal(f.writes.length, 1);
+});
+check(
+    "provider preferences remain unavailable without a source while app repair works",
+    () => {
+        const f = fixture();
+        f.w.__ottActiveProviderDriver = null;
+        const provider = f.get("players");
+        assert.equal(provider.status, "ok");
+        assert.equal(provider.data.descriptor.access.write, false);
+        assert.equal(provider.data.setting.storage, "unavailable");
+        assert.equal(provider.data.setting.value, undefined);
+        assert.equal(f.set(provider, 1).data.reason, "unsupported");
+        assert.equal(f.set(f.get("bufSize"), 3).status, "ok");
+    }
+);
+check("an explicit default value is persisted and confirmed", () => {
+    const f = fixture(),
+        set = f.set(f.get("bufSize"), 0);
+    assert.equal(set.status, "ok");
+    assert.equal(set.data.setting.storage, "stored");
+    assert.equal(set.data.setting.persisted_value, 0);
+    assert.equal(f.data.get("bufSize"), "0");
+});
+check(
+    "post-effect value replacement cannot confirm a different value as requested",
+    () => {
+        const f = fixture();
+        f.onEffect = () => {
+            f.data.set("bufSize", "4");
+            f.store.observe("bufSize", 4);
+        };
+        assert.equal(f.set(f.get("bufSize"), 3).data.reason, "storage_failed");
+    }
+);
+check(
+    "track defaults defer to next stream and missing apply hooks remain explicit",
+    () => {
+        const f = fixture();
+        const definition = f.w.__ottPlayerSettingsHost.schema.find(
+            (row) => row.id === "option0"
+        );
+        definition.id = "preferredAudioLanguage";
+        definition.key = definition.id;
+        definition.defaultValue = "";
+        definition.effects = [];
+        definition.rules = { language: "audio" };
+        const schema = f.request({ op: "schema", runtime: f.runtime });
+        assert.equal(
+            schema.data.settings.find(
+                (row) => row.id === "preferredAudioLanguage"
+            ).apply,
+            "next_stream"
+        );
+        assert.equal(
+            schema.data.settings.find((row) => row.id === "uiFontScale").apply,
+            "manual"
+        );
+    }
+);
+console.log("OK: " + passed + " typed player settings scenarios");

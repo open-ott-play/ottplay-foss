@@ -92,38 +92,64 @@ const ctx = {
     Date,
     exports: {},
     require: (name) =>
-        name === "./remote-favorites" ||
-        name === "./remote-favorites-contract" ||
-        name === "./random-channel"
-            ? loadRemoteHelper(name.slice(2))
-            : name === "../provider"
-              ? {
-                    checkProviderUrl: () => true,
-                    isProviderAllowed: () => true,
-                    providerIds: ["m3u", "xtream", "", "stalker"],
-                    providerLabels: null,
-                    selectProviderByIndex: (i) => {
-                        switched = i;
-                        return true;
-                    },
-                }
-              : name === "./remote-profiles"
-                ? loadRemoteHelper("remote-profiles")
-                : name === "./remote-app-update"
-                  ? loadRemoteHelper("remote-app-update")
-                  : name === "../plugins/vportal"
-                    ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
-                    : name === "./remote-archive"
-                      ? loadRemoteHelper("remote-archive")
-                      : name === "./remote-plex"
-                        ? loadRemoteHelper("remote-plex")
-                        : name === "./remote-notifications"
-                          ? loadRemoteHelper("remote-notifications")
-                          : name === "./remote-restart"
-                            ? loadRemoteHelper("remote-restart")
-                            : name === "../utils/caseless"
-                              ? casingContext.exports
-                              : { handleCommand: () => "accepted" },
+        name === "./remote-settings"
+            ? {
+                  executeRemoteSettings(w, request, done) {
+                      for (const part of [
+                          "remote-settings",
+                          "remote-provider-settings",
+                          "remote-legacy-settings",
+                      ]) {
+                          const plugin = ts.transpileModule(
+                              fs.readFileSync(
+                                  "src/plugins/" + part + ".ts",
+                                  "utf8"
+                              ),
+                              {
+                                  compilerOptions: {
+                                      target: ts.ScriptTarget.ES5,
+                                  },
+                              }
+                          ).outputText;
+                          vm.runInNewContext(plugin, { URL, window: w });
+                      }
+                      return loadRemoteHelper(
+                          "remote-settings"
+                      ).executeRemoteSettings(w, request, done);
+                  },
+              }
+            : name === "./remote-favorites" ||
+                name === "./remote-favorites-contract" ||
+                name === "./random-channel"
+              ? loadRemoteHelper(name.slice(2))
+              : name === "../provider"
+                ? {
+                      checkProviderUrl: () => true,
+                      isProviderAllowed: () => true,
+                      providerIds: ["m3u", "xtream", "", "stalker"],
+                      providerLabels: null,
+                      selectProviderByIndex: (i) => {
+                          switched = i;
+                          return true;
+                      },
+                  }
+                : name === "./remote-profiles"
+                  ? loadRemoteHelper("remote-profiles")
+                  : name === "./remote-app-update"
+                    ? loadRemoteHelper("remote-app-update")
+                    : name === "../plugins/vportal"
+                      ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
+                      : name === "./remote-archive"
+                        ? loadRemoteHelper("remote-archive")
+                        : name === "./remote-plex"
+                          ? loadRemoteHelper("remote-plex")
+                          : name === "./remote-notifications"
+                            ? loadRemoteHelper("remote-notifications")
+                            : name === "./remote-restart"
+                              ? loadRemoteHelper("remote-restart")
+                              : name === "../utils/caseless"
+                                ? casingContext.exports
+                                : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };

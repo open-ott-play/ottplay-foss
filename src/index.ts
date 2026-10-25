@@ -4376,6 +4376,16 @@ function createSettingsPage(
 var subtitleAppearanceLoading = false;
 var subtitleAppearanceGeneration = 0;
 var subtitleAppearanceOpen: ((loaded: boolean) => void) | null = null;
+var subtitleAppearanceReady: ((loaded: boolean) => void)[] = [];
+function notifySubtitleAppearanceReady(loaded: boolean): void {
+    var waiting = subtitleAppearanceReady;
+    subtitleAppearanceReady = [];
+    waiting.forEach(function (done) {
+        try {
+            done(loaded);
+        } catch (_) {}
+    });
+}
 function loadSubtitleAppearance(open?: (loaded: boolean) => void): void {
     var w = window as any;
     if (open) subtitleAppearanceOpen = open;
@@ -4403,7 +4413,12 @@ function loadSubtitleAppearance(open?: (loaded: boolean) => void): void {
         var action = subtitleAppearanceOpen;
         subtitleAppearanceOpen = null;
         loaded = loaded && !!w.__ottSubtitleAppearance;
-        if (loaded) w.__ottSubtitleAppearance.apply();
+        try {
+            if (loaded) w.__ottSubtitleAppearance.apply();
+        } catch (_) {
+            loaded = false;
+        }
+        notifySubtitleAppearanceReady(loaded);
         if (action) action(loaded);
     }
     script.src = hostUrl + "/dist/subtitle-appearance.js?" + PLAYER_VERSION;
@@ -4448,6 +4463,17 @@ window.settingsInterface = function settingsInterface(): void {
     languages: languageNames,
     list: setListArrays,
     page: createSettingsPage,
+    ready: function (done: (loaded: boolean) => void): () => void {
+        if ((window as any).__ottSubtitleAppearance) done(true);
+        else {
+            subtitleAppearanceReady.push(done);
+            loadSubtitleAppearance();
+        }
+        return function () {
+            var index = subtitleAppearanceReady.indexOf(done);
+            if (index >= 0) subtitleAppearanceReady.splice(index, 1);
+        };
+    },
 };
 (window as any).applySubtitleAppearance = function (): void {
     var w = window as any;
@@ -6449,6 +6475,7 @@ function initRemoteDiagnostics(): void {
         : undefined
 );
 (window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
+(window as any).__OTT_CONTROL_TRANSPORT_CLIENT_VERSION__ = 1;
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so

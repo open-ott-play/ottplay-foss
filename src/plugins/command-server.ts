@@ -640,7 +640,10 @@ export function createCommandServer(
                                     item.action === "plex_queue" ||
                                     item.action === "plex_library" ||
                                     item.action === "favorites" ||
-                                    item.action === "playback"
+                                    item.action === "playback" ||
+                                    item.action === "player_settings" ||
+                                    item.action === "provider_settings" ||
+                                    item.action === "settings_compare"
                                 )
                                     executionItem = Object.assign({}, item, {
                                         expires_at:
@@ -855,6 +858,19 @@ export function createCommandServerTransport(
         request: CommandServerRequest,
         complete: (response?: CommandServerResponse) => void
     ): () => void {
+        try {
+            if (w.__OTTPLAY_HOSTED__ && w.__OTTPLAY_HOSTED__.controlTransport) {
+                if (!w.__ottControlTransport) throw new Error();
+                request = w.__ottControlTransport.map(request);
+            }
+        } catch (_) {
+            complete({
+                body: "",
+                error: "hosted_control_unavailable",
+                status: 0,
+            });
+            return function () {};
+        }
         request.remoteControl = true;
         var done = false;
         var xhr: any = null;

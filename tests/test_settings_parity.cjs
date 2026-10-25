@@ -311,6 +311,7 @@ function fixture(
                     "createSettingsPage",
                     "setListArrays",
                     "loadSubtitleAppearance",
+                    "notifySubtitleAppearanceReady",
                     "openSubtitleAppearance",
                 ],
                 [
@@ -320,7 +321,12 @@ function fixture(
                     "__ottAppearanceHost",
                     "applySubtitleAppearance",
                 ],
-                ["subtitleAppearanceLoading", "subtitleAppearanceOpen"]
+                [
+                    "subtitleAppearanceLoading",
+                    "subtitleAppearanceOpen",
+                    "subtitleAppearanceReady",
+                    "subtitleAppearanceGeneration",
+                ]
             )
         ),
         w

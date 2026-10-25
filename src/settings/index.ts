@@ -368,6 +368,7 @@ function defineSetting(
               : rules.encode,
         id: id,
         key: key,
+        rules: rules,
         scope: scope,
         validate: function (value): boolean {
             if (rules.language)
@@ -741,9 +742,13 @@ export const settingsSchema: SettingDefinition[] = [
 function settingsSource(): string {
     var w = typeof window === "undefined" ? {} : (window as any);
     var driver = w.__ottActiveProviderDriver;
-    return driver && typeof driver.storageKey === "function"
-        ? driver.id + ":" + driver.storageKey("sPlayers")
-        : String(w.p_pref || w.providerId || "classic");
+    try {
+        return driver && typeof driver.storageKey === "function"
+            ? driver.id + ":" + driver.storageKey("sPlayers")
+            : String(w.p_pref || w.providerId || "classic");
+    } catch (_) {
+        return String(driver.id) + ":unavailable";
+    }
 }
 export const settingsStore = createSettingsStore(settingsSchema, {
     context: settingsSource,
@@ -772,6 +777,14 @@ export const settingsStore = createSettingsStore(settingsSchema, {
                 write = w.providerSetItem,
                 remove = w.providerDelItem;
             return {
+                current: function () {
+                    return (
+                        w.__ottActiveProviderDriver === driver &&
+                        w.providerGetItem === read &&
+                        w.providerSetItem === write &&
+                        w.providerDelItem === remove
+                    );
+                },
                 read: function () {
                     return read(entry.key);
                 },
@@ -860,6 +873,12 @@ bindSettingsFacade(settings, false);
 export function installSettingsFacade(target: Record<string, any>): void {
     bindSettingsFacade(target, true);
     target.settings = settings;
+    target.__ottPlayerSettingsHost = {
+        languages: Object.keys(languageNames),
+        schema: settingsSchema,
+        source: settingsSource,
+        store: settingsStore,
+    };
 }
 export function loadSettings(): PlayerSettings {
     // Device detection can finish after the settings schema was constructed.

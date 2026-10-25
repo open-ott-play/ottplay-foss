@@ -102,6 +102,7 @@ const CLASSIC_MODULES = [
     "build/commands/remote-profiles.js",
     "build/commands/remote-handoff.js",
     "build/commands/remote-plex.js",
+    "build/commands/remote-settings.js",
     "build/commands/remote-favorites-contract.js",
     "build/commands/remote-favorites.js",
     "build/commands/remote-app-update.js",
@@ -118,6 +119,7 @@ const CLASSIC_MODULES = [
     "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
+    "build/plugins/hosted-control-transport.js",
     "build/plugins/notification-media.js",
     "build/plugins/remote-notifications.js",
     "build/plugins/command-server.js",
@@ -136,6 +138,9 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-screenshot.js",
     "build/plugins/remote-doctor.js",
     "build/plugins/remote-inspect.js",
+    "build/plugins/remote-settings.js",
+    "build/plugins/remote-provider-settings.js",
+    "build/plugins/remote-legacy-settings.js",
     "build/plugins/runtime-debug.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
@@ -161,6 +166,13 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     xtream: ["build/provider/xtream-media.js"],
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
+    "control-transport": ["build/plugins/hosted-control-transport.js"],
+
+    "remote-settings": [
+        "build/plugins/remote-settings.js",
+        "build/plugins/remote-provider-settings.js",
+        "build/plugins/remote-legacy-settings.js",
+    ],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
 const providerModules = new Set([
@@ -225,6 +237,10 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/playback/stream-policy.js": Object.freeze([
         "window.__ottStreamPolicy",
     ]),
+    "build/plugins/hosted-control-transport.js": Object.freeze([
+        "window.__ottControlTransport",
+        "window.__OTT_CONTROL_TRANSPORT_VERSION__",
+    ]),
     "build/plugins/native-http.js": Object.freeze([
         "window.installTauriHttpTransport",
         "window.installCapacitorHttpTransport",
@@ -234,6 +250,15 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottPlexQueueFactory",
     ]),
     "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
+    "build/plugins/remote-legacy-settings.js": Object.freeze([
+        "window.__ottRemoteLegacySettings",
+    ]),
+    "build/plugins/remote-provider-settings.js": Object.freeze([
+        "window.__ottRemoteProviderSettings",
+    ]),
+    "build/plugins/remote-settings.js": Object.freeze([
+        "window.__ottPlayerSettingsFactory",
+    ]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",

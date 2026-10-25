@@ -18,6 +18,7 @@ export function installRemoteInspection(w: any): any {
         "profile_save",
         "profile_import",
         "provider_settings",
+        "player_settings",
         "kiosk",
         "restart",
         "lifecycle",
@@ -200,6 +201,7 @@ export function installRemoteInspection(w: any): any {
             !(item.action === "categories" && params.op !== "select") &&
             !(item.action === "plex_library" && params.op !== "play") &&
             !(item.action === "favorites" && params.op !== "play") &&
+            !(item.action === "player_settings" && params.op !== "set") &&
             !(item.action === "aspect" && params.operation !== "set") &&
             !(item.action === "notifications" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
@@ -231,8 +233,15 @@ export function installRemoteInspection(w: any): any {
                         );
                     }
                 );
+            var boundSettings =
+                item.action === "player_settings" ||
+                ((item.action === "provider_settings" ||
+                    item.action === "settings_compare") &&
+                    item.params &&
+                    item.params.provider === "vportal");
             return (
-                (!modernChannels &&
+                (!boundSettings &&
+                    !modernChannels &&
                     item.action !== "categories" &&
                     item.action !== "inspect" &&
                     item.action !== "aspect" &&

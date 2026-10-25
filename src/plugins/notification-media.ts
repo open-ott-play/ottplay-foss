@@ -284,14 +284,24 @@ export function loadNotificationMedia(
             encodeURIComponent(options.runtime) +
             (device ? "&device_id=" + encodeURIComponent(device) : "");
         controller = new w.AbortController();
-        var request = new w.Request(url.toString(), {
-            cache: "no-store",
-            credentials: "omit",
+        var transport: any = {
             headers: {
                 Accept: "application/json",
                 Authorization: "Bearer " + options.token,
             },
             method: "GET",
+            url: url.toString(),
+        };
+        if (w.__OTTPLAY_HOSTED__ && w.__OTTPLAY_HOSTED__.controlTransport) {
+            if (!w.__ottControlTransport) throw new Error();
+            transport = w.__ottControlTransport.map(transport);
+        }
+        var request = new w.Request(transport.url, {
+            body: transport.body,
+            cache: "no-store",
+            credentials: "omit",
+            headers: transport.headers,
+            method: transport.method,
             redirect: "error",
             signal: controller.signal,
         });
@@ -313,7 +323,7 @@ export function loadNotificationMedia(
                 if (
                     response.status !== 200 ||
                     response.redirected ||
-                    (response.url && response.url !== url.toString()) ||
+                    (response.url && response.url !== transport.url) ||
                     !/^application\/json(?:\s*;|$)/i.test(type) ||
                     (length !== null &&
                         (!/^\d+$/.test(length) ||
