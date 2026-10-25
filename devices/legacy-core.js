@@ -728,7 +728,8 @@ function loadOpt() {
     }
 }
 function setAutorun() {
-    var autorun = stbGetItem("stb_autorun");
+    var autorun = stbGetItem("sAutorun");
+    if (autorun == null) autorun = stbGetItem("stb_autorun");
     if (autorun === "1") {
         console.log("[stb] autorun triggered");
         if (typeof startPlayer === "function") startPlayer();

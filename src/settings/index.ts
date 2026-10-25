@@ -12,6 +12,7 @@ import { languageNames } from "../localization/assets";
  */
 import { storage } from "../storage/index";
 import {
+    commitSettingsWrites,
     createSettingsStore,
     type SettingDefinition,
     type SettingsDraft,
@@ -880,6 +881,7 @@ export function installSettingsFacade(target: Record<string, any>): void {
     bindSettingsFacade(target, true);
     target.settings = settings;
     target.__ottPlayerSettingsHost = {
+        commit: commitSettingsWrites,
         languages: Object.keys(languageNames),
         schema: settingsSchema,
         source: settingsSource,

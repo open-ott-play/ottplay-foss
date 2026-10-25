@@ -66,6 +66,10 @@ try {
         bytes: 7800,
         gzipBytes: 3300,
     });
+    assert.deepEqual(OPTIONAL_BUDGETS["remote-settings-extras"], {
+        bytes: 7000,
+        gzipBytes: 2800,
+    });
     assert.deepEqual(OPTIONAL_BUDGETS["remote-provider-fields"], {
         bytes: 18000,
         gzipBytes: 6200,
@@ -111,6 +115,17 @@ try {
         /remote-provider-fields\.js: gzipBytes .* exceeds budget 6200/
     );
     fs.writeFileSync(providerFieldsPath, source);
+    const extrasPath = path.join(root, "dist/remote-settings-extras.js");
+    const denseExtras = denseFields.slice(0, 4000);
+    assert(
+        denseExtras.length < OPTIONAL_BUDGETS["remote-settings-extras"].bytes
+    );
+    fs.writeFileSync(extrasPath, denseExtras);
+    assert.throws(
+        () => inspectBundleSets(root),
+        /remote-settings-extras\.js: gzipBytes .* exceeds budget 2800/
+    );
+    fs.writeFileSync(extrasPath, source);
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
     assert.equal(sets[0].providers.length, 8);

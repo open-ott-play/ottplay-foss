@@ -106,6 +106,7 @@ function fixture(bridge = false) {
             );
     }
     function install() {
+        w.__ottRemoteSettingsExtras = {};
         w.__ottPlayerSettingsFactory = {
             create: () => ({
                 request(request, done) {
@@ -530,6 +531,47 @@ check(
             stale.scripts[0].onload();
             assert.equal(stale.calls.length, 0);
             assert.equal(rejected.replies[0].data.error, "unsupported");
+        }
+    }
+);
+check(
+    "extras load once for schema and scalar requests, and stale callers cannot write",
+    () => {
+        for (const outcome of ["success", "source", "cancel", "failure"]) {
+            const f = fixture();
+            f.install();
+            f.installFields();
+            delete f.w.__ottRemoteSettingsExtras;
+            const first = f.run("player_settings", {
+                op: "schema",
+                runtime: f.state.runtime,
+            });
+            const second = f.run("player_settings", {
+                id: "noSelProv",
+                op: "set",
+                runtime: f.state.runtime,
+            });
+            assert.equal(f.scripts.length, 1);
+            assert.match(f.scripts[0].src, /remote-settings-extras\.js/);
+            const loaded = f.scripts[0].onload;
+            if (outcome === "source") f.state.scope = "replacement";
+            if (outcome === "cancel") {
+                first.cancel();
+                second.cancel();
+            }
+            f.w.__ottRemoteSettingsExtras = {};
+            if (outcome === "failure") f.scripts[0].onerror();
+            else {
+                loaded();
+                loaded();
+            }
+            assert.equal(f.calls.length, outcome === "success" ? 2 : 0);
+            for (const item of [first, second])
+                assert.equal(item.replies.length, outcome === "cancel" ? 0 : 1);
+            if (outcome === "source")
+                assert.equal(second.replies[0].data.reason, "source_changed");
+            if (outcome === "failure")
+                assert.equal(second.replies[0].status, "unsupported");
         }
     }
 );

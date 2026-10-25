@@ -163,6 +163,11 @@ function executeRemoteSettingsDispatch(
         try {
             var policy = { allowed: ports.allowed, url: ports.url };
             if (
+                w.__ottRemoteSettingsExtras &&
+                typeof w.__ottRemoteSettingsExtras.create === "function"
+            )
+                w.__ottRemoteSettingsExtras.create(w, ports.checkpoint);
+            if (
                 w.__ottRemoteLifecycleHostFactory &&
                 w.__ottRemoteLifecyclePorts &&
                 !w.__ottRemoteLifecycleHost
@@ -236,6 +241,23 @@ function executeRemoteSettingsDispatch(
             fail("storage_failed");
         }
     }
+    function executeWithExtras(): void {
+        if (
+            request.action === "player_settings" &&
+            (params.op === "schema" ||
+                /^(noSelProv|noProvParam|localMediaEndpoint|debugEnabled|debugHud|sortAlphabetically)$/.test(
+                    params.id || ""
+                ))
+        )
+            ensure(
+                "remote-settings-extras",
+                function () {
+                    return !!w.__ottRemoteSettingsExtras;
+                },
+                execute
+            );
+        else execute();
+    }
     function executeWithLifecycle(): void {
         if (
             /^player_settings(?:_patch)?$/.test(request.action) &&
@@ -249,9 +271,9 @@ function executeRemoteSettingsDispatch(
                         w.__ottRemoteLifecycleHostFactory
                     );
                 },
-                execute
+                executeWithExtras
             );
-        else execute();
+        else executeWithExtras();
     }
     ensure(
         "remote-settings",

@@ -545,13 +545,16 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // handoff/notification handlers out of startup. Combined Node22: base15851/5206,
     // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
     "remote-settings": Object.freeze({ bytes: 17500, gzipBytes: 5800 }),
+    // Existing UI/debug owners stay in startup; typed extras, CAS and ACK handling
+    // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
+    "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
     "remote-settings-lifecycle": Object.freeze({
         bytes: 31000,
         gzipBytes: 10000,
     }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1251100, gzipBytes: 396150 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1258100, gzipBytes: 398950 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

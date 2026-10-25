@@ -139,6 +139,7 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-settings-dispatch.js",
     "build/plugins/remote-settings-host.js",
     "build/plugins/remote-settings-lifecycle.js",
+    "build/plugins/remote-settings-extras.js",
     "build/plugins/remote-notification-settings.js",
     "build/plugins/remote-handoff.js",
     "build/plugins/remote-settings.js",
@@ -181,6 +182,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
         "build/plugins/remote-provider-settings.js",
         "build/plugins/remote-legacy-settings.js",
     ],
+    "remote-settings-extras": ["build/plugins/remote-settings-extras.js"],
     "remote-settings-lifecycle": [
         "build/plugins/remote-settings.js",
         "build/plugins/remote-settings-dispatch.js",
@@ -280,6 +282,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/plugins/remote-settings-dispatch.js": Object.freeze([
         "window.__ottRemoteSettingsDispatch",
+    ]),
+    "build/plugins/remote-settings-extras.js": Object.freeze([
+        "window.__ottRemoteSettingsExtras",
     ]),
     "build/plugins/remote-settings-host.js": Object.freeze([
         "window.__ottRemoteLifecycleHostFactory",

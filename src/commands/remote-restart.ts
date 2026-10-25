@@ -17,7 +17,7 @@ function remoteSettingsLocked(w: any): boolean {
               !w.parentAccess
           );
 }
-function remoteCheckpoint(w: any): void {
+export function remoteCheckpoint(w: any): void {
     var playback = w.__ottClassicPlayback;
     if (!playback || !playback.snapshot || !playback.checkpoint) return;
     if (

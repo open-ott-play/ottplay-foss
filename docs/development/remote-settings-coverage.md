@@ -1,6 +1,6 @@
-# Remote settings coverage and remaining adapter work
+# Remote settings coverage and platform boundaries
 
-The `player_settings` version 1 API uses the existing typed settings registry and source-bound draft. This inventory is an implementation handoff, not a claim that every persisted configuration field is already covered.
+The `player_settings` version 1 API uses the existing typed settings registry and source-bound draft. This inventory separates editable preferences, provider fields, dedicated operations and concrete platform limitations.
 
 ## Registry preferences
 
@@ -22,7 +22,7 @@ The lazy `remote-provider-fields.js` asset exposes scalar adapters for the curre
 
 A private driver settings port binds remote receipts to saved bytes and revision. It is installed on first remote settings access; normal startup does not load the adapter. The provider UI's existing revision guard invalidates open local drafts after a verified remote write. Values and credentials are never included in operation-history evidence.
 
-## Remaining lifecycle work
+## Language and connection lifecycle
 
 - **Interface language:** `ottplaylang` and `ottplaylangmode` use the shared dictionary loader through the optional lifecycle adapter. Desired code/mode are committed together, application occurs after acknowledgment, and dictionary failure restores the previous tuple. A stale language load cannot publish after ownership changes.
 - **Remote connection settings:** `command_server` and `local_http` patches bind all three companion fields and apply through actual connection/listener owners after acknowledgment. Active scalar address/credential edits require `atomic_patch_required`. The command server must authenticate within 30 seconds; failure uses a guarded rollback. Missing ACK and crash recovery retain the same desired/previous tuple ownership. SWOP base/UUID changes retire existing sessions and verify identity aliases. See [lifecycle runbook](../remote-settings-lifecycle.md).
@@ -35,7 +35,7 @@ Canonical favourites, hidden channels, channel locks and ordering belong to chan
 
 ## Verification expectations
 
-Coverage is complete only when every intended user setting has a descriptor and a supported adapter (or a concrete platform limitation), with tests for scope changes, concurrent UI drafts, failed persistence and truthful application status. Keep this inventory visible until follow-on gaps are implemented; do not document the initial registry API as universal coverage.
+Coverage is complete only when every intended user setting has a descriptor and a supported adapter (or a concrete platform limitation), with tests for scope changes, concurrent UI drafts, failed persistence and truthful application status. The tests exercise the registry, provider codecs, folder collection, lifecycle transitions and interface/debug extras. Device-specific filesystem grants and absent platform implementations remain explicit limits.
 
 ## Application timing audit
 
@@ -43,4 +43,10 @@ The registry's media-selection preferences (`players`, `bufSize`, `streamMaxHeig
 
 The five subtitle appearance fields await the existing appearance module before saving; their normal apply hook then runs synchronously. Interface size, list position, colour, PiP layout, timezone, editor and sleep timer use their declared existing effects. A missing runtime hook is reported as manual application. Fields without an apply hook are active policy values for later key handling, list rendering, infobar events, history limits and access checks; success does not assert that the current video changed.
 
-`hdmiSupport` remains a legacy preference with no direct HDMI operation in the current build. `autorun` needs follow-on platform work: the current `setAutorun()` reads `stb_autorun`, whereas the registered preference uses `sAutorun`. Their descriptors therefore report manual/platform application rather than claiming that current playback or platform startup changed. Do not silently rewrite either legacy key in this adapter.
+`hdmiSupport` has no HDMI apply operation, and `autorun` has no operating-system startup owner in this build. Both remain readable but their descriptors reject remote writes as unsupported. The compatibility initialization helper now reads registered `sAutorun` first, falling back to `stb_autorun` only when absent; it does not configure OS startup.
+
+## Interface, local-library and diagnostic preferences
+
+The optional `remote-settings-extras.js` adapter adds `noSelProv`, `noProvParam`, `localMediaEndpoint`, `debugEnabled`, `debugHud` and `sortAlphabetically`. See [interface and diagnostic settings](../remote-settings-extras.md) for examples. Visibility changes preserve the normal PIN restrictions and checkpoint playback before acknowledged reload. Browser library URLs use the real URL validator and catalogue invalidation owner. Debug settings invoke the real collector/HUD lifecycle; alphabetical ordering uses the current provider's storage and render path.
+
+Native Tauri/Capacitor file pickers and filesystem grants remain device-local actions. Their library endpoint descriptor reports `local_action_required`; writing a browser URL cannot grant native file access. Credentials are never returned in descriptors, values or failures.

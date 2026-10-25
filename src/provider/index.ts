@@ -701,59 +701,65 @@ declare var removeOption: (fn: () => void) => void;
 var providerSelectionUnlockCount = 0,
     providerSettingsUnlockCount = 0;
 
-/**
- * Toggle the "Show providers?" / "Hide providers?" setting.
- * Requires 7 rapid invocations (providerSelectionUnlockCount counter) before the confirmation
- * dialog appears — a hidden/secret access pattern.
- * Checks parental PIN gate (sPSprovs).
- *
- * Side effects: Writes 'noSelProv' to stb storage, then calls restart().
- */
-export function toggleProviderSelectionVisibility(): void {
-    if (++providerSelectionUnlockCount < 7) return;
-    if ((window as any).__ottParental.needs("providers")) {
-        if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(
-                toggleProviderSelectionVisibility
-            );
-        }
-        return;
-    }
-    var e = Number.parseInt(stbGetItem("noSelProv")) || 0;
-    confirmBox(e ? "Show providers?" : "Hide providers?", function () {
-        stbSetItem("noSelProv", e ? "0" : "1");
-        restart();
-    });
-    providerSelectionUnlockCount = 0;
+function visibilityRevision(key: string, changed?: boolean): number {
+    var extra = (window as any).__ottExtraSettings;
+    return extra ? (changed ? extra.changed(key) : extra.revision(key)) : 0;
 }
 
-/**
- * Toggle the "Show provider settings?" / "Hide provider settings?" flag.
- * Requires 7 rapid invocations (providerSettingsUnlockCount counter) before confirmation —
- * same hidden-access pattern as toggleProviderSelectionVisibility.
- * Checks parental PIN gate (sPSoptions).
- *
- * Side effects: Writes 'noProvParam' to stb storage, then calls restart().
- */
-export function toggleProviderSettingsVisibility(): void {
-    if (++providerSettingsUnlockCount < 7) return;
-    if ((window as any).__ottParental.needs("settings")) {
-        if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(
-                toggleProviderSettingsVisibility
-            );
-        }
-        return;
+/** Shared PIN-gated confirmation; stale open dialogs cannot replace newer settings. */
+function confirmProviderVisibility(
+    key: string,
+    scope: string,
+    show: string,
+    hide: string,
+    resume: () => void
+): boolean {
+    if ((window as any).__ottParental.needs(scope)) {
+        if (typeof (window as any).enterPinAndSetAccess === "function")
+            (window as any).enterPinAndSetAccess(resume);
+        return false;
     }
-    var e = Number.parseInt(stbGetItem("noProvParam")) || 0;
-    confirmBox(
-        e ? "Show provider settings?" : "Hide provider settings?",
-        function () {
-            stbSetItem("noProvParam", e ? "0" : "1");
-            restart();
-        }
-    );
-    providerSettingsUnlockCount = 0;
+    var raw = stbGetItem(key),
+        enabled = Number.parseInt(raw) || 0,
+        revision = visibilityRevision(key);
+    confirmBox(enabled ? show : hide, function () {
+        if (revision !== visibilityRevision(key) || raw !== stbGetItem(key))
+            return;
+        stbSetItem(key, enabled ? "0" : "1");
+        visibilityRevision(key, true);
+        restart();
+    });
+    return true;
+}
+
+/** Seven presses reveal the provider chooser visibility confirmation. */
+export function toggleProviderSelectionVisibility(): void {
+    if (
+        ++providerSelectionUnlockCount >= 7 &&
+        confirmProviderVisibility(
+            "noSelProv",
+            "providers",
+            "Show providers?",
+            "Hide providers?",
+            toggleProviderSelectionVisibility
+        )
+    )
+        providerSelectionUnlockCount = 0;
+}
+
+/** Seven presses reveal the provider settings visibility confirmation. */
+export function toggleProviderSettingsVisibility(): void {
+    if (
+        ++providerSettingsUnlockCount >= 7 &&
+        confirmProviderVisibility(
+            "noProvParam",
+            "settings",
+            "Show provider settings?",
+            "Hide provider settings?",
+            toggleProviderSettingsVisibility
+        )
+    )
+        providerSettingsUnlockCount = 0;
 }
 
 /**

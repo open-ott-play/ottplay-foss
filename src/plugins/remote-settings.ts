@@ -36,7 +36,22 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             id
         );
     }
+    function extras(): any {
+        return (
+            w.__ottExtraSettings ||
+            (w.__ottRemoteSettingsExtras &&
+                w.__ottRemoteSettingsExtras.create(w))
+        );
+    }
     function capture(id: string): any {
+        var extra = extras();
+        if (
+            extra &&
+            extra.schema.some(function (entry: any) {
+                return entry.id === id;
+            })
+        )
+            return extra.capture(id);
         return lifecycleField(id) && lifecycle()
             ? lifecycle().capture(id)
             : store.capture(id);
@@ -108,7 +123,10 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         return null;
     }
     function definitions(): any[] {
-        return host().schema.concat(fields ? fields.schema : []);
+        return host().schema.concat(
+            fields ? fields.schema : [],
+            extras() ? extras().schema : []
+        );
     }
     function providerReady(): boolean {
         var active = w.__ottActiveProviderDriver;
@@ -125,6 +143,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         }
     }
     function describe(entry: any): any {
+        if (entry.extraField) return extras().descriptor(entry.id);
         if (entry.providerField) {
             var description = JSON.parse(JSON.stringify(entry.descriptor));
             if (locked())
@@ -249,6 +268,8 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             result.description =
                 "1 to 120 seconds sets the buffer; 0 or a value above 120 uses automatic buffering. Applies to the next stream.";
         }
+        if (/^(autorun|hdmiSupport)$/.test(id))
+            result.access = { read: true, reason: "unsupported", write: false };
         if (id === "uiFontScale") result.unit = "percent";
         return result;
     }
@@ -509,7 +530,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 fail(
                     descriptor.access.reason === "lifecycle_required"
                         ? "unsupported"
-                        : descriptor.access.reason
+                        : descriptor.access.reason === "local_action_required"
+                          ? "local_only"
+                          : descriptor.access.reason
                 );
                 return;
             }
@@ -585,6 +608,28 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                             reason
                         )
                             ? reason
+                            : "storage_failed"
+                    );
+                }
+                return;
+            }
+            if (entry.extraField) {
+                try {
+                    var extraSaved = extras().save(
+                        params.id,
+                        params.value,
+                        receipt.capture,
+                        admitted,
+                        afterReply
+                    );
+                    savedReply(extraSaved.capture, extraSaved.application);
+                } catch (error) {
+                    var extraReason = (error as any).message;
+                    fail(
+                        /^(invalid_value|revision_conflict|source_changed|storage_failed|unsupported|local_only|policy_restricted)$/.test(
+                            extraReason
+                        )
+                            ? extraReason
                             : "storage_failed"
                     );
                 }

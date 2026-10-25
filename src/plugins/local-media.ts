@@ -736,8 +736,15 @@ export function installLocalMedia(w: any): any {
         revision++;
         w.editCaption = w._("Media Library URL");
         w.editvar = remoteEndpoint();
+        var originalCatalogue = catalogRevision;
         w.setEdit = function () {
-            if (!current() || locked() || settingsLocked()) return;
+            if (
+                !current() ||
+                locked() ||
+                settingsLocked() ||
+                originalCatalogue !== catalogRevision
+            )
+                return;
             var value = String(w.editvar || "")
                 .trim()
                 .replace(/\/+$/, "");
@@ -752,6 +759,7 @@ export function installLocalMedia(w: any): any {
                 }
             }
             w.stbSetItem("localMediaEndpoint", value);
+            catalogRevision++;
             run(list);
         };
         w.showEditKey(null);
@@ -1174,6 +1182,9 @@ export function installLocalMedia(w: any): any {
                     ? message
                     : failureMessage(last)
             );
+        },
+        settingsRevision: function () {
+            return catalogRevision;
         },
         snapshot: function () {
             // Profile operations must never replace the provider's active scan.

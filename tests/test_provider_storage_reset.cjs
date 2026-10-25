@@ -18,6 +18,8 @@ const policyNames = [
     "isProviderAllowed",
 ];
 const visibilityNames = [
+    "visibilityRevision",
+    "confirmProviderVisibility",
     "toggleProviderSelectionVisibility",
     "toggleProviderSettingsVisibility",
     "providerSelectionUnlockCount",

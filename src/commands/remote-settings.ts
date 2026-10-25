@@ -1,6 +1,6 @@
 import { checkProviderUrl, isProviderAllowed } from "../provider";
 import { getScriptDOM } from "../utils/helpers";
-import { remotePlayerInfo } from "./remote-restart";
+import { remoteCheckpoint, remotePlayerInfo } from "./remote-restart";
 
 /** Keep the full settings dispatcher off the startup path, including in standby. */
 export function executeRemoteSettings(
@@ -104,6 +104,7 @@ export function executeRemoteSettings(
                 afterReply,
                 {
                     allowed: isProviderAllowed,
+                    checkpoint: remoteCheckpoint,
                     runtime: function () {
                         return remotePlayerInfo(w).runtime;
                     },
