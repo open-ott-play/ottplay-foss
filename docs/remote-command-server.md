@@ -860,3 +860,5 @@ proxy endpoint merely to rename the hosted address.
 ## Typed player preferences
 
 Use `ott t1 settings` to discover supported preferences, `ott t1 setting bufSize` to read one, or `ott t1 setting bufSize 3` to save with type and revision checks. [Typed settings and independent VPortal configuration](remote-player-settings.md) describes stored versus effective values, scope, conflicts, standby behavior and troubleshooting.
+
+Hosted transport bases must use canonical HTTPS URLs without a trailing slash or an explicit default port. Noncanonical configuration is rejected so discovery and transport bind exactly the same server address.
