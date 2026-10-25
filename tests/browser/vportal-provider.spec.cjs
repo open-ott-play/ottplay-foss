@@ -33,6 +33,8 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
                 json: {
                     items: [
                         {
+                            description: "A selected film description.",
+                            img: origin + "/fixture/poster.png",
                             request: { cmd: "play", id: 42 },
                             title: "Fixture film",
                             type: "stream",
@@ -42,6 +44,14 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
                 },
             });
         }
+        if (url.pathname === "/fixture/poster.png")
+            return route.fulfill({
+                body: Buffer.from(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uoAAAAASUVORK5CYII=",
+                    "base64"
+                ),
+                contentType: "image/png",
+            });
         if (url.pathname === "/fixture/video.m3u8")
             return route.fulfill({
                 body:
@@ -104,6 +114,27 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
     );
     await page.evaluate(() => window.channelsList(0, 0));
     await expect(page.locator("#list")).toContainText("Fixture film");
+    await expect(page.locator("#listDetail")).toContainText(
+        "A selected film description."
+    );
+    await expect(
+        page.locator("#listDetail .ott-channel-detail-time")
+    ).toHaveCount(0);
+    await expect(page.locator("#listDetail .ott-channel-thumbnail")).toHaveCSS(
+        "background-image",
+        /poster\.png/
+    );
+    await expect(page.locator("#listIn")).not.toContainText(
+        /no epg|нет программы/i
+    );
+    await page.evaluate(() => window.channelsKeyHandler(window.keys.N2));
+    await expect(page.locator("#listAbout")).toContainText(
+        "A selected film description."
+    );
+    await expect(page.locator("#listAbout")).not.toContainText(
+        /no epg|нет программы/i
+    );
+    await page.evaluate(() => window.aboutKeyHandler(window.keys.RETURN));
     await page.evaluate(() => window.showProviderSelection());
     await expect(page.locator("#list")).toContainText("VPortal");
     await page.evaluate(() => window.__ottEditProvider());
@@ -188,6 +219,7 @@ for (const device of ["pc", ""]) {
                 response = {
                     items: [
                         {
+                            description: "Cartoon selected from its category.",
                             request: { cmd: "play", id: 1 },
                             title: "Cartoon",
                             type: "stream",
@@ -317,6 +349,15 @@ for (const device of ["pc", ""]) {
         await expect(page.locator("#list")).toContainText("Cartoon");
         await expect(page.locator("#list")).toContainText("Episode");
         await expect(page.locator("#list")).not.toContainText("Film");
+        await expect(page.locator("#listDetail")).toContainText(
+            "Cartoon selected from its category."
+        );
+        await expect(
+            page.locator("#listDetail .ott-channel-detail-time")
+        ).toHaveCount(0);
+        await expect(page.locator("#listIn")).not.toContainText(
+            "no epg at current time"
+        );
         expect(await page.evaluate(() => window.cList.length)).toBe(3);
         await page.screenshot({
             path: test.info().outputPath("vportal-category-list.png"),
