@@ -38,12 +38,17 @@ events. Reports distinguish rate drops, overwritten ring entries and oversized
 records. A read returns at most 64 events and packs them within 60 KiB of data,
 leaving room for the 64 KiB response envelope.
 
-Stop, expiry and page hiding remove sampling timers, media/HLS listeners,
+Stop, expiry and the `pagehide` event remove sampling timers, media/HLS listeners,
 observers and animation callbacks. Stopped evidence remains available for five
 minutes; its cleanup timer does not sample. Connection/configuration/runtime
 retirement discards evidence. Changing media or replacing HLS continues the same
 capture, assigns a fresh local source label and records the change. This does
 not restart playback or extend the capture deadline.
+
+Visibility changes reset the loop, animation-frame and Long Tasks measurement
+windows. These timing observations pause while hidden and resume from a fresh
+visible baseline, excluding queued callbacks and tasks that span the transition.
+Media/HLS observations remain active until the capture stops.
 
 The diagnostic-only scheduling loop runs only within this lease. Outside it,
 ordinary debug snapshots omit scheduling metrics. Existing passive error/media
@@ -70,7 +75,9 @@ exported through remote control.
 - Animation callbacks and Long Tasks are interval aggregates. Unsupported or
   unrequested measurements are null. A nondecreasing wall-clock fallback is
   labelled explicitly; durations crossing a clock rollback or its recovery
-  remain unavailable.
+  remain unavailable. Long Tasks require the performance timeline to establish
+  visible intervals; wall-clock fallback reports them unsupported with null
+  measurements.
 - Notification events cover received, DOM creation, media fetch/receipt, image
   load, shown, updated, hidden and dropped. Duplicate delivery is a local drop,
   not proof of server coalescing. Client queueing and server coalescing are not

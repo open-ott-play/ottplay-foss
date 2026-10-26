@@ -11,6 +11,9 @@ function createPerformanceSensors(w: any, ports: any): any {
         notificationSequence = 0;
     var lastTick: any = null,
         lastFrame: any = null;
+    var visibleState: boolean | null = null,
+        visibilityRevision = 0,
+        removeVisibility: any = null;
     var rafCount = 0,
         rafGap: number | null = null,
         tasks = 0,
@@ -20,6 +23,7 @@ function createPerformanceSensors(w: any, ports: any): any {
     var maximum = 9007199254740991;
     var supported = {
         long_tasks: !!(
+            ports.origin !== null &&
             w.PerformanceObserver &&
             Array.isArray(w.PerformanceObserver.supportedEntryTypes) &&
             w.PerformanceObserver.supportedEntryTypes.indexOf("longtask") >= 0
@@ -652,10 +656,72 @@ function createPerformanceSensors(w: any, ports: any): any {
         attach("main");
         attach("pip");
     }
+    function visible(): boolean {
+        return !!(w.document && w.document.visibilityState === "visible");
+    }
+    function nextFrame(): void {
+        var revision = visibilityRevision;
+        frame = w.requestAnimationFrame(function () {
+            if (revision !== visibilityRevision) return;
+            frame = null;
+            raf();
+        });
+    }
+    function visibilityChanged(): void {
+        if (!current() || visibleState === visible()) return;
+        visibleState = visible();
+        var revision = ++visibilityRevision;
+        lastTick = visibleState ? ports.clock() : null;
+        lastFrame = null;
+        rafCount = tasks = taskTime = taskMax = taskDropped = 0;
+        rafGap = null;
+        if (frame !== null) w.cancelAnimationFrame(frame);
+        frame = null;
+        if (observer) observer.disconnect();
+        observer = null;
+        if (!visibleState) return;
+        if (ports.longTasks && supported.long_tasks) {
+            var since = ports.origin + lastTick.at;
+            try {
+                observer = new w.PerformanceObserver(function (list: any) {
+                    safe(function () {
+                        if (revision !== visibilityRevision || !visible())
+                            return;
+                        // A task may start while hidden and finish after resume.
+                        // Old observers and such boundary-spanning tasks do not
+                        // belong to this visible observation window.
+                        var entries = list.getEntries();
+                        // Count uninspected overflow conservatively as dropped.
+                        taskDropped = Math.min(
+                            maximum,
+                            taskDropped + Math.max(0, entries.length - 64)
+                        );
+                        for (var i = 0; i < Math.min(64, entries.length); i++) {
+                            var start = number(entries[i].startTime);
+                            if (start === null || start < since) continue;
+                            var duration = number(entries[i].duration);
+                            if (duration === null) continue;
+                            tasks = Math.min(maximum, tasks + 1);
+                            taskTime = Math.min(maximum, taskTime + duration);
+                            taskMax = Math.max(taskMax, duration);
+                        }
+                    });
+                });
+                observer.observe({ entryTypes: ["longtask"] });
+            } catch (_) {
+                if (observer) observer.disconnect();
+                observer = null;
+                if (revision > 1) ports.stop("unsupported");
+                else supported.long_tasks = false;
+            }
+        }
+        if (current() && ports.raf && supported.raf) nextFrame();
+    }
     function tick(): void {
         if (!current()) return;
+        visibilityChanged();
         var now = ports.clock(),
-            windowMs = interval(lastTick, now),
+            windowMs = visibleState ? interval(lastTick, now) : null,
             delay = windowMs === null ? null : Math.max(0, windowMs - 1000);
         if (delay !== null) ports.lease.loop(delay);
         refresh();
@@ -682,7 +748,7 @@ function createPerformanceSensors(w: any, ports: any): any {
                 samples: windowMs === null ? 0 : 1,
                 window_ms: windowMs === null ? 0 : windowMs,
             });
-        lastTick = now;
+        lastTick = visibleState ? now : null;
         rafCount = tasks = taskTime = taskMax = taskDropped = 0;
         rafGap = null;
         if (current())
@@ -692,12 +758,16 @@ function createPerformanceSensors(w: any, ports: any): any {
     }
     function raf(): void {
         if (!current()) return;
+        if (!visible()) {
+            visibilityChanged();
+            return;
+        }
         var now = ports.clock(),
             gap = interval(lastFrame, now);
         rafCount = Math.min(maximum, rafCount + 1);
         if (gap !== null) rafGap = Math.max(rafGap || 0, gap);
         lastFrame = now;
-        frame = w.requestAnimationFrame(raf);
+        nextFrame();
     }
     function notification(media: any, activeCount: () => number): any {
         if (!current()) return null;
@@ -797,41 +867,23 @@ function createPerformanceSensors(w: any, ports: any): any {
         },
         start: function () {
             refresh();
-            lastTick = ports.clock();
-            if (ports.longTasks && supported.long_tasks) {
-                try {
-                    observer = new w.PerformanceObserver(function (list: any) {
-                        safe(function () {
-                            var entries = list.getEntries();
-                            taskDropped = Math.min(
-                                maximum,
-                                taskDropped + Math.max(0, entries.length - 64)
-                            );
-                            for (
-                                var i = 0;
-                                i < Math.min(64, entries.length);
-                                i++
-                            ) {
-                                var duration = number(entries[i].duration);
-                                if (duration === null) continue;
-                                tasks = Math.min(maximum, tasks + 1);
-                                taskTime = Math.min(
-                                    maximum,
-                                    taskTime + duration
-                                );
-                                taskMax = Math.max(taskMax, duration);
-                            }
-                        });
-                    });
-                    observer.observe({ entryTypes: ["longtask"] });
-                } catch (_) {
-                    if (observer) observer.disconnect();
-                    observer = null;
-                    supported.long_tasks = false;
-                }
+            if (
+                w.document &&
+                w.document.addEventListener &&
+                w.document.removeEventListener
+            ) {
+                w.document.addEventListener(
+                    "visibilitychange",
+                    visibilityChanged
+                );
+                removeVisibility = function () {
+                    w.document.removeEventListener(
+                        "visibilitychange",
+                        visibilityChanged
+                    );
+                };
             }
-            if (ports.raf && supported.raf)
-                frame = w.requestAnimationFrame(raf);
+            visibilityChanged();
             timer = w.setTimeout(function () {
                 safe(tick);
             }, 1000);
@@ -841,6 +893,7 @@ function createPerformanceSensors(w: any, ports: any): any {
             if (timer !== null) w.clearTimeout(timer);
             if (frame !== null) w.cancelAnimationFrame(frame);
             if (observer) observer.disconnect();
+            if (removeVisibility) removeVisibility();
             if (removeBackend) removeBackend();
             Object.keys(owners).forEach(function (lane) {
                 detach(owners[lane]);

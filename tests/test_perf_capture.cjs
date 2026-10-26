@@ -231,6 +231,17 @@ function fixture(options = {}) {
         getConfig: () => config,
         runtime: () => currentRuntime,
     });
+    const visibilityListeners = new Set();
+    const addEvent = w.document.addEventListener.bind(w.document);
+    const removeEvent = w.document.removeEventListener.bind(w.document);
+    w.document.addEventListener = (type, listener, options) => {
+        if (type === "visibilitychange") visibilityListeners.add(listener);
+        addEvent(type, listener, options);
+    };
+    w.document.removeEventListener = (type, listener, options) => {
+        if (type === "visibilitychange") visibilityListeners.delete(listener);
+        removeEvent(type, listener, options);
+    };
     vm.runInNewContext(sensors, context);
     vm.runInNewContext(controls, context);
     let emit;
@@ -302,6 +313,14 @@ function fixture(options = {}) {
         runtime: (v) => (currentRuntime = v),
         setRanges: (v) => (ranges = v),
         timers,
+        visibility(value) {
+            Object.defineProperty(w.document, "visibilityState", {
+                configurable: true,
+                value,
+            });
+            w.document.dispatchEvent(new w.Event("visibilitychange"));
+        },
+        visibilityListeners,
         w,
         wall: (v) => (wall = v),
     };
@@ -580,11 +599,18 @@ test("requested raf and LongTasks aggregate only finite bounded entries and stop
     }
     f.observer.fn({
         getEntries: () =>
-            Array.from({ length: 100 }, () => ({
+            Array.from({ length: 100 }, (_, index) => ({
                 get attribution() {
                     throw new Error("private attribution read");
                 },
                 duration: 60,
+                get startTime() {
+                    assert(
+                        index < 64,
+                        "overflow entries must not be inspected"
+                    );
+                    return 10000;
+                },
             })),
     });
     f.advance(1000);
@@ -595,6 +621,139 @@ test("requested raf and LongTasks aggregate only finite bounded entries and stop
     f.request("stop");
     assert.equal(f.frames.size, 0);
     assert.equal(f.observer.connected, false);
+    f.close();
+});
+test("visibility transitions discard hidden loop, RAF and queued LongTask intervals", async () => {
+    const f = fixture();
+    f.request("status");
+    f.w.__ottRuntimeDebug.configurationChanged();
+    const baseline = f.visibilityListeners.size;
+    f.request("start", { raf: true });
+    const firstObserver = f.observer;
+    const firstFrame = [...f.frames.values()][0];
+    f.advance(1000);
+    const before = all(f).events.filter(
+        (event) => event.kind === "loop"
+    ).length;
+    firstObserver.fn({
+        getEntries: () => [{ duration: 60, startTime: 10500 }],
+    });
+    f.visibility("hidden");
+    f.advance(4000);
+    assert.equal(
+        all(f).events.filter((event) => event.kind === "loop").length,
+        before,
+        "Hidden timer intervals must not become loop observations"
+    );
+    assert.equal(f.frames.size, 0);
+    assert.equal(firstObserver.connected, false);
+    firstObserver.fn({
+        getEntries: () => [{ duration: 3000, startTime: 11000 }],
+    });
+    f.visibility("visible");
+    const resumed = f.observer;
+    assert.notEqual(resumed, firstObserver);
+    // Already-queued callbacks and a task spanning the visibility boundary
+    // must not enter the fresh visible observation window.
+    firstObserver.fn({
+        getEntries: () => [{ duration: 3000, startTime: 11000 }],
+    });
+    firstFrame();
+    resumed.fn({ getEntries: () => [{ duration: 200, startTime: 14900 }] });
+    f.advance(100, false);
+    for (const [id, fn] of [...f.frames]) {
+        f.frames.delete(id);
+        fn();
+    }
+    resumed.fn({ getEntries: () => [{ duration: 60, startTime: 15010 }] });
+    f.advance(900);
+    const loop = all(f)
+        .events.filter((event) => event.kind === "loop")
+        .at(-1).data;
+    assert.equal(loop.window_ms, 1000);
+    assert.equal(loop.max_delay_ms, 0);
+    assert.equal(loop.raf_callbacks, 1);
+    assert.equal(loop.raf_max_gap_ms, null);
+    assert.equal(loop.long_tasks, 1);
+    assert.equal(loop.long_tasks_total_ms, 60);
+    assert.equal(loop.long_task_entries_dropped, 0);
+    f.visibility("hidden");
+    f.advance(5000, false); // Browsers may suspend every timer while hidden.
+    f.visibility("visible");
+    f.advance(1000);
+    const afterSuspension = all(f)
+        .events.filter((event) => event.kind === "loop")
+        .at(-1).data;
+    assert.equal(afterSuspension.window_ms, 1000);
+    assert.equal(afterSuspension.max_delay_ms, 0);
+    assert.equal(afterSuspension.long_tasks, 0);
+    assert.equal(afterSuspension.raf_callbacks, 0);
+    const metrics = (await f.w.__ottRuntimeDebug.snapshot()).metrics;
+    assert.equal(metrics.loopMaxDelayMs, 0);
+    assert.equal(f.visibilityListeners.size, baseline + 1);
+    f.request("stop");
+    assert.equal(f.visibilityListeners.size, baseline);
+    assert.equal(f.frames.size, 0);
+    assert.equal(resumed.connected, false);
+    f.close();
+    assert.equal(f.visibilityListeners.size, 0);
+});
+test("capture started hidden waits for a visible timing baseline and removes its listener on pagehide", () => {
+    const f = fixture();
+    f.w.__ottRuntimeDebug.configurationChanged();
+    const baseline = f.visibilityListeners.size;
+    f.visibility("hidden");
+    f.request("start", { raf: true });
+    f.advance(5000);
+    assert.equal(
+        all(f).events.filter((event) => event.kind === "loop").length,
+        0
+    );
+    assert.equal(f.frames.size, 0);
+    assert.equal(f.observer, undefined);
+    f.visibility("visible");
+    f.advance(1000);
+    assert.equal(
+        all(f).events.find((event) => event.kind === "loop").data.window_ms,
+        1000
+    );
+    f.w.dispatchEvent(new f.w.Event("pagehide"));
+    assert.equal(f.visibilityListeners.size, baseline);
+    assert.equal(f.frames.size, 0);
+    assert.equal(f.observer.connected, false);
+    f.w.dispatchEvent(new f.w.Event("pageshow"));
+    assert.equal(f.request("status").data.session.reason, "page_hidden");
+    f.close();
+});
+test("wall fallback cannot assign LongTask startTime to a visible window", () => {
+    const f = fixture({ wall: true });
+    const start = f.request("start").data.session;
+    assert.equal(start.clock, "wall_fallback");
+    assert.equal(start.supported.long_tasks, false);
+    f.advance(1000);
+    assert.equal(
+        all(f).events.find((event) => event.kind === "loop").data.long_tasks,
+        null
+    );
+    f.close();
+});
+test("observer failure on visibility resume retires capture without changing its support contract", () => {
+    const f = fixture();
+    f.request("start", { raf: true });
+    f.visibility("hidden");
+    const Observer = f.w.PerformanceObserver;
+    f.w.PerformanceObserver = class extends Observer {
+        observe() {
+            throw Error("observer no longer available");
+        }
+    };
+    f.visibility("visible");
+    const session = f.request("status").data.session;
+    assert.equal(session.state, "stopped");
+    assert.equal(session.reason, "unsupported");
+    assert.equal(session.supported.long_tasks, true);
+    assert.equal(f.frames.size, 0);
+    assert.equal(f.hls.count(), 0);
     f.close();
 });
 test("all event families produce a real controller-validation corpus", () => {
