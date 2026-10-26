@@ -3402,7 +3402,9 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                                 return result;
                             });
                         const baseline = await measure();
-                        for (const percent of [20, 200, 20, 100, 23, 150, 100]) {
+                        for (const percent of [
+                            20, 200, 20, 100, 23, 150, 100,
+                        ]) {
                             expect(
                                 await page.evaluate(
                                     (percent) =>
