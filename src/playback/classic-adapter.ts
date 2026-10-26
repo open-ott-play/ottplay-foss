@@ -984,18 +984,29 @@ function classicPlaybackBookmark(): any {
 function classicPlaybackCheckpoint(snapshot: any, force = false): void {
     var w = classicPlaybackHost();
     var target = snapshot && (snapshot.historyTarget || snapshot.target);
+    var mediaTarget = target;
+    var media = w.__ottMedia?.current?.();
     if (
-        target &&
-        target.kind === "vod" &&
+        snapshot?.target?.kind === "vod" &&
+        media?.ref.sourceId === snapshot.target.sourceId &&
+        media.ref.itemId === snapshot.target.channelId
+    )
+        mediaTarget = snapshot.target;
+    if (
+        mediaTarget &&
+        mediaTarget.kind === "vod" &&
         !classicPersistenceSuspended &&
         w.__ottMedia
     ) {
+        // Media playlists retain a channel navigation target alongside the
+        // actual VOD identity. Persist both; channel history is not a cursor
+        // for the movie and must not hide its periodic media checkpoint.
         w.__ottMedia.checkpoint(
-            { itemId: target.channelId, sourceId: target.sourceId },
+            { itemId: mediaTarget.channelId, sourceId: mediaTarget.sourceId },
             snapshot.position,
             force || snapshot.phase !== "playing"
         );
-        return;
+        if (target.kind === "vod") return;
     }
     if (!target || target.sourceId !== classicPlaybackSource(w)) return;
     var journal = classicPlaybackJournal();

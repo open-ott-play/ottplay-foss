@@ -1,17 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../helpers/browser-test.cjs");
 const link = "portal::[key:FIXTURE_VPORTAL_SECRET]https://portal.fixture/api/";
 test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
-test("VPortal flat channel playlist locks playback and restores after reload", async ({
-    page,
-    context,
-    baseURL,
-}) => {
+async function installPortal(context, baseURL, attemptStart = 0) {
     const origin = new URL(baseURL).origin;
-    let resolutions = 0;
+    let resolutions = attemptStart;
     await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
         if (url.pathname.endsWith("/vportal/api")) {
@@ -94,6 +90,15 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
             return play.call(this);
         };
     }, link);
+    return () => resolutions;
+}
+
+test("VPortal flat channel playlist locks playback and restores after reload", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const resolutions = await installPortal(context, baseURL);
     await page.goto("/f/pc/");
     await expect
         .poll(() => page.evaluate(() => window.commandChannelsReady))
@@ -140,11 +145,11 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
     );
     expect(stored).not.toContain("video.m3u8");
     expect(stored).not.toContain("FIXTURE_VPORTAL_SECRET");
-    const before = resolutions;
+    const before = resolutions();
     await page.keyboard.press("Enter");
     expect(await page.evaluate(() => window.__ottKiosk.locked())).toBe(true);
     await page.reload();
-    await expect.poll(() => resolutions).toBeGreaterThan(before);
+    await expect.poll(resolutions).toBeGreaterThan(before);
     await page.waitForFunction(
         () => document.querySelector("video")?.currentTime > 0.2
     );
@@ -164,6 +169,86 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
     await page.evaluate(() => window.showProviderSelection());
     await expect(page.locator("#list")).toContainText("VPortal");
 });
+
+// Persisted bytes are captured before closing the old page. The replacement
+// context cannot benefit from visibilitychange, beforeunload or close handlers.
+for (const device of ["pc", "lg/webos"]) {
+    test(`VPortal periodic checkpoint restores a cold ${device} launch`, async ({
+        browser,
+        baseURL,
+    }) => {
+        test.setTimeout(45000);
+        const first = await browser.newContext({
+            serviceWorkers: "block",
+            viewport: { height: 720, width: 1280 },
+        });
+        let second;
+        try {
+            await installPortal(first, baseURL);
+            const playing = await first.newPage();
+            await playing.goto(new URL(`/f/${device}/`, baseURL).href);
+            await playing.waitForFunction(
+                () => document.querySelector("video")?.currentTime > 8,
+                null,
+                { timeout: 20000 }
+            );
+            const read = () =>
+                playing.evaluate(() => {
+                    const media = window.__ottMedia.current();
+                    const raw = window.providerGetItem(
+                        "mediaJournal.v1:" + media.ref.sourceId
+                    );
+                    const journal = raw && JSON.parse(raw);
+                    const saved = journal?.history.find(
+                        (row) => row.itemId === media.ref.itemId
+                    );
+                    return {
+                        ref: media.ref,
+                        saved: saved?.position || 0,
+                        state: window.__ottClassicPlayback.snapshot(),
+                        url: media.payload.stream_url,
+                    };
+                });
+            await expect
+                .poll(async () => (await read()).saved)
+                .toBeGreaterThan(5);
+            const before = await read();
+            expect(before.state.target.kind).toBe("vod");
+            expect(before.state.historyTarget.kind).toBe("live");
+            expect(before.state.target.channelId).toBe(before.ref.itemId);
+            const persisted = await first.storageState();
+            await first.close();
+
+            second = await browser.newContext({
+                serviceWorkers: "block",
+                storageState: persisted,
+                viewport: { height: 720, width: 1280 },
+            });
+            // The new signed URL belongs to a fresh provider session. Resume
+            // identity must come from the source/item, never the expired URL.
+            const resolutions = await installPortal(second, baseURL, 100);
+            const restored = await second.newPage();
+            await restored.goto(new URL(`/f/${device}/`, baseURL).href);
+            await expect.poll(resolutions).toBeGreaterThan(100);
+            await expect
+                .poll(() =>
+                    restored.evaluate(() => window.video?.currentTime || 0)
+                )
+                .toBeGreaterThan(before.saved - 1);
+            const after = await restored.evaluate(() => ({
+                position: window.__ottClassicPlayback.snapshot().position,
+                ref: window.__ottMedia.current().ref,
+                url: window.__ottMedia.current().payload.stream_url,
+            }));
+            expect(after.ref).toEqual(before.ref);
+            expect(after.url).not.toBe(before.url);
+            expect(after.position).toBeGreaterThan(before.saved - 1);
+        } finally {
+            if (second) await second.close();
+            await first.close();
+        }
+    });
+}
 
 for (const device of ["pc", ""]) {
     test(`VPortal whole portal and category visibility ${device || "generic"}`, async ({
