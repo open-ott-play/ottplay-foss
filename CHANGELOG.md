@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Allow touchscreen browsers to drag and flick through channel and settings
+  lists across page boundaries. Preserve browser click selection, native tap
+  activation, mouse-wheel navigation and remote-control behavior.
 
 - Avoid rebuilding unchanged video resolution and bitrate text each second or
   while the footer is hidden. Refresh it immediately when the footer opens,
