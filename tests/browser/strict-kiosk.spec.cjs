@@ -294,6 +294,9 @@ for (const provider of ["m3u", "vportal"]) {
         expect(after - before).toBeLessThan(10);
         if (provider === "vportal") {
             async function seekReadyBar() {
+                // The fixture's first bitrate sample adds a footer row. Wait
+                // for that real metadata before capturing gesture geometry.
+                await expect(page.locator("#video_res")).toContainText(/Mbps/);
                 // currentTime changes before an HLS seek has decoded its target.
                 // Strict kiosk intentionally rejects gestures during that loading
                 // phase; wait for admission and use the settled footer geometry.
@@ -310,7 +313,11 @@ for (const provider of ["m3u", "vportal"]) {
                         })
                     )
                     .toBe(true);
-                const box = await page.locator("#progress_div").boundingBox();
+                const progress = await page
+                    .locator("#progress_div")
+                    .elementHandle();
+                await progress.waitForElementState("stable");
+                const box = await progress.boundingBox();
                 expect(box.height).toBeGreaterThanOrEqual(24);
                 return box;
             }
