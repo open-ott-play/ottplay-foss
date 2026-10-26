@@ -1804,6 +1804,25 @@ function createPlexClient(
         var mime = originalMime(media);
         if (mime === "application/octet-stream" || mime === "video/x-matroska")
             return false;
+        if (String(media.videoCodec).toLowerCase() === "h264") {
+            // The legacy AVC probe describes 8-bit Baseline, not High 10.
+            // Keep incomplete ordinary metadata compatible, but never use that
+            // probe to admit a file that Plex explicitly identifies as >8-bit.
+            var high10 = /^\s*high[ _-]*10(?:[ _-]|$)/i;
+            var part = plexRows(media.Part)[0];
+            if (
+                high10.test(String(media.videoProfile || "")) ||
+                plexRows(part && part.Stream).some(function (stream) {
+                    return (
+                        stream &&
+                        Number(stream.streamType) === 1 &&
+                        (Number(stream.bitDepth) > 8 ||
+                            high10.test(String(stream.profile || "")))
+                    );
+                })
+            )
+                return false;
+        }
         var video = codec(media, true),
             audio = codec(media, false);
         if (
