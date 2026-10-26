@@ -1,6 +1,6 @@
 # Read trusted base metadata only; do not check out or execute PR code.
 name: Auto Merge PRs
-'on':
+"on":
   pull_request_target:
     types:
       - opened

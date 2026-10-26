@@ -24,7 +24,14 @@ repos:
     rev: 38980559e3a605691d6579f96222c30778e5a69e # 3.0.0
     hooks:
       - id: shellcheck
-        args: [--exclude=SC2154, --exclude=SC2164, --exclude=SC2181, --exclude=SC2029, --exclude=SC1091]
+        args:
+          [
+            --exclude=SC2154,
+            --exclude=SC2164,
+            --exclude=SC2181,
+            --exclude=SC2029,
+            --exclude=SC1091,
+          ]
 
   # Biome lint + format + organize imports check over the scoped tree.
   # No --write: hook fails on issues but never mutates the working tree,

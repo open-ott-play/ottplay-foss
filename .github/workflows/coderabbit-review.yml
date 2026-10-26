@@ -2,7 +2,7 @@ name: CodeRabbit Review Requests
 
 on:
   pull_request_target:
-    types: [opened]
+    types: [ opened ]
   workflow_dispatch:
     inputs:
       pull-request-number:
