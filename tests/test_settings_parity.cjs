@@ -354,7 +354,12 @@ function fixture(
                     "setPlayer",
                 ],
                 [],
-                ["_coreAutoCancel", "_corePipAutoCancel", "playerModeNames"]
+                [
+                    "_coreAutoCancel",
+                    "_corePipAutoCancel",
+                    "playerModeNames",
+                    "bufferSizes",
+                ]
             )
         ),
         w
@@ -1016,8 +1021,9 @@ for (const device of ["lg/webos", "lg/netcast", "pc"]) {
                 const buffer = w.listArray.find(
                     (row) => row.name === "Buffer Size, s"
                 );
-                const nextBuffer = (w.sBufSize + 1) % buffer.values.length;
-                buffer.val = nextBuffer;
+                const nextIndex = (buffer.val + 1) % buffer.values.length;
+                const nextBuffer = buffer.settingValues[nextIndex];
+                buffer.val = nextIndex;
                 const editor = w.listArray.find((row) => row.name === "Editor");
                 if (editor) editor.val = 1;
                 save(w);
@@ -1913,4 +1919,88 @@ for (const profile of [
 }
 console.log(
     "OK: subtitle appearance Save/Cancel/reset across player settings variants"
+);
+
+// Remote/native buffer values must remain readable and untouched by UI visits,
+// including old device lists and legacy values that mean automatic buffering.
+for (const profile of [
+    "server",
+    "tauri",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    for (const legacy of [false, true]) {
+        for (const value of [0, 30, 300]) {
+            for (const menu of ["stbOptions", "settingsInterface"]) {
+                const { w, stored } = fixture(profile);
+                assert.equal(w.bufferSizes.length, 18);
+                assert.equal(w.bufferSizes.at(-1), "120");
+                if (legacy) {
+                    w.bufferSizes = Array.from({ length: 11 }, (_, i) =>
+                        String(i)
+                    );
+                    w.bufferSizes[0] = "Automatic";
+                    w.stbBufferSizes = w.bufferSizes;
+                }
+                stored.set("sBufSize", String(value));
+                vm.runInContext("loadSettings();", w);
+                const open = () => {
+                    w[menu]();
+                    const row = w.listArray.find(
+                        (item) => item.settingId === "bufSize"
+                    );
+                    assert.equal(
+                        row.settingValues
+                            ? row.settingValues[row.val]
+                            : row.val,
+                        value
+                    );
+                    assert(
+                        w
+                            .getListItem(row)
+                            .includes(
+                                ">" +
+                                    (legacy && value === 0
+                                        ? "Automatic"
+                                        : value) +
+                                    (value > 120 ? " (Automatic)" : "") +
+                                    "&nbsp;"
+                            )
+                    );
+                    assert(!w.getListItem(row).includes("undefined"));
+                    return row;
+                };
+                let row = open();
+                row.val = 0;
+                w.listKeyHandlerFn(w.keys.RETURN);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    String(value),
+                    "cancel preserves buffer bytes"
+                );
+                row = open();
+                const editor = w.listArray.find(
+                    (item) => item.settingId === "editor"
+                );
+                if (editor) editor.val = editor.val ? 0 : 1;
+                save(w);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    String(value),
+                    "unrelated save preserves buffer bytes"
+                );
+                row = open();
+                row.val = 0;
+                save(w);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    "0",
+                    "automatic remains selectable"
+                );
+            }
+        }
+    }
+}
+console.log(
+    "OK: buffer values survive UI readback, cancel and unrelated save across device lists"
 );

@@ -134,7 +134,7 @@ function loadCoreMediaEngine(
         );
 }
 
-/** Available preload buffer sizes (indexes into a numeric range). */
+/** Useful explicit buffer seconds; zero retains automatic buffering. */
 export var bufferSizes = [
     "0",
     "1",
@@ -147,6 +147,13 @@ export var bufferSizes = [
     "8",
     "9",
     "10",
+    "15",
+    "20",
+    "30",
+    "45",
+    "60",
+    "90",
+    "120",
 ];
 
 /** Button label for the Exit key. */

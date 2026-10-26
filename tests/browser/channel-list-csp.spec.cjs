@@ -3461,3 +3461,57 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         }
     );
 }
+
+test("buffer seconds remain mapped and readable in a narrow settings picker", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "server");
+    const { page } = fixture;
+    try {
+        await page.setViewportSize({ height: 800, width: 360 });
+        await page.evaluate(() => {
+            saveSettings({ bufSize: 30 });
+            setFontSize();
+            stbOptions();
+            window.__bufferRow = listArray.find(
+                (row) => row.settingId === "bufSize"
+            );
+            selectValue(__bufferRow);
+        });
+        await expect(page.locator("#listDetail")).toHaveText("30");
+        const choice = page
+            .locator("#listAbout .osk-key")
+            .filter({ hasText: /^45$/ });
+        await expect(choice).toBeVisible();
+        const bounds = await choice.evaluate((node) => {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const text = range.getBoundingClientRect();
+            const cell = node.getBoundingClientRect();
+            return {
+                left: cell.left,
+                right: cell.right,
+                textWidth: text.width,
+                width: cell.width,
+            };
+        });
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(360);
+        expect(bounds.textWidth).toBeLessThan(bounds.width);
+        await choice.click();
+        await choice.click();
+        expect(
+            await page.evaluate(
+                () => __bufferRow.settingValues[__bufferRow.val]
+            )
+        ).toBe(45);
+        await page.evaluate(() => _doKey(keys.RETURN));
+        expect(await page.evaluate(() => Number(stbGetItem("sBufSize")))).toBe(
+            30
+        );
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
