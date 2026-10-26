@@ -84,6 +84,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --ignore-scripts
+      - name: Build lazy diagnostic assets for real transport smokes
+        run: npm run build
       - name: Build the pinned control server
         working-directory: .control-integration
         run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
@@ -117,12 +119,14 @@ jobs:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
           OTT_DEBUG_ENGINE_V2: unsupported-controller
+          OTT_PERF_CAPTURE: unsupported-controller
         run: node scripts/smoke-workbench.cjs
       - name: Exercise explicit engine inspection and default legacy payloads
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
           OTT_DEBUG_ENGINE_V2: '1'
+          OTT_PERF_CAPTURE: '1'
         run: node scripts/smoke-workbench.cjs
       - name: Exercise roadmap with the current controller
         run: node .control-current/scripts/smoke_foss_roadmap.cjs .
