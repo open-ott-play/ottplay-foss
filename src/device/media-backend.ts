@@ -463,7 +463,11 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     engine.diagnosticMedia();
                 return value
                     ? {
-                          generation: context ? context.generation : null,
+                          // The fallback context belongs to main, not PiP.
+                          generation:
+                              lane === "main" && context
+                                  ? context.generation
+                                  : null,
                           hls: value.hls,
                           media: value.media,
                       }
