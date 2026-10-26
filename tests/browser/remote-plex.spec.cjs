@@ -272,12 +272,14 @@ test("remote Plex loads lazily, ends its exact queue and restores a current favo
             return { current: window.stbGetVolume(), step: window.sVolumeStep };
         });
         await page.keyboard.press("ArrowRight");
-        expect(await page.evaluate(() => window.stbGetVolume())).toBe(
-            volume.current + volume.step
+        expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+            volume.current + volume.step,
+            8
         );
         await page.keyboard.press("ArrowLeft");
-        expect(await page.evaluate(() => window.stbGetVolume())).toBe(
-            volume.current
+        expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+            volume.current,
+            8
         );
         expect(await page.evaluate(() => window.__queueSeeks)).toEqual([]);
         expect(
