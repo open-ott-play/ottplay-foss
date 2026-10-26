@@ -255,9 +255,9 @@ function remote(f) {
                                 isProviderAllowed: () =>
                                     f.remoteAllowed !== false,
                             };
-                        if (dependency === "../utils/helpers")
+                        if (dependency === "./remote-feature")
                             return {
-                                getScriptDOM() {
+                                loadRemoteFeature() {
                                     throw new Error(
                                         "Fixture preloads the settings dispatcher"
                                     );
@@ -282,6 +282,14 @@ function remote(f) {
                 executeRemoteScreenshot() {
                     throw new Error(
                         "Plex provider settings must not request a screenshot"
+                    );
+                },
+            };
+        if (name === "./remote-perf")
+            return {
+                executeRemotePerformance() {
+                    throw new Error(
+                        "Plex provider settings must not capture performance"
                     );
                 },
             };

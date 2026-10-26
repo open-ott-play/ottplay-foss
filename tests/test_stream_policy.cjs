@@ -21,7 +21,11 @@ const core = ts.createSourceFile(
     ts.ScriptTarget.Latest,
     true
 );
-const recovery = ["countCoreAttempt", "createCoreStreamAttempt"]
+const recovery = [
+    "reportCorePerformance",
+    "countCoreAttempt",
+    "createCoreStreamAttempt",
+]
     .map((name) => {
         const node = core.statements.find(
             (candidate) =>
