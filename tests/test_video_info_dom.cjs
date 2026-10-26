@@ -148,6 +148,42 @@ test("animated and strict footer openings immediately show current metadata", ()
     }
 });
 
+test("strict gesture keepalive preserves metadata until the normal refresh", () => {
+    const f = fixture();
+    try {
+        f.w.__ottKiosk = { strict: () => true };
+        const scheduled = [];
+        const cleared = [];
+        f.w.setTimeout = (callback, delay) => {
+            scheduled.push({ callback, delay });
+            return scheduled.length;
+        };
+        f.w.clearTimeout = (timer) => cleared.push(timer);
+        f.rate(0);
+        f.w.showChannelInfo(5);
+        assert.equal(f.label.innerHTML, "<br>1920x1080");
+        assert.equal(f.mutations(), 1);
+        // A segment can finish after the seek is ready but before touchstart.
+        // Adding its bitrate line inside the gesture would move the seek bar.
+        f.rate(4);
+        const first = f.label.firstChild;
+        f.w.showChannelInfo(5);
+        assert.equal(f.mutations(), 0);
+        assert.equal(f.label.firstChild, first);
+        assert.equal(f.label.innerHTML, "<br>1920x1080");
+        assert.equal(f.w.$infoBar.is(":visible"), true);
+        assert.ok(cleared.includes(1));
+        assert.equal(f.w.infoTimeout, 2);
+        assert.equal(scheduled[1].callback, f.w.infoBarHide);
+        assert.equal(scheduled[1].delay, 5000);
+        f.w.updateCoreVideoInfo();
+        assert.equal(f.mutations(), 1);
+        assert.equal(f.label.innerHTML, "<br>1920x1080<br>4 Mbps");
+    } finally {
+        f.close();
+    }
+});
+
 test("unchanged rounded bitrate preserves nodes and unavailable bitrate is removed", () => {
     const f = fixture();
     try {

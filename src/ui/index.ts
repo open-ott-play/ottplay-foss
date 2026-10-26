@@ -796,7 +796,8 @@ export function showChannelInfo(timeoutSec: number): void {
         // Strict input owns the limited media seek gesture; other footer controls
         // and expandable details remain blocked, with a bounded display lifetime.
         $("#descr, #progress_span").hide();
-        updateCoreVideoInfo(true);
+        // Gesture keepalives must not change the captured seek-bar geometry.
+        if (!$infoBar.is(":visible")) updateCoreVideoInfo(true);
         $infoBar.stop(true, true).show();
         infoTimeout = setTimeout(infoBarHide, 5000);
         return;

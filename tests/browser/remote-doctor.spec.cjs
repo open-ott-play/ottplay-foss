@@ -865,7 +865,7 @@ test("runtime debug captures real frame counters and lifecycle without changing 
     context,
     baseURL,
 }) => {
-    await fixture(page, context, baseURL);
+    const observed = await fixture(page, context, baseURL);
     await context.route("**/runtime-debug-control/**", (route) =>
         route.fulfill({ json: { error: "fixture" }, status: 403 })
     );
@@ -889,54 +889,102 @@ test("runtime debug captures real frame counters and lifecycle without changing 
             })
         );
     }, new URL("/runtime-debug-control/", baseURL).href);
-    await expect
-        .poll(() =>
-            page.evaluate(
-                async () =>
-                    (await window.__ottRuntimeDebug.snapshot()).metrics
-                        .loopSamples
-            )
-        )
-        .toBeGreaterThan(0);
-    const before = await page.evaluate(() => ({
-        generation: window.__ottClassicPlayback.snapshot().generation,
-        source: document.getElementById("video").currentSrc,
-    }));
-    const reply = await page.evaluate(
-        (runtime) =>
-            new Promise((resolve) => {
-                window.executeRemoteRequest(
-                    {
-                        action: "inspect",
-                        params: { runtime, section: "debug", version: 1 },
-                    },
-                    resolve
-                );
-            }),
-        initial.data.player.runtime
-    );
-    expect(reply.status).toBe("ok");
-    const data = reply.data.data;
-    expect(data.native).toEqual({ data: null, state: "unsupported" });
-    expect(data.metrics.errorCount).toBe(1);
-    expect(data.events.some((event) => event.code === "error")).toBe(true);
-    expect(data.media[0].metrics.totalFrames).toBeGreaterThan(0);
-    expect(data.media[0].generation).toBe(before.generation);
-    expect(data.metrics.controlConsecutiveFailures).toBeGreaterThanOrEqual(0);
-    expect(JSON.stringify(data)).not.toContain("PRIVATE-DEBUG-MESSAGE");
-    expect(JSON.stringify(data)).not.toContain("private.invalid");
-    expect(JSON.stringify(data)).not.toContain(SECRET);
-    const after = await page.evaluate(() => ({
-        generation: window.__ottClassicPlayback.snapshot().generation,
-        source: document.getElementById("video").currentSrc,
-    }));
-    expect(after).toEqual(before);
-    const disconnected = await page.evaluate(async () => {
-        window.__ottCommandServer.configure({
-            address: "",
-            enabled: false,
-            token: "",
+    const runtime = initial.data.player.runtime;
+    const sessionId = "d".repeat(32);
+    const performanceRequest = (op, options = {}) =>
+        page.evaluate(
+            (params) =>
+                new Promise((resolve) => {
+                    window.executeRemoteRequest(
+                        { action: "perf_capture", params },
+                        resolve
+                    );
+                }),
+            { op, runtime, session_id: sessionId, version: 1, ...options }
+        );
+    const playback = () =>
+        page.evaluate(() => ({
+            generation: window.__ottClassicPlayback.snapshot().generation,
+            source: document.getElementById("video").currentSrc,
+        }));
+    const before = await playback();
+    try {
+        // Ordinary debug snapshots must not start performance sampling.
+        const idle = await page.evaluate(async () => ({
+            metrics: (await window.__ottRuntimeDebug.snapshot()).metrics,
+            sampling: !!window.__ottPerfSink,
+        }));
+        expect(idle.metrics.loopSamples).toBeUndefined();
+        expect(idle.sampling).toBe(false);
+        expect(observed.requests).not.toContain("/dist/perf-capture.js");
+        const started = await performanceRequest("start", {
+            duration_seconds: 30,
+            long_tasks: false,
+            raf: false,
         });
+        expect(started.status).toBe("ok");
+        expect(observed.requests).toContain("/dist/perf-capture.js");
+        expect(started.data.session.state).toBe("active");
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    async () =>
+                        (await window.__ottRuntimeDebug.snapshot()).metrics
+                            .loopSamples
+                )
+            )
+            .toBeGreaterThan(0);
+        const reply = await page.evaluate(
+            (runtime) =>
+                new Promise((resolve) => {
+                    window.executeRemoteRequest(
+                        {
+                            action: "inspect",
+                            params: { runtime, section: "debug", version: 1 },
+                        },
+                        resolve
+                    );
+                }),
+            runtime
+        );
+        expect(reply.status).toBe("ok");
+        const data = reply.data.data;
+        expect(data.native).toEqual({ data: null, state: "unsupported" });
+        expect(data.metrics.errorCount).toBe(1);
+        expect(data.events.some((event) => event.code === "error")).toBe(true);
+        expect(data.media[0].metrics.totalFrames).toBeGreaterThan(0);
+        expect(data.media[0].generation).toBe(before.generation);
+        expect(data.metrics.controlConsecutiveFailures).toBeGreaterThanOrEqual(
+            0
+        );
+        expect(JSON.stringify(data)).not.toContain("PRIVATE-DEBUG-MESSAGE");
+        expect(JSON.stringify(data)).not.toContain("private.invalid");
+        expect(JSON.stringify(data)).not.toContain(SECRET);
+        expect(await playback()).toEqual(before);
+        const stopped = await performanceRequest("stop");
+        expect(stopped.status).toBe("ok");
+        expect(stopped.data.session).toMatchObject({
+            reason: "requested",
+            state: "stopped",
+        });
+        const idleAgain = await page.evaluate(async () => ({
+            metrics: (await window.__ottRuntimeDebug.snapshot()).metrics,
+            sampling: !!window.__ottPerfSink,
+        }));
+        expect(idleAgain.metrics.loopSamples).toBeUndefined();
+        expect(idleAgain.sampling).toBe(false);
+        expect(await playback()).toEqual(before);
+    } finally {
+        // Revoking the connection also retires a capture if an assertion fails.
+        await page.evaluate(() =>
+            window.__ottCommandServer.configure({
+                address: "",
+                enabled: false,
+                token: "",
+            })
+        );
+    }
+    const disconnected = await page.evaluate(async () => {
         try {
             await window.__ottRuntimeDebug.snapshot();
             return false;
