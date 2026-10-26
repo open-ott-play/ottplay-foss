@@ -981,21 +981,35 @@ function classicPlaybackBookmark(): any {
     };
 }
 
-function classicPlaybackCheckpoint(snapshot: any, force = false): void {
+function classicPlaybackCheckpoint(snapshot: any, force?: boolean): void {
     var w = classicPlaybackHost();
     var target = snapshot && (snapshot.historyTarget || snapshot.target);
+    var mediaTarget = snapshot && snapshot.target;
+    var media = w.__ottMedia;
+    var current = media && media.current && media.current();
     if (
-        target &&
-        target.kind === "vod" &&
+        !mediaTarget ||
+        mediaTarget.kind !== "vod" ||
+        !current ||
+        current.ref.sourceId !== mediaTarget.sourceId ||
+        current.ref.itemId !== mediaTarget.channelId
+    )
+        mediaTarget = target;
+    if (
+        mediaTarget &&
+        mediaTarget.kind === "vod" &&
         !classicPersistenceSuspended &&
-        w.__ottMedia
+        media
     ) {
-        w.__ottMedia.checkpoint(
-            { itemId: target.channelId, sourceId: target.sourceId },
+        // Media playlists retain a channel navigation target alongside the
+        // actual VOD identity. Persist both; channel history is not a cursor
+        // for the movie and must not hide its periodic media checkpoint.
+        media.checkpoint(
+            { itemId: mediaTarget.channelId, sourceId: mediaTarget.sourceId },
             snapshot.position,
             force || snapshot.phase !== "playing"
         );
-        return;
+        if (target.kind === "vod") return;
     }
     if (!target || target.sourceId !== classicPlaybackSource(w)) return;
     var journal = classicPlaybackJournal();

@@ -5,6 +5,9 @@
 - Add a persistent 50–200% interface font scale shared across providers.
   Resize list pages to keep enlarged text and settings actions reachable;
   preserve independent subtitle appearance and video geometry.
+- Save VPortal and Plex video progress alongside the channel selection during
+  playback, so reopening the player restores the selected film and its saved
+  position across the shared TV, browser and native player builds.
 - Let updated remote clients play or preview the first 500 items of a larger
   Plex library and report the limit explicitly. Shuffle applies to those
   selected items; legacy clients and invalid or incomplete responses retain
