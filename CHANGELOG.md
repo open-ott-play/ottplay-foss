@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Avoid rebuilding unchanged video resolution and bitrate text each second or
+  while the footer is hidden. Refresh it immediately when the footer opens,
+  while keeping bitrate sampling and playback status active.
+
 - Add a persistent 50–200% interface font scale shared across providers.
   Resize list pages to keep enlarged text and settings actions reachable;
   preserve independent subtitle appearance and video geometry.

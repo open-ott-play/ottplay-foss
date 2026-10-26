@@ -504,10 +504,10 @@ function createCoreHlsBitrateMeter(): {
     };
 }
 
-export function updateCoreVideoInfo(): void {
+export function updateCoreVideoInfo(opening = false): void {
     if ((window as any).__ottStandby?.blocked()) return;
     if (!video || !video.videoWidth || video.error) return;
-    var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    var res = "<br>" + video.videoWidth + "x" + video.videoHeight;
     var mbps = 0;
     if (hlsInstance) {
         // bandwidthEstimate is network throughput, which can reach hundreds
@@ -551,13 +551,19 @@ export function updateCoreVideoInfo(): void {
     }
     // Playback status owns this label until frames resume or playback stops.
     if ((window as any).__ottPlaybackFeedback?.visible()) return;
+    // Keep native sampling above alive while the footer is hidden. The UI
+    // refreshes metadata before showing it; inline visibility needs no layout.
+    var panel = document.getElementById("info1");
+    if (!opening && panel && panel.style.display === "none") return;
+    var label = document.getElementById("video_res");
+    if (!label) return;
     // An unknown bitrate is omitted, never replaced by a network estimate.
-    $("#video_res").html(
+    var html =
         res +
-            (mbps > 0 && isFinite(mbps)
-                ? "<br/>" + Math.round(mbps * 100) / 100 + " Mbps"
-                : "")
-    );
+        (mbps > 0 && isFinite(mbps)
+            ? "<br>" + Math.round(mbps * 100) / 100 + " Mbps"
+            : "");
+    if (label.innerHTML !== html) label.innerHTML = html;
 }
 /** PiP dimension presets in pixels: [small, medium, large]. */
 var pipPresets = [

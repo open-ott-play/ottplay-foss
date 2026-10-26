@@ -796,6 +796,7 @@ export function showChannelInfo(timeoutSec: number): void {
         // Strict input owns the limited media seek gesture; other footer controls
         // and expandable details remain blocked, with a bounded display lifetime.
         $("#descr, #progress_span").hide();
+        updateCoreVideoInfo(true);
         $infoBar.stop(true, true).show();
         infoTimeout = setTimeout(infoBarHide, 5000);
         return;
@@ -819,6 +820,7 @@ export function showChannelInfo(timeoutSec: number): void {
     if (!$infoBar.is(":visible")) {
         if (timeoutSec !== 2) $("#descr").hide();
         else $("#descr").show();
+        updateCoreVideoInfo(true);
         if (w.sInfoSlide) {
             $infoBar.slideDown(400, function () {
                 if (typeof w.scrollUpDescr === "function") w.scrollUpDescr();
