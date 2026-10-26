@@ -437,7 +437,7 @@ function pcTouchListFixture(browser) {
                     ...options,
                     hasTouch: true,
                     isMobile: false,
-                    viewport: { width: 721, height: 1280 },
+                    viewport: { height: 1280, width: 721 },
                 }),
         },
         false
@@ -928,7 +928,10 @@ test("browser trusted touch crosses replaced channel pages and cancels cleanly",
     browser,
     browserName,
 }) => {
-    test.skip(browserName !== "chromium", "CDP provides trusted touch movement");
+    test.skip(
+        browserName !== "chromium",
+        "CDP provides trusted touch movement"
+    );
     const fixture = await pcTouchListFixture(browser);
     const page = fixture.page;
     try {
@@ -964,14 +967,16 @@ test("browser trusted touch crosses replaced channel pages and cancels cleanly",
         const cdp = await page.context().newCDPSession(page);
         const touch = (type, y) =>
             cdp.send("Input.dispatchTouchEvent", {
-                type,
                 touchPoints:
                     type === "touchEnd" || type === "touchCancel"
                         ? []
-                        : [{ x: start.x, y, id: 1 }],
+                        : [{ id: 1, x: start.x, y }],
+                type,
             });
         await touch("touchStart", start.y);
-        expect(await page.evaluate(() => window.__pcTrustedTouchSeen)).toBe(true);
+        expect(await page.evaluate(() => window.__pcTrustedTouchSeen)).toBe(
+            true
+        );
         for (let step = 1; step <= 8; step++) {
             // A slow drag has no inertia: the row distance is deterministic.
             await page.clock.runFor(150);
@@ -979,7 +984,9 @@ test("browser trusted touch crosses replaced channel pages and cancels cleanly",
             expect(await page.evaluate(() => window.selIndex)).toBe(20 + step);
             if (step >= 5)
                 expect(
-                    await page.evaluate(() => window.__pcTouchTarget.isConnected)
+                    await page.evaluate(
+                        () => window.__pcTouchTarget.isConnected
+                    )
                 ).toBe(false);
         }
         await touch("touchEnd");
@@ -1033,9 +1040,13 @@ test("browser portrait touch keeps tap mouse keyboard and wheel selection policy
             });
             await page.locator("#it4").hover();
             await page.mouse.wheel(0, -120);
-            await expect.poll(() => page.evaluate(() => window.selIndex)).toBe(3);
+            await expect
+                .poll(() => page.evaluate(() => window.selIndex))
+                .toBe(3);
             await page.mouse.wheel(0, 120);
-            await expect.poll(() => page.evaluate(() => window.selIndex)).toBe(4);
+            await expect
+                .poll(() => page.evaluate(() => window.selIndex))
+                .toBe(4);
             if (input === "touch") await page.locator("#it5").tap();
             else if (input === "mouse") await page.locator("#it5").click();
             else await page.keyboard.press("ArrowDown");
