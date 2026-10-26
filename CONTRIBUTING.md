@@ -15,6 +15,9 @@ and project documentation.
 
 ## Development and validation
 
+Use Node.js 22.22.2 or newer on the Node 22 line (CI uses Node 22),
+or Node.js 24.15 or newer, as required by the Ultracite 8.1 tooling.
+
 ```sh
 npm ci --ignore-scripts
 npm run typecheck

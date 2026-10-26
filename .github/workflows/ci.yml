@@ -4,7 +4,7 @@ on:
   workflow_call: {}
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: "22"
 
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-24.04, ubuntu-24.04-arm]
+        platform: [ ubuntu-24.04, ubuntu-24.04-arm ]
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
@@ -78,11 +78,11 @@ jobs:
           cache: npm
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.3'
+          go-version: "1.27.3"
           cache: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: npm ci --ignore-scripts
       - name: Build lazy diagnostic assets for real transport smokes
         run: npm run build
@@ -125,8 +125,8 @@ jobs:
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
-          OTT_DEBUG_ENGINE_V2: '1'
-          OTT_PERF_CAPTURE: '1'
+          OTT_DEBUG_ENGINE_V2: "1"
+          OTT_PERF_CAPTURE: "1"
         run: node scripts/smoke-workbench.cjs
       - name: Exercise roadmap with the current controller
         run: node .control-current/scripts/smoke_foss_roadmap.cjs .
@@ -283,7 +283,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.3'
+          go-version: "1.27.3"
           cache: false
 
       - name: Test Home Assistant events with the built player
@@ -324,7 +324,6 @@ jobs:
             build/packages/ottplay-foss-modea.sha256
           retention-days: 14
 
-
     timeout-minutes: 30
   frontend-tests:
     name: Frontend Tests
@@ -345,7 +344,7 @@ jobs:
       - run: npm test
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: |
           python3 -m pip install --require-hashes --only-binary=:all: -r requirements-test.txt
       - name: Python suite and runtime branch coverage gate
@@ -434,7 +433,7 @@ jobs:
       contents: read
       actions: read
     with:
-      node-version: '22'
+      node-version: "22"
       run-node-ci: false
       browser-matrix-file: .github/browser-compatibility.json
       browser-test-command: node scripts/browser-acceptance.cjs

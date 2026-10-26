@@ -85,7 +85,7 @@ class InstallerChecks(unittest.TestCase):
 
     def test_full_per_format_references_match_the_reviewed_forward_transform(self):
         raw = b"MZheader" + checks.BUNDLE_MARKER + b"unchanged payload"
-        refs = checks.payload_references(raw, "2.12.3")
+        refs = checks.payload_references(raw, "2.12.4")
         self.assertEqual(refs["raw_sha256"], hashlib.sha256(raw).hexdigest())
         self.assertEqual(refs["marker_offset"], len(b"MZheader"))
         self.assertEqual(refs["size"], len(raw))
@@ -100,15 +100,15 @@ class InstallerChecks(unittest.TestCase):
                     checks.BUNDLE_MARKER, b"MZ" + checks.BUNDLE_MARKERS["nsis"],
                     b"MZ" + checks.BUNDLE_MARKERS["msi"]):
             with self.subTest(raw=raw), self.assertRaises(RuntimeError):
-                checks.payload_references(raw, "2.12.3")
-        for version in ("2.12.2", "2.12.4", ""):
+                checks.payload_references(raw, "2.12.4")
+        for version in ("2.12.3", "2.12.5", ""):
             with self.subTest(version=version), self.assertRaises(RuntimeError):
                 checks.payload_references(b"MZ" + checks.BUNDLE_MARKER, version)
 
     def test_runtime_comparison_literals_remain_unchanged(self):
         table = b"".join(checks.BUNDLE_MARKERS.values())
         raw = b"MZheader" + table + b"payload" + checks.BUNDLE_MARKER + b"tail"
-        refs = checks.payload_references(raw, "2.12.3")
+        refs = checks.payload_references(raw, "2.12.4")
         for kind, marker in checks.BUNDLE_MARKERS.items():
             expected = b"MZheader" + table + b"payload" + marker + b"tail"
             self.assertEqual(refs["formats"][kind]["sha256"], hashlib.sha256(expected).hexdigest())
@@ -120,7 +120,7 @@ class InstallerChecks(unittest.TestCase):
             output = Path(folder)
             report = {"status": "failed", "installers": []}
             with self.assertRaisesRegex(RuntimeError, "Missing or ambiguous"):
-                checks.retain_payload_references(output, raw, "2.12.3", "2.12.3", report)
+                checks.retain_payload_references(output, raw, "2.12.4", "2.12.4", report)
             self.assertEqual((output / "raw-build.exe").read_bytes(), raw)
             saved = json.loads((output / "result.json").read_text())
             self.assertEqual(saved["status"], "failed")
@@ -133,13 +133,13 @@ class InstallerChecks(unittest.TestCase):
             output = Path(folder)
             report = {"status": "failed", "installers": []}
             with self.assertRaisesRegex(RuntimeError, "differs from the lockfile"):
-                checks.retain_payload_references(output, raw, "2.12.3", "2.12.2", report)
+                checks.retain_payload_references(output, raw, "2.12.4", "2.12.2", report)
             self.assertEqual((output / "raw-build.exe").read_bytes(), raw)
             self.assertEqual(json.loads((output / "result.json").read_text())["status"], "failed")
 
     def test_installed_bytes_are_never_normalized_and_failed_hashes_are_recorded(self):
         raw = b"MZheader" + checks.BUNDLE_MARKER + b"whole payload"
-        refs = checks.payload_references(raw, "2.12.3")
+        refs = checks.payload_references(raw, "2.12.4")
         with tempfile.TemporaryDirectory() as folder:
             directory = Path(folder)
             exe = directory / "player.exe"

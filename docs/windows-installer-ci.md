@@ -32,7 +32,7 @@ Both MSI operations must produce a nonempty verbose log, whose size and hash
 are retained in the receipt. The 180-second process limit remains unchanged.
 The portable guard tests run with `python tests/test_windows_installers.py`.
 
-Tauri CLI 2.12.3 stamps `__TAURI_BUNDLE_TYPE_VAR_UNK` as `NSS` for NSIS or
+Tauri CLI 2.12.4 stamps `__TAURI_BUNDLE_TYPE_VAR_UNK` as `NSS` for NSIS or
 `MSI` for MSI, then restores the original raw executable after each package.
 The harness binds that behavior to the installed and locked CLI version. It
 requires exactly one unpatched `UNK` target, then derives the full expected
@@ -47,8 +47,9 @@ The raw executable, marker counts and failed receipt are also retained if
 reference derivation or the installed/locked CLI comparison rejects the build.
 
 The exact transformation and restoration are in the reviewed upstream
-[Tauri bundler source](https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/crates/tauri-bundler/src/bundle.rs).
+[Tauri bundler source](https://github.com/tauri-apps/tauri/blob/993038c49185307dfc895ab7657d77ca0d5ed7c7/crates/tauri-bundler/src/bundle.rs).
+The reviewed bundle transformation is byte-identical to CLI 2.12.3.
 A future CLI update requires checking that contract before changing the guard.
 The remembered-directory behavior is defined by the pinned
-[NSIS template](https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi)
+[NSIS template](https://github.com/tauri-apps/tauri/blob/993038c49185307dfc895ab7657d77ca0d5ed7c7/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi)
 and [MSI template](https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/crates/tauri-bundler/src/bundle/windows/msi/main.wxs).
