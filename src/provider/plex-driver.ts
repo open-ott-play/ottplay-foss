@@ -83,6 +83,7 @@ function createPlexProviderDriver(
             var previous = saved();
             var config = plex.normalize({
                 address: value.server,
+                folderSelection: (value as any).folderSelection,
                 folders:
                     (value as any).folders !== undefined
                         ? (value as any).folders
@@ -135,6 +136,7 @@ function createPlexProviderDriver(
             var value = saved();
             var mode = modes.indexOf(value.playback);
             return {
+                folderSelection: value.folderSelection,
                 folders: value.folders,
                 mode: mode < 0 ? 0 : mode,
                 password: typeof value.token === "string" ? value.token : "",
@@ -320,7 +322,10 @@ function createPlexProviderDriver(
                             catalogScanning = true;
                             catalogFailed = false;
                             connecting.scanFolders(
-                                config.folders || [],
+                                // Old folder-picker selections are inactive in the flat catalogue.
+                                config.folderSelection
+                                    ? config.folders || []
+                                    : [],
                                 function (rows: any[], scanned: number) {
                                     if (!isCurrent()) return;
                                     rows.forEach(function (item) {

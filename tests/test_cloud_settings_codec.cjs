@@ -52,6 +52,32 @@ group(
     }
 );
 
+group(
+    "Plex folder selection survives portable profile export and import",
+    () => {
+        for (const folderSelection of [undefined, false, true]) {
+            const payload = JSON.stringify({
+                address: "https://plex.example",
+                ...(folderSelection === undefined ? {} : { folderSelection }),
+                folders: [
+                    { path: "/library/sections/1/all", title: "Films & shows" },
+                ],
+                token: "fixture-plex-token",
+            });
+            const exported = codec.write({ plexcfg: payload });
+            const restored = codec.read(exported);
+            assert.equal(restored.plexcfg, payload);
+            assert.equal(
+                JSON.parse(restored.plexcfg).folderSelection,
+                folderSelection
+            );
+            assert.deepEqual(JSON.parse(restored.plexcfg).folders, [
+                { path: "/library/sections/1/all", title: "Films & shows" },
+            ]);
+        }
+    }
+);
+
 group("old JSON.stringify that emits lone surrogates is supported", () => {
     vm.runInContext(
         `var savedStringify = JSON.stringify; JSON.stringify = function(value) {

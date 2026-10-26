@@ -1,5 +1,6 @@
 interface PlexConfig {
     address: string;
+    folderSelection?: boolean;
     folders?: Array<{ path: string; title: string }>;
     playback: "auto" | "original" | "compatible";
     token: string;
@@ -57,7 +58,10 @@ function normalizePlexConfig(value: any): PlexConfig | null {
                 : "auto",
         token: token,
     };
-    if (folders !== undefined) result.folders = folders;
+    if (folders !== undefined) {
+        result.folders = folders;
+        if (value.folderSelection === true) result.folderSelection = true;
+    }
     return result;
 }
 

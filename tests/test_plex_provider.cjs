@@ -1153,10 +1153,7 @@ test("Plex first playable batch starts the normal list while remaining files app
     assert.equal(starts, 1);
     assert.deepEqual(Array.from(f.host.cList), ["plex-1", "plex-2"]);
     assert.equal(f.driver.stream("plex-2"), "plex:request");
-    assert.deepEqual(
-        JSON.parse(JSON.stringify(client.scan.folders)),
-        config.folders
-    );
+    assert.deepEqual(JSON.parse(JSON.stringify(client.scan.folders)), []);
 });
 
 test("Plex projected channels preserve normalized adult admission metadata on initial and appended items", () => {
@@ -1231,9 +1228,11 @@ test("Plex reload invalidates late scan results and preserves an active playlist
     assert.equal(f.driver.catalogError(), false);
 });
 
-test("Plex uses saved folder roots and defaults to all libraries without a folder picker", () => {
+test("Plex only applies explicit folder selection and migrates legacy roots to all libraries", () => {
     for (const configured of [
         config,
+        { ...config, folderSelection: true },
+        { ...config, folderSelection: true, folders: [] },
         {
             address: config.address,
             playback: config.playback,
@@ -1248,7 +1247,12 @@ test("Plex uses saved folder roots and defaults to all libraries without a folde
         assert.equal(f.clients.length, 1);
         assert.deepEqual(
             JSON.parse(JSON.stringify(f.clients[0].scan.folders)),
-            configured.folders || []
+            configured.folderSelection ? configured.folders : []
+        );
+        assert.deepEqual(
+            JSON.parse(f.saved.get("plexcfg")),
+            configured,
+            "reading the catalogue must preserve legacy config for export and migration"
         );
         assert.notEqual(f.host.listCaption.innerHTML, "Folders");
         f.host.__ottEditProvider();

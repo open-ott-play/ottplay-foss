@@ -47,7 +47,16 @@ const providerPayload = JSON.stringify({
         { name: "Fixture <&> ", www: "https://example.invalid/list?x=1&y=2" },
     ],
 });
-for (const profile of ["typescript", "static-core"]) {
+for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
+    (profile) =>
+        [undefined, false, true].map((selection) => [profile, selection])
+)) {
+    const plexPayload = JSON.stringify({
+        address: "https://plex.example",
+        ...(folderSelection === undefined ? {} : { folderSelection }),
+        folders: [{ path: "/library/sections/1/all", title: "Films" }],
+        token: "fixture-plex-token",
+    });
     for (const localConsent of ["0", "1"]) {
         const stored = new Map([
             [
@@ -60,6 +69,7 @@ for (const profile of ["typescript", "static-core"]) {
             ["sLocalHttpDeviceCode", "this-device-code"],
             ["sNotificationsEnabled", "0"],
             ["m3u:m3uArr", providerPayload],
+            ["plexcfg", plexPayload],
             ["ottplayStorageFallback", "pending"],
             ["ottplayStorageFallback.0", "internal-marker-part"],
         ]);
@@ -171,7 +181,10 @@ for (const profile of ["typescript", "static-core"]) {
         assert(!upload.data.d.includes("sNotificationsEnabled"));
         c[names[0]]();
         const saved = JSON.parse(stored.get("stb_settings_backup"));
-        assert.deepEqual(saved, { "m3u:m3uArr": providerPayload });
+        assert.deepEqual(saved, {
+            "m3u:m3uArr": providerPayload,
+            plexcfg: plexPayload,
+        });
         assert.equal(
             c.__ottCommandServer.status().enabled,
             true,
@@ -188,6 +201,7 @@ for (const profile of ["typescript", "static-core"]) {
                 ordinary: "restored",
                 ottplayStorageFallback: "pending",
                 "ottplayStorageFallback.0": "imported-marker-part",
+                plexcfg: plexPayload,
                 sLocalHttpDeviceCode: "copied-device-code",
                 sLocalHttpEnabled: "1",
                 sNotificationsEnabled: "1",
@@ -220,6 +234,11 @@ for (const profile of ["typescript", "static-core"]) {
         assert.equal(stored.get("sLocalHttpDeviceCode"), "this-device-code");
         assert.equal(stored.get("stb_settings_backup"), undefined);
         assert.equal(stored.get("m3u:m3uArr"), providerPayload);
+        assert.equal(stored.get("plexcfg"), plexPayload);
+        assert.equal(
+            JSON.parse(stored.get("plexcfg")).folderSelection,
+            folderSelection
+        );
         assert.equal(stored.get("ordinary"), "restored");
         assert.equal(stored.get("ottplayStorageFallback"), "pending");
         assert.equal(

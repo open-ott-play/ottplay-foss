@@ -587,7 +587,7 @@ function createRemoteProviderFields(w: any, driver: any): any {
         if (!value) throw new Error("unsupported");
         return {
             capture: capture("providerServer"),
-            items: value.folders || [],
+            items: value.folderSelection ? value.folders || [] : [],
         };
     }
     function saveFolders(
@@ -599,10 +599,12 @@ function createRemoteProviderFields(w: any, driver: any): any {
         var next = driver.credentials(),
             expected = JSON.stringify(items);
         next.folders = items;
+        next.folderSelection = true;
         var failed = persist(next, before, current, function () {
             return (
+                driver.configuration().folderSelection === true &&
                 JSON.stringify(driver.configuration().folders || []) ===
-                expected
+                    expected
             );
         });
         return { effectFailed: failed, snapshot: folderSnapshot() };

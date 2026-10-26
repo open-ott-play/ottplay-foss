@@ -90,8 +90,28 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 }
             });
             await context.route("**/*", async (route) => {
-                if (new URL(route.request().url()).origin === localOrigin) {
-                    await route.continue();
+                const url = new URL(route.request().url());
+                if (url.origin === localOrigin) {
+                    if (url.pathname === "/dist/player.js") {
+                        const response = await route.fetch();
+                        await route.fulfill({
+                            body:
+                                (await response.text()) +
+                                `
+;(function () {
+    var start = window.startPlayer;
+    if (typeof start !== "function") throw new Error("Player startup export missing");
+    window.startPlayer = function () {
+        window.__testPlayerStarts.push({
+            back: window.keys && window.keys.RETURN,
+            device: window.ott_device
+        });
+        return start.apply(this, arguments);
+    };
+})();`,
+                            response,
+                        });
+                    } else await route.continue();
                 } else {
                     // Keep the device matrix independent of live providers.
                     blockedRequests.push(route.request().url());
@@ -103,17 +123,9 @@ for (const fixture of fixtures.concat(routeFixtures)) {
                 socket.close();
             });
             await context.addInitScript((capability) => {
-                const originalLog = console.log;
+                // Count the real public startup call, independently of optional
+                // progress logging. The routed bundle wrapper calls it unchanged.
                 window.__testPlayerStarts = [];
-                console.log = function (...args) {
-                    if (args[0] === "startPlayer") {
-                        window.__testPlayerStarts.push({
-                            back: window.keys && window.keys.RETURN,
-                            device: window.ott_device,
-                        });
-                    }
-                    return originalLog.apply(this, args);
-                };
                 localStorage.setItem("ottplaylang", "_eng");
                 if (capability === "mag") {
                     window.gSTB = {

@@ -70,3 +70,5 @@ Omit `name` to retain that VPortal slot's current name. The CLI compares the sav
 For the controller wire contract, operator permissions and preset migration, see the [control server typed settings guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/player-settings.md). The [development coverage inventory](development/remote-settings-coverage.md) identifies the registry, provider-specific, lifecycle and interface/debug adapters, dedicated operations and concrete platform limitations.
 
 See [interface and diagnostic preferences](remote-settings-extras.md) for visibility, local media, persistent debug and channel ordering settings, including native permission and platform limits.
+
+Plex scans all libraries by default, including profiles with selections saved by the old folder picker. Those legacy values remain in the profile but are not active filters. Changing the folder collection through remote control explicitly enables that selection; clearing it restores all libraries. Changing the server clears its previous selection.

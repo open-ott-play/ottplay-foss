@@ -70,6 +70,7 @@ test("Plex server replacement clears old folder roots and rejects their prior re
     const f = setup("plex", {
         plexcfg: JSON.stringify({
             address: "https://old-plex.test",
+            folderSelection: true,
             folders,
             playback: "auto",
             token: "private-token",
@@ -86,12 +87,45 @@ test("Plex server replacement clears old folder roots and rejects their prior re
         "https://new-plex.test"
     );
     assert.deepEqual(clone(f.api.folderSnapshot().items), []);
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).folderSelection, undefined);
     assert.equal(old.capture.current(), false);
     assert.throws(
         () => f.api.saveFolders(folders, old.capture, () => true),
         /revision_conflict/
     );
     assert.equal(f.requests.length, 0);
+});
+test("legacy Plex roots are inactive until explicit selection saves atomically", () => {
+    const folders = [
+        { path: "/library/sections/2/all", title: "Legacy films" },
+    ];
+    const original = JSON.stringify({
+        address: "https://plex.test",
+        folders,
+        playback: "auto",
+        token: "private-token",
+    });
+    const f = setup("plex", { plexcfg: original });
+    assert.deepEqual(clone(f.api.folderSnapshot().items), []);
+    assert.equal(f.saved.get("plexcfg"), original);
+    const write = f.host.stbSetItem;
+    f.host.stbSetItem = () => {};
+    const failed = f.host.__ottRemoteProviderFields.create(f.host, f.driver);
+    const before = failed.folderSnapshot().capture;
+    assert.throws(
+        () => failed.saveFolders(folders, before, () => true),
+        /storage_failed/
+    );
+    assert.equal(f.saved.get("plexcfg"), original);
+    f.host.stbSetItem = write;
+    f.api.saveFolders(folders, f.api.folderSnapshot().capture, () => true);
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).folderSelection, true);
+    assert.deepEqual(clone(f.api.folderSnapshot().items), folders);
+    f.set("plexPlayback", "compatible");
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).folderSelection, true);
+    f.api.saveFolders([], f.api.folderSnapshot().capture, () => true);
+    assert.deepEqual(clone(f.api.folderSnapshot().items), []);
+    assert.equal(JSON.parse(f.saved.get("plexcfg")).folderSelection, true);
 });
 test("real Edem transaction changes one key and confirms actual storage", () => {
     const f = setup("edem", {

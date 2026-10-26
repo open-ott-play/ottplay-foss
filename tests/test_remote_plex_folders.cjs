@@ -17,6 +17,7 @@ function setup(count = 0) {
     const f = fixture({
         plexcfg: JSON.stringify({
             address: "https://plex.test",
+            folderSelection: true,
             folders: items,
             playback: "auto",
             token: "private-token",

@@ -69,7 +69,17 @@ async function expectProgramme(page, expected, openedAt) {
     await expect(page.locator("#nbegin_time")).toHaveText(info.nextClock);
     // Check glyph bounds, not the clock element's declared width: text can
     // overflow that box and touch the programme title on TV browsers.
-    await page.evaluate(() => window.showChannelInfo(1));
+    const restoreList = await page.evaluate(() => {
+        const previous = window.isListVisible
+            ? { category: window.listCatIndex, index: window.selIndex }
+            : null;
+        // Measure the playback footer in its real full-screen context. A list
+        // refresh during font relayout correctly dismisses overlay footers.
+        window.closeList();
+        window.showChannelInfo(1);
+        return previous;
+    });
+    await expect(page.locator("#list")).toBeHidden();
     await expect(page.locator("#info1")).toBeVisible();
     const withoutFlexGap = await page.addStyleTag({
         content:
@@ -86,6 +96,7 @@ async function expectProgramme(page, expected, openedAt) {
                     window.setFontSize();
                 });
             }
+            await expect(page.locator("#info1")).toBeVisible();
             const rows = await page.evaluate(() =>
                 [
                     ["begin_time", "programm_name"],
@@ -133,6 +144,12 @@ async function expectProgramme(page, expected, openedAt) {
             }
         });
         await withoutFlexGap.evaluate((style) => style.remove());
+        if (restoreList) {
+            await page.evaluate(({ category, index }) => {
+                window._channelsList(category, index);
+            }, restoreList);
+            await expect(page.locator("#list")).toBeVisible();
+        }
     }
     return info;
 }
