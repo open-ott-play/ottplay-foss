@@ -20,21 +20,6 @@ jobs:
           node-version: '22'
       - name: Resolve compatible tooling and regenerate media
         run: |
-          python3 - <<'PYTHON'
-          import json, pathlib, urllib.request
-          path = pathlib.Path('package-lock.json')
-          lock = json.loads(path.read_text())
-          for suffix in ('linux-arm64', 'linux-arm64-musl', 'linux-x64', 'linux-x64-musl'):
-              name = '@biomejs/cli-' + suffix
-              item = lock['packages']['node_modules/' + name]
-              assert item['version'] == '2.6.3'
-              with urllib.request.urlopen('https://registry.npmjs.org/' + name + '/2.6.3', timeout=15) as response:
-                  metadata = json.load(response)
-              assert metadata['dist']['integrity'] == item['integrity']
-              assert metadata['libc'] == (['musl'] if suffix.endswith('-musl') else ['glibc'])
-              item['libc'] = metadata['libc']
-          path.write_text(json.dumps(lock, indent=2) + '\n')
-          PYTHON
           npm ci --ignore-scripts
           npm run build:media
           npm run lint
