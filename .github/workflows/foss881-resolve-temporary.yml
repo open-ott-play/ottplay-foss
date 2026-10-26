@@ -22,6 +22,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run build:media
+          ./node_modules/.bin/biome format --write .github/dependabot.yml .github/workflows/auto-approve.yml .github/workflows/auto-merge.yml .github/workflows/beta-checks.yml .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/coderabbit-review.yml .github/workflows/container-validation.yml .github/workflows/dependency-review.yml .github/workflows/foss881-resolve-temporary.yml .github/workflows/native-parity.yml .github/workflows/quality-gate.yml .github/workflows/release-build.yml .github/workflows/release-pipeline.yml .github/workflows/release-quality-gate.yml .github/workflows/scorecards.yml .pre-commit-config.yaml
           npm run lint
           npm run typecheck
           npm run test:media
