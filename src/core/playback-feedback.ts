@@ -90,14 +90,18 @@
             }, deadline);
         }
     }
-    function begin(paused?: boolean, resuming?: boolean): void {
+    function begin(
+        paused?: boolean,
+        resuming?: boolean,
+        timeout?: number
+    ): void {
         clear();
         active = !paused;
         expired = false;
         // begin runs before the previous source is detached. Its remaining
         // frames cannot acknowledge the replacement source's startup.
         armed = !!resuming;
-        if (active) waiting(host._("Connecting..."), 30000);
+        if (active) waiting(host._("Connecting..."), timeout || 30000);
         else render("");
     }
     function stop(): void {

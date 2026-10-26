@@ -21,6 +21,11 @@ inside that observation; it does not require the separate Android maintenance
 agent or `--lane native`. `doctor` remains useful for the loaded JavaScript build
 identity and UI ownership. `ott PLAYER` lists debug when the player advertises it.
 
+The first snapshot loads the inert `dist/runtime-debug-details.js` projector.
+Static and native packages must include this optional asset. Its bounded loading
+wait rechecks the connection and runtime before observing media or requesting
+native metrics. Loading details does not start performance capture.
+
 ## Evidence collected
 
 While remote control is enabled, a bounded in-memory ring retains the most recent
@@ -32,7 +37,9 @@ sequence numbers expose ordering. Disconnecting or changing the controller
 credentials clears history and removes the timers/listeners. Reload loses this
 history; save a bundle before requesting a restart.
 
-A single one-second timer measures foreground JavaScript scheduling delay. Hidden
+An explicit [performance capture](performance-capture.md) lease enables the
+one-second timer for foreground JavaScript scheduling delay. Outside the lease,
+scheduling metrics are omitted and no diagnostic scheduling timer runs. Hidden
 and page-suspended intervals are excluded; a delay of at least 250 ms records
 `loop_delay`. Delay is an observation of scheduling, not proof of its cause.
 Available JS heap estimates, CPU concurrency, connectivity and command
@@ -56,6 +63,10 @@ without changing the preference. Preparation, stop, suspension, retired leases
 and device engines without this diagnostic capability report `null`. No source
 URL is read or exported. Attachment does not prove successful decoding; correlate
 it with the same generation/handle's media counters and actual captured frames.
+
+Updated players retain `debug_versions: [1, 2]` for older clients and advertise
+version 3 separately as `debug_attempts: {version: 3}`. Updated `debug --engine`
+clients select version 3 only with that marker.
 
 Explicitly requested version 3 preserves the version 2 engine identity and adds
 nullable `attempt` and `lastAttempt` observations per lane.

@@ -44,6 +44,7 @@ function fixture() {
             return {
                 diagnosticAttempt: () => lease.attempt || null,
                 diagnosticEngine: () => lease.engine || null,
+                diagnosticMedia: () => lease.media || null,
                 dispose() {
                     lease.disposed++;
                     if (lease.onDispose) lease.onDispose();
@@ -1403,6 +1404,32 @@ test("engine diagnostics follow ownership, suspension and natural stop without s
         "retired source has no authority"
     );
     f.backend.dispose();
+});
+
+test("media diagnostics keep the main generation out of independent PiP", (f) => {
+    const main = f.backend.open({ url: "main" });
+    const pip = f.backend.open({ lane: "pip", url: "pip" });
+    const mainMedia = { hls: {}, media: {} };
+    const pipMedia = { hls: {}, media: {} };
+    f.leases[0].media = mainMedia;
+    f.leases[1].media = pipMedia;
+    const commandCount = f.commands.length;
+    assert.equal(main.diagnosticMedia().generation, 1);
+    assert.equal(pip.diagnosticMedia().generation, null);
+    assert.equal(pip.diagnosticMedia().media, pipMedia.media);
+    assert.equal(pip.diagnosticMedia().hls, pipMedia.hls);
+    assert.equal(f.commands.length, commandCount);
+
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    assert.equal(main.diagnosticMedia(), null);
+    assert.equal(pip.active(), true);
+    assert.equal(pip.diagnosticMedia().generation, null);
+    const next = f.backend.open({ url: "next main" });
+    f.leases[2].media = mainMedia;
+    assert.equal(next.diagnosticMedia().generation, 2);
+    assert.equal(pip.diagnosticMedia().generation, null);
+    pip.suspend();
+    assert.equal(pip.diagnosticMedia(), null);
 });
 
 test("EOF retains one final attempt before synchronous engine disposal", () => {

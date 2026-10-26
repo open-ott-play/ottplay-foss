@@ -1,5 +1,5 @@
 /** Explicit same-source handoff. The receiver resolves its own stream, never a supplied URL. */
-export function executeRemoteHandoff(
+function executeRemoteHandoff(
     w: any,
     request: any,
     done: (result: any) => void
@@ -212,3 +212,5 @@ export function executeRemoteHandoff(
         reject("playback_failed");
     }
 }
+
+(window as any).__ottRemoteHandoff = { execute: executeRemoteHandoff };

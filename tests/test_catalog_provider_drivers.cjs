@@ -850,17 +850,18 @@ test("unknown/failed-reload stream/archive returns empty and cleanup reentry can
             abort();
             f.mount("demo");
         };
-        const snapshot = Array.from(f.saved.entries());
         driver.saveCredentials({
             ...driver.credentials(),
             server: "new-server",
             username: "new-key",
         });
-        assert.deepEqual(
-            Array.from(f.saved.entries()),
-            snapshot,
-            "retired save must not persist"
+        const prefix = id === "ottclub" ? "" : id === "shura" ? "sh" : "itv";
+        assert.equal(
+            f.saved.get(prefix + (id === "ottclub" ? "ottkey" : "key")),
+            "new-key",
+            "save commits before cleanup retires the owner"
         );
+        assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
     }
 });
 
@@ -881,7 +882,11 @@ test("settings save reentry cannot restart, replay, redraw or alert a replacemen
         f.host.editvar = "changed-key";
         f.host.setEdit();
         assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
-        assert.deepEqual(Array.from(f.saved.entries()), before);
+        assert.notDeepEqual(
+            Array.from(f.saved.entries()),
+            before,
+            "save commits before retirement"
+        );
         assert.equal(f.restarts, 0, id + ": retired editor cannot restart");
         assert.equal(
             f.events.filter((event) => ["live", "archive"].includes(event[0]))

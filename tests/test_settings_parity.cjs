@@ -311,6 +311,7 @@ function fixture(
                     "createSettingsPage",
                     "setListArrays",
                     "loadSubtitleAppearance",
+                    "notifySubtitleAppearanceReady",
                     "openSubtitleAppearance",
                 ],
                 [
@@ -320,7 +321,12 @@ function fixture(
                     "__ottAppearanceHost",
                     "applySubtitleAppearance",
                 ],
-                ["subtitleAppearanceLoading", "subtitleAppearanceOpen"]
+                [
+                    "subtitleAppearanceLoading",
+                    "subtitleAppearanceOpen",
+                    "subtitleAppearanceReady",
+                    "subtitleAppearanceGeneration",
+                ]
             )
         ),
         w
@@ -348,7 +354,12 @@ function fixture(
                     "setPlayer",
                 ],
                 [],
-                ["_coreAutoCancel", "_corePipAutoCancel", "playerModeNames"]
+                [
+                    "_coreAutoCancel",
+                    "_corePipAutoCancel",
+                    "playerModeNames",
+                    "bufferSizes",
+                ]
             )
         ),
         w
@@ -400,6 +411,73 @@ function fixture(
 }
 function save(w) {
     w.listKeyHandlerFn(w.keys.GREEN);
+}
+
+for (const profile of [
+    "server",
+    "tauri",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    const { w, stored, typed, calls } = fixture(profile);
+    assert.equal(
+        typed().uiFontScale,
+        100,
+        profile + ": existing installs retain the original text size"
+    );
+    assert.equal(stored.has("sUiFontScale"), false);
+    vm.runInContext(
+        "var scaleDraft = beginSettingsDraft(); scaleDraft.set('uiFontScale', 137); scaleDraft.commit();",
+        w
+    );
+    assert.equal(stored.get("sUiFontScale"), "137");
+    assert.equal(w.sUiFontScale, 137);
+    assert.ok(calls.includes("font"), "saving applies the new text scale");
+    vm.runInContext("loadSettings();", w);
+    assert.equal(
+        typed().uiFontScale,
+        137,
+        "restart preserves an exact API value"
+    );
+    w.settingsInterface();
+    const row = w.listArray.find((item) => item.settingId === "uiFontScale");
+    assert.ok(row, profile + ": Interface settings exposes text scaling");
+    assert.equal(
+        row.settingValues[row.val],
+        137,
+        "opening the menu preserves non-preset percentages"
+    );
+    row.val = row.settingValues.indexOf(80);
+    save(w);
+    assert.equal(typed().uiFontScale, 80);
+    assert.equal(stored.get("sUiFontScale"), "80");
+    w.settingsInterface();
+    w.listArray.find((item) => item.settingId === "uiFontScale").val = 0;
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(
+        typed().uiFontScale,
+        80,
+        "cancel does not change the saved text scale"
+    );
+    for (const value of [49, 201, 50.5, NaN, Infinity, "80"]) {
+        w.invalidScale = value;
+        assert.equal(
+            vm.runInContext(
+                "var invalidDraft = beginSettingsDraft(); var accepted = invalidDraft.set('uiFontScale', invalidScale); invalidDraft.cancel(); accepted;",
+                w
+            ),
+            false
+        );
+    }
+    for (const value of ["49", "201", "bad"]) {
+        stored.set("sUiFontScale", value);
+        vm.runInContext("loadSettings();", w);
+        assert.equal(
+            typed().uiFontScale,
+            100,
+            "invalid persisted scale falls back to 100%"
+        );
+    }
 }
 
 // Media-language rows appear only for managed engines, with persisted codes
@@ -943,8 +1021,9 @@ for (const device of ["lg/webos", "lg/netcast", "pc"]) {
                 const buffer = w.listArray.find(
                     (row) => row.name === "Buffer Size, s"
                 );
-                const nextBuffer = (w.sBufSize + 1) % buffer.values.length;
-                buffer.val = nextBuffer;
+                const nextIndex = (buffer.val + 1) % buffer.values.length;
+                const nextBuffer = buffer.settingValues[nextIndex];
+                buffer.val = nextIndex;
                 const editor = w.listArray.find((row) => row.name === "Editor");
                 if (editor) editor.val = 1;
                 save(w);
@@ -1840,4 +1919,88 @@ for (const profile of [
 }
 console.log(
     "OK: subtitle appearance Save/Cancel/reset across player settings variants"
+);
+
+// Remote/native buffer values must remain readable and untouched by UI visits,
+// including old device lists and legacy values that mean automatic buffering.
+for (const profile of [
+    "server",
+    "tauri",
+    "capacitor-android",
+    "capacitor-ios",
+]) {
+    for (const legacy of [false, true]) {
+        for (const value of [0, 30, 300]) {
+            for (const menu of ["stbOptions", "settingsInterface"]) {
+                const { w, stored } = fixture(profile);
+                assert.equal(w.bufferSizes.length, 18);
+                assert.equal(w.bufferSizes.at(-1), "120");
+                if (legacy) {
+                    w.bufferSizes = Array.from({ length: 11 }, (_, i) =>
+                        String(i)
+                    );
+                    w.bufferSizes[0] = "Automatic";
+                    w.stbBufferSizes = w.bufferSizes;
+                }
+                stored.set("sBufSize", String(value));
+                vm.runInContext("loadSettings();", w);
+                const open = () => {
+                    w[menu]();
+                    const row = w.listArray.find(
+                        (item) => item.settingId === "bufSize"
+                    );
+                    assert.equal(
+                        row.settingValues
+                            ? row.settingValues[row.val]
+                            : row.val,
+                        value
+                    );
+                    assert(
+                        w
+                            .getListItem(row)
+                            .includes(
+                                ">" +
+                                    (legacy && value === 0
+                                        ? "Automatic"
+                                        : value) +
+                                    (value > 120 ? " (Automatic)" : "") +
+                                    "&nbsp;"
+                            )
+                    );
+                    assert(!w.getListItem(row).includes("undefined"));
+                    return row;
+                };
+                let row = open();
+                row.val = 0;
+                w.listKeyHandlerFn(w.keys.RETURN);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    String(value),
+                    "cancel preserves buffer bytes"
+                );
+                row = open();
+                const editor = w.listArray.find(
+                    (item) => item.settingId === "editor"
+                );
+                if (editor) editor.val = editor.val ? 0 : 1;
+                save(w);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    String(value),
+                    "unrelated save preserves buffer bytes"
+                );
+                row = open();
+                row.val = 0;
+                save(w);
+                assert.equal(
+                    stored.get("sBufSize"),
+                    "0",
+                    "automatic remains selectable"
+                );
+            }
+        }
+    }
+}
+console.log(
+    "OK: buffer values survive UI readback, cancel and unrelated save across device lists"
 );

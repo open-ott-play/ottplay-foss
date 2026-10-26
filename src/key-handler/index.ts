@@ -69,7 +69,7 @@ export var keys: Record<string, number> = {
     RIGHT: 39,
     RW: 33,
     SETUP: 192,
-    STOP: 83,
+    STOP: 178,
     SUBTITLE: 76,
     TOOLS: 84,
     UP: 38,

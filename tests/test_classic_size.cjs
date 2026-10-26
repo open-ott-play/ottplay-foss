@@ -7,6 +7,7 @@ const ts = require("typescript");
 const {
     ARTIFACTS,
     BUDGET,
+    OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -57,11 +58,98 @@ try {
                 path.join(root, path.dirname(file), name + ".js"),
                 source
             );
+    assert.deepEqual(
+        Object.keys(OPTIONAL_BUDGETS).sort(),
+        Object.keys(CLASSIC_OPTIONAL_BUNDLES).sort()
+    );
+    assert.deepEqual(OPTIONAL_BUDGETS["subtitle-appearance"], {
+        bytes: 7800,
+        gzipBytes: 3300,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["remote-settings-extras"], {
+        bytes: 7000,
+        gzipBytes: 2800,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["remote-provider-fields"], {
+        bytes: 18000,
+        gzipBytes: 6200,
+    });
+    assert.equal(
+        TOTAL_BUDGET.bytes,
+        LEGACY_TOTAL_BUDGET.bytes +
+            Object.values(OPTIONAL_BUDGETS).reduce(
+                (sum, budget) => sum + budget.bytes,
+                0
+            )
+    );
+    assert.equal(
+        TOTAL_BUDGET.gzipBytes,
+        LEGACY_TOTAL_BUDGET.gzipBytes +
+            Object.values(OPTIONAL_BUDGETS).reduce(
+                (sum, budget) => sum + budget.gzipBytes,
+                0
+            )
+    );
+    for (const name of Object.keys(OPTIONAL_BUDGETS)) {
+        const file = path.join(root, "dist", name + ".js");
+        fs.writeFileSync(file, "x".repeat(OPTIONAL_BUDGETS[name].bytes + 1));
+        assert.throws(() => inspectBundleSets(root), /bytes .* exceeds budget/);
+        fs.writeFileSync(file, source);
+    }
+    assert.deepEqual(OPTIONAL_BUDGETS["runtime-debug-details"], {
+        bytes: 3800,
+        gzipBytes: 1900,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["perf-capture"], {
+        bytes: 20200,
+        gzipBytes: 7824,
+    });
+    const providerFieldsPath = path.join(
+        root,
+        "dist/remote-provider-fields.js"
+    );
+    const crypto = require("node:crypto");
+    const denseFields = Buffer.concat(
+        Array.from({ length: 256 }, (_, index) =>
+            crypto.createHash("sha256").update(String(index)).digest()
+        )
+    ).toString("base64");
+    assert(
+        denseFields.length < OPTIONAL_BUDGETS["remote-provider-fields"].bytes
+    );
+    fs.writeFileSync(providerFieldsPath, denseFields);
+    assert.throws(
+        () => inspectBundleSets(root),
+        /remote-provider-fields\.js: gzipBytes .* exceeds budget 6200/
+    );
+    fs.writeFileSync(providerFieldsPath, source);
+    const perfPath = path.join(root, "dist/perf-capture.js");
+    fs.writeFileSync(perfPath, denseFields);
+    assert.throws(
+        () => inspectBundleSets(root),
+        /perf-capture\.js: gzipBytes .* exceeds budget 7824/
+    );
+    fs.writeFileSync(perfPath, source);
+    const extrasPath = path.join(root, "dist/remote-settings-extras.js");
+    const denseExtras = denseFields.slice(0, 4000);
+    assert(
+        denseExtras.length < OPTIONAL_BUDGETS["remote-settings-extras"].bytes
+    );
+    fs.writeFileSync(extrasPath, denseExtras);
+    assert.throws(
+        () => inspectBundleSets(root),
+        /remote-settings-extras\.js: gzipBytes .* exceeds budget 2800/
+    );
+    fs.writeFileSync(extrasPath, source);
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
     assert.equal(sets[0].providers.length, 8);
-    assert.equal(sets[0].total.bytes, measurement.bytes * 10);
-    assert.equal(sets[0].total.gzipBytes, measurement.gzipBytes * 10);
+    const optionalCount = Object.keys(CLASSIC_OPTIONAL_BUNDLES).length;
+    assert.equal(sets[0].total.bytes, measurement.bytes * (9 + optionalCount));
+    assert.equal(
+        sets[0].total.gzipBytes,
+        measurement.gzipBytes * (9 + optionalCount)
+    );
     const extra = path.join(root, "dist/provider-old.js");
     fs.writeFileSync(extra, source);
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
@@ -121,8 +209,14 @@ try {
     const playSets = inspectBundleSets(root, playArtifacts, playKinds);
     assert.equal(playSets.length, 2);
     assert.equal(playSets[0].providers.length, 4);
-    assert.equal(playSets[0].total.bytes, measurement.bytes * 6);
-    assert.equal(playSets[0].total.gzipBytes, measurement.gzipBytes * 6);
+    assert.equal(
+        playSets[0].total.bytes,
+        measurement.bytes * (5 + optionalCount)
+    );
+    assert.equal(
+        playSets[0].total.gzipBytes,
+        measurement.gzipBytes * (5 + optionalCount)
+    );
     // Android's configured output may be outside the repository entirely.
     // Both inventories are relative to that output root, not the default dist.
     const androidArtifacts = ["player.js", "dist/player.js"];
@@ -216,7 +310,23 @@ try {
         ),
         source
     );
+    assert.equal(
+        fs.readFileSync(
+            path.join(nativeStage, "dist/remote-settings.js"),
+            "utf8"
+        ),
+        source
+    );
+    assert.equal(
+        fs.readFileSync(
+            path.join(mobileStage, "dist/remote-settings.js"),
+            "utf8"
+        ),
+        source
+    );
     packaging.removeDuplicatePlayerAssets(mobileStage);
+    assert(!fs.existsSync(path.join(mobileStage, "remote-settings.js")));
+    assert(fs.existsSync(path.join(mobileStage, "dist/remote-settings.js")));
     assert(!fs.existsSync(path.join(mobileStage, "subtitle-appearance.js")));
     assert(
         fs.existsSync(path.join(mobileStage, "dist/subtitle-appearance.js"))
@@ -245,7 +355,10 @@ try {
         Array.from(androidSets, (set) => set.entry),
         androidArtifacts
     );
-    assert.equal(androidSets[1].total.bytes, measurement.bytes * 6);
+    assert.equal(
+        androidSets[1].total.bytes,
+        measurement.bytes * (5 + optionalCount)
+    );
     const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
     fs.unlinkSync(externalChunk);
     assert.throws(

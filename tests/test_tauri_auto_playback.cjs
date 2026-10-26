@@ -739,6 +739,121 @@ test("Plex hints require the exact active file and leave HLS variants unchanged"
     assert.equal(f.players[1].url, url);
 });
 
+test("registered normalization routes use per-source MSE without changing preferences", () => {
+    const play =
+        "https://gateway.test/normalize/play/example/" +
+        "a".repeat(48) +
+        "/master.m3u8";
+    const lease =
+        "https://gateway.test/normalize/lease/" +
+        "b".repeat(32) +
+        "/" +
+        "c".repeat(32) +
+        "/master.m3u8";
+    for (const url of [play, lease])
+        for (const mode of [0, 2, 3]) {
+            const f = fixture({
+                globals: { location: { href: "https://player.test/" }, URL },
+                savedPlayerMode: mode,
+            });
+            f.w.stbPlay(url);
+            assert.equal(f.players.length, 1);
+            assert.equal(f.players[0].url, url);
+            assert.equal(f.shakaPlayers.length, 0);
+            assert.equal(f.w.playerMode, mode);
+            assert.equal(f.preferences.sPlayers, String(mode));
+            f.w.stbStop();
+            f.w.stbPlay("https://ordinary.test/next.m3u8");
+            assert.equal(f.players.length, 1);
+            assert.equal(f.shakaPlayers.length, mode === 2 ? 1 : 0);
+        }
+});
+
+test("normalization matching uses the exact parsed route and falls back without MSE", () => {
+    const root =
+        "https://gateway.test/normalize/play/example/" + "a".repeat(48);
+    const f = fixture({
+        globals: { location: { href: "https://player.test/" }, URL },
+        savedPlayerMode: 0,
+    });
+    for (const url of [
+        root + "/track_0.m3u8",
+        root + "/master.m3u8?x=1",
+        root + "/master.m3u8#x",
+        "https://ordinary.test/not/normalize/play/example/" +
+            "a".repeat(48) +
+            "/master.m3u8",
+        "https://ordinary.test/?url=" +
+            encodeURIComponent(root + "/master.m3u8"),
+        root.replace("example", "%65xample") + "/master.m3u8",
+        root.replace("https://", "https://user:password@") + "/master.m3u8",
+    ]) {
+        assert.equal(f.w.coreNormalizedMse(url), false);
+        f.w.stbPlay(url);
+        assert.equal(f.players.length, 0);
+    }
+    for (const suffix of ["", "?", "#", "?#"]) {
+        assert.equal(
+            f.w.coreNormalizedMse(root + "/master.m3u8" + suffix),
+            true
+        );
+    }
+    for (const prefix of ["http://gateway.test:8080", "https://[::1]:8443"]) {
+        assert.equal(
+            f.w.coreNormalizedMse(
+                root.replace("https://gateway.test", prefix) + "/master.m3u8"
+            ),
+            true
+        );
+    }
+    for (const credentials of ["user@", ":password@", "user:password@"])
+        assert.equal(
+            f.w.coreNormalizedMse(
+                root.replace("https://", "https://" + credentials) +
+                    "/master.m3u8"
+            ),
+            false
+        );
+    assert.equal(
+        f.w.coreNormalizedMse(root.replace("https:", "ftp:") + "/master.m3u8"),
+        false
+    );
+    assert.equal(f.w.coreNormalizedMse("not a URL"), false);
+    const unsupported = fixture({
+        globals: { location: { href: "https://player.test/" }, URL },
+        hlsMissing: true,
+        savedPlayerMode: 0,
+    });
+    unsupported.w.stbPlay(root + "/master.m3u8");
+    assert.equal(unsupported.w.video.src, root + "/master.m3u8");
+    assert.equal(unsupported.w.playerMode, 0);
+});
+
+test("normalized CSS PiP uses MSE only when supported and owns its lifetime", () => {
+    const url =
+        "https://gateway.test/normalize/play/example/" +
+        "a".repeat(48) +
+        "/master.m3u8";
+    for (const supported of [true, false]) {
+        const f = fixture({
+            globals: { location: { href: "https://player.test/" }, URL },
+            hlsSupported: supported,
+            savedPlayerMode: 0,
+        });
+        f.w.stbPlay("https://ordinary.test/main.m3u8");
+        f.w.stbPlayPip(url);
+        assert.equal(f.w.video.src, "https://ordinary.test/main.m3u8");
+        assert.equal(f.players.length, supported ? 1 : 0);
+        if (supported) {
+            assert.equal(f.players[0].media, f.w.videoPip);
+            f.w.stbStopPip();
+            assert.equal(f.players[0].destroyCalls, 1);
+        } else assert.equal(f.w.videoPip.src, url);
+        assert.equal(f.w.playerMode, 0);
+        assert.equal(f.preferences.sPlayers, "0");
+    }
+});
+
 test("Plex HEVC remux selects MSE per item even when native HLS is the saved preference", () => {
     for (const mode of [0, 2, 3]) {
         const f = fixture({ savedPlayerMode: mode });
@@ -1752,6 +1867,81 @@ test("fresh Chrome selects lazy HLS without a saved player preference", () => {
     requests[0].ready(true);
     assert(f.w.hlsInstance);
     assert.match(f.w.video.src, /^blob:hls-/);
+});
+
+test("only normalized initial masters extend actual HLS manifest policy", () => {
+    const context = {
+        clearInterval,
+        clearTimeout,
+        console: { error() {}, log() {}, warn() {} },
+        exports: {},
+        module: { exports: {} },
+        navigator: { userAgent: "test" },
+        performance,
+        setInterval,
+        setTimeout,
+        TextDecoder,
+        TextEncoder,
+        URL,
+    };
+    context.self = context;
+    vm.runInNewContext(
+        fs.readFileSync(path.join(root, "js/hls.min.js"), "utf8"),
+        context
+    );
+    const RealHls = context.module.exports;
+    const key = "a".repeat(48);
+    const urls = [
+        [
+            "https://gateway.test/normalize/play/example/" +
+                key +
+                "/master.m3u8",
+            75000,
+        ],
+        ["https://ordinary.test/live.m3u8", 20000],
+        [
+            "https://gateway.test/normalize/lease/" +
+                "b".repeat(32) +
+                "/" +
+                "c".repeat(32) +
+                "/master.m3u8",
+            20000,
+        ],
+        [
+            "https://gateway.test/normalize/play/example/" +
+                key +
+                "/master.m3u8?other=1",
+            20000,
+        ],
+    ];
+    for (const [url, timeout] of urls) {
+        const f = fixture({ globals: { URL }, savedPlayerMode: 1 });
+        f.w.stbPlay(url);
+        f.w.stbPlayPip(url);
+        assert.equal(f.players.length, 2);
+        for (const player of f.players) {
+            const actual = new RealHls(player.config);
+            assert.equal(
+                actual.config.manifestLoadPolicy.default.maxLoadTimeMs,
+                timeout
+            );
+            if (timeout === 75000)
+                assert.equal(
+                    actual.config.manifestLoadPolicy.default
+                        .maxTimeToFirstByteMs,
+                    timeout
+                );
+            assert.equal(
+                actual.config.playlistLoadPolicy.default.maxLoadTimeMs,
+                20000
+            );
+            assert.equal(
+                actual.config.fragLoadPolicy.default.maxLoadTimeMs,
+                120000
+            );
+            actual.destroy();
+        }
+    }
 });
 
 let failures = 0;

@@ -97,6 +97,7 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 - **Per-device routing**: UUID-based addressing for multi-device setups
 - **Local proxy**: Optional local command server for 100% local automation (no central server needed)
 - **Controller integration**: Device/action-scoped operators, optional durable command outcomes, resumable Local/Home preset application and same-source live/archive handoff through the matching [control server](https://github.com/open-ott-play/ottplay-control-server). These require the updated controller/CLI; they are not supplied by a standalone browser tab.
+- **Typed remote preferences**: Discover settings, read stored/effective values and save with runtime/source/revision checks; see [remote settings and VPortal configuration](docs/remote-player-settings.md).
 - **Debug**: Opt-in playback HUD / ring log via `?debug=1`, consent-based remote inspection and an on-demand hosted audio/video check
 - **Keyboard accessibility**: Named classic dialogs, Tab focus containment and return, selected channel semantics and polite status announcements. These improvements do not establish full WCAG or device screen-reader conformance.
 - **24 device types**: Per-device remote control key mappings

@@ -63,6 +63,19 @@ function query(section, extra = {}) {
     );
     return JSON.parse(JSON.stringify(response));
 }
+for (const action of [
+    "player_settings",
+    "plex_folders",
+    "provider_settings",
+    "settings_compare",
+]) {
+    const params = { provider: "vportal", runtime };
+    assert.equal(api.accept({ action, params }), true);
+    assert.equal(
+        api.accept({ action, params: { ...params, runtime: "other-page" } }),
+        false
+    );
+}
 const doctor = query("doctor");
 assert.equal(doctor.status, "ok");
 assert.equal(doctor.data.data.build.version, "1.1.53+fixture");
@@ -221,6 +234,8 @@ for (const [action, params] of [
     ["kiosk", { mode: "status" }],
     ["aspect", { operation: "get", runtime }],
     ["notifications", { operation: "get", runtime }],
+    ["player_settings", { id: "bufSize", op: "get", runtime }],
+    ["plex_folders", { op: "list", runtime }],
 ]) {
     api.execute(
         { action, id: readId, params },
@@ -233,6 +248,48 @@ for (const [action, params] of [
         "unknown"
     );
 }
+const settingId = "c".repeat(32);
+api.execute(
+    {
+        action: "player_settings",
+        id: settingId,
+        params: {
+            id: "unremarkableName",
+            op: "set",
+            runtime,
+            value: "PRIVATE_SETTING_VALUE",
+        },
+    },
+    () => {},
+    undefined,
+    (_item, done) =>
+        done({
+            data: { persisted: true, value: "PRIVATE_SETTING_VALUE" },
+            status: "ok",
+        })
+);
+const settingReceipt = query("operation", { operation_id: settingId });
+assert.equal(settingReceipt.data.data.action, "player_settings");
+assert(!JSON.stringify(settingReceipt).includes("PRIVATE_SETTING_VALUE"));
+const foldersId = "e".repeat(32);
+api.execute(
+    {
+        action: "plex_folders",
+        id: foldersId,
+        params: {
+            op: "add",
+            path: "/library/sections/16/all",
+            runtime,
+            title: "PRIVATE_FOLDER_TITLE",
+        },
+    },
+    () => {},
+    undefined,
+    (_item, done) => done({ data: { persisted: true }, status: "ok" })
+);
+const foldersReceipt = query("operation", { operation_id: foldersId });
+assert.equal(foldersReceipt.data.data.action, "plex_folders");
+assert(!JSON.stringify(foldersReceipt).includes("PRIVATE_FOLDER_TITLE"));
 // An aspect receipt records acceptance first, then only a successful setter's
 // completion. A fenced-out setter is not evidence of application or persistence.
 for (const outcome of ["applied", "storage", "target", "policy"]) {

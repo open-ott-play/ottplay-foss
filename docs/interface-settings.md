@@ -14,13 +14,19 @@ upstream links and the earlier OTT-play lineage in English.
 ## Settings contract
 
 - **Rows:** `pageSize` remains 25 by default, with the existing 10–30 range.
-  A full page renders exactly the selected count. The final page contains only
-  the remaining channels at the same row height. No automatic density preset
-  replaces this value.
+  At the default font scale, a full page renders the selected count. Enlarged
+  fonts use fewer visible rows without changing this saved preference. The
+  final page contains only the remaining channels at the same row height.
 - **Typography:** all seven saved font indices and the 0–30 line-spacing setting
-  remain available. Text size is constrained by the row box, as before, so large
-  glyphs cannot push the last configured row off screen. Native builds retain
-  their corresponding OS font families.
+  remain available. At 100%, text retains the configured row density. Above
+  100%, each page displays fewer rows so enlarged text remains readable; the
+  saved row count stays unchanged and keyboard navigation reaches every item.
+  Native builds retain their corresponding OS font families.
+  **Interface settings → Font size, %** controls the shared interface text scale.
+  The default is **100%**; the allowed range is **50–200%**. The menu offers
+  ten-percent steps and preserves an exact percentage set remotely. This is an
+  application preference, so switching providers does not reset it. Subtitle
+  appearance has its own font-size control.
 - **Layout:** list side, reduced-video mode and scrollbar visibility remain
   independent of the theme. The preview and its opaque mask use one shared
   rectangle. Resizing recalculates both row and logo/progress geometry.

@@ -62,3 +62,23 @@ the prior filter-based lookup. It excludes building the index and is a synthetic
 navigation benchmark, not a device startup measurement. Unit and browser tests
 cover engine demand, failed loads, stale callbacks, profile selection, guide
 replacement, status deadlines, pause and standby.
+
+## Registered multiaudio normalization
+
+For a registered normalization source, the standard shared player uses Hls.js
+when MSE is supported. This avoids native WebKit stalls across producer
+replacement while keeping the player's explicit audio-language choice. Main
+video and CSS PiP use the same rule.
+
+The rule parses the URL and matches only the complete gateway master routes
+`/normalize/play/{source}/{key}/master.m3u8` and
+`/normalize/lease/{lease}/{key}/master.m3u8`, with their bounded identifier formats.
+Userinfo, query/hash suffixes, child playlists and paths containing those strings
+elsewhere do not trigger it. This recognition is an engine hint, not gateway
+authorization; the server still validates its own scoped credentials.
+
+The selected engine preference is not rewritten, and unrelated channels, local
+files and ordinary HLS URLs retain their existing behavior. If MSE is unavailable,
+the existing native path remains; native fault recovery on older devices must be
+verified independently. The separate Video.js PC2 engine is not changed by this
+shared-core rule.

@@ -59,6 +59,7 @@ async function checkRendering(profile) {
                 "listCaption",
                 "listPodval",
                 "listDetail",
+                "listAbout",
                 "listPopUp",
                 "info1",
                 "numprog",
@@ -367,6 +368,66 @@ async function checkRendering(profile) {
     w.stbToggleStandby();
     await new Promise(setImmediate);
     assert.equal(w.__ottStandby.blocked(), false);
+
+    // Flat VPortal/Plex items use their own metadata, never a fabricated TV schedule.
+    for (const provider of ["vportal", "plex"]) {
+        w.catsArray = ["Media"];
+        w.cats = { Media: ["media-one", "media-two"] };
+        w.channels = w.chanels = {
+            "media-one": {
+                __ottMediaItem: {
+                    description:
+                        "A selected <b>movie</b> description.<script>window.injected=true</script>",
+                    logo_30x30: "https://images.example/poster.png",
+                    title: "Selected movie",
+                },
+                __ottMediaProvider: provider,
+                channel_name: "Selected movie",
+                name: "",
+                outdated: true,
+                time: 0,
+                time_to: 0,
+            },
+            "media-two": {
+                __ottMediaItem: { title: "No description" },
+                __ottMediaProvider: provider,
+                channel_name: "No description",
+                name: "",
+                time: 0,
+                time_to: 0,
+            },
+        };
+        w.sShowDescr = w.sThumbnail = 1;
+        renderWithoutSettingsWrites(0, 0);
+        const detail = w.document.getElementById("listDetail");
+        assert.match(detail.textContent, /Selected movie/);
+        assert.match(detail.textContent, /A selected movie description/);
+        assert.equal(detail.querySelector(".ott-channel-detail-time"), null);
+        assert.equal(detail.querySelector("script"), null);
+        assert.match(
+            detail.querySelector(".ott-channel-thumbnail").style
+                .backgroundImage,
+            /poster\.png/
+        );
+        assert.doesNotMatch(
+            w.document.getElementById("listIn").textContent,
+            /no epg at current time/i
+        );
+        w.channelsKeyHandler(w.keys.N2);
+        assert.match(
+            w.document.getElementById("listAbout").textContent,
+            /Selected movie/
+        );
+        assert.match(
+            w.document.getElementById("listAbout").textContent,
+            /A selected movie description/
+        );
+        w.aboutKeyHandler(w.keys.RETURN);
+        renderWithoutSettingsWrites(0, 1);
+        assert.match(detail.textContent, /No description/);
+        assert.doesNotMatch(detail.textContent, /selected movie/i);
+        assert.equal(detail.querySelector(".ott-channel-thumbnail"), null);
+    }
 
     // Both missing-category entry points must use the current language pack
     // in each shipped frontend, including after a language switch.

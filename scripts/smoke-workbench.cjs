@@ -1,5 +1,6 @@
 // Real Go queue + compiled TS collector/transport/dispatcher + Python workbench.
 // Only the DOM/media host is synthetic. No user devices or external providers.
+// Run npm run build first: lazy diagnostic modules use their real built assets.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -91,7 +92,24 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         state.position === null
             ? 10 + (Date.now() - started) / 1000
             : state.position;
+    const listeners = new Map();
+    const events = (prefix) => ({
+        addEventListener(name, callback) {
+            const key = prefix + name;
+            if (!listeners.has(key)) listeners.set(key, new Set());
+            listeners.get(key).add(callback);
+        },
+        removeEventListener(name, callback) {
+            listeners.get(prefix + name)?.delete(callback);
+        },
+    });
+    const buffered = { end: () => 600, length: 1, start: () => 0 };
     const video = {
+        ...events("media:"),
+        buffered,
+        get currentTime() {
+            return position();
+        },
         ended: false,
         getBoundingClientRect: () => ({
             height: 720,
@@ -104,7 +122,9 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         get paused() {
             return state.phase === "paused";
         },
+        playbackRate: 1,
         readyState: 4,
+        seeking: false,
         videoHeight: 360,
         videoWidth: 640,
     };
@@ -117,7 +137,26 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         }),
         parentElement: null,
     };
-    const body = { parentElement: null };
+    const loadedAssets = [];
+    const body = {
+        appendChild(script) {
+            const match =
+                /^\/dist\/(runtime-debug-details|perf-capture)\.js\?/.exec(
+                    script.src
+                );
+            assert(match, "Unexpected lazy asset: " + script.src);
+            // Execute the real emitted asset; do not bypass the feature loader.
+            vm.runInNewContext(
+                fs.readFileSync(path.join("dist", match[1] + ".js"), "utf8"),
+                { console, Date, window: host },
+                { filename: script.src }
+            );
+            loadedAssets.push(match[1]);
+            queueMicrotask(() => script.onload());
+            return script;
+        },
+        parentElement: null,
+    };
     const host = {
         __ottClassicPlayback: {
             snapshot: () => ({
@@ -141,8 +180,13 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         console,
         deviceUUID: "workbench",
         document: {
+            ...events("document:"),
             activeElement: video,
             body,
+            createElement: (tag) => {
+                assert.equal(tag, "script");
+                return {};
+            },
             getElementById: (id) =>
                 id === "video"
                     ? video
@@ -157,6 +201,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
             opacity: "1",
             visibility: "visible",
         }),
+        Hls: require("hls.js"),
         location: { protocol: "http:" },
         performance: { now: () => Date.now() - started },
         restart: () => {
@@ -170,31 +215,40 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         },
     };
     host.__ottCoreTransport = { play: host.stbPlay };
+    const hls = {
+        config: { maxBufferLength: 30, maxBufferSize: 33554432 },
+        currentLevel: 0,
+        latestLevelDetails: { edge: 600, targetduration: 10 },
+        levels: [{ bitrate: 200000000, maxBitrate: 200000000 }],
+        loadLevel: 0,
+        maxBufferLength: 30,
+        off: events("hls:").removeEventListener,
+        on: events("hls:").addEventListener,
+    };
+    const handle = {
+        active: () => true,
+        diagnosticEngine: () => "hls.js",
+        diagnosticMedia: () => ({ hls, media: video }),
+        get id() {
+            return state.handle;
+        },
+        pause: () => {
+            state.phase = "paused";
+            state.mutations++;
+        },
+        resume: () => {
+            state.phase = "playing";
+            state.resumes++;
+            state.mutations++;
+        },
+        snapshot: () => ({
+            duration: 600,
+            phase: state.phase,
+            position: position(),
+        }),
+    };
     const backend = {
-        current: (lane) =>
-            lane === "pip"
-                ? null
-                : {
-                      active: () => true,
-                      diagnosticEngine: () => "hls.js",
-                      get id() {
-                          return state.handle;
-                      },
-                      pause: () => {
-                          state.phase = "paused";
-                          state.mutations++;
-                      },
-                      resume: () => {
-                          state.phase = "playing";
-                          state.resumes++;
-                          state.mutations++;
-                      },
-                      snapshot: () => ({
-                          duration: 600,
-                          phase: state.phase,
-                          position: position(),
-                      }),
-                  },
+        current: (lane) => (lane === "pip" ? null : handle),
     };
     host.__ottCoreBackend = host.__ottCoreBackendPeek = () => backend;
     const modules = new Map();
@@ -214,6 +268,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const context = {
             console,
             Date,
+            document: host.document,
             exports,
             require: (name) => {
                 assert(
@@ -402,10 +457,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     assert.equal(debug.observations[0].data.media[0].generation, 3);
     assert.equal(debug.observations[0].data.events[0].code, "started");
     assert.equal(debug.observations[0].data.version, 1);
+    assert.deepEqual(loadedAssets, ["runtime-debug-details"]);
     assert(!Object.hasOwn(debug.observations[0].data.media[0], "engine"));
     if (process.env.OTT_DEBUG_ENGINE_V2 === "1") {
         const extended = await run(["debug", "--engine"]);
-        assert.equal(extended.observations[0].data.version, 2);
+        // The current CLI negotiates attempt-aware v3 when explicitly offered.
+        assert.equal(extended.observations[0].data.version, 3);
         assert.equal(extended.observations[0].data.media[0].engine, "hls.js");
         assert.equal(extended.observations[0].data.media[0].generation, 3);
     } else if (process.env.OTT_DEBUG_ENGINE_V2 === "unsupported-controller") {
@@ -417,6 +474,124 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         assert(!Object.hasOwn(unavailable.observations[0], "data"));
     }
     assert.equal(state.mutations, 0, "Debug request changed playback");
+    if (process.env.OTT_PERF_CAPTURE === "unsupported-controller") {
+        const unsupported = await run(
+            ["perf", "start", "--duration", "10", "--hls-details"],
+            3
+        );
+        assert.equal(unsupported.reason, "unsupported_controller");
+        assert.equal(host.__ottPerfCaptureFactory, undefined);
+    } else if (process.env.OTT_PERF_CAPTURE === "1") {
+        const count = () =>
+            [...listeners.values()].reduce((sum, set) => sum + set.size, 0);
+        const before = count();
+        assert.equal(host.__ottPerfCaptureFactory, undefined);
+        const idle = await run(["perf", "status"]);
+        assert.equal(idle.data.session, null);
+        assert.equal(count(), before, "Idle collector attached sensors");
+        const start = await run([
+            "perf",
+            "start",
+            "--duration",
+            "30",
+            "--hls-details",
+        ]);
+        assert.equal(start.version, 2);
+        assert.equal(start.data.session.state, "active");
+        assert(count() > before, "Explicit capture did not attach sensors");
+        const now = host.performance.now();
+        const frag = {
+            cc: 0,
+            elementaryStreams: { video: { endPTS: 20.001, startPTS: 10.001 } },
+            end: 20,
+            endPTS: 20.001,
+            level: 0,
+            sn: 7,
+            start: 10,
+            startPTS: 10.001,
+            stats: {
+                loaded: 5000000,
+                loading: { end: now - 10, first: now - 20, start: now - 30 },
+            },
+            url: secret,
+        };
+        const emit = (name, data) =>
+            [...(listeners.get("hls:" + name) || [])].forEach((fn) =>
+                fn(name, data)
+            );
+        emit("hlsFragLoaded", { frag, networkDetails: { status: 200 } });
+        emit("hlsFragBuffered", { frag });
+        emit("hlsBufferAppended", {
+            timeRanges: { audio: buffered, video: buffered },
+        });
+        await delay(1100);
+        const id = start.session_id;
+        const active = await run(["perf", "status", "--session", id]);
+        assert.equal(active.data.session.state, "active");
+        const read = await run(["perf", "read", id]);
+        const kinds = new Set(read.data.events.map((event) => event.kind));
+        for (const kind of [
+            "sample",
+            "loop",
+            "hls",
+            "hls_fragment",
+            "hls_buffer",
+            "hls_config",
+            "hls_live",
+        ])
+            assert(
+                kinds.has(kind),
+                "Missing end-to-end performance event: " + kind
+            );
+        const fragment = read.data.events.find(
+            (event) => event.kind === "hls" && event.data.event === "fragment"
+        );
+        assert.equal(fragment.data.bytes, 5000000);
+        assert.equal(fragment.data.load_duration_ms, 20);
+        assert.equal(
+            read.data.events.find((event) => event.kind === "hls_fragment").data
+                .start_pts_seconds,
+            10.001
+        );
+        assert.equal(
+            read.data.events.find((event) => event.kind === "hls_config").data
+                .max_buffer_length_seconds,
+            30
+        );
+        assert.equal(
+            read.data.events.find((event) => event.kind === "hls_live").data
+                .current_level.max_bitrate,
+            200000000
+        );
+        const stop = await run(["perf", "stop", id]);
+        assert.equal(stop.data.session.state, "stopped");
+        assert.equal(stop.data.session.reason, "requested");
+        assert.equal(count(), before, "Stopped capture retained sensors");
+        const exported = await run([
+            "perf",
+            "export",
+            id,
+            "--out",
+            path.join(directory, "performance"),
+        ]);
+        assert.equal(exported.capture.complete, true);
+        assert.equal(exported.capture.last_session.state, "stopped");
+        const evidence = path.join(directory, "performance", "result.json");
+        assert.equal(fs.statSync(evidence).mode & 0o777, 0o600);
+        assert(!fs.readFileSync(evidence, "utf8").includes(secret));
+        assert.deepEqual(loadedAssets, [
+            "runtime-debug-details",
+            "perf-capture",
+        ]);
+        assert.equal(
+            state.mutations,
+            0,
+            "Performance diagnostics changed playback"
+        );
+        console.log(
+            "PASS real perf-v2 start/status/read/stop/export, lazy assets, HLS timings, idle and stopped sensor cleanup"
+        );
+    }
     state.hidden = state.overlay = true;
     const hidden = await run([
         "inspect",
@@ -534,7 +709,9 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     );
     assert(
         executed.every((request) =>
-            ["capabilities", "inspect", "playback"].includes(request.action)
+            ["capabilities", "inspect", "playback", "perf_capture"].includes(
+                request.action
+            )
         )
     );
     console.log(

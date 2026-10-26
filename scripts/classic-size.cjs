@@ -352,7 +352,9 @@ const { gzipSync } = require("node:zlib");
 // identity reserve; existing global interfaces and provider budgets stay fixed.
 // On-demand engine readiness, bounded playback feedback and device/source buffer
 // policy add less than 6 KB raw / 1.8 KB gzip; engine payloads stay off boot.
-const BUDGET = Object.freeze({ bytes: 1042000, gzipBytes: 321450 });
+// Periodic channel-backed VOD checkpoints measure 321463 native entry gzip
+// bytes with Node 22.23.4 and beta.9999. Allow 96 bytes including identity room.
+const BUDGET = Object.freeze({ bytes: 1042000, gzipBytes: 321546 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -527,12 +529,45 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // counted in every complete payload, never paid by the default startup entry.
 // Direct ES5 optimization measures 6880 raw / 2881 gzip on Node 26; retain
 // bounded engine/identity and Node 22 compression headroom without growing entry.
+// Count the same 96-byte VOD allowance once: Node 22.23.4 beta.9999 native
+// legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     bytes: 1176800,
-    gzipBytes: 370850,
+    gzipBytes: 370946,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1184600, gzipBytes: 374150 });
+// Optional hosted transport and remote settings retain independent feature caps.
+// Their union does not change the legacy entry/provider or subtitle limits.
+const OPTIONAL_BUDGETS = Object.freeze({
+    "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
+    // Existing startup and complete legacy limits do not grow for this feature.
+    // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
+    // version fencing. Node22.23.4 level9: 15638/6089 -> 18760/7076 raw/gzip.
+    // Allocate its measured +3122/+987 with +3200/+1024; retain prior headroom.
+    "perf-capture": Object.freeze({ bytes: 20200, gzipBytes: 7824 }),
+    // Provider scalar codecs and the paginated Plex folder collection reuse normal
+    // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
+    // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
+    "remote-provider-fields": Object.freeze({ bytes: 18000, gzipBytes: 6200 }),
+    // Move the typed factory/dispatcher into the lifecycle asset, and the remote-only
+    // handoff/notification handlers out of startup. Combined Node22: base15851/5206,
+    // lifecycle29193/9276; entry1037905/321296. Existing entry/legacy caps stay fixed.
+    "remote-settings": Object.freeze({ bytes: 17500, gzipBytes: 5800 }),
+    // Existing UI/debug owners stay in startup; typed extras, CAS and ACK handling
+    // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
+    "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
+    "remote-settings-lifecycle": Object.freeze({
+        bytes: 31000,
+        gzipBytes: 10000,
+    }),
+    // Pure legacy snapshot projections move out of startup; no new polling.
+    "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
+    "subtitle-appearance": OPTIONAL_BUDGET,
+});
+// Carry the approved 96-byte VOD checkpoint allowance into the complete
+// payload exactly once, alongside the independently bounded optional capture.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1288100, gzipBytes: 410770 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
@@ -602,10 +637,13 @@ function inspectBundleSets(root, artifacts = ARTIFACTS, providerKinds) {
         const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
             (name) => {
                 const file = path.join(directory, name + ".js");
+                const budget = OPTIONAL_BUDGETS[name];
+                if (!budget)
+                    throw new Error("Missing optional budget: " + name);
                 return measureBundle(
                     fs.readFileSync(path.join(root, file)),
                     file,
-                    OPTIONAL_BUDGET
+                    budget
                 );
             }
         );
@@ -664,6 +702,7 @@ function writeBundleReport(
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
+        optionalBudgets: OPTIONAL_BUDGETS,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
                 modules.includes(file)
@@ -703,6 +742,7 @@ module.exports = {
     LEGACY_TOTAL_BUDGET,
     measureBundle,
     OPTIONAL_BUDGET,
+    OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
     writeBundleReport,

@@ -19,15 +19,54 @@
     var watching = false;
     var observer: any = null;
     var observed: HTMLVideoElement[] = [];
+    function scaleFonts(): void {
+        var doc = host.document;
+        if (!doc || !doc.styleSheets || !host.location) return;
+        function visit(rules: any): void {
+            for (var i = 0; rules && i < rules.length; i++) {
+                var rule = rules[i],
+                    css = rule.style;
+                if (
+                    css &&
+                    css.fontSize &&
+                    !/::cue|shaka-text|vjs-text-track/.test(
+                        rule.selectorText || ""
+                    )
+                ) {
+                    var original =
+                        css.__ottFontBase ||
+                        (css.__ottFontBase = [
+                            css.fontSize,
+                            css.getPropertyPriority("font-size"),
+                        ]);
+                    var size = host.uiFontSize(original[0]);
+                    if (css.fontSize !== size)
+                        css.setProperty("font-size", size, original[1]);
+                }
+                visit(rule.cssRules);
+            }
+        }
+        for (var i = 0; i < doc.styleSheets.length; i++) {
+            var sheet = doc.styleSheets[i];
+            try {
+                var url = new URL(sheet.href, host.location.href);
+                if (
+                    (!sheet.href &&
+                        sheet.ownerNode &&
+                        /^(ott-interface|ott-tauri-loading-logs)-style$/.test(
+                            sheet.ownerNode.id
+                        )) ||
+                    (sheet.href &&
+                        url.origin === host.location.origin &&
+                        /\/styles\/player\.css$/.test(url.pathname))
+                )
+                    visit(sheet.cssRules);
+            } catch (_) {}
+        }
+    }
     function index(values: any, key: string, max: number): number {
         var n = values && values[key];
-        return typeof n === "number" &&
-            isFinite(n) &&
-            Math.floor(n) === n &&
-            n >= 0 &&
-            n <= max
-            ? n
-            : 0;
+        return Number.isInteger(n) && n >= 0 && n <= max ? n : 0;
     }
     function declarations(video: HTMLVideoElement, values?: any): string {
         values = values || host.settings || {};
@@ -89,6 +128,7 @@
             .join("");
     }
     function apply(): void {
+        scaleFonts();
         var doc = host.document;
         if (!doc || !doc.querySelectorAll || !doc.createElement) return;
         var videos = doc.querySelectorAll("video"),
@@ -142,7 +182,8 @@
         }
     }
     function open(): void {
-        var page = host.__ottAppearanceHost.page(
+        var ui = host.__ottAppearanceHost;
+        var page = ui.page(
             host,
             "settingsSubtitles",
             "Subtitle appearance",
@@ -151,65 +192,49 @@
         );
         var label = page.label,
             defaults = [label("Player default")];
-        var rows = [
-            page.choice(
-                label("Font type"),
-                keys[0],
-                defaults.concat(["Arial", "Georgia", "Courier New"])
-            ),
-            page.choice(
-                label("Font size"),
-                keys[1],
-                defaults.concat(["75%", "100%", "125%", "150%", "200%"])
-            ),
-            page.choice(
-                label("Text color"),
-                keys[2],
-                defaults.concat([
-                    "#FFFFFF",
-                    "#FFFF00",
-                    "#000000",
-                    "#00FFFF",
-                    "#00FF00",
-                ])
-            ),
-            page.choice(
-                label("Outline thickness"),
-                keys[3],
-                defaults.concat([label("Off"), "1 px", "2 px", "3 px"])
-            ),
-            page.choice(
-                label("Background opacity"),
-                keys[4],
-                defaults.concat(["0%", "25%", "50%", "75%", "100%"])
-            ),
-            {
-                cur: label("select"),
-                name: label("Reset to default"),
-                val: 0,
-                values: function () {
-                    rows.forEach(function (row: any) {
-                        if (row.settingId) row.val = 0;
-                    });
-                    host.showPage();
-                },
-            },
+        var labels = [
+            label("Font type"),
+            label("Font size"),
+            label("Text color"),
+            label("Outline thickness"),
+            label("Background opacity"),
         ];
-        host.__ottAppearanceHost.list(host, page.rows(rows));
+        var options = [
+            ["Arial", "Georgia", "Courier New"],
+            ["75%", "100%", "125%", "150%", "200%"],
+            ["#FFFFFF", "#FFFF00", "#000000", "#00FFFF", "#00FF00"],
+            [label("Off"), "1 px", "2 px", "3 px"],
+            ["0%", "25%", "50%", "75%", "100%"],
+        ];
+        var rows: any[] = labels.map(function (name, i) {
+            return page.choice(name, keys[i], defaults.concat(options[i]));
+        });
+        rows.push({
+            cur: label("select"),
+            name: label("Reset to default"),
+            val: 0,
+            values: function () {
+                rows.forEach(function (row: any) {
+                    if (row.settingId) row.val = 0;
+                });
+                host.showPage();
+            },
+        });
+        ui.list(host, page.rows(rows));
         page.attach();
     }
     function interfaceSettings(): void {
-        var w = window as any;
+        var ui = host.__ottAppearanceHost;
         var showPlayerChoice =
-            w.ott_device !== "lg/webos" &&
-            !(w.ott_device === "pc2" && typeof w.videojs === "function");
+            host.ott_device !== "lg/webos" &&
+            !(host.ott_device === "pc2" && typeof host.videojs === "function");
         /**
          * Persist all interface settings and re-apply them.
          * Conditionally saves PiP, OSD opacity, volume step, and editor
          * settings based on capability. Calls all apply-functions after saving.
          */
-        var page = host.__ottAppearanceHost.page(
-            w,
+        var page = ui.page(
+            host,
             "settingsInterface",
             "Interface settings",
             true,
@@ -218,20 +243,23 @@
         var choice = page.choice;
         var label = page.label;
 
-        var mediaLanguageCodes = Object.keys(
-            host.__ottAppearanceHost.languages
-        );
+        var mediaLanguageCodes = Object.keys(ui.languages);
         var mediaLanguageLabels = mediaLanguageCodes.map(function (code) {
-            return host.__ottAppearanceHost.languages[code];
+            return ui.languages[code];
         });
         var noyes = [label("no"), label("yes")];
-        var tz = (w.arrTimezone || ["system", "0"]).slice();
-        tz[0] = w._(tz[0]) || tz[0];
-        host.__ottAppearanceHost.list(
-            w,
+        var fontScales: number[] = [];
+        // Include exact remote values while keeping the selector ascending.
+        for (var scale = 50; scale <= 200; scale++)
+            if (scale % 10 === 0 || scale === host.sUiFontScale)
+                fontScales.push(scale);
+        var tz = (host.arrTimezone || ["system", "0"]).slice();
+        tz[0] = host._(tz[0]) || tz[0];
+        ui.list(
+            host,
             page.rows([
-                choice(w._("Interface theme"), "interfaceTheme", [
-                    w._("Classic"),
+                choice(host._("Interface theme"), "interfaceTheme", [
+                    host._("Classic"),
                     "PLi-HD",
                     "Studio 2026",
                 ]),
@@ -276,19 +304,36 @@
                 choice(
                     label("Font type"),
                     "fontSize",
-                    w.__ottNativeFontOptions || [
-                        '<span style="font-family:Helvetica, Arial, sans-serif;">' +
-                            label("system") +
-                            "</span>",
-                        '<span style="font-family:Roboto;">Roboto</span>',
-                        '<span style="font-family:RobotoCondensed;">Roboto Condensed</span>',
-                        '<span style="font-family:Caveat;">Caveat</span>',
-                        '<span style="font-family:Liberation;">Liberation</span>',
-                        '<span style="font-family:Gabriela;">Gabriela</span>',
-                        '<span style="font-family:PTSansNarrow;">PTSansNarrow</span>',
-                    ]
+                    host.__ottNativeFontOptions ||
+                        [
+                            label("system"),
+                            "Roboto",
+                            "Roboto Condensed",
+                            "Caveat",
+                            "Liberation",
+                            "Gabriela",
+                            "PTSansNarrow",
+                        ].map(function (name, i) {
+                            return (
+                                '<span style="font-family:' +
+                                (i
+                                    ? name.replace(" ", "")
+                                    : "Helvetica, Arial, sans-serif") +
+                                ';">' +
+                                name +
+                                "</span>"
+                            );
+                        })
                 ),
                 choice(label("Timezone"), "timezone", tz),
+                {
+                    name: label("Font size") + ", %",
+                    settingId: "uiFontScale",
+                    settingValues: fontScales,
+                    values: fontScales.map(function (value) {
+                        return value + "%";
+                    }),
+                },
                 choice(label("Sleep timer"), "sleepTimeout", [
                     label("off"),
                     label("30 minutes"),
@@ -317,31 +362,39 @@
                 },
                 {
                     cur: label("select"),
-                    name: w._("Color spectrum") + " (" + w._("Classic") + ")",
+                    name:
+                        host._("Color spectrum") +
+                        " (" +
+                        host._("Classic") +
+                        ")",
                     settingId: "highlightColor",
-                    values: w.colorDialog,
+                    values: host.colorDialog,
                 },
                 {
                     cur: label("select"),
                     name:
-                        w._("Background color of selected item") +
+                        host._("Background color of selected item") +
                         " (" +
-                        w._("Classic") +
+                        host._("Classic") +
                         ")",
                     settingId: "highlightColorSel",
-                    values: w.selColorDialog,
+                    values: host.selColorDialog,
                 },
                 {
                     cur: label("select"),
-                    name: w._("Background color") + " (" + w._("Classic") + ")",
+                    name:
+                        host._("Background color") +
+                        " (" +
+                        host._("Classic") +
+                        ")",
                     settingId: "highlightColorB",
-                    values: w.backColorDialog,
+                    values: host.backColorDialog,
                 },
-                choice(label("Permanent clock on screen"), "permanentTime", [
-                    label("no"),
-                    label("yes"),
-                    label("transparent"),
-                ]),
+                choice(
+                    label("Permanent clock on screen"),
+                    "permanentTime",
+                    noyes.concat([label("transparent")])
+                ),
                 choice(
                     label("Graphical indication"),
                     "useGraphicalIndicators",
@@ -372,7 +425,7 @@
                 choice(
                     label("Type of player for streaming"),
                     "players",
-                    w.playerModeNames
+                    host.playerModeNames
                 ),
                 {
                     name: label("Maximum video height") + " (HLS/Shaka)",
@@ -402,44 +455,48 @@
                         "16 Mbps",
                     ],
                 },
-                choice(label("Buffer Size, s"), "bufSize", w.bufferSizes),
+                choice(label("Buffer Size, s"), "bufSize", host.bufferSizes),
             ])
         );
-        host.__ottAppearanceHost.list(
-            w,
-            w.listArray.filter(function (row: any): boolean {
+        ui.list(
+            host,
+            host.listArray.filter(function (row: any): boolean {
                 if (
                     row.settingId === "preferredAudioLanguage" ||
                     row.settingId === "preferredSubtitleLanguage"
                 )
                     return (
-                        !!w.__ottCoreTransport &&
-                        w.stbPlay === w.__ottCoreTransport.play
+                        !!host.__ottCoreTransport &&
+                        host.stbPlay === host.__ottCoreTransport.play
                     );
                 if (row.settingId === "players") {
-                    if (Array.isArray(w.stbPlayers)) row.values = w.stbPlayers;
+                    if (Array.isArray(host.stbPlayers))
+                        row.values = host.stbPlayers;
                     return showPlayerChoice;
                 }
                 if (row.settingId === "bufSize") {
-                    if (w.stbBufferSizes) row.values = w.stbBufferSizes;
-                    return typeof w.stbSetBuffer === "function";
+                    if (host.stbBufferSizes) row.values = host.stbBufferSizes;
+                    return typeof host.stbSetBuffer === "function";
                 }
                 if (row.settingId === "editor")
-                    return typeof w.showEditKey2 === "function";
+                    return typeof host.showEditKey2 === "function";
                 if (row.settingId === "medCount")
                     return (
-                        typeof w.getMediaArray === "function" ||
-                        !!(w.__ottNasLibrary && w.__ottNasLibrary.available())
+                        typeof host.getMediaArray === "function" ||
+                        !!(
+                            host.__ottNasLibrary &&
+                            host.__ottNasLibrary.available()
+                        )
                     );
                 if (row.settingId === "volumeStep")
-                    return typeof w.stbGetVolume === "function";
+                    return typeof host.stbGetVolume === "function";
                 if (row.settingId === "osdOpacity")
-                    return typeof w.stbSetOsdOpacity === "function";
+                    return typeof host.stbSetOsdOpacity === "function";
                 if (
                     row.settingId === "pipSize" ||
                     row.settingId === "pipPosition"
                 )
-                    return typeof w.stbPlayPip === "function";
+                    return typeof host.stbPlayPip === "function";
                 return true;
             })
         );
@@ -450,5 +507,6 @@
         declarations: declarations,
         interface: interfaceSettings,
         open: open,
+        scaleFonts: scaleFonts,
     };
 })(window as any);

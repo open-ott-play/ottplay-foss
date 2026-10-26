@@ -3,6 +3,7 @@ interface VPortalProviderDriver extends ProviderDriver {
     cancelConnection(): void;
     catalogError(): boolean;
     catalogLoading(): boolean;
+    configurationChanged(): void;
     mediaClient(): any;
     mediaItem(id: string | number): any;
     remoteProfiles?(request: any): any;
@@ -221,6 +222,7 @@ function createVPortalProviderDriver(
             return active() && loading;
         },
         configuration: configuration,
+        configurationChanged: retire,
         credentials: function () {
             var config = configuration();
             return {
@@ -462,6 +464,10 @@ function mountVPortalProvider(
     owner: DriverLifetime
 ): void {
     var revision = 0;
+    driver.settingsChanged = function () {
+        revision++;
+        closeEditorClient();
+    };
     var attached: any = null;
     var editorClient: any = null;
     function closeEditorClient(): void {

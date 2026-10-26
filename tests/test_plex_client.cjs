@@ -455,6 +455,79 @@ test("catalog labels stay nonblank without exposing filesystem parents or changi
     assert.equal(f.host.mediaRecords[1].title, "Untitled folder");
 });
 
+test("file labels and directory categories independently keep their first valid Part", () => {
+    const f = fixture();
+    f.client.load(
+        { path: "/library/metadata/10/children", plexSource: source },
+        () => {}
+    );
+    last(f).reply({
+        MediaContainer: {
+            Metadata: [
+                {
+                    Media: [
+                        null,
+                        "invalid",
+                        {
+                            Part: [
+                                null,
+                                { file: 5 },
+                                {
+                                    file: "https://host.invalid/ignored/Remote.mp4",
+                                },
+                            ],
+                        },
+                        {
+                            Part: [
+                                { file: "/private/First/.." },
+                                {
+                                    file: "C:\\private\\Second\\Visible\t File.mkv",
+                                },
+                                { file: "/private/Third/Too late.mp4" },
+                            ],
+                        },
+                    ],
+                    ratingKey: "1",
+                    type: "movie",
+                },
+                {
+                    Media: { Part: { file: "/private/First/another.mp4" } },
+                    ratingKey: "2",
+                    title: " Preferred\t title ",
+                    type: "movie",
+                },
+                {
+                    Media: {
+                        Part: [
+                            { file: "Filename.mp4" },
+                            { file: "/private/Second/later.mp4" },
+                        ],
+                    },
+                    ratingKey: "3",
+                    type: "movie",
+                },
+            ],
+            size: 3,
+            totalSize: 3,
+        },
+    });
+    const rows = f.host.mediaRecords;
+    assert.deepEqual(
+        Array.from(rows, (row) => row.title),
+        ["Visible File.mkv", "Preferred title", "Filename.mp4"]
+    );
+    assert.deepEqual(
+        Array.from(rows, (row) => row.__ottMediaFileDirectory.name),
+        ["First", "First", "Second"]
+    );
+    assert.equal(
+        rows[0].__ottMediaFileDirectory.id,
+        rows[1].__ottMediaFileDirectory.id
+    );
+    assert(!JSON.stringify(rows).includes("private"));
+    assert(!JSON.stringify(rows).includes("host.invalid"));
+});
+
 test("collection capability uses the same flat route contract as collection", () => {
     const f = fixture();
     for (const target of [
@@ -1305,6 +1378,123 @@ test("native original admission resolves a fresh authenticated stream and persis
         new URL(played.stream_url).pathname,
         "/library/parts/2/renewed.mp4"
     );
+});
+
+test("Automatic sends known high-bit-depth AVC through Plex compatibility negotiation", () => {
+    for (const [label, overrides] of [
+        [
+            "numeric video bit depth",
+            {
+                Part: [
+                    {
+                        key: "/library/parts/1/file.mp4",
+                        Stream: [{ bitDepth: 10, streamType: 1 }],
+                    },
+                ],
+            },
+        ],
+        [
+            "string video bit depth",
+            {
+                Part: [
+                    {
+                        key: "/library/parts/1/file.mp4",
+                        Stream: [{ bitDepth: "10", streamType: "1" }],
+                    },
+                ],
+            },
+        ],
+        ["media High 10 profile", { videoProfile: "high 10" }],
+        [
+            "video High 10 profile without bit depth",
+            {
+                Part: [
+                    {
+                        key: "/library/parts/1/file.mp4",
+                        Stream: [{ profile: "High 10 Intra", streamType: 1 }],
+                    },
+                ],
+            },
+        ],
+    ]) {
+        const queries = [];
+        const f = fixture(
+            {},
+            {
+                native(mime) {
+                    queries.push(mime);
+                    return mime.includes("avc1.42E01E") ? "probably" : "";
+                },
+            }
+        );
+        let played;
+        f.client.resolve(film, (value) => (played = value));
+        last(f).reply(metadata(overrides));
+        assert.equal(
+            parsed(f).pathname,
+            "/video/:/transcode/universal/decision",
+            label
+        );
+        assert.equal(played, undefined, label);
+        assert(!queries.some((mime) => mime.includes("avc1.42E01E")), label);
+        last(f).reply({ MediaContainer: { transcodeDecisionCode: 1001 } });
+        assert.equal(played.__ottPlexPlayback.type, "hls", label);
+        assert.equal(played.__ottNativeFile, undefined, label);
+    }
+});
+
+test("XML High 10 metadata uses the same Automatic compatibility path", () => {
+    const f = fixture({}, { native: () => "probably" });
+    let played;
+    f.client.resolve(film, (value) => (played = value));
+    last(f).reply(
+        '<MediaContainer><Video ratingKey="42" type="movie"><Media videoCodec="h264" audioCodec="aac" container="mp4"><Part key="/library/parts/1/file.mp4"><Stream streamType="1" bitDepth="10" profile="high 10"/></Part></Media></Video></MediaContainer>'
+    );
+    assert.equal(parsed(f).pathname, "/video/:/transcode/universal/decision");
+    assert.equal(played, undefined);
+    last(f).reply({ MediaContainer: { transcodeDecisionCode: 1001 } });
+    assert.equal(played.__ottPlexPlayback.type, "hls");
+});
+
+test("ordinary and incomplete AVC metadata retain native Automatic admission", () => {
+    for (const overrides of [
+        {},
+        { videoProfile: "baseline" },
+        {
+            Part: [
+                {
+                    key: "/library/parts/1/file.mp4",
+                    Stream: [{ bitDepth: 8, level: 42, streamType: 1 }],
+                },
+            ],
+            videoProfile: "high",
+        },
+        { videoProfile: "unknown" },
+        {
+            Part: [
+                {
+                    key: "/library/parts/1/file.mp4",
+                    Stream: [
+                        { bitDepth: 24, streamType: 2 },
+                        { streamType: 1 },
+                    ],
+                },
+            ],
+        },
+    ]) {
+        const f = fixture({}, { native: () => "probably" });
+        let played;
+        f.client.resolve(film, (value) => (played = value));
+        last(f).reply(metadata(overrides));
+        assert.equal(f.requests.length, 1);
+        assert.equal(played.__ottPlexPlayback.type, "file");
+    }
+    const original = fixture({ playback: "original" });
+    let played;
+    original.client.resolve(film, (value) => (played = value));
+    last(original).reply(metadata({ videoProfile: "high 10" }));
+    assert.equal(original.requests.length, 1);
+    assert.equal(played.__ottPlexPlayback.type, "file");
 });
 
 test("unknown native codec falls back to negotiated HLS and cancellation owns the nested decision request", () => {

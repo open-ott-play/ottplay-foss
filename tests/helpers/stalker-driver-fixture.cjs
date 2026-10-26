@@ -1,5 +1,7 @@
 "use strict";
 const vm = require("node:vm");
+const fs = require("node:fs");
+const path = require("node:path");
 const ts = require("typescript");
 const { context, declarations } = require("./playlist-fixture.cjs");
 const privateRuntime = require("./private-runtime.cjs");
@@ -26,6 +28,23 @@ module.exports = function fixture(options = {}) {
         ).outputText,
         host
     );
+    vm.runInContext(
+        ts
+            .transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../../src/settings/store.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, ""),
+        host
+    );
     const requests = [],
         progress = [];
     const saved = new Map([
@@ -43,6 +62,28 @@ module.exports = function fixture(options = {}) {
     const owner = registry.activate("stalker");
     const ports = {
         channelCatalog: host.__ottChannelCatalog.project,
+        commit(writes, current, rollbackAllowed) {
+            if (!Array.isArray(writes))
+                writes = Object.keys(writes).map((key) => ({
+                    after: writes[key],
+                    before: saved.get(key) ?? null,
+                    key,
+                }));
+            host.commitSettingsWrites(
+                writes.map((row) => ({
+                    after: row.after,
+                    before: row.before,
+                    storage: {
+                        read: () => saved.get(row.key) ?? null,
+                        remove: () => saved.delete(row.key),
+                        write: (value) => saved.set(row.key, value),
+                    },
+                })),
+                current,
+                rollbackAllowed
+            );
+            return true;
+        },
         core: host.OttPlayCore,
         createLifetime: host.__ottProviderRuntime.createRegistry,
         hash: (name) => host.xxHash32S(name, true),

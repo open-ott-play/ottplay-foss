@@ -12,6 +12,7 @@ import { languageNames } from "../localization/assets";
  */
 import { storage } from "../storage/index";
 import {
+    commitSettingsWrites,
     createSettingsStore,
     type SettingDefinition,
     type SettingsDraft,
@@ -46,6 +47,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property pageSize          - Number of items per page in channel list.
  * @property fontShift         - Font size adjustment shift.
  * @property fontSize          - Base font size index.
+ * @property uiFontScale       - Interface text scale in percent (50–200).
  * @property arrowFun          - Remote arrow key function mapping.
  * @property rewFun            - Rewind button function mapping.
  * @property pnFun             - P+/P- button function mapping.
@@ -158,6 +160,8 @@ export interface PlayerSettings {
     noSmall: number;
     okFun: number;
     osdOpacity: number;
+    ottplaylang: string;
+    ottplaylangmode: string;
     pageSize: number;
     parentPin: string;
     permanentTime: number;
@@ -199,6 +203,7 @@ export interface PlayerSettings {
     swopBaseUrl: string;
     thumbnail: number;
     timezone: number;
+    uiFontScale: number;
     useGraphicalIndicators: number;
     volumeStep: number;
     yFun: number;
@@ -262,6 +267,8 @@ export function defaultSettings(): PlayerSettings {
         noSmall: 0,
         okFun: 0,
         osdOpacity: 7,
+        ottplaylang: "",
+        ottplaylangmode: "system",
         pageSize: 25,
         parentPin: "1234",
         permanentTime: 0,
@@ -303,6 +310,7 @@ export function defaultSettings(): PlayerSettings {
         swopBaseUrl: "",
         thumbnail: 1,
         timezone: 0,
+        uiFontScale: 100,
         useGraphicalIndicators: 0,
         volumeStep: 5,
         yFun: 1,
@@ -365,6 +373,7 @@ function defineSetting(
               : rules.encode,
         id: id,
         key: key,
+        rules: rules,
         scope: scope,
         validate: function (value): boolean {
             if (rules.language)
@@ -398,7 +407,11 @@ function defineSetting(
                 var pair = value.split(",").map(Number);
                 return pair[0] <= 360 && pair[1] <= 100;
             }
-            if (typeof fallback === "string") return typeof value === "string";
+            if (typeof fallback === "string")
+                return (
+                    typeof value === "string" &&
+                    (!rules.values || rules.values.indexOf(value) >= 0)
+                );
             if (
                 typeof value !== "number" ||
                 !isFinite(value) ||
@@ -723,6 +736,10 @@ export const settingsSchema: SettingDefinition[] = [
         },
         ["setColor"]
     ),
+    defineSetting("ottplaylang", "ottplaylang", { language: "interface" }),
+    defineSetting("ottplaylangmode", "ottplaylangmode", {
+        values: ["manual", "system"],
+    }),
     defineSetting("commandServerAddress", "commandServerAddress", {}),
     defineSetting("commandServerToken", "commandServerToken", {}),
     defineSetting("localCmdUrl", "sLocalCmdUrl", {}),
@@ -731,13 +748,20 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("deviceUuid", "sDeviceUuid", {}),
     defineSetting("localHttpEnabled", "sLocalHttpEnabled"),
     defineSetting("commandServerEnabled", "commandServerEnabled"),
+    defineSetting("uiFontScale", "sUiFontScale", { range: [50, 200] }, [
+        "setFontSize",
+    ]),
 ];
 function settingsSource(): string {
     var w = typeof window === "undefined" ? {} : (window as any);
     var driver = w.__ottActiveProviderDriver;
-    return driver && typeof driver.storageKey === "function"
-        ? driver.id + ":" + driver.storageKey("sPlayers")
-        : String(w.p_pref || w.providerId || "classic");
+    try {
+        return driver && typeof driver.storageKey === "function"
+            ? driver.id + ":" + driver.storageKey("sPlayers")
+            : String(w.p_pref || w.providerId || "classic");
+    } catch (_) {
+        return String(driver.id) + ":unavailable";
+    }
 }
 export const settingsStore = createSettingsStore(settingsSchema, {
     context: settingsSource,
@@ -766,6 +790,14 @@ export const settingsStore = createSettingsStore(settingsSchema, {
                 write = w.providerSetItem,
                 remove = w.providerDelItem;
             return {
+                current: function () {
+                    return (
+                        w.__ottActiveProviderDriver === driver &&
+                        w.providerGetItem === read &&
+                        w.providerSetItem === write &&
+                        w.providerDelItem === remove
+                    );
+                },
                 read: function () {
                     return read(entry.key);
                 },
@@ -854,6 +886,13 @@ bindSettingsFacade(settings, false);
 export function installSettingsFacade(target: Record<string, any>): void {
     bindSettingsFacade(target, true);
     target.settings = settings;
+    target.__ottPlayerSettingsHost = {
+        commit: commitSettingsWrites,
+        languages: Object.keys(languageNames),
+        schema: settingsSchema,
+        source: settingsSource,
+        store: settingsStore,
+    };
 }
 export function loadSettings(): PlayerSettings {
     // Device detection can finish after the settings schema was constructed.

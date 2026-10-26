@@ -75,6 +75,7 @@ Het synthetische testbeeld kan opnieuw worden gegenereerd met `scripts/generate-
 - **Routering per apparaat**: UUID-adressering voor opstellingen met meerdere apparaten
 - **Lokale proxy**: optionele lokale opdrachtserver voor volledig lokale automatisering (zonder centrale server)
 - **Controllerintegratie**: operators met apparaat-/actiebereik, optionele duurzame opdrachtresultaten, hervatbare toepassing van Local/Home-presets en live-/archiefoverdracht van dezelfde bron via de bijbehorende [controlserver](https://github.com/open-ott-play/ottplay-control-server). Vereist de bijgewerkte controller/CLI; een zelfstandig browsertabblad levert dit niet.
+- **Getypeerde externe voorkeuren**: ontdek instellingen, lees opgeslagen en effectieve waarden en sla op met controle van runtime-instantie, bron en revisie; zie [externe instellingen en VPortal-configuratie](docs/remote-player-settings.md).
 - **Debuggen**: optionele afspeel-HUD/ringlog via `?debug=1`, inspectie op afstand met toestemming en een gehoste audio-/videocontrole op aanvraag
 - **Toetsenbordtoegankelijkheid**: benoemde klassieke dialoogvensters, vasthouden en terugzetten van Tab-focus, semantiek voor de geselecteerde zender en niet-onderbrekende statusmeldingen. Deze verbeteringen bewijzen geen volledige WCAG- of apparaatschermlezerconformiteit.
 - **24 apparaattypen**: apparaatspecifieke afstandsbedieningstoetsen

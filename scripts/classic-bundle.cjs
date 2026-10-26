@@ -100,8 +100,10 @@ const CLASSIC_MODULES = [
     "build/commands/random-channel.js",
     "build/commands/index.js",
     "build/commands/remote-profiles.js",
-    "build/commands/remote-handoff.js",
     "build/commands/remote-plex.js",
+    "build/commands/remote-feature.js",
+    "build/commands/remote-settings.js",
+    "build/commands/remote-perf.js",
     "build/commands/remote-favorites-contract.js",
     "build/commands/remote-favorites.js",
     "build/commands/remote-app-update.js",
@@ -118,6 +120,7 @@ const CLASSIC_MODULES = [
     "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",
     "build/plugins/local-http-remote.js",
+    "build/plugins/hosted-control-transport.js",
     "build/plugins/notification-media.js",
     "build/plugins/remote-notifications.js",
     "build/plugins/command-server.js",
@@ -136,7 +139,21 @@ const CLASSIC_MODULES = [
     "build/plugins/remote-screenshot.js",
     "build/plugins/remote-doctor.js",
     "build/plugins/remote-inspect.js",
+    "build/plugins/remote-settings-dispatch.js",
+    "build/plugins/remote-settings-host.js",
+    "build/plugins/remote-settings-lifecycle.js",
+    "build/plugins/remote-settings-extras.js",
+    "build/plugins/remote-notification-settings.js",
+    "build/plugins/remote-handoff.js",
+    "build/plugins/remote-settings.js",
+    "build/plugins/remote-provider-settings.js",
+    "build/plugins/remote-provider-fields.js",
+    "build/plugins/remote-plex-folders.js",
+    "build/plugins/remote-legacy-settings.js",
     "build/plugins/runtime-debug.js",
+    "build/plugins/runtime-debug-details.js",
+    "build/plugins/perf-sensors.js",
+    "build/plugins/perf-capture.js",
     "build/plugins/dash-exo-player.js",
     "build/plugins/m3u-proxy.js",
     "build/plugins/stalker-portal.js",
@@ -161,6 +178,30 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     xtream: ["build/provider/xtream-media.js"],
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
+    "control-transport": ["build/plugins/hosted-control-transport.js"],
+
+    "perf-capture": [
+        "build/plugins/perf-sensors.js",
+        "build/plugins/perf-capture.js",
+    ],
+    "remote-provider-fields": [
+        "build/plugins/remote-provider-fields.js",
+        "build/plugins/remote-plex-folders.js",
+    ],
+    "remote-settings": [
+        "build/plugins/remote-notification-settings.js",
+        "build/plugins/remote-handoff.js",
+        "build/plugins/remote-provider-settings.js",
+        "build/plugins/remote-legacy-settings.js",
+    ],
+    "remote-settings-extras": ["build/plugins/remote-settings-extras.js"],
+    "remote-settings-lifecycle": [
+        "build/plugins/remote-settings.js",
+        "build/plugins/remote-settings-dispatch.js",
+        "build/plugins/remote-settings-host.js",
+        "build/plugins/remote-settings-lifecycle.js",
+    ],
+    "runtime-debug-details": ["build/plugins/runtime-debug-details.js"],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
 const providerModules = new Set([
@@ -225,15 +266,59 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/playback/stream-policy.js": Object.freeze([
         "window.__ottStreamPolicy",
     ]),
+    "build/plugins/hosted-control-transport.js": Object.freeze([
+        "window.__ottControlTransport",
+        "window.__OTT_CONTROL_TRANSPORT_VERSION__",
+    ]),
     "build/plugins/native-http.js": Object.freeze([
         "window.installTauriHttpTransport",
         "window.installCapacitorHttpTransport",
     ]),
+    "build/plugins/perf-capture.js": Object.freeze([
+        "window.__ottPerfCaptureFactory",
+    ]),
+    "build/plugins/perf-sensors.js": Object.freeze(["window.__ottPerfSensors"]),
     "build/plugins/plex-auth.js": Object.freeze(["window.__ottPlexAuth"]),
     "build/plugins/plex-queue.js": Object.freeze([
         "window.__ottPlexQueueFactory",
     ]),
     "build/plugins/plex.js": Object.freeze(["window.__ottPlex"]),
+    "build/plugins/remote-handoff.js": Object.freeze([
+        "window.__ottRemoteHandoff",
+    ]),
+    "build/plugins/remote-legacy-settings.js": Object.freeze([
+        "window.__ottRemoteLegacySettings",
+    ]),
+    "build/plugins/remote-notification-settings.js": Object.freeze([
+        "window.__ottRemoteNotificationSettings",
+    ]),
+    "build/plugins/remote-plex-folders.js": Object.freeze([
+        "window.__ottRemotePlexFolders",
+    ]),
+    "build/plugins/remote-provider-fields.js": Object.freeze([
+        "window.__ottRemoteProviderFields",
+    ]),
+    "build/plugins/remote-provider-settings.js": Object.freeze([
+        "window.__ottRemoteProviderSettings",
+    ]),
+    "build/plugins/remote-settings-dispatch.js": Object.freeze([
+        "window.__ottRemoteSettingsDispatch",
+    ]),
+    "build/plugins/remote-settings-extras.js": Object.freeze([
+        "window.__ottRemoteSettingsExtras",
+    ]),
+    "build/plugins/remote-settings-host.js": Object.freeze([
+        "window.__ottRemoteLifecycleHostFactory",
+    ]),
+    "build/plugins/remote-settings-lifecycle.js": Object.freeze([
+        "window.__ottRemoteLifecycleFields",
+    ]),
+    "build/plugins/remote-settings.js": Object.freeze([
+        "window.__ottPlayerSettingsFactory",
+    ]),
+    "build/plugins/runtime-debug-details.js": Object.freeze([
+        "window.__ottRuntimeDebugDetails",
+    ]),
     "build/provider/assets.js": Object.freeze(["window.__ottProviderAssets"]),
     "build/provider/catalog-drivers.js": Object.freeze([
         "window.__ottCatalogDrivers",

@@ -14,12 +14,14 @@ import {
     exportSettingsUI,
     importSettingsUI,
 } from "./settings/transfer-ui";
+import { validDeviceToken, validSwopClientId } from "./shared/wire-contracts";
 import { showSettingsRecovery } from "./storage/recovery-ui";
 import {
     hasTmdbService,
     listPreviewRect,
     metadataCssUrl,
     metadataText,
+    uiFontScale,
 } from "./utils/helpers";
 /**
  * OTT-play FOSS — main entry point.
@@ -669,7 +671,6 @@ var TMDb: any = {
                 $("#dialogbox").html(
                     "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
                 );
-                console.log("getTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
                 if (TMDb.locale() !== api_lang) return;
@@ -787,7 +788,6 @@ var TMDb: any = {
                 $("#dialogbox").html(
                     "<br>" + metadataText(_("Failed to load!")) + "<br><br>"
                 );
-                console.log("searchTMDB jqXHR:" + JSON.stringify(jqXHR));
             },
             success: function (data: any) {
                 if (TMDb.locale() !== api_lang) return;
@@ -989,10 +989,20 @@ function initUIReferences(): void {
  */
 function setFontSize(): void {
     pageSize = settings.pageSize;
+    var fontScale = uiFontScale();
+    var appearance = (window as any).__ottSubtitleAppearance;
+    if (appearance && appearance.scaleFonts) appearance.scaleFonts();
+    else if (fontScale !== 1) loadSubtitleAppearance();
     setListPos();
     var $i1El = $i1 && typeof $i1.css === "function" ? $i1 : null;
     var e = window.innerHeight / 720;
     var t = window.innerWidth / 1280;
+    // Portrait browsers must not size text for a landscape TV of the same height.
+    // Keep row geometry and touch targets; only cap glyphs by the available width.
+    var textCap =
+        window.innerWidth < window.innerHeight
+            ? (28 * window.innerWidth) / 720
+            : Infinity;
     // Companion OTT setFontSize uses 90-chrome for glyph size; showPage rows
     // use 130-chrome / live #listIn via listRowHeight. fontShift shrinks
     // glyphs inside the row line-box. Clamp to the real row box so WKWebView
@@ -1008,15 +1018,18 @@ function setFontSize(): void {
     r = Math.max(r, 16 * e);
     // Keep glyphs inside the integer row box (WKWebView expands on overflow).
     // 0.98 uses the spare line-box under the 25th row after the +1 step bump.
-    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98));
-    $("#list, #testFont, #permanentTime").css("font-size", r + "px");
+    r = Math.min(r, 40 * e, Math.max(10 * e, rowPx * 0.98), textCap);
+    $("#list, #testFont, #permanentTime").css(
+        "font-size",
+        r * fontScale + "px"
+    );
 
-    r = Math.max(r, 22 * e);
-    if ($i1El) $i1El.css("font-size", r + "px");
-    $("#numprog, #dialogbox").css("font-size", r + "px");
+    r = Math.min(Math.max(r, 22 * e), textCap);
+    if ($i1El) $i1El.css("font-size", r * fontScale + "px");
+    $("#numprog, #dialogbox").css("font-size", r * fontScale + "px");
 
     r = Math.min(r, 28 * e);
-    $("#listCaption, #listPodval").css("font-size", r + "px");
+    $("#listCaption, #listPodval").css("font-size", r * fontScale + "px");
     $("#permanentTime")
         .toggle(settings.permanentTime !== 0 && !isListVisible)
         .toggleClass("osd", settings.permanentTime !== 2)
@@ -1039,10 +1052,13 @@ function setFontSize(): void {
         right: 20 * t + "px",
         top: 20 * e + "px",
     });
-    $("#launch").css({ "font-size": 20 * e + "px", padding: 100 * e + "px" });
+    $("#launch").css({
+        "font-size": 20 * e * fontScale + "px",
+        padding: 100 * e + "px",
+    });
     $("logo").css({ margin: 100 * e + "px" });
-    $("#listTime").css("font-size", 22 * e + "px");
-    $("#list_s").css({ "font-size": 16 * e + "px" });
+    $("#listTime").css("font-size", 22 * e * fontScale + "px");
+    $("#list_s").css({ "font-size": 16 * e * fontScale + "px" });
     $("#info1").css({ padding: 20 * e + "px " + 20 * t + "px" });
     $("#picon").css({ height: 80 * e + "px", width: 80 * t + "px" });
     $("#channel").css({
@@ -1052,9 +1068,12 @@ function setFontSize(): void {
     $("#channel_number").css({ width: 70 * t + "px" });
     $("#progress_div").css({ margin: 6 * e + "px 0px " + 4 * e + "px 0px" });
     $("#progress, #progress_r").css({ height: 8 * e + "px" });
-    $("#data").css({ "font-size": 22 * e + "px", width: 80 * t + "px" });
+    $("#data").css({
+        "font-size": 22 * e * fontScale + "px",
+        width: 80 * t + "px",
+    });
     $("#current_s, #video_res").css({
-        "font-size": 16 * e + "px",
+        "font-size": 16 * e * fontScale + "px",
     });
     $("#descr").css({
         margin: "0px 0px " + 20 * e + "px 0px",
@@ -1105,7 +1124,7 @@ function setFontSize(): void {
     try {
         var n = $("#testFont"),
             i = n.css("font-size");
-        n.css("font-size", 22 * e).text("9");
+        n.css("font-size", 22 * e * fontScale).text("9");
         var a = n.width();
         n.text("").css("font-size", i);
         var o = a * 7;
@@ -1166,6 +1185,7 @@ function setFontSize(): void {
     } catch (ex) {
         console.error(ex);
     }
+    if (isListVisible) showPage();
 }
 
 /**
@@ -1534,9 +1554,7 @@ if (navigator.userAgent.search(/Maple/i) === -1) {
  * Called at the beginning of startPlayer(). Emits a performance stamp
  * and logs to console. Stub for future startup logic.
  */
-function onPlayerStart(): void {
-    console.log("onPlayerStart");
-}
+function onPlayerStart(): void {}
 
 // Language selection
 
@@ -1559,7 +1577,8 @@ function onPlayerStart(): void {
 /** One bounded owner for runtime locale downloads, including late scripts. */
 function loadInterfaceLanguage(
     code: string,
-    done: (loaded: boolean) => void
+    done: (loaded: boolean, reason?: string) => void,
+    current?: () => boolean
 ): () => void {
     var w = window as any,
         request = {},
@@ -1570,6 +1589,11 @@ function loadInterfaceLanguage(
     function finish(loaded: boolean): void {
         if (finished || w.__ottLanguagePending !== request) {
             if (loaded) w.keyStrings = w.__ottBootDictionary;
+            if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                done(false, "superseded");
+            }
             return;
         }
         finished = true;
@@ -1577,6 +1601,7 @@ function loadInterfaceLanguage(
         w.__ottLanguagePending = null;
         loaded =
             loaded &&
+            (!current || current()) &&
             w.keyStrings !== previous &&
             w.keyStrings &&
             typeof w.keyStrings.lang === "string";
@@ -1695,12 +1720,23 @@ function selectLang(forceReload?: boolean, startup?: boolean): void {
         "_mlg",
         "_kin",
     ];
-    var languageHost = window as any;
+    var languageHost = window as any,
+        standby = languageHost.__ottStandby,
+        generation = standby && standby.generation();
     var currentCode = stbGetItem("ottplaylang") || "";
     var cancelled = false,
         query = "",
         visibleCodes: string[] = [];
     var cancelLanguageLoad: (() => void) | undefined;
+    function current(): boolean {
+        return (
+            !cancelled &&
+            listKeyHandlerFn === languageKeyHandler &&
+            (!standby ||
+                (languageHost.__ottStandby === standby &&
+                    standby.current(generation)))
+        );
+    }
     function systemCode(): string {
         return typeof languageHost.__ottDetectLanguage === "function"
             ? languageHost.__ottDetectLanguage()
@@ -1817,11 +1853,12 @@ function selectLang(forceReload?: boolean, startup?: boolean): void {
                 else
                     cancelLanguageLoad = loadInterfaceLanguage(
                         selectedLanguage,
-                        function (loaded) {
-                            if (cancelled) return;
+                        function (loaded, reason) {
+                            if (!current() || reason === "superseded") return;
                             if (loaded) selected();
                             else infoBox(_("Failed to load!"));
-                        }
+                        },
+                        current
                     );
                 return true;
             case keys.EXIT:
@@ -1919,8 +1956,6 @@ export function startPlayer(): void {
     onPlayerStart();
 
     try {
-        console.log("startPlayer");
-
         // OTTPLAY_FULL_ONLY_BEGIN
         if (launchEl && !isPlayDistribution()) {
             launchEl.innerHTML +=
@@ -2053,7 +2088,6 @@ function loadStartupLanguage(): boolean {
     }
     var launchEl = document.getElementById("launch");
     if (!lang) {
-        console.log("TRACE no lang, calling selectLang()");
         if (launchEl) {
             launchEl.style.display = "none";
             if (typeof (window as any).clearBootHide === "function")
@@ -2079,7 +2113,6 @@ function loadStartupLanguage(): boolean {
         setTimeout(ready, 0);
         return true;
     }
-    console.log("TRACE lang=" + lang + ", loading langJS");
     loadInterfaceLanguage(lang, function (loaded) {
         if (!current()) return;
         if (loaded) ready();
@@ -2123,15 +2156,64 @@ function onStbReady(): void {
         // Sync PlayerSettings → window.* for settings submenu compatibility
         installSettingsFacade(window as any);
         (window as any).__ottKiosk.init();
-        (window as any).__ottLocalHttpRemote.init();
+        var recoverySettings: any = {};
+        ["command_server", "local_http", "language", "swop"].forEach(
+            function (group) {
+                try {
+                    var raw = storage.get("__ottRemoteLifecycleToken_" + group);
+                    var record = raw && raw.length <= 32768 && JSON.parse(raw);
+                    if (
+                        record &&
+                        record.version === 1 &&
+                        record.state === "pending" &&
+                        record.previous &&
+                        typeof record.previous === "object"
+                    )
+                        recoverySettings[group] = record.previous;
+                } catch (_) {}
+            }
+        );
+        var previousHttp = recoverySettings.local_http;
+        if (previousHttp)
+            (window as any).__ottLocalHttpRemote
+                .configure(
+                    {
+                        code: previousHttp.localHttpDeviceCode,
+                        enabled: previousHttp.localHttpEnabled === 1,
+                        url: previousHttp.localCmdUrl,
+                    },
+                    false
+                )
+                .catch(function () {});
+        else (window as any).__ottLocalHttpRemote.init();
         (window as any).__ottRemoteNotifications.setEnabled(
             readNotificationsEnabled(window)
         );
-        (window as any).__ottCommandServer.configure({
-            address: settings.commandServerAddress,
-            enabled: settings.commandServerEnabled === 1,
-            token: settings.commandServerToken,
-        });
+        // Keep the prior route alive while recovery loads; desired bytes stay intact.
+        var initialControl = recoverySettings.command_server || settings;
+        (window as any).__ottCommandServer.configure(
+            {
+                address: initialControl.commandServerAddress,
+                enabled: initialControl.commandServerEnabled === 1,
+                token: initialControl.commandServerToken,
+            },
+            !recoverySettings.command_server
+        );
+        // A crash after saving but before acknowledgement resumes the guarded
+        // transition. Its private journal is never a portable setting.
+        if (Object.keys(recoverySettings).length)
+            getScriptDOM(
+                hostUrl +
+                    "/dist/remote-settings-lifecycle.js?" +
+                    PLAYER_VERSION,
+                function () {
+                    var w = window as any;
+                    if (w.__ottRemoteLifecycleFields)
+                        w.__ottRemoteLifecycleFields.restore(w, function () {
+                            return remotePlayerInfo(w).runtime;
+                        });
+                }
+            );
         // Start connection-authorized diagnostics after saved settings and the
         // controller's initial configure callback have completed.
         if (!(window as any).__ottRemoteDiagnostics) initRemoteDiagnostics();
@@ -2204,8 +2286,6 @@ function onStbReady(): void {
         startupError(document.getElementById("launch"), "onStbReady", e);
     }
 }
-
-console.log("player loaded!");
 
 // Expose globals for backward compat with HTML and other scripts
 declare var window: any;
@@ -2621,7 +2701,6 @@ function setupTauriEpgCacheReady(): void {
         .listen("epg-cache-ready", function (_ev: any) {
             if ((window as any).__ottStandby?.blocked()) return;
             try {
-                console.log("[Tauri] epg-cache-ready — refilling EPG");
                 invalidateEpgCache(true);
                 // Visible channel list: re-queue observeCurrentProgramme via showPage.
                 if (
@@ -2707,14 +2786,6 @@ function _playChannel(
     if (w.__ottMedia && w.__ottMedia.cancelRequest)
         w.__ottMedia.cancelRequest();
     else if (w.providerMediaClient) w.providerMediaClient.cancel();
-    console.log(
-        "[playChannel] catIdx=" +
-            catIdx +
-            " chIdx=" +
-            chIdx +
-            " catsArray.length=" +
-            catsArray.length
-    );
     if (catsArray[catIdx] === undefined) {
         infoBox(
             _(
@@ -2764,7 +2835,6 @@ function _playChannel(
                 );
         })
     ) {
-        console.log("[playChannel] blocked by parental");
         return;
     }
     if (kiosk && !kiosk.admit(requestedId)) return;
@@ -2816,12 +2886,6 @@ function _playChannel(
                   : "prompt"
         );
     }
-    console.log(
-        "[playChannel] channelId=" +
-            channelId +
-            " url=" +
-            getChannelUrl(channelId)
-    );
     if (
         w.__ottClassicPlayback &&
         typeof w.__ottClassicPlayback.command === "function"
@@ -3968,6 +4032,8 @@ if (typeof window.__TAURI__ !== "undefined") {
                 "  -webkit-app-region: no-drag;\n" +
                 "}\n";
             (document.head || document.documentElement).appendChild(style);
+            var appearance = (window as any).__ottSubtitleAppearance;
+            if (appearance && appearance.scaleFonts) appearance.scaleFonts();
         }
 
         function ensurePanel(): void {
@@ -4379,6 +4445,16 @@ function createSettingsPage(
 var subtitleAppearanceLoading = false;
 var subtitleAppearanceGeneration = 0;
 var subtitleAppearanceOpen: ((loaded: boolean) => void) | null = null;
+var subtitleAppearanceReady: ((loaded: boolean) => void)[] = [];
+function notifySubtitleAppearanceReady(loaded: boolean): void {
+    var waiting = subtitleAppearanceReady;
+    subtitleAppearanceReady = [];
+    waiting.forEach(function (done) {
+        try {
+            done(loaded);
+        } catch (_) {}
+    });
+}
 function loadSubtitleAppearance(open?: (loaded: boolean) => void): void {
     var w = window as any;
     if (open) subtitleAppearanceOpen = open;
@@ -4406,7 +4482,12 @@ function loadSubtitleAppearance(open?: (loaded: boolean) => void): void {
         var action = subtitleAppearanceOpen;
         subtitleAppearanceOpen = null;
         loaded = loaded && !!w.__ottSubtitleAppearance;
-        if (loaded) w.__ottSubtitleAppearance.apply();
+        try {
+            if (loaded) w.__ottSubtitleAppearance.apply();
+        } catch (_) {
+            loaded = false;
+        }
+        notifySubtitleAppearanceReady(loaded);
         if (action) action(loaded);
     }
     script.src = hostUrl + "/dist/subtitle-appearance.js?" + PLAYER_VERSION;
@@ -4451,6 +4532,17 @@ window.settingsInterface = function settingsInterface(): void {
     languages: languageNames,
     list: setListArrays,
     page: createSettingsPage,
+    ready: function (done: (loaded: boolean) => void): () => void {
+        if ((window as any).__ottSubtitleAppearance) done(true);
+        else {
+            subtitleAppearanceReady.push(done);
+            loadSubtitleAppearance();
+        }
+        return function () {
+            var index = subtitleAppearanceReady.indexOf(done);
+            if (index >= 0) subtitleAppearanceReady.splice(index, 1);
+        };
+    },
 };
 (window as any).applySubtitleAppearance = function (): void {
     var w = window as any;
@@ -6259,7 +6351,7 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
               }
             : undefined
     ),
-    function (config: any): void {
+    function (config: any, save = true): void {
         remoteControlConnection = {
             address: config.address,
             enabled: false,
@@ -6267,12 +6359,13 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
         };
         try {
             if (
-                !saveSettings({ commandServerEnabled: 0 }) ||
-                !saveSettings({
-                    commandServerAddress: config.address,
-                    commandServerEnabled: config.enabled ? 1 : 0,
-                    commandServerToken: config.token,
-                })
+                save &&
+                (!saveSettings({ commandServerEnabled: 0 }) ||
+                    !saveSettings({
+                        commandServerAddress: config.address,
+                        commandServerEnabled: config.enabled ? 1 : 0,
+                        commandServerToken: config.token,
+                    }))
             )
                 throw new Error("Command server settings could not be saved");
             remoteControlConnection.enabled = config.enabled === true;
@@ -6306,6 +6399,20 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
     },
     remoteInspection.accept
 );
+
+(window as any).__ottRemoteLifecyclePorts = {
+    applyLanguageMetadata: applyLanguageMetadata,
+    detectLanguage: function () {
+        var detect = (window as any).__ottDetectLanguage;
+        return typeof detect === "function" ? detect() : "_eng";
+    },
+    languageNames: languageNames,
+    loadLanguage: loadInterfaceLanguage,
+    normalizeAddress: normalizeCommandServerAddress,
+    storage: storage,
+    validDeviceToken: validDeviceToken,
+    validSwopClientId: validSwopClientId,
+};
 
 installRemoteScreenshot(window, {
     getConfig: function () {
@@ -6452,6 +6559,7 @@ function initRemoteDiagnostics(): void {
         : undefined
 );
 (window as any).__OTT_CONTROL_DISCOVERY_VERSION__ = 1;
+(window as any).__OTT_CONTROL_TRANSPORT_CLIENT_VERSION__ = 1;
 
 // Tauri Mode B: poll the native command queue (queue_poll invoke) instead of
 // the local_proxy.py GET endpoint. Mirrors the STB poll cadence (~10s) so

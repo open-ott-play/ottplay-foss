@@ -111,7 +111,7 @@ const fontOptions = one(
     (node) =>
         ts.isBinaryExpression(node) &&
         node.operatorToken.kind === ts.SyntaxKind.BarBarToken &&
-        node.left.getText() === "w.__ottNativeFontOptions"
+        node.left.getText() === "host.__ottNativeFontOptions"
 );
 const applyFamily = one(
     indexSource,
@@ -139,7 +139,9 @@ const app = compile(
         "var w = window;",
         "var " + family + ";",
         ...coreIcons.map((node) => "var " + node + ";"),
-        "function fixtureFontOptions() { return " + fontOptions + "; }",
+        "function fixtureFontOptions() { var host = window; return " +
+            fontOptions +
+            "; }",
         "function fixtureApplyFont() { var " +
             fallback +
             "; " +

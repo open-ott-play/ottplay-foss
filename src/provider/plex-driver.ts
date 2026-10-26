@@ -83,6 +83,7 @@ function createPlexProviderDriver(
             var previous = saved();
             var config = plex.normalize({
                 address: value.server,
+                folderSelection: (value as any).folderSelection,
                 folders:
                     (value as any).folders !== undefined
                         ? (value as any).folders
@@ -135,6 +136,7 @@ function createPlexProviderDriver(
             var value = saved();
             var mode = modes.indexOf(value.playback);
             return {
+                folderSelection: value.folderSelection,
                 folders: value.folders,
                 mode: mode < 0 ? 0 : mode,
                 password: typeof value.token === "string" ? value.token : "",
@@ -320,7 +322,10 @@ function createPlexProviderDriver(
                             catalogScanning = true;
                             catalogFailed = false;
                             connecting.scanFolders(
-                                [],
+                                // Old folder-picker selections are inactive in the flat catalogue.
+                                config.folderSelection
+                                    ? config.folders || []
+                                    : [],
                                 function (rows: any[], scanned: number) {
                                     if (!isCurrent()) return;
                                     rows.forEach(function (item) {
@@ -500,6 +505,11 @@ function mountPlexProvider(
     owner: DriverLifetime
 ) {
     var revision = 0;
+    driver.settingsChanged = function () {
+        revision++;
+        cancelAuth();
+        updateLabel();
+    };
     var attached: any = null;
     var authActive = false;
     function active(): boolean {
@@ -529,65 +539,11 @@ function mountPlexProvider(
         var index = host.popupActions.indexOf(edit);
         if (index >= 0) host.popupArray[index] = label();
     }
-    // The lazy provider owns wire validation and the external-save lifecycle.
-    // Return only field names or a static error; credentials never reach the ACK.
     driver.saveRemoteSettings = function (params) {
-        var settings = params && params.settings;
-        var fields = Object.keys(settings || {});
-        if (
-            !params ||
-            params.provider !== "plex" ||
-            Object.keys(params).some(function (key) {
-                return key !== "provider" && key !== "settings";
-            }) ||
-            !settings ||
-            typeof settings !== "object" ||
-            Array.isArray(settings) ||
-            !fields.length ||
-            fields.some(function (key) {
-                return (
-                    (key !== "server" && key !== "token") ||
-                    typeof settings[key] !== "string" ||
-                    settings[key].length > 8192
-                );
-            })
-        )
-            return "Unsupported provider settings fields.";
-        if (
-            fields.indexOf("token") !== -1 &&
-            (settings.token.length > 1024 ||
-                /[\s\u0000-\u001f\u007f]/.test(settings.token))
-        )
-            return "Use a Plex access token without whitespace.";
-        var config = driver.credentials();
-        if (settings.server !== undefined && settings.server !== config.server)
-            delete (config as any).folders;
-        fields.forEach(function (key) {
-            config[key === "token" ? "password" : key] = settings[key];
-        });
-        var plex = host.__ottPlex;
-        var normalized =
-            plex &&
-            typeof plex.normalize === "function" &&
-            plex.normalize({ address: config.server, token: config.password });
-        if (!normalized)
-            return "Use a valid Plex server URL and access token; first setup requires both.";
-        try {
-            var url = new URL(normalized.address);
-            if (!host.checkProviderUrl(url.href)) throw new Error();
-        } catch (_) {
-            return "Use a valid HTTP(S) provider URL.";
-        }
-        if (!active() || typeof host.loadChannels !== "function")
-            return "Plex settings are unavailable on this player.";
-        if (driver.saveCredentials(config) === false)
-            return "Could not save provider settings.";
-        // Only a persisted external save supersedes pending editor/auth callbacks.
-        revision++;
-        cancelAuth();
-        updateLabel();
-        host.loadChannels();
-        return fields;
+        var api = host.__ottRemoteProviderFields;
+        return active() && api && api.legacyPlex
+            ? api.legacyPlex(host, driver, params)
+            : "Plex settings are unavailable on this player.";
     };
     function edit(): boolean {
         if (!active() || (host.__ottKiosk && host.__ottKiosk.locked()))

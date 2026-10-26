@@ -253,6 +253,8 @@ export function swopLoadValue(): void {
     }
 
     function cleanup(): void {
+        if (w.__ottCancelSwopSession === cleanup)
+            w.__ottCancelSwopSession = null;
         if (cancelled) return;
         cancelled = true;
         sessionToken = "";
@@ -265,6 +267,10 @@ export function swopLoadValue(): void {
             release();
         }
     }
+
+    if (typeof w.__ottCancelSwopSession === "function")
+        w.__ottCancelSwopSession();
+    w.__ottCancelSwopSession = cleanup;
 
     function escapeHtml(s: string): string {
         return String(s)

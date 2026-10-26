@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: open-ott-play/ottplay-control-server
-          ref: cdffc23b372144e5a7d6486082d57b79cea2b5ef
+          ref: 7a4f25eae7a0f43859cdddb0bc644b91747e6aeb
           path: .control-current
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -84,6 +84,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --ignore-scripts
+      - name: Build lazy diagnostic assets for real transport smokes
+        run: npm run build
       - name: Build the pinned control server
         working-directory: .control-integration
         run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
@@ -117,12 +119,14 @@ jobs:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
           OTT_DEBUG_ENGINE_V2: unsupported-controller
+          OTT_PERF_CAPTURE: unsupported-controller
         run: node scripts/smoke-workbench.cjs
       - name: Exercise explicit engine inspection and default legacy payloads
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
           OTT_DEBUG_ENGINE_V2: '1'
+          OTT_PERF_CAPTURE: '1'
         run: node scripts/smoke-workbench.cjs
       - name: Exercise roadmap with the current controller
         run: node .control-current/scripts/smoke_foss_roadmap.cjs .
@@ -234,6 +238,26 @@ jobs:
         run: |
           sudo env CI="$CI" python3 scripts/ci-apt-mirror.py
           npx playwright install --with-deps chromium webkit
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Verify isolated multiaudio playback and worker replacement
+        timeout-minutes: 20
+        run: |
+          sudo apt-get install -y ffmpeg
+          cargo build --locked -p ottplay-server
+          export OTT_TEST_FFMPEG="$(command -v ffmpeg)"
+          export OTT_TEST_FFPROBE="$(command -v ffprobe)"
+          export OTT_TEST_SERVER="$PWD/target/debug/ottplay-server"
+          export OTT_TEST_DIRECT_HTTPS=1
+          export OTT_TEST_ENGINE=hls
+          export OTT_TEST_CRASH=1
+          export OTT_TEST_FAIL_START_ONCE=1
+          export OTT_TEST_CAPTURE_WORKER=1
+          export OTT_TEST_OBSERVE_SECONDS=20
+          node tests/test_normalization_webkit.cjs
 
       - name: Test local browser media and offline app shell
         # The runner terminates this isolated browser test process group if an
@@ -353,6 +377,19 @@ jobs:
         run: python3 tests/test_container_workspace.py
       - name: Test core and server including shared XMLTV differential contracts
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Install media tools for isolated normalization checks
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Verify real multiaudio normalization and private overlays
+        run: |
+          export OTT_TEST_FFMPEG="$(command -v ffmpeg)"
+          export OTT_TEST_FFPROBE="$(command -v ffprobe)"
+          cargo test --locked -p ottplay-core audio_normalization --lib -- --include-ignored
+          cargo test --locked -p ottplay-server normalization --bin ottplay-server -- --include-ignored
+          python3 tests/test_normalize_m3u_overlay.py
       - name: Verify private Linux playback selection guards
         run: cargo test --locked --manifest-path tests/linux-media-compat/Cargo.toml
       - name: Test Linux playback packaging contracts

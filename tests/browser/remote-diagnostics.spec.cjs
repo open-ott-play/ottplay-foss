@@ -727,8 +727,28 @@ for (const stopKey of [false, true]) {
                 () => window.__ottRemoteDiagnostics.status().enabled
             )
         ).toBe(true);
-        if (stopKey) await page.keyboard.press("s");
-        else await page.locator("#remoteDiagnosticsIndicator").click();
+        async function pressStop() {
+            // Playwright's desktop key table has no MediaStop entry.
+            // Dispatch it through the real DOM listener with the browser key code.
+            await page.evaluate(() => {
+                document.body.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        bubbles: true,
+                        cancelable: true,
+                        code: "MediaStop",
+                        key: "MediaStop",
+                        keyCode: 178,
+                    })
+                );
+            });
+        }
+        if (stopKey) {
+            await page.keyboard.press("s");
+            await expect(
+                page.locator("#remoteDiagnosticsIndicator")
+            ).toHaveCount(1);
+            await pressStop();
+        } else await page.locator("#remoteDiagnosticsIndicator").click();
         await expect(page.locator("#remoteDiagnosticsIndicator")).toHaveCount(
             0
         );
@@ -751,7 +771,7 @@ for (const stopKey of [false, true]) {
                 (c) => c.path === "/poll" && c.body.consent.granted === false
             )
         ).toBe(true);
-        await page.keyboard.press("s");
+        await pressStop();
         await page.waitForTimeout(250);
         expect(await registrationCount(server)).toBe(2);
         expect(
@@ -1210,4 +1230,88 @@ test("token and controller address changes retire capture and isolate new runtim
         )
     ).toBe(false);
     expect(server.errors).toEqual([]);
+});
+
+test("hosted control uses a private same-origin envelope and preserves response headers", async ({
+    page,
+}) => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const origin = "https://hosted-control.fixture.invalid";
+    const calls = [];
+    await page.route(origin + "/**", async (route) => {
+        const request = route.request();
+        if (request.url() === origin + "/") {
+            return route.fulfill({
+                body: "<!doctype html><title>Control fixture</title>",
+                contentType: "text/html",
+            });
+        }
+        calls.push({
+            body: request.postDataJSON(),
+            headers: request.headers(),
+            method: request.method(),
+        });
+        return route.fulfill({
+            body: '{"state":"stale"}',
+            headers: {
+                "content-type": "application/json",
+                "X-OTT-Diagnostics-Epoch": EPOCH,
+            },
+            status: 409,
+        });
+    });
+    await page.goto(origin);
+    await page.evaluate((origin) => {
+        window.__OTTPLAY_HOSTED__ = {
+            controlTransport: {
+                bases: [origin + "/ott-control"],
+                endpoint: "/ott-control/api/device-transport",
+                version: 1,
+            },
+        };
+    }, origin);
+    await page.addScriptTag({
+        content: fs.readFileSync(
+            path.resolve(__dirname, "../../dist/control-transport.js"),
+            "utf8"
+        ),
+    });
+    const result = await page.evaluate(
+        async ({ origin, token, epoch }) => {
+            const request = window.__ottControlTransport.map({
+                body: JSON.stringify({ events: [] }),
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/json",
+                    "X-OTT-Diagnostics-Epoch": epoch,
+                },
+                method: "POST",
+                url: origin + "/ott-control/api/v2/diagnostics/events",
+            });
+            const response = await fetch(request.url, request);
+            return {
+                body: await response.json(),
+                epoch: response.headers.get("X-OTT-Diagnostics-Epoch"),
+                status: response.status,
+            };
+        },
+        { epoch: EPOCH, origin, token: DEVICE_TOKEN }
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].headers.authorization).toBeUndefined();
+    expect(calls[0].body).toEqual({
+        body: { events: [] },
+        headers: { "X-OTT-Diagnostics-Epoch": EPOCH },
+        method: "POST",
+        path: "/api/v2/diagnostics/events",
+        token: DEVICE_TOKEN,
+        version: 1,
+    });
+    expect(result).toEqual({
+        body: { state: "stale" },
+        epoch: EPOCH,
+        status: 409,
+    });
 });

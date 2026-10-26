@@ -1726,3 +1726,19 @@ for (const mode of ["lock", "kiosk"]) {
         "rejected"
     );
 }
+
+{
+    const f = fixture();
+    f.w.__ottRuntimeDebug = {};
+    const caps = f.run("capabilities").result.data;
+    assert.deepEqual(caps.debug_versions, [1, 2]);
+    assert.deepEqual(caps.debug_attempts, { version: 3 });
+    assert.deepEqual(caps.perf_capture, {
+        default_duration_seconds: 120,
+        max_bytes: 524288,
+        max_duration_seconds: 600,
+        max_events: 1024,
+        max_read_events: 64,
+        version: 1,
+    });
+}

@@ -815,7 +815,11 @@ test("credential save rejects retired editor effects after transport abort switc
         f.host.listKeyHandler(f.host.keys.ENTER);
         assert.equal(f.host.__ottActiveProviderDriver.id, "demo");
         assert.equal(f.reloads, 0);
-        assert.deepEqual(JSON.parse(f.saved.get(key)), original);
+        assert.deepEqual(
+            JSON.parse(f.saved.get(key)),
+            id === "xtream" ? { ...original, data: null } : original,
+            "the admitted save commits before transport teardown"
+        );
         request.resolve({ live_streams: [{ name: "Retired", stream_id: 42 }] });
         assert.equal(d.stream(42), "");
     }
@@ -854,13 +858,15 @@ test("same-instance abort loads observe one complete credential revision", () =>
             false
         );
         assert.equal(f.requests.length, 2);
-        assert(f.requests[1].settings.url.includes("xc.test"));
-        assert.deepEqual(JSON.parse(f.saved.get(key)), original);
+        assert(f.requests[1].settings.url.includes("new.test"));
+        assert.equal(d.credentials().server, "https://new.test");
+        assert.equal(d.credentials().username, "new");
+        assert.equal(d.credentials().password, "new-secret");
         f.requests[1].resolve({
             live_streams: [{ name: "Current", stream_id: 42 }],
         });
-        assert(d.stream(42).includes("xc.test"));
-        assert.equal(d.credentials().server, config.server);
+        assert(d.stream(42).includes("new.test"));
+        assert.equal(d.credentials().server, "https://new.test");
     }
 });
 

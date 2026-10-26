@@ -666,6 +666,82 @@ try {
             ts.isFunctionDeclaration(node) &&
             node.name.text === "loadStartupLanguage"
     );
+    // Exercise the actual picker callback at a cached same-page wake, not only
+    // the shared loader: cancellation must settle without showing a stale error.
+    vm.runInContext(
+        ts.transpileModule(startupFunction.getText(selectionSource), {})
+            .outputText,
+        selection
+    );
+    let pickerGeneration = 0;
+    selection.window.__ottStandby = {
+        current: (expected) => expected === pickerGeneration,
+        generation: () => pickerGeneration,
+    };
+    selection.window.__ottInterfaceLanguage = "_eng";
+    selection.window.__ottBootDictionary = englishDictionary;
+    selection.applyLanguageMetadata = (code) => {
+        selection.window.__ottInterfaceLanguage = code;
+    };
+    const startupReady = [];
+    const originalSetTimeout = selection.setTimeout;
+    selection.setTimeout = (callback, delay) => {
+        if (delay === 0) return startupReady.push(callback);
+        return originalSetTimeout(callback, delay);
+    };
+    selection.loadProv = () => {};
+    selection.selectLang(true);
+    selection.selIndex = 4;
+    selection.listKeyHandlerFn(13);
+    const retiredPickerRequest = languageRequest;
+    const priorMessages = messages.length;
+    const priorResumes = resumed;
+    pickerGeneration++;
+    assert.equal(selection.loadStartupLanguage(), true);
+    startupReady.shift()();
+    selection.window.keyStrings = { lang: "retired picker" };
+    retiredPickerRequest.success();
+    assert.equal(
+        messages.length,
+        priorMessages,
+        "Retired picker cannot show a failure popup after cached wake"
+    );
+    assert.equal(
+        resumed,
+        priorResumes,
+        "Retired picker cannot reopen settings"
+    );
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(selection.window.keyStrings, englishDictionary);
+    assert.equal(selection.window.__ottInterfaceLanguage, "_eng");
+    // A picker replaced by another screen also loses authority before the
+    // download finishes, without needing a standby transition.
+    selection.selectLang(true);
+    selection.listKeyHandlerFn(13);
+    const replacedPickerRequest = languageRequest;
+    selection.listKeyHandlerFn = () => {};
+    selection.window.keyStrings = { lang: "replaced picker" };
+    replacedPickerRequest.success();
+    assert.equal(messages.length, priorMessages);
+    assert.equal(resumed, priorResumes);
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(selection.window.keyStrings, englishDictionary);
+
+    selection.selectLang(true);
+    selection.listKeyHandlerFn(13);
+    const sleepingPickerRequest = languageRequest;
+    pickerGeneration++;
+    selection.window.keyStrings = { lang: "sleeping picker" };
+    sleepingPickerRequest.success();
+    assert.equal(
+        messages.length,
+        priorMessages,
+        "A picker that finishes while suspended stays silent"
+    );
+    assert.equal(resumed, priorResumes);
+    assert.equal(savedLanguage, "_eng");
+    assert.equal(selection.window.keyStrings, englishDictionary);
+
     function startupLanguage(options = {}) {
         let saved = options.saved || "",
             mode = options.mode || "";
@@ -831,7 +907,11 @@ try {
     interruptedPicker.deferred.shift()();
     const acceptedDictionary = interruptedPicker.window.keyStrings;
     let pickerCompletions = 0;
-    interruptedPicker.load("_fra", () => pickerCompletions++);
+    const pickerResults = [];
+    interruptedPicker.load("_fra", (loaded, reason) => {
+        pickerResults.push({ loaded, reason });
+        if (loaded) pickerCompletions++;
+    });
     interruptedPicker.supersede();
     interruptedPicker.restart();
     interruptedPicker.deferred.shift()();
@@ -841,6 +921,11 @@ try {
         pickerCompletions,
         0,
         "Old picker cannot commit after cached startup reuse"
+    );
+    assert.deepEqual(
+        pickerResults,
+        [{ loaded: false, reason: "superseded" }],
+        "The previous caller still receives a cancellation result"
     );
     assert.equal(interruptedPicker.window.keyStrings, acceptedDictionary);
     assert.equal(interruptedPicker.window.__ottInterfaceLanguage, "_eng");

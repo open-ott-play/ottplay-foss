@@ -52,6 +52,8 @@ The **Playback** setting offers:
 - **Original file** — direct playback, using the device's own decoder.
 - **Compatible HLS** — Plex prepares a stream for the player. Conversion speed depends on the Plex server and source format.
 
+Automatic uses compatible HLS when Plex explicitly identifies H.264 video as High 10 or greater than 8-bit; the ordinary H.264 browser probe cannot establish support for those files. Ordinary 8-bit files and incomplete metadata retain the existing capability check. **Original file** remains available as an explicit decoder choice.
+
 When the device supports HEVC through Media Source Extensions, compatible HLS uses fragmented MP4, preserves HEVC video at its source resolution and requests AAC audio. For HEVC/Opus files this avoids unnecessary video encoding on the NAS while adapting audio for WebKit.
 
 The selected server address, its access token and playback preference are stored in the current device's provider profile as `plexcfg`. Account sign-in also saves that server's identity and connection candidates. Each time the provider opens, it checks which connection is reachable, so a laptop can move between home Wi-Fi and the internet without signing in again. Browsing history stays associated with the same server and server credential. Editing the address or token manually clears these account connection candidates.
@@ -75,7 +77,7 @@ ott l plex prev
 ott l plex stop
 ```
 
-To select a complete Plex library without entering individual media IDs:
+To select videos from a Plex library without entering individual media IDs:
 
 ```sh
 ott l plex libraries
@@ -92,15 +94,21 @@ match. Ambiguous names fail without changing playback; use `plex libraries`
 and an explicit section ID to disambiguate.
 
 Movie libraries collect movies, and TV libraries collect episodes across their
-shows and seasons. The player reads every inventory and media page before
-starting playback, accepts at most 1,000 library entries and 500 videos, and
-rejects duplicate, incomplete or changing results. Music libraries and physical
-filesystem folder traversal are not supported by this command. A failed lookup
-or collection leaves existing playback intact. Preview collects and validates
-metadata without starting a decoder. Shuffle makes one permutation of the
-complete result; subsequent episodes retain that order.
+shows and seasons. The player accepts at most 1,000 library entries and 500 videos
+per queue. With an updated CLI, controller and player, a larger library produces
+a limit warning and uses its first 500 videos in Plex's returned order. Shuffle
+then makes one permutation of those selected videos; it does not sample the
+entire larger library. Subsequent episodes retain that order. Libraries with
+500 or fewer videos keep their complete result without a limit warning.
 
-Library queues validate each video's file metadata while reading the complete
+The complete library inventory and every selected video's metadata are validated
+before playback. Duplicate, incomplete or changing page results still fail;
+errors do not silently turn into shorter queues. Music libraries and physical
+filesystem folder traversal are not supported by this command. A failed lookup
+or collection leaves existing playback intact. Preview uses the same selection
+limit and warning without starting a decoder.
+
+Library queues validate each selected video's file metadata while reading the
 catalog. They reuse those records instead of asking Plex for the same metadata
 again in one large request. The first video is still resolved separately before
 playback starts. A missing or invalid file entry rejects the whole queue rather
@@ -116,6 +124,10 @@ ott -t 45 l plex library --shuffle --preview "Кукутики"
 ```
 
 Library commands require the separately advertised `plex_library` v1 capability.
+The 500-item fallback additionally uses `plex_library_truncation` v1 and an
+explicit client opt-in. Older clients retain the previous oversized-library
+error without starting a partial queue; update all three components for the
+warning-and-play behavior.
 Existing `plex play ID...` and `plex preview ID...` remain available on older
 players. Library discovery shares the queue's cancellation, source and runtime
 checks: Stop, replacement playback, changed settings or request expiry cannot
@@ -246,8 +258,10 @@ the old request. On PC, **Alt/Option, Ctrl, or Command + Left/Right** seek withi
 Folder scanning continues after a full 200-row page even when Plex omits
 `totalSize`. A known total or an empty page finishes that traversal; a server-capped short
 page without a total still advances. Cursor and catalog bounds remain enforced. The normal playlist receives incremental batches.
-An explicit remote Plex queue still requires its complete validated collection
-before playback, preserving the requested order and all-or-nothing admission.
+An explicit remote Plex queue still requires validation of every selected item
+before playback, preserving its requested order and admission checks. The
+negotiated library fallback selects at most 500 videos; it does not weaken those
+checks or the ordinary folder scan.
 
 Account connection probes accept both JSON and XML from Plex Media Server.
 They verify the server identity before sending its token. The cloud account

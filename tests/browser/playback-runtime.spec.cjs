@@ -1795,9 +1795,36 @@ test("shipped playback feedback bounds waits and suppresses late events after pa
         video.dispatchEvent(new Event("timeupdate"));
         delete video.paused;
     });
-    await expect(label).toContainText("640x360");
+    // Recovery clears feedback without reopening or rendering a hidden footer.
+    await expect(footer).toBeHidden();
+    await expect(label).toHaveText("");
     await expect(label).not.toHaveAttribute("title", /timed out/);
+    await expect(label).not.toHaveAttribute("aria-label", /timed out/);
     await expect(label).not.toHaveClass(/playback-feedback/);
+    const openMetadata = () =>
+        page.evaluate(() => {
+            window.showChannelInfo(1);
+            // Read synchronously: the opening frame must have current metadata,
+            // not wait for the next periodic refresh.
+            return document.querySelector("#video_res").textContent;
+        });
+    expect(await openMetadata()).toContain("640x360");
+    await expect(label).toBeVisible();
+    // Once visible, media resize events still refresh the displayed resolution.
+    await page.evaluate(() => {
+        const video = document.querySelector("#video");
+        Object.defineProperty(video, "videoWidth", {
+            configurable: true,
+            value: 1280,
+        });
+        Object.defineProperty(video, "videoHeight", {
+            configurable: true,
+            value: 720,
+        });
+        video.dispatchEvent(new Event("resize"));
+    });
+    await expect(label).toContainText("1280x720");
+    await expect(label).toBeVisible();
 
     await page.evaluate(() => {
         window.__ottCoreTransport.configure({

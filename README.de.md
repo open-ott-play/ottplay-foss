@@ -73,6 +73,7 @@ Das synthetische Testbild lässt sich mit `scripts/generate-demo-media.sh` neu e
 - **Geräterouting**: UUID-basierte Adressierung für mehrere Geräte.
 - **Lokaler Proxy**: optionaler lokaler Befehlsserver für vollständig lokale Automatisierung (kein zentraler Server nötig).
 - **Controller-Integration**: auf Geräte/Aktionen beschränkte Operatoren, optional dauerhaft gespeicherte Befehlsergebnisse, fortsetzbare Anwendung von Local-/Home-Profilen und Live-/Archivübergabe derselben Quelle über den passenden [Control Server](https://github.com/open-ott-play/ottplay-control-server). Dies erfordert den aktualisierten Controller/die CLI und wird nicht von einem einzelnen Browser-Tab bereitgestellt.
+- **Typisierte Ferneinstellungen**: verfügbare Einstellungen ermitteln, gespeicherte und wirksame Werte lesen und mit Prüfung von Laufzeitinstanz, Quelle und Revision speichern; siehe [Ferneinstellungen und VPortal-Konfiguration](docs/remote-player-settings.md).
 - **Debugging**: optionales Wiedergabe-HUD/Ringprotokoll über `?debug=1`, Ferninspektion mit Zustimmung und gehostete Audio-/Videoprüfung auf Abruf.
 - **Tastaturzugänglichkeit**: benannte klassische Dialoge, eingeschlossener und zurückkehrender Tab-Fokus, Semantik des ausgewählten Kanals und zurückhaltende Statusansagen. Diese Verbesserungen belegen keine vollständige WCAG- oder Geräte-Screenreader-Konformität.
 - **24 Gerätetypen**: gerätespezifische Fernbedienungsbelegung.

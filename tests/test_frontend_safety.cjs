@@ -265,6 +265,7 @@ test("channel list keeps hostile titles as text and preserves intentional row la
             listArray: [],
             listDataArray: ["fixture", "other"],
             listElement: null,
+            listFitPageSize: (wanted) => wanted,
             listInElement: w.document.getElementById("listIn"),
             listRowHeight: () => 28,
             numWidth: 0,

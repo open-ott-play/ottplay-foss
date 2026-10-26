@@ -14,6 +14,8 @@ export function createLocalHttpRemote(
     var request: XMLHttpRequest | null = null;
     var timer: ReturnType<typeof setInterval> | undefined;
     var initialized = false;
+    var urlOverride: string | null = null;
+    var savedUrl = "";
     var seen: Record<string, boolean> = {};
 
     function validCode(value: any): boolean {
@@ -42,8 +44,16 @@ export function createLocalHttpRemote(
         request = null;
     }
 
+    function pollUrl(): string {
+        var current = String(w.sLocalCmdUrl || "").trim();
+        if (urlOverride !== null && current !== savedUrl) {
+            urlOverride = null;
+            generation++;
+        }
+        return urlOverride === null ? current : urlOverride;
+    }
     function poll(): void {
-        var url = String(w.sLocalCmdUrl || "").trim();
+        var url = pollUrl();
         if (!enabled || !validCode(code) || !url || request) return;
         // Explicit URL configuration chooses the proxy that receives this code.
         if (!/^(https?:\/\/|\/[^/])/i.test(url)) return;
@@ -70,7 +80,7 @@ export function createLocalHttpRemote(
                 !enabled ||
                 generation !== current ||
                 code !== currentCode ||
-                String(w.sLocalCmdUrl || "").trim() !== url ||
+                pollUrl() !== url ||
                 xhr.status !== 200
             )
                 return;
@@ -126,8 +136,15 @@ export function createLocalHttpRemote(
         }
     }
 
-    function change(next: boolean, savedCode?: string): Promise<void> {
+    function change(
+        next: boolean,
+        savedCode?: string,
+        save = true,
+        url?: string
+    ): Promise<void> {
         var revision = ++generation;
+        urlOverride = typeof url === "string" ? url : null;
+        savedUrl = String(w.sLocalCmdUrl || "").trim();
         enabled = false;
         ready = false;
         code = "";
@@ -136,11 +153,25 @@ export function createLocalHttpRemote(
         stopPolling();
         seen = {};
         // Persist revocation before awaiting a slow native bridge operation.
-        persist(false, "");
+        if (save) persist(false, "");
+        function configureOwner(on: boolean, credential: string): Promise<any> {
+            if (save) return configure(on, credential);
+            return new Promise(function (resolve, reject) {
+                var timeout = w.setTimeout(function () {
+                    reject(new Error("HTTP remote bridge timed out"));
+                }, 15000);
+                // Promise settlement ignores a late native completion after timeout.
+                configure(on, credential)
+                    .then(resolve, reject)
+                    .then(function () {
+                        w.clearTimeout(timeout);
+                    });
+            });
+        }
         var run = async function (): Promise<void> {
             if (revision !== generation) return;
             try {
-                await configure(false, "");
+                await configureOwner(false, "");
                 if (revision !== generation) return;
                 if (!next) {
                     ready = true;
@@ -149,11 +180,11 @@ export function createLocalHttpRemote(
                 var nextCode = validCode(savedCode)
                     ? savedCode!
                     : generateCode();
-                var status = await configure(true, nextCode);
+                var status = await configureOwner(true, nextCode);
                 if (revision !== generation) return;
                 if (!status || status.httpEnabled !== true)
                     throw new Error("HTTP remote control could not be started");
-                persist(true, nextCode);
+                if (save) persist(true, nextCode);
                 enabled = true;
                 ready = true;
                 code = nextCode;
@@ -164,7 +195,7 @@ export function createLocalHttpRemote(
                 // Even a failed/partially completed native start is revoked.
                 var revoked = false;
                 try {
-                    await configure(false, "");
+                    await configureOwner(false, "");
                     revoked = true;
                 } catch (_stopError) {}
                 if (revision === generation) {
@@ -173,7 +204,7 @@ export function createLocalHttpRemote(
                     code = "";
                     port = 0;
                     error = "HTTP remote control could not be started";
-                    persist(false, "");
+                    if (save) persist(false, "");
                 }
                 throw new Error("HTTP remote control could not be started");
             }
@@ -185,6 +216,17 @@ export function createLocalHttpRemote(
     }
 
     return {
+        configure: function (value: any, save = true): Promise<void> {
+            if (
+                !value ||
+                typeof value.enabled !== "boolean" ||
+                (value.enabled && !validCode(value.code))
+            )
+                return Promise.reject(
+                    new Error("Invalid HTTP remote configuration")
+                );
+            return change(value.enabled, value.code, save, value.url);
+        },
         init: function (): void {
             if (initialized) return;
             initialized = true;
@@ -197,6 +239,13 @@ export function createLocalHttpRemote(
                 persist(false, "");
                 ready = true;
             }
+        },
+        matches: function (value: any): boolean {
+            return (
+                ready &&
+                enabled === value.enabled &&
+                (!enabled || (code === value.code && pollUrl() === value.url))
+            );
         },
         poll: poll,
         setEnabled: function (next: boolean): Promise<void> {

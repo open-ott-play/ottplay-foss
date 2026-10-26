@@ -1635,6 +1635,56 @@ console.log(
     "PASS actual lifecycle/input/aspect transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
 );
 
+// Settings writes share the same exact-response replay protection as playback.
+for (const action of [
+    "player_settings",
+    "provider_settings",
+    "settings_compare",
+]) {
+    let calls = 0,
+        received;
+    const rpc = harness("http:", (request, done) => {
+        calls++;
+        received = request;
+        done({ data: { persisted: true }, status: "ok" });
+    });
+    const envelope = {
+        commands: [],
+        requests: [
+            {
+                action,
+                expires_at: 5030,
+                id: "7".repeat(32),
+                params: {
+                    op: "set",
+                    runtime: "page-123",
+                    value: "PRIVATE_SETTING",
+                },
+            },
+        ],
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    rpc.next();
+    const body = rpc.requests.at(-1).request.body;
+    assert(!body.includes("PRIVATE_SETTING"));
+    assert(received.expires_at * 1000 <= clock + 30000);
+    rpc.respond({}, 0);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    rpc.respond(envelope);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    assert.equal(calls, 1);
+    rpc.respond({ status: "ok" });
+}
+console.log(
+    "PASS settings transport: bounded deadline, no request-value receipt echo, lost reply and duplicate replay without another write"
+);
+
 // Image bytes expire independently of network progress and ordinary receipt caching.
 function screenshotJob(rpc, delay) {
     const found = [...rpc.jobs].find(([, job]) => job.delay === delay);

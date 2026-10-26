@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const code = ts.transpileModule(
-    fs.readFileSync("src/commands/remote-handoff.ts", "utf8"),
+    fs.readFileSync("src/plugins/remote-handoff.ts", "utf8"),
     {
         compilerOptions: {
             module: ts.ModuleKind.CommonJS,
@@ -12,7 +12,7 @@ const code = ts.transpileModule(
     }
 ).outputText;
 require("acorn").parse(code, { ecmaVersion: 5 });
-const ctx = { exports: {} };
+const ctx = { window: {} };
 vm.runInNewContext(code, ctx);
 let plays = [],
     locked = false;
@@ -46,7 +46,7 @@ const host = {
 };
 function call(action, params) {
     let result;
-    ctx.exports.executeRemoteHandoff(
+    ctx.window.__ottRemoteHandoff.execute(
         host,
         { action: "playback_handoff_" + action, params },
         (value) => {
@@ -179,7 +179,7 @@ function realHost(
     };
     function invoke(action, params = {}) {
         let response;
-        ctx.exports.executeRemoteHandoff(
+        ctx.window.__ottRemoteHandoff.execute(
             host,
             { action: "playback_handoff_" + action, params },
             (value) => {

@@ -3395,6 +3395,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "urlencoding",
+ "uuid",
  "x509-cert",
 ]
 

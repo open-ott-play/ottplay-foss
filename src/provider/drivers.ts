@@ -42,7 +42,7 @@ interface ProviderDriverPorts {
         profile: string
     ): DriverCatalog;
     commit(
-        writes: any[],
+        writes: any,
         current: () => boolean,
         rollbackAllowed: () => boolean
     ): boolean;
@@ -124,6 +124,15 @@ interface ProviderDriver {
     ): () => void;
     saveConfiguration?(value: any): boolean;
     saveCredentials(value: ProviderCredentials): boolean | void;
+    saveSetting?(
+        method: string,
+        value: any,
+        current: () => boolean,
+        observe: (writes: any[]) => boolean
+    ): any;
+    settingsChanged?(): void;
+    settingsPort?: { ports: ProviderDriverPorts };
+    settingsRevision?(): number;
     storageKey?(key: string): string;
     stream(id: string | number): string;
     subscription?(callback: (value: any) => void): () => void;
@@ -184,7 +193,25 @@ function createDriverRegistry() {
         ): ProviderDriver {
             if (!factories[id])
                 throw new Error("Unsupported provider driver: " + id);
-            return factories[id](ports, lifetime);
+            var commit = ports.commit;
+            ports.commit = function (values, current, rollbackAllowed) {
+                return commit(
+                    Array.isArray(values)
+                        ? values
+                        : Object.keys(values).map(function (key) {
+                              return {
+                                  after: values[key],
+                                  before: ports.storage.get(key),
+                                  key: key,
+                              };
+                          }),
+                    current,
+                    rollbackAllowed
+                );
+            };
+            var driver = factories[id](ports, lifetime);
+            driver.settingsPort = { ports: ports };
+            return driver;
         },
         has: function (id: string) {
             return !!factories[id];
@@ -819,15 +846,8 @@ function createCredentialOperations(
             values: { [key: string]: string },
             current: () => boolean
         ): boolean {
-            var writes = Object.keys(values).map(function (key) {
-                return {
-                    after: values[key],
-                    before: ports.storage.get(key),
-                    key: key,
-                };
-            });
             return (
-                ports.commit(writes, current, function () {
+                ports.commit(values, current, function () {
                     return credentialBusy;
                 }) && current()
             );
@@ -994,10 +1014,7 @@ function createXtreamDriver(
         saveCredentials: function (value) {
             return operations.run(function (current) {
                 if (!active()) return;
-                loads.dispose();
-                if (!current()) return false;
-                catalog = emptyDriverCatalog();
-                return operations.write(
+                var saved = operations.write(
                     {
                         xtream_data: JSON.stringify({
                             data: null,
@@ -1008,6 +1025,11 @@ function createXtreamDriver(
                     },
                     current
                 );
+                if (!saved || !current()) return false;
+                loads.dispose();
+                if (!current()) return false;
+                catalog = emptyDriverCatalog();
+                return true;
             }, true);
         },
         stream: function (id) {
@@ -1246,9 +1268,6 @@ function createOperatorDriver(
         saveCredentials: function (value) {
             return operations.run(function (current) {
                 if (!active()) return;
-                loads.dispose();
-                if (!current()) return false;
-                catalog = emptyDriverCatalog();
                 var next = readConfiguration();
                 next.server = value.server;
                 next.user = value.username;
@@ -1258,8 +1277,12 @@ function createOperatorDriver(
                     { cfg: JSON.stringify(next) },
                     current
                 );
-                if (committed) config = next;
-                return committed;
+                if (!committed || !current()) return false;
+                config = next;
+                loads.dispose();
+                if (!current()) return false;
+                catalog = emptyDriverCatalog();
+                return true;
             }, true);
         },
         stream: function (id) {
@@ -1527,11 +1550,6 @@ function createNamedPlaylistDriver(
                         : previous.username !== value.username ||
                           previous.password !== value.password;
                 if (!current()) return false;
-                if (accountChanged) {
-                    loads.dispose();
-                    if (!current()) return false;
-                    catalog = emptyDriverCatalog();
-                }
                 var writes: { [key: string]: string } = {};
                 if (id === "tvteam") writes.www = value.playlist || "";
                 else {
@@ -1547,7 +1565,14 @@ function createNamedPlaylistDriver(
                 }
                 if (id === "only4" && value.mode !== undefined)
                     writes.ts_hls = String(value.mode);
-                return operations.write(writes, current);
+                if (!operations.write(writes, current) || !current())
+                    return false;
+                if (accountChanged) {
+                    loads.dispose();
+                    if (!current()) return false;
+                    catalog = emptyDriverCatalog();
+                }
+                return true;
             }, true);
         },
         stream: function (channelId) {
@@ -1680,6 +1705,10 @@ function mountNamedProviderSettings(
     var modes = ["MPEGTS", "HLS(v)", "HLS(a)"];
     var editorRevision = 0;
     var menuRevision = 0;
+    driver.settingsChanged = function () {
+        editorRevision++;
+        menuRevision++;
+    };
     function close() {
         menuRevision++;
         editorRevision++;
@@ -2124,7 +2153,10 @@ function mountProviderDriver(
                     writeValue = host.stbSetItem,
                     remove = host.stbDelItem;
                 var batch = writes.map(function (write) {
-                    var key = profile.prefix + write.key;
+                    var key =
+                        (write.prefix === undefined
+                            ? profile.prefix
+                            : write.prefix) + write.key;
                     return {
                         after: write.after,
                         before: write.before,
@@ -2154,9 +2186,10 @@ function mountProviderDriver(
                 } catch (error) {
                     if (
                         current() ||
-                        batch.some(function (write) {
-                            return write.storage.read() !== write.before;
-                        })
+                        (owner.active() &&
+                            batch.some(function (write) {
+                                return write.storage.read() !== write.before;
+                            }))
                     )
                         throw error;
                     return false;
@@ -2387,6 +2420,9 @@ function mountProviderDriver(
             host.popupArray[index] = text;
     }
     var editorRevision = 0;
+    driver.settingsChanged = function () {
+        editorRevision++;
+    };
     function editSettings() {
         if (!owner.active()) return;
         var editor = ++editorRevision;

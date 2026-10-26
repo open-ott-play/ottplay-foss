@@ -309,6 +309,43 @@ function fixture() {
     );
     f.w.close();
 }
+
+{
+    const f = fixture();
+    f.api.begin(false, false, 75000);
+    f.event("loadstart");
+    f.advance(30000);
+    assert.doesNotMatch(f.text(), /timed out/);
+    f.api.retry();
+    f.event("waiting");
+    f.advance(40000);
+    assert.doesNotMatch(f.text(), /timed out/);
+    f.video.currentTime = 1;
+    f.event("timeupdate");
+    assert.equal(f.timers.size, 0, "real progress clears extended startup");
+    f.event("waiting");
+    f.advance(45000);
+    assert.match(f.text(), /timed out/, "later stalls retain45-second limit");
+    f.api.stop();
+    assert.equal(f.timers.size, 0);
+}
+{
+    const f = fixture();
+    f.api.begin(false, false, 75000);
+    f.event("loadstart");
+    f.advance(70000);
+    f.api.retry();
+    f.advance(5000);
+    assert.match(
+        f.text(),
+        /timed out/,
+        "startup retries cannot extend75-second deadline"
+    );
+    f.api.begin();
+    f.advance(30000);
+    assert.match(f.text(), /timed out/, "next normal source retains30 seconds");
+}
+
 console.log(
     "playback feedback: bounded waits, confirmed progress, late recovery, seeks, pause/stop and source replacement PASS"
 );

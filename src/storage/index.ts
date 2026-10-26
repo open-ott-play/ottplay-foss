@@ -335,6 +335,7 @@ function readStorageCookies(includeUnowned = false): Record<string, string> {
         const allowed = readStorageFallback(result);
         Object.keys(result).forEach(function (key) {
             if (
+                !/^__ottRemoteLifecycleToken_/.test(key) &&
                 !isStorageMetadataKey(key) &&
                 (!allowed || allowed.indexOf(key) < 0)
             )
@@ -1051,6 +1052,7 @@ export function stbGetAllItems(): Record<string, string> {
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
             key === "sNotificationsEnabled" ||
+            /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
             delete items[key];
@@ -1065,6 +1067,7 @@ export function isPortableSettingsKey(key: string): boolean {
         key !== "offlineProfileBindings" &&
         key !== "__ottStandbyV1" &&
         key !== "sNotificationsEnabled" &&
+        !/^__ottRemoteLifecycleToken_/.test(key) &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
     );
@@ -1084,6 +1087,7 @@ export function portableSettingsSnapshot(
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
             key === "sNotificationsEnabled" ||
+            /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
             delete result[key];

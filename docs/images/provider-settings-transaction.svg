@@ -1,0 +1,77 @@
+<svg
+    aria-labelledby="title description"
+    height="260"
+    role="img"
+    viewBox="0 0 1080 260"
+    width="1080"
+    xmlns="http://www.w3.org/2000/svg"
+>
+    <title id="title">Verified remote provider settings transaction</title>
+    <desc id="description">
+        A typed command passes runtime, source and revision guards. The provider
+        codec prepares the value, a storage transaction verifies it, then the
+        player invalidates affected state and returns a receipt.
+    </desc>
+    <defs>
+        <linearGradient id="bg" x2="1" y2="1">
+            <stop stop-color="#101b2d" />
+            <stop offset="1" stop-color="#172b42" />
+        </linearGradient>
+        <marker
+            id="arrow"
+            markerHeight="7"
+            markerWidth="7"
+            orient="auto-start-reverse"
+            refX="9"
+            refY="5"
+            viewBox="0 0 10 10"
+        >
+            <path d="M0 0 10 5 0 10Z" fill="#68d4bf" />
+        </marker>
+    </defs>
+    <rect fill="url(#bg)" height="260" rx="20" width="1080" />
+    <g font-family="system-ui, sans-serif">
+        <text fill="#f1f6ff" font-size="24" font-weight="650" x="32" y="44">
+            A receipt confirms saved state
+        </text>
+        <text fill="#b7c7dc" font-size="15" x="32" y="72">
+            No provider switch, wake-up or playback is implied.
+        </text>
+        <g fill="#21354b" stroke="#68d4bf" stroke-width="1">
+            <rect height="90" rx="12" width="180" x="32" y="102" />
+            <rect height="90" rx="12" width="180" x="241" y="102" />
+            <rect height="90" rx="12" width="180" x="450" y="102" />
+            <rect height="90" rx="12" width="180" x="659" y="102" />
+            <rect height="90" rx="12" width="180" x="868" y="102" />
+        </g>
+        <g marker-end="url(#arrow)" stroke="#68d4bf" stroke-width="2">
+            <path d="M215 147H234" />
+            <path d="M424 147H443" />
+            <path d="M633 147H652" />
+            <path d="M842 147H861" />
+        </g>
+        <g fill="#eef5ff" font-size="17" font-weight="600" text-anchor="middle">
+            <text x="122" y="134">Typed command</text>
+            <text x="331" y="134">Context guards</text>
+            <text x="540" y="134">Provider codec</text>
+            <text x="749" y="134">Verified save</text>
+            <text x="958" y="134">Apply and report</text>
+        </g>
+        <g fill="#b7c7dc" font-size="13" text-anchor="middle">
+            <text x="122" y="160">Schema, type, limits</text>
+            <text x="331" y="160">Runtime · source · revision</text>
+            <text x="540" y="160">Normal validation</text>
+            <text x="749" y="160">Transaction + readback</text>
+            <text x="958" y="160">Explicit effect status</text>
+            <text x="122" y="178">Secrets remain redacted</text>
+            <text x="331" y="178">Conflicts stop the write</text>
+            <text x="540" y="178">No arbitrary storage key</text>
+            <text x="749" y="178">Before cache invalidation</text>
+            <text x="958" y="178">No automatic retry</text>
+        </g>
+        <text fill="#68d4bf" font-size="14" x="32" y="231">
+            Plex collections: 10 entries per page · 1000 selected roots · an
+            empty selection includes all libraries
+        </text>
+    </g>
+</svg>

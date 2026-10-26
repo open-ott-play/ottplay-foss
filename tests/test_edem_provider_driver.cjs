@@ -819,14 +819,23 @@ test("settings/account teardown reentry cannot overwrite storage or replay a rep
         const before = Array.from(f.saved),
             count = f.events.filter((event) => event[0] === "render").length;
         callback();
-        assert.deepEqual(Array.from(f.saved), before);
+        const committed = Array.from(f.saved);
+        assert.notDeepEqual(
+            committed,
+            before,
+            "the admitted save commits before teardown"
+        );
         assert.equal(f.events.filter((event) => event[0] === "live").length, 0);
         assert.equal(
             f.events.filter((event) => event[0] === "render").length,
             count
         );
         callback();
-        assert.deepEqual(Array.from(f.saved), before);
+        assert.deepEqual(
+            Array.from(f.saved),
+            committed,
+            "retired callback cannot write again"
+        );
     }
     const f = setup();
     f.host.duneAddSettings(0);
@@ -962,7 +971,11 @@ test("credentials teardown respects a newer direct media load; list changes dism
         f.driver.saveSettings({ ...f.driver.settings(), key: "replacement" }),
         false
     );
-    assert.deepEqual(Array.from(f.saved), before);
+    assert.equal(
+        f.saved.get("edkey"),
+        "replacement",
+        "storage commits before cancellable media teardown"
+    );
     assert.equal(f.requests[1].aborts, 0);
     assert.equal(JSON.parse(f.requests[1].settings.data).query, "newest");
     f.requests[1].resolve({ items: [], type: "category" });

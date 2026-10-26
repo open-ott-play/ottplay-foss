@@ -7,6 +7,8 @@
     ["tests/test_mobile_orientation.py"],
     ["tests/test_local_player_install.py"],
     ["tests/test_macos_instance_apps.py"],
+    ["tests/test_native_profile_clone.py"],
+    ["tests/test_normalize_m3u_overlay.py"],
     ["tests/test_windows_installers.py"],
     ["tests/test_media_helper_installer.py"],
     ["tests/test_linux_playback_packaging.py"],

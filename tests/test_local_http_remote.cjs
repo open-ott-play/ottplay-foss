@@ -99,6 +99,36 @@ function fixture(overrides = {}) {
     };
 }
 (async () => {
+    const committed = fixture({ clearTimeout, setTimeout });
+    const suppliedCode = "committed_device_code_01234567890123456789";
+    await committed.remote.configure(
+        {
+            code: suppliedCode,
+            enabled: true,
+            url: "http://old.example/commands",
+        },
+        false
+    );
+    assert.equal(
+        committed.writes.length,
+        0,
+        "applying committed settings must not overwrite the desired tuple"
+    );
+    assert.equal(committed.remote.status().code, suppliedCode);
+    assert.match(committed.requests[0].url, /^http:\/\/old\.example\/commands/);
+    committed.requests[0].receive([]);
+    committed.w.sLocalCmdUrl = "http://new-ui.example/commands";
+    committed.remote.poll();
+    assert.match(
+        committed.requests.at(-1).url,
+        /^http:\/\/new-ui\.example\/commands/
+    );
+    await committed.remote.configure(
+        { code: suppliedCode, enabled: false },
+        false
+    );
+    assert.equal(committed.remote.status().enabled, false);
+    assert.equal(committed.writes.length, 0);
     const f = fixture();
     assert.equal(f.remote.status().ready, false);
     f.remote.init();

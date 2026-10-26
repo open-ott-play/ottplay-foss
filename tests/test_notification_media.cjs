@@ -433,6 +433,73 @@ async function load(h) {
         assert.equal(results[0], null);
         assert.equal(h.calls.length, 0);
     }
+    {
+        const h = fixture({ token: "a".repeat(43) });
+        h.w.location = new URL("https://player.test/f/pc/");
+        h.w.__OTTPLAY_HOSTED__ = {
+            controlTransport: {
+                bases: ["https://controller.test/proxy"],
+                endpoint: "/ott-control/api/device-transport",
+                version: 1,
+            },
+        };
+        const transport = ts.transpileModule(
+            fs.readFileSync("src/plugins/hosted-control-transport.ts", "utf8"),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.None,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText;
+        vm.runInNewContext(transport, { URL, window: h.w });
+        const { results } = await load(h);
+        assert.ok(results[0], "hosted media retains bounded JSON decoding");
+        assert.equal(
+            h.calls[0].url,
+            "https://player.test/ott-control/api/device-transport"
+        );
+        assert.equal(h.calls[0].method, "POST");
+        assert.equal(h.calls[0].headers.Authorization, undefined);
+        assert.equal(JSON.parse(h.calls[0].body).token, h.options.token);
+        assert.match(
+            JSON.parse(h.calls[0].body).path,
+            /^\/api\/notifications\/media\?/
+        );
+        h.w.__ottControlTransport = undefined;
+        const failed = await load(h);
+        assert.equal(failed.results[0], null);
+        assert.equal(
+            h.calls.length,
+            1,
+            "missing hosted asset never falls back to leaking a direct request"
+        );
+    }
+    {
+        const phases = [];
+        const h = fixture({ phase: (...args) => phases.push(args) });
+        const { results } = await load(h);
+        assert(results[0]);
+        assert.deepEqual(phases, [
+            ["fetch", false],
+            ["fetch", true],
+            ["base64", false],
+            ["base64", true],
+            ["validation", false],
+            ["validation", true],
+            ["blob", false],
+            ["blob", true],
+        ]);
+        results[0].dispose();
+        const safe = fixture({
+            phase: () => {
+                throw Error("observer unavailable");
+            },
+        });
+        const observed = await load(safe);
+        assert(observed.results[0]);
+        observed.results[0].dispose();
+    }
     console.log(
         "PASS notification media: ES5, capabilities, bounded JPEG validation/transport, authorization, redirects, expiry, cancellation and URL disposal"
     );

@@ -3,6 +3,7 @@ mod control_discovery;
 mod hosted_epg;
 mod msx;
 mod nas_library;
+mod normalization;
 mod stalker_api;
 mod swop;
 mod tls;
@@ -260,7 +261,16 @@ async fn serve_listeners(
                 .with_context(|| format!("HTTPS listener {address} failed"))
         });
     }
-    supervise_listeners(tasks).await
+    if normalization::configured() {
+        let result = tokio::select! {
+            result = supervise_listeners(tasks) => result,
+            _ = normalization::stop_signal() => Ok(())
+        };
+        normalization::shutdown().await;
+        result
+    } else {
+        supervise_listeners(tasks).await
+    }
 }
 
 #[tokio::main]
@@ -290,6 +300,16 @@ async fn main() -> anyhow::Result<()> {
         let app = Router::new()
             .route("/health", get(health))
             .merge(offline_media_routes(readonly_paths).await?);
+        return serve_listeners(listeners, app, tls_config).await;
+    }
+    if std::env::var("OTT_NORMALIZATION_ONLY").as_deref() == Ok("1") {
+        anyhow::ensure!(
+            std::env::var_os("OTT_NORMALIZATION_CONFIG").is_some(),
+            "normalization-only mode requires configuration"
+        );
+        let app = Router::new()
+            .route("/health", get(health))
+            .merge(normalization::routes_from_env(&cli.host).await?);
         return serve_listeners(listeners, app, tls_config).await;
     }
     if hosted_epg::enabled()? {
@@ -336,6 +356,7 @@ async fn main() -> anyhow::Result<()> {
         // Installation-authenticated relay must not inherit permissive asset CORS.
         .merge(swop::routes_from_env()?)
         .merge(nas_library::routes_from_env()?)
+        .merge(normalization::routes_from_env(&cli.host).await?)
         .merge(control_discovery::routes())
         .merge(offline_media_routes(None).await?);
 

@@ -165,133 +165,135 @@ export function createControlDiscovery(
         notify("pairing", "Requesting approval for %1", selected.address);
         if (!current(expected)) return;
         var endpoint = selected.address + "/api/pairings";
-        request(
-            endpoint,
-            "POST",
-            { device_id: device, server_id: selected.id },
-            "",
-            function (response) {
-                var receipt: any;
-                try {
-                    receipt = decode(response);
-                    if (
-                        response!.status !== 201 ||
-                        !receipt ||
-                        typeof receipt.id !== "string" ||
-                        !/^[a-f0-9]{32}$/.test(receipt.id) ||
-                        typeof receipt.secret !== "string" ||
-                        !validDeviceToken(receipt.secret) ||
-                        typeof receipt.code !== "string" ||
-                        !/^[A-Z0-9]{8}$/.test(receipt.code) ||
-                        typeof receipt.expires_in !== "number" ||
-                        !isFinite(receipt.expires_in) ||
-                        receipt.expires_in <= 0 ||
-                        receipt.expires_in > 600
-                    )
-                        throw Error();
-                } catch (_error) {
-                    finish(
-                        "error",
-                        "Could not create a pairing request. Find the server again to retry."
-                    );
-                    return;
-                }
-                claim = {
-                    secret: receipt.secret,
-                    url: endpoint + "?id=" + encodeURIComponent(receipt.id),
-                };
-                code = receipt.code;
-                w.clearTimeout(deadlineTimer);
-                deadlineTimer = w.setTimeout(function () {
-                    if (current(expected))
-                        finish(
-                            "expired",
-                            "Pairing expired. Find the server again to retry."
-                        );
-                }, receipt.expires_in * 1000);
-                notify(
-                    "waiting",
-                    "Approve the code for %1 with ott approve NAME CODE:",
-                    selected.address
+        var parameters: any = { device_id: device, server_id: selected.id };
+        var transport =
+            w.__OTTPLAY_HOSTED__ && w.__OTTPLAY_HOSTED__.controlTransport;
+        if (
+            transport &&
+            Array.isArray(transport.bases) &&
+            transport.bases.indexOf(selected.address) >= 0
+        )
+            parameters.server_address = selected.address;
+        request(endpoint, "POST", parameters, "", function (response) {
+            var receipt: any;
+            try {
+                receipt = decode(response);
+                if (
+                    response!.status !== 201 ||
+                    !receipt ||
+                    typeof receipt.id !== "string" ||
+                    !/^[a-f0-9]{32}$/.test(receipt.id) ||
+                    typeof receipt.secret !== "string" ||
+                    !validDeviceToken(receipt.secret) ||
+                    typeof receipt.code !== "string" ||
+                    !/^[A-Z0-9]{8}$/.test(receipt.code) ||
+                    typeof receipt.expires_in !== "number" ||
+                    !isFinite(receipt.expires_in) ||
+                    receipt.expires_in <= 0 ||
+                    receipt.expires_in > 600
+                )
+                    throw Error();
+            } catch (_error) {
+                finish(
+                    "error",
+                    "Could not create a pairing request. Find the server again to retry."
                 );
-                var failures = 0;
-                function poll(): void {
-                    if (!current(expected)) return;
-                    request(
-                        endpoint + "?id=" + encodeURIComponent(receipt.id),
-                        "GET",
-                        null,
-                        receipt.secret,
-                        function (answer) {
-                            if (!answer || answer.status >= 500) {
-                                if (++failures >= 6) {
-                                    finish(
-                                        "error",
-                                        "Pairing server is unavailable. Find the server again to retry."
-                                    );
-                                    return;
-                                }
-                                timer = w.setTimeout(
-                                    poll,
-                                    Math.min(10000, failures * 2000)
-                                );
-                                return;
-                            }
-                            var approval: any;
-                            try {
-                                approval = decode(answer);
-                                if (
-                                    answer.status === 202 &&
-                                    approval &&
-                                    approval.status === "pending"
-                                ) {
-                                    failures = 0;
-                                    timer = w.setTimeout(poll, 2000);
-                                    return;
-                                }
-                                if (
-                                    answer.status !== 200 ||
-                                    !approval ||
-                                    approval.status !== "approved" ||
-                                    approval.device_id !== device ||
-                                    base(approval.address) !==
-                                        selected.address ||
-                                    typeof approval.token !== "string" ||
-                                    !validDeviceToken(approval.token)
-                                )
-                                    throw Error();
-                            } catch (_error) {
+                return;
+            }
+            claim = {
+                secret: receipt.secret,
+                url: endpoint + "?id=" + encodeURIComponent(receipt.id),
+            };
+            code = receipt.code;
+            w.clearTimeout(deadlineTimer);
+            deadlineTimer = w.setTimeout(function () {
+                if (current(expected))
+                    finish(
+                        "expired",
+                        "Pairing expired. Find the server again to retry."
+                    );
+            }, receipt.expires_in * 1000);
+            notify(
+                "waiting",
+                "Approve the code for %1 with ott approve NAME CODE:",
+                selected.address
+            );
+            var failures = 0;
+            function poll(): void {
+                if (!current(expected)) return;
+                request(
+                    endpoint + "?id=" + encodeURIComponent(receipt.id),
+                    "GET",
+                    null,
+                    receipt.secret,
+                    function (answer) {
+                        if (!answer || answer.status >= 500) {
+                            if (++failures >= 6) {
                                 finish(
                                     "error",
-                                    "Pairing was rejected or returned an invalid approval. Find the server again to retry."
+                                    "Pairing server is unavailable. Find the server again to retry."
                                 );
                                 return;
                             }
-                            if (!current(expected)) return;
-                            stop(true);
-                            try {
-                                applyConfig({
-                                    address: selected.address,
-                                    enabled: true,
-                                    token: approval.token,
-                                });
-                                releaseClaim();
-                                notify(
-                                    "connected",
-                                    "Pairing approved. Command server configured."
-                                );
-                            } catch (_error) {
-                                notify(
-                                    "error",
-                                    "Could not save the approved command server settings."
-                                );
-                            }
+                            timer = w.setTimeout(
+                                poll,
+                                Math.min(10000, failures * 2000)
+                            );
+                            return;
                         }
-                    );
-                }
-                if (current(expected)) timer = w.setTimeout(poll, 2000);
+                        var approval: any;
+                        try {
+                            approval = decode(answer);
+                            if (
+                                answer.status === 202 &&
+                                approval &&
+                                approval.status === "pending"
+                            ) {
+                                failures = 0;
+                                timer = w.setTimeout(poll, 2000);
+                                return;
+                            }
+                            if (
+                                answer.status !== 200 ||
+                                !approval ||
+                                approval.status !== "approved" ||
+                                approval.device_id !== device ||
+                                base(approval.address) !== selected.address ||
+                                typeof approval.token !== "string" ||
+                                !validDeviceToken(approval.token)
+                            )
+                                throw Error();
+                        } catch (_error) {
+                            finish(
+                                "error",
+                                "Pairing was rejected or returned an invalid approval. Find the server again to retry."
+                            );
+                            return;
+                        }
+                        if (!current(expected)) return;
+                        stop(true);
+                        try {
+                            applyConfig({
+                                address: selected.address,
+                                enabled: true,
+                                token: approval.token,
+                            });
+                            releaseClaim();
+                            notify(
+                                "connected",
+                                "Pairing approved. Command server configured."
+                            );
+                        } catch (_error) {
+                            notify(
+                                "error",
+                                "Could not save the approved command server settings."
+                            );
+                        }
+                    }
+                );
             }
-        );
+            if (current(expected)) timer = w.setTimeout(poll, 2000);
+        });
     }
     function accept(value: any, profile?: unknown): void {
         try {

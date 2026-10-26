@@ -11,8 +11,7 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
-import { executeRemoteHandoff } from "./remote-handoff";
-import { executeRemoteNotifications } from "./remote-notifications";
+import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 import {
@@ -21,6 +20,7 @@ import {
     remotePlayerInfo,
 } from "./remote-restart";
 import { executeRemoteScreenshot } from "./remote-screenshot";
+import { executeRemoteSettings } from "./remote-settings";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -361,20 +361,21 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (request.action === "perf_capture")
+        return executeRemotePerformance(w, request, done);
     if (
-        request.action === "playback_handoff_export" ||
-        request.action === "playback_handoff_import"
-    ) {
-        executeRemoteHandoff(w, request, done);
-        return;
-    }
-    if (request.action === "notifications")
-        return executeRemoteNotifications(
-            w,
-            remotePlayerInfo(w).runtime,
-            params,
-            done
-        );
+        [
+            "player_settings",
+            "player_settings_patch",
+            "provider_settings",
+            "settings_compare",
+            "plex_folders",
+            "playback_handoff_export",
+            "playback_handoff_import",
+            "notifications",
+        ].indexOf(request.action) >= 0
+    )
+        return executeRemoteSettings(w, request, done, afterReply);
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
     if (request.action === "favorites")
@@ -971,8 +972,7 @@ export function executeRemoteRequest(
         request.action === "profile_import" ||
         request.action === "profiles" ||
         request.action === "profile" ||
-        request.action === "profile_settings" ||
-        request.action === "settings_compare"
+        request.action === "profile_settings"
     ) {
         handleRemoteProfiles(request, done);
         return;
@@ -1240,186 +1240,6 @@ export function executeRemoteRequest(
             return;
         }
         reply({ dispatched: true, provider: found[0].id });
-        return;
-    }
-    if (request.action === "provider_settings") {
-        var driver = w.__ottActiveProviderDriver;
-        if (!driver || driver.id !== params.provider) {
-            reject("Select this provider before changing its settings.");
-            return;
-        }
-        if (!isProviderAllowed(driver.id) || settingsLocked()) {
-            reject("Unlock provider settings on the player first.");
-            return;
-        }
-        if (
-            driver.id === "stalker" &&
-            params.settings &&
-            Object.prototype.hasOwnProperty.call(params.settings, "profile")
-        ) {
-            var settings = params.settings;
-            try {
-                if (
-                    Array.isArray(settings) ||
-                    Object.keys(settings).sort().join(",") !==
-                        "mac,name,profile,server" ||
-                    typeof settings.profile !== "number" ||
-                    Math.floor(settings.profile) !== settings.profile ||
-                    settings.profile < 1 ||
-                    settings.profile > 15 ||
-                    typeof settings.name !== "string" ||
-                    /[\u0000-\u001f\u007f]/.test(settings.name) ||
-                    encodeURIComponent(settings.name).replace(
-                        /%[0-9A-F]{2}/g,
-                        "x"
-                    ).length > 256 ||
-                    typeof settings.server !== "string" ||
-                    settings.server.length > 8192 ||
-                    /[\\\s]/.test(settings.server) ||
-                    !/^https?:\/\//i.test(settings.server) ||
-                    typeof settings.mac !== "string" ||
-                    !/^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$/i.test(settings.mac) ||
-                    typeof driver.configuration !== "function" ||
-                    typeof driver.saveConfiguration !== "function"
-                )
-                    throw new Error();
-                var stalkerEndpoint = new URL(settings.server);
-                if (
-                    !stalkerEndpoint.hostname ||
-                    stalkerEndpoint.username ||
-                    stalkerEndpoint.password ||
-                    !checkProviderUrl(stalkerEndpoint.href)
-                )
-                    throw new Error();
-                var original = JSON.stringify(driver.configuration());
-                var configuration = JSON.parse(original);
-                var slot = settings.profile - 1;
-                if (
-                    !Array.isArray(configuration.portals) ||
-                    configuration.portals.length !== 15 ||
-                    !configuration.portals[slot] ||
-                    (configuration.active === slot &&
-                        typeof w.loadChannels !== "function")
-                )
-                    throw new Error();
-                configuration.portals[slot] = {
-                    mac: settings.mac,
-                    name: settings.name,
-                    portal: settings.server,
-                };
-                var stalkerChanged = original !== JSON.stringify(configuration);
-                if (
-                    w.__ottActiveProviderDriver !== driver ||
-                    settingsLocked() ||
-                    JSON.stringify(driver.configuration()) !== original ||
-                    (stalkerChanged &&
-                        driver.saveConfiguration(configuration) !== true) ||
-                    w.__ottActiveProviderDriver !== driver ||
-                    JSON.stringify(driver.configuration()) !==
-                        JSON.stringify(configuration)
-                )
-                    throw new Error();
-                if (stalkerChanged && configuration.active === slot)
-                    w.loadChannels();
-                if (
-                    w.__ottActiveProviderDriver !== driver ||
-                    JSON.stringify(driver.configuration()) !==
-                        JSON.stringify(configuration)
-                )
-                    throw new Error();
-                reply({
-                    fields: ["profile", "name", "server", "mac"],
-                    profile: settings.profile,
-                    provider: "stalker",
-                    saved: true,
-                });
-            } catch (_) {
-                reject("Could not validate or save the Stalker profile.");
-            }
-            return;
-        }
-        if (driver.id === "plex") {
-            var plexSettings =
-                typeof driver.saveRemoteSettings === "function"
-                    ? driver.saveRemoteSettings(params)
-                    : "Plex settings are unavailable on this player.";
-            if (typeof plexSettings === "string") reject(plexSettings);
-            else
-                reply({
-                    fields: plexSettings,
-                    provider: "plex",
-                    saved: true,
-                });
-            return;
-        }
-        var schemas: Record<string, string[]> = {
-            m3u: ["playlist"],
-            ottclub: ["server", "key"],
-            stalker: ["server", "mac"],
-            xtream: ["server", "username", "password"],
-        };
-        var schema = schemas[driver.id];
-        var fields = Object.keys(params.settings || {});
-        if (
-            !schema ||
-            !params.settings ||
-            typeof params.settings !== "object" ||
-            Array.isArray(params.settings) ||
-            !fields.length ||
-            fields.some(function (key) {
-                return (
-                    schema.indexOf(key) < 0 ||
-                    typeof params.settings[key] !== "string" ||
-                    params.settings[key].length > 8192
-                );
-            })
-        ) {
-            reject("Unsupported provider settings fields.");
-            return;
-        }
-        var config = driver.credentials();
-        fields.forEach(function (key) {
-            config[key === "mac" || key === "key" ? "username" : key] =
-                params.settings[key];
-        });
-        var endpoint = driver.id === "m3u" ? config.playlist : config.server;
-        if (endpoint) {
-            try {
-                var club = driver.id === "ottclub";
-                if (club && /[\s/\\?#@]/.test(endpoint)) throw new Error();
-                var parsed = new URL(club ? "http://" + endpoint : endpoint);
-                if (
-                    !/^https?:$/.test(parsed.protocol) ||
-                    !parsed.hostname ||
-                    parsed.username ||
-                    parsed.password ||
-                    !checkProviderUrl(parsed.href)
-                )
-                    throw new Error();
-                // The OTTClub driver prepends HTTP to its stored host.
-                if (club) config.server = parsed.host;
-            } catch (_error) {
-                reject(
-                    driver.id === "ottclub"
-                        ? "Use an OTTClub host, optionally with a port, without a URL scheme or path."
-                        : "Use a valid HTTP(S) provider URL."
-                );
-                return;
-            }
-        }
-        if (
-            driver.id === "stalker" &&
-            !/^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$/i.test(config.username)
-        ) {
-            reject("Use a MAC address such as 00:1A:79:00:00:01.");
-            return;
-        }
-        if (driver.saveCredentials(config) === false) {
-            reject("Could not save provider settings.");
-            return;
-        }
-        if (typeof w.loadPlaylist === "function") w.loadPlaylist();
-        reply({ fields: fields, provider: driver.id, saved: true });
         return;
     }
     if (request.action === "command") {

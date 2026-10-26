@@ -58,6 +58,11 @@ The video footer measures HLS bitrate from bytes and media duration of the last
 eight completed main-stream segments, including muxed audio and container
 overhead. hls.js also measures LL-HLS parts. It does not display download bandwidth
 or trust manifest BANDWIDTH. All footer refreshes use the same renderer.
+Bitrate sampling continues while the footer is hidden, but metadata DOM writes
+wait until it opens. An open footer rewrites the label only when the displayed
+resolution or rounded bitrate changes. Playback status keeps ownership of the
+label while active. Run `node --test tests/test_video_info_dom.cjs` to check these
+refresh boundaries and count DOM mutations in a simulated ten-minute workload.
 
 WKWebView does not supply a usable decoded-byte counter for native HLS. For HTTP(S)
 `.m3u8` playback (including portal URLs with `extension=m3u8`), the main Tauri

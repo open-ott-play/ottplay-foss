@@ -253,10 +253,9 @@ declare var channelsKeyHandler: (key: number) => boolean;
 function updateChannelListRow(chId: string): void {
     var ch = channels[chId as any];
     if (!ch && (window as any).channels) ch = (window as any).channels[chId];
-    if (!ch && (window as any).channels) ch = (window as any).channels[chId];
     if (!ch) return;
     var pn = document.getElementById("pn" + chId);
-    if (pn) pn.textContent = ch.name || "";
+    if (pn) pn.textContent = ch.__ottMediaItem ? "" : ch.name || "";
     if (ch.time_to && ch.time_to > ch.time) {
         $("#pr" + chId).css(
             "width",
@@ -290,29 +289,40 @@ function detailProg(): void {
     var previewMode = wdet.settings.preview;
     var accent =
         (typeof curColor === "string" && curColor) || wdet.curColor || "gold";
-    if (e.time_to && e.time_to >= Date.now() / 1e3) {
+    var media = e.__ottMediaItem;
+    if (media)
+        e = {
+            descr: media.description,
+            icon: media.logo_30x30,
+            name: media.title || e.channel_name,
+        };
+    if (media || (e.time_to && e.time_to >= Date.now() / 1e3)) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
             '<div id="_name"><div class="ott-channel-detail-accent">' +
             metadataText(e.name) +
-            '</div><div class="ott-channel-detail-time">' +
-            time2time(e.time) +
-            " - " +
-            time2time(e.time_to) +
-            " (" +
-            (t > 0 ? t + "/" : "") +
-            Math.round((e.time_to - e.time) / 60) +
-            " " +
-            _("min") +
-            ")</div></div>" +
+            "</div>" +
+            (media
+                ? ""
+                : '<div class="ott-channel-detail-time">' +
+                  time2time(e.time) +
+                  " - " +
+                  time2time(e.time_to) +
+                  " (" +
+                  (t > 0 ? t + "/" : "") +
+                  Math.round((e.time_to - e.time) / 60) +
+                  " " +
+                  _("min") +
+                  ")</div>") +
+            "</div>" +
             '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
             (wdet.sThumbnail && metadataCssUrl(e.icon)
                 ? '<div class="img ott-channel-thumbnail"></div>'
                 : "") +
             metadataHtml(e.descr) +
             "</div></div>";
-        if (e.nextpr && nextCountL) {
+        if (!media && e.nextpr && nextCountL) {
             // Gold: absolute to listDetail bottom (yellow footer border).
             r +=
                 '<div id="_nextpr" class="ott-channel-next' +
@@ -555,10 +565,8 @@ declare var getScriptDOM: (
  * @param code - The raw code string (e.g. "d:someEncodedData").
  *
  * Side effects: Calls providerSetItem('dealerData', ...) on match.
- * Logs to console for debugging.
  */
 function doDealer(code: string): void {
-    console.log("[dealer] code:", code);
     try {
         if (typeof code === "string") {
             var parts = code.split(":");
@@ -658,18 +666,6 @@ export function optionsList(fn?: () => void): void {
             providerSelectionUnlockCount = 0;
     };
     listKeyHandlerFn = function (key: number): boolean {
-        console.log(
-            "DBG optionsList handler: key=" +
-                key +
-                " keys.ENTER=" +
-                keys.ENTER +
-                " selIndex=" +
-                selIndex +
-                " action=" +
-                (viewOptions[selIndex]
-                    ? typeof viewOptions[selIndex].action
-                    : "undefined")
-        );
         switch (key) {
             case keys.RETURN:
                 // Legacy stbPlayer.js:4329: popupList(optionsList) pre-selects Settings
@@ -699,62 +695,70 @@ declare var removeOption: (fn: () => void) => void;
 // popupActions/popupArray/popupDetail defined as export let above
 
 var providerSelectionUnlockCount = 0,
-    providerSettingsUnlockCount = 0,
-    _clearAll = 0;
+    providerSettingsUnlockCount = 0;
 
-/**
- * Toggle the "Show providers?" / "Hide providers?" setting.
- * Requires 7 rapid invocations (providerSelectionUnlockCount counter) before the confirmation
- * dialog appears — a hidden/secret access pattern.
- * Checks parental PIN gate (sPSprovs).
- *
- * Side effects: Writes 'noSelProv' to stb storage, then calls restart().
- */
-export function toggleProviderSelectionVisibility(): void {
-    if (++providerSelectionUnlockCount < 7) return;
-    if ((window as any).__ottParental.needs("providers")) {
-        if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(
-                toggleProviderSelectionVisibility
-            );
-        }
-        return;
-    }
-    var e = Number.parseInt(stbGetItem("noSelProv")) || 0;
-    confirmBox(e ? "Show providers?" : "Hide providers?", function () {
-        stbSetItem("noSelProv", e ? "0" : "1");
-        restart();
-    });
-    providerSelectionUnlockCount = 0;
+function visibilityRevision(key: string, changed?: boolean): number {
+    var extra = (window as any).__ottExtraSettings;
+    return extra ? (changed ? extra.changed(key) : extra.revision(key)) : 0;
 }
 
-/**
- * Toggle the "Show provider settings?" / "Hide provider settings?" flag.
- * Requires 7 rapid invocations (providerSettingsUnlockCount counter) before confirmation —
- * same hidden-access pattern as toggleProviderSelectionVisibility.
- * Checks parental PIN gate (sPSoptions).
- *
- * Side effects: Writes 'noProvParam' to stb storage, then calls restart().
- */
-export function toggleProviderSettingsVisibility(): void {
-    if (++providerSettingsUnlockCount < 7) return;
-    if ((window as any).__ottParental.needs("settings")) {
-        if (typeof (window as any).enterPinAndSetAccess === "function") {
-            (window as any).enterPinAndSetAccess(
-                toggleProviderSettingsVisibility
-            );
-        }
-        return;
+/** Shared PIN-gated confirmation; stale open dialogs cannot replace newer settings. */
+function confirmProviderVisibility(
+    key: string,
+    scope: string,
+    resume: () => void
+): boolean {
+    if ((window as any).__ottParental.needs(scope)) {
+        if (typeof (window as any).enterPinAndSetAccess === "function")
+            (window as any).enterPinAndSetAccess(resume);
+        return false;
     }
-    var e = Number.parseInt(stbGetItem("noProvParam")) || 0;
+    var raw = stbGetItem(key),
+        enabled = Number.parseInt(raw) || 0,
+        revision = visibilityRevision(key);
     confirmBox(
-        e ? "Show provider settings?" : "Hide provider settings?",
+        scope === "providers"
+            ? enabled
+                ? "Show providers?"
+                : "Hide providers?"
+            : enabled
+              ? "Show provider settings?"
+              : "Hide provider settings?",
         function () {
-            stbSetItem("noProvParam", e ? "0" : "1");
+            if (revision !== visibilityRevision(key) || raw !== stbGetItem(key))
+                return;
+            stbSetItem(key, enabled ? "0" : "1");
+            visibilityRevision(key, true);
             restart();
         }
     );
-    providerSettingsUnlockCount = 0;
+    return true;
+}
+
+/** Seven presses reveal the provider chooser visibility confirmation. */
+export function toggleProviderSelectionVisibility(): void {
+    if (
+        ++providerSelectionUnlockCount >= 7 &&
+        confirmProviderVisibility(
+            "noSelProv",
+            "providers",
+            toggleProviderSelectionVisibility
+        )
+    )
+        providerSelectionUnlockCount = 0;
+}
+
+/** Seven presses reveal the provider settings visibility confirmation. */
+export function toggleProviderSettingsVisibility(): void {
+    if (
+        ++providerSettingsUnlockCount >= 7 &&
+        confirmProviderVisibility(
+            "noProvParam",
+            "settings",
+            toggleProviderSettingsVisibility
+        )
+    )
+        providerSettingsUnlockCount = 0;
 }
 
 /**
@@ -2154,13 +2158,14 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         // scoped DOM pass below work under Tauri's nonced style policy.
         // Queue EPG fill for every visible row (OTT). Re-read ch after call:
         // deferred processCurrentProgramQueue may not have run yet; time_to hit returns true.
-        observeCurrentProgramme(chId, updateChannelListRow);
+        if (!ch.__ottMediaItem)
+            observeCurrentProgramme(chId, updateChannelListRow);
         var nowSec = Date.now() / 1e3;
         var progName =
-            ch.time_to && ch.time_to >= nowSec && ch.name
+            !ch.__ottMediaItem && ch.time_to && ch.time_to >= nowSec && ch.name
                 ? metadataText(ch.name)
                 : "";
-        if (ch.outdated === true)
+        if (!ch.__ottMediaItem && ch.outdated === true)
             progName =
                 '<i class="ott-channel-no-epg">' +
                 _("no epg at current time") +
@@ -2323,7 +2328,9 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         renderButtonHint(
             keys.RED,
             "",
-            "EPG",
+            channels[listArray[selIndex]]?.__ottMediaItem
+                ? "Description"
+                : "EPG",
             strEPG,
             sArrowFun === 2
                 ? strRIGHT

@@ -33,6 +33,7 @@ interface MediaEngineLease {
     } | null;
     // Read-only identity of the attached engine, never a saved preference.
     diagnosticEngine?(): MediaDiagnosticEngine;
+    diagnosticMedia?(): { media: any; hls: any } | null;
     dispose(replaced?: boolean): void;
     pause(): void;
     resume(): void;
@@ -451,6 +452,25 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     engine &&
                     engine.diagnosticEngine
                     ? engine.diagnosticEngine()
+                    : null;
+            },
+            diagnosticMedia: function () {
+                var value =
+                    handle.active() &&
+                    !suspended &&
+                    engine &&
+                    engine.diagnosticMedia &&
+                    engine.diagnosticMedia();
+                return value
+                    ? {
+                          // The fallback context belongs to main, not PiP.
+                          generation:
+                              lane === "main" && context
+                                  ? context.generation
+                                  : null,
+                          hls: value.hls,
+                          media: value.media,
+                      }
                     : null;
             },
             dispose: function (replaced?: boolean) {

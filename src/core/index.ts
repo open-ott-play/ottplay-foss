@@ -52,7 +52,6 @@ export function setPlayerMode(v: number): void {
     var nextMode = normalizePlayerMode(v);
     if (nextMode !== playerMode) cancelCoreAutoPlayback(true);
     playerMode = nextMode;
-    console.log("[setPlayerMode] playerMode=" + playerMode);
 }
 /** Human-readable labels for each playerMode value. */
 export var playerModeNames =
@@ -135,7 +134,7 @@ function loadCoreMediaEngine(
         );
 }
 
-/** Available preload buffer sizes (indexes into a numeric range). */
+/** Useful explicit buffer seconds; zero retains automatic buffering. */
 export var bufferSizes = [
     "0",
     "1",
@@ -148,6 +147,13 @@ export var bufferSizes = [
     "8",
     "9",
     "10",
+    "15",
+    "20",
+    "30",
+    "45",
+    "60",
+    "90",
+    "120",
 ];
 
 /** Button label for the Exit key. */
@@ -498,10 +504,10 @@ function createCoreHlsBitrateMeter(): {
     };
 }
 
-export function updateCoreVideoInfo(): void {
+export function updateCoreVideoInfo(opening = false): void {
     if ((window as any).__ottStandby?.blocked()) return;
     if (!video || !video.videoWidth || video.error) return;
-    var res = "<br/>" + video.videoWidth + "x" + video.videoHeight;
+    var res = "<br>" + video.videoWidth + "x" + video.videoHeight;
     var mbps = 0;
     if (hlsInstance) {
         // bandwidthEstimate is network throughput, which can reach hundreds
@@ -545,13 +551,19 @@ export function updateCoreVideoInfo(): void {
     }
     // Playback status owns this label until frames resume or playback stops.
     if ((window as any).__ottPlaybackFeedback?.visible()) return;
+    // Keep native sampling above alive while the footer is hidden. The UI
+    // refreshes metadata before showing it; inline visibility needs no layout.
+    var panel = document.getElementById("info1");
+    if (!opening && panel && panel.style.display === "none") return;
+    var label = document.getElementById("video_res");
+    if (!label) return;
     // An unknown bitrate is omitted, never replaced by a network estimate.
-    $("#video_res").html(
+    var html =
         res +
-            (mbps > 0 && isFinite(mbps)
-                ? "<br/>" + Math.round(mbps * 100) / 100 + " Mbps"
-                : "")
-    );
+        (mbps > 0 && isFinite(mbps)
+            ? "<br>" + Math.round(mbps * 100) / 100 + " Mbps"
+            : "");
+    if (label.innerHTML !== html) label.innerHTML = html;
 }
 /** PiP dimension presets in pixels: [small, medium, large]. */
 var pipPresets = [
@@ -885,6 +897,10 @@ export function stbEventToKeyCode(event: any): number {
     var code = event.code || "";
     var digit = /^[0-9]$/.test(key) ? Number(key) : -1;
     var deviceKeys = (window as any).keys || {};
+    // A named transport key is distinct from the PC's advertised S audio key,
+    // even when a browser reports the old colliding numeric code.
+    if (key === "MediaStop" || code === "MediaStop")
+        keyCode = deviceKeys.STOP || 178;
     // Firefox uses 61/173 for these keyboard keys. Require keyboard identity:
     // bare 173 is also a remote-control mute code on some platforms.
     if (
@@ -956,8 +972,6 @@ export function stbEventToKeyCode(event: any): number {
             code === "MediaPause"
         )
             keyCode = 80; // keys.PLAY / keys.PAUSE
-        else if (key === "MediaStop" || code === "MediaStop")
-            keyCode = 83; // keys.STOP
         else if (key === "GoBack" || code === "GoBack" || key === "BrowserBack")
             keyCode = 27; // keys.EXIT (menu/back remotes; Android BACK parity)
         else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
@@ -1028,15 +1042,26 @@ var coreAttemptCounters: {
     nativeFallbacks: number;
     streamRetries: number;
 };
+function reportCorePerformance(key?: string): void {
+    try {
+        var sink = (window as any).__ottPerfSink;
+        if (sink) {
+            if (key) sink.recovery(key);
+            else sink.changed();
+        }
+    } catch (_) {}
+}
 function countCoreAttempt(
     session: number,
     key: keyof typeof coreAttemptCounters
 ): void {
-    if (session === _playSession)
+    if (session === _playSession) {
         coreAttemptCounters[key] = Math.min(
             9007199254740991,
             coreAttemptCounters[key] + 1
         );
+        reportCorePerformance(key);
+    }
 }
 function cancelCoreStreamAttempt(): void {
     if (coreStreamAttempt) coreStreamAttempt.dispose();
@@ -1220,7 +1245,11 @@ function startCoreEngine(
     (window as any).forcePlay = !paused;
     if (video && paused) video.autoplay = false;
     if ((window as any).__ottPlaybackFeedback)
-        (window as any).__ottPlaybackFeedback.begin(paused);
+        (window as any).__ottPlaybackFeedback.begin(
+            paused,
+            false,
+            coreNormalizedTimeout(url)
+        );
     var session = _playSession;
     var plexHint = corePlexPlaybackHint(url);
     if (hlsInstance) {
@@ -1369,6 +1398,28 @@ function startCoreEngine(
     window.playTime = window.playTime ?? 0;
 }
 
+/** The registered normalization routes require separate rendition playback. */
+function coreNormalizedMse(url: string): boolean {
+    try {
+        // RegExp stringifies the parsed URL; only empty query/fragment suffixes are allowed.
+        return /^https?:\/\/[^@/?#]+\/normalize\/(?:play\/[\w-]{1,64}\/[\w-]{32,128}\/|lease\/[\da-f]{32}\/[\da-f]{32}\/)master\.m3u8\??#?$/.test(
+            new URL(url) as unknown as string
+        );
+    } catch (error) {
+        return false;
+    }
+}
+
+/** Only the registered initial master may wait for bounded server preparation. */
+function coreNormalizedTimeout(url: string): number {
+    return coreNormalizedMse(url) && url.indexOf("/play/") > 0 ? 75000 : 0;
+}
+function coreHlsConfig(config: any, url: string): any {
+    var timeout = coreNormalizedTimeout(url);
+    if (timeout) config.manifestLoadingTimeOut = timeout;
+    return config;
+}
+
 /**
  * Start main-video playback using hls.js, Shaka, or native HTML5.
  * Configure transport, resume seeking, and session-scoped Auto HLS fallback.
@@ -1389,6 +1440,7 @@ function startCorePlayback(
     forceMse = false,
     engineLoaded = false
 ): void {
+    forceMse = forceMse || (!nativeFile && coreNormalizedMse(originalUrl));
     if (
         !engineLoaded &&
         !nativeFile &&
@@ -1470,7 +1522,6 @@ function startCorePlayback(
             : mode === 2 && !_forceNative
               ? "shaka"
               : "html5";
-    console.log("[stbPlay] playerMode=" + playerMode + " (" + _pm + ")");
     var useHls =
         mode === 1 &&
         !_forceNative &&
@@ -1527,7 +1578,8 @@ function startCorePlayback(
             hlsConfig.levelLoadingMaxRetry = 1;
             hlsConfig.manifestLoadingMaxRetry = 1;
         }
-        hlsInstance = new Hls(hlsConfig);
+        hlsInstance = new Hls(coreHlsConfig(hlsConfig, originalUrl));
+        reportCorePerformance();
         var playbackHls = hlsInstance;
         var bitrateMeter = createCoreHlsBitrateMeter();
         _coreHlsBitrate = bitrateMeter;
@@ -1575,12 +1627,6 @@ function startCorePlayback(
                               : hlsInstance.currentLevel;
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
-                        console.log(
-                            "[HLS] MEDIA_ERROR: drop level " +
-                                failed +
-                                " cap=" +
-                                cap
-                        );
                         hlsInstance.autoLevelCapping = cap;
                         if (typeof hlsInstance.removeLevel === "function") {
                             hlsInstance.removeLevel(failed);
@@ -1593,22 +1639,8 @@ function startCorePlayback(
                             return;
                         }
                         hlsInstance.currentLevel = cap;
-                    } else {
-                        // hls-proxy always exposes a single STREAM-INF, so
-                        // drop-level never runs for proxied live channels.
-                        console.log(
-                            "[HLS] MEDIA_ERROR: skip drop level (levels=" +
-                                lvls.length +
-                                " failed=" +
-                                failed +
-                                ")"
-                        );
                     }
                     if (recovery.media()) {
-                        console.log(
-                            "[HLS] trying recoverMediaError" +
-                                (data.details ? " (" + data.details + ")" : "")
-                        );
                         cancelCoreSeek();
                         hlsInstance.recoverMediaError();
                         if (
@@ -1657,9 +1689,6 @@ function startCorePlayback(
                             !limits.maxHeight &&
                             !limits.maxBitrate
                         ) {
-                            console.log(
-                                "[HLS] MEDIA_ERROR twice, fallback native HTML5"
-                            );
                             _corePlaybackMode = 0;
                             countCoreAttempt(session, "nativeFallbacks");
                             countCoreAttempt(session, "engineStarts");
@@ -1673,13 +1702,6 @@ function startCorePlayback(
                             if ((window as any).forcePlay !== false)
                                 playCoreMedia(video!);
                         } else {
-                            console.log(
-                                "[HLS] MEDIA_ERROR twice, no native HLS" +
-                                    (det ? " details=" + det : "") +
-                                    (appendFail
-                                        ? " (HD Orig often mp2/ac3 + strict Chrome decode)"
-                                        : "")
-                            );
                             coreStreamFailure(
                                 "decode",
                                 undefined,
@@ -1705,9 +1727,6 @@ function startCorePlayback(
                     // purged segments, proxy HTML error pages).
                     var det = String((data && data.details) || "");
                     if (!recovery.network(det)) {
-                        console.log(
-                            "[HLS] unrecoverable network/parse, destroying"
-                        );
                         coreStreamFailure(
                             window.OttPlayCore.playbackParsingFailure(det)
                                 ? "parse"
@@ -1717,7 +1736,6 @@ function startCorePlayback(
                         hlsInstance.destroy();
                         hlsInstance = null;
                     } else {
-                        console.log("[HLS] trying startLoad");
                         hlsInstance.startLoad(
                             _corePendingSeek || !hlsInstance.hasEnoughToStart
                                 ? hlsInstance.config.startPosition
@@ -1725,7 +1743,6 @@ function startCorePlayback(
                         );
                     }
                 } else {
-                    console.log("[HLS] unrecoverable, destroying");
                     coreStreamFailure("decode");
                     hlsInstance.destroy();
                     hlsInstance = null;
@@ -1914,9 +1931,6 @@ function startCorePlayback(
                             media.pause();
                             coreNativeAttached = false;
                             media.removeAttribute("src");
-                            console.log(
-                                "[Auto] native HLS incompatible, using hls.js"
-                            );
                             startCorePlayback(
                                 url,
                                 nextPosition,
@@ -2530,8 +2544,12 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     // Loading an optional engine is part of this same lease, not another play.
     // Advancing twice makes the original lease unable to pause or dispose it.
     var session = engineLoaded ? _corePipSession : ++_corePipSession;
-    var requestedMode =
-        playerMode === 3 ? coreAutoMode(url, videoPip) : playerMode;
+    var normalized = coreNormalizedMse(url);
+    var requestedMode = normalized
+        ? 1
+        : playerMode === 3
+          ? coreAutoMode(url, videoPip)
+          : playerMode;
     var local = !!(
         (window as any).__ottLocalMedia &&
         (window as any).__ottLocalMedia.isPlaybackUrl(url)
@@ -2564,12 +2582,21 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     }
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
     var canHls = typeof Hls !== "undefined" && Hls.isSupported();
-    var mode = auto ? coreAutoMode(url, videoPip) : playerMode;
+    var mode =
+        normalized && canHls
+            ? 1
+            : auto
+              ? coreAutoMode(url, videoPip)
+              : playerMode;
     var startHls = function (): void {
         var pipHls = new Hls(
-            coreBufferPolicy(window, url, url, bufSize, true, true).hls
+            coreHlsConfig(
+                coreBufferPolicy(window, url, url, bufSize, true, true).hls,
+                url
+            )
         );
         hlsPipInstance = pipHls;
+        reportCorePerformance();
         pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
             if (session === _corePipSession && hlsPipInstance === pipHls)
                 playCoreMedia(videoPip!);
@@ -2931,12 +2958,6 @@ export function stbInit(): void {
                 $("#buffering").show();
                 $("#video_res").text(_("Loading..."));
             });
-            video!.addEventListener("loadeddata", function () {
-                console.log("Event: loadeddata");
-            });
-            video!.addEventListener("loadedmetadata", function () {
-                console.log("Event: loadedmetadata");
-            });
             video!.addEventListener("canplay", function () {
                 if (!host.__ottPlaybackFeedback?.visible()) {
                     $("#buffering").hide();
@@ -3066,8 +3087,7 @@ export function stbInit(): void {
 }
 
 /**
- * Log all video events to the console for debugging.
- * On 'error' events, also logs the MediaError code and message.
+ * Forward video events to the debug collector and report media errors.
  *
  * @param event - Raw video DOM event.
  *
@@ -3075,7 +3095,6 @@ export function stbInit(): void {
  */
 function videoEvent(event: Event): void {
     if (event && event.type) {
-        console.log("[video] event: " + event.type);
         if (event.type === "error") {
             var me = video ? video!.error : null;
             if (me)
@@ -3375,13 +3394,15 @@ export function unload(): void {
 }
 
 /**
- * Auto-start the player if the `stb_autorun` setting is "1".
- * Called on page load to check whether to begin playback immediately.
+ * Legacy player-initialization helper. This does not configure OS startup.
+ * Prefer the registered key; preserve old installs only when it is absent.
  *
  * Side effects: Calls startPlayer() if autorun is enabled.
  */
 export function setAutorun(): void {
-    var autorun = window.stbGetItem ? window.stbGetItem("stb_autorun") : null;
+    var autorun = window.stbGetItem ? window.stbGetItem("sAutorun") : null;
+    if (autorun == null && window.stbGetItem)
+        autorun = window.stbGetItem("stb_autorun");
     if (autorun === "1" && typeof window.startPlayer === "function") {
         window.startPlayer();
     }
@@ -3597,6 +3618,11 @@ function openCoreEngineLease(
                 return "shaka";
             return (pip ? corePipNativeAttached : coreNativeAttached)
                 ? "html5"
+                : null;
+        },
+        diagnosticMedia: function () {
+            return active() && media
+                ? { hls: pip ? hlsPipInstance : hlsInstance, media: media }
                 : null;
         },
         dispose: function () {

@@ -75,6 +75,7 @@ Có thể tạo lại hình thử tổng hợp bằng `scripts/generate-demo-med
 - **Định tuyến theo thiết bị**: địa chỉ UUID cho cấu hình nhiều thiết bị
 - **Proxy cục bộ**: máy chủ lệnh cục bộ tùy chọn cho tự động hóa hoàn toàn cục bộ (không cần máy chủ trung tâm)
 - **Tích hợp bộ điều khiển**: người vận hành có phạm vi thiết bị/hành động, kết quả lệnh bền vững tùy chọn, áp dụng cấu hình Local/Home có thể tiếp tục và chuyển tiếp trực tiếp/kho lưu trữ cùng nguồn qua [máy chủ điều khiển](https://github.com/open-ott-play/ottplay-control-server) tương ứng. Cần bộ điều khiển/CLI đã cập nhật; một tab trình duyệt độc lập không cung cấp các chức năng này.
+- **Tùy chọn từ xa có kiểu dữ liệu**: khám phá cài đặt, đọc giá trị đã lưu và có hiệu lực, rồi lưu sau khi kiểm tra phiên chạy, nguồn và phiên bản sửa đổi; xem [cài đặt từ xa và cấu hình VPortal](docs/remote-player-settings.md).
 - **Gỡ lỗi**: HUD phát/nhật ký vòng được bật tùy chọn qua `?debug=1`, kiểm tra từ xa có đồng ý và kiểm tra âm thanh/video lưu trữ theo yêu cầu
 - **Tiếp cận bằng bàn phím**: hộp thoại cổ điển có tên, giữ và trả lại tiêu điểm Tab, ngữ nghĩa kênh được chọn và thông báo trạng thái không ngắt quãng. Các cải tiến không khẳng định tuân thủ đầy đủ WCAG hay trình đọc màn hình thiết bị.
 - **24 loại thiết bị**: ánh xạ phím điều khiển theo thiết bị

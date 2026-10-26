@@ -617,8 +617,12 @@ test("startup and settings teardown reentry cannot publish obsolete metadata or 
     };
     w.popupActions[1]();
     assert.equal(w.p_pref, "demo");
-    assert.equal(g.saved.get("kbcv_list"), "0");
-    assert.equal(g.saved.get("kbc1v_list"), undefined);
+    assert.equal(
+        g.saved.get("kbcv_list"),
+        "1",
+        "slot transaction commits before teardown"
+    );
+    assert.equal(g.saved.get("kbc1v_list"), "1");
     const h = fixture("kb-team");
     load(h, kbPlaylist);
     h.host.duneAddSettings(0);

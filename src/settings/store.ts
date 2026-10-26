@@ -10,6 +10,7 @@ export interface SettingDefinition {
     prepare?(value: any): any;
     protectOnLoad?: boolean;
     protectRollback?(value: string | null): string | null;
+    rules?: any;
     scope: "application" | "provider";
     validate(value: any): boolean;
 }
@@ -153,6 +154,17 @@ export interface SettingsDraft {
     errorCode(): string;
     get(id: string): any;
     set(id: string, value: any): boolean;
+}
+
+/** A private, source-bound receipt. Raw bytes never belong in a remote DTO. */
+export interface SettingsCapture {
+    current(): boolean;
+    id: string;
+    raw: string | null;
+    storage: SettingStorage;
+    stored: any;
+    valid: boolean;
+    value: any;
 }
 
 /** A single owner, with detached snapshots and optimistic, source-bound drafts. */
@@ -310,19 +322,63 @@ export function createSettingsStore(
             publish(id, loaded[id]);
         });
     }
-    function begin(persistCurrent = false): SettingsDraft {
+    function capture(id: string): SettingsCapture {
+        var entry = definitions[id];
+        if (!entry) throw settingsFailure("invalid_setting", "Unknown setting");
+        if (ports.context() !== context) reload("provider");
+        var source = context;
+        var generation = revision;
+        var version = versions[id] || 0;
+        var storage = ports.storage(entry);
+        function current(): boolean {
+            return (
+                generation === revision &&
+                source === context &&
+                source === ports.context() &&
+                version === (versions[id] || 0) &&
+                (!storage.current || storage.current())
+            );
+        }
+        var raw = storage.read();
+        var stored: any;
+        var valid = false;
+        if (raw !== null) {
+            stored = entry.decode
+                ? entry.decode(raw)
+                : typeof entry.defaultValue === "number"
+                  ? /^[-+]?\d+$/.test(raw)
+                      ? Number(raw)
+                      : NaN
+                  : raw;
+            valid = entry.validate(stored);
+        }
+        if (!current() || storage.read() !== raw || !current())
+            throw settingsFailure("source_changed", "Settings source changed");
+        return { current, id, raw, storage, stored, valid, value: get(id) };
+    }
+    function begin(
+        persistCurrent = false,
+        expected?: SettingsCapture | SettingsCapture[]
+    ): SettingsDraft {
+        var expectedCaptures = expected
+            ? Array.isArray(expected)
+                ? expected
+                : [expected]
+            : [];
         // A failed catalog load must not prevent editing the new source's
         // preferences. Hydrate its scope before taking a fresh draft snapshot.
         if (ports.context() !== context) reload("provider");
         var generation = revision;
         var source = ports.context();
         var original: Record<string, any> = {};
+        var originalVersions: Record<string, number> = {};
         var pending: Record<string, any> = {};
         var open = true;
         var message = "";
         var code = "";
         schema.forEach(function (entry) {
             original[entry.id] = get(entry.id);
+            originalVersions[entry.id] = versions[entry.id] || 0;
         });
         function active(): boolean {
             return (
@@ -345,7 +401,13 @@ export function createSettingsStore(
                 }
             ) {
                 function current(): boolean {
-                    return active() && admitted();
+                    return (
+                        active() &&
+                        expectedCaptures.every(function (capture) {
+                            return capture.current();
+                        }) &&
+                        admitted()
+                    );
                 }
                 if (!current()) {
                     message = "Settings source changed";
@@ -357,7 +419,10 @@ export function createSettingsStore(
                 });
                 if (
                     changes.some(function (id) {
-                        return !equal(values[id], original[id]);
+                        return (
+                            !equal(values[id], original[id]) ||
+                            (versions[id] || 0) !== originalVersions[id]
+                        );
                     })
                 ) {
                     message = "Settings changed while editing";
@@ -375,9 +440,16 @@ export function createSettingsStore(
                     });
                     writes = additional.slice();
                     changes.forEach(function (id) {
-                        var entry = definitions[id],
-                            storage = ports.storage(entry);
-                        var before = storage.read();
+                        var entry = definitions[id];
+                        var captured = expectedCaptures.filter(
+                            function (capture) {
+                                return capture.id === id;
+                            }
+                        )[0];
+                        var storage = captured
+                            ? captured.storage
+                            : ports.storage(entry);
+                        var before = captured ? captured.raw : storage.read();
                         // Preserve the old value without re-persisting a legacy
                         // plaintext credential if a later write fails.
                         var rollback = entry.protectRollback
@@ -460,6 +532,7 @@ export function createSettingsStore(
     }
     return {
         begin: begin,
+        capture: capture,
         context: function () {
             return context;
         },

@@ -73,6 +73,7 @@ La mire synthétique peut être régénérée avec `scripts/generate-demo-media.
 - **Routage par appareil** : adressage par UUID pour les installations multiappareils.
 - **Proxy local** : serveur de commandes local facultatif pour une automatisation entièrement locale (sans serveur central).
 - **Intégration du contrôleur** : opérateurs limités par appareil/action, résultats de commandes durables facultatifs, application reprenable des profils Local/Home et transfert du direct/des archives d’une même source via le [serveur de contrôle](https://github.com/open-ott-play/ottplay-control-server) correspondant. Ces fonctions nécessitent le contrôleur/la CLI à jour ; un onglet de navigateur autonome ne les fournit pas.
+- **Préférences distantes typées** : découvrez les réglages, lisez les valeurs enregistrées et effectives, puis enregistrez avec vérification de l’instance d’exécution, de la source et de la révision ; voir [réglages distants et configuration VPortal](docs/remote-player-settings.md).
 - **Débogage** : HUD de lecture/journal circulaire activables via `?debug=1`, inspection distante avec consentement et vérification audio/vidéo hébergée à la demande.
 - **Accessibilité clavier** : dialogues classiques nommés, confinement et restitution du focus Tab, sémantique de chaîne sélectionnée et annonces d’état discrètes. Ces améliorations ne prouvent pas une conformité complète WCAG ni avec les lecteurs d’écran des appareils.
 - **24 types d’appareil** : affectation des touches de télécommande propre à chaque appareil.

@@ -820,3 +820,92 @@ for (const testCase of shortcutCases) {
 console.log(
     "PC R random shortcut: collection boundaries, media dispatch, modifiers, editors, repeat and kiosk protection"
 );
+
+for (const device of ["pc", "pc2"]) {
+    const dom = new JSDOM("<!doctype html><body><input></body>", {
+        runScripts: "outside-only",
+    });
+    const w = dom.window;
+    try {
+        require("./helpers/screen-runtime.cjs")(w);
+        const mapping = acorn
+            .parse(read("devices/" + device + "/device.js"), { ecmaVersion: 5 })
+            .body.find(
+                (node) =>
+                    node.type === "VariableDeclaration" &&
+                    node.declarations.some((entry) => entry.id.name === "keys")
+            );
+        assert.ok(mapping, device + " exposes its actual device key map");
+        const actions = [];
+        Object.assign(w, {
+            $: () => ({ is: () => false }),
+            handleMainKey: (code, event) => {
+                actions.push(
+                    w.__ottClassicScreenPort.normalize(code, event).id
+                );
+            },
+            nativeListInertia: null,
+            settings: { volumeStep: 5 },
+        });
+        w.eval(sourceHandlers);
+        w.eval(
+            read("devices/" + device + "/device.js").slice(
+                mapping.start,
+                mapping.end
+            )
+        );
+        w.eval(declarations(typedCore, ["stbBindKeyHandler"], "source"));
+        w.stbBindKeyHandler();
+        function press(fields, target = w.document.body) {
+            const before = actions.length;
+            target.dispatchEvent(
+                new w.KeyboardEvent("keydown", {
+                    bubbles: true,
+                    cancelable: true,
+                    ...fields,
+                })
+            );
+            return actions.slice(before);
+        }
+        assert.deepEqual(
+            press({ code: "KeyS", key: "s", keyCode: 83 }),
+            ["audio"],
+            device + " S opens the advertised audio action, not stream restart"
+        );
+        for (const keyCode of [0, 83, 178])
+            assert.deepEqual(
+                press({ code: "MediaStop", key: "MediaStop", keyCode }),
+                ["stop"],
+                device + " preserves the named physical MediaStop action"
+            );
+        assert.deepEqual(
+            press({ keyCode: 178 }),
+            ["stop"],
+            device + " preserves bare MediaStop code"
+        );
+        assert.deepEqual(
+            press(
+                { code: "KeyS", key: "s", keyCode: 83 },
+                w.document.querySelector("input")
+            ),
+            [],
+            device + " keeps S typing inside text inputs"
+        );
+        w.keys.STOP = 413;
+        assert.equal(
+            w.stbEventToKeyCode({ key: "MediaStop", keyCode: 83 }),
+            413,
+            "A named MediaStop respects the active TV device mapping"
+        );
+        assert.equal(
+            w.stbEventToKeyCode({ keyCode: 413 }),
+            413,
+            "Bare TV transport codes remain unchanged"
+        );
+    } finally {
+        w.close();
+    }
+}
+console.log(
+    "PC/PC2 audio S and physical MediaStop remain separate through actual keyboard delivery"
+);

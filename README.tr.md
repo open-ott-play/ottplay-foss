@@ -75,6 +75,7 @@ Sentetik test deseni `scripts/generate-demo-media.sh` ile yeniden oluşturulabil
 - **Cihaza göre yönlendirme**: çok cihazlı kurulumlar için UUID tabanlı adresleme
 - **Yerel proxy**: tamamen yerel otomasyon için isteğe bağlı yerel komut sunucusu (merkezi sunucu gerekmez)
 - **Denetleyici entegrasyonu**: cihaz/eylem kapsamlı operatörler, isteğe bağlı kalıcı komut sonuçları, devam ettirilebilir Local/Home hazır ayar uygulaması ve uygun [kontrol sunucusu](https://github.com/open-ott-play/ottplay-control-server) üzerinden aynı kaynakta canlı/arşiv devri. Bunlar güncellenmiş denetleyici/CLI gerektirir; bağımsız bir tarayıcı sekmesi bunları sağlamaz.
+- **Türü belirlenmiş uzaktan tercihler**: ayarları keşfedin, kayıtlı ve etkin değerleri okuyun, çalışma örneği, kaynak ve revizyon denetimleriyle kaydedin; bkz. [uzaktan ayarlar ve VPortal yapılandırması](docs/remote-player-settings.md).
 - **Hata ayıklama**: `?debug=1` ile isteğe bağlı oynatma HUD'u/halka günlük, izinli uzaktan inceleme ve talep üzerine barındırılan ses/video kontrolü
 - **Klavye erişilebilirliği**: adlandırılmış klasik iletişim kutuları, Tab odağının sınırlandırılması ve geri dönüşü, seçili kanal semantiği ve kesintiye yol açmayan durum bildirimleri. Bunlar tam WCAG veya cihaz ekran okuyucusu uyumluluğunu kanıtlamaz.
 - **24 cihaz türü**: cihaza özel uzaktan kumanda tuş eşlemeleri

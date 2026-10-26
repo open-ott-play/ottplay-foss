@@ -451,18 +451,35 @@ console.log(
 
 for (const provider of ["plex", "vportal"]) {
     const seed = setup(provider);
+    let clock = 1700000000000;
+    seed.c.Date = class extends Date {
+        static now() {
+            return clock;
+        }
+    };
     const positions = [137.25, 248.5, 369.75];
     for (let index = 0; index < positions.length; index++) {
         seed.c._playChannel(0, index);
         seed.resolve();
+        clock += 5001;
         seed.c.__ottClassicPlayback.command({
             position: positions[index],
             type: "position",
         });
-        seed.c.__ottMedia.checkpoint(
-            seed.c.__ottMedia.current().ref,
+        const journal = JSON.parse(
+            seed.c.stored["mediaJournal.v1:" + seed.c.__ottMedia.sourceId()]
+        );
+        assert.equal(
+            journal.history[0].position,
             positions[index],
-            true
+            "ordinary decoder samples persist channel-backed media without a shutdown callback"
+        );
+        const navigation = JSON.parse(seed.c.stored.playbackJournal).bookmark;
+        assert.equal(navigation.kind, "live");
+        assert.equal(
+            navigation.channelId,
+            String(seed.c.cats.All[index]),
+            "media checkpoints preserve the independent channel navigation identity"
         );
     }
     const cold = setup(provider);
@@ -592,6 +609,79 @@ for (const provider of ["plex", "vportal"]) {
         "PASS " +
             provider +
             " exact startup resume, manual resume prompt, and fresh automatic/arrow playback"
+    );
+}
+
+for (const provider of ["plex", "vportal"]) {
+    const { c, resolve, end } = setup(provider);
+    let clock = 1700000000000;
+    c.Date = class extends Date {
+        static now() {
+            return clock;
+        }
+    };
+    let position = 100;
+    c.stbGetPosTime = () => position;
+    const journal = () =>
+        JSON.parse(c.stored["mediaJournal.v1:" + c.__ottMedia.sourceId()]);
+    c._playChannel(0, 0);
+    resolve();
+    const first = c.__ottMedia.current().ref.itemId;
+    const generation = c.__ottClassicPlayback.snapshot().generation;
+    clock += 5001;
+    c.__ottClassicPlayback.command({ position, type: "position" });
+    assert.equal(journal().history[0].position, 100);
+    position = 101;
+    clock += 100;
+    c.__ottClassicPlayback.command({ position, type: "position" });
+    assert.equal(
+        journal().history[0].position,
+        100,
+        "periodic writes are bounded"
+    );
+    c.__ottClassicPlayback.command({ type: "pause" });
+    assert.equal(
+        journal().history[0].position,
+        101,
+        "pause flushes the latest sample"
+    );
+    c.__ottClassicPlayback.command({ type: "resume" });
+    position = 102;
+    c.__ottClassicPlayback.command({ position, type: "position" });
+    c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(
+        journal().history[0].position,
+        102,
+        "stop flushes without waiting five seconds"
+    );
+    c._playChannel(0, 1);
+    resolve();
+    const beforeStale = c.stored["mediaJournal.v1:" + c.__ottMedia.sourceId()];
+    c.__ottClassicPlayback.command({
+        generation,
+        position: 999,
+        type: "position",
+    });
+    assert.equal(
+        c.stored["mediaJournal.v1:" + c.__ottMedia.sourceId()],
+        beforeStale
+    );
+    assert.equal(
+        journal().history.find((item) => item.itemId === first).position,
+        102
+    );
+    clock += 5001;
+    c.__ottClassicPlayback.command({ position: 400, type: "position" });
+    const second = c.__ottMedia.current().ref.itemId;
+    end();
+    assert.equal(
+        journal().history.find((item) => item.itemId === second).position,
+        0
+    );
+    console.log(
+        "PASS " +
+            provider +
+            " bounded samples, forced flush, stale decoder and completion checkpoints"
     );
 }
 

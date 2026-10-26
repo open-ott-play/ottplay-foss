@@ -881,3 +881,58 @@ console.log(
     );
     assert.equal(revoked, 1);
 }
+
+{
+    const { h, loads, media, caps, images } = mediaFixture();
+    const events = [];
+    h.w.__ottPerfSink = {
+        notification: (_media, count) => ({
+            phase: (name, end) => events.push({ end, phase: name }),
+            stage: (name, reason) =>
+                events.push({ count: count(), name, reason: reason || null }),
+        }),
+    };
+    const item = h.item({ media, message: "PRIVATE TEXT" });
+    h.reply([item, item], caps);
+    assert.deepEqual(
+        events.filter((e) => e.name).map((e) => e.name),
+        ["received", "dom_created", "received", "dropped"]
+    );
+    assert.equal(events.at(-1).reason, "duplicate");
+    loads[0].options.phase("fetch", false);
+    loads[0].options.phase("fetch", true);
+    loads[0].complete({
+        dispose() {},
+        height: 180,
+        remainingMs: 1000,
+        url: "blob:PRIVATE",
+        width: 320,
+    });
+    images[0].decode = () => {
+        throw Error("must not add decoding work");
+    };
+    Object.defineProperty(images[0], "naturalWidth", { value: 320 });
+    Object.defineProperty(images[0], "naturalHeight", { value: 180 });
+    images[0].onload();
+    assert(events.some((e) => e.name === "image_loaded"));
+    assert(events.some((e) => e.name === "shown"));
+    assert(events.some((e) => e.name === "updated"));
+    h.client.setEnabled(false);
+    assert.equal(events.at(-1).name, "hidden");
+    assert.equal(events.at(-1).count, 0);
+    assert(!JSON.stringify(events).includes("PRIVATE"));
+    h.dom.window.close();
+}
+{
+    const { h, loads, media, caps } = mediaFixture();
+    h.reply([h.item({ media })], caps);
+    assert.equal(
+        loads[0].options.phase,
+        undefined,
+        "off adds no media phase callbacks"
+    );
+    h.dom.window.close();
+}
+console.log(
+    "PASS notification performance hooks: actual stages only, no extra decode, empty OFF hooks"
+);

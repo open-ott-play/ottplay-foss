@@ -76,6 +76,25 @@ export function createSettingsEditor(host: any, rows: any[]) {
             })
         )
             throw new Error("Unknown setting row: " + id);
+        // Buffer choices are seconds, not array indexes. Retain values from
+        // remote settings or narrower device lists without changing their bytes.
+        if (
+            id === "bufSize" &&
+            Array.isArray(row.values) &&
+            !row.settingValues
+        ) {
+            row.settingValues = row.values.map(function (value: any) {
+                return Number(value) || 0;
+            });
+            var stored = get(id);
+            if (row.settingValues.indexOf(stored) < 0) {
+                row.settingValues.push(stored);
+                row.values = row.values.concat(
+                    String(stored) +
+                        (stored > 120 ? " (" + host._("Automatic") + ")" : "")
+                );
+            }
+        }
         Object.defineProperty(row, "val", {
             configurable: true,
             enumerable: true,

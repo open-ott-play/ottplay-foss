@@ -15,11 +15,28 @@ const output = ts.transpileModule(
 ).outputText;
 acorn.parse(output, { ecmaVersion: 5 });
 const exportsObject = {};
-vm.runInNewContext(output, { Date, exports: exportsObject, Promise });
+const detailCode = ts.transpileModule(
+    fs.readFileSync("src/plugins/runtime-debug-details.ts", "utf8"),
+    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+).outputText;
+acorn.parse(detailCode, { ecmaVersion: 5 });
+const pureDetails = { window: {} };
+vm.runInNewContext(detailCode, pureDetails);
+vm.runInNewContext(output, {
+    Date,
+    exports: exportsObject,
+    Promise,
+    require: () => ({
+        loadRemoteFeature: (w, _feature, done) => {
+            w.__ottLoadDebugDetails = done;
+        },
+    }),
+});
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const secret = "https://private.invalid/?token=DO-NOT-EXPORT";
 function fixture(native) {
     const w = new JSDOM("<!doctype html><video id='video'></video>").window;
+    w.__ottRuntimeDebugDetails = pureDetails.window.__ottRuntimeDebugDetails;
     let time = 100,
         serial = 0,
         currentRuntime = "runtime-1";
@@ -148,6 +165,41 @@ async function test(name, run) {
                 (e, i, es) => !i || es[i - 1].sequence < e.sequence
             )
         );
+        f.close();
+    });
+    await test("details load only for an explicit snapshot and retain retirement/native guards", async () => {
+        let calls = 0;
+        const f = fixture(() => {
+            calls++;
+            return Promise.resolve(producer);
+        });
+        f.w.Capacitor = { getPlatform: () => "android" };
+        f.enable();
+        delete f.w.__ottRuntimeDebugDetails;
+        assert.equal(f.w.__ottLoadDebugDetails, undefined);
+        const pending = f.api.snapshot(3);
+        assert.equal(calls, 0);
+        assert.equal(typeof f.w.__ottLoadDebugDetails, "function");
+        f.w.__ottRuntimeDebugDetails =
+            pureDetails.window.__ottRuntimeDebugDetails;
+        f.w.__ottLoadDebugDetails();
+        assert.equal((await pending).version, 3);
+        assert.equal(calls, 1);
+        delete f.w.__ottRuntimeDebugDetails;
+        const stale = f.api.snapshot();
+        const rejected = assert.rejects(stale, /unavailable/);
+        f.replace({ address: "new", enabled: true, token: "new" });
+        f.w.__ottRuntimeDebugDetails =
+            pureDetails.window.__ottRuntimeDebugDetails;
+        f.w.__ottLoadDebugDetails();
+        await rejected;
+        assert.equal(calls, 1);
+        delete f.w.__ottRuntimeDebugDetails;
+        const failed = f.api.snapshot();
+        const failure = assert.rejects(failed, /unavailable/);
+        f.w.__ottLoadDebugDetails("unsupported");
+        await failure;
+        assert.equal(calls, 1);
         f.close();
     });
     await test("engine identity accepts only the attached owner's bounded enum", async () => {
@@ -308,26 +360,34 @@ async function test(name, run) {
         );
         f.close();
     });
-    await test("foreground lag is measured; hidden and suspended intervals are not false stalls", async () => {
+    await test("optional performance metrics are allowlisted and disappear after lease retirement", async () => {
         const f = fixture();
         f.enable();
-        f.fire(1100);
-        f.fire(3100);
-        let data = await f.api.snapshot();
-        assert.equal(data.metrics.loopDelayMs, 1000);
-        assert.equal(data.metrics.loopLongDelays, 1);
-        Object.defineProperty(f.w.document, "visibilityState", {
-            configurable: true,
-            value: "hidden",
-        });
-        f.w.document.dispatchEvent(new f.w.Event("visibilitychange"));
-        f.fire(100000);
+        assert.equal(f.timers.size, 0);
+        assert.equal((await f.api.snapshot()).metrics.loopSamples, undefined);
+        let active = true;
+        f.w.__ottPerfCapture = {
+            metrics: () =>
+                active
+                    ? {
+                          loopDelayMs: 1000,
+                          loopLongDelays: 1,
+                          loopMaxDelayMs: 1000,
+                          loopSamples: 2,
+                          secret,
+                      }
+                    : null,
+            retire: () => {
+                active = false;
+            },
+        };
         assert.equal((await f.api.snapshot()).metrics.loopLongDelays, 1);
+        assert(!JSON.stringify(await f.api.snapshot()).includes(secret));
         f.w.dispatchEvent(new f.w.Event("pagehide"));
         assert.equal(f.timers.size, 0);
         await assert.rejects(f.api.snapshot(), /unavailable/);
         f.w.dispatchEvent(new f.w.Event("pageshow"));
-        assert.equal(f.timers.size, 1);
+        assert.equal((await f.api.snapshot()).metrics.loopSamples, undefined);
         f.close();
     });
     await test("credential change clears history and disabled/disposed collector removes listeners", async () => {
@@ -342,7 +402,7 @@ async function test(name, run) {
         let data = await f.api.snapshot();
         assert.equal(data.events.length, 1);
         assert.equal(data.metrics.errorCount, 0);
-        assert.equal(f.timers.size, 1);
+        assert.equal(f.timers.size, 0);
         f.replace({ enabled: false });
         assert.equal(f.timers.size, 0);
         f.w.dispatchEvent(new f.w.Event("error"));
@@ -364,7 +424,7 @@ async function test(name, run) {
         assert(!JSON.stringify(data).includes("private"));
         f.close();
         assert.equal(
-            exportsObject.projectNativeDebug({
+            pureDetails.window.__ottRuntimeDebugDetails.native({
                 metrics: {},
                 platform: "evil",
                 version: 1,
@@ -412,7 +472,7 @@ async function test(name, run) {
         resolve(producer);
         await Promise.resolve();
         await Promise.resolve();
-        assert.equal(f.timers.size, 1);
+        assert.equal(f.timers.size, 0);
         f.close();
     });
     await test("wrong native platform is invalid and runtime replacement cancels its result", async () => {

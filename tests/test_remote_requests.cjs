@@ -88,42 +88,76 @@ const code = ts.transpileModule(
     }
 ).outputText;
 acorn.parse(code, { ecmaVersion: 5 });
+let remoteRuntimeHelper;
 const ctx = {
     Date,
     exports: {},
     require: (name) =>
-        name === "./remote-favorites" ||
-        name === "./remote-favorites-contract" ||
-        name === "./random-channel"
-            ? loadRemoteHelper(name.slice(2))
-            : name === "../provider"
-              ? {
-                    checkProviderUrl: () => true,
-                    isProviderAllowed: () => true,
-                    providerIds: ["m3u", "xtream", "", "stalker"],
-                    providerLabels: null,
-                    selectProviderByIndex: (i) => {
-                        switched = i;
-                        return true;
-                    },
-                }
-              : name === "./remote-profiles"
-                ? loadRemoteHelper("remote-profiles")
-                : name === "./remote-app-update"
-                  ? loadRemoteHelper("remote-app-update")
-                  : name === "../plugins/vportal"
-                    ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
-                    : name === "./remote-archive"
-                      ? loadRemoteHelper("remote-archive")
-                      : name === "./remote-plex"
-                        ? loadRemoteHelper("remote-plex")
-                        : name === "./remote-notifications"
-                          ? loadRemoteHelper("remote-notifications")
-                          : name === "./remote-restart"
-                            ? loadRemoteHelper("remote-restart")
-                            : name === "../utils/caseless"
-                              ? casingContext.exports
-                              : { handleCommand: () => "accepted" },
+        name === "./remote-settings"
+            ? {
+                  executeRemoteSettings(w, request, done, afterReply) {
+                      for (const part of [
+                          "remote-settings",
+                          "remote-provider-settings",
+                          "remote-legacy-settings",
+                          "remote-settings-dispatch",
+                          "remote-handoff",
+                          "remote-notification-settings",
+                      ]) {
+                          const plugin = ts.transpileModule(
+                              fs.readFileSync(
+                                  "src/plugins/" + part + ".ts",
+                                  "utf8"
+                              ),
+                              {
+                                  compilerOptions: {
+                                      target: ts.ScriptTarget.ES5,
+                                  },
+                              }
+                          ).outputText;
+                          vm.runInNewContext(plugin, { URL, window: w });
+                      }
+                      return loadRemoteHelper(
+                          "remote-settings"
+                      ).executeRemoteSettings(w, request, done, afterReply);
+                  },
+              }
+            : name === "./remote-feature" ||
+                name === "./remote-perf" ||
+                name === "./remote-favorites" ||
+                name === "./remote-favorites-contract" ||
+                name === "./random-channel"
+              ? loadRemoteHelper(name.slice(2))
+              : name === "../provider"
+                ? {
+                      checkProviderUrl: () => true,
+                      isProviderAllowed: () => true,
+                      providerIds: ["m3u", "xtream", "", "stalker"],
+                      providerLabels: null,
+                      selectProviderByIndex: (i) => {
+                          switched = i;
+                          return true;
+                      },
+                  }
+                : name === "./remote-profiles"
+                  ? loadRemoteHelper("remote-profiles")
+                  : name === "./remote-app-update"
+                    ? loadRemoteHelper("remote-app-update")
+                    : name === "../plugins/vportal"
+                      ? loadRemoteHelper("vportal", "src/plugins/vportal.ts")
+                      : name === "./remote-archive"
+                        ? loadRemoteHelper("remote-archive")
+                        : name === "./remote-plex"
+                          ? loadRemoteHelper("remote-plex")
+                          : name === "./remote-notifications"
+                            ? loadRemoteHelper("remote-notifications")
+                            : name === "./remote-restart"
+                              ? remoteRuntimeHelper ||
+                                (remoteRuntimeHelper =
+                                    loadRemoteHelper("remote-restart"))
+                              : name === "../utils/caseless"
+                                ? casingContext.exports
+                                : { handleCommand: () => "accepted" },
     URL,
     window: host,
 };
@@ -1370,8 +1404,15 @@ function checkRemoteEpgCatalog() {
             return true;
         },
     });
-    const aspectRuntime = (await call("capabilities")).data.player.runtime;
-    const notificationCaps = (await call("capabilities")).data.notifications;
+    const currentCaps = (await call("capabilities")).data;
+    const aspectRuntime = currentCaps.player.runtime;
+    const notificationCaps = currentCaps.notifications;
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(currentCaps.plex_library_truncation)),
+        {
+            version: 1,
+        }
+    );
     assert.deepEqual(JSON.parse(JSON.stringify(notificationCaps)), {
         operations: ["get", "set"],
         version: 1,
@@ -1393,7 +1434,7 @@ function checkRemoteEpgCatalog() {
         runtime: aspectRuntime,
         version: 1,
     });
-    assert.equal(muted.status, "ok");
+    assert.equal(muted.status, "ok", JSON.stringify(muted));
     assert.equal(muted.data.persisted, true);
     assert.equal(noticeStore.get("sNotificationsEnabled"), "0");
     assert.deepEqual(noticeTransitions, [false]);

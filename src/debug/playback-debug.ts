@@ -334,6 +334,8 @@ function ottDebugSetHud(on: boolean): void {
     try {
         if (typeof localStorage !== "undefined") {
             localStorage.setItem("ottplay_debug_hud", on ? "1" : "0");
+            if ((window as any).__ottExtraSettings)
+                (window as any).__ottExtraSettings.changed("debugHud");
         }
     } catch (_e) {}
     if (!_ottDbgEnabled) return;
@@ -371,9 +373,6 @@ function ottDebugBufferAhead(v: HTMLVideoElement): number {
             if (buf.start(i) <= t && buf.end(i) >= t) {
                 ahead = buf.end(i) - t;
                 break;
-            }
-            if (buf.start(i) > t) {
-                ahead = Math.max(ahead, buf.end(i) - t);
             }
         }
         return Math.round(ahead * 100) / 100;
@@ -934,7 +933,8 @@ function ottDebugAttachHls(hls: any): void {
 
     listen(Ev.FRAG_LOADED, function (_e: any, data: any) {
         var frag = data && data.frag;
-        var stats = data && data.stats;
+        var stats =
+            data && ((data.part && data.part.stats) || (frag && frag.stats));
         ottDebugPush("hls", "FRAG_LOADED", {
             level: frag && frag.level,
             loadMs:
@@ -1145,11 +1145,11 @@ function ottDebugInstallApi(enabled: boolean): void {
     };
 }
 
-function ottDebugEnable(): void {
+function ottDebugEnable(preserveHud?: boolean): void {
     _ottDbgLocal = true;
     (window as any).__OTT_DEBUG__ = true;
     if (_ottDbgEnabled) {
-        ottDebugSetHud(true);
+        if (!preserveHud) ottDebugSetHud(true);
         return;
     }
     ottDebugActivate(true);

@@ -40,7 +40,7 @@ var keys = {
     RIGHT: 39,
     RW: 33,
     SETUP: 192,
-    STOP: 83,
+    STOP: 178,
     TOOLS: 84,
     UP: 38,
     VOL_DOWN: 0,

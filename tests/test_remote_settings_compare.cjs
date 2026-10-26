@@ -4,7 +4,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const acorn = require("acorn");
 const code = ts.transpileModule(
-    fs.readFileSync("src/commands/remote-profiles.ts", "utf8"),
+    fs.readFileSync("src/plugins/remote-legacy-settings.ts", "utf8"),
     {
         compilerOptions: {
             module: ts.ModuleKind.CommonJS,
@@ -13,9 +13,9 @@ const code = ts.transpileModule(
     }
 ).outputText;
 acorn.parse(code, { ecmaVersion: 5 });
-const context = { exports: {}, require: () => ({}) };
+const context = { exports: {}, require: () => ({}), window: {} };
 vm.runInNewContext(code, context);
-const compare = context.exports.compareRemoteSettings;
+const compare = context.window.__ottRemoteLegacySettings.compare;
 const stored = new Map();
 let locked = false;
 const host = {

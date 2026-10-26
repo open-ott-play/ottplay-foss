@@ -222,11 +222,74 @@ const remoteCode = ts.transpileModule(
 function remote(f) {
     f.host.exports = {};
     f.host.require = (name) => {
+        if (name === "./remote-settings") {
+            for (const part of [
+                "remote-settings",
+                "remote-provider-settings",
+                "remote-legacy-settings",
+                "remote-provider-fields",
+                "remote-settings-dispatch",
+            ])
+                runtime(f.host, "src/plugins/" + part + ".ts");
+            const module = { exports: {} };
+            vm.runInNewContext(
+                ts.transpileModule(
+                    fs.readFileSync(
+                        path.join(root, "src/commands/remote-settings.ts"),
+                        "utf8"
+                    ),
+                    {
+                        compilerOptions: {
+                            module: ts.ModuleKind.CommonJS,
+                            target: ts.ScriptTarget.ES5,
+                        },
+                    }
+                ).outputText,
+                {
+                    exports: module.exports,
+                    require(dependency) {
+                        if (dependency === "../provider")
+                            return {
+                                checkProviderUrl: (url) =>
+                                    f.host.checkProviderUrl(url),
+                                isProviderAllowed: () =>
+                                    f.remoteAllowed !== false,
+                            };
+                        if (dependency === "./remote-feature")
+                            return {
+                                loadRemoteFeature() {
+                                    throw new Error(
+                                        "Fixture preloads the settings dispatcher"
+                                    );
+                                },
+                            };
+                        if (dependency === "./remote-restart")
+                            return {
+                                remotePlayerInfo: () => ({
+                                    runtime: "fixture-runtime",
+                                }),
+                            };
+                        throw new Error(
+                            "Unexpected settings dependency: " + dependency
+                        );
+                    },
+                }
+            );
+            return module.exports;
+        }
         if (name === "./remote-screenshot")
             return {
                 executeRemoteScreenshot() {
                     throw new Error(
                         "Plex provider settings must not request a screenshot"
+                    );
+                },
+            };
+        if (name === "./remote-perf")
+            return {
+                executeRemotePerformance() {
+                    throw new Error(
+                        "Plex provider settings must not capture performance"
                     );
                 },
             };
@@ -1173,9 +1236,11 @@ test("Plex reload invalidates late scan results and preserves an active playlist
     assert.equal(f.driver.catalogError(), false);
 });
 
-test("A new or legacy Plex profile immediately scans all libraries without a folder picker", () => {
+test("Plex only applies explicit folder selection and migrates legacy roots to all libraries", () => {
     for (const configured of [
         config,
+        { ...config, folderSelection: true },
+        { ...config, folderSelection: true, folders: [] },
         {
             address: config.address,
             playback: config.playback,
@@ -1188,7 +1253,15 @@ test("A new or legacy Plex profile immediately scans all libraries without a fol
         f.clients[0].ready();
         assert.equal(starts, 1);
         assert.equal(f.clients.length, 1);
-        assert.deepEqual(Array.from(f.clients[0].scan.folders), []);
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(f.clients[0].scan.folders)),
+            configured.folderSelection ? configured.folders : []
+        );
+        assert.deepEqual(
+            JSON.parse(f.saved.get("plexcfg")),
+            configured,
+            "reading the catalogue must preserve legacy config for export and migration"
+        );
         assert.notEqual(f.host.listCaption.innerHTML, "Folders");
         f.host.__ottEditProvider();
         assert(!f.host.listArray.some((row) => /Folders/.test(row)));

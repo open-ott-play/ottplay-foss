@@ -454,6 +454,24 @@ check(
         assert.equal(f.timers.size, 0);
     }
 );
+check("hosted pairing binds the selected public alias", () => {
+    const f = fixture();
+    f.w.__OTTPLAY_HOSTED__ = {
+        controlTransport: { bases: [server.address], version: 1 },
+    };
+    f.discover();
+    const body = JSON.parse(f.calls.at(-1).request.body);
+    assert.equal(body.server_address, server.address);
+    f.respond(receipt, 201);
+    f.tick(2000);
+    f.respond({ ...approval, address: "https://wrong.example/" });
+    assert.equal(
+        f.applied.length,
+        0,
+        "an alias mismatch cannot store credentials"
+    );
+});
+
 (async () => {
     async function nativeCheck(name, test) {
         await test();
