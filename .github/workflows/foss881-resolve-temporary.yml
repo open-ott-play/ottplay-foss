@@ -1,0 +1,60 @@
+name: Temporary FOSS 881 dependency resolution
+on:
+  push:
+    branches: [fix/foss-dependency-repair-20261025]
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Resolve compatible tooling and regenerate media
+        run: |
+          npm install --package-lock-only --ignore-scripts --save-dev --save-exact @biomejs/biome@2.6.3 ultracite@8.1.0
+          npm ci --ignore-scripts
+          npm run build:media
+          npm run lint
+          npm run typecheck
+          npm run test:media
+          npm run build
+      - name: Retain exact changed generated files
+        if: always()
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, json, os, pathlib, subprocess, tarfile
+          root = pathlib.Path.cwd()
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'foss881-resolution'
+          out.mkdir()
+          names = subprocess.check_output(['git', 'diff', '--name-only', '-z']).decode().split('\0')
+          rows = []
+          with tarfile.open(out / 'generated.tar', 'w') as archive:
+              for name in filter(None, names):
+                  path = root / name
+                  assert path.is_file() and not path.is_symlink()
+                  assert not pathlib.PurePosixPath(name).is_absolute() and '..' not in pathlib.PurePosixPath(name).parts
+                  data = path.read_bytes()
+                  rows.append({'path': name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+                  archive.add(path, arcname=name, recursive=False)
+          data = (out / 'generated.tar').read_bytes()
+          receipt = {'head': os.environ['GITHUB_SHA'], 'run': os.environ['GITHUB_RUN_ID'],
+                     'node': subprocess.check_output(['node', '--version']).decode().strip(),
+                     'tar_sha256': hashlib.sha256(data).hexdigest(), 'files': rows}
+          (out / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          PYTHON
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: foss881-resolution
+          path: ${{ runner.temp }}/foss881-resolution
+          if-no-files-found: error
+          retention-days: 7
