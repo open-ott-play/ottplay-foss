@@ -5,8 +5,12 @@ const assert = require("node:assert/strict"),
     ts = require("typescript"),
     acorn = require("acorn");
 const { JSDOM } = require("jsdom");
+const Hls = require("hls.js");
 const contract = JSON.parse(
     fs.readFileSync("tests/fixtures/remote/perf-capture-v1.json", "utf8")
+);
+const hlsContract = JSON.parse(
+    fs.readFileSync("tests/fixtures/remote/perf-capture-v2.json", "utf8")
 );
 const code = (name) => {
     const result = ts.transpileModule(
@@ -25,15 +29,15 @@ const controls = code("perf-capture"),
     sensors = code("perf-sensors"),
     runtime = code("runtime-debug");
 const clone = (value) => JSON.parse(JSON.stringify(value));
-function schema(value, shape) {
+function schema(value, shape, wire = contract) {
     if (shape.$ref)
-        return schema(value, contract.$defs[shape.$ref.split("/").at(-1)]);
+        return schema(value, wire.$defs[shape.$ref.split("/").at(-1)], wire);
     if (shape.oneOf) shape = { anyOf: shape.oneOf };
     if (shape.anyOf) {
         assert(
             shape.anyOf.some((candidate) => {
                 try {
-                    schema(value, candidate);
+                    schema(value, candidate, wire);
                     return true;
                 } catch {
                     return false;
@@ -73,7 +77,7 @@ function schema(value, shape) {
     if (Array.isArray(value)) {
         if (shape.maxItems !== undefined)
             assert(value.length <= shape.maxItems);
-        value.forEach((item) => schema(item, shape.items));
+        value.forEach((item) => schema(item, shape.items, wire));
     } else if (value && typeof value === "object") {
         (shape.required || []).forEach((key) =>
             assert(Object.hasOwn(value, key), `required ${key}`)
@@ -82,7 +86,7 @@ function schema(value, shape) {
             if (shape.additionalProperties === false)
                 assert(Object.hasOwn(shape.properties, key), `extra ${key}`);
             if (shape.properties[key])
-                schema(value[key], shape.properties[key]);
+                schema(value[key], shape.properties[key], wire);
         });
     }
 }
@@ -90,17 +94,21 @@ function fakeHls() {
     const listeners = new Map();
     return {
         autoLevelEnabled: true,
+        config: {},
         count() {
             return [...listeners.values()].reduce((n, set) => n + set.size, 0);
         },
         emit(name, data) {
+            name = Hls.Events[name] || name;
             [...(listeners.get(name) || [])].forEach((fn) => fn(name, data));
         },
         levels: [{ bitrate: 4000, height: 360, width: 640 }],
         off(name, fn) {
+            name = Hls.Events[name] || name;
             listeners.get(name)?.delete(fn);
         },
         on(name, fn) {
+            name = Hls.Events[name] || name;
             if (!listeners.has(name)) listeners.set(name, new Set());
             listeners.get(name).add(fn);
         },
@@ -148,17 +156,7 @@ function fixture(options = {}) {
             this.connected = false;
         }
     };
-    w.Hls = {
-        Events: Object.fromEntries(
-            [
-                "FRAG_LOADED",
-                "FRAG_BUFFERED",
-                "LEVEL_LOADED",
-                "LEVEL_SWITCHED",
-                "ERROR",
-            ].map((x) => [x, x])
-        ),
-    };
+    w.Hls = { Events: Hls.Events };
     const media = w.document.getElementById("video");
     let ranges = [[0, 20]],
         total = 0,
@@ -247,13 +245,15 @@ function fixture(options = {}) {
         const params = {
             op,
             runtime: currentRuntime,
-            version: 1,
+            version: options.version || 1,
             ...(op === "status" ? {} : { session_id: "a".repeat(32) }),
             ...extra,
         };
         const result = clone(api.request({ params, ...input }));
-        if (result.status === "ok") schema(result.data, contract.responses[op]);
-        else if (op in contract.requests) schema(result.data, contract.error);
+        const wire = params.version === 2 ? hlsContract : contract;
+        if (result.status === "ok")
+            schema(result.data, wire.responses[op], wire);
+        else if (op in wire.requests) schema(result.data, wire.error, wire);
         receipts.push({ params, response: result });
         return result;
     }
@@ -766,6 +766,390 @@ test("fallback HTML observation retains the main playback generation", () => {
     const event = all(f).events.find((e) => e.kind === "sample");
     assert.equal(event.generation, 1);
     assert.equal(event.handle_id, null);
+    f.close();
+});
+test("HLS detail capture is opt-in and legacy requests cannot access or stop it", () => {
+    const f = fixture({ version: 2 });
+    f.request("status");
+    assert.equal(f.hls.count(), 0);
+    const started = f.request("start").data.session;
+    assert.equal(started.capture_version, 2);
+    assert.equal(f.hls.count(), 6);
+    for (const op of ["status", "read", "stop", "start"]) {
+        const args = { version: 1 };
+        if (op === "read") args.after_seq = 0;
+        assert.equal(f.request(op, args).data.error, "unsupported");
+        assert.equal(f.request("status").data.session.state, "active");
+    }
+    assert.equal(
+        f.request("start", {
+            session_id: "b".repeat(32),
+            version: 1,
+        }).data.error,
+        "unsupported"
+    );
+    f.request("stop");
+    assert.equal(f.hls.count(), 0);
+    assert.equal(f.request("start", { version: 1 }).data.error, "unsupported");
+    assert.equal(
+        f.request("start", {
+            session_id: "b".repeat(32),
+            version: 1,
+        }).status,
+        "ok"
+    );
+    assert.equal(f.hls.count(), 5);
+    assert.equal(f.request("status").data.session.capture_version, 1);
+    assert.equal(
+        f.request("status", { version: 1 }).data.session.capture_version,
+        undefined
+    );
+    f.close();
+    const legacy = fixture();
+    legacy.request("start");
+    assert.equal(
+        legacy.request("status", { version: 2 }).data.session.capture_version,
+        1
+    );
+    assert.equal(legacy.request("start", { version: 2 }).data.error, "busy");
+    legacy.hls.emit(Hls.Events.BUFFER_APPENDED, { timeRanges: {} });
+    legacy.advance(1000);
+    assert(!all(legacy).events.some((event) => event.kind.startsWith("hls_")));
+    assert.equal(
+        legacy.request("stop", { version: 2 }).data.session.state,
+        "stopped"
+    );
+    legacy.close();
+});
+const timeRanges = (ranges) => ({
+    end: (i) => ranges[i][1],
+    length: ranges.length,
+    start: (i) => ranges[i][0],
+});
+test("public append snapshots are immediate, per-track, bounded and never synthesized", () => {
+    const f = fixture({ version: 2 });
+    f.request("start");
+    f.advance(1000);
+    assert(!all(f).events.some((event) => event.kind === "hls_buffer"));
+    f.position(142);
+    const audio = Array.from({ length: 30 }, (_, i) => [i * 10, i * 10 + 5]);
+    const video = [
+        [130, 140],
+        [142.25, 160],
+    ];
+    f.hls.emit(Hls.Events.BUFFER_APPENDED, {
+        chunkMeta: {},
+        data: "SECRET PAYLOAD",
+        frag: { sn: 20 },
+        parent: "main",
+        part: null,
+        timeRanges: { audio: timeRanges(audio), video: timeRanges(video) },
+        type: "video",
+        url: "SECRET URL",
+    });
+    audio[14][1] = 9999;
+    video[1][0] = 9999;
+    let records = all(f).events.filter((event) => event.kind === "hls_buffer");
+    assert.equal(records.length, 2);
+    assert.equal(records[0].at_ms, 1000);
+    assert.equal(records[0].data.position_seconds, 142);
+    assert.equal(records[0].data.buffered.range_count, 30);
+    assert.equal(records[0].data.buffered.truncated_count, 22);
+    assert.equal(
+        records[0].data.buffered.ranges.find((r) => r.index === 14).end_seconds,
+        145
+    );
+    assert.equal(records[1].data.buffered.ranges[1].start_seconds, 142.25);
+    f.advance(1000);
+    assert.equal(
+        all(f).events.filter((event) => event.kind === "hls_buffer").length,
+        2
+    );
+    f.hls.emit(Hls.Events.BUFFER_APPENDED, {
+        timeRanges: {
+            get audio() {
+                throw Error("unavailable SourceBuffer");
+            },
+            video: timeRanges([[140, 160]]),
+        },
+        type: "video",
+    });
+    records = all(f).events.filter((event) => event.kind === "hls_buffer");
+    assert.equal(records[2].data.buffered.range_count, null);
+    assert.equal(records[3].data.buffered.ranges[0].end_seconds, 160);
+    assert(!JSON.stringify(all(f)).includes("SECRET"));
+    f.close();
+});
+test("fragment intervals and per-track PTS come from observed HLS fields", () => {
+    const f = fixture({ version: 2 });
+    f.request("start");
+    f.advance(1000, false);
+    const frag = {
+        cc: 2,
+        duration: 10,
+        elementaryStreams: {
+            audio: { endPTS: 9.875, startPTS: -0.125 },
+            audiovideo: null,
+            secret: { endPTS: 20, startPTS: 10 },
+            video: { endPTS: 9.75, startPTS: 0 },
+        },
+        get end() {
+            return this.start + this.duration;
+        },
+        endPTS: 9.875,
+        level: 1,
+        sn: 45,
+        start: -0.25,
+        startPTS: -0.125,
+        stats: {
+            buffering: { end: 10040, start: 10026 },
+            loaded: 4000,
+            loading: { end: 10020, first: 10010, start: 10001 },
+            parsing: { end: 10025, start: 10021 },
+        },
+        url: "SECRET URL",
+    };
+    f.hls.emit(Hls.Events.FRAG_BUFFERED, {
+        frag,
+        part: null,
+        stats: frag.stats,
+    });
+    const observed = all(f).events.find(
+        (event) => event.kind === "hls_fragment"
+    ).data;
+    assert.equal(observed.fragment_sequence, 45);
+    assert.equal(observed.discontinuity_counter, 2);
+    assert.equal(observed.start_seconds, -0.25);
+    assert.equal(observed.end_seconds, 9.75);
+    assert.equal(observed.start_pts_seconds, -0.125);
+    assert.equal(observed.elementary_streams.length, 2);
+    assert.equal(observed.elementary_streams[1].end_pts_seconds, 9.75);
+    const timing = all(f).events.find((event) => event.kind === "hls").data;
+    assert.equal(timing.load_duration_ms, 19);
+    assert.equal(timing.buffer_duration_ms, 14);
+    f.hls.emit(Hls.Events.FRAG_LOADED, {
+        frag: {
+            elementaryStreams: { audio: { endPTS: 10, startPTS: 20 } },
+            end: 1,
+            endPTS: NaN,
+            sn: "initSegment",
+            start: 3,
+            startPTS: Infinity,
+        },
+    });
+    const invalid = all(f)
+        .events.filter((event) => event.kind === "hls_fragment")
+        .at(-1).data;
+    assert.equal(invalid.fragment_sequence, null);
+    assert.equal(invalid.start_seconds, null);
+    assert.equal(invalid.end_seconds, null);
+    assert.equal(invalid.start_pts_seconds, null);
+    assert.equal(invalid.end_pts_seconds, null);
+    assert.equal(invalid.elementary_streams[0].start_pts_seconds, null);
+    assert(!JSON.stringify(all(f)).includes("SECRET"));
+    f.close();
+});
+test("effective HLS config and public live timeline are sampled without extra timers", () => {
+    const f = fixture({ version: 2 });
+    f.hls.config = {
+        backBufferLength: 15,
+        highBufferWatchdogPeriod: 2,
+        liveMaxLatencyDuration: undefined,
+        liveMaxLatencyDurationCount: Infinity,
+        liveSyncDuration: undefined,
+        liveSyncDurationCount: 3,
+        get loader() {
+            throw Error("config must be allowlisted");
+        },
+        maxBufferHole: 0.1,
+        maxBufferLength: 3,
+        maxBufferSize: 32000000,
+        maxMaxBufferLength: 60,
+        nudgeMaxRetry: 3,
+        nudgeOffset: 0.1,
+    };
+    f.hls.latestLevelDetails = { edge: 200.2, targetduration: 10.01 };
+    f.hls.liveSyncPosition = 170.17;
+    f.hls.latency = 33.2;
+    f.hls.targetLatency = 30.03;
+    f.hls.maxLatency = Infinity;
+    f.hls.maxBufferLength = 1.28;
+    f.hls.currentLevel = 0;
+    f.hls.loadLevel = 1;
+    let nextLoadReads = 0;
+    Object.defineProperty(f.hls, "nextLoadLevel", {
+        get() {
+            nextLoadReads++;
+            throw Error("effectful ABR getter must not be called");
+        },
+    });
+    f.hls.levels = [
+        {
+            bitrate: 200000000,
+            maxBitrate: 200000000,
+            get url() {
+                throw Error("must not read source URL");
+            },
+        },
+        { bitrate: 4000000, maxBitrate: 6000000 },
+    ];
+    f.request("start");
+    let config = all(f).events.find(
+        (event) => event.kind === "hls_config"
+    ).data;
+    assert.equal(config.max_buffer_length_seconds, 3);
+    assert.equal(config.live_sync_duration_count, 3);
+    assert.equal(config.live_max_latency_duration_count, null);
+    const timers = f.timers.size;
+    f.advance(1000);
+    let live = all(f).events.filter((event) => event.kind === "hls_live");
+    assert.equal(live.length, 1);
+    assert.equal(live[0].data.edge_seconds, 200.2);
+    assert.equal(live[0].data.live_sync_position_seconds, 170.17);
+    assert.equal(live[0].data.target_duration_seconds, 10.01);
+    assert.equal(live[0].data.target_latency_seconds, 30.03);
+    assert.equal(live[0].data.max_latency_seconds, null);
+    assert.equal(live[0].data.effective_buffer_length_seconds, 1.28);
+    assert.deepEqual(live[0].data.current_level, {
+        bitrate: 200000000,
+        index: 0,
+        max_bitrate: 200000000,
+    });
+    assert.deepEqual(live[0].data.load_level, {
+        bitrate: 4000000,
+        index: 1,
+        max_bitrate: 6000000,
+    });
+    assert.equal(nextLoadReads, 0);
+    assert.equal(f.timers.size, timers);
+    f.hls.config.maxBufferLength = 5;
+    f.hls.config.nudgeMaxRetry = 1.5;
+    f.hls.latestLevelDetails = {
+        get edge() {
+            throw Error("no playlist");
+        },
+        targetduration: 10.01,
+    };
+    f.hls.liveSyncPosition = NaN;
+    f.hls.latency = -1;
+    Object.defineProperty(f.hls, "maxBufferLength", {
+        get() {
+            throw Error("unavailable");
+        },
+    });
+    f.hls.currentLevel = 0.5;
+    f.hls.loadLevel = 65536;
+    f.advance(1000);
+    config = all(f).events.filter((event) => event.kind === "hls_config");
+    assert.equal(config.length, 2);
+    assert.equal(config[1].data.max_buffer_length_seconds, 5);
+    assert.equal(config[1].data.nudge_max_retry, null);
+    live = all(f).events.filter((event) => event.kind === "hls_live");
+    assert.equal(live.length, 2);
+    assert.equal(live[1].data.edge_seconds, null);
+    assert.equal(live[1].data.live_sync_position_seconds, null);
+    assert.equal(live[1].data.latency_seconds, -1);
+    assert.equal(live[1].data.effective_buffer_length_seconds, null);
+    assert.equal(live[1].data.current_level.index, null);
+    assert.equal(live[1].data.load_level.index, null);
+    f.hls.currentLevel = -1;
+    f.hls.loadLevel = 4;
+    f.advance(1000);
+    assert.equal(
+        all(f).events.filter((event) => event.kind === "hls_config").length,
+        2
+    );
+    live = all(f).events.filter((event) => event.kind === "hls_live");
+    assert.deepEqual(live[2].data.current_level, {
+        bitrate: null,
+        index: -1,
+        max_bitrate: null,
+    });
+    assert.deepEqual(live[2].data.load_level, {
+        bitrate: null,
+        index: 4,
+        max_bitrate: null,
+    });
+    assert.equal(nextLoadReads, 0);
+    f.close();
+});
+test("extended capture keeps source ownership and byte ceilings with every HLS event family", () => {
+    const f = fixture({ version: 2 });
+    f.hls.latency = -0.25;
+    f.request("start");
+    f.advance(1000);
+    f.hls.emit(Hls.Events.BUFFER_APPENDED, {
+        timeRanges: { audio: timeRanges([[0, 10]]) },
+        type: "audio",
+    });
+    f.hls.emit(Hls.Events.FRAG_BUFFERED, {
+        frag: {
+            cc: 0,
+            elementaryStreams: { audio: { endPTS: 9.875, startPTS: -0.125 } },
+            end: 10,
+            endPTS: 9.875,
+            sn: 1,
+            start: -0.25,
+            startPTS: -0.125,
+        },
+    });
+    const old = f.replace();
+    assert.equal(old.count(), 0);
+    const before = all(f).events.length;
+    old.emit(Hls.Events.BUFFER_APPENDED, {
+        timeRanges: { audio: timeRanges([[0, 20]]) },
+        type: "audio",
+    });
+    assert.equal(all(f).events.length, before);
+    f.position(0);
+    const maximum = Number.MAX_SAFE_INTEGER;
+    f.hls.emit(Hls.Events.BUFFER_APPENDED, {
+        timeRanges: {
+            video: timeRanges(
+                Array.from({ length: 8 }, (_, i) => [
+                    -maximum + i * 1e12,
+                    -maximum + i * 1e12 + 0.5e12,
+                ])
+            ),
+        },
+        type: "video",
+    });
+    const detail = all(f).events.filter((event) =>
+        event.kind.startsWith("hls_")
+    );
+    assert(detail.every((event) => event.source_id && event.lane === "main"));
+    assert(detail.some((event) => event.source_id === "s1"));
+    assert(detail.some((event) => event.source_id !== "s1"));
+    assert(
+        all(f).events.every(
+            (event) => Buffer.byteLength(JSON.stringify(event)) <= 2048
+        )
+    );
+    assert.equal(all(f).session.oversized_dropped, 0);
+    f.request("stop");
+    assert.equal(f.hls.count(), 0);
+    if (process.env.OTT_PERF_HLS_CORPUS)
+        fs.writeFileSync(
+            process.env.OTT_PERF_HLS_CORPUS,
+            JSON.stringify(f.receipts, null, 2) + "\n",
+            { mode: 0o600 }
+        );
+    f.close();
+});
+test("natural expiry retires extended capture before a fresh legacy start", () => {
+    const f = fixture({ version: 2 });
+    f.request("start", { duration_seconds: 10 });
+    f.advance(11000, false);
+    assert.equal(
+        f.request("start", {
+            duration_seconds: 10,
+            session_id: "b".repeat(32),
+            version: 1,
+        }).status,
+        "ok"
+    );
+    assert.equal(f.request("status").data.session.capture_version, 1);
+    assert.equal(f.hls.count(), 5);
     f.close();
 });
 (async () => {

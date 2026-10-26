@@ -151,6 +151,21 @@ for (const change of [
 }
 {
     const f = fixture();
+    f.request({
+        params: {
+            op: "start",
+            runtime: "page-1",
+            session_id: "a".repeat(32),
+            version: 2,
+        },
+    });
+    f.scripts[0].fail();
+    assert.equal(f.replies[0].data.version, 2);
+    assert.equal(f.replies[0].data.error, "unsupported");
+    assert.equal(f.calls.length, 0);
+}
+{
+    const f = fixture();
     for (let i = 0; i < 33; i++) f.request();
     assert.equal(f.scripts.length, 1);
     assert.equal(f.replies.length, 1);

@@ -47,7 +47,7 @@ export function executeRemotePerformance(
                     error: error || "unsupported",
                     op: params.op,
                     runtime: params.runtime,
-                    version: 1,
+                    version: params.version === 2 ? 2 : 1,
                 },
                 status:
                     error === "unsupported" || !error

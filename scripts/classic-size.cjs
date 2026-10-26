@@ -542,7 +542,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
-    "perf-capture": Object.freeze({ bytes: 17000, gzipBytes: 6800 }),
+    // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
+    // version fencing. Node22.23.4 level9: 15638/6089 -> 18760/7076 raw/gzip.
+    // Allocate its measured +3122/+987 with +3200/+1024; retain prior headroom.
+    "perf-capture": Object.freeze({ bytes: 20200, gzipBytes: 7824 }),
     // Provider scalar codecs and the paginated Plex folder collection reuse normal
     // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
     // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
@@ -564,7 +567,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 });
 // Carry the approved 96-byte VOD checkpoint allowance into the complete
 // payload exactly once, alongside the independently bounded optional capture.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1284900, gzipBytes: 409746 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1288100, gzipBytes: 410770 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

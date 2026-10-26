@@ -89,6 +89,65 @@ contiguous buffer is below two seconds, and also gates on visibility, focus,
 readiness and seeking. It can therefore report `unavailable` while ordinary
 debug/performance frame APIs report zero, without proving a platform stub.
 
+## HLS gaps and live resynchronization
+
+For a stream that repeatedly pauses near segment boundaries, explicitly request
+the additional HLS measurements:
+
+```sh
+ott f caps
+ott f perf start --hls-details --duration 120
+# Use the session ID printed above.
+ott f perf read aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --after 0 --limit 64 --json
+ott f perf stop aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ott -t 90 f perf export aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --out ./hls-freeze-01
+```
+
+The player and controller must advertise `perf_capture_hls` version 2. This flag
+starts a version 2 capture; ordinary starts and notification trials still use
+version 1. Read, status, stop and export negotiate support automatically. A
+version 2 response identifies the retained session's `capture_version`, which
+can be 1 or 2. An older version 1 request cannot read or stop an extended capture.
+After that capture stops, a fresh version 1 start with a new session ID can
+replace it. Reusing an ID never changes its capture options.
+
+Extended collection adds these bounded, source-scoped observations:
+
+- `hls_buffer` copies up to eight indexed ranges for each reported audio, video
+  or combined SourceBuffer from the public HLS `BUFFER_APPENDED` event. Its
+  timestamp and playback position describe that callback, not a later read.
+  The collector keeps no SourceBuffer or TimeRanges references and does not
+  periodically replay old ranges. Starting capture midway through playback
+  produces no per-track ranges until another append event occurs; absence means
+  unobserved. A failing track getter does not hide valid sibling tracks.
+- `hls_fragment` records sequence number, discontinuity counter, declared
+  interval and actual fragment/per-track PTS when HLS supplies them. Loaded and
+  buffered events remain distinct. Declared segment timing never substitutes
+  for unavailable PTS; reversed or nonfinite intervals become null.
+- `hls_config` records the active HLS instance's numeric buffer, hole, watchdog,
+  nudge and live-sync settings at attachment and when a 1 Hz observation detects
+  a change. These are effective engine values, not the saved buffer preference.
+  Only the fixed allowlist is read. Missing, throwing, nonfinite or out-of-range
+  values are null; this also represents HLS's infinite/disabled numeric limits.
+- `hls_live` samples playback position, playlist target duration and edge,
+  live-sync position, observed/target/maximum latency, effective buffer target,
+  and current/loading level bitrates at 1 Hz through public HLS getters. The
+  effective buffer target is read directly from `maxBufferLength`, not calculated
+  from manifest bitrates or saved preferences. The collector does not poll the
+  next-level getter because doing so can change HLS's adaptive bitrate state.
+  Missing
+  measurements stay null; negative measured latency is preserved. Compare a
+  position jump with the observed edge and sync target to investigate
+  resynchronization without assuming its cause.
+
+The same event, memory, duration and cleanup limits apply. These measurements
+require an owned HLS instance; a native engine or plain HTML media element may
+still provide ordinary samples without HLS details. The capture never changes
+buffer sizes, recovery timers or playback. Existing HLS error codes identify
+reported stalls, hole skips and nudges; a generic `seeking` event has no inferred
+reason. Correlate these events with raw ranges, fragment timing, frame progress
+and loading/append durations, allowing for dropped events and source changes.
+
 A notification near a stall establishes timing, not causality. Compare matched
 source/generation windows; exclude seeking, initial settling, source replacement
 and incomplete/dropped evidence. A freeze that persists with notifications off
@@ -133,6 +192,7 @@ node tests/test_notification_media.cjs
 node tests/test_remote_settings_extras.cjs
 ```
 
-The shared wire fixture is `tests/fixtures/remote/perf-capture-v1.json`. See also
+The shared wire fixtures are `tests/fixtures/remote/perf-capture-v1.json` and
+`tests/fixtures/remote/perf-capture-v2.json`; version 1 remains unchanged. See also
 [runtime debug](runtime-debug.md), [typed settings](remote-player-settings.md)
 and [notification presentation](remote-notifications.md).

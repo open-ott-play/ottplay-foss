@@ -101,8 +101,8 @@ try {
         gzipBytes: 1900,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["perf-capture"], {
-        bytes: 17000,
-        gzipBytes: 6800,
+        bytes: 20200,
+        gzipBytes: 7824,
     });
     const providerFieldsPath = path.join(
         root,
@@ -127,7 +127,7 @@ try {
     fs.writeFileSync(perfPath, denseFields);
     assert.throws(
         () => inspectBundleSets(root),
-        /perf-capture\.js: gzipBytes .* exceeds budget 6800/
+        /perf-capture\.js: gzipBytes .* exceeds budget 7824/
     );
     fs.writeFileSync(perfPath, source);
     const extrasPath = path.join(root, "dist/remote-settings-extras.js");

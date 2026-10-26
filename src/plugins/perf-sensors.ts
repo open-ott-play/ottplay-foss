@@ -152,6 +152,150 @@ function createPerformanceSensors(w: any, ports: any): any {
     function emit(owner: any, kind: string, data: any): void {
         if (attached(owner)) ports.emit(kind, owner.lane, data, owner);
     }
+    function field(value: any, key: string): any {
+        try {
+            return value ? value[key] : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    function pts(value: any, start: string, end: string): any {
+        var a = number(field(value, start), maximum, -maximum),
+            b = number(field(value, end), maximum, -maximum);
+        // Invalid intervals are unknown, never repaired into invented timing.
+        if (a !== null && b !== null && b < a) a = b = null;
+        return { end: b, start: a };
+    }
+    function hlsFragment(owner: any, event: string, data: any): void {
+        if (!owner.sourceId) return;
+        var frag = field(data, "frag"),
+            part = field(data, "part"),
+            span = pts(frag, "start", "end"),
+            times = pts(frag, "startPTS", "endPTS"),
+            streams = field(frag, "elementaryStreams"),
+            tracks: any[] = [];
+        ["audio", "video", "audiovideo"].forEach(function (track) {
+            var stream = field(streams, track);
+            if (!stream) return;
+            var values = pts(stream, "startPTS", "endPTS");
+            tracks.push({
+                end_pts_seconds: values.end,
+                start_pts_seconds: values.start,
+                track: track,
+            });
+        });
+        emit(owner, "hls_fragment", {
+            discontinuity_counter: integer(field(frag, "cc")),
+            elementary_streams: tracks,
+            end_pts_seconds: times.end,
+            end_seconds: span.end,
+            event: event,
+            fragment_sequence: integer(field(frag, "sn")),
+            level: integer(field(frag, "level")),
+            part_index: integer(field(part, "index")),
+            start_pts_seconds: times.start,
+            start_seconds: span.start,
+        });
+    }
+    function hlsBuffers(owner: any, data: any): void {
+        if (!owner.sourceId) return;
+        var ranges = field(data, "timeRanges"),
+            position = number(
+                field(owner.media, "currentTime"),
+                maximum,
+                -maximum
+            );
+        ["audio", "video", "audiovideo"].forEach(function (track) {
+            if (!ranges || !Object.prototype.hasOwnProperty.call(ranges, track))
+                return;
+            // Copy inside the public event callback. Do not retain HLS data,
+            // SourceBuffers or borrowed TimeRanges, or re-emit stale snapshots.
+            var snapshot = buffers(
+                { buffered: field(ranges, track) },
+                position
+            );
+            emit(owner, "hls_buffer", {
+                buffered: snapshot.value,
+                position_seconds: position,
+                track: track,
+            });
+        });
+    }
+    function hlsConfig(owner: any): void {
+        if (!ports.hlsDetails || !owner || !owner.hls || !owner.sourceId)
+            return;
+        var config = field(owner.hls, "config"),
+            value: any = {};
+        [
+            ["max_buffer_length_seconds", "maxBufferLength"],
+            ["max_max_buffer_length_seconds", "maxMaxBufferLength"],
+            ["max_buffer_size_bytes", "maxBufferSize"],
+            ["back_buffer_length_seconds", "backBufferLength"],
+            ["max_buffer_hole_seconds", "maxBufferHole"],
+            ["high_buffer_watchdog_period_seconds", "highBufferWatchdogPeriod"],
+            ["nudge_offset_seconds", "nudgeOffset"],
+            ["nudge_max_retry", "nudgeMaxRetry"],
+            ["live_sync_duration_seconds", "liveSyncDuration"],
+            ["live_sync_duration_count", "liveSyncDurationCount"],
+            ["live_max_latency_duration_seconds", "liveMaxLatencyDuration"],
+            ["live_max_latency_duration_count", "liveMaxLatencyDurationCount"],
+        ].forEach(function (pair) {
+            var observed = field(config, pair[1]);
+            value[pair[0]] =
+                pair[0] === "max_buffer_size_bytes" ||
+                pair[0] === "nudge_max_retry"
+                    ? integer(observed)
+                    : number(observed);
+        });
+        var encoded = JSON.stringify(value);
+        if (encoded !== owner.config) {
+            owner.config = encoded;
+            emit(owner, "hls_config", value);
+        }
+    }
+    function hlsLive(owner: any): void {
+        if (!ports.hlsDetails || !owner.hls || !owner.sourceId) return;
+        var details = field(owner.hls, "latestLevelDetails");
+        function level(key: string): any {
+            var index = number(field(owner.hls, key), 65535, -1);
+            if (index !== null && index % 1 !== 0) index = null;
+            var value =
+                index !== null && index >= 0
+                    ? field(field(owner.hls, "levels"), String(index))
+                    : null;
+            return {
+                bitrate: number(field(value, "bitrate")),
+                index: index,
+                max_bitrate: number(field(value, "maxBitrate")),
+            };
+        }
+        emit(owner, "hls_live", {
+            current_level: level("currentLevel"),
+            edge_seconds: number(field(details, "edge"), maximum, -maximum),
+            effective_buffer_length_seconds: number(
+                field(owner.hls, "maxBufferLength")
+            ),
+            latency_seconds: number(
+                field(owner.hls, "latency"),
+                maximum,
+                -maximum
+            ),
+            live_sync_position_seconds: number(
+                field(owner.hls, "liveSyncPosition"),
+                maximum,
+                -maximum
+            ),
+            load_level: level("loadLevel"),
+            max_latency_seconds: number(field(owner.hls, "maxLatency")),
+            position_seconds: number(
+                field(owner.media, "currentTime"),
+                maximum,
+                -maximum
+            ),
+            target_duration_seconds: number(field(details, "targetduration")),
+            target_latency_seconds: number(field(owner.hls, "targetLatency")),
+        });
+    }
     function hlsEvent(owner: any, event: string, data: any): void {
         data = data || {};
         var frag = data.frag,
@@ -309,6 +453,13 @@ function createPerformanceSensors(w: any, ports: any): any {
             var name = events[pair[0]];
             if (!name) return;
             var callback = function (_event: any, data: any) {
+                if (
+                    ports.hlsDetails &&
+                    (pair[1] === "fragment" || pair[1] === "fragment_buffered")
+                )
+                    safe(function () {
+                        hlsFragment(next, pair[1], data);
+                    });
                 safe(function () {
                     if (pair[1] !== "abr") {
                         hlsEvent(next, pair[1], data);
@@ -336,6 +487,18 @@ function createPerformanceSensors(w: any, ports: any): any {
                 hls.off(name, callback);
             });
         });
+        if (ports.hlsDetails && events.BUFFER_APPENDED) {
+            var appended = function (_event: any, data: any) {
+                safe(function () {
+                    hlsBuffers(next, data);
+                });
+            };
+            hls.on(events.BUFFER_APPENDED, appended);
+            next.remove.push(function () {
+                hls.off(events.BUFFER_APPENDED, appended);
+            });
+        }
+        hlsConfig(next);
     }
     function buffers(media: any, position: any): any {
         var empty = {
@@ -442,6 +605,8 @@ function createPerformanceSensors(w: any, ports: any): any {
     }
     function sample(owner: any): void {
         if (!owner.media || !attached(owner)) return;
+        hlsConfig(owner);
+        hlsLive(owner);
         var media = owner.media,
             position = number(media.currentTime, maximum, -maximum),
             ranges = buffers(media, position);

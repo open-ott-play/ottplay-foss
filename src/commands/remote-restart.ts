@@ -841,6 +841,7 @@ export function executeRemoteControl(
                       version: 1,
                   }
                 : undefined,
+            perf_capture_hls: w.__ottRuntimeDebug ? { version: 2 } : undefined,
             playback: playback,
             player: remotePlayerInfo(w),
             player_settings: w.__ottPlayerSettingsHost

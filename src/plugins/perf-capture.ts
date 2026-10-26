@@ -5,6 +5,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         lease: any = null,
         sensors: any = null;
     var active = false,
+        captureVersion = 1,
         expiry: any = null,
         purge: any = null;
     var events: any[] = [],
@@ -224,10 +225,11 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         }
         return true;
     }
-    function metadata(): any {
+    function metadata(version: number): any {
         if (active) admitted();
         if (!report) return null;
         var result = Object.assign({}, report);
+        if (version === 2) result.capture_version = captureVersion;
         result.elapsed_ms = active ? clock().at : report.elapsed_ms;
         result.remaining_ms = active
             ? Math.max(0, result.duration_seconds * 1000 - result.elapsed_ms)
@@ -244,10 +246,16 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
     }
     function request(input: any): any {
         var p = input.params || {},
-            op = p.op;
+            op = p.op,
+            version = p.version === 2 ? 2 : 1;
         function fail(error: string): any {
             return {
-                data: { error: error, op: op, runtime: p.runtime, version: 1 },
+                data: {
+                    error: error,
+                    op: op,
+                    runtime: p.runtime,
+                    version: version,
+                },
                 status: error === "unsupported" ? "unsupported" : "rejected",
             };
         }
@@ -257,8 +265,8 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
                     {
                         op: op,
                         runtime: p.runtime,
-                        session: metadata(),
-                        version: 1,
+                        session: metadata(version),
+                        version: version,
                     },
                     extra || {}
                 ),
@@ -277,7 +285,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         else if (op === "status") optional = ["session_id"];
         else return fail("invalid_request");
         if (
-            p.version !== 1 ||
+            (p.version !== 1 && p.version !== 2) ||
             required.some(function (key) {
                 return !Object.prototype.hasOwnProperty.call(p, key);
             }) ||
@@ -305,6 +313,15 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         }
         if (!w.__ottRuntimeDebug || !w.__ottRuntimeDebug.available())
             return fail("disconnected");
+        // Normal lease retirement still applies; older callers cannot stop or
+        // receive an extended capture, or silently change its saved options.
+        if (
+            report &&
+            captureVersion === 2 &&
+            version === 1 &&
+            !(op === "start" && !active && p.session_id !== report.id)
+        )
+            return fail("unsupported");
         if (op === "start") {
             var duration =
                 p.duration_seconds === undefined ? 120 : p.duration_seconds;
@@ -320,6 +337,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
                 return fail("invalid_request");
             if (report && report.id === p.session_id) {
                 if (
+                    captureVersion !== version ||
                     report.duration_seconds !== duration ||
                     report.requested.raf !== raf ||
                     report.requested.long_tasks !== longTasks
@@ -334,6 +352,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
             )
                 return fail("unsupported");
             discard();
+            captureVersion = version;
             try {
                 lease = acquireLease();
                 performanceClock = false;
@@ -371,6 +390,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
                     clock: clock,
                     current: admitted,
                     emit: store,
+                    hlsDetails: version === 2,
                     lease: lease,
                     longTasks: longTasks,
                     origin: performanceClock ? origin : null,
@@ -416,7 +436,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
             limit > 64
         )
             return fail("invalid_request");
-        var session = metadata();
+        var session = metadata(version);
         if (!session) return fail("not_found");
         var selected: any[] = [],
             cursor = p.after_seq,
@@ -432,7 +452,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
                     op: op,
                     runtime: p.runtime,
                     session: session,
-                    version: 1,
+                    version: version,
                 },
                 status: "ok",
             };
