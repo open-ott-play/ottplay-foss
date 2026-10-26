@@ -188,10 +188,14 @@ for (const device of ["pc", "lg/webos"]) {
             const playing = await first.newPage();
             await playing.goto(new URL(`/f/${device}/`, baseURL).href);
             await playing.waitForFunction(
-                () => document.querySelector("video")?.currentTime > 8,
+                () => document.querySelector("video")?.currentTime > 0.2,
                 null,
                 { timeout: 20000 }
             );
+            // A public user seek keeps the saved cursor beyond the cold-start
+            // polling window, so playback from zero cannot mimic restoration.
+            // Only normal decoder sampling may persist the new position.
+            await playing.evaluate(() => window.stbSetPosTime(60));
             const read = () =>
                 playing.evaluate(() => {
                     const media = window.__ottMedia.current();
@@ -211,7 +215,7 @@ for (const device of ["pc", "lg/webos"]) {
                 });
             await expect
                 .poll(async () => (await read()).saved)
-                .toBeGreaterThan(5);
+                .toBeGreaterThan(61);
             const before = await read();
             expect(before.state.target.kind).toBe("vod");
             expect(before.state.historyTarget.kind).toBe("live");
