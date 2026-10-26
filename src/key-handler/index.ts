@@ -274,7 +274,7 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     if (
         !state ||
         !state.target ||
-        (state.phase !== "playing" && state.phase !== "paused")
+        (seek && state.phase !== "playing" && state.phase !== "paused")
     )
         return false;
     event.preventDefault();
@@ -511,6 +511,22 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             (/^plex(?:@|$)/.test(media.ref.sourceId) ||
                 (media.sequence && media.sequence.channel))
         ) {
+            // Legacy/direct key dispatch must keep desktop volume semantics
+            // while Plex loads, even when the selected provider is still TV.
+            if (
+                /^pc(?:2)?$/.test(w.ott_device || "") &&
+                (command.id === "left" || command.id === "right") &&
+                !event.altKey &&
+                !event.ctrlKey &&
+                !event.metaKey &&
+                !event.shiftKey
+            ) {
+                call(
+                    "changeVolume",
+                    (command.id === "left" ? -1 : 1) * w.sVolumeStep
+                );
+                return;
+            }
             if (command.id === "left" || command.id === "right")
                 call("shiftArchive", command.id === "left" ? -10 : 10);
             else w.__ottMedia.skip(command.id === "up" ? 1 : -1);

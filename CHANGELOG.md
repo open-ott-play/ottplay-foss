@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep plain desktop Left/Right arrows on volume control while a remote Plex
+  queue loads or recovers. Preserve modifier-arrow seeking, Up/Down queue
+  navigation, and television remote mappings.
 
 - Avoid rebuilding unchanged video resolution and bitrate text each second or
   while the footer is hidden. Refresh it immediately when the footer opens,
