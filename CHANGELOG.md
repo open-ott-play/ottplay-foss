@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fade notification icons together with the banner background while keeping
+  message text fully legible until the banner exits.
+
 - Avoid rebuilding unchanged video resolution and bitrate text each second or
   while the footer is hidden. Refresh it immediately when the footer opens,
   while keeping bitrate sampling and playback status active.

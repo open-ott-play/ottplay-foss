@@ -77,6 +77,11 @@
         .notify.remote-notify.remote-notify-out {
             animation: remoteNotifyOut 320ms cubic-bezier(0.4, 0, 1, 1) both;
         }
+        .notify.remote-notify::before, .remote-notify-icon {
+            animation: remoteNotifySurfaceIn 480ms ease-out both,
+                       remoteNotifyFade 4020ms linear 980ms forwards;
+            animation-duration: inherit;
+        }
         .notify.remote-notify::before {
             content: "";
             position: absolute;
@@ -90,9 +95,6 @@
             box-shadow: 0 0.5em 1.7em rgba(0, 0, 0, 0.42);
             background: rgba(22, 28, 39, 0.624);
             background: rgba(22, 28, 39, var(--ott-notify-alpha, 0.624));
-            animation: remoteNotifySurfaceIn 480ms ease-out both,
-                       remoteNotifyFade 4020ms linear 980ms forwards;
-            animation-duration: inherit;
         }
         .remote-notify-icon {
             position: relative;
@@ -214,7 +216,7 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .notify.remote-notify, .notify.remote-notify.remote-notify-out,
-            .notify.remote-notify::before, .remote-notify-image,
+            .notify.remote-notify::before, .remote-notify-icon, .remote-notify-image,
             .remote-notify-label, .remote-notify-title { animation: none; }
         }
         @keyframes notifyIn {
