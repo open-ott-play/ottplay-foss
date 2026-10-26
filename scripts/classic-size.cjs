@@ -352,7 +352,9 @@ const { gzipSync } = require("node:zlib");
 // identity reserve; existing global interfaces and provider budgets stay fixed.
 // On-demand engine readiness, bounded playback feedback and device/source buffer
 // policy add less than 6 KB raw / 1.8 KB gzip; engine payloads stay off boot.
-const BUDGET = Object.freeze({ bytes: 1042000, gzipBytes: 321450 });
+// Periodic channel-backed VOD checkpoints measure 321463 native entry gzip
+// bytes with Node 22.23.4 and beta.9999. Allow 96 bytes including identity room.
+const BUDGET = Object.freeze({ bytes: 1042000, gzipBytes: 321546 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -527,9 +529,11 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // counted in every complete payload, never paid by the default startup entry.
 // Direct ES5 optimization measures 6880 raw / 2881 gzip on Node 26; retain
 // bounded engine/identity and Node 22 compression headroom without growing entry.
+// Count the same 96-byte VOD allowance once: Node 22.23.4 beta.9999 native
+// legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     bytes: 1176800,
-    gzipBytes: 370850,
+    gzipBytes: 370946,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 const TOTAL_BUDGET = Object.freeze({ bytes: 1184600, gzipBytes: 374150 });
