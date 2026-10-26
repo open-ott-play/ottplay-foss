@@ -9,9 +9,6 @@
 - Send Plex H.264 files explicitly identified as High 10 or greater than 8-bit
   through compatible HLS negotiation in Automatic mode. Preserve ordinary and
   incomplete AVC metadata handling and the explicit Original file preference.
-- Add a persistent 20–200% interface font scale shared across providers.
-  Resize list pages to keep enlarged text and settings actions reachable;
-  preserve independent subtitle appearance and video geometry.
 - Save VPortal and Plex video progress alongside the channel selection during
   playback, so reopening the player restores the selected film and its saved
   position across the shared TV, browser and native player builds.
@@ -103,6 +100,10 @@
 
 ## [1.1.61] - 2026-10-26
 
+- Allow interface font sizes from 20% to 200%, with 100% as the default.
+  Apply changes immediately and preserve the saved size across player reloads
+  and provider changes. Resize list pages to keep enlarged text and settings
+  actions reachable; preserve independent subtitle appearance and video geometry.
 - Fade notification icons together with the banner background while keeping
   message text fully legible until the banner exits.
 - Use the primary Ubuntu package mirror for normalization test tools in CI.
