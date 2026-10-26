@@ -427,6 +427,101 @@ for (const profile of [
     );
     assert.equal(stored.has("sUiFontScale"), false);
     vm.runInContext(
+        compile(
+            fs.readFileSync(
+                path.join(root, "src/plugins/remote-settings.ts"),
+                "utf8"
+            )
+        ),
+        w
+    );
+    const remote = w.__ottPlayerSettingsFactory.create(w, () => "font-test");
+    const request = (params) => {
+        let response;
+        remote.request(
+            {
+                action: "player_settings",
+                params: { runtime: "font-test", ...params },
+            },
+            (result) => {
+                response = result;
+            }
+        );
+        return response;
+    };
+    const initial = request({ id: "uiFontScale", op: "get" });
+    assert.equal(initial.status, "ok");
+    assert.equal(initial.data.descriptor.constraints.minimum, 20);
+    assert.equal(initial.data.descriptor.constraints.maximum, 200);
+    assert.equal(initial.data.descriptor.default_value, 100);
+    assert.equal(initial.data.descriptor.type, "integer");
+    assert.equal(initial.data.descriptor.unit, "percent");
+    assert.equal(initial.data.descriptor.scope, "application");
+    assert.equal(initial.data.descriptor.apply, "immediate");
+    const setRemote = (value) => {
+        const current = request({ id: "uiFontScale", op: "get" });
+        return request({
+            context: current.data.context.token,
+            id: "uiFontScale",
+            op: "set",
+            revision: current.data.setting.revision,
+            value,
+        });
+    };
+    const fontCallsBefore = calls.filter((call) => call === "font").length;
+    const remoteSave = setRemote(20);
+    assert.equal(remoteSave.status, "ok");
+    assert.equal(remoteSave.data.persisted, true);
+    assert.equal(remoteSave.data.setting.persisted_value, 20);
+    assert.equal(stored.get("sUiFontScale"), "20");
+    assert.equal(remoteSave.data.application.state, "completed");
+    assert.equal(
+        calls.filter((call) => call === "font").length,
+        fontCallsBefore + 1,
+        "remote minimum applies immediately"
+    );
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().uiFontScale, 20, "restart retains the minimum");
+    w.providerId = "replacement";
+    vm.runInContext("loadSettings();", w);
+    assert.equal(
+        typed().uiFontScale,
+        20,
+        "provider switch retains application scale"
+    );
+    assert.equal(
+        request({ id: "uiFontScale", op: "get" }).data.setting.value,
+        20
+    );
+    w.settingsInterface();
+    const minimumRow = w.listArray.find(
+        (item) => item.settingId === "uiFontScale"
+    );
+    assert.equal(minimumRow.settingValues[minimumRow.val], 20);
+    assert.equal(minimumRow.settingValues[0], 20);
+    assert.ok(minimumRow.settingValues.includes(30));
+    assert.ok(minimumRow.settingValues.includes(40));
+    w.listKeyHandlerFn(w.keys.RETURN);
+    for (const value of [19, 201, 20.5, "20"])
+        assert.equal(setRemote(value).status, "rejected");
+    assert.equal(stored.get("sUiFontScale"), "20", "rejections do not write");
+    assert.equal(setRemote(23).status, "ok");
+    vm.runInContext("loadSettings();", w);
+    assert.equal(typed().uiFontScale, 23, "exact percentages below 50 persist");
+    w.settingsInterface();
+    const exactRow = w.listArray.find(
+        (item) => item.settingId === "uiFontScale"
+    );
+    assert.equal(exactRow.settingValues[exactRow.val], 23);
+    exactRow.val = exactRow.settingValues.indexOf(40);
+    w.listKeyHandlerFn(w.keys.RETURN);
+    assert.equal(
+        typed().uiFontScale,
+        23,
+        "cancel retains an exact small percentage"
+    );
+    assert.equal(setRemote(200).status, "ok", "upper bound remains supported");
+    vm.runInContext(
         "var scaleDraft = beginSettingsDraft(); scaleDraft.set('uiFontScale', 137); scaleDraft.commit();",
         w
     );
@@ -459,7 +554,7 @@ for (const profile of [
         80,
         "cancel does not change the saved text scale"
     );
-    for (const value of [49, 201, 50.5, NaN, Infinity, "80"]) {
+    for (const value of [19, 201, 20.5, NaN, Infinity, "20"]) {
         w.invalidScale = value;
         assert.equal(
             vm.runInContext(
@@ -469,7 +564,7 @@ for (const profile of [
             false
         );
     }
-    for (const value of ["49", "201", "bad"]) {
+    for (const value of ["19", "201", "bad"]) {
         stored.set("sUiFontScale", value);
         vm.runInContext("loadSettings();", w);
         assert.equal(
