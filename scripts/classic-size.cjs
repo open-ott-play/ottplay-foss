@@ -557,7 +557,9 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "subtitle-appearance": OPTIONAL_BUDGET,
 });
-const TOTAL_BUDGET = Object.freeze({ bytes: 1264100, gzipBytes: 400950 });
+// Carry the approved 96-byte VOD checkpoint allowance into the complete
+// payload exactly once; retain every optional-module and raw-byte limit.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1264100, gzipBytes: 401046 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
