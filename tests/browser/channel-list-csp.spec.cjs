@@ -3402,7 +3402,7 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                                 return result;
                             });
                         const baseline = await measure();
-                        for (const percent of [50, 150, 200, 100]) {
+                        for (const percent of [20, 200, 20, 100, 23, 150, 100]) {
                             expect(
                                 await page.evaluate(
                                     (percent) =>
@@ -3451,6 +3451,141 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                                 .toBe(true);
                             await page.evaluate(() => _channelsList(0, 0));
                         }
+                    }
+                }
+                expect(fixture.errors).toEqual([]);
+                expect(fixture.unexpectedRequests).toEqual([]);
+            } finally {
+                await fixture.close();
+            }
+        }
+    );
+}
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(
+        profile +
+            ": 20% interface font survives reload and provider settings refresh",
+        async ({ browser }) => {
+            const fixture = await fixturePage(browser, profile, {});
+            const { page } = fixture;
+            try {
+                await page.setViewportSize({ height: 800, width: 360 });
+                const fontSize = () =>
+                    page
+                        .locator("#list")
+                        .evaluate((node) =>
+                            parseFloat(getComputedStyle(node).fontSize)
+                        );
+                for (const theme of [0, 1, 2]) {
+                    await page.evaluate((theme) => {
+                        saveSettings({
+                            interfaceTheme: theme,
+                            uiFontScale: 100,
+                        });
+                        setFontSize();
+                        _channelsList(0, 0);
+                    }, theme);
+                    const baseline = await fontSize();
+                    await page.evaluate(() => window.settingsInterface());
+                    await expect
+                        .poll(() =>
+                            page.evaluate(() =>
+                                window.listArray.some(
+                                    (row) => row.settingId === "uiFontScale"
+                                )
+                            )
+                        )
+                        .toBe(true);
+                    expect(
+                        await page.evaluate(() => {
+                            const row = window.listArray.find(
+                                (row) => row.settingId === "uiFontScale"
+                            );
+                            window.selectValue(row);
+                            return row.settingValues.slice(0, 3);
+                        })
+                    ).toEqual([20, 30, 40]);
+                    const choice = page
+                        .locator("#listAbout .osk-key")
+                        .filter({ hasText: /^20%$/ });
+                    await expect(choice).toBeVisible();
+                    await choice.click();
+                    await choice.click();
+                    await page
+                        .locator("#listPodval [data-ott-key]")
+                        .filter({ hasText: "Save Settings" })
+                        .click();
+                    await page.evaluate(() => _channelsList(0, 0));
+                    await expect.poll(fontSize).toBeCloseTo(baseline * 0.2, 1);
+                    expect(
+                        await page.evaluate(() => ({
+                            stored: Number(stbGetItem("sUiFontScale")),
+                            value: window.sUiFontScale,
+                        }))
+                    ).toEqual({ stored: 20, value: 20 });
+
+                    // Reload only provider-scoped settings through the actual
+                    // settings store, then recreate the page with its storage.
+                    expect(
+                        await page.evaluate(() => {
+                            window.__ottPlayerSettingsHost.store.reload(
+                                "provider"
+                            );
+                            return window.sUiFontScale;
+                        })
+                    ).toBe(20);
+                    await page.reload();
+                    await expect
+                        .poll(() => page.evaluate(() => window.__fixtureReady))
+                        .toBe(true);
+                    await expect.poll(fontSize).toBeCloseTo(baseline * 0.2, 1);
+                    expect(
+                        await page.evaluate(() => ({
+                            theme: window.settings.interfaceTheme,
+                            value: window.sUiFontScale,
+                        }))
+                    ).toEqual({ theme, value: 20 });
+                    for (const action of ["Close", "Save Settings"]) {
+                        await page.evaluate(() => window.settingsInterface());
+                        await expect
+                            .poll(() =>
+                                page.evaluate(() =>
+                                    window.listArray.some(
+                                        (row) => row.settingId === "uiFontScale"
+                                    )
+                                )
+                            )
+                            .toBe(true);
+                        await page.evaluate(() =>
+                            window.selectValue(
+                                window.listArray.find(
+                                    (row) => row.settingId === "uiFontScale"
+                                )
+                            )
+                        );
+                        const reset = page
+                            .locator("#listAbout .osk-key")
+                            .filter({ hasText: /^100%$/ });
+                        await expect(reset).toBeVisible();
+                        await reset.click();
+                        await reset.click();
+                        // Both cancel and save remain genuine hit targets
+                        // while the saved font scale is still only 20%.
+                        await page
+                            .locator("#listPodval [data-ott-key]")
+                            .filter({ hasText: action })
+                            .click();
+                        await page.evaluate(() => _channelsList(0, 0));
+                        const expected = action === "Close" ? 20 : 100;
+                        await expect
+                            .poll(fontSize)
+                            .toBeCloseTo((baseline * expected) / 100, 1);
+                        expect(
+                            await page.evaluate(() =>
+                                Number(stbGetItem("sUiFontScale"))
+                            )
+                        ).toBe(expected);
                     }
                 }
                 expect(fixture.errors).toEqual([]);
