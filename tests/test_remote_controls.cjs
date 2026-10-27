@@ -203,6 +203,34 @@ function fixture() {
 
 {
     const f = fixture();
+    assert.equal(
+        f.run("capabilities").result.data.local_media_progressive,
+        undefined
+    );
+    const local = {
+        absolute_paths: true,
+        max_items: 50000,
+        max_sources: 32,
+        operations: ["sources", "play", "shuffle", "connect"],
+        version: 1,
+    };
+    let reads = 0;
+    f.w.__ottLocalMedia = {
+        remoteCapabilities: () => {
+            reads++;
+            return local;
+        },
+    };
+    const caps = f.run("capabilities").result.data;
+    assert.deepEqual(caps.local_media, local);
+    assert.equal(Object.keys(caps.local_media).length, 5);
+    assert.deepEqual(caps.local_media_progressive, { version: 1 });
+    assert.equal(reads, 1);
+    assert.equal(f.effects.length, 0);
+}
+
+{
+    const f = fixture();
     const caps = f.run("capabilities").result.data;
     assert.equal(caps.version, 1);
     assert.deepEqual(caps.inspect, {

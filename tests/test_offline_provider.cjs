@@ -861,6 +861,112 @@ test("progressive profiles prefer the saved file and filter every appended batch
     assert.equal(f.host.channels["local-other"], undefined);
 });
 
+test("background source or filter failure alerts once, retains playback and retires late updates", async () => {
+    for (const failure of ["source", "filter"]) {
+        const f = integrationFixture("offline");
+        let progress,
+            finish,
+            reject,
+            failFilter = false;
+        const alerts = [],
+            added = [];
+        f.host.clearBootHide = () => {};
+        f.host.alert = (message) => alerts.push(message);
+        f.host.__ottChannels = {
+            append: (ids) => added.push(...ids),
+            reset() {},
+        };
+        f.host.__ottLocalMedia = {
+            list: (cb) => {
+                progress = cb;
+                return new Promise((resolve, fail) => {
+                    finish = resolve;
+                    reject = fail;
+                });
+            },
+            playbackFilter: (value) => {
+                if (failFilter) throw { localMediaCode: "too_many_items" };
+                return value;
+            },
+            resume: () =>
+                assert.fail(
+                    "background failure must not replace active playback"
+                ),
+        };
+        f.host.loadProv();
+        const first = { id: "first", name: "First.mp4", url: "blob:first" };
+        assert.equal(progress({ items: [first], scanning: true }), true);
+        assert.equal(f.completed, 1);
+        const driver = f.host.__ottActiveProviderDriver;
+        const activeRow = f.host.channels["local-first"];
+        if (failure === "source") {
+            reject(new Error("The selected local source could not be scanned"));
+            await Promise.resolve();
+        } else {
+            failFilter = true;
+            assert.equal(progress({ items: [first], scanning: true }), false);
+        }
+        assert.deepEqual(alerts, ["Failed to load channel list!"], failure);
+        const late = { id: "late", name: "Late.mp4", url: "blob:late" };
+        failFilter = false;
+        assert.equal(progress({ items: [first, late], scanning: true }), false);
+        finish({ items: [first, late], scanning: false });
+        await Promise.resolve();
+        assert.equal(
+            f.completed,
+            1,
+            "no second playback start after " + failure
+        );
+        assert.deepEqual(alerts, ["Failed to load channel list!"]);
+        assert.deepEqual(added, []);
+        assert.equal(f.host.__ottActiveProviderDriver, driver);
+        assert.equal(f.host.channels["local-first"], activeRow);
+        assert.equal(driver.stream("local-first"), "blob:first");
+        assert.equal(f.host.channels["local-late"], undefined);
+    }
+});
+
+test("intentional background cancellation and retired provider ownership stay silent", async () => {
+    for (const reason of ["cancel", "provider"]) {
+        const f = integrationFixture("offline");
+        let progress, finish;
+        const alerts = [];
+        f.host.clearBootHide = () => {};
+        f.host.alert = (message) => alerts.push(message);
+        f.host.__ottLocalMedia = {
+            list: (cb) => {
+                progress = cb;
+                return new Promise((resolve) => {
+                    finish = resolve;
+                });
+            },
+            resume: () =>
+                assert.fail("retired background scan opened recovery"),
+        };
+        f.host.loadProv();
+        const first = { id: "first", name: "First.mp4", url: "blob:first" };
+        assert.equal(progress({ items: [first], scanning: true }), true);
+        assert.equal(f.completed, 1);
+        if (reason === "provider") f.host.loadProv("demo");
+        const completed = f.completed;
+        const driver = f.host.__ottActiveProviderDriver;
+        assert.equal(
+            progress({ cancelled: true, items: [first], scanning: true }),
+            false
+        );
+        const late = { id: "late", name: "Late.mp4", url: "blob:late" };
+        assert.equal(progress({ items: [first, late], scanning: true }), false);
+        finish({ items: [first, late], scanning: false });
+        await Promise.resolve();
+        assert.deepEqual(alerts, [], reason);
+        assert.equal(f.completed, completed);
+        assert.equal(f.host.__ottActiveProviderDriver, driver);
+        assert.equal(f.host.channels["local-late"], undefined);
+        if (reason === "cancel")
+            assert.equal(driver.stream("local-first"), "blob:first");
+    }
+});
+
 test("progressive profile ownership rejects late batches after binding replacement", async () => {
     const f = integrationFixture("offline");
     let progress,

@@ -356,7 +356,10 @@ test("real local media editor rejects its stale draft after catalogue invalidati
         w: f.w,
     };
     vm.runInNewContext(
-        functionSource("src/plugins/local-media.ts", ["editServer"]),
+        functionSource("src/plugins/local-media-ui.ts", ["editServer"]).replace(
+            /p\s*\.\s*/g,
+            ""
+        ),
         context
     );
     context.editServer();

@@ -332,6 +332,11 @@ function pluginFixture(options = {}) {
             stbSetItem: (key, value) => data.set(key, value),
         };
     const install = load("src/plugins/local-media.ts", {
+        "../commands/remote-feature": {
+            loadRemoteFeature() {
+                throw Error("Unexpected UI load");
+            },
+        },
         "../offline/browser-local-media": {
             installBrowserLocalMedia: () => ({ suspend() {} }),
             installOfflineShell() {},
@@ -438,7 +443,7 @@ test("a complete native folder plays and reloads while unrelated scans remain in
         f.calls.find(([name]) => name === "offline_media_endpoint")[1].sourceId,
         source.id
     );
-    const delivered = await f.api.list();
+    const delivered = await f.api.playbackList();
     assert.equal(
         delivered.scanning,
         true,
@@ -503,6 +508,217 @@ test("a complete native folder plays and reloads while unrelated scans remain in
     );
 });
 
+test("a new native folder starts its permitted partial queue and hands off background discoveries", async () => {
+    const f = pluginFixture();
+    await tick();
+    const prefix = {
+        ...sourceCatalog("scanning", 4),
+        items: [catalog().items[0]],
+    };
+    const complete = sourceCatalog("complete", 4);
+    f.snapshots.push(prefix, complete);
+    const reply = await new Promise((resolve) =>
+        execute(
+            f.w,
+            request("shuffle", {
+                progressive: true,
+                source: "/Volumes/data/Movies/",
+            }),
+            resolve
+        )
+    );
+    assert.deepEqual(clone(reply.data), {
+        ...contract.progressive_shuffle_result,
+        count: 1,
+    });
+    assert.equal(f.reads, 1);
+    assert.equal(f.calls.filter(([name]) => name === "provider").length, 1);
+    f.api.bindPlaybackOwner(() => true);
+    const seen = [];
+    const delivered = await f.api.playbackList((value) => {
+        seen.push(clone(f.api.playbackFilter(value)));
+        return true;
+    });
+    assert.deepEqual(
+        seen.map((value) => value.items.length),
+        [1, 3]
+    );
+    assert.equal(seen[0].scanning, true);
+    assert.equal(seen[1].scanning, false);
+    assert.equal(seen[1].items[0].id, seen[0].items[0].id);
+    assert.equal(f.api.playbackFilter(delivered).scanning, false);
+    assert.equal(
+        f.calls.filter(([name]) => name === "provider").length,
+        1,
+        "background discoveries do not activate the provider again"
+    );
+});
+
+test("early admission waits past denied, unsupported and unrelated files", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    f.w.__ottOfflineProfiles = {
+        catalogGuard: () => () => true,
+        filter: (value) => ({
+            ...value,
+            items: value.items.filter((item) => item.id !== "1"),
+        }),
+    };
+    const blocked = {
+        ...sourceCatalog("scanning", 5),
+        items: [
+            catalog().items[0],
+            { ...catalog().items[1], playback: { mode: "unsupported" } },
+            catalog().items[3],
+        ],
+    };
+    const playable = {
+        ...sourceCatalog("scanning", 5),
+        items: [...blocked.items, catalog().items[2]],
+    };
+    f.snapshots.push(blocked, playable);
+    const reply = await new Promise((resolve) =>
+        execute(f.w, request("shuffle", { progressive: true }), resolve)
+    );
+    assert.equal(reply.status, "ok");
+    assert.equal(reply.data.count, 1);
+    assert.equal(reply.data.scanning, true);
+    assert.equal(f.reads, 2);
+    assert.deepEqual(clone(f.api.playbackOrder()), ["local-3"]);
+});
+
+test("legacy commands wait for completion and retain exactly nine response fields", async () => {
+    for (const op of ["play", "shuffle"]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        f.snapshots.push(
+            {
+                ...sourceCatalog("scanning", 8),
+                items: [catalog().items[0]],
+            },
+            sourceCatalog("complete", 8)
+        );
+        const reply = await new Promise((resolve) =>
+            execute(f.w, request(op), resolve)
+        );
+        assert.equal(reply.status, "ok");
+        assert.deepEqual(clone(reply.data), contract[op + "_result"]);
+        assert.equal(Object.keys(reply.data).length, 9);
+        assert.equal(f.reads, 2);
+    }
+});
+
+test("progressive opt-in is strict true and restricted to play and shuffle", async () => {
+    for (const params of [
+        request("play", { progressive: false }),
+        request("shuffle", { progressive: false }),
+        request("play", { progressive: null }),
+        request("play", { progressive: "true" }),
+        request("shuffle", { progressive: 1 }),
+        request("sources", { progressive: true }),
+        request("connect", { progressive: true }),
+        request("connect", { progressive: false }),
+    ]) {
+        const f = fixture();
+        assert.equal((await f.request(params)).data.error, "invalid_request");
+        assert.deepEqual(f.calls, []);
+    }
+    for (const op of ["play", "shuffle"]) {
+        const f = fixture();
+        const reply = await f.request(request(op, { progressive: true }));
+        assert.deepEqual(
+            reply.data,
+            contract[op + "_result"],
+            "completed opt-in retains the old response shape"
+        );
+    }
+});
+
+test("default remote catalog still waits for source completion", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    f.snapshots.push(
+        sourceCatalog("scanning", 6),
+        sourceCatalog("complete", 6)
+    );
+    const value = await f.api.remoteCatalog(() => true, source.id);
+    assert.equal(value.sourceScans[0].state, "complete");
+    assert.equal(f.reads, 2);
+});
+
+test("a partial provider handoff rejects a replacement source generation", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    f.snapshots.push(
+        { ...sourceCatalog("scanning", 6), items: [catalog().items[0]] },
+        sourceCatalog("complete", 7)
+    );
+    const reply = await new Promise((resolve) =>
+        execute(f.w, request("shuffle", { progressive: true }), resolve)
+    );
+    assert.equal(reply.status, "ok");
+    f.api.bindPlaybackOwner(() => true);
+    const seen = [];
+    await assert.rejects(
+        f.api.playbackList((value) => {
+            seen.push(value);
+            return true;
+        }),
+        (error) => error.localMediaCode === "runtime_changed"
+    );
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].sourceScans[0].generation, 6);
+});
+
+test("seeded partial restart retains discovered order, refreshes rows and bounds growth", () => {
+    const data = new Map();
+    const make = () =>
+        selection.createLocalPlaybackSelection(
+            {
+                stbGetItem: (key) => data.get(key) || "",
+                stbSetItem: (key, value) => data.set(key, value),
+            },
+            () => "fixture"
+        );
+    const selected = make();
+    selected.select(source.id, ["1"], 42);
+    const restored = make();
+    const initial = {
+        ...sourceCatalog("scanning", 9),
+        items: catalog().items.slice(0, 1),
+    };
+    assert.deepEqual(
+        clone(restored.filter(initial).items.map((item) => item.id)),
+        ["1"]
+    );
+    const expanded = sourceCatalog("scanning", 9);
+    expanded.items[0] = { ...expanded.items[0], name: "refreshed.mp4" };
+    const result = restored.filter(expanded);
+    assert.equal(result.items[0].id, "1");
+    assert.equal(result.items[0].name, "refreshed.mp4");
+    assert.deepEqual(clone(result.items.map((item) => item.id)).sort(), [
+        "1",
+        "2",
+        "3",
+    ]);
+    assert.deepEqual(
+        clone(restored.filter(expanded).items.map((item) => item.id)),
+        clone(result.items.map((item) => item.id))
+    );
+    assert.throws(
+        () =>
+            restored.filter({
+                ...expanded,
+                items: Array.from({ length: 50001 }, (_, i) => ({
+                    id: String(i),
+                    sourceId: source.id,
+                    url: "/v/" + i,
+                })),
+            }),
+        (error) => error.localMediaCode === "too_many_items"
+    );
+});
+
 test("waiting for a selected folder preserves the current playback reader until the provider handoff", async () => {
     let ready = false;
     let scanned = 0;
@@ -511,6 +727,7 @@ test("waiting for a selected folder preserves the current playback reader until 
     const f = pluginFixture({
         catalog: () => ({
             ...sourceCatalog(ready ? "complete" : "scanning"),
+            items: ready ? catalog().items : [],
             scanned: ++scanned,
         }),
         connected: true,
@@ -554,15 +771,23 @@ test("waiting for a selected folder preserves the current playback reader until 
     assert.equal(f.calls.filter(([name]) => name === "provider").length, 1);
 });
 
-test("only the selected source's authoritative complete scan permits a queue", async () => {
-    for (const [state, error] of [
-        ["pending", "catalog_loading"],
-        ["scanning", "catalog_loading"],
-        ["error", "catalog_unavailable"],
-    ]) {
+test("only an authoritative selected source permits a partial queue", async () => {
+    for (const state of ["pending", "scanning"]) {
+        const f = fixture();
+        Object.assign(f.value, sourceCatalog(state));
+        const reply = await f.request(
+            request("shuffle", { progressive: true })
+        );
+        assert.equal(reply.status, "ok");
+        assert.equal(reply.data.scanning, true);
+        assert.equal(reply.data.count, 3);
+    }
+    for (const [state, error] of [["error", "catalog_unavailable"]]) {
         const f = fixture();
         Object.assign(f.value, sourceCatalog(state), { scanning: false });
-        const reply = await f.request(request("shuffle"));
+        const reply = await f.request(
+            request("shuffle", { progressive: true })
+        );
         assert.equal(reply.data.error, error);
         assert.deepEqual(f.calls, []);
     }
@@ -573,7 +798,9 @@ test("only the selected source's authoritative complete scan permits a queue", a
     ]) {
         const f = fixture();
         f.value.sourceScans = scans;
-        const reply = await f.request(request("shuffle"));
+        const reply = await f.request(
+            request("shuffle", { progressive: true })
+        );
         assert.notEqual(reply.status, "ok");
         assert.deepEqual(f.calls, []);
     }
@@ -581,7 +808,10 @@ test("only the selected source's authoritative complete scan permits a queue", a
     Object.assign(f.value, sourceCatalog(), {
         scanError: "Unrelated source failed",
     });
-    assert.equal((await f.request(request("shuffle"))).status, "ok");
+    assert.equal(
+        (await f.request(request("shuffle", { progressive: true }))).status,
+        "ok"
+    );
     const scoped = selection
         .createLocalPlaybackSelection(
             {
@@ -618,16 +848,17 @@ test("an unrelated scan error does not interrupt a pending selected source", asy
     };
     f.snapshots.push(pending, complete);
     const reply = await new Promise((resolve) =>
-        execute(f.w, request("shuffle"), resolve)
+        execute(f.w, request("shuffle", { progressive: true }), resolve)
     );
     assert.equal(reply.status, "ok");
-    assert.equal(f.reads, 2);
+    assert.equal(f.reads, 1);
+    assert.equal(reply.data.scanning, true);
     const projection = f.api.playbackFilter(pending);
     assert.equal(projection.scanning, true);
     assert.equal(projection.scanError, undefined);
-    assert.equal(projection.items.length, 0);
+    assert.equal(projection.items.length, 3);
     assert.equal(pending.scanError, "Other folder failed");
-    const delivered = await f.api.list();
+    const delivered = await f.api.playbackList(() => true);
     assert.equal(f.api.playbackFilter(delivered).scanning, false);
     await assert.rejects(f.api.snapshot(), /scan to finish/);
     assert.throws(
@@ -643,7 +874,7 @@ test("an unrelated scan error does not interrupt a pending selected source", asy
         scanning: true,
     });
     const failure = await new Promise((resolve) =>
-        execute(legacy.w, request("shuffle"), resolve)
+        execute(legacy.w, request("shuffle", { progressive: true }), resolve)
     );
     assert.equal(failure.status, "rejected");
     assert.equal(
@@ -657,7 +888,7 @@ test("changing source generation, disconnecting, or standby retires a waiting na
         const f = pluginFixture({ connected: true });
         await tick();
         const initial = sourceCatalog("scanning", 2);
-        initial.items = initial.items.slice(0, 1);
+        initial.items = [];
         const final = sourceCatalog(
             "complete",
             change === "generation" ? 3 : 2
@@ -692,7 +923,10 @@ test("changing source generation, disconnecting, or standby retires a waiting na
 test("cancelled catalogue waits stop only their reader and keep the unrelated scan alive", async () => {
     const f = pluginFixture({ connected: true });
     await tick();
-    f.snapshots.push(sourceCatalog("scanning"), sourceCatalog());
+    f.snapshots.push(
+        { ...sourceCatalog("scanning"), items: [] },
+        sourceCatalog()
+    );
     let replies = 0;
     const cancel = execute(f.w, request("shuffle"), () => replies++);
     await tick();
@@ -724,7 +958,10 @@ test("unrelated source generations do not invalidate the selected scan and legac
             ? { ...catalog(), scanning: true }
             : sourceCatalog("scanning", 7);
         const complete = legacy ? catalog() : sourceCatalog("complete", 7);
-        if (!legacy) complete.sourceScans[1].generation = 999;
+        if (!legacy) {
+            initial.items = [];
+            complete.sourceScans[1].generation = 999;
+        }
         f.snapshots.push(initial, complete);
         let finished = false;
         const pending = new Promise((resolve) =>
@@ -1135,7 +1372,7 @@ test("13,611-file shuffle is complete, reproducible after reload and stores only
     assert.equal(library.adoptPlaybackOrder(f.api.playbackOrder()), true);
     assert.deepEqual(
         clone(library.snapshot().all),
-        rows.map((row) => row.id)
+        clone(rows.map((row) => row.id))
     );
     assert.ok(
         [...documents.values()].reduce((n, text) => n + text.length, 0) < 1024,
