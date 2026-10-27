@@ -6,7 +6,10 @@ import {
     formatLocalMediaProgress,
     localMediaProgressTimeout,
 } from "../offline/local-media-progress";
-import { createLocalPlaybackSelection } from "../offline/playback-selection";
+import {
+    createLocalPlaybackSelection,
+    localSourceScan,
+} from "../offline/playback-selection";
 import { installOfflineProfiles } from "../offline/profiles";
 import { resolveNativePlugin, tauriInvoke } from "./native-bridge";
 
@@ -38,6 +41,7 @@ export function installLocalMedia(w: any): any {
     var remoteOrderCurrent: (() => boolean) | null = null;
     var remoteGeneration = 0;
     var nativeSourcePaths = false;
+    var remoteLinkSequence = 0;
     var playbackSelection = createLocalPlaybackSelection(w, function () {
         var profiles = w.__ottOfflineProfiles;
         return (
@@ -93,12 +97,14 @@ export function installLocalMedia(w: any): any {
     }
     function getEndpoint(
         refresh = false,
-        preferredId?: string
+        preferredId?: string,
+        sourceId?: string
     ): Promise<string> {
         if (isTauri())
             return tauriInvoke<any>("offline_media_endpoint", {
                 ...(refresh ? { refresh: true } : {}),
                 ...(preferredId ? { preferredId } : {}),
+                ...(sourceId ? { sourceId } : {}),
             }).then(function (value) {
                 endpoint = value.endpoint;
                 return endpoint;
@@ -258,7 +264,8 @@ export function installLocalMedia(w: any): any {
         onProgress?: (value: any) => boolean | void,
         preferredId?: string,
         prioritySources?: string[],
-        admitted?: () => boolean
+        admitted?: () => boolean,
+        sourceId?: string
     ): Promise<any> {
         if (w.__ottStandby?.blocked())
             return Promise.reject(w.__ottStandby.error());
@@ -291,7 +298,7 @@ export function installLocalMedia(w: any): any {
                   return nativeList(progress, preferredId, request);
               })
             : boundedLocalRead(function () {
-                  return getEndpoint(false, preferredId);
+                  return getEndpoint(false, preferredId, sourceId);
               }).then(function (base) {
                   if (request !== catalogRevision)
                       return { cancelled: true, items: [] };
@@ -302,7 +309,8 @@ export function installLocalMedia(w: any): any {
                             accept,
                             !!onProgress,
                             preferredId,
-                            admitted
+                            admitted,
+                            sourceId
                         )
                       : boundedLocalRead(function (progress) {
                             return browser.list(
@@ -404,16 +412,18 @@ export function installLocalMedia(w: any): any {
     // starts a replacement scan, and unchanged snapshots are not progress.
     function pollCatalog(
         base: string,
-        request: number,
+        request: number | null,
         accept: (value: any) => boolean,
         progressive: boolean,
         preferredId?: string,
-        admitted?: () => boolean
+        admitted?: () => boolean,
+        sourceId?: string
     ): Promise<any> {
         var catalogUrl = base;
         var preferredSent = !preferredId || isTauri();
         var signature = "";
         var changedAt = Date.now();
+        var sourceGeneration = 0;
         function read(): Promise<any> {
             if (admitted && !admitted())
                 return Promise.resolve({ cancelled: true, items: [] });
@@ -423,7 +433,10 @@ export function installLocalMedia(w: any): any {
             ).then(function (value) {
                 if (!value || !Array.isArray(value.items))
                     throw new Error("Invalid local media catalog");
-                if (request !== catalogRevision || (admitted && !admitted()))
+                if (
+                    (request !== null && request !== catalogRevision) ||
+                    (admitted && !admitted())
+                )
                     return { ...value, cancelled: true };
                 if (!preferredSent && value.readOnly) {
                     var url = new URL(base);
@@ -432,6 +445,39 @@ export function installLocalMedia(w: any): any {
                     preferredSent = true;
                     return read();
                 }
+                var scan = sourceId ? localSourceScan(value, sourceId) : null;
+                if (scan && scan.generation) {
+                    if (
+                        sourceGeneration &&
+                        sourceGeneration !== scan.generation
+                    )
+                        throw {
+                            localMediaCode: "runtime_changed",
+                            message: "Local source changed while loading",
+                        };
+                    sourceGeneration = scan.generation;
+                }
+                if (
+                    scan &&
+                    !(value.sources || []).some(function (source: any) {
+                        return (
+                            source.id === sourceId &&
+                            source.kind === "folder" &&
+                            source.available !== false
+                        );
+                    })
+                )
+                    throw {
+                        localMediaCode: "source_unavailable",
+                        message: "The selected local source is unavailable",
+                    };
+                var sourceComplete = !!scan && scan.state === "complete";
+                if (scan && scan.state === "error")
+                    throw {
+                        localMediaCode: "catalog_unavailable",
+                        message:
+                            "The selected local source could not be scanned",
+                    };
                 var next = JSON.stringify([
                     value.scanning,
                     value.scanned,
@@ -440,14 +486,17 @@ export function installLocalMedia(w: any): any {
                     value.scanError,
                     value.preferred && value.preferred.id,
                     value.preferred && value.preferred.state,
+                    scan && scan.generation,
+                    scan && scan.state,
                 ]);
                 if (next !== signature) {
                     signature = next;
                     changedAt = Date.now();
                     if (!accept(value)) return { ...value, cancelled: true };
                 }
-                if (value.scanError) throw new Error(value.scanError);
-                if (!value.scanning) return value;
+                if (value.scanError && !(scan && scan.generation))
+                    throw new Error(value.scanError);
+                if (sourceComplete || (!value.scanning && !scan)) return value;
                 if (Date.now() - changedAt >= 60000)
                     throw new Error("Local media scan stopped responding");
                 // A one-shot server catalog remains compatible. Only Tauri's
@@ -456,7 +505,7 @@ export function installLocalMedia(w: any): any {
                 return new Promise(function (resolve) {
                     setTimeout(resolve, 250);
                 }).then(function () {
-                    if (request !== catalogRevision)
+                    if (request !== null && request !== catalogRevision)
                         return { ...value, cancelled: true };
                     return read();
                 });
@@ -1194,6 +1243,7 @@ export function installLocalMedia(w: any): any {
                 !last ||
                 last.cancelled ||
                 last.scanning ||
+                last.scanError ||
                 last.reconnectRequired
             )
                 return null;
@@ -1233,6 +1283,18 @@ export function installLocalMedia(w: any): any {
         list: list,
         open: open,
         playbackFilter: playbackSelection.filter,
+        playbackList: function (
+            onProgress?: (value: any) => boolean | void,
+            preferredId?: string
+        ): Promise<any> {
+            return list(
+                onProgress,
+                preferredId,
+                undefined,
+                undefined,
+                playbackSelection.source()
+            );
+        },
         playbackOrder: function () {
             if (remoteOrderCurrent && !remoteOrderCurrent()) {
                 retireRemotePlayback();
@@ -1313,6 +1375,9 @@ export function installLocalMedia(w: any): any {
             if (typeof w.closeList === "function") w.closeList();
             w.stbSetItem("ottplayprov", "offline");
             try {
+                // Only the accepted provider handoff retires the previous
+                // playback reader; waiting for another folder must not do so.
+                catalogRevision++;
                 w.loadProv("offline");
             } finally {
                 expectedLoad = w.__ottCommandChannelLoad;
@@ -1329,7 +1394,43 @@ export function installLocalMedia(w: any): any {
                 version: 1,
             };
         },
-        remoteCatalog: function (current?: () => boolean): Promise<any> {
+        remoteCatalog: function (
+            current?: () => boolean,
+            sourceId?: string
+        ): Promise<any> {
+            if (isTauri() && sourceId) {
+                var owner = catalogRevision;
+                var cancelled = false;
+                var active = function (): boolean {
+                    return (
+                        !cancelled &&
+                        owner === catalogRevision &&
+                        (!current || current())
+                    );
+                };
+                var selected: any = getEndpoint(false, undefined, sourceId)
+                    .then(function (base) {
+                        if (!active()) return { cancelled: true, items: [] };
+                        return pollCatalog(
+                            base,
+                            null,
+                            active,
+                            true,
+                            undefined,
+                            active,
+                            sourceId
+                        );
+                    })
+                    .then(function (value) {
+                        if (!active()) return { ...value, cancelled: true };
+                        if (!value.cancelled) last = value;
+                        return value;
+                    });
+                selected.cancel = function () {
+                    cancelled = true;
+                };
+                return selected;
+            }
             if (w.__ottActiveProviderDriver?.id === "offline" && last?.scanning)
                 return Promise.reject({ localMediaCode: "catalog_loading" });
             var pending: any = list(
@@ -1338,7 +1439,8 @@ export function installLocalMedia(w: any): any {
                 },
                 undefined,
                 undefined,
-                current
+                current,
+                sourceId
             );
             var request = catalogRevision;
             pending.cancel = function () {
@@ -1350,25 +1452,67 @@ export function installLocalMedia(w: any): any {
             };
             return pending;
         },
-        remoteConnect: function (path: string): Promise<any> {
+        remoteConnect: function (
+            path: string,
+            current?: () => boolean,
+            deadline?: number
+        ): Promise<any> {
             if (!isTauri() || !nativeSourcePaths)
                 return Promise.reject({ localMediaCode: "unsupported" });
-            return tauriInvoke<any>("local_media_link_folder", {
+            var request = catalogRevision;
+            var requestId =
+                "local-link-" + Date.now() + "-" + ++remoteLinkSequence;
+            var cancelled = false;
+            var settled = false;
+            var pending: any = tauriInvoke<any>("local_media_link_folder", {
                 path: path,
-            }).then(function (value) {
-                last = null;
-                return value;
-            });
+                requestId: requestId,
+                ...(deadline === undefined
+                    ? {}
+                    : { deadlineMs: Math.floor(deadline) }),
+            }).then(
+                function (value) {
+                    settled = true;
+                    if (
+                        !cancelled &&
+                        request === catalogRevision &&
+                        (!current || current())
+                    )
+                        last = null;
+                    return value;
+                },
+                function (error) {
+                    settled = true;
+                    throw error;
+                }
+            );
+            pending.cancel = function () {
+                if (cancelled || settled) return;
+                cancelled = true;
+                try {
+                    tauriInvoke("local_media_cancel_request", {
+                        requestId: requestId,
+                    }).catch(function () {});
+                } catch (_) {
+                    // Older native shells may not expose request cancellation.
+                    // The response remains fenced by this request's lifetime.
+                }
+            };
+            return pending;
         },
         remoteSources: function (
             includePaths = false,
             path?: string,
-            current?: () => boolean
+            current?: () => boolean,
+            selection?: string
         ): Promise<any> {
             if (isTauri() && nativeSourcePaths)
                 return tauriInvoke<any>("local_media_sources", {
                     includePaths: includePaths,
                     ...(path === undefined ? {} : { path: path }),
+                    ...(selection === undefined
+                        ? {}
+                        : { selection: selection }),
                 });
             if (includePaths || path)
                 return Promise.reject(
@@ -1407,6 +1551,7 @@ export function installLocalMedia(w: any): any {
                 !last ||
                 last.cancelled ||
                 last.scanning ||
+                last.scanError ||
                 last.reconnectRequired
             )
                 return Promise.reject(
