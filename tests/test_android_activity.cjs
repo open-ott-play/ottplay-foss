@@ -420,6 +420,7 @@ try {
         "cancelCoreStreamAttempt",
         "cancelCoreSourcePreparation",
         "cancelCoreNativeHls",
+        "configureLiveRecovery",
         "destroyCoreShaka",
         "resetCoreNativeBitrate",
         "stbContinue",
@@ -428,6 +429,7 @@ try {
         "stbIsPlaying",
         "stbStop",
         "getCoreMediaBackend",
+        "sampleCoreLiveRecovery",
         "openCoreEngineLease",
         "stopCoreEngine",
     ]);
@@ -461,6 +463,7 @@ try {
         console,
         coreAvTest: null,
         coreDeviceEffects: {},
+        coreLiveRecovery: null,
         coreMediaBackend: null,
         coreSourcePreparationCancel: null,
         coreStreamAttempt: null,
@@ -472,12 +475,15 @@ try {
         setInterval() {
             return 1;
         },
+        sLiveRecoveryAttempts: 0,
+        sLiveRecoveryTimeout: 15,
         stbIsStandby: () => false,
         video,
     };
     w.window = w;
     vm.createContext(w);
     require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
+    require("./helpers/private-runtime.cjs")(w, "src/playback/live-recovery.ts");
     w.startCoreEngine = () => {
         w._playSession++;
     };
