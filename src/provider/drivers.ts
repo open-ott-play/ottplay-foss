@@ -236,6 +236,15 @@ function createOfflineDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
 ): ProviderDriver {
+    // Share exact repeated error/protocol text without changing wire values.
+    var localMessage0 = "cancelPlayback" as const,
+        localMessage1 = "Local profile configuration is unavailable" as const,
+        localMessage2 = "Local profile changed while loading" as const,
+        localMessage3 = "Local videos" as const,
+        localMessage4 = "undefined" as const,
+        localMessage5 = "dialogbox" as const,
+        localMessage6 = ".ott-spinner" as const;
+
     var disposed = false;
     var catalog = emptyDriverCatalog();
     var revision = 0;
@@ -279,7 +288,7 @@ function createOfflineDriver(
             });
             playbackCancels = [];
             var media = (window as any).__ottLocalMedia;
-            if (driverField(media, "cancelPlayback")) media.cancelPlayback();
+            if (driverField(media, localMessage0)) media.cancelPlayback();
             clearLoadTimer();
             closeLoading();
         },
@@ -311,10 +320,7 @@ function createOfflineDriver(
                               );
                           };
             } catch (_) {
-                done(
-                    emptyDriverCatalog(),
-                    "Local profile configuration is unavailable"
-                );
+                done(emptyDriverCatalog(), localMessage1);
                 return;
             }
             var started = false;
@@ -413,10 +419,7 @@ function createOfflineDriver(
                 try {
                     if (profiles) {
                         if (profileCurrent && !profileCurrent()) {
-                            recover(
-                                "Local profile changed while loading",
-                                false
-                            );
+                            recover(localMessage2, false);
                             return false;
                         }
                         value = profiles.filter(value);
@@ -424,10 +427,7 @@ function createOfflineDriver(
                     if (typeof media.playbackFilter === "function")
                         value = media.playbackFilter(value);
                 } catch (_) {
-                    recover(
-                        "Local profile configuration is unavailable",
-                        false
-                    );
+                    recover(localMessage1, false);
                     return false;
                 }
                 if (final && value.scanning) {
@@ -480,7 +480,7 @@ function createOfflineDriver(
                                 : ""),
                         category: {
                             class: 2,
-                            name: ports.translate("Local videos"),
+                            name: ports.translate(localMessage3),
                         },
                         channel_name: parts[parts.length - 1],
                         logo: "",
@@ -492,11 +492,11 @@ function createOfflineDriver(
                 });
                 if (
                     !started &&
-                    typeof document !== "undefined" &&
+                    typeof document !== localMessage4 &&
                     document.createElement
                 ) {
-                    var panel = document.getElementById("dialogbox");
-                    if (panel && panel.querySelector(".ott-spinner")) {
+                    var panel = document.getElementById(localMessage5);
+                    if (panel && panel.querySelector(localMessage6)) {
                         var progress = panel.querySelector(
                             "[data-local-scanned]"
                         );
@@ -536,7 +536,7 @@ function createOfflineDriver(
                         );
                         progress.textContent = media.progressText
                             ? media.progressText(value)
-                            : ports.translate("Local videos") +
+                            : ports.translate(localMessage3) +
                               ": " +
                               catalog.ids.length;
                     }
@@ -573,14 +573,11 @@ function createOfflineDriver(
                 if (!current()) return false;
                 try {
                     if (profileCurrent && !profileCurrent()) {
-                        recover("Local profile changed while loading", false);
+                        recover(localMessage2, false);
                         return false;
                     }
                 } catch (_) {
-                    recover(
-                        "Local profile configuration is unavailable",
-                        false
-                    );
+                    recover(localMessage1, false);
                     return false;
                 }
                 if (
@@ -612,13 +609,13 @@ function createOfflineDriver(
             function ensureLoadingControls(): void {
                 var host = window as any;
                 var panel =
-                    typeof document !== "undefined" &&
-                    document.getElementById("dialogbox");
+                    typeof document !== localMessage4 &&
+                    document.getElementById(localMessage5);
                 if (
                     !current() ||
                     started ||
                     !panel ||
-                    !panel.querySelector(".ott-spinner") ||
+                    !panel.querySelector(localMessage6) ||
                     driverField(panel.style, "display") === "none" ||
                     !host.__ottClassicScreenPort ||
                     typeof host.renderButtonHint !== "function" ||
@@ -709,7 +706,7 @@ function createOfflineDriver(
                 cancelled = true;
                 retire();
                 if (pending.cancel) pending.cancel();
-                if (resolved && driverField(media, "cancelPlayback"))
+                if (resolved && driverField(media, localMessage0))
                     media.cancelPlayback(resolved);
             };
             playbackCancels.push(cancel);
@@ -718,7 +715,7 @@ function createOfflineDriver(
                     retire();
                     resolved = value;
                     if (current()) done(value);
-                    else if (driverField(media, "cancelPlayback"))
+                    else if (driverField(media, localMessage0))
                         media.cancelPlayback(value);
                 },
                 function () {
