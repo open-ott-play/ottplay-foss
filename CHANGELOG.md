@@ -6,15 +6,13 @@
   policy, observed cap changes, error-action metadata and fragment/part flags.
   Distinguish mutable statistics from network retries, keep unavailable causes
   unknown, and preserve existing capture versions and collection limits.
+
 - Avoid rebuilding unchanged video resolution and bitrate text each second or
   while the footer is hidden. Refresh it immediately when the footer opens,
   while keeping bitrate sampling and playback status active.
 - Send Plex H.264 files explicitly identified as High 10 or greater than 8-bit
   through compatible HLS negotiation in Automatic mode. Preserve ordinary and
   incomplete AVC metadata handling and the explicit Original file preference.
-- Add a persistent 50–200% interface font scale shared across providers.
-  Resize list pages to keep enlarged text and settings actions reachable;
-  preserve independent subtitle appearance and video geometry.
 - Save VPortal and Plex video progress alongside the channel selection during
   playback, so reopening the player restores the selected film and its saved
   position across the shared TV, browser and native player builds.
@@ -103,6 +101,27 @@
 - Include tracks from selected Plex music libraries in the standard playlist.
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
+
+## [1.1.61] - 2026-10-26
+
+- Allow interface font sizes from 20% to 200%, with 100% as the default.
+  Apply changes immediately and preserve the saved size across player reloads
+  and provider changes. Resize list pages to keep enlarged text and settings
+  actions reachable; preserve independent subtitle appearance and video geometry.
+- Fade notification icons together with the banner background while keeping
+  message text fully legible until the banner exits.
+- Use the primary Ubuntu package mirror for normalization test tools in CI.
+
+### Upgrade
+
+- Install the official package for your platform, or reload the updated hosted
+  player. Existing profiles, playback settings and notification preferences are
+  preserved; the icon animation follows the existing banner timing.
+
+### Security
+
+- The package download checks, signature verification and player access controls
+  are unchanged. The CI mirror adjustment preserves Ubuntu package signatures.
 
 ## [1.1.60] - Development line
 

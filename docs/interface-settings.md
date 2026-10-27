@@ -23,10 +23,11 @@ upstream links and the earlier OTT-play lineage in English.
   saved row count stays unchanged and keyboard navigation reaches every item.
   Native builds retain their corresponding OS font families.
   **Interface settings → Font size, %** controls the shared interface text scale.
-  The default is **100%**; the allowed range is **50–200%**. The menu offers
+  The default is **100%**; the allowed range is **20–200%**. The menu offers
   ten-percent steps and preserves an exact percentage set remotely. This is an
-  application preference, so switching providers does not reset it. Subtitle
-  appearance has its own font-size control.
+  application preference, so switching providers or restarting the player does
+  not reset it. Saving applies the scale immediately. Subtitle appearance has
+  its own font-size control.
 - **Layout:** list side, reduced-video mode and scrollbar visibility remain
   independent of the theme. The preview and its opaque mask use one shared
   rectangle. Resizing recalculates both row and logo/progress geometry.
@@ -50,6 +51,27 @@ and mint `#8bddb8`. The focused list row uses `#e7f1eb` with dark text `#112119`
 and secondary text `#4a6255`. A separate edge mark identifies the current channel;
 moving focus does not transfer that mark. Colour-key cues remain visible in the
 footer. Studio has no new font download, blur requirement or focus animation.
+
+## Remote font size
+
+On an updated player, read or change the same saved preference through remote
+control:
+
+```sh
+ott f setting uiFontScale
+ott f setting uiFontScale 20
+ott f setting uiFontScale 100
+```
+
+Replace `f` with the player's alias. `20` selects 20%; `100` restores the default
+size. Any whole percentage from 20 to 200 is accepted. The menu includes 20%,
+30%, 40% and the existing ten-percent steps, and retains an exact value set
+remotely. The setting scales interface text, not the whole page or video.
+
+Older players advertise a minimum of 50%; update the player before requesting
+20%. Read the setting again after reconnecting to confirm persistence. If it
+returns 20 but the display still looks unchanged, check that the player loaded
+the updated interface assets before retrying the change.
 
 ## Regression coverage
 
