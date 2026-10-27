@@ -9,6 +9,7 @@ const {
     BUDGET,
     BASE_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
+    LOCAL_STALL_RECOVERY_ALLOWANCE,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
@@ -110,16 +111,20 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1319160, gzipBytes: 420842 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1321208, gzipBytes: 421482 });
+    assert.deepEqual(LOCAL_STALL_RECOVERY_ALLOWANCE, {
+        bytes: 2048,
+        gzipBytes: 640,
+    });
     assert.deepEqual(LOCAL_COMPATIBILITY_ALLOWANCE, {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1323640, gzipBytes: 423146 });
-    assert.deepEqual(BUDGET, { bytes: 1062760, gzipBytes: 328314 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1325688, gzipBytes: 423786 });
+    assert.deepEqual(BUDGET, { bytes: 1064808, gzipBytes: 328954 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1205560,
-        gzipBytes: 380214,
+        bytes: 1207608,
+        gzipBytes: 380854,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -577,6 +582,10 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.localStallRecoveryAllowance,
+        LOCAL_STALL_RECOVERY_ALLOWANCE
+    );
     assert.deepEqual(
         JSON.parse(
             fs.readFileSync(

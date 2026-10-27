@@ -1,0 +1,16 @@
+{
+  "sourceBase": "5547d726cea581acbf508bfc064358c020e42a94",
+  "sourceCandidate": "5210515868e0d9b980504da6579b08246378ec1f",
+  "node": "22.23.4",
+  "status": "provisional_pending_canonical_build",
+  "method": "In-memory production optimizer comparison of the changed core module; this is not linked-bundle acceptance.",
+  "isolatedDelta": {
+    "bytes": 1687,
+    "gzipBytes": 519
+  },
+  "allocation": {
+    "bytes": 2048,
+    "gzipBytes": 640
+  },
+  "scope": "Bounded local HTML5 recovery and queued input ownership checks. Count the same allocation once in entry, legacy and complete budgets. Existing provider and optional limits remain unchanged."
+}

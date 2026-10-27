@@ -370,7 +370,17 @@ const { gzipSync } = require("node:zlib");
 // identity. Allocate 2560 / 768, retaining previous native/release headroom.
 // See docs/evidence/local-source-priority-size-20261027.json. This keeps the
 // first Local command independent of an additional lazy asset download.
-const BUDGET = Object.freeze({ bytes: 1062760, gzipBytes: 328314 });
+// Bounded Local HTML5 recovery, including queued input/ownership fences.
+// Provisional feature-only allocation from the production optimizer estimate;
+// canonical web/native/mobile measurement must confirm it before release.
+const LOCAL_STALL_RECOVERY_ALLOWANCE = Object.freeze({
+    bytes: 2048,
+    gzipBytes: 640,
+});
+const BUDGET = Object.freeze({
+    bytes: 1062760 + LOCAL_STALL_RECOVERY_ALLOWANCE.bytes,
+    gzipBytes: 328314 + LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes,
+});
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -550,8 +560,8 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
-    bytes: 1205560,
-    gzipBytes: 380214,
+    bytes: 1205560 + LOCAL_STALL_RECOVERY_ALLOWANCE.bytes,
+    gzipBytes: 380214 + LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -602,7 +612,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // optional allowance (+2000/+704) once each; individual budgets stay bounded.
 // Include both feature increments once; provider and optional caps stay fixed.
 // Count independent folder scans once; preserve legacy plus optional allocation.
-const BASE_TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
+const BASE_TOTAL_BUDGET = Object.freeze({
+    bytes: 1319160 + LOCAL_STALL_RECOVERY_ALLOWANCE.bytes,
+    gzipBytes: 420842 + LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes,
+});
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
 const LOCAL_COMPATIBILITY_ALLOWANCE = Object.freeze({
@@ -750,6 +763,7 @@ function writeBundleReport(
         budget: BUDGET,
         legacyTotalBudget: LEGACY_TOTAL_BUDGET,
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
+        localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -793,6 +807,7 @@ module.exports = {
     inspectBundles,
     LEGACY_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
+    LOCAL_STALL_RECOVERY_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
