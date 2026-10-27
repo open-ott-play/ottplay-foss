@@ -61,6 +61,69 @@ function setup(provider = "plex") {
     return { c, end, pending, resolve };
 }
 
+// Every ordinary Plex library entry uses the current category/channel list.
+{
+    const { c } = setup("plex");
+    c.catIndex = 3;
+    c.primaryIndex = 7;
+    const shown = [];
+    c.channelsList = (...args) => shown.push(args);
+    c.getMediaArray = () =>
+        assert.fail("Flat Plex browsing must not fetch a legacy folder tree");
+    c.mediaList(null);
+    c.__ottMedia.open({ path: "/library/sections", title: "Plex" });
+    assert.deepEqual(shown, [
+        [3, 7],
+        [3, 7],
+    ]);
+    assert.equal(
+        c.listArray.some((row) => row.__ottMediaFilter),
+        false
+    );
+    assert(
+        !c.elements["#listDetail"]?.innerHTML.includes("mediaPlaybackControls")
+    );
+    for (const [target, kind] of [
+        [-1, "history"],
+        [-2, "favorites"],
+    ]) {
+        c.__ottMedia.open(target);
+        assert.equal(c.__ottMedia.snapshot().frame.route.kind, kind);
+        assert.equal(shown.length, 2, "Explicit collections remain accessible");
+    }
+}
+{
+    const c = fixture();
+    c.p_pref = "plex";
+    c.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: false },
+        id: "plex",
+    };
+    let late;
+    c.getMediaArray = (_target, done) => {
+        late = done;
+    };
+    c.mediaList(null);
+    assert.equal(typeof late, "function");
+    const selected = [{ channel_name: "Film channel" }];
+    c.channelsList = () => {
+        c.listArray = selected;
+        c.elements["#listDetail"].innerHTML = "Channel details";
+    };
+    c.__ottActiveProviderDriver.capabilities.mediaPlaylist = true;
+    c.mediaList(null);
+    c.mediaRecords = [
+        { stream_url: "retired.mp4", title: "Retired folder reply" },
+    ];
+    late();
+    assert.equal(
+        c.listArray,
+        selected,
+        "Retired folder completion cannot replace the channel list"
+    );
+    assert.equal(c.elements["#listDetail"].innerHTML, "Channel details");
+}
+
 // Real VPortal resolution must settle the bridge's owned loading transaction.
 function setupVPortal() {
     const { c } = setup("vportal");

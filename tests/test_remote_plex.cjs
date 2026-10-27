@@ -1653,4 +1653,147 @@ test("Plex overlay favorites persist the current stable request and reject stale
         "foreign bookmark source cannot make metadata or stream requests"
     );
 });
+test("explicit Plex source exposes its bounded ordered catalogue without changing the TV provider", () => {
+    const h = setup();
+    const provider = h.c.__ottActiveProviderDriver;
+    const channels = h.c.channels;
+    const cats = h.c.cats;
+    const ids = ["3", "1", "2"];
+    const request = h.call("play", ids);
+    h.reply();
+    h.reply(
+        ids
+            .slice()
+            .reverse()
+            .map((id) => {
+                const row = h.item(id);
+                if (id !== "2")
+                    row.Media[0].Part[0].file =
+                        (id === "3" ? "/private/media/" : "/other/media/") +
+                        "Cartoons/film.mp4";
+                return row;
+            })
+    );
+    h.resolve("3");
+    assert.equal(request.replies[0].status, "ok");
+    const source = h.c.__ottMedia.current().context;
+    assert.equal(source.title, "Plex");
+    assert.equal(source.library, null);
+    const rows = source.catalog();
+    assert.deepEqual(
+        Array.from(rows, (row) => row.request.path),
+        ids.map((id) => "/library/metadata/" + id)
+    );
+    assert.equal(rows[0].__ottMediaCollection, "Cartoons");
+    assert.equal(rows[1].__ottMediaCollection, "Cartoons");
+    assert.notEqual(
+        rows[0].__ottMediaCategories[0].id,
+        rows[1].__ottMediaCategories[0].id
+    );
+    assert.equal(
+        rows[2].__ottMediaCategories,
+        undefined,
+        "missing folder metadata does not invent a category"
+    );
+    assert(!JSON.stringify(rows).includes("/private/media/"));
+    assert(!JSON.stringify(rows).includes("/other/media/"));
+    assert(rows.every((row) => row.__ottMediaFileDirectory === undefined));
+    rows.reverse();
+    assert.equal(
+        source.catalog()[0].request.path,
+        "/library/metadata/3",
+        "the list owns its array order"
+    );
+    h.advance(40000);
+    assert.equal(
+        source.catalog().length,
+        3,
+        "catalogue ownership outlives the acknowledged request deadline"
+    );
+    assert.equal(h.c.__ottActiveProviderDriver, provider);
+    assert.equal(h.c.p_pref, "m3u");
+    assert.equal(h.c.channels, channels);
+    assert.equal(h.c.cats, cats);
+    const saved = h.c.stored.plexcfg;
+    h.c.stored.plexcfg = "changed";
+    assert.equal(
+        source.catalog().length,
+        0,
+        "changed configuration retires the catalogue"
+    );
+    h.c.stored.plexcfg = saved;
+    h.call("stop");
+    assert.equal(
+        source.catalog().length,
+        0,
+        "stopped source cannot expose its retired queue"
+    );
+});
+test("Plex library source carries the selected label and actual categories while preserving queue order", () => {
+    const h = setup();
+    // Keep existing producer-supplied category metadata alongside the library.
+    const create = h.c.__ottPlex.create;
+    h.c.__ottPlex.create = (...args) => {
+        const client = create(...args);
+        const collect = client.collectLibrary;
+        client.collectLibrary = (library, done, ...rest) =>
+            collect(
+                library,
+                (result) => {
+                    if (!result.error && result.items[0]) {
+                        result.items[0].__ottMediaCategories = [
+                            { id: "known-folder", name: "Known folder" },
+                        ];
+                        result.items[0].__ottMediaCollection =
+                            "Known collection";
+                    }
+                    done(result);
+                },
+                ...rest
+            );
+        return client;
+    };
+    const request = h.library("play", { library_id: "16" });
+    libraryInventory(h, [section("16", "Family movies", "movie")]);
+    const first = h.item("9");
+    first.Media[0].Part[0].file = "/private/movies/Animation/first.mp4";
+    h.page([first, h.item("4")]);
+    h.resolve("9");
+    assert.equal(request.replies[0].status, "ok");
+    const source = h.c.__ottMedia.current().context;
+    assert.deepEqual(plain(source.library), {
+        id: "16",
+        title: "Family movies",
+        type: "movie",
+    });
+    assert.equal(source.title, "Family movies");
+    const rows = source.catalog();
+    assert.deepEqual(
+        Array.from(rows, (row) => row.request.path),
+        ["/library/metadata/9", "/library/metadata/4"]
+    );
+    assert.equal(rows[0].__ottMediaCollection, "Known collection");
+    assert.deepEqual(plain(rows[0].__ottMediaCategories[0]), {
+        id: "known-folder",
+        name: "Known folder",
+    });
+    assert(
+        rows[0].__ottMediaCategories.some(
+            (group) =>
+                group.id === "plex:/library/sections/16/all" &&
+                group.name === "Family movies"
+        )
+    );
+    assert(
+        rows[0].__ottMediaCategories.some(
+            (group) => group.name === "Family movies / Animation"
+        )
+    );
+    assert.deepEqual(plain(rows[1].__ottMediaCategories), [
+        { id: "plex:/library/sections/16/all", name: "Family movies" },
+    ]);
+    assert.equal(rows[1].__ottMediaCollection, "Family movies");
+    assert(!JSON.stringify(rows).includes("/private/movies/"));
+    assert.deepEqual(plain(h.queue.snapshot().ids), ["9", "4"]);
+});
 console.log("PASS Plex queue: " + groups + " behavior groups");

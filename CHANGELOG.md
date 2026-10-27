@@ -121,6 +121,10 @@
 
 ## [1.1.61] - 2026-10-26
 
+- Open Plex library entry points in the standard channel list and remove legacy
+  sidebar Shuffle/Repeat controls and the trailing Filter row from Plex lists.
+  Preserve category navigation, Actions, remote queue order and repeat policy.
+
 - Allow interface font sizes from 20% to 200%, with 100% as the default.
   Apply changes immediately and preserve the saved size across player reloads
   and provider changes. Resize list pages to keep enlarged text and settings

@@ -3897,6 +3897,10 @@ function updateMediaPlaybackControls(view: any): void {
     var detail = document.getElementById("listDetail");
     var controls = detail && (detail.firstChild as HTMLElement | null);
     if (!controls || controls.id !== "mediaPlaybackControls") return;
+    if (view.canRepeat === false) {
+        detail!.removeChild(controls);
+        return;
+    }
     var shuffle = document.getElementById("mediaShuffleControl");
     var repeat = document.getElementById("mediaRepeatControl");
     if (shuffle && shuffle.parentNode !== controls) shuffle = null;
@@ -4041,7 +4045,9 @@ function showMediaList1(view?: any): void {
                             : ""
                   )) +
             w.renderButtonHint(w.keys.N2, w.strInfo, "Description", "2") +
-            (frame && frame.route.kind !== "variants"
+            (view.canFilter !== false &&
+            frame &&
+            frame.route.kind !== "variants"
                 ? w.renderButtonHint(w.keys.BLUE, "", "Filter")
                 : "") +
             (data.some(function (row) {

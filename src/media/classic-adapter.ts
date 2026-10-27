@@ -6,7 +6,9 @@ var mediaClassicPlayback: any = null;
 
 /** Installation libraries own their loader and storage independently of TV providers. */
 interface ClassicMediaSource {
+    catalog?(): any[];
     client: any;
+    library?: { id: string; title: string; type?: string } | null;
     read(key: string): string | null;
     readPersisted?(key: string): string | null;
     sourceId: string;
@@ -296,6 +298,7 @@ function classicMediaRuntime(): any {
     var checkpointItem = "";
     var rendering = false;
     var filterText = "";
+    var plexCategoryId = "system:all";
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
@@ -569,7 +572,7 @@ function classicMediaRuntime(): any {
     }
     function project(view: MediaLibraryView, render = true) {
         if (!current()) return;
-        (view as any).filter = filterText;
+        (view as any).filter = plexLibrary() ? "" : filterText;
         decorate(view);
         var frame = view.frame;
         // Provider codecs may append incremental rows to this full-page projection.
@@ -601,7 +604,7 @@ function classicMediaRuntime(): any {
         if (render && typeof w.__ottRenderMedia === "function") {
             rendering = true;
             try {
-                w.__ottRenderMedia(view);
+                if (!renderPlexChannels(view)) w.__ottRenderMedia(view);
             } finally {
                 rendering = false;
             }
@@ -610,6 +613,16 @@ function classicMediaRuntime(): any {
     }
     function load(route: MediaRoute, done: any) {
         bindScreen();
+        if (current() && context && context.catalog && plexLibrary()) {
+            var records = context.catalog();
+            done(
+                Array.isArray(records) && records.length <= 500
+                    ? copy(records)
+                    : [],
+                context.title
+            );
+            return;
+        }
         if (!current() || typeof provider !== "function") {
             done([], route.title);
             return;
@@ -685,7 +698,308 @@ function classicMediaRuntime(): any {
             w.enterPinAndSetAccess(proceed, rejected);
         else proceed();
     }
+    // Plex providers use the channel catalogue; explicit Plex sources retain
+    // their own flat list without the legacy media-browser tools.
+    function plexLibrary(): boolean {
+        return context
+            ? /^plex(?:@|$)/.test(source)
+            : !!(
+                  (w.__ottActiveProviderDriver &&
+                      w.__ottActiveProviderDriver.id === "plex") ||
+                  w.p_pref === "plex"
+              );
+    }
+    /** Render Plex through the shared channel screens without borrowing TV data. */
+    function renderPlexChannels(view: MediaLibraryView): boolean {
+        var native = w.__ottChannelListView;
+        var categories = w.__ottCategoryListView;
+        var frame = view.frame;
+        if (
+            !plexLibrary() ||
+            !frame ||
+            frame.route.kind === "variants" ||
+            !native ||
+            typeof native.show !== "function" ||
+            !categories
+        )
+            return false;
+        var rows: any = Object.create(null);
+        var entries: any = Object.create(null);
+        var all: string[] = [];
+        var groups: any[] = [
+            { id: "system:all", members: all, name: w._("All") },
+        ];
+        var byGroup: any = Object.create(null);
+        byGroup["system:all"] = groups[0];
+        frame.items.forEach(function (item: MediaLibraryItem, index: number) {
+            if (!playable(item)) return;
+            var id = "plex-row-" + index;
+            var payload = item.payload;
+            all.push(id);
+            rows[id] = {
+                __ottMediaItem: payload,
+                channel_name: classicMediaTitle(payload),
+                logo: payload.logo_30x30 || "",
+                rec: 0,
+            };
+            entries[id] = { index: index, item: item };
+            var memberships = Array.isArray(payload.__ottMediaCategories)
+                ? payload.__ottMediaCategories
+                : [];
+            if (!memberships.length && payload.__ottMediaCollection)
+                memberships = [
+                    {
+                        id: "collection:" + payload.__ottMediaCollection,
+                        name: payload.__ottMediaCollection,
+                    },
+                ];
+            var seen: any = Object.create(null);
+            memberships.forEach(function (group: any) {
+                if (
+                    !group ||
+                    typeof group.id !== "string" ||
+                    !group.id ||
+                    typeof group.name !== "string" ||
+                    !group.name
+                )
+                    return;
+                var key = "folder:" + group.id;
+                if (seen[key]) return;
+                seen[key] = true;
+                var target = byGroup[key];
+                if (!target) {
+                    target = byGroup[key] = {
+                        id: key,
+                        members: [],
+                        name: group.name,
+                    };
+                    groups.push(target);
+                }
+                target.members.push(id);
+            });
+        });
+        var groupIndex = 0;
+        groups.forEach(function (group, index) {
+            if (group.id === plexCategoryId) groupIndex = index;
+        });
+        plexCategoryId = groups[groupIndex].id;
+        var revision = view.revision;
+        var selectedFrameIndex = frame.selected;
+        var screenToken = 0;
+        var owner: any = null;
+        function valid(token?: number): boolean {
+            return (
+                current() &&
+                (token === undefined || token === screenToken) &&
+                revision === library.revision() &&
+                !!owner &&
+                owner.foreground()
+            );
+        }
+        function paint(show: () => void): void {
+            var previous = rendering;
+            rendering = true;
+            try {
+                show();
+            } finally {
+                rendering = previous;
+            }
+            owner = w.__ottClassicScreenPort.listOwner();
+            bindScreen();
+        }
+        function selected(): any {
+            return entries[groups[groupIndex].members[w.selIndex]];
+        }
+        function detail(): void {
+            if (!valid()) return;
+            var entry = selected();
+            if (entry) {
+                library.highlight(entry.index);
+                selectedFrameIndex = entry.index;
+                if (typeof native.detail === "function")
+                    native.detail(rows["plex-row-" + entry.index]);
+            }
+        }
+        function close(): void {
+            if (typeof w.closeList === "function") w.closeList(false);
+        }
+        function select(): void {
+            var entry = selected();
+            if (!entry) return;
+            library.highlight(entry.index);
+            selectedFrameIndex = entry.index;
+            var playing = mediaClassicPlayback;
+            var sequence =
+                playing && playing.runtime === api && playing.sequence;
+            if (
+                frame!.route.kind === "catalog" &&
+                sequence &&
+                sequence.explicit
+            ) {
+                var target = entry.index;
+                var candidate = sequence.items[target];
+                if (
+                    !candidate ||
+                    candidate.ref.sourceId !== entry.item.ref.sourceId ||
+                    candidate.ref.itemId !== entry.item.ref.itemId
+                )
+                    return;
+                var phase = w.__ottClassicPlayback.snapshot().phase;
+                var retry =
+                    phase === "idle" ||
+                    phase === "stopped" ||
+                    phase === "error";
+                if (target === sequence.index && !retry) close();
+                else skipPlayback(target - sequence.index, close, retry);
+            } else api.select(entry.index);
+        }
+        function showChannels(): void {
+            var token = ++screenToken;
+            var members = groups[groupIndex].members;
+            var index = members.indexOf("plex-row-" + selectedFrameIndex);
+            paint(function () {
+                native.show({
+                    categoryName: groups[groupIndex].name,
+                    channel: function (id: string) {
+                        return rows[id];
+                    },
+                    detail: function () {
+                        if (valid(token)) detail();
+                    },
+                    key: function (key: number): boolean {
+                        if (!valid(token)) return true;
+                        var keys = w.keys;
+                        if (
+                            key === keys.RETURN ||
+                            key === keys.EXIT ||
+                            key === keys.PRECH
+                        ) {
+                            close();
+                            return true;
+                        }
+                        if (key === keys.ENTER) {
+                            select();
+                            return true;
+                        }
+                        if (w.sArrowFun === 2 && key === keys.LEFT) {
+                            showCategories();
+                            return true;
+                        }
+                        if (w.sArrowFun === 2 && key === keys.RIGHT) {
+                            detail();
+                            return true;
+                        }
+                        if (
+                            key === keys.RW ||
+                            key === keys.PREV ||
+                            key === keys.FF ||
+                            key === keys.NEXT
+                        ) {
+                            var backward = key === keys.RW || key === keys.PREV;
+                            var action =
+                                key === keys.RW || key === keys.FF
+                                    ? w.sRewFun
+                                    : w.sPNFun;
+                            if (action === 1) {
+                                if (backward) showCategories();
+                                else detail();
+                                return true;
+                            }
+                            if (action === 2) {
+                                groupIndex =
+                                    (groupIndex +
+                                        (backward ? groups.length - 1 : 1)) %
+                                    groups.length;
+                                plexCategoryId = groups[groupIndex].id;
+                                showChannels();
+                                return true;
+                            }
+                        }
+                        if (
+                            key === keys.BLUE ||
+                            key === keys.PLAY ||
+                            key === keys.PAUSE
+                        ) {
+                            showCategories();
+                            return true;
+                        }
+                        if (
+                            key === keys.RED ||
+                            key === keys.INFO ||
+                            key === keys.N2
+                        ) {
+                            detail();
+                            return true;
+                        }
+                        return false;
+                    },
+                    locked: function (id: string) {
+                        return Number(rows[id].__ottMediaItem.adult) === 1;
+                    },
+                    picon: function (id: string) {
+                        return rows[id].logo;
+                    },
+                    playing: function (id: string) {
+                        var playing = mediaClassicPlayback;
+                        return !!(
+                            playing &&
+                            playing.runtime === api &&
+                            (playing.sequence && playing.sequence.explicit
+                                ? playing.sequence.index === entries[id].index
+                                : playing.ref.itemId ===
+                                  entries[id].item.ref.itemId)
+                        );
+                    },
+                    rows: members,
+                    selected: Math.max(0, index),
+                });
+            });
+            detail();
+        }
+        function showCategories(): void {
+            // Capture a cursor move even before its detail debounce fires.
+            detail();
+            var token = ++screenToken;
+            paint(function () {
+                categories.show({
+                    key: function (key: number): boolean {
+                        if (!valid(token)) return true;
+                        var keys = w.keys;
+                        if (
+                            key === keys.RETURN ||
+                            key === keys.EXIT ||
+                            key === keys.RED ||
+                            key === keys.PRECH
+                        ) {
+                            showChannels();
+                            return true;
+                        }
+                        var index =
+                            key === keys.ENTER
+                                ? w.selIndex
+                                : key >= keys.N1 && key <= keys.N9
+                                  ? key - keys.N1
+                                  : -1;
+                        if (index >= 0 && index < groups.length) {
+                            groupIndex = index;
+                            plexCategoryId = groups[index].id;
+                            showChannels();
+                            return true;
+                        }
+                        return false;
+                    },
+                    labels: groups.map(function (group) {
+                        return group.name;
+                    }),
+                    selected: groupIndex,
+                });
+            });
+        }
+        showChannels();
+        return true;
+    }
     function decorate(view: any) {
+        view.canFilter = !plexLibrary();
         view.repeat = repeat;
         view.shuffle = shuffleRequest
             ? "loading"
@@ -696,6 +1010,7 @@ function classicMediaRuntime(): any {
               ? "on"
               : "off";
         view.canRepeat = !!(
+            !plexLibrary() &&
             !view.loading &&
             view.frame &&
             view.frame.route.kind === "catalog" &&
@@ -721,6 +1036,7 @@ function classicMediaRuntime(): any {
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
             if (
+                !plexLibrary() &&
                 library.snapshot("none").frames.length === 1 &&
                 w.sFavorites !== -1
             ) {
@@ -745,7 +1061,8 @@ function classicMediaRuntime(): any {
             return items;
         },
         filter: function (items: MediaLibraryItem[], route: MediaRoute) {
-            if (route.kind === "variants") return items;
+            // Do not keep an invisible filter when revisiting a Plex list.
+            if (plexLibrary() || route.kind === "variants") return items;
             var query = normalizedFilter(filterText);
             var result = items.filter(function (item) {
                 var payload = item.payload;
@@ -963,10 +1280,15 @@ function classicMediaRuntime(): any {
             accept(null);
         }
     }
-    function skipPlayback(direction: number) {
+    function skipPlayback(
+        direction: number,
+        dispatched?: () => void,
+        retry = false
+    ) {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
-        if (!playback || playback.runtime !== api || !direction) return;
+        if (!playback || playback.runtime !== api || (!direction && !retry))
+            return;
         if (sequence && sequence.channel) {
             movePlaylistEntry(playback, direction, false);
             return;
@@ -1014,10 +1336,11 @@ function classicMediaRuntime(): any {
                 (!request || skipRequest === request) &&
                 automaticGeneration === revision &&
                 state.generation === generation + (afterEnd ? 1 : 0) &&
-                state.target &&
-                state.target.kind === "vod" &&
-                state.target.sourceId === source &&
-                state.target.channelId === playback.ref.itemId
+                (retry ||
+                    (state.target &&
+                        state.target.kind === "vod" &&
+                        state.target.sourceId === source &&
+                        state.target.channelId === playback.ref.itemId))
             );
         }
         if (!valid()) return;
@@ -1055,7 +1378,7 @@ function classicMediaRuntime(): any {
         index =
             ((index % sequence.items.length) + sequence.items.length) %
             sequence.items.length;
-        if (index === sequence.index) return;
+        if (index === sequence.index && !retry) return;
         request = {
             feedback: feedback,
             index: index,
@@ -1087,7 +1410,7 @@ function classicMediaRuntime(): any {
                     },
                     true,
                     valid,
-                    undefined,
+                    dispatched,
                     undefined,
                     finish
                 );
@@ -1750,6 +2073,7 @@ function classicMediaRuntime(): any {
                 );
         },
         filter: function () {
+            if (plexLibrary()) return;
             var admitted = api.capture();
             library.cancelPage();
             if (!admitted()) return;
@@ -1772,6 +2096,9 @@ function classicMediaRuntime(): any {
                 });
             };
             if (typeof w.showEditKey === "function") w.showEditKey();
+        },
+        hasLegacyListTools: function () {
+            return !plexLibrary();
         },
         highlight: function (index: number, revision: number) {
             if (manualLoading) return;
@@ -1796,9 +2123,57 @@ function classicMediaRuntime(): any {
             }, 0);
         },
         open: function (target: any, title?: string, label?: any) {
+            var driver = w.__ottActiveProviderDriver;
+            if (
+                target !== -1 &&
+                target !== -2 &&
+                target !== "submenu" &&
+                !(
+                    typeof target === "string" &&
+                    /^(cmd:info|alert)/.test(target)
+                ) &&
+                !context &&
+                driver &&
+                driver.id === "plex" &&
+                driver.capabilities &&
+                driver.capabilities.mediaPlaylist &&
+                typeof w.channelsList === "function"
+            ) {
+                // Retire pending legacy responses before the channel screen
+                // takes ownership, so they cannot repaint its list later.
+                api.cancel();
+                if (current()) w.channelsList(w.catIndex, w.primaryIndex);
+                return;
+            }
             if (skipRequest && skipRequest.loading && !cancelNavigationAuto())
                 return;
             var view = library.snapshot("none");
+            if (
+                context &&
+                context.catalog &&
+                plexLibrary() &&
+                target !== -1 &&
+                target !== -2 &&
+                target !== "submenu" &&
+                !(
+                    typeof target === "string" &&
+                    /^(cmd:info|alert)/.test(target)
+                )
+            ) {
+                var records = context.catalog();
+                if (
+                    !current() ||
+                    !Array.isArray(records) ||
+                    !records.length ||
+                    records.length > 500
+                )
+                    return;
+                navigate(
+                    { kind: "catalog", target: "", title: context.title },
+                    true
+                );
+                return;
+            }
             if (target === null && view.frame) {
                 if (
                     mediaClassicPlayback &&
@@ -2568,7 +2943,7 @@ function classicMediaRuntime(): any {
             collectionRequest = ticket;
             shuffleRequest = ticket;
             var received = false;
-            var query = normalizedFilter(filterText);
+            var query = plexLibrary() ? "" : normalizedFilter(filterText);
             function valid() {
                 return (
                     current() &&
@@ -2698,7 +3073,7 @@ function classicMediaRuntime(): any {
         },
         snapshot: function () {
             var view = library.snapshot();
-            view.filter = filterText;
+            view.filter = plexLibrary() ? "" : filterText;
             decorate(view);
             return view;
         },
@@ -2877,6 +3252,9 @@ function classicMediaRuntime(): any {
     },
     filter: function () {
         classicMediaRuntime().filter();
+    },
+    hasLegacyListTools: function () {
+        return classicMediaRuntime().hasLegacyListTools();
     },
     highlight: function (index: number, revision: number) {
         classicMediaRuntime().highlight(index, revision);

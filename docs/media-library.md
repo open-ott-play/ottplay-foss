@@ -80,7 +80,15 @@ it also verifies selection-guard invalidation and detached item/view results.
 The source media suite and actual bundle smoke execute this contract. These are
 deterministic allocation/work checks, not elapsed-time measurements on a TV.
 
-Title filtering is owned by each media source runtime and lasts across navigation,
+The generic media-browser tools below are retained for legacy media sources.
+Plex uses the ordinary channel list and category navigation. Direct Plex library
+entry points and explicit remote Plex queues use the same channel renderer,
+including row numbers, artwork and selection. Remote queues keep source-owned
+catalogue data and callbacks; displaying them never replaces the active TV
+provider's channels, categories or settings. The legacy filter row and sidebar
+shuffle/repeat buttons are omitted; their existing playback APIs remain available.
+
+Title filtering is owned by each eligible media source runtime and lasts across navigation,
 pagination and reopening the list. The Filter row and blue remote key use the same
 TV/native editor and SWOP input path. An empty value restores the loaded page;
 matching ignores case, repeated whitespace and the Russian е/ё distinction.

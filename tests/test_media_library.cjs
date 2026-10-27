@@ -13,6 +13,441 @@ function test(name, run) {
     });
 }
 
+test("Retired Plex channel and category descriptors cannot replace a new isolated source", () => {
+    const c = fixture();
+    c.p_pref = "m3u";
+    c.__ottActiveProviderDriver = { id: "m3u" };
+    const ambient = {
+        cats: c.cats,
+        catsArray: c.catsArray,
+        curList: c.curList,
+    };
+    const channelViews = [],
+        categoryViews = [],
+        resolutions = [];
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.__ottChannelListView = {
+        show(view) {
+            channelViews.push(view);
+            c.listArray = view.rows;
+            c.listDataArray = view.rows;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    c.__ottCategoryListView = {
+        show(view) {
+            categoryViews.push(view);
+            c.listArray = view.labels;
+            c.listDataArray = view.labels;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    const source = (id, records) => ({
+        catalog: () => records.slice(),
+        client: {
+            cancel() {},
+            load(_target, done) {
+                c.mediaRecords = records;
+                done();
+            },
+            resolve(item, done) {
+                resolutions.push(item.id);
+                done(item);
+            },
+        },
+        read: () => null,
+        sourceId: "plex@" + id,
+        title: "Plex",
+        write() {},
+    });
+    c.__ottMedia.useSource(
+        source("old", [
+            {
+                __ottMediaCategories: [
+                    { id: "old-folder", name: "Old folder" },
+                ],
+                id: 1,
+                stream_url: "old.mp4",
+                title: "Old film",
+            },
+        ])
+    );
+    c.mediaList(null);
+    const retiredChannels = channelViews.at(-1);
+    assert(retiredChannels && retiredChannels.rows.length === 1);
+    retiredChannels.key(c.keys.BLUE);
+    const retiredCategories = categoryViews.at(-1);
+    assert(retiredCategories.labels.includes("Old folder"));
+    c.__ottMedia.useSource(
+        source("new", [
+            {
+                __ottMediaCategories: [
+                    { id: "new-folder", name: "New folder" },
+                ],
+                id: 9,
+                stream_url: "new.mp4",
+                title: "New film",
+            },
+        ])
+    );
+    c.mediaList(null);
+    const current = channelViews.at(-1);
+    const shown = c.listArray;
+    const count = channelViews.length;
+    retiredChannels.key(c.keys.ENTER);
+    retiredChannels.key(c.keys.BLUE);
+    retiredCategories.key(c.keys.ENTER);
+    assert.equal(channelViews.length, count);
+    assert.equal(c.listArray, shown);
+    assert.deepEqual(resolutions, []);
+    assert.equal(c.__ottMedia.sourceId(), "plex@new");
+    c.selIndex = 0;
+    current.key(c.keys.ENTER);
+    assert.deepEqual(resolutions, [9]);
+    assert.equal(c.__ottMedia.current().payload.id, 9);
+    assert.equal(c.cats, ambient.cats);
+    assert.equal(c.catsArray, ambient.catsArray);
+    assert.equal(c.curList, ambient.curList);
+    assert.equal(c.__ottActiveProviderDriver.id, "m3u");
+    assert.equal(c.p_pref, "m3u");
+});
+
+test("Plex native category roundtrips retain highlighted identity and retire old category callbacks", () => {
+    const c = fixture();
+    const views = [],
+        categories = [];
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.__ottChannelListView = {
+        show(view) {
+            views.push(view);
+            c.listArray = view.rows;
+            c.listDataArray = view.rows;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    c.__ottCategoryListView = {
+        show(view) {
+            categories.push(view);
+            c.listArray = view.labels;
+            c.listDataArray = view.labels;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    const records = [
+        {
+            __ottMediaCategories: [{ id: "films", name: "Films" }],
+            id: 1,
+            stream_url: "film.mp4",
+            title: "Film",
+        },
+        {
+            __ottMediaCategories: [{ id: "cartoons", name: "Cartoons" }],
+            id: 2,
+            stream_url: "episode-2.mp4",
+            title: "Episode two",
+        },
+        {
+            __ottMediaCategories: [{ id: "cartoons", name: "Cartoons" }],
+            id: 3,
+            stream_url: "episode-3.mp4",
+            title: "Episode three",
+        },
+    ];
+    c.__ottMedia.useSource({
+        catalog: () => records.slice(),
+        client: {
+            cancel() {},
+            load(_target, done) {
+                c.mediaRecords = records;
+                done();
+            },
+        },
+        read: () => null,
+        sourceId: "plex@roundtrip",
+        title: "Plex",
+        write() {},
+    });
+    c.mediaList(null);
+    const all = views.at(-1);
+    c.selIndex = 2;
+    all.detail();
+    all.key(c.keys.BLUE);
+    const firstCategory = categories.at(-1);
+    c.selIndex = firstCategory.labels.indexOf("Cartoons");
+    firstCategory.key(c.keys.ENTER);
+    const filtered = views.at(-1);
+    assert.equal(filtered.selected, 1);
+    assert.equal(
+        filtered.channel(filtered.rows[filtered.selected]).__ottMediaItem.id,
+        3
+    );
+    filtered.key(c.keys.BLUE);
+    const nextCategory = categories.at(-1);
+    c.selIndex = 0;
+    nextCategory.key(c.keys.ENTER);
+    const restored = views.at(-1);
+    assert.equal(restored.selected, 2);
+    assert.equal(
+        restored.channel(restored.rows[restored.selected]).__ottMediaItem.id,
+        3
+    );
+    const count = views.length;
+    firstCategory.key(c.keys.ENTER);
+    nextCategory.key(c.keys.ENTER);
+    all.key(c.keys.BLUE);
+    assert.equal(
+        views.length,
+        count,
+        "Retired descriptors cannot reopen category or channel screens"
+    );
+    assert.equal(c.listArray, restored.rows);
+});
+
+test("Plex history and favorites selection never reuses an explicit queue index", () => {
+    for (const route of [-1, -2]) {
+        const c = fixture();
+        c.p_pref = "m3u";
+        c.__ottActiveProviderDriver = { id: "m3u" };
+        const stored = {},
+            resolutions = [],
+            views = [];
+        const records = [
+            {
+                id: 1,
+                request: { path: "/library/metadata/1" },
+                stream_url: "queue-1.mp4",
+                title: "Queue one",
+            },
+            {
+                id: 2,
+                request: { path: "/library/metadata/2" },
+                stream_url: "queue-2.mp4",
+                title: "Queue two",
+            },
+        ];
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.__ottChannelListView = {
+            show(view) {
+                views.push(view);
+                c.listArray = view.rows;
+                c.listDataArray = view.rows;
+                c.selIndex = view.selected;
+                c.listKeyHandlerFn = view.key;
+                c.showPage();
+            },
+        };
+        c.__ottCategoryListView = { show() {} };
+        c.__ottMedia.useSource({
+            catalog: () => records.slice(),
+            client: {
+                cancel() {},
+                load(_target, done) {
+                    c.mediaRecords = records;
+                    done();
+                },
+                resolve(item, done) {
+                    resolutions.push(item.id);
+                    done(item);
+                },
+            },
+            read: (key) => stored[key] || null,
+            sourceId: "plex@collections",
+            title: "Plex",
+            write: (key, value) => {
+                stored[key] = value;
+            },
+        });
+        const historical = {
+            id: 99,
+            request: { path: "/library/metadata/99" },
+            stream_url: "historical.mp4",
+            title: "Historical film",
+        };
+        c._playMedia(historical);
+        c.__ottMedia.favorite(historical);
+        c.__ottMedia.playOrderedQueue(
+            records,
+            0,
+            "queue-fixture",
+            records[0],
+            () => true,
+            () => {},
+            () => assert.fail("Queue setup failed")
+        );
+        assert.equal(c.__ottMedia.current().sequence.explicit, true);
+        c.__ottMedia.open(route);
+        const view = views.at(-1);
+        const index = view.rows.findIndex(
+            (id) => view.channel(id).__ottMediaItem.id === 99
+        );
+        assert(
+            index >= 0,
+            "Historical item is present independently from the queue"
+        );
+        c.selIndex = index;
+        view.key(c.keys.ENTER);
+        assert.equal(
+            resolutions.at(-1),
+            99,
+            "Collection selection resolves its own item rather than a queue position"
+        );
+        assert.equal(c.__ottMedia.current().payload.id, 99);
+        assert.equal(c.__ottActiveProviderDriver.id, "m3u");
+        assert.equal(c.p_pref, "m3u");
+    }
+});
+
+test("Selecting the stopped current Plex row retries without replacing its explicit queue", () => {
+    const c = fixture();
+    c.p_pref = "m3u";
+    c.__ottActiveProviderDriver = { id: "m3u" };
+    const views = [],
+        resolutions = [];
+    const records = [
+        {
+            id: 1,
+            request: { path: "/library/metadata/1" },
+            stream_url: "queue-1.mp4",
+            title: "Queue one",
+        },
+        {
+            id: 2,
+            request: { path: "/library/metadata/2" },
+            stream_url: "queue-2.mp4",
+            title: "Queue two",
+        },
+    ];
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.__ottChannelListView = {
+        show(view) {
+            views.push(view);
+            c.listArray = view.rows;
+            c.listDataArray = view.rows;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    c.__ottCategoryListView = { show() {} };
+    c.__ottMedia.useSource({
+        catalog: () => records.slice(),
+        client: {
+            cancel() {},
+            load(_target, done) {
+                c.mediaRecords = records;
+                done();
+            },
+            resolve(item, done) {
+                resolutions.push(item.id);
+                done({ ...item, stream_url: "fresh-" + item.id + ".mp4" });
+            },
+        },
+        read: () => null,
+        sourceId: "plex@retry",
+        title: "Plex",
+        write() {},
+    });
+    c.__ottMedia.playOrderedQueue(
+        records,
+        0,
+        "retry-queue",
+        records[0],
+        () => true,
+        () => {},
+        () => assert.fail("Queue setup failed")
+    );
+    const before = plain(c.__ottMedia.current().sequence);
+    c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+    c.__ottMedia.open(null);
+    c.selIndex = 0;
+    views.at(-1).key(c.keys.ENTER);
+    assert.deepEqual(
+        resolutions,
+        [1],
+        "The stopped current row resolves fresh media"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    const after = plain(c.__ottMedia.current().sequence);
+    assert.equal(after.explicit, true);
+    assert.equal(after.queueId, before.queueId);
+    assert.equal(after.repeat, before.repeat);
+    assert.deepEqual(
+        after.items.map((row) => row.ref),
+        before.items.map((row) => row.ref)
+    );
+    assert.equal(
+        c.calls.filter((row) => row[0] === "play").at(-1)[1],
+        "fresh-1.mp4"
+    );
+    assert.equal(c.p_pref, "m3u");
+});
+
+test("Plex library chrome stays linear while generic media keeps its controls", () => {
+    for (const isolated of [false, true]) {
+        const c = fixture();
+        c.sFavorites = -1;
+        c.p_pref = isolated ? "m3u" : "plex";
+        c.catalogs[""] = [
+            { id: 1, stream_url: "first.mp4", title: "First film" },
+            { id: 2, stream_url: "second.mp4", title: "Second film" },
+        ];
+        const source = (sourceId) => ({
+            client: { cancel() {}, load: c.getMediaArray },
+            read: () => null,
+            sourceId,
+            title: "Library",
+            write() {},
+        });
+        if (isolated) c.__ottMedia.useSource(source("plex@fixture"));
+        c.mediaList(null);
+        const view = c.__ottMedia.snapshot();
+        assert.equal(view.canFilter, false);
+        assert.equal(view.canRepeat, false);
+        assert.equal(view.canShuffle, false);
+        assert.deepEqual(
+            Array.from(c.listArray, (row) => row.id),
+            [1, 2],
+            "Plex lists contain playable entries rather than a trailing Filter row"
+        );
+        assert(
+            !c.elements["#listDetail"].innerHTML.includes(
+                "mediaPlaybackControls"
+            )
+        );
+        assert(!c.elements["#listPodval"].innerHTML.includes("Filter"));
+        const edits = c.calls.filter((call) => call[0] === "edit").length;
+        c.__ottMedia.filter();
+        assert.equal(
+            c.calls.filter((call) => call[0] === "edit").length,
+            edits
+        );
+        // Hiding obsolete UI must not rewrite persisted/programmatic queue policy.
+        c.__ottMedia.cycleRepeat();
+        assert.equal(c.__ottMedia.snapshot().repeat, "one");
+        assert.equal(c.__ottMedia.snapshot().canRepeat, false);
+
+        // An installation-owned generic library is independent of ambient Plex.
+        c.p_pref = "plex";
+        c.__ottMedia.useSource(source("generic-library"));
+        c.mediaList(null);
+        const generic = c.__ottMedia.snapshot();
+        assert.notEqual(generic.canFilter, false);
+        assert.equal(generic.canRepeat, true);
+        assert.equal(c.listArray.at(-1).__ottMediaFilter, true);
+        assert(c.elements["#listDetail"].innerHTML.includes("Repeat: All"));
+        assert(c.elements["#listPodval"].innerHTML.includes("Filter"));
+    }
+});
+
 test("Scalar navigation reads and highlights never copy a catalog", () => {
     require("./helpers/media-read-cost.cjs").assertMediaReadContract(fixture());
 });

@@ -2278,6 +2278,12 @@ export function mediaKeyHandler(keyCode: number): boolean {
     var w = window as any;
     var keys = w.keys;
     var item: MediaHistoryEntry | undefined = w.listArray[w.selIndex];
+    function mediaTools(): boolean {
+        return (
+            typeof w.__ottMedia.hasLegacyListTools !== "function" ||
+            w.__ottMedia.hasLegacyListTools()
+        );
+    }
     function forward(): void {
         if (item && item.playlist_url) selectMedia(w.selIndex);
         else if (typeof w.infoMedia === "function") w.infoMedia();
@@ -2309,15 +2315,19 @@ export function mediaKeyHandler(keyCode: number): boolean {
             selectMedia(w.selIndex);
             return true;
         case keys.BLUE:
+            if (!mediaTools()) return false;
             w.__ottMedia.filter();
             return true;
         case keys.N5:
+            if (!mediaTools()) return false;
             w.__ottMedia.toggleShuffle();
             return true;
         case keys.PLAY:
+            if (!mediaTools()) return false;
             w.__ottMedia.shufflePlay();
             return true;
         case keys.N9:
+            if (!mediaTools()) return false;
             w.__ottMedia.cycleRepeat();
             return true;
         case keys.N2:
@@ -2754,9 +2764,13 @@ function playingChannelIdxInCategory(catIdx: number): number {
     return 0;
 }
 
-export function bucketsList(catIdx: number, _channelIdx?: number): void {
+export function bucketsList(
+    catIdx: number,
+    _channelIdx?: number,
+    view?: any
+): void {
     var w = window as any;
-    var catsList = catsArray || [];
+    var catsList = view ? view.labels : catsArray || [];
 
     w.selIndex =
         typeof catIdx === "number" && catIdx >= 0 && catIdx < catsList.length
@@ -2778,7 +2792,7 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
     if (detailEl) detailEl.innerHTML = "";
 
     w.detailListActionFn = function () {};
-    w.listKeyHandlerFn = bucketsKeyHandler;
+    w.listKeyHandlerFn = view ? view.key : bucketsKeyHandler;
 
     var captionEl = document.getElementById("listCaption");
     if (captionEl) captionEl.innerHTML = w._("Category selection");
@@ -2791,13 +2805,13 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
             w._(w.strPlayPause || strPlayPause),
             w.strPRECH
         );
-        if (!sFavorites) {
+        if (!view && !sFavorites) {
             html += w.renderButtonHint(w.keys.YELLOW, "", w._(w.strTools), "0");
         }
         footerElement.innerHTML = html;
     }
 
-    if (!sFavorites) {
+    if (!view && !sFavorites) {
         var popupHtml =
             w.renderButtonHint(w.keys.N1, "1", w._("Move category up")) +
             "<br/>" +
@@ -2816,6 +2830,12 @@ export function bucketsList(catIdx: number, _channelIdx?: number): void {
 
     if (typeof w.showPage === "function") w.showPage();
 }
+
+(window as any).__ottCategoryListView = {
+    show: function (view: any): void {
+        bucketsList(view.selected || 0, undefined, view);
+    },
+};
 
 /**
  * Key handler for the category list (buckets) view.

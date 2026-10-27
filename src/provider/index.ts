@@ -280,8 +280,8 @@ function updateChannelListRow(chId: string): void {
  * Edge case: Returns early if channels[listArray[selIndex]] is undefined or if
  * the program has already ended (time_to < now).
  */
-function detailProg(): void {
-    var e = channels[listArray[selIndex]];
+function detailProg(sourceRow?: any): void {
+    var e = sourceRow || channels[listArray[selIndex]];
     if (e === undefined) return;
     var wdet = window as any;
     var showDescr = wdet.settings.showDescription;
@@ -395,7 +395,11 @@ function detailProg(): void {
     } else {
         listDetail.innerHTML = "";
     }
-    if (previewMode == 1 && typeof wdet.previewChId === "function")
+    if (
+        !sourceRow &&
+        previewMode == 1 &&
+        typeof wdet.previewChId === "function"
+    )
         wdet.previewChId(listArray[selIndex]);
 }
 
@@ -2057,8 +2061,8 @@ export function getChannelsArray(
  * - Parental-restricted channels get red styling.
  * - If stbPlayPip exists, a PiP button is added to the footer.
  */
-function _channelsList(catIdx: number, channelIdx: number): void {
-    if (catsArray[catIdx] === undefined) {
+function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
+    if (!view && catsArray[catIdx] === undefined) {
         infoBox(
             _(
                 "ERROR: Category #%1 does not exist!<br>Please select another category.",
@@ -2077,8 +2081,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     selIndex = channelIdx;
     (window as any).selIndex = selIndex;
     listCatIndex = catIdx;
-    listArray = cats[catsArray[listCatIndex]] || [];
+    listArray = view ? view.rows : cats[catsArray[listCatIndex]] || [];
     var wglob = window as any;
+    function channelRow(id: string): any {
+        return view ? view.channel(id) : channels[id];
+    }
     // Both typed settings and legacy s* properties read the same SettingsStore.
     // Rendering reads that state; normalization and updates belong to the store.
     var state = wglob.settings;
@@ -2146,7 +2153,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
     measureChannelRow();
 
     var channelItemFormatter = function (chId: string, idx: number) {
-        var ch = channels[chId];
+        var ch = channelRow(chId);
         if (!ch)
             return (
                 "&nbsp;&nbsp;" +
@@ -2214,13 +2221,15 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         for (var li = 0; li < labels.length; li++) {
             var label = labels[li] as HTMLElement;
             var chId = label.getAttribute("data-channel-id") || "";
-            var ch = channels[chId];
+            var ch = channelRow(chId);
             var row = label.parentElement;
             if (!ch || !row) continue;
             label.style.color = foreground;
             $(row).toggleClass(
                 "ott-playing",
-                playType >= 0 && chId === String(curList[primaryIndex])
+                view
+                    ? view.playing(chId)
+                    : playType >= 0 && chId === String(curList[primaryIndex])
             );
             var number = row.querySelector(
                 ".ott-channel-number"
@@ -2228,14 +2237,17 @@ function _channelsList(catIdx: number, channelIdx: number): void {
             if (number) {
                 number.style.flexBasis = numWidth + "px";
                 number.style.maxWidth = numWidth + "px";
-                number.style.color =
-                    sPSchannels &&
-                    parentPIN !== "*" &&
-                    parentalArray.indexOf(
-                        listArray[Number(row.getAttribute("data-idx"))]
-                    ) !== -1
-                        ? "#a00"
-                        : "";
+                number.style.color = (
+                    view
+                        ? view.locked(chId)
+                        : sPSchannels &&
+                          parentPIN !== "*" &&
+                          parentalArray.indexOf(
+                              listArray[Number(row.getAttribute("data-idx"))]
+                          ) !== -1
+                )
+                    ? "#a00"
+                    : "";
             }
             var archive = row.querySelector(
                 ".ott-channel-archive"
@@ -2258,10 +2270,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                 try {
                     var picUrl = "";
                     try {
-                        picUrl =
-                            typeof getChannelPicon === "function"
-                                ? getChannelPicon(chId) || ""
-                                : String((ch as any).logo || "");
+                        picUrl = view
+                            ? view.picon(chId)
+                            : typeof getChannelPicon === "function"
+                              ? getChannelPicon(chId) || ""
+                              : String((ch as any).logo || "");
                     } catch (_pic) {
                         picUrl = String((ch as any).logo || "");
                     }
@@ -2313,11 +2326,11 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         }
     };
     listDetail.innerHTML = "";
-    detailListAction = detailProg;
-    listKeyHandlerFn = channelsKeyHandler;
+    detailListAction = view ? view.detail : detailProg;
+    listKeyHandlerFn = view ? view.key : channelsKeyHandler;
     // Step 3 FCC: show active favorites list name in caption when on Favorites
-    var catName = catsArray[listCatIndex] || "";
-    if (catName === "Favorites" || catName === _("Favorites")) {
+    var catName = view ? view.categoryName : catsArray[listCatIndex] || "";
+    if (!view && (catName === "Favorites" || catName === _("Favorites"))) {
         var favListName = favoritesListLabel(getActiveFavoritesListName());
         if (favListName && favListName !== _("Favorites")) {
             catName = catName + " - " + favListName;
@@ -2328,7 +2341,7 @@ function _channelsList(catIdx: number, channelIdx: number): void {
         renderButtonHint(
             keys.RED,
             "",
-            channels[listArray[selIndex]]?.__ottMediaItem
+            channelRow(listArray[selIndex])?.__ottMediaItem
                 ? "Description"
                 : "EPG",
             strEPG,
@@ -2353,20 +2366,35 @@ function _channelsList(catIdx: number, channelIdx: number): void {
                     ? strPREV
                     : ""
         ) +
-        renderButtonHint(keys.YELLOW, "", "Actions", strTools, "0") +
+        (!view || view.actions
+            ? renderButtonHint(keys.YELLOW, "", "Actions", strTools, "0")
+            : "") +
         renderButtonHint(keys.N2, strInfo, "Description", "2") +
-        (typeof stbPlayPip === "function"
+        (!view && typeof stbPlayPip === "function"
             ? renderButtonHint(keys.PIP, strPip, "Open in PiP", strSTOP, "5")
             : "");
-    setPopupChannels();
+    if (!view) setPopupChannels();
+    else $("#listPopUp").html("");
     $("#listPopUp").hide();
     (window as any).listDataArray = listArray;
     previewChan =
-        showPreview && catIdx === catIndex && channelIdx === primaryIndex
+        !view &&
+        showPreview &&
+        catIdx === catIndex &&
+        channelIdx === primaryIndex
             ? { c: catIdx, ch_id: listArray[selIndex], i: channelIdx }
             : null;
     showPage();
 }
+
+(window as any).__ottChannelListView = {
+    detail: function (row: any): void {
+        detailProg(row);
+    },
+    show: function (view: any): void {
+        _channelsList(0, view.selected || 0, view);
+    },
+};
 
 // ─── First run setup wizard ───────────────────────────────────────────────────
 
