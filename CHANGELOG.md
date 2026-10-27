@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Let Local folder playback finish scanning its selected source independently
+  of other connected folders. Keep source registration responsive during large
+  library scans, preserve complete-folder shuffle on reload, and prevent stale
+  or cancelled requests from replacing newer catalog state.
+
 - Keep plain desktop Left/Right arrows on volume control while a remote Plex
   queue loads or recovers. Preserve modifier-arrow seeking, Up/Down queue
   navigation, and television remote mappings.

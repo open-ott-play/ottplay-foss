@@ -36,6 +36,19 @@ is rejected once 32 sources are registered; reconnecting an existing root remain
 available. Originals are never copied, and the operating system can still deny
 access to the directory.
 
+Folder playback waits for the complete catalog of the selected source, not for
+unrelated folders. For example, `local shuffle Movies` can start after Movies
+has been scanned while a much larger NAS folder is still being indexed. The
+same rule applies when restoring that selected folder after a player restart.
+The library manager and profile snapshots continue to distinguish a partial
+global catalog from a completed one. A partial or failed scan of Movies never
+starts a truncated shuffle queue.
+
+If a command times out, inspect `local sources` and player status before sending
+another change. An accepted connection and confirmed video playback are
+separate outcomes. A missing mount, revoked directory access or an error in the
+selected folder still needs attention even when other folders are healthy.
+
 A newly connected directory cannot contain, or be contained by, another
 connected source. The command reports this overlap without adding a partial
 source; use the existing source or disconnect that source before connecting the
@@ -58,12 +71,16 @@ directory, and returns its existing binding or an empty list. This read does not
 connect a new source or scan media. It keeps remote preset checks accurate when
 the same directory has a symlink alias or a different Windows path spelling.
 
-The native commands `local_media_capabilities`, `local_media_sources` and
-`local_media_link_folder` are restricted to the main player window and its
-existing approved application origins. The frontend checks the authenticated
+The native commands `local_media_capabilities`, `local_media_sources`,
+`local_media_link_folder` and `local_media_cancel_request` are restricted to the
+main player window and its existing approved application origins. The frontend checks the authenticated
 remote request and advertised capability before invoking them. These commands
 do not extend the loopback HTTP API, change playback themselves, or add native
 path access to browser, Android, iOS, or TV builds.
+Remote folder registration carries a request ID and deadline. Cancellation
+before registration prevents a queued request from connecting a folder later;
+after registration has committed, the binding remains available. Cancelling a
+remote request does not stop another folder's background scan.
 
 Native directory scans have a separate 100,000-entry bound per source, counting
 the selected root, subdirectories and non-media entries as well as videos. A
@@ -85,6 +102,31 @@ starting the full background scan. The first catalog can therefore contain the
 saved video even when its record would be near the end of directory enumeration.
 Playback resumes from the profile's saved position; later catalog batches do
 not reopen it. Each Tauri instance uses its own metadata and profile selection.
+
+Native catalogs also expose `sourceScans` with a source ID, generation and
+`pending`, `scanning`, `complete` or `error` state for each tracked folder. These
+states and the items belong to the same snapshot. A remote folder queue waits
+for that folder's complete generation, while library-wide operations still use
+the global scan state. Older catalogs without this field retain their existing
+whole-library completion behavior.
+
+An explicit native folder selection is scheduled independently of other
+sources. For example, a five-video Movies folder can finish while a large FFFF
+folder is still scanning. `local_media_sources` accepts an exact source ID or
+name through its optional `selection` argument, so resolving Movies does not
+probe unrelated mounted drives. The full catalog remains available throughout;
+the selected queue contains only that folder's fully scanned generation.
+An unavailable or unmounted root remains visible with `available: false` and a
+source scan error; other available sources can still play. If a readable root
+cannot be traversed completely, its source error also sets the global
+`scanError`, preventing library-wide operations from accepting a partial scan.
+
+Native app data also contains rebuildable, per-source metadata indexes. A
+missing or malformed index is rebuilt from local metadata JSON without opening
+other sources' original files. Legacy item IDs are retained during that rebuild;
+new item IDs are stable if scanning is interrupted before the index is saved.
+The original media and its individual metadata record are still validated
+before use. Index files are internal caches, not an editable configuration.
 
 The preferred lookup accepts only an existing opaque item ID, never a path. It
 is bounded so a missing or unresponsive source cannot block scan startup. An

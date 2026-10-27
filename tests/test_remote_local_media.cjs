@@ -64,6 +64,16 @@ function catalog() {
         sources: [source, other],
     };
 }
+function sourceCatalog(state = "complete", generation = 1) {
+    return {
+        ...catalog(),
+        scanning: true,
+        sourceScans: [
+            { generation, sourceId: source.id, state },
+            { generation: 1, sourceId: other.id, state: "scanning" },
+        ],
+    };
+}
 function fixture() {
     const calls = [],
         value = catalog();
@@ -290,7 +300,8 @@ test("singleflight rejects overlap without releasing the active operation", asyn
 
 function pluginFixture(options = {}) {
     let linked = !!options.connected;
-    const data = new Map(),
+    let reads = 0;
+    const data = options.data || new Map(),
         calls = [],
         snapshots = [],
         w = {
@@ -298,11 +309,18 @@ function pluginFixture(options = {}) {
             __ottCommandChannelLoad: {},
             __TAURI__: {},
             closeList() {},
-            fetch: async () => ({
-                json: async () =>
-                    snapshots.length > 1 ? snapshots.shift() : snapshots[0],
-                ok: true,
-            }),
+            fetch: async () => {
+                reads++;
+                return {
+                    json: async () =>
+                        options.catalog
+                            ? options.catalog()
+                            : snapshots.length > 1
+                              ? snapshots.shift()
+                              : snapshots[0],
+                    ok: true,
+                };
+            },
             loadProv(id) {
                 calls.push(["provider", id]);
                 this.__ottActiveProviderDriver = { id };
@@ -325,6 +343,10 @@ function pluginFixture(options = {}) {
             resolveNativePlugin: () => ({}),
             tauriInvoke: async (name, args) => {
                 calls.push([name, args]);
+                if (options.invoke) {
+                    const result = options.invoke(name, args);
+                    if (result !== undefined) return result;
+                }
                 if (name === "local_media_capabilities")
                     return {
                         absolutePaths: true,
@@ -351,7 +373,16 @@ function pluginFixture(options = {}) {
         },
     }).installLocalMedia;
     const api = install(w);
-    return { api, calls, data, snapshots, w };
+    return {
+        api,
+        calls,
+        data,
+        get reads() {
+            return reads;
+        },
+        snapshots,
+        w,
+    };
 }
 
 test("new native absolute folder waits for the complete scan and activates only its own source", async () => {
@@ -386,6 +417,424 @@ test("new native absolute folder waits for the complete scan and activates only 
     assert.equal(initial, order[0]);
     f.api.playbackOrdered();
     assert.equal(f.api.playbackOrder(), null);
+});
+
+test("a complete native folder plays and reloads while unrelated scans remain incomplete", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    f.snapshots.push(sourceCatalog());
+    const reply = await new Promise((resolve) =>
+        execute(f.w, request("shuffle"), resolve)
+    );
+    assert.equal(reply.status, "ok");
+    assert.equal(reply.data.count, 3);
+    assert.equal(f.reads, 1, "Movies does not await the unrelated FFFF scan");
+    assert.equal(
+        f.calls.find(([name]) => name === "local_media_sources")[1].selection,
+        "Movies",
+        "named lookup only probes the requested native source"
+    );
+    assert.equal(
+        f.calls.find(([name]) => name === "offline_media_endpoint")[1].sourceId,
+        source.id
+    );
+    const delivered = await f.api.list();
+    assert.equal(
+        delivered.scanning,
+        true,
+        "the cached catalogue retains global scan state"
+    );
+    assert.equal(delivered.sources.length, 2);
+    const scoped = f.api.playbackFilter(delivered);
+    const order = clone(scoped.items.map((item) => item.id));
+    assert.equal(scoped.scanning, false);
+    assert.deepEqual(order.slice().sort(), ["1", "2", "3"]);
+    assert.equal(
+        scoped.items.some((item) => item.sourceId === other.id),
+        false
+    );
+    assert.equal(f.api.completedSources(), null);
+    await assert.rejects(f.api.snapshot(), /scan to finish/);
+
+    const reloaded = pluginFixture({ connected: true, data: f.data });
+    reloaded.w.__ottActiveProviderDriver = { id: "offline" };
+    reloaded.snapshots.push(sourceCatalog());
+    const restored = await reloaded.api.playbackList();
+    assert.deepEqual(
+        clone(
+            reloaded.api.playbackFilter(restored).items.map((item) => item.id)
+        ),
+        order
+    );
+    assert.equal(
+        reloaded.calls.find(([name]) => name === "offline_media_endpoint")[1]
+            .sourceId,
+        source.id
+    );
+    await assert.rejects(reloaded.api.snapshot(), /scan to finish/);
+
+    const complete = { ...sourceCatalog(), scanning: false };
+    complete.sourceScans[1].state = "complete";
+    reloaded.snapshots.splice(
+        0,
+        reloaded.snapshots.length,
+        sourceCatalog(),
+        complete
+    );
+    let managerReady = false;
+    const manager = reloaded.api.list().then((value) => {
+        managerReady = true;
+        return value;
+    });
+    await tick();
+    assert.equal(
+        managerReady,
+        false,
+        "the manager still waits for the whole library"
+    );
+    assert.equal((await manager).sources.length, 2);
+    assert.equal((await reloaded.api.snapshot()).items.length, 4);
+    assert.equal(reloaded.api.completedSources().length, 2);
+    assert.equal(
+        reloaded.calls
+            .filter(([name]) => name === "offline_media_endpoint")
+            .at(-1)[1].sourceId,
+        undefined
+    );
+});
+
+test("waiting for a selected folder preserves the current playback reader until the provider handoff", async () => {
+    let ready = false;
+    let scanned = 0;
+    let backgroundProgress = 0;
+    let backgroundSettled = false;
+    const f = pluginFixture({
+        catalog: () => ({
+            ...sourceCatalog(ready ? "complete" : "scanning"),
+            scanned: ++scanned,
+        }),
+        connected: true,
+    });
+    await tick();
+    f.w.__ottActiveProviderDriver = { id: "offline" };
+    const background = f.api
+        .list(() => {
+            backgroundProgress++;
+            return true;
+        })
+        .then((value) => {
+            backgroundSettled = true;
+            return value;
+        });
+    await tick();
+    const pending = new Promise((resolve) =>
+        execute(f.w, request("shuffle"), resolve)
+    );
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    const progressBeforeHandoff = backgroundProgress;
+    const settledBeforeHandoff = backgroundSettled;
+    const providerBeforeHandoff = f.calls.some(([name]) => name === "provider");
+    ready = true;
+    assert.equal((await pending).status, "ok");
+    assert.equal(
+        (await background).cancelled,
+        true,
+        "accepted handoff retires the previous reader"
+    );
+    assert.ok(
+        progressBeforeHandoff >= 2,
+        "the existing reader keeps receiving its own native progress"
+    );
+    assert.equal(
+        settledBeforeHandoff,
+        false,
+        "a pending command must not cancel the current provider"
+    );
+    assert.equal(providerBeforeHandoff, false);
+    assert.equal(f.calls.filter(([name]) => name === "provider").length, 1);
+});
+
+test("only the selected source's authoritative complete scan permits a queue", async () => {
+    for (const [state, error] of [
+        ["pending", "catalog_loading"],
+        ["scanning", "catalog_loading"],
+        ["error", "catalog_unavailable"],
+    ]) {
+        const f = fixture();
+        Object.assign(f.value, sourceCatalog(state), { scanning: false });
+        const reply = await f.request(request("shuffle"));
+        assert.equal(reply.data.error, error);
+        assert.deepEqual(f.calls, []);
+    }
+    for (const scans of [
+        [],
+        [{ generation: 0, sourceId: source.id, state: "complete" }],
+        [sourceCatalog().sourceScans[0], sourceCatalog().sourceScans[0]],
+    ]) {
+        const f = fixture();
+        f.value.sourceScans = scans;
+        const reply = await f.request(request("shuffle"));
+        assert.notEqual(reply.status, "ok");
+        assert.deepEqual(f.calls, []);
+    }
+    const f = fixture();
+    Object.assign(f.value, sourceCatalog(), {
+        scanError: "Unrelated source failed",
+    });
+    assert.equal((await f.request(request("shuffle"))).status, "ok");
+    const scoped = selection
+        .createLocalPlaybackSelection(
+            {
+                stbGetItem: () =>
+                    JSON.stringify({
+                        library: "fixture",
+                        seed: 42,
+                        source: source.id,
+                        version: 1,
+                    }),
+            },
+            () => "fixture"
+        )
+        .filter(f.value);
+    assert.equal(scoped.scanning, false);
+    assert.equal(scoped.scanError, undefined);
+    assert.equal(
+        f.value.scanError,
+        "Unrelated source failed",
+        "projection never clears the global failure"
+    );
+});
+
+test("an unrelated scan error does not interrupt a pending selected source", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    const pending = {
+        ...sourceCatalog("scanning", 3),
+        scanError: "Other folder failed",
+    };
+    const complete = {
+        ...sourceCatalog("complete", 3),
+        scanError: "Other folder failed",
+    };
+    f.snapshots.push(pending, complete);
+    const reply = await new Promise((resolve) =>
+        execute(f.w, request("shuffle"), resolve)
+    );
+    assert.equal(reply.status, "ok");
+    assert.equal(f.reads, 2);
+    const projection = f.api.playbackFilter(pending);
+    assert.equal(projection.scanning, true);
+    assert.equal(projection.scanError, undefined);
+    assert.equal(projection.items.length, 0);
+    assert.equal(pending.scanError, "Other folder failed");
+    const delivered = await f.api.list();
+    assert.equal(f.api.playbackFilter(delivered).scanning, false);
+    await assert.rejects(f.api.snapshot(), /scan to finish/);
+    assert.throws(
+        () => f.api.playbackFilter(sourceCatalog("error", 3)),
+        /selected local source/
+    );
+
+    const legacy = pluginFixture({ connected: true });
+    await tick();
+    legacy.snapshots.push({
+        ...catalog(),
+        scanError: "Global failure",
+        scanning: true,
+    });
+    const failure = await new Promise((resolve) =>
+        execute(legacy.w, request("shuffle"), resolve)
+    );
+    assert.equal(failure.status, "rejected");
+    assert.equal(
+        legacy.calls.some(([name]) => name === "provider"),
+        false
+    );
+});
+
+test("changing source generation, disconnecting, or standby retires a waiting native queue", async () => {
+    for (const change of ["generation", "disconnect", "standby"]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        const initial = sourceCatalog("scanning", 2);
+        initial.items = initial.items.slice(0, 1);
+        const final = sourceCatalog(
+            "complete",
+            change === "generation" ? 3 : 2
+        );
+        if (change === "disconnect") {
+            final.sources = [other];
+            final.sourceScans = [final.sourceScans[1]];
+        }
+        f.snapshots.push(initial, final);
+        let blocked = false;
+        f.w.__ottStandby = { blocked: () => blocked };
+        const pending = new Promise((resolve) =>
+            execute(f.w, request("shuffle"), resolve)
+        );
+        await tick();
+        if (change === "standby") blocked = true;
+        const reply = await pending;
+        assert.equal(reply.status, "rejected", change);
+        assert.equal(
+            reply.data.error,
+            change === "disconnect" ? "source_unavailable" : "runtime_changed",
+            change
+        );
+        assert.equal(
+            f.calls.some(([name]) => name === "provider"),
+            false
+        );
+        assert.equal(f.data.has("localMediaPlaybackSelection"), false);
+    }
+});
+
+test("cancelled catalogue waits stop only their reader and keep the unrelated scan alive", async () => {
+    const f = pluginFixture({ connected: true });
+    await tick();
+    f.snapshots.push(sourceCatalog("scanning"), sourceCatalog());
+    let replies = 0;
+    const cancel = execute(f.w, request("shuffle"), () => replies++);
+    await tick();
+    cancel();
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    assert.equal(f.reads, 1);
+    assert.equal(replies, 0);
+    assert.equal(
+        f.calls.some(([name]) => name === "local_media_cancel_request"),
+        false
+    );
+    assert.equal(
+        f.calls.some(([name]) => name === "provider"),
+        false
+    );
+    assert.equal(f.snapshots[0].sourceScans[1].state, "scanning");
+    const retry = await new Promise((resolve) =>
+        execute(f.w, request("shuffle"), resolve)
+    );
+    assert.equal(retry.status, "ok");
+    assert.equal(f.reads, 2);
+});
+
+test("unrelated source generations do not invalidate the selected scan and legacy catalogues still wait globally", async () => {
+    for (const legacy of [false, true]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        const initial = legacy
+            ? { ...catalog(), scanning: true }
+            : sourceCatalog("scanning", 7);
+        const complete = legacy ? catalog() : sourceCatalog("complete", 7);
+        if (!legacy) complete.sourceScans[1].generation = 999;
+        f.snapshots.push(initial, complete);
+        let finished = false;
+        const pending = new Promise((resolve) =>
+            execute(f.w, request("shuffle"), resolve)
+        ).then((value) => {
+            finished = true;
+            return value;
+        });
+        await tick();
+        assert.equal(finished, false);
+        assert.equal((await pending).status, "ok");
+        assert.equal(f.reads, 2);
+    }
+});
+
+test("expired native link is cancelled by request ID and cannot erase a newer catalogue", async () => {
+    let finishLink;
+    const f = pluginFixture({
+        invoke(name) {
+            if (name === "local_media_link_folder")
+                return new Promise((resolve) => {
+                    finishLink = resolve;
+                });
+            if (name === "local_media_cancel_request") return Promise.resolve();
+        },
+    });
+    await tick();
+    const deadline = Date.now() + 40;
+    const reply = await new Promise((resolve) =>
+        execute(
+            f.w,
+            request("shuffle", { source: "/Volumes/data/Movies" }),
+            resolve,
+            deadline / 1000
+        )
+    );
+    assert.equal(reply.data.error, "catalog_loading");
+    const link = f.calls.find(
+        ([name]) => name === "local_media_link_folder"
+    )[1];
+    const cancel = f.calls.find(
+        ([name]) => name === "local_media_cancel_request"
+    )[1];
+    assert.equal(link.deadlineMs, deadline);
+    assert.equal(cancel.requestId, link.requestId);
+    assert.match(link.requestId, /^local-link-[0-9]+-[0-9]+$/);
+    f.snapshots.push(catalog());
+    await f.api.list();
+    const newer = clone(await f.api.snapshot());
+    finishLink({ endpoint: "http://localhost/catalog", source });
+    await tick();
+    assert.deepEqual(clone(await f.api.snapshot()), newer);
+    assert.equal(
+        f.calls.some(([name]) => name === "provider"),
+        false
+    );
+});
+
+test("older native cancellation rejection is contained and repeated cancellation is idempotent", async () => {
+    let finish;
+    const f = pluginFixture({
+        invoke(name) {
+            if (name === "local_media_link_folder")
+                return new Promise((resolve) => {
+                    finish = resolve;
+                });
+            if (name === "local_media_cancel_request")
+                return Promise.reject(new Error("Unknown native command"));
+        },
+    });
+    await tick();
+    const pending = f.api.remoteConnect("/Volumes/data/Movies");
+    pending.cancel();
+    pending.cancel();
+    await tick();
+    finish({ endpoint: "http://localhost/catalog", source });
+    await pending;
+    assert.equal(
+        f.calls.filter(([name]) => name === "local_media_cancel_request")
+            .length,
+        1
+    );
+});
+
+test("a late successful link cannot invalidate a newer catalogue or changed playback context", async () => {
+    for (const change of ["catalogue", "context"]) {
+        let finish;
+        let current = true;
+        const f = pluginFixture({
+            invoke(name) {
+                if (name === "local_media_link_folder")
+                    return new Promise((resolve) => {
+                        finish = resolve;
+                    });
+            },
+        });
+        await tick();
+        f.snapshots.push(catalog());
+        await f.api.list();
+        const pending = f.api.remoteConnect(
+            "/Volumes/data/Movies",
+            () => current
+        );
+        if (change === "catalogue") await f.api.list();
+        else current = false;
+        const expected = clone(await f.api.snapshot());
+        finish({ endpoint: "http://localhost/catalog", source });
+        await pending;
+        assert.deepEqual(clone(await f.api.snapshot()), expected, change);
+    }
 });
 
 test("pending local activation is scoped to its provider generation", async () => {
