@@ -269,6 +269,7 @@ export function installLocalMedia(w: any): any {
     ): Promise<any> {
         if (w.__ottStandby?.blocked())
             return Promise.reject(w.__ottStandby.error());
+        var initial: any = null;
         if (remoteHandoff) {
             var handoff = remoteHandoff;
             remoteHandoff = null;
@@ -278,10 +279,16 @@ export function installLocalMedia(w: any): any {
             ) {
                 handoff.bindCatalog();
                 last = handoff.catalog;
-                return Promise.resolve(handoff.catalog);
+                var scan = localSourceScan(handoff.catalog, sourceId || "");
+                if (
+                    scan ? scan.state === "complete" : !handoff.catalog.scanning
+                )
+                    return Promise.resolve(handoff.catalog);
+                initial = handoff.catalog;
+            } else {
+                playbackSelection.ordered();
+                remoteOrderCurrent = null;
             }
-            playbackSelection.ordered();
-            remoteOrderCurrent = null;
         }
         var request = ++catalogRevision;
         last = null;
@@ -293,6 +300,12 @@ export function installLocalMedia(w: any): any {
             updateLoading(value);
             return !onProgress || onProgress(value) !== false;
         }
+        // Publish the accepted prefix immediately. Continue the same native
+        // scan so later discoveries extend the list without replacing playback.
+        if (initial && !accept(initial))
+            return Promise.resolve({ ...initial, cancelled: true });
+        var initialScan =
+            initial && sourceId ? localSourceScan(initial, sourceId) : null;
         var pending = isNative()
             ? boundedLocalRead(function (progress) {
                   return nativeList(progress, preferredId, request);
@@ -310,7 +323,9 @@ export function installLocalMedia(w: any): any {
                             !!onProgress,
                             preferredId,
                             admitted,
-                            sourceId
+                            sourceId,
+                            null,
+                            initialScan && initialScan.generation
                         )
                       : boundedLocalRead(function (progress) {
                             return browser.list(
@@ -417,13 +432,15 @@ export function installLocalMedia(w: any): any {
         progressive: boolean,
         preferredId?: string,
         admitted?: () => boolean,
-        sourceId?: string
+        sourceId?: string,
+        firstPlayable: ((value: any) => boolean) | null = null,
+        generation = 0
     ): Promise<any> {
         var catalogUrl = base;
         var preferredSent = !preferredId || isTauri();
         var signature = "";
         var changedAt = Date.now();
-        var sourceGeneration = 0;
+        var sourceGeneration = generation;
         function read(): Promise<any> {
             if (admitted && !admitted())
                 return Promise.resolve({ cancelled: true, items: [] });
@@ -496,7 +513,15 @@ export function installLocalMedia(w: any): any {
                 }
                 if (value.scanError && !(scan && scan.generation))
                     throw new Error(value.scanError);
-                if (sourceComplete || (!value.scanning && !scan)) return value;
+                if (
+                    sourceComplete ||
+                    (!value.scanning && !scan) ||
+                    (firstPlayable &&
+                        scan &&
+                        scan.generation > 0 &&
+                        firstPlayable(value))
+                )
+                    return value;
                 if (Date.now() - changedAt >= 60000)
                     throw new Error("Local media scan stopped responding");
                 // A one-shot server catalog remains compatible. Only Tauri's
@@ -1396,7 +1421,8 @@ export function installLocalMedia(w: any): any {
         },
         remoteCatalog: function (
             current?: () => boolean,
-            sourceId?: string
+            sourceId?: string,
+            firstPlayable: ((value: any) => boolean) | null = null
         ): Promise<any> {
             if (isTauri() && sourceId) {
                 var owner = catalogRevision;
@@ -1418,7 +1444,8 @@ export function installLocalMedia(w: any): any {
                             true,
                             undefined,
                             active,
-                            sourceId
+                            sourceId,
+                            firstPlayable
                         );
                     })
                     .then(function (value) {

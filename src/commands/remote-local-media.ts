@@ -16,6 +16,8 @@ export function executeRemoteLocalMedia(
     var operation = params && params.op;
     var requestRuntime = params && params.runtime;
     var listing = operation === "sources";
+    var playableOperation = operation === "play" || operation === "shuffle";
+    var progressive = playableOperation && params.progressive === true;
     var originalDriver = w.__ottActiveProviderDriver;
     var originalLoad = w.__ottCommandChannelLoad;
     var settled = false;
@@ -132,10 +134,15 @@ export function executeRemoteLocalMedia(
             return (
                 (listing
                     ? ["op", "runtime", "include_paths", "path"]
-                    : ["op", "runtime", "source"]
+                    : playableOperation
+                      ? ["op", "runtime", "source", "progressive"]
+                      : ["op", "runtime", "source"]
                 ).indexOf(key) < 0
             );
         }) ||
+        (playableOperation &&
+            params.progressive !== undefined &&
+            typeof params.progressive !== "boolean") ||
         (listing
             ? params.include_paths !== undefined &&
               typeof params.include_paths !== "boolean"
@@ -273,7 +280,7 @@ export function executeRemoteLocalMedia(
             var source = matches[0];
             if (source.kind !== "folder" || source.available === false)
                 error("source_unavailable");
-            function result(count: number): any {
+            function result(count: number, scanning = false): any {
                 return {
                     accepted: true,
                     count: count,
@@ -284,76 +291,91 @@ export function executeRemoteLocalMedia(
                     source: row(source),
                     state: "ready",
                     version: 1,
+                    ...(progressive && scanning ? { scanning: true } : {}),
                 };
             }
             if (operation === "connect") return result(0);
-            return observe(media.remoteCatalog(current, source.id)).then(
-                function (catalog: any) {
-                    if (!current()) error("runtime_changed");
-                    var scan = localSourceScan(catalog, source.id);
-                    if (scan && scan.state === "error")
-                        error("catalog_unavailable");
-                    if (
-                        catalog.cancelled ||
-                        (scan ? scan.state !== "complete" : catalog.scanning)
-                    )
-                        error("catalog_loading");
-                    if (
-                        catalog.scanError &&
-                        (!scan || scan.state !== "complete")
-                    )
-                        error("catalog_unavailable");
-                    if (catalog.reconnectRequired) error("source_unavailable");
-                    if (
-                        !(catalog.sources || []).some(function (entry: any) {
-                            return (
-                                entry.id === source.id &&
-                                entry.kind === "folder" &&
-                                entry.available !== false
-                            );
-                        })
-                    )
-                        error("source_unavailable");
-                    var permitted = w.__ottOfflineProfiles
-                        ? w.__ottOfflineProfiles.filter(catalog)
-                        : catalog;
-                    var items = (permitted.items || []).filter(function (
-                        item: any
-                    ) {
-                        return (
-                            item.sourceId === source.id &&
-                            item.available !== false &&
-                            !!item.url
-                        );
-                    });
-                    if (!items.length) error("empty_source");
-                    if (items.length > 50000) error("too_many_items");
-                    var known: { [id: string]: boolean } = Object.create(null);
-                    items.forEach(function (item: any) {
-                        if (!text(item.id, 256) || known[item.id])
-                            error("catalog_unavailable");
-                        known[item.id] = true;
-                    });
-                    var seed =
-                        operation === "shuffle"
-                            ? Math.floor(Math.random() * 4294967295) + 1
-                            : null;
-                    items = orderLocalItems(items, seed);
-                    if (!current()) error("runtime_changed");
-                    media.remoteActivate(
-                        source.id,
-                        items.map(function (item: any) {
-                            return item.id;
-                        }),
-                        catalog,
-                        function () {
-                            return remotePlayerInfo(w).runtime === runtime;
-                        },
-                        seed
+            function playable(catalog: any): any[] {
+                var permitted = w.__ottOfflineProfiles
+                    ? w.__ottOfflineProfiles.filter(catalog)
+                    : catalog;
+                return (permitted.items || []).filter(function (item: any) {
+                    return (
+                        item.sourceId === source.id &&
+                        item.available !== false &&
+                        item.playback?.mode !== "unsupported" &&
+                        !!item.url
                     );
-                    return result(items.length);
-                }
-            );
+                });
+            }
+            return observe(
+                media.remoteCatalog(
+                    current,
+                    source.id,
+                    progressive
+                        ? function (catalog: any) {
+                              return playable(catalog).length > 0;
+                          }
+                        : null
+                )
+            ).then(function (catalog: any) {
+                if (!current()) error("runtime_changed");
+                var scan = localSourceScan(catalog, source.id);
+                if (scan && scan.state === "error")
+                    error("catalog_unavailable");
+                if (
+                    catalog.cancelled ||
+                    (scan
+                        ? !scan.generation ||
+                          (!progressive && scan.state !== "complete")
+                        : catalog.scanning)
+                )
+                    error("catalog_loading");
+                if (catalog.scanError && (!scan || !scan.generation))
+                    error("catalog_unavailable");
+                if (catalog.reconnectRequired) error("source_unavailable");
+                if (
+                    !(catalog.sources || []).some(function (entry: any) {
+                        return (
+                            entry.id === source.id &&
+                            entry.kind === "folder" &&
+                            entry.available !== false
+                        );
+                    })
+                )
+                    error("source_unavailable");
+                var scanning = scan
+                    ? scan.state !== "complete"
+                    : !!catalog.scanning;
+                var items = playable(catalog);
+                if (!items.length)
+                    error(scanning ? "catalog_loading" : "empty_source");
+                if (items.length > 50000) error("too_many_items");
+                var known: { [id: string]: boolean } = Object.create(null);
+                items.forEach(function (item: any) {
+                    if (!text(item.id, 256) || known[item.id])
+                        error("catalog_unavailable");
+                    known[item.id] = true;
+                });
+                var seed =
+                    operation === "shuffle"
+                        ? Math.floor(Math.random() * 4294967295) + 1
+                        : null;
+                items = orderLocalItems(items, seed);
+                if (!current()) error("runtime_changed");
+                media.remoteActivate(
+                    source.id,
+                    items.map(function (item: any) {
+                        return item.id;
+                    }),
+                    catalog,
+                    function () {
+                        return remotePlayerInfo(w).runtime === runtime;
+                    },
+                    seed
+                );
+                return result(items.length, scanning);
+            });
         })
         .then(
             function (data: any) {

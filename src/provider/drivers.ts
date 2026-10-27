@@ -370,6 +370,14 @@ function createOfflineDriver(
                         typeof media.resume === "function"
                     )
                         media.resume(true, error);
+                } else if (error) {
+                    // Keep the active file, but do not hide a failed background
+                    // scan behind an apparently complete, truncated queue.
+                    var host = window as any;
+                    if (typeof host.alert === "function")
+                        host.alert(
+                            ports.translate("Failed to load channel list!")
+                        );
                 }
             }
             function heartbeat(timeout = 60000): void {

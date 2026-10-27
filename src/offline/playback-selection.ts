@@ -55,6 +55,41 @@ export function createLocalPlaybackSelection(
 ): any {
     var key = "localMediaPlaybackSelection";
     var pending: string[] | null = null;
+    var orderKey = "";
+    var orderedIds: string[] = [];
+    function order(items: any[], value: any, scan: any): any[] {
+        if (items.length > 50000) throw { localMediaCode: "too_many_items" };
+        if (value.seed === null) return items;
+        var nextKey = JSON.stringify([
+            value.library,
+            value.source,
+            value.seed,
+            scan && scan.generation,
+        ]);
+        if (nextKey !== orderKey) {
+            orderKey = nextKey;
+            orderedIds = [];
+        }
+        var byId: any = Object.create(null);
+        items.forEach(function (item) {
+            byId[item.id] = item;
+        });
+        var retained: any[] = [];
+        orderedIds.forEach(function (id) {
+            if (byId[id]) {
+                retained.push(byId[id]);
+                delete byId[id];
+            }
+        });
+        var added = items.filter(function (item) {
+            return !!byId[item.id];
+        });
+        var result = retained.concat(orderLocalItems(added, value.seed));
+        orderedIds = result.map(function (item) {
+            return item.id;
+        });
+        return result;
+    }
     function read(requireContext = true): any {
         var raw = w.stbGetItem(key);
         if (!raw) return null;
@@ -81,6 +116,8 @@ export function createLocalPlaybackSelection(
         clear: function (): void {
             w.stbSetItem(key, "");
             pending = null;
+            orderKey = "";
+            orderedIds = [];
         },
         clearSource: function (id: string): boolean {
             // A disconnected binding may be selected by another saved profile.
@@ -92,6 +129,8 @@ export function createLocalPlaybackSelection(
                     "The disconnected local source selection could not be cleared"
                 );
             pending = null;
+            orderKey = "";
+            orderedIds = [];
             return true;
         },
         filter: function (catalog: any): any {
@@ -116,17 +155,19 @@ export function createLocalPlaybackSelection(
                 return (
                     item.sourceId === value.source &&
                     item.available !== false &&
+                    item.playback?.mode !== "unsupported" &&
                     !!item.url
                 );
             });
             return {
                 ...catalog,
-                // A seeded permutation needs the full set. No partial scan may
-                // publish an order that changes again under an active decoder.
+                // Playback can start from the first owned source item. The
+                // provider appends discoveries while retaining its active ID.
                 items:
-                    (value.seed !== null || scan) && scanning
+                    (scan && !scan.generation) ||
+                    (!scan && value.seed !== null && scanning)
                         ? []
-                        : orderLocalItems(items, value.seed),
+                        : order(items, value, scan),
                 scanError:
                     scan && scan.generation ? undefined : catalog.scanError,
                 scanning: scanning,
@@ -155,6 +196,8 @@ export function createLocalPlaybackSelection(
                 throw new Error(
                     "The local playback selection could not be saved"
                 );
+            orderKey = "";
+            orderedIds = [];
             pending = ids.map(function (id) {
                 return "local-" + id;
             });
