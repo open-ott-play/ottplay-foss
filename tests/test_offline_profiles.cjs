@@ -5,7 +5,7 @@ const { webcrypto } = require("node:crypto");
 const code = require("./helpers/offline-profile-source.cjs")();
 require("acorn").parse(code, { ecmaVersion: 5 });
 const clone = (v) => JSON.parse(JSON.stringify(v));
-function fixture(initial) {
+function fixture(initial, realStorage = false) {
     const data = new Map(initial);
     let catalog = {
         items: [
@@ -32,6 +32,35 @@ function fixture(initial) {
         Uint8Array,
     };
     vm.createContext(host);
+    if (realStorage) {
+        host.window = host;
+        host.document = { cookie: "" };
+        host.localStorage = {
+            getItem: (key) => (data.has(key) ? data.get(key) : null),
+            key: (index) => [...data.keys()][index] || null,
+            get length() {
+                return data.size;
+            },
+            removeItem: (key) => data.delete(key),
+            setItem: (key, value) => data.set(key, String(value)),
+        };
+        host.exports = {};
+        vm.runInContext(
+            require("typescript").transpileModule(
+                require("node:fs").readFileSync("src/storage/index.ts", "utf8"),
+                {
+                    compilerOptions: {
+                        module: require("typescript").ModuleKind.CommonJS,
+                        target: require("typescript").ScriptTarget.ES5,
+                    },
+                }
+            ).outputText,
+            host
+        );
+        host.stbGetItem = host.exports.stbGetItem;
+        host.stbSetItem = host.exports.stbSetItem;
+        host.stbDelItem = host.exports.stbDelItem;
+    }
     vm.runInContext(code, host);
     const media = {
         libraryIdentity: () => "browser:",
@@ -60,6 +89,58 @@ async function saved(f, number = 1) {
     );
     return (await f.call("profile_export", { number })).data.profile;
 }
+test("explicit profile save promotes one-off playback, export stays durable and profile load discards one-off bookmarks", async () => {
+    const f = fixture(
+        [
+            ["ottplayprov", "m3u"],
+            ["offlineplaybackJournal", "previous-bookmark"],
+        ],
+        true
+    );
+    const old = await saved(f, 1);
+    f.host.ottpStorage.localPlayback.begin(() => "stable-profile");
+    f.host.stbSetItem("localMediaPlaybackSelection", "temporary-folder");
+    f.host.stbSetItem("offlineplaybackJournal", "temporary-bookmark");
+    assert.deepEqual(
+        (await f.call("profile_export", { number: 1 })).data.profile,
+        old
+    );
+    assert.equal(f.data.get("ottplayprov"), "m3u");
+    assert.equal(
+        (await f.call("profile_save", { name: "Explicit save", number: 2 }))
+            .status,
+        "ok"
+    );
+    assert.equal(f.data.get("ottplayprov"), "offline");
+    assert.equal(f.data.get("localMediaPlaybackSelection"), "temporary-folder");
+    assert.equal(f.data.get("offlineplaybackJournal"), "temporary-bookmark");
+    assert.equal(f.host.ottpStorage.localPlayback.active(), false);
+    f.host.ottpStorage.localPlayback.begin(() => "stable-profile");
+    f.host.stbSetItem("offlineplaybackJournal", "second-one-off-bookmark");
+    assert.equal((await f.call("profile", { number: 1 })).status, "ok");
+    assert.equal(f.data.get("offlineplaybackJournal"), "temporary-bookmark");
+    assert.equal(f.data.get("ottplayprov"), "offline");
+    assert.equal(f.host.ottpStorage.localPlayback.active(), false);
+});
+
+test("a session profile transaction rejects stable foreign storage aliases without either backing changing", async () => {
+    const f = fixture([["ottplayprov", "m3u"]], true);
+    await saved(f, 1);
+    f.host.ottpStorage.localPlayback.begin(() => "profile");
+    const before = new Map(f.data);
+    const foreign = new Map(f.data);
+    f.host.stbGetItem = (key) => foreign.get(key) ?? null;
+    f.host.stbSetItem = (key, value) => foreign.set(key, value);
+    f.host.stbDelItem = (key) => foreign.delete(key);
+    assert.equal(
+        (await f.call("profile_save", { number: 2 })).status,
+        "rejected"
+    );
+    assert.deepEqual([...f.data], [...before]);
+    assert.deepEqual([...foreign], [...before]);
+    assert.equal(f.host.ottpStorage.localPlayback.active(), true);
+});
+
 test("save/export/load and same-device reimport retain sources and exact selected file without media or grants", async () => {
     const f = fixture(),
         profile = await saved(f);

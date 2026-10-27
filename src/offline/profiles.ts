@@ -194,7 +194,9 @@ export function installOfflineProfiles(w: any, media: any): any {
         values: Record<string, string>,
         previous: Record<string, string | null>,
         admitted: () => boolean,
-        rollback: () => boolean
+        rollback: () => boolean,
+        persistentSelection = false,
+        persistPlayback = false
     ): void {
         var readPort = w.stbGetItem,
             writePort = w.stbSetItem,
@@ -206,6 +208,17 @@ export function installOfflineProfiles(w: any, media: any): any {
             removePort === w.ottpStorage.del
                 ? w.ottpStorage.transaction
                 : undefined;
+        if (persistentSelection && w.ottpStorage?.localPlayback?.active()) {
+            if (!transaction)
+                throw profileFailure("Local playback storage changed");
+            transaction = function (batch: any, admitted: () => boolean) {
+                return w.ottpStorage.localPlayback.profile(
+                    batch,
+                    admitted,
+                    persistPlayback
+                );
+            };
+        }
         commitSettingsWrites(
             Object.keys(values).map(function (key) {
                 return {
@@ -542,7 +555,9 @@ export function installOfflineProfiles(w: any, media: any): any {
                                 selectedId() === selectionBefore
                             );
                         },
-                        owner
+                        owner,
+                        true,
+                        true
                     );
                     bindingBefore = values[bindingsKey];
                     before = values[key];
@@ -613,7 +628,8 @@ export function installOfflineProfiles(w: any, media: any): any {
                             media.libraryIdentity() === targetLibrary)
                     );
                 },
-                owner
+                owner,
+                action === "profile"
             );
             before = writes[key];
             library = targetLibrary;

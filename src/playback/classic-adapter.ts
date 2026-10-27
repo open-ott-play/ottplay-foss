@@ -1154,6 +1154,19 @@ function classicPlaybackProgramme(): any {
         return !!journal && journal.read().writable;
     },
     checkpoint: classicPlaybackCheckpoint,
+    checkpointNow: function (): void {
+        var w = classicPlaybackHost();
+        if (
+            w.__ottCoreTransport &&
+            w.stbPlay === w.__ottCoreTransport.play &&
+            typeof w.__ottCoreBackend === "function"
+        ) {
+            var backend = w.__ottCoreBackend();
+            var handle = backend && backend.current();
+            if (handle && handle.active()) handle.sample();
+        }
+        classicPlaybackCheckpoint(classicPlaybackSnapshot(), true);
+    },
     command: classicPlaybackCommand,
     context: function (): any {
         var observation = classicPlaybackObservation();

@@ -337,7 +337,8 @@ function pluginFixture(options = {}) {
                     ok: true,
                 };
             },
-            loadProv(id) {
+            loadProv(id, session) {
+                if (session) session();
                 calls.push(["provider", id]);
                 this.__ottActiveProviderDriver = { id };
                 this.__ottCommandChannelLoad = {};
@@ -347,6 +348,23 @@ function pluginFixture(options = {}) {
             stbGetItem: (key) => data.get(key) || "",
             stbSetItem: (key, value) => data.set(key, value),
         };
+    w.localStorage = {
+        getItem: (key) => (data.has(key) ? data.get(key) : null),
+        key: (index) => [...data.keys()][index] || null,
+        get length() {
+            return data.size;
+        },
+        removeItem: (key) => data.delete(key),
+        setItem: (key, value) => data.set(key, String(value)),
+    };
+    const storage = load(
+        "src/storage/index.ts",
+        {},
+        { document: { cookie: "" }, window: w }
+    );
+    w.stbGetItem = storage.stbGetItem;
+    w.stbSetItem = storage.stbSetItem;
+    w.stbDelItem = storage.stbDelItem;
     const install = load("src/plugins/local-media.ts", {
         "../commands/remote-feature": {
             loadRemoteFeature() {
@@ -440,7 +458,33 @@ test("new native absolute folder waits for the complete scan and activates only 
     assert.equal(f.api.playbackOrder(), null);
 });
 
-test("a complete native folder plays and reloads while unrelated scans remain incomplete", async () => {
+test("stale Local session finishing cannot promote or cancel a synchronously replacing command", async () => {
+    for (const during of ["checkpoint", "dispose"]) {
+        const f = pluginFixture();
+        await tick();
+        f.api.remoteActivate(source.id, ["1", "2", "3"], catalog(), () => true);
+        const replace = () =>
+            f.api.remoteActivate(
+                other.id,
+                ["other-item"],
+                catalog(),
+                () => true
+            );
+        if (during === "checkpoint")
+            f.w.__ottClassicPlayback = { checkpointNow: replace };
+        else f.w.__ottActiveProviderDriver.dispose = replace;
+        assert.equal(f.api.finishSession(during === "checkpoint"), false);
+        assert.equal(f.w.ottpStorage.localPlayback.active(), true);
+        const selection = JSON.parse(
+            f.w.stbGetItem("localMediaPlaybackSelection")
+        );
+        assert.equal(selection.source, other.id);
+        assert.equal(f.data.get("localMediaPlaybackSelection"), undefined);
+        assert.equal(f.w.__ottActiveProviderDriver.id, "offline");
+    }
+});
+
+test("a complete native folder plays and explicitly promoted Local choice reloads while unrelated scans remain incomplete", async () => {
     const f = pluginFixture({ connected: true });
     await tick();
     f.snapshots.push(sourceCatalog());
@@ -477,6 +521,7 @@ test("a complete native folder plays and reloads while unrelated scans remain in
     assert.equal(f.api.completedSources(), null);
     await assert.rejects(f.api.snapshot(), /scan to finish/);
 
+    assert.equal(f.api.finishSession(true), true);
     const reloaded = pluginFixture({ connected: true, data: f.data });
     reloaded.w.__ottActiveProviderDriver = { id: "offline" };
     reloaded.snapshots.push(sourceCatalog());
@@ -1258,10 +1303,10 @@ test("local selection is scoped to the active saved profile binding", async () =
     f.api.remoteActivate(source.id, ["1", "2", "3"], catalog(), () => true);
     assert.equal(f.api.playbackFilter(catalog()).items.length, 3);
     slot = 1;
-    assert.equal(f.api.playbackFilter(catalog()).items.length, 4);
+    assert.throws(() => f.api.playbackFilter(catalog()), /session changed/);
     slot = 0;
     binding = "replacement";
-    assert.equal(f.api.playbackFilter(catalog()).items.length, 4);
+    assert.throws(() => f.api.playbackFilter(catalog()), /session changed/);
 });
 
 test("asynchronous driver mount binds the intended local order across the catalogue generation change", async () => {
@@ -1326,7 +1371,7 @@ test("expired native scans stop polling before their next request and never acti
     );
 });
 
-test("13,611-file shuffle is complete, reproducible after reload and stores only a compact seed", async () => {
+test("13,611-file shuffle is complete and reproducible within its session with only a compact seed", async () => {
     const f = pluginFixture();
     await tick();
     const value = catalog();
@@ -1349,9 +1394,10 @@ test("13,611-file shuffle is complete, reproducible after reload and stores only
         first.items.every((item) => item.sourceId === source.id),
         true
     );
-    const persisted = JSON.parse(f.data.get("localMediaPlaybackSelection"));
+    assert.equal(f.data.has("localMediaPlaybackSelection"), false);
+    const persisted = JSON.parse(f.w.stbGetItem("localMediaPlaybackSelection"));
     assert.ok(persisted.seed > 0);
-    assert.ok(f.data.get("localMediaPlaybackSelection").length < 256);
+    assert.ok(f.w.stbGetItem("localMediaPlaybackSelection").length < 256);
     const reloaded = selection.createLocalPlaybackSelection(
         f.w,
         () => persisted.library

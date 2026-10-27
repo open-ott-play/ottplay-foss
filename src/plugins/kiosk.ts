@@ -78,7 +78,15 @@ export function createKiosk(w: any): any {
     function save(next: any): boolean {
         try {
             var value = JSON.stringify(next);
-            w.stbSetItem(key, value);
+            var media = w.__ottLocalMedia;
+            if (
+                next &&
+                media?.finishSession &&
+                w.ottpStorage?.localPlayback?.active()
+            ) {
+                if (!media.finishSession(true, { key: key, value: value }))
+                    return false;
+            } else w.stbSetItem(key, value);
             if (w.stbGetItem(key) !== value) return false;
         } catch (_) {
             return false;

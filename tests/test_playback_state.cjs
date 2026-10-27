@@ -143,6 +143,41 @@ function fixture(managed = false) {
     return c;
 }
 
+// Session entry/promotion checkpoints sample the current backend into the real model first.
+{
+    const c = fixture(true);
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.api.command({ channelId: 101, position: 120, type: "live" });
+    c.openBackend();
+    c.video.duration = 600;
+    c.video.readyState = 4;
+    c.video.paused = false;
+    c.video.currentTime = 123;
+    c.emit("playing");
+    const previous = c.api.snapshot().position;
+    c.video.currentTime = 139;
+    assert.equal(
+        c.api.snapshot().position,
+        previous,
+        "model has not observed the latest decoder position yet"
+    );
+    c.__ottCoreBackend = () => c.getCoreMediaBackend();
+    c.api.checkpointNow();
+    assert.equal(c.api.snapshot().position, 139);
+    assert.equal(
+        c.api.bookmark().playTime,
+        139,
+        "forced checkpoint persists the freshly sampled real model position"
+    );
+    c.video.currentTime = 147;
+    c.api.checkpointNow();
+    assert.equal(
+        c.api.bookmark().playTime,
+        147,
+        "explicit promotion takes another fresh sample"
+    );
+}
+
 // Quitting during a pending local startup seek must keep the requested offset.
 {
     const c = fixture(true);

@@ -45,6 +45,17 @@ export interface StorageAdapter {
     getI(key: string, defaultValue?: number): number;
     has(key: string): boolean;
     hasValue(key: string): boolean;
+    localPlayback?: {
+        active(): boolean;
+        capture(): () => boolean;
+        begin(identity: () => string): () => void;
+        end(persist?: boolean, extra?: { key: string; value: string }): boolean;
+        profile(
+            writes: JournalWrite[],
+            current: () => boolean,
+            playback?: boolean
+        ): boolean;
+    };
     reset(): void;
     set(key: string, value: string): void;
     setI(key: string, value: number): void;
@@ -758,10 +769,179 @@ function createCookieAdapter(canPersist?: () => boolean): StorageAdapter {
  * The detection test mirrors `client_can.localstorage` from the original
  * player.js. A single `try/catch` wraps `window.localStorage` access.
  */
+/** One-off Local playback never overwrites the next launch's selection. */
+export function installLocalPlaybackSession(
+    adapter: StorageAdapter
+): StorageAdapter {
+    var read = adapter.get,
+        write = adapter.set,
+        remove = adapter.del;
+    var transaction = adapter.transaction;
+    var session: {
+        values: Record<string, string | null>;
+        identity: () => string;
+        captured: string;
+    } | null = null;
+    function playbackKey(key: string): boolean {
+        return /^(?:ottplayprovs?|localMediaPlaybackSelection|localMediaPendingFile|offline(?:primaryIndex|catIndex|prevArr|continueWatch|lastcid|sSortAbc|playbackJournal(?:Source|:[^\r\n]{1,1024})?))$/.test(
+            key
+        );
+    }
+    function current(): boolean {
+        return !!session && session.identity() === session.captured;
+    }
+    function guarded(key: string): boolean {
+        if (!session || !playbackKey(key)) return false;
+        if (!current()) throw new Error("Local playback session changed");
+        return true;
+    }
+    adapter.get = function (key) {
+        return guarded(key) &&
+            Object.prototype.hasOwnProperty.call(session!.values, key)
+            ? session!.values[key]
+            : read(key);
+    };
+    adapter.set = function (key, value) {
+        if (guarded(key)) session!.values[key] = String(value);
+        else write(key, value);
+    };
+    adapter.del = function (key) {
+        if (guarded(key)) session!.values[key] = null;
+        else remove(key);
+    };
+    adapter.transaction = function (writes, admitted) {
+        var shadowed =
+            session &&
+            writes.some(function (entry) {
+                return playbackKey(entry.key);
+            });
+        if (!shadowed) return !!transaction && transaction(writes, admitted);
+        if (
+            !current() ||
+            !admitted() ||
+            writes.some(function (entry) {
+                return (
+                    !playbackKey(entry.key) ||
+                    adapter.get(entry.key) !== entry.before
+                );
+            })
+        )
+            return false;
+        var values = { ...session!.values };
+        writes.forEach(function (entry) {
+            values[entry.key] = entry.after;
+        });
+        if (!current() || !admitted()) return false;
+        session!.values = values;
+        return true;
+    };
+    adapter.localPlayback = {
+        active: function () {
+            return !!session;
+        },
+        begin: function (identity) {
+            var owner = {
+                captured: identity(),
+                identity: identity,
+                values: { ottplayprov: "offline" },
+            };
+            session = owner;
+            return function () {
+                if (session === owner) session = null;
+            };
+        },
+        capture: function () {
+            var owner = session;
+            return function () {
+                return !!owner && session === owner;
+            };
+        },
+        end: function (persist = false, extra) {
+            if (!session) return false;
+            if (!persist) {
+                session = null;
+                return true;
+            }
+            if (!current() || !transaction) return false;
+            var owner = session;
+            var values = { ...owner.values };
+            if (extra) values[extra.key] = extra.value;
+            var writes = Object.keys(values).map(function (key) {
+                return { after: values[key], before: read(key), key: key };
+            });
+            if (
+                !transaction(writes, function () {
+                    return session === owner && current();
+                })
+            )
+                return false;
+            session = null;
+            return true;
+        },
+        profile: function (writes, admitted, playback = false) {
+            if (!session || !current() || !transaction) return false;
+            var owner = session;
+            var saved = playback
+                ? Object.keys(owner.values)
+                      .filter(function (key) {
+                          return (
+                              key !== "ottplayprov" &&
+                              !writes.some(function (entry) {
+                                  return entry.key === key;
+                              })
+                          );
+                      })
+                      .map(function (key) {
+                          return {
+                              after: owner.values[key],
+                              before: read(key),
+                              key: key,
+                          };
+                      })
+                : [];
+            var batch = saved.concat(writes).concat([
+                {
+                    after: "offline",
+                    before: read("ottplayprov"),
+                    key: "ottplayprov",
+                },
+            ]);
+            if (
+                !transaction(batch, function () {
+                    return session === owner && admitted();
+                })
+            )
+                return false;
+            session = null;
+            return true;
+        },
+    };
+    var reset = adapter.reset;
+    adapter.reset = function () {
+        session = null;
+        reset();
+    };
+    adapter.getI = function (key, fallback = 0) {
+        var value = parseInt(adapter.get(key) || "", 10);
+        return isNaN(value) ? fallback : value;
+    };
+    adapter.has = function (key) {
+        return adapter.get(key) !== null;
+    };
+    adapter.hasValue = function (key) {
+        var value = adapter.get(key);
+        return value !== null && value !== "";
+    };
+    adapter.setI = function (key, value) {
+        adapter.set(key, String(value));
+    };
+    return adapter;
+}
 export const storage: StorageAdapter = (() => {
-    var adapter = createLocalStorageAdapter();
+    var adapter = installLocalPlaybackSession(createLocalStorageAdapter());
     var clear = adapter.clear;
     adapter.clear = function (): void {
+        adapter.localPlayback!.end();
         var playback = (window as any).__ottClassicPlayback;
         if (playback) playback.suspendPersistence();
         var guide = (window as any).__ottClassicGuide;

@@ -970,6 +970,30 @@ export function installLocalMedia(w: any): any {
             })
         );
     }
+    function finishSession(
+        persist: boolean,
+        extra?: { key: string; value: string }
+    ): boolean {
+        var session = w.ottpStorage?.localPlayback;
+        if (!session?.active()) return true;
+        var current = session.capture();
+        var driver = w.__ottActiveProviderDriver;
+        var context = playbackIntentContext();
+        if (w.__ottClassicPlayback) w.__ottClassicPlayback.checkpointNow();
+        if (
+            !current() ||
+            driver !== w.__ottActiveProviderDriver ||
+            context !== playbackIntentContext()
+        )
+            return false;
+        if (persist) return session.end(true, extra);
+        if (w.__ottClassicPlayback) w.__ottClassicPlayback.cancel();
+        w.__ottActiveProviderDriver = null;
+        if (driver) driver.dispose();
+        if (!current() || w.__ottActiveProviderDriver) return false;
+        retireRemotePlayback();
+        return session.end(false);
+    }
     function activate(): void {
         if (locked()) return;
         if (!playable()) {
@@ -977,6 +1001,8 @@ export function installLocalMedia(w: any): any {
             return;
         }
         var selected = importedSelection;
+        if (!finishSession(true))
+            throw new Error("Could not save Local playback selection");
         finishLoading();
         opened = false;
         revision++;
@@ -1177,6 +1203,7 @@ export function installLocalMedia(w: any): any {
             last = null;
         },
         failureMessage: failureMessage,
+        finishSession: finishSession,
         importFiles: importFiles,
         isPlaybackUrl: function (url: string) {
             if (localCall(compatibility, "c", [url], 1)) return true;
@@ -1259,7 +1286,8 @@ export function installLocalMedia(w: any): any {
                 !admitted() ||
                 locked() ||
                 settingsLocked() ||
-                typeof w.loadProv !== "function"
+                typeof w.loadProv !== "function" ||
+                !w.ottpStorage?.localPlayback
             )
                 throw { localMediaCode: "restricted" };
             var generation = ++remoteGeneration;
@@ -1286,7 +1314,6 @@ export function installLocalMedia(w: any): any {
                     return false;
                 }
             }
-            playbackSelection.select(source, ids, seed);
             if (!ownsActivation()) throw { localMediaCode: "runtime_changed" };
             remoteOrderCurrent = ownsActivation;
             nextImportSelection = "local-" + ids[0];
@@ -1304,12 +1331,24 @@ export function installLocalMedia(w: any): any {
             opened = false;
             revision++;
             if (typeof w.closeList === "function") w.closeList();
-            w.stbSetItem("ottplayprov", "offline");
             try {
                 // Only the accepted provider handoff retires the previous
                 // playback reader; waiting for another folder must not do so.
                 catalogRevision++;
-                w.loadProv("offline");
+                w.loadProv("offline", function () {
+                    if (!ownsActivation())
+                        throw { localMediaCode: "runtime_changed" };
+                    var rollback = w.ottpStorage.localPlayback.begin(
+                        playbackIntentContext
+                    );
+                    try {
+                        playbackSelection.select(source, ids, seed);
+                        return rollback;
+                    } catch (error) {
+                        rollback();
+                        throw error;
+                    }
+                });
             } finally {
                 expectedLoad = w.__ottCommandChannelLoad;
                 activating = false;

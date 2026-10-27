@@ -98,6 +98,7 @@ function runRemoteLocalMedia(
                     state: "ready",
                     version: 1,
                     ...(progressive && scanning ? { scanning: true } : {}),
+                    ...(params.session === true ? { session: true } : {}),
                 };
             }
             if (operation === "connect") return result(0);
