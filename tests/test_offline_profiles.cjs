@@ -582,3 +582,22 @@ test("rejected in-progress binding never grants access after later ambiguous com
     assert.equal(f.data.has("offlineProfileBindings"), false);
     assert.equal(scans, 0);
 });
+
+test("compatibility leases and server credentials stay out of portable profiles", async () => {
+    const f = fixture();
+    f.media.libraryIdentity = () =>
+        "browser:https://server.test/private-library-token";
+    f.catalog().items[0].playback = {
+        mode: "compatibility",
+        prepareUrl: "https://server.test/private-library-token/prepare",
+    };
+    f.catalog().items[0].url =
+        "https://server.test/private-library-token/compat/private-lease/index.m3u8";
+    const profile = await saved(f);
+    assert.equal(profile.selected.name, "sub/movie.mp4");
+    assert(
+        !/private-library-token|private-lease|prepareUrl|playback|https:/.test(
+            JSON.stringify(profile)
+        )
+    );
+});

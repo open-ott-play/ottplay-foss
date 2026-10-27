@@ -1,5 +1,7 @@
 //! Local media: private server imports and native-picked, read-only source references.
 //! HTTP requests select opaque IDs only. Explicit native commands may link folders.
+#[path = "offline_media_compat.rs"]
+mod compatibility_routes;
 use axum::{
     body::{Body, Bytes},
     extract::{DefaultBodyLimit, Path, Query, State},
@@ -8,6 +10,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use compatibility_routes::{compat_cancel, compat_playlist, compat_prepare, compat_segment};
 use futures_util::{stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -94,6 +97,7 @@ pub struct Library {
     scan: Arc<Mutex<ScanState>>,
     background: crate::background_work::BackgroundWork,
     read_only_paths: Option<Arc<Vec<PathBuf>>>,
+    compatibility: Option<crate::local_compatibility::Manager>,
     #[cfg(test)]
     original_checks: Arc<std::sync::Mutex<Vec<PathBuf>>>,
     #[cfg(test)]
@@ -323,6 +327,8 @@ pub struct Item {
     pub source: &'static str,
     #[serde(rename = "sourceId")]
     pub source_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playback: Option<crate::local_compatibility::Playback>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -344,6 +350,7 @@ pub struct Catalog {
     pub scan_error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preferred: Option<Preferred>,
+    pub compatibility: crate::local_compatibility::Capability,
 }
 #[derive(Deserialize)]
 struct ImportQuery {
@@ -474,6 +481,7 @@ impl Library {
             scan: Arc::new(Mutex::new(ScanState::default())),
             background: Default::default(),
             read_only_paths: None,
+            compatibility: None,
             #[cfg(test)]
             original_checks: Arc::default(),
             #[cfg(test)]
@@ -560,7 +568,47 @@ impl Library {
     /// Only native instances attach a player gate. A shared server keeps its own
     /// independent default gate and cannot be suspended by a connected player.
     pub fn with_background(mut self, background: crate::background_work::BackgroundWork) -> Self {
+        self.compatibility = None;
         self.background = background;
+        self
+    }
+    /// Existing tools only. The input bridge is private, loopback-only, and
+    /// exposes the original authenticated range reader, never a URL proxy.
+    pub async fn with_compatibility_from_env(mut self) -> Self {
+        let Ok(work) = self.background.enter() else {
+            return self;
+        };
+        let Some(tools) = crate::local_compatibility::discover(&work).await else {
+            return self;
+        };
+        let Ok(listener) = tokio::net::TcpListener::bind("127.0.0.1:0").await else {
+            return self;
+        };
+        let Ok(address) = listener.local_addr() else {
+            return self;
+        };
+        let token = format!(
+            "{}{}",
+            uuid::Uuid::new_v4().simple(),
+            uuid::Uuid::new_v4().simple()
+        );
+        let mut input = self.clone();
+        input.token = token.clone();
+        input.compatibility = None;
+        let router = Router::new()
+            .route("/_input/:token/:id", get(media))
+            .with_state(input);
+        if work.check().is_err() {
+            return self;
+        }
+        let bridge = tokio::spawn(async move {
+            let _ = axum::serve(listener, router).await;
+        });
+        self.compatibility = Some(crate::local_compatibility::Manager::new(
+            tools,
+            format!("http://{address}/_input/{token}"),
+            bridge,
+        ));
         self
     }
     pub fn endpoint(&self) -> String {
@@ -571,11 +619,27 @@ impl Library {
             return Router::new()
                 .route("/offline-media/:token", get(catalog).options(preflight))
                 .route("/offline-media/:token/:id", get(media).options(preflight))
+                .route(
+                    "/offline-media/:token/compat/:id/prepare",
+                    post(compat_prepare).options(preflight),
+                )
+                .route(
+                    "/offline-media/:token/compat/:id/cancel",
+                    post(compat_cancel).options(preflight),
+                )
+                .route(
+                    "/offline-media/:token/compat/:id/:lease/:name",
+                    get(compat_playlist).options(preflight),
+                )
+                .route(
+                    "/offline-media/:token/compat/:id/:lease/:track/:segment",
+                    get(compat_segment).options(preflight),
+                )
                 .layer(axum::middleware::map_response(
                     |mut response: Response| async move {
                         response.headers_mut().insert(
                             "access-control-allow-methods",
-                            HeaderValue::from_static("GET, HEAD, OPTIONS"),
+                            HeaderValue::from_static("GET, HEAD, POST, OPTIONS"),
                         );
                         response
                     },
@@ -589,6 +653,22 @@ impl Library {
         let remove_item_library = self.clone();
         Router::new()
             .route("/offline-media/:token", get(catalog).options(preflight))
+            .route(
+                "/offline-media/:token/compat/:id/prepare",
+                post(compat_prepare).options(preflight),
+            )
+            .route(
+                "/offline-media/:token/compat/:id/cancel",
+                post(compat_cancel).options(preflight),
+            )
+            .route(
+                "/offline-media/:token/compat/:id/:lease/:name",
+                get(compat_playlist).options(preflight),
+            )
+            .route(
+                "/offline-media/:token/compat/:id/:lease/:track/:segment",
+                get(compat_segment).options(preflight),
+            )
             .route(
                 "/offline-media/:token/import",
                 post(import).options(preflight),
@@ -2408,6 +2488,9 @@ impl Library {
         );
         let work = self.background.enter().map_err(anyhow::Error::msg)?;
         anyhow::ensure!(valid_id(id), "Invalid source ID");
+        if let Some(manager) = &self.compatibility {
+            manager.cancel_source(id);
+        }
         let source = {
             let _binding = work
                 .run(self.mutation.lock())
@@ -2530,6 +2613,8 @@ impl Library {
             // Availability is checked when metadata enters a scan snapshot.
             // Media requests always validate the original again before serving.
             let size = r.size;
+            let available = available
+                && (!matches!(r.extension.as_str(), "avi" | "mkv") || self.compatibility.is_some());
             items.push(Item {
                 id: r.id.clone(),
                 directory: r
@@ -2540,6 +2625,13 @@ impl Library {
                     .and_then(|name| name.to_str())
                     .unwrap_or("")
                     .to_string(),
+                playback: matches!(r.extension.as_str(), "avi" | "mkv").then(|| {
+                    crate::local_compatibility::Playback::new(
+                        &base,
+                        &r.id,
+                        self.compatibility.is_some(),
+                    )
+                }),
                 name: r.name,
                 size,
                 mime: r.mime,
@@ -2610,6 +2702,9 @@ impl Library {
         }
         work.check()?;
         Ok(Catalog {
+            compatibility: crate::local_compatibility::Capability::new(
+                self.compatibility.is_some(),
+            ),
             available: true,
             items,
             storage: if self.read_only_paths.is_some() {
@@ -2652,6 +2747,8 @@ fn media_type(extension: &str) -> Option<&'static str> {
     match extension {
         "mp4" | "m4v" => Some("video/mp4"),
         "webm" => Some("video/webm"),
+        "avi" => Some("video/x-msvideo"),
+        "mkv" => Some("video/x-matroska"),
         "ogv" => Some("video/ogg"),
         "mp3" => Some("audio/mpeg"),
         "m4a" => Some("audio/mp4"),
@@ -2668,7 +2765,7 @@ fn cors(response: &mut Response) {
     );
     h.insert(
         "access-control-allow-headers",
-        HeaderValue::from_static("Content-Type, Range"),
+        HeaderValue::from_static("Content-Type, Range, X-OTT-Playback-Lease"),
     );
     h.insert(
         "access-control-expose-headers",
@@ -2872,6 +2969,9 @@ async fn remove(l: Library, Path((token, id)): Path<(String, String)>) -> Respon
         })?;
         let metadata_path = l.metadata_path(&id)?;
         let record = l.record(&id).await?;
+        if let Some(manager) = &l.compatibility {
+            manager.cancel_item(&id);
+        }
         if record.linked_path.is_none() {
             fs::remove_file(l.path(&record).await?)
                 .await

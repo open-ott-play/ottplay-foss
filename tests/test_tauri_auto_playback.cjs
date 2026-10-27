@@ -1944,6 +1944,68 @@ test("only normalized initial masters extend actual HLS manifest policy", () => 
     }
 });
 
+test("local compatibility VOD uses HLS with source-time resume even under a native-file preference", () => {
+    const url = "https://library.test/compat/item/lease/index.m3u8";
+    const original = "https://library.test/offline-media/item";
+    const cancelled = [];
+    const f = fixture({
+        globals: {
+            __ottLocalMedia: {
+                cancelPlayback: (value) => cancelled.push(value),
+                compatibilityPlayback: () => true,
+                isPlaybackUrl: () => true,
+                playbackSourceUrl: () => original,
+                preparePlayback: () => new Promise(() => {}),
+            },
+        },
+        savedPlayerMode: 0,
+    });
+    f.w.__ottActiveProviderDriver = {
+        id: "offline",
+        resolveStream: (value, done) => {
+            done(value);
+            return () => {};
+        },
+    };
+    const lease = f.w.openCoreEngineLease(
+        { lane: "main", position: 3600, sourceUrl: original, url },
+        () => {}
+    );
+    assert.equal(f.players.length, 1);
+    assert.equal(f.players[0].url, url);
+    assert.equal(f.players[0].config.startPosition, 3600);
+    assert.equal(f.w.__ottCoreCompatibilityUrl, url);
+    assert.equal(
+        f.w.playerMode,
+        0,
+        "compatibility does not rewrite the saved preference"
+    );
+    f.w.video.readyState = 1;
+    f.w.video.duration = 7321.5;
+    f.w.video.currentTime = 120;
+    let resumedPreparation = 0;
+    f.w.__ottLocalMedia.preparePlayback = () => {
+        resumedPreparation++;
+        return new Promise(() => {});
+    };
+    lease.pause();
+    lease.resume();
+    assert.equal(
+        resumedPreparation,
+        1,
+        "Resume replaces a possibly expired idle lease"
+    );
+    lease.seek(5000);
+    assert.equal(
+        lease.sample().position,
+        5000,
+        "quit during prepare retains the pending source-time seek"
+    );
+    f.w.stopCoreEngine();
+    assert(cancelled.length >= 2);
+    assert(cancelled.every((value) => value === url));
+});
+
 let failures = 0;
 for (const [name, callback] of cases) {
     try {

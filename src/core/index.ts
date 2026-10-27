@@ -322,6 +322,59 @@ function seekCoreMedia(
     )
         return;
     cancelCoreSeek();
+    var local = (window as any).__ottLocalMedia;
+    var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
+    if (
+        !startup &&
+        compatibilityUrl &&
+        local?.compatibilityPlayback?.(compatibilityUrl)
+    ) {
+        var seekCancelled = false;
+        var sourceUrl = local.playbackSourceUrl(compatibilityUrl);
+        _corePendingSeekPosition = position;
+        video.pause();
+        if (hlsInstance?.stopLoad) hlsInstance.stopLoad();
+        local.cancelPlayback(compatibilityUrl);
+        var preparing = local.preparePlayback(compatibilityUrl, function () {
+            return !seekCancelled && session === _playSession;
+        });
+        var cancel = function () {
+            seekCancelled = true;
+            if (preparing.cancel) preparing.cancel();
+        };
+        _corePendingSeek = cancel;
+        _corePendingSeekPosition = position;
+        preparing.then(
+            function (url: string) {
+                if (seekCancelled || session !== _playSession) return;
+                _corePendingSeek = null;
+                _corePendingSeekPosition = null;
+                if (hlsInstance) {
+                    hlsInstance.destroy();
+                    hlsInstance = null;
+                    initialHlsBufferPolicy = null;
+                }
+                destroyCoreShaka();
+                coreNativeAttached = false;
+                video!.removeAttribute("src");
+                startCorePlayback(
+                    url,
+                    position,
+                    session,
+                    sourceUrl,
+                    false,
+                    true
+                );
+            },
+            function () {
+                if (seekCancelled || session !== _playSession) return;
+                _corePendingSeek = null;
+                _corePendingSeekPosition = null;
+                coreStreamFailure("network", undefined, position);
+            }
+        );
+        return;
+    }
     if (hlsInstance) {
         hlsInstance.config.startPosition = position;
         if (!hlsInstance.hasEnoughToStart) {
@@ -1233,6 +1286,13 @@ function startCoreEngine(
     sourceUrl = url,
     transient = false
 ): void {
+    var previousCompatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
+    if (previousCompatibilityUrl && previousCompatibilityUrl !== url) {
+        (window as any).__ottLocalMedia?.cancelPlayback?.(
+            previousCompatibilityUrl
+        );
+        (window as any).__ottCoreCompatibilityUrl = "";
+    }
     cancelCoreStreamAttempt();
     coreNativeAttached = false;
     _coreTransientPlayback = transient;
@@ -1305,9 +1365,15 @@ function startCoreEngine(
                     plexHint === "file" ||
                     !!(
                         (window as any).__ottLocalMedia &&
-                        (window as any).__ottLocalMedia.isPlaybackUrl(url)
+                        (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
+                        !(
+                            window as any
+                        ).__ottLocalMedia.compatibilityPlayback?.(url)
                     ),
-                !transient && plexHint === "mse"
+                (!transient && plexHint === "mse") ||
+                    !!(window as any).__ottLocalMedia?.compatibilityPlayback?.(
+                        url
+                    )
             );
         };
         function prepare(resolved: string): void {
@@ -1338,7 +1404,10 @@ function startCoreEngine(
             if (!settled && typeof cancel === "function")
                 coreSourcePreparationCancel = cancel;
         }
-        if (url.indexOf("ottplay-stalker:") === 0) {
+        if (
+            url.indexOf("ottplay-stalker:") === 0 ||
+            (window as any).__ottLocalMedia?.compatibilityPlayback?.(url)
+        ) {
             var driver = (window as any).__ottActiveProviderDriver;
             if (!driver || !driver.resolveStream) {
                 coreStreamFailure("auth");
@@ -1421,8 +1490,10 @@ function coreNormalizedMse(url: string): boolean {
     }
 }
 
-/** Only the registered initial master may wait for bounded server preparation. */
+/** Only registered preparation routes extend the initial loading deadline. */
 function coreNormalizedTimeout(url: string): number {
+    if ((window as any).__ottLocalMedia?.compatibilityPlayback?.(url))
+        return 35000;
     return coreNormalizedMse(url) && url.indexOf("/play/") > 0 ? 75000 : 0;
 }
 function coreHlsConfig(config: any, url: string): any {
@@ -1452,6 +1523,8 @@ function startCorePlayback(
     engineLoaded = false
 ): void {
     forceMse = forceMse || (!nativeFile && coreNormalizedMse(originalUrl));
+    if ((window as any).__ottLocalMedia?.compatibilityPlayback?.(url))
+        (window as any).__ottCoreCompatibilityUrl = url;
     if (
         !engineLoaded &&
         !nativeFile &&
@@ -2009,6 +2082,10 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 function stopCoreEngine(): void {
+    var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
+    (window as any).__ottCoreCompatibilityUrl = "";
+    if (compatibilityUrl)
+        (window as any).__ottLocalMedia?.cancelPlayback?.(compatibilityUrl);
     if ((window as any).__ottPlaybackFeedback)
         (window as any).__ottPlaybackFeedback.stop();
     coreNativeAttached = false;
@@ -2559,10 +2636,22 @@ export function stbSubtitleExists(): number {
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
 function startCorePipEngine(url: string, engineLoaded = false): void {
+    var previousCompatibilityUrl = (window as any).__ottCorePipCompatibilityUrl;
+    if (previousCompatibilityUrl && previousCompatibilityUrl !== url)
+        (window as any).__ottLocalMedia?.cancelPlayback?.(
+            previousCompatibilityUrl
+        );
+    (window as any).__ottCorePipCompatibilityUrl = (
+        window as any
+    ).__ottLocalMedia?.compatibilityPlayback?.(url)
+        ? url
+        : "";
     // Loading an optional engine is part of this same lease, not another play.
     // Advancing twice makes the original lease unable to pause or dispose it.
     var session = engineLoaded ? _corePipSession : ++_corePipSession;
-    var normalized = coreNormalizedMse(url);
+    var normalized =
+        coreNormalizedMse(url) ||
+        !!(window as any).__ottLocalMedia?.compatibilityPlayback?.(url);
     var requestedMode = normalized
         ? 1
         : playerMode === 3
@@ -2570,7 +2659,8 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
           : playerMode;
     var local = !!(
         (window as any).__ottLocalMedia &&
-        (window as any).__ottLocalMedia.isPlaybackUrl(url)
+        (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
+        !(window as any).__ottLocalMedia.compatibilityPlayback?.(url)
     );
     if (
         !engineLoaded &&
@@ -2590,7 +2680,8 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
             /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url)) ||
         !!(
             (window as any).__ottLocalMedia &&
-            (window as any).__ottLocalMedia.isPlaybackUrl(url)
+            (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
+            !(window as any).__ottLocalMedia.compatibilityPlayback?.(url)
         );
     if (_corePipAutoCancel) _corePipAutoCancel();
     _corePipAutoCancel = null;
@@ -2696,6 +2787,10 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
 
 /** Stop PiP, cancel its callbacks, and release the decoder and buffering OSD. */
 function stopCorePipEngine(): void {
+    var compatibilityUrl = (window as any).__ottCorePipCompatibilityUrl;
+    (window as any).__ottCorePipCompatibilityUrl = "";
+    if (compatibilityUrl)
+        (window as any).__ottLocalMedia?.cancelPlayback?.(compatibilityUrl);
     corePipNativeAttached = false;
     videoPip!.loop = false;
     _corePipSession++;
@@ -3588,7 +3683,10 @@ export function getCoreMediaBackend(): any {
         open: openCoreEngineLease,
         resolve: function (url: string, done: (url: string | null) => void) {
             var driver = (window as any).__ottActiveProviderDriver;
-            if (url.indexOf("ottplay-stalker:") === 0) {
+            if (
+                url.indexOf("ottplay-stalker:") === 0 ||
+                (window as any).__ottLocalMedia?.compatibilityPlayback?.(url)
+            ) {
                 if (driver && driver.resolveStream)
                     return driver.resolveStream(url, done);
                 done(null);
@@ -3640,7 +3738,7 @@ function openCoreEngineLease(
     }
     if (pip && coreDeviceEffects.pip && !cssOnly) {
         stopCorePipEngine();
-        return coreDeviceEffects.pip.open(
+        var nativePipLease = coreDeviceEffects.pip.open(
             request,
             function (playbackUrl: string) {
                 // Keep request identity on the original source while the fallback
@@ -3652,6 +3750,17 @@ function openCoreEngineLease(
                 return openCoreEngineLease(fallbackRequest, event, true);
             }
         );
+        var disposePipLease = nativePipLease.dispose;
+        nativePipLease.dispose = function (replaced?: boolean) {
+            disposePipLease(replaced);
+            if (
+                (window as any).__ottLocalMedia?.compatibilityPlayback?.(
+                    request.url
+                )
+            )
+                (window as any).__ottLocalMedia.cancelPlayback(request.url);
+        };
+        return nativePipLease;
     }
     var media = pip ? videoPip : video;
     // Optional device engines retain the same request ownership and UI commands.
@@ -3669,6 +3778,12 @@ function openCoreEngineLease(
         var disposeEngine = optionalEngine.dispose;
         optionalEngine.dispose = function (replaced?: boolean) {
             disposeEngine(replaced);
+            if (
+                (window as any).__ottLocalMedia?.compatibilityPlayback?.(
+                    request.url
+                )
+            )
+                (window as any).__ottLocalMedia.cancelPlayback(request.url);
             if (!pip) setCoreDemoMute(false);
         };
         return optionalEngine;
@@ -3805,6 +3920,12 @@ function openCoreEngineLease(
             if (!pip && (window as any).__ottPlaybackFeedback)
                 (window as any).__ottPlaybackFeedback.stop();
             media.pause();
+            if (!pip && (window as any).__ottCoreCompatibilityUrl) {
+                if (hlsInstance?.stopLoad) hlsInstance.stopLoad();
+                (window as any).__ottLocalMedia?.cancelPlayback?.(
+                    (window as any).__ottCoreCompatibilityUrl
+                );
+            }
         },
         resume: function () {
             if (!active() || !media) return;
@@ -3813,6 +3934,19 @@ function openCoreEngineLease(
                 media.readyState < 3 ||
                 (window as any).forcePlay === false;
             (window as any).forcePlay = true;
+            if (
+                !pip &&
+                waitingForPlayback &&
+                (window as any).__ottCoreCompatibilityUrl
+            ) {
+                seekCoreMedia(
+                    _corePendingSeekPosition !== null
+                        ? _corePendingSeekPosition
+                        : media.currentTime,
+                    session
+                );
+                return;
+            }
             var feedback = !pip && (window as any).__ottPlaybackFeedback;
             // Repeated Play on ready media emits no new playing event. It must
             // neither create a deadline nor extend an existing buffering wait.
@@ -3825,7 +3959,12 @@ function openCoreEngineLease(
             return {
                 duration: media ? media.duration : NaN,
                 paused: !media || media.paused,
-                position: media ? media.currentTime : 0,
+                position:
+                    !pip && _corePendingSeekPosition !== null
+                        ? _corePendingSeekPosition
+                        : media
+                          ? media.currentTime
+                          : 0,
                 ready: media ? media.readyState : 0,
             };
         },

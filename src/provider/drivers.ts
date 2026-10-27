@@ -236,6 +236,7 @@ function createOfflineDriver(
     var revision = 0;
     var loadTimer: any = null;
     var loadingOwner: any = null;
+    var playbackCancels: Array<() => void> = [];
     function closeLoading(): void {
         var current = loadingOwner;
         loadingOwner = null;
@@ -268,6 +269,12 @@ function createOfflineDriver(
         dispose: function () {
             disposed = true;
             revision++;
+            playbackCancels.slice().forEach(function (cancel) {
+                cancel();
+            });
+            playbackCancels = [];
+            var media = (window as any).__ottLocalMedia;
+            if (media?.cancelPlayback) media.cancelPlayback();
             clearLoadTimer();
             closeLoading();
         },
@@ -430,7 +437,12 @@ function createOfflineDriver(
                     );
                 }
                 (value.items || []).forEach(function (item: any) {
-                    if (item.available === false || !item.url) return;
+                    if (
+                        item.available === false ||
+                        !item.url ||
+                        item.playback?.mode === "unsupported"
+                    )
+                        return;
                     var id = "local-" + item.id;
                     if (catalog.channels[id]) return;
                     catalog.ids.push(id);
@@ -664,6 +676,47 @@ function createOfflineDriver(
         },
         logo: function () {
             return "";
+        },
+        resolveStream: function (url, done) {
+            var media = (window as any).__ottLocalMedia;
+            var cancelled = false,
+                resolved = "";
+            var current = function () {
+                return !cancelled && active();
+            };
+            var pending = media?.preparePlayback
+                ? media.preparePlayback(url, current)
+                : Promise.resolve(url);
+            function retire(): void {
+                playbackCancels = playbackCancels.filter(function (entry) {
+                    return entry !== cancel;
+                });
+            }
+            var cancel = function () {
+                cancelled = true;
+                retire();
+                if (pending.cancel) pending.cancel();
+                if (resolved && media?.cancelPlayback)
+                    media.cancelPlayback(resolved);
+            };
+            playbackCancels.push(cancel);
+            pending.then(
+                function (value: string) {
+                    retire();
+                    resolved = value;
+                    if (current()) done(value);
+                    else if (media?.cancelPlayback) media.cancelPlayback(value);
+                },
+                function () {
+                    retire();
+                    if (current()) {
+                        done(null);
+                        if (media?.compatibilityFailure)
+                            media.compatibilityFailure();
+                    }
+                }
+            );
+            return cancel;
         },
         saveCredentials: function () {},
         stream: function (id) {
