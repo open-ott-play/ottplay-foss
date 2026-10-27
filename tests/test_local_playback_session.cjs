@@ -197,3 +197,139 @@ function boot(saved = new Map()) {
 console.log(
     "PASS Local playback RAM session: restart, aliases, durable export, profile/kiosk promotion, identity, reset, atomic failure"
 );
+// Preview protects only the selected cursor; explicit library metadata remains durable.
+for (const commit of [false, true]) {
+    const key = "offlinechannelLibrary:offline";
+    const original = {
+        groups: ["old"],
+        locks: {},
+        selected: { itemId: "local-saved" },
+        version: 2,
+    };
+    const f = boot(new Map([[key, JSON.stringify(original)]]));
+    const preview = f.adapter.localPlayback.preview(() => "library");
+    f.adapter.set(
+        key,
+        JSON.stringify({
+            ...original,
+            groups: ["edited"],
+            selected: { itemId: "local-first" },
+        })
+    );
+    assert.equal(JSON.parse(f.saved.get(key)).selected.itemId, "local-saved");
+    assert.deepEqual(JSON.parse(f.saved.get(key)).groups, ["edited"]);
+    const before = f.adapter.get(key);
+    const after = JSON.stringify({
+        ...JSON.parse(before),
+        groups: ["transaction-edit"],
+        locks: { one: true },
+    });
+    assert.equal(
+        f.adapter.transaction([{ after, before, key }], () => true),
+        true
+    );
+    assert.equal(JSON.parse(f.saved.get(key)).selected.itemId, "local-saved");
+    assert.equal(JSON.parse(f.adapter.get(key)).selected.itemId, "local-first");
+    assert.deepEqual(JSON.parse(f.saved.get(key)).groups, ["transaction-edit"]);
+    assert.deepEqual(JSON.parse(f.saved.get(key)).locks, { one: true });
+    if (commit) assert.equal(preview.commit(), true);
+    else preview.discard();
+    const restored = JSON.parse(boot(f.saved).adapter.get(key));
+    assert.equal(
+        restored.selected.itemId,
+        commit ? "local-first" : "local-saved"
+    );
+    assert.deepEqual(restored.groups, ["transaction-edit"]);
+    assert.deepEqual(restored.locks, { one: true });
+}
+console.log(
+    "PASS preview channel-library metadata survives direct writes, native transactions, discard and selected commit"
+);
+
+// Explicit sort changes persist while a startup cursor is protected.
+{
+    const key = "offlinesSortAbc";
+    const f = boot(new Map([[key, "0"]]));
+    let preview = f.adapter.localPlayback.preview(() => "library");
+    f.adapter.set(key, "1");
+    preview.discard();
+    assert.equal(boot(f.saved).adapter.get(key), "1");
+    preview = f.adapter.localPlayback.preview(() => "library");
+    assert.equal(
+        f.adapter.transaction([{ after: "0", before: "1", key }], () => true),
+        true
+    );
+    preview.discard();
+    assert.equal(boot(f.saved).adapter.get(key), "0");
+    const discard = f.adapter.localPlayback.begin(() => "remote");
+    f.adapter.set(key, "1");
+    assert.equal(f.adapter.get(key), "1");
+    discard();
+    assert.equal(boot(f.saved).adapter.get(key), "0");
+}
+console.log(
+    "PASS preview sort changes remain durable; remote session sort stays isolated"
+);
+// A competing metadata writer must never become a fresh CAS baseline mid-write.
+for (const operation of ["transaction", "commit", "profile"]) {
+    const key = "offlinechannelLibrary:offline";
+    const original = {
+        groups: ["old"],
+        locks: {},
+        selected: { itemId: "local-saved" },
+        version: 2,
+    };
+    const competitor = JSON.stringify({
+        ...original,
+        groups: ["competitor"],
+        locks: { protected: true },
+    });
+    const f = boot(new Map([[key, JSON.stringify(original)]]));
+    const preview = f.adapter.localPlayback.preview(() => "library");
+    f.adapter.set(
+        key,
+        JSON.stringify({ ...original, selected: { itemId: "local-first" } })
+    );
+    const before = f.adapter.get(key);
+    const after = JSON.stringify({
+        ...JSON.parse(before),
+        groups: ["transaction"],
+    });
+    const getItem = f.host.localStorage.getItem;
+    let reads = 0;
+    f.host.localStorage.getItem = (readKey) => {
+        if (readKey === key && ++reads === 2) f.saved.set(key, competitor);
+        return getItem(readKey);
+    };
+    let accepted = false;
+    try {
+        accepted =
+            operation === "transaction"
+                ? f.adapter.transaction([{ after, before, key }], () => true)
+                : operation === "commit"
+                  ? preview.commit()
+                  : f.adapter.localPlayback.profile(
+                        [
+                            {
+                                after: "new-profile",
+                                before: null,
+                                key: "offlineProfiles",
+                            },
+                        ],
+                        () => true,
+                        true
+                    );
+    } catch (error) {
+        assert.match(String(error), /changed|mismatch|current/i);
+    }
+    assert.equal(accepted, false, operation);
+    assert.equal(reads >= 2, true, operation);
+    assert.equal(f.saved.get(key), competitor, operation);
+    assert.equal(JSON.parse(f.adapter.get(key)).selected.itemId, "local-first");
+    assert.equal(f.saved.get("offlineProfiles"), undefined);
+    preview.discard();
+    assert.equal(f.saved.get(key), competitor, operation);
+}
+console.log(
+    "PASS preview transaction, commit and profile reject concurrent library metadata edits"
+);

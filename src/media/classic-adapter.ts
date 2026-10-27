@@ -2257,6 +2257,11 @@ function classicMediaRuntime(): any {
             var plex = plexPresentation();
             if (plex) plex.remember(item.payload);
             return {
+                automatic: !!(
+                    start &&
+                    start.sequence &&
+                    start.sequence.background
+                ),
                 channel: start && start.sequence && start.sequence.channel,
                 item: item.payload,
                 ref: item.ref,

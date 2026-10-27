@@ -50,6 +50,7 @@ interface MediaEngineLease {
 }
 interface MediaBackendPorts {
     admitted?(): boolean;
+    beforeIntent?(): boolean | void;
     beforeSeek?(position: number): void;
     clearInterval(timer: any): void;
     context(): MediaBackendContext | null;
@@ -154,6 +155,27 @@ function createMediaBackend(ports: MediaBackendPorts) {
         }
         function current() {
             return alive && lanes[lane] === handle;
+        }
+        // Only public transport intent commits a provisional startup preview.
+        // Engine observations and initial seeks/pauses never enter this hook.
+        function beforeIntent(): boolean {
+            if (previewEvent || lane !== "main" || !ports.beforeIntent)
+                return true;
+            var previousEngine = engine;
+            var before = ports.context();
+            if (ports.beforeIntent() === false) return false;
+            var after = ports.context();
+            var admitted = !after || !after.active || after.active();
+            return (
+                admitted &&
+                current() &&
+                engine === previousEngine &&
+                (before
+                    ? !!after &&
+                      before.generation === after.generation &&
+                      before.kind === after.kind
+                    : !after)
+            );
         }
         function domainCurrent() {
             var now = ports.context();
@@ -329,6 +351,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 (!next || !context || next.kind !== context.kind)
             )
                 return;
+            if (!beforeIntent()) return;
             if (lane === "main" && ports.beforeSeek) ports.beforeSeek(value);
             var afterSeekGuard = ports.context();
             if (
@@ -498,7 +521,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             id: ++sequence,
             lane: lane,
             pause: function () {
-                if (!handle.active() || !engine) return;
+                if (!handle.active() || !engine || !beforeIntent()) return;
                 phase = "paused";
                 updateTimer();
                 command("pause");
@@ -530,7 +553,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     });
                 };
             },
-            restart: function () {
+            restart: function (manual = true) {
                 if (
                     lane !== "main" ||
                     !context ||
@@ -540,6 +563,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     phase === "stopped"
                 )
                     return null;
+                if (manual && !beforeIntent()) return null;
                 observe();
                 if (!handle.active() || !engine) return null;
                 var sample = engine.sample();
@@ -762,9 +786,9 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 },
             };
         },
-        restart: function () {
+        restart: function (manual = true) {
             var handle = lanes.main;
-            return handle ? handle.restart() : null;
+            return handle ? handle.restart(manual) : null;
         },
         seek: function (value: number) {
             var operation = seeks.main;

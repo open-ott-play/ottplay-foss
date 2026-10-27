@@ -1006,8 +1006,10 @@ export function installLocalMedia(w: any): any {
         if (w.__ottClassicPlayback) w.__ottClassicPlayback.cancel();
         w.__ottActiveProviderDriver = null;
         if (driver) driver.dispose();
-        if (!current() || w.__ottActiveProviderDriver) return false;
+        if ((!current() && session.active()) || w.__ottActiveProviderDriver)
+            return false;
         retireRemotePlayback();
+        if (!session.active()) return true;
         return session.end(false);
     }
     function activate(): void {
@@ -1562,6 +1564,7 @@ export function installLocalMedia(w: any): any {
                 );
             return Promise.resolve(JSON.parse(JSON.stringify(last)));
         },
+        startupSource: playbackSelection.source,
         suspend: function () {
             cancelPlayback();
             retireRemotePlayback();

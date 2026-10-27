@@ -46,10 +46,17 @@ before reading the saved directory. Scanning uses the normal in-player loading
 indicator. Browser folders stream their catalog: a new selection can play the
 first available video immediately, while remaining files are appended in the
 background. The last selected file is looked up directly before enumerating a
-large folder. If that lookup confirms the file is missing, playback starts with
-the first available video from the permitted sources while scanning continues.
-A pending lookup is not treated as a missing file. Later batches do not restart
-playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
+large folder. If it is not available in the first batch, playback can begin with
+the first available video from the selected source while the search continues.
+When the saved file's stable identity is found, the player switches to it once and restores its
+saved position. Choosing another video, pausing, restarting, or seeking cancels
+that automatic switch. A temporary first video does not overwrite the saved
+bookmark while the search is pending. If the scan completes without finding the
+saved file, the current video becomes the new selection. An older bookmark with
+only a numeric index is retained until an explicit choice; a partial directory
+listing cannot reliably identify that old file. Strict kiosk selections
+remain pinned and do not preview a different file. Later batches otherwise do
+not restart playback or reset the selection. If a source fails or does not respond, recovery offers **Continue
 playback** without immediately repeating the stalled scan. Menu navigation and
 saved source/video selection remain available; retrying does not copy media.
 The browser's file picker is allowed to remain open while you choose a source.
@@ -195,8 +202,10 @@ Progressive catalog loading applies to browser-local folders (including here.now
 and the browser UI served by OTT Server), updated Tauri and Capacitor builds. Tauri's native
 scan publishes available entries while it continues in the background; adding a
 folder starts playback once an eligible entry is ready. A saved Tauri selection
-is looked up directly before the background scan, so resuming it does not wait
-for its place in directory enumeration. The standard loading dialog shows one
+is looked up directly before the background scan. If that fast lookup cannot
+find it yet, the first validated file can play before the remaining metadata is
+read; the saved file is restored once it arrives unless the user has intervened.
+The standard loading dialog shows one
 loading title and one count of playable videos found. Internal scan counters
 remain available for diagnostics and stall detection.
 

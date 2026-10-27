@@ -221,7 +221,7 @@ function classicPlaybackVisit(
 }
 
 /** Semantic commands own normal playback state; old fields are output projection. */
-function classicPlaybackCommand(command: any): void {
+function classicPlaybackCommand(command: any): boolean | void {
     var w = classicPlaybackHost();
     var state = classicPlaybackSnapshot();
     var store = classicPlaybackOwnedState();
@@ -270,6 +270,25 @@ function classicPlaybackCommand(command: any): void {
                 state.phase === "stopped")
         )
             return;
+        var previewDriver = w.__ottActiveProviderDriver;
+        if (
+            type !== "finite-channel" &&
+            command.automatic !== true &&
+            previewDriver?.id === "offline" &&
+            typeof previewDriver.commitStartupPreview === "function"
+        ) {
+            var previewSource = classicPlaybackSource(w);
+            var previewSession = w._playSession;
+            if (previewDriver.commitStartupPreview() === false) return false;
+            if (
+                previewDriver !== w.__ottActiveProviderDriver ||
+                previewSession !== w._playSession ||
+                previewSource !== classicPlaybackSource(w) ||
+                store !== classicPlaybackOwnedState() ||
+                state.generation !== classicPlaybackSnapshot().generation
+            )
+                return false;
+        }
         var history: PlaybackVisit = {
             archiveStart:
                 type === "archive"
@@ -347,6 +366,13 @@ function classicPlaybackCommand(command: any): void {
         if (type === "finite-channel")
             store.classify(target, history, command.duration);
         else store.open(target, history, w.playTime);
+        if (
+            command.automatic === true &&
+            previewDriver === w.__ottActiveProviderDriver &&
+            previewDriver?.id === "offline" &&
+            typeof previewDriver.continueStartupPreview === "function"
+        )
+            previewDriver.continueStartupPreview(store.snapshot().generation);
         return;
     }
     if (type === "position") {

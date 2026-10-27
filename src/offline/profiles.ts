@@ -906,6 +906,13 @@ export function installOfflineProfiles(w: any, media: any): any {
         },
         read: read,
         request: request,
+        selectedSource: function () {
+            var profile = currentProfile();
+            var local = binding(profile);
+            return profile?.selected && local
+                ? local.sources[profile.selected.source_key] || null
+                : null;
+        },
         selection: selection,
         validateProfile: validateProfile,
         validateStore: validateStore,

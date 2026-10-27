@@ -104,6 +104,115 @@ function test(name, run) {
         f.backend.dispose();
     }
 }
+for (const operation of ["pause", "seek", "device seek", "restart"]) {
+    test(
+        "public " + operation + " commits startup preview before transport",
+        (f) => {
+            const h = f.backend.open({ url: "local-preview" });
+            f.playing(0, 10);
+            let calls = 0;
+            f.ports.beforeIntent = () => {
+                calls++;
+                assert.equal(f.leases[0].sample.paused, false);
+                assert.equal(f.leases[0].sample.position, 10);
+                assert.equal(f.leases.length, 1);
+                return true;
+            };
+            if (operation === "device seek") f.backend.seek(50);
+            else h[operation](50);
+            assert.equal(calls, 1);
+            if (operation === "pause")
+                assert.equal(f.leases[0].sample.paused, true);
+            else if (operation.includes("seek"))
+                assert.equal(f.leases[0].sample.position, 50);
+            else assert.equal(f.leases.length, 2);
+        }
+    );
+    for (const refusal of [
+        "failed commit",
+        "replacement",
+        "generation change",
+        "retired owner",
+    ]) {
+        test(
+            "public " +
+                operation +
+                " fences " +
+                refusal +
+                " during preview commit",
+            (f) => {
+                const h = f.backend.open({ url: "local-preview" });
+                f.playing(0, 10);
+                f.ports.beforeIntent = () => {
+                    if (refusal === "replacement") {
+                        f.domain({ generation: 2, kind: "vod", position: 0 });
+                        f.backend.open({ url: "replacement" });
+                    } else if (refusal === "generation change") {
+                        f.domain({ generation: 2, kind: "vod", position: 0 });
+                    } else if (refusal === "retired owner") {
+                        f.domain({
+                            active: () => false,
+                            generation: 1,
+                            kind: "vod",
+                            position: 0,
+                        });
+                    }
+                    return refusal !== "failed commit";
+                };
+                if (operation === "device seek") f.backend.seek(50);
+                else h[operation](50);
+                assert.equal(f.leases[0].sample.paused, false);
+                assert.equal(f.leases[0].sample.position, 10);
+                assert.equal(
+                    f.leases.length,
+                    refusal === "replacement" ? 2 : 1
+                );
+                if (refusal === "replacement") {
+                    assert.notEqual(f.backend.current(), h);
+                    assert.equal(f.leases[1].request.url, "replacement");
+                    assert.equal(f.leases[1].disposed, 0);
+                }
+            }
+        );
+    }
+}
+test("automatic recovery restart preserves preview while manual restart commits", (f) => {
+    f.backend.open({ url: "local-preview" });
+    f.playing(0, 10);
+    let calls = 0;
+    f.ports.beforeIntent = () => {
+        calls++;
+        return false;
+    };
+    assert.equal(f.backend.restart(false).accepted, true);
+    assert.equal(calls, 0);
+    assert.equal(f.leases.length, 2);
+    f.playing(1, 10);
+    assert.equal(f.backend.restart(), null);
+    assert.equal(calls, 1);
+    assert.equal(f.leases.length, 2);
+});
+test("startup, observations, disposal and PiP do not commit startup preview", (f) => {
+    let calls = 0;
+    f.ports.beforeIntent = () => {
+        calls++;
+    };
+    const main = f.backend.open({
+        paused: true,
+        position: 40,
+        url: "local-preview",
+    });
+    f.playing(0, 40);
+    f.leases[0].event("pause");
+    main.sample();
+    const pip = f.backend.open({ lane: "pip", url: "pip" });
+    f.playing(1, 0);
+    pip.pause();
+    pip.seek(20);
+    pip.dispose();
+    main.dispose();
+    assert.equal(calls, 0);
+});
 test("a decoder lease and its timer retire once; old events cannot update replacement", (f) => {
     const old = f.backend.open({ url: "old" });
     f.playing();

@@ -48,6 +48,9 @@ export interface StorageAdapter {
     localPlayback?: {
         active(): boolean;
         capture(): () => boolean;
+        preview(
+            identity: () => string
+        ): { current(): boolean; commit(): boolean; discard(): void } | null;
         begin(identity: () => string): () => void;
         end(persist?: boolean, extra?: { key: string; value: string }): boolean;
         profile(
@@ -781,35 +784,135 @@ export function installLocalPlaybackSession(
         values: Record<string, string | null>;
         identity: () => string;
         captured: string;
+        preview?: boolean;
     } | null = null;
     function playbackKey(key: string): boolean {
         return /^(?:ottplayprovs?|localMediaPlaybackSelection|localMediaPendingFile|offline(?:primaryIndex|catIndex|prevArr|continueWatch|lastcid|sSortAbc|playbackJournal(?:Source|:[^\r\n]{1,1024})?))$/.test(
             key
         );
     }
+    function libraryKey(key: string): boolean {
+        return /^offlinechannelLibrary:[a-zA-Z0-9_.:@-]{1,1024}$/.test(key);
+    }
+    function previewKey(key: string): boolean {
+        return (
+            key !== "offlinesSortAbc" && (playbackKey(key) || libraryKey(key))
+        );
+    }
+    function selectedOnly(
+        metadata: string | null,
+        cursor: string | null
+    ): string {
+        var value = JSON.parse(metadata || "{}"),
+            selected = JSON.parse(cursor || "{}");
+        if (
+            !value ||
+            typeof value !== "object" ||
+            Array.isArray(value) ||
+            !selected ||
+            typeof selected !== "object" ||
+            Array.isArray(selected)
+        )
+            throw new Error("Invalid Local channel library");
+        if (Object.prototype.hasOwnProperty.call(selected, "selected"))
+            value.selected = selected.selected;
+        else delete value.selected;
+        return JSON.stringify(value);
+    }
     function current(): boolean {
         return !!session && session.identity() === session.captured;
     }
     function guarded(key: string): boolean {
-        if (!session || !playbackKey(key)) return false;
+        if (!session || !(session.preview ? previewKey(key) : playbackKey(key)))
+            return false;
         if (!current()) throw new Error("Local playback session changed");
         return true;
     }
     adapter.get = function (key) {
-        return guarded(key) &&
-            Object.prototype.hasOwnProperty.call(session!.values, key)
-            ? session!.values[key]
-            : read(key);
+        var shadowed =
+            guarded(key) &&
+            Object.prototype.hasOwnProperty.call(session!.values, key);
+        if (shadowed && session!.preview && libraryKey(key))
+            return selectedOnly(read(key), session!.values[key]);
+        return shadowed ? session!.values[key] : read(key);
     };
     adapter.set = function (key, value) {
-        if (guarded(key)) session!.values[key] = String(value);
-        else write(key, value);
+        if (guarded(key)) {
+            if (session!.preview && libraryKey(key))
+                write(key, selectedOnly(String(value), read(key)));
+            session!.values[key] = String(value);
+        } else write(key, value);
     };
     adapter.del = function (key) {
-        if (guarded(key)) session!.values[key] = null;
-        else remove(key);
+        if (guarded(key)) {
+            if (session!.preview && libraryKey(key))
+                throw new Error(
+                    "Choose a Local file before resetting its library"
+                );
+            session!.values[key] = null;
+        } else remove(key);
     };
     adapter.transaction = function (writes, admitted) {
+        if (session?.preview) {
+            var owner = session;
+            var physicalBefore: Record<string, string | null> =
+                Object.create(null);
+            if (
+                !current() ||
+                !admitted() ||
+                writes.some(function (entry) {
+                    if (!libraryKey(entry.key))
+                        return adapter.get(entry.key) !== entry.before;
+                    var prior = read(entry.key);
+                    physicalBefore[entry.key] = prior;
+                    var logical = Object.prototype.hasOwnProperty.call(
+                        owner.values,
+                        entry.key
+                    )
+                        ? selectedOnly(prior, owner.values[entry.key])
+                        : prior;
+                    return logical !== entry.before;
+                })
+            )
+                return false;
+            var physical = writes
+                .filter(function (entry) {
+                    return !previewKey(entry.key) || libraryKey(entry.key);
+                })
+                .map(function (entry) {
+                    if (!libraryKey(entry.key)) return entry;
+                    if (entry.after === null)
+                        throw new Error(
+                            "Choose a Local file before resetting its library"
+                        );
+                    var prior = physicalBefore[entry.key];
+                    return {
+                        after: selectedOnly(entry.after, prior),
+                        before: prior,
+                        key: entry.key,
+                        rollback: Object.prototype.hasOwnProperty.call(
+                            entry,
+                            "rollback"
+                        )
+                            ? selectedOnly(entry.rollback ?? null, prior)
+                            : prior,
+                    };
+                });
+            if (
+                physical.length &&
+                (!transaction ||
+                    !transaction(physical, function () {
+                        return session === owner && current() && admitted();
+                    }))
+            )
+                return false;
+            if (session !== owner || !current() || !admitted()) return false;
+            writes.forEach(function (entry) {
+                if (previewKey(entry.key))
+                    owner.values[entry.key] = entry.after;
+            });
+            return true;
+        }
         var shadowed =
             session &&
             writes.some(function (entry) {
@@ -867,7 +970,15 @@ export function installLocalPlaybackSession(
             var values = { ...owner.values };
             if (extra) values[extra.key] = extra.value;
             var writes = Object.keys(values).map(function (key) {
-                return { after: values[key], before: read(key), key: key };
+                var prior = read(key);
+                return {
+                    after:
+                        owner.preview && libraryKey(key)
+                            ? selectedOnly(prior, values[key])
+                            : values[key],
+                    before: prior,
+                    key: key,
+                };
             });
             if (
                 !transaction(writes, function () {
@@ -877,6 +988,24 @@ export function installLocalPlaybackSession(
                 return false;
             session = null;
             return true;
+        },
+        preview: function (identity) {
+            if (session) return null;
+            var rollback = adapter.localPlayback!.begin(identity);
+            var owner = session!;
+            owner.values = {};
+            owner.preview = true;
+            return {
+                commit: function () {
+                    return (
+                        session === owner && adapter.localPlayback!.end(true)
+                    );
+                },
+                current: function () {
+                    return session === owner && current();
+                },
+                discard: rollback,
+            };
         },
         profile: function (writes, admitted, playback = false) {
             if (!session || !current() || !transaction) return false;
@@ -892,9 +1021,13 @@ export function installLocalPlaybackSession(
                           );
                       })
                       .map(function (key) {
+                          var prior = read(key);
                           return {
-                              after: owner.values[key],
-                              before: read(key),
+                              after:
+                                  owner.preview && libraryKey(key)
+                                      ? selectedOnly(prior, owner.values[key])
+                                      : owner.values[key],
+                              before: prior,
                               key: key,
                           };
                       })

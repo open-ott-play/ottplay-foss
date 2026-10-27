@@ -113,6 +113,8 @@ pub struct Library {
     #[cfg(test)]
     source_metadata_gate: Option<Arc<Semaphore>>,
     #[cfg(test)]
+    force_early_source_miss: bool,
+    #[cfg(test)]
     early_metadata_entries: Arc<std::sync::atomic::AtomicUsize>,
     #[cfg(test)]
     original_read_delay: Option<std::time::Duration>,
@@ -525,6 +527,8 @@ impl Library {
             metadata_bootstrap_gate: None,
             #[cfg(test)]
             source_metadata_gate: None,
+            #[cfg(test)]
+            force_early_source_miss: false,
             #[cfg(test)]
             early_metadata_entries: Arc::default(),
             #[cfg(test)]
@@ -1725,6 +1729,10 @@ impl Library {
         source: &SourceRecord,
         work: &crate::background_work::WorkLease,
     ) -> Option<Record> {
+        #[cfg(test)]
+        if self.force_early_source_miss {
+            return None;
+        }
         let library = self.clone();
         let source = source.clone();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
@@ -1917,6 +1925,89 @@ impl Library {
         .await
         .ok()
         .flatten()
+    }
+
+    // An exhausted preview must not make every saved record/index a barrier
+    // to first playback. Stream authoritative JSON until one selected-source
+    // original is validated; legacy random IDs must never be replaced by a
+    // newly invented path-derived ID. A complete, readable stream with no
+    // selected records also lets a genuinely new source walk immediately.
+    async fn first_source_record(
+        &self,
+        source: &SourceRecord,
+        generation: u64,
+        work: &crate::background_work::WorkLease,
+    ) -> Result<(Option<Record>, bool), Failure> {
+        let library = self.clone();
+        let source = source.clone();
+        owned_read(work, move |owner| async move {
+            let mut entries = checked(Some(&owner), fs::read_dir(&library.root))
+                .await?
+                .map_err(storage_error)?;
+            let mut may_have_records = false;
+            loop {
+                owner.check()?;
+                {
+                    let scan = owner.run(library.scan.lock()).await?;
+                    if !Self::owns_source(&scan, &source.id, generation) {
+                        return Err(BACKGROUND_CANCELLED);
+                    }
+                }
+                let metadata = owner
+                    .run(library.metadata_reads.clone().acquire_owned())
+                    .await?
+                    .map_err(storage_error)?;
+                let Some(entry) = checked(Some(&owner), entries.next_entry())
+                    .await?
+                    .map_err(storage_error)?
+                else {
+                    return Ok((None, may_have_records));
+                };
+                let path = entry.path();
+                if path.extension().and_then(|value| value.to_str()) != Some("json") {
+                    continue;
+                }
+                let Some(id) = path.file_stem().and_then(|value| value.to_str()) else {
+                    continue;
+                };
+                if !valid_id(id) {
+                    continue;
+                }
+                let record = match library.read_record(id, Some(&owner)).await {
+                    Ok(record) => record,
+                    Err(_) => {
+                        // A damaged/unreadable record cannot prove that this
+                        // source has no legacy IDs; retain the full recovery pass.
+                        owner.check()?;
+                        may_have_records = true;
+                        continue;
+                    }
+                };
+                if record.source_id.as_deref() != Some(source.id.as_str())
+                    || !record
+                        .linked_path
+                        .as_ref()
+                        .is_some_and(|path| path.starts_with(&source.path))
+                {
+                    continue;
+                }
+                may_have_records = true;
+                if record.linked_path.as_ref() == Some(&source.path) {
+                    continue;
+                }
+                drop(metadata); // A slow original must not hold metadata admission.
+                let _probe = owner
+                    .run(library.source_probes.acquire())
+                    .await?
+                    .map_err(storage_error)?;
+                if library.read_path(&record, Some(&owner)).await.is_ok() {
+                    owner.check()?;
+                    return Ok((Some(record), true));
+                }
+                owner.check()?;
+            }
+        })
+        .await
     }
 
     // A rebuildable source-local metadata index avoids checking every other
@@ -2277,8 +2368,18 @@ impl Library {
             })
             .map_err(anyhow::Error::msg)?;
         }
+        let mut has_saved_records = true;
         if source.kind == "folder" {
-            if let Some(record) = self.early_source_record(source, work).await {
+            let mut first = self.early_source_record(source, work).await;
+            if first.is_none() {
+                let (record, saved) = self
+                    .first_source_record(source, generation, work)
+                    .await
+                    .map_err(|error| anyhow::anyhow!(error.1))?;
+                first = record;
+                has_saved_records = saved;
+            }
+            if let Some(record) = first {
                 self.publish_source_record(source, generation, record, true, work)
                     .await?;
                 tracing::debug!(target: "ottplay::local_scan", phase = "first-publication", source_id = source.id, published = 1, elapsed_ms = first_started.elapsed().as_millis() as u64);
@@ -2286,84 +2387,86 @@ impl Library {
         }
         work.check().map_err(anyhow::Error::msg)?;
         let mut known = HashMap::<PathBuf, Record>::new();
-        let metadata_started = std::time::Instant::now();
-        tracing::debug!(target: "ottplay::local_scan", phase = "source-metadata", state = "start", source_id = source.id);
-        let mut records = self.source_metadata(source, true, work).await?.into_iter();
-        tracing::debug!(target: "ottplay::local_scan", phase = "source-metadata", state = "complete", source_id = source.id, count = records.len(), elapsed_ms = metadata_started.elapsed().as_millis() as u64);
-        let checks_started = std::time::Instant::now();
-        let probe = |record: Record| async move {
-            work.check().map_err(anyhow::Error::msg)?;
-            let _permit = work
-                .run(self.source_probes.acquire())
-                .await
-                .map_err(anyhow::Error::msg)??;
-            work.check().map_err(anyhow::Error::msg)?;
-            {
-                let scan = self.scan.lock().await;
-                anyhow::ensure!(
-                    Self::owns_source(&scan, &source.id, generation),
-                    "Local source scan superseded"
-                );
-            }
-            // The index is an accelerator, not authority: deleted/changed
-            // JSON must not resurrect an old record or another source.
-            if let Ok(actual) = self.record(&record.id).await {
-                if actual.source_id.as_deref() == Some(&source.id)
-                    && actual.linked_path == record.linked_path
+        if has_saved_records {
+            let metadata_started = std::time::Instant::now();
+            tracing::debug!(target: "ottplay::local_scan", phase = "source-metadata", state = "start", source_id = source.id);
+            let mut records = self.source_metadata(source, true, work).await?.into_iter();
+            tracing::debug!(target: "ottplay::local_scan", phase = "source-metadata", state = "complete", source_id = source.id, count = records.len(), elapsed_ms = metadata_started.elapsed().as_millis() as u64);
+            let checks_started = std::time::Instant::now();
+            let probe = |record: Record| async move {
+                work.check().map_err(anyhow::Error::msg)?;
+                let _permit = work
+                    .run(self.source_probes.acquire())
+                    .await
+                    .map_err(anyhow::Error::msg)??;
+                work.check().map_err(anyhow::Error::msg)?;
                 {
-                    if source.kind == "folder" {
-                        // Only metadata is validated here. Original-file
-                        // availability comes from the guarded directory walk.
-                        let mut scan = self.scan.lock().await;
-                        anyhow::ensure!(
-                            Self::owns_source(&scan, &source.id, generation),
-                            "Local source scan superseded"
-                        );
-                        work.publish(|| scan.scanned += 1)
-                            .map_err(anyhow::Error::msg)?;
-                    } else {
-                        let available = self.path(&actual).await.is_ok();
-                        work.check().map_err(anyhow::Error::msg)?;
-                        self.publish_source_record(
-                            source,
-                            generation,
-                            actual.clone(),
-                            available,
-                            work,
-                        )
-                        .await?;
+                    let scan = self.scan.lock().await;
+                    anyhow::ensure!(
+                        Self::owns_source(&scan, &source.id, generation),
+                        "Local source scan superseded"
+                    );
+                }
+                // The index is an accelerator, not authority: deleted/changed
+                // JSON must not resurrect an old record or another source.
+                if let Ok(actual) = self.record(&record.id).await {
+                    if actual.source_id.as_deref() == Some(&source.id)
+                        && actual.linked_path == record.linked_path
+                    {
+                        if source.kind == "folder" {
+                            // Only metadata is validated here. Original-file
+                            // availability comes from the guarded directory walk.
+                            let mut scan = self.scan.lock().await;
+                            anyhow::ensure!(
+                                Self::owns_source(&scan, &source.id, generation),
+                                "Local source scan superseded"
+                            );
+                            work.publish(|| scan.scanned += 1)
+                                .map_err(anyhow::Error::msg)?;
+                        } else {
+                            let available = self.path(&actual).await.is_ok();
+                            work.check().map_err(anyhow::Error::msg)?;
+                            self.publish_source_record(
+                                source,
+                                generation,
+                                actual.clone(),
+                                available,
+                                work,
+                            )
+                            .await?;
+                        }
+                        return Ok(Some(actual));
                     }
-                    return Ok(Some(actual));
+                }
+                Ok::<_, anyhow::Error>(None)
+            };
+            let mut probes = futures_util::stream::FuturesUnordered::new();
+            for record in records.by_ref().take(SOURCE_PROBE_CONCURRENCY) {
+                probes.push(probe(record));
+            }
+            let mut probe_error = None;
+            // Stop admission on failure; drain the in-flight bounded window.
+            while let Some(result) = probes.next().await {
+                match result {
+                    Ok(Some(actual)) => {
+                        known.insert(actual.linked_path.clone().unwrap(), actual);
+                    }
+                    Ok(None) => (),
+                    Err(error) => {
+                        probe_error.get_or_insert(error);
+                    }
+                }
+                if probe_error.is_none() {
+                    if let Some(record) = records.next() {
+                        probes.push(probe(record));
+                    }
                 }
             }
-            Ok::<_, anyhow::Error>(None)
-        };
-        let mut probes = futures_util::stream::FuturesUnordered::new();
-        for record in records.by_ref().take(SOURCE_PROBE_CONCURRENCY) {
-            probes.push(probe(record));
-        }
-        let mut probe_error = None;
-        // Stop admission on failure; drain the in-flight bounded window.
-        while let Some(result) = probes.next().await {
-            match result {
-                Ok(Some(actual)) => {
-                    known.insert(actual.linked_path.clone().unwrap(), actual);
-                }
-                Ok(None) => (),
-                Err(error) => {
-                    probe_error.get_or_insert(error);
-                }
+            if let Some(error) = probe_error {
+                return Err(error);
             }
-            if probe_error.is_none() {
-                if let Some(record) = records.next() {
-                    probes.push(probe(record));
-                }
-            }
+            tracing::debug!(target: "ottplay::local_scan", phase = "validation", state = "complete", source_id = source.id, count = known.len(), elapsed_ms = checks_started.elapsed().as_millis() as u64);
         }
-        if let Some(error) = probe_error {
-            return Err(error);
-        }
-        tracing::debug!(target: "ottplay::local_scan", phase = "validation", state = "complete", source_id = source.id, count = known.len(), elapsed_ms = checks_started.elapsed().as_millis() as u64);
         let traversal_started = std::time::Instant::now();
         let mut pending = vec![root.clone()];
         let mut directories: Vec<ScanDirectory> = Vec::new();
@@ -3916,6 +4019,215 @@ mod tests {
             runner.scan.lock().await.finish_job(&work, None);
             result
         })
+    }
+
+    async fn wait_for_source_item(library: &Library, source: &SourceRecord) -> Catalog {
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                let snapshot = library.catalog().await.unwrap();
+                if snapshot
+                    .items
+                    .iter()
+                    .any(|item| item.source_id == source.id && item.available)
+                {
+                    return snapshot;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("selected original must publish before full metadata")
+    }
+
+    #[tokio::test]
+    async fn missed_preview_streams_first_legacy_id_before_blocked_full_metadata() {
+        for indexed in [false, true] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            let (_, unrelated) = seed_legacy_source(&library, &base.join("Other"), 20).await;
+            let (source, expected) = seed_legacy_source(&library, &base.join("Selected"), 8).await;
+            if indexed {
+                let mut records = Vec::new();
+                for id in &expected {
+                    records.push(library.record(id).await.unwrap());
+                }
+                let expanded: Vec<_> = (0..400)
+                    .map(|i| records[i % records.len()].clone())
+                    .collect();
+                fs::write(
+                    library
+                        .root
+                        .join("source-index")
+                        .join(format!("{}.json", source.id)),
+                    serde_json::to_vec(&expanded).unwrap(),
+                )
+                .await
+                .unwrap();
+            }
+            library.force_early_source_miss = true;
+            let full = Arc::new(Semaphore::new(0));
+            library.source_metadata_gate = Some(full.clone());
+            let task = isolated_source_scan(&library, &source).await;
+            let first = wait_for_source_item(&library, &source).await;
+            let selected: Vec<_> = first
+                .items
+                .iter()
+                .filter(|item| item.source_id == source.id)
+                .collect();
+            assert_eq!(selected.len(), 1);
+            assert!(expected.contains(&selected[0].id));
+            assert!(!unrelated.contains(&selected[0].id));
+            assert_eq!(full.available_permits(), 0);
+            assert!(
+                library.scan_entries.lock().unwrap().is_empty(),
+                "ordinary traversal remains behind full metadata"
+            );
+            full.add_permits(1);
+            tokio::time::timeout(std::time::Duration::from_secs(5), task)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            let completed = library.catalog().await.unwrap();
+            assert_eq!(
+                completed
+                    .items
+                    .iter()
+                    .filter(|item| item.source_id == source.id)
+                    .map(|item| item.id.clone())
+                    .collect::<HashSet<_>>(),
+                expected
+            );
+            let saved = expected.iter().next().unwrap();
+            let work = library.background.enter().unwrap();
+            let (_, found, status) = library.preferred_record(saved, &work).await.unwrap();
+            assert_eq!(status.state, "found");
+            assert_eq!(&found.unwrap().id, saved);
+            drop(work);
+            wait_for_drain(&library.background).await;
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn new_source_walks_before_full_metadata_of_unrelated_sources() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (other, _) = seed_legacy_source(&library, &base.join("Other"), 300).await;
+        let (source, empty) = seed_legacy_source(&library, &base.join("Selected"), 0).await;
+        assert!(empty.is_empty());
+        fs::write(source.path.join("first.mp4"), b"video")
+            .await
+            .unwrap();
+        let slow = source.path.join("Slow");
+        fs::create_dir(&slow).await.unwrap();
+        fs::write(slow.join("tail.mp4"), b"video").await.unwrap();
+        library.force_early_source_miss = true;
+        let full = Arc::new(Semaphore::new(0));
+        let originals = Arc::new(Semaphore::new(0));
+        let tail = Arc::new(Semaphore::new(0));
+        library.source_metadata_gate = Some(full.clone());
+        library.metadata_bootstrap_gate = Some(full.clone());
+        library.original_read_gate = Some((other.path.clone(), originals.clone()));
+        library.scan_entry_gate = Some((slow, tail.clone()));
+        let task = isolated_source_scan(&library, &source).await;
+        let first = wait_for_source_item(&library, &source).await;
+        let published = first
+            .items
+            .iter()
+            .find(|item| item.source_id == source.id && item.available)
+            .unwrap()
+            .id
+            .clone();
+        assert_eq!(
+            full.available_permits(),
+            0,
+            "unrelated full JSON passes stay blocked"
+        );
+        assert_eq!(
+            originals.available_permits(),
+            0,
+            "unrelated originals must not be probed"
+        );
+        assert!(library.original_checks.lock().unwrap().is_empty());
+        assert!(library.record(&published).await.is_ok());
+        tail.add_permits(8);
+        tokio::time::timeout(std::time::Duration::from_secs(5), task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        let completed = library.catalog().await.unwrap();
+        assert_eq!(
+            completed
+                .items
+                .iter()
+                .filter(|item| item.source_id == source.id)
+                .count(),
+            2
+        );
+        assert!(completed
+            .items
+            .iter()
+            .any(|item| item.id == published && item.available));
+        assert_eq!(
+            full.available_permits(),
+            0,
+            "absence proof skips redundant full metadata"
+        );
+        let work = library.background.enter().unwrap();
+        let (_, record, status) = library.preferred_record(&published, &work).await.unwrap();
+        assert_eq!(status.state, "found");
+        assert_eq!(record.unwrap().id, published);
+        drop(work);
+        wait_for_drain(&library.background).await;
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn streamed_first_record_never_publishes_after_cancel_or_supersession() {
+        for superseded in [false, true] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            let (source, _) = seed_legacy_source(&library, &base.join("Selected"), 1).await;
+            library.force_early_source_miss = true;
+            let original = Arc::new(Semaphore::new(0));
+            library.original_read_gate = Some((source.path.clone(), original.clone()));
+            library.source_metadata_gate = Some(Arc::new(Semaphore::new(0)));
+            let task = isolated_source_scan(&library, &source).await;
+            tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                while library.original_checks.lock().unwrap().is_empty() {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            if superseded {
+                Library::reserve_source(&mut library.scan.lock().await, &source.id);
+            } else {
+                library.background.set_standby(true);
+            }
+            original.add_permits(1);
+            assert!(
+                tokio::time::timeout(std::time::Duration::from_secs(5), task)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .is_err()
+            );
+            assert!(
+                library.scan.lock().await.records.is_empty(),
+                "old generation/epoch cannot publish its late original"
+            );
+            wait_for_drain(&library.background).await;
+            fs::remove_dir_all(base).await.unwrap();
+        }
     }
 
     #[tokio::test]
