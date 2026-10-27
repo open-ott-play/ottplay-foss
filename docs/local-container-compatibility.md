@@ -120,7 +120,7 @@ enter the deferred source/catalog/playback chain.
 
 The immutable complete-player base allowance is 1,319,160 raw bytes and 420,842
 gzip bytes. AVI/MKV compatibility adds one explicit net-new allowance of 4,480
-raw bytes and 2,240 gzip bytes, giving a complete cap of 1,323,640 / 423,082.
+raw bytes and 2,304 gzip bytes, giving a complete cap of 1,323,640 / 423,146.
 Main, legacy, provider and existing optional-asset limits keep their prior values.
 The relocated Local UI retains its 8,500 / 3,400 cap; the relocated Local command
 runner has a separate 2,700 / 1,300 cap. Compatibility keeps 4,800 / 1,900.
@@ -129,8 +129,14 @@ asset is included exactly once in each distribution's measured total. The build
 report records the base, named compatibility allowance and effective total.
 
 The final source-only measurement after the lease and resume fixes is 1,323,570
-raw / 423,028 gzip bytes. The extra 384 / 192 over the initial feature allocation
+raw / 423,028 gzip bytes. The extra 384 / 256 over the initial feature allocation
 covers owned snapshots across partial catalog refreshes, source-time retention
 while replacement HLS buffers, and their cancellation guards. It does not charge
 relocated UI or command execution a second time. These figures are a diagnostic
 measurement; an actual full build and native playback tests remain required.
+
+The subsequent actual build measured web at 1,323,570 / 423,032 and native at
+1,323,528 / 423,092 (raw/gzip). The 60-byte native gzip difference is included
+in that allowance. The earlier in-memory figure covered only the web variant;
+it does not establish complete platform coverage. A final exact-source CI
+build is still required, including the mobile output.

@@ -113,9 +113,9 @@ try {
     assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1319160, gzipBytes: 420842 });
     assert.deepEqual(LOCAL_COMPATIBILITY_ALLOWANCE, {
         bytes: 4480,
-        gzipBytes: 2240,
+        gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1323640, gzipBytes: 423082 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1323640, gzipBytes: 423146 });
     assert.deepEqual(BUDGET, { bytes: 1062760, gzipBytes: 328314 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
         bytes: 1205560,

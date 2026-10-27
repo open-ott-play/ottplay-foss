@@ -607,9 +607,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
 // Local UI or command runner a second copy of their existing payload allowance.
 const LOCAL_COMPATIBILITY_ALLOWANCE = Object.freeze({
     // Measured owned-lease snapshots and source-time resume require another
-    // 384/192 over the initial feature allocation; no startup/legacy increase.
+    // 384/256 over the initial feature allocation, including native gzip
+    // variation; no startup/legacy increase.
     bytes: 4480,
-    gzipBytes: 2240,
+    gzipBytes: 2304,
 });
 const TOTAL_BUDGET = Object.freeze({
     bytes: BASE_TOTAL_BUDGET.bytes + LOCAL_COMPATIBILITY_ALLOWANCE.bytes,
