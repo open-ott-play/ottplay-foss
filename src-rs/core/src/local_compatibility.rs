@@ -876,9 +876,21 @@ struct Format {
     start_time: String,
 }
 fn uniform_starts(duration: f64) -> Vec<f64> {
-    (0..((duration / 4.0).ceil() as usize))
-        .map(|i| i as f64 * 4.0)
-        .collect()
+    merge_short_tail(
+        (0..((duration / 4.0).ceil() as usize))
+            .map(|i| i as f64 * 4.0)
+            .collect(),
+        duration,
+    )
+}
+fn merge_short_tail(mut starts: Vec<f64>, duration: f64) -> Vec<f64> {
+    // Container duration can include AAC/AC-3 padding after the final video
+    // frame. A new sub-second interval may therefore contain no video packets.
+    // Extend the previous segment instead; retain the full original duration.
+    if starts.len() > 1 && duration - starts[starts.len() - 1] < 1.0 {
+        starts.pop();
+    }
+    starts
 }
 fn valid_track(track: &str, audio: usize) -> Result<()> {
     if track == "video" {
@@ -909,6 +921,7 @@ fn cue_starts(times: Vec<f64>, duration: f64) -> Result<Vec<f64>> {
             result.push(t);
         }
     }
+    let result = merge_short_tail(result, duration);
     if result
         .iter()
         .enumerate()
@@ -1123,7 +1136,7 @@ mod tests {
             epoch: work.epoch(),
             plan: Plan {
                 duration: 12.25,
-                starts: vec![0.0, 4.0, 8.0, 12.0],
+                starts: uniform_starts(12.25),
                 copy: false,
                 audio,
             },
@@ -1144,7 +1157,7 @@ mod tests {
     }
     #[test]
     fn finite_timeline_has_truthful_tail_and_irregular_copy_boundaries() {
-        assert_eq!(uniform_starts(12.25), vec![0.0, 4.0, 8.0, 12.0]);
+        assert_eq!(uniform_starts(12.25), vec![0.0, 4.0, 8.0]);
         assert_eq!(
             cue_starts(vec![0.0, 2.0, 5.3, 6.7, 9.9], 12.25).unwrap(),
             vec![0.0, 5.3, 9.9]
@@ -1157,6 +1170,41 @@ mod tests {
         ] {
             assert!(cue_starts(times, 50.0).is_err());
         }
+    }
+    #[test]
+    fn audio_padding_tail_merges_without_cutting_finite_duration() {
+        for (duration, expected) in [
+            (0.06, vec![0.0]),
+            (0.5, vec![0.0]),
+            (3.9, vec![0.0]),
+            (4.0, vec![0.0]),
+            (4.016327, vec![0.0]),
+            (8.0, vec![0.0, 4.0]),
+            (8.023, vec![0.0, 4.0]),
+            (12.016327, vec![0.0, 4.0, 8.0]),
+            (13.0, vec![0.0, 4.0, 8.0, 12.0]),
+        ] {
+            let starts = uniform_starts(duration);
+            assert_eq!(starts, expected);
+            let lengths: Vec<_> = starts
+                .iter()
+                .enumerate()
+                .map(|(i, t)| starts.get(i + 1).copied().unwrap_or(duration) - t)
+                .collect();
+            assert!(lengths.iter().all(|v| *v > 0.0));
+            assert!((lengths.iter().sum::<f64>() - duration).abs() < 0.000001);
+            if starts.len() > 1 {
+                assert!(*lengths.last().unwrap() >= 1.0);
+            }
+        }
+        assert_eq!(
+            cue_starts(vec![0.0, 4.0, 8.0, 12.0], 12.023).unwrap(),
+            vec![0.0, 4.0, 8.0]
+        );
+        assert!(
+            cue_starts(vec![0.0, 29.5, 30.0], 30.2).is_err(),
+            "tail merge cannot violate the 30-second copy bound"
+        );
     }
     #[test]
     fn bounded_ebml_rejects_truncation_and_handles_eight_byte_sizes() {
@@ -1241,7 +1289,7 @@ mod tests {
                 .map(|s| s.trim_end_matches(',').parse::<f64>().unwrap())
                 .sum();
             assert!((sum - 12.25).abs() < 0.000001);
-            assert!(p.contains("#EXTINF:0.250000,"));
+            assert!(p.contains("#EXTINF:4.250000,"));
         }
         let master = m
             .playlist(&input(), "one", "index.m3u8", "/base", &work)
