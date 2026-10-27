@@ -592,6 +592,80 @@ for (const provider of ["plex", "vportal"]) {
     }
 }
 
+async function bootLocalFolder(
+    page,
+    context,
+    baseURL,
+    layout,
+    names = ["First.mp4", "Next.mp4"]
+) {
+    const origin = new URL(baseURL).origin;
+    const fragments = [];
+    const segment = fs.readFileSync(
+        path.resolve(__dirname, "../fixtures/media-runtime/segment00.ts")
+    );
+    for (let index = 0; index < 30; index++) {
+        const mux = new (require("mux.js").mp4.Transmuxer)({
+            baseMediaDecodeTime: index * 2 * 90000,
+            remux: true,
+        });
+        mux.on("data", (data) => {
+            if (!index) fragments.push(Buffer.from(data.initSegment));
+            fragments.push(Buffer.from(data.data));
+        });
+        mux.push(new Uint8Array(segment));
+        mux.flush();
+    }
+    const movie = Buffer.concat(fragments);
+    await context.route("**/*", (route) => {
+        const url = new URL(route.request().url());
+        if (url.origin !== origin) return route.abort();
+        if (url.pathname === "/footer-local/catalog")
+            return route.fulfill({
+                json: {
+                    items: names.map((name, index) => ({
+                        directory: "Cartoons",
+                        id: String(index),
+                        name,
+                        sourceId: "folder",
+                        url: origin + `/footer-local/${index}.mp4`,
+                    })),
+                    sources: [
+                        {
+                            available: true,
+                            id: "folder",
+                            kind: "folder",
+                            name: "Videos",
+                        },
+                    ],
+                },
+            });
+        if (/^\/footer-local\/\d.mp4$/.test(url.pathname))
+            return route.fulfill({ body: movie, contentType: "video/mp4" });
+        return route.continue();
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript((origin) => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "offline");
+        localStorage.setItem(
+            "localMediaEndpoint",
+            origin + "/footer-local/catalog"
+        );
+        localStorage.setItem("offlinesPlayers", "0");
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            this.muted = true;
+            return play.call(this);
+        };
+    }, origin);
+    const openedAt = Date.now() / 1000;
+    await page.goto(layout);
+    await page.keyboard.press("Shift");
+    await page.waitForFunction(() => window.video?.currentTime > 0.2);
+    return openedAt;
+}
+
 for (const layout of ["/f/pc/", "/f/"]) {
     test(`Local folder uses current and next programme clocks ${layout}`, async ({
         page,
@@ -600,70 +674,7 @@ for (const layout of ["/f/pc/", "/f/"]) {
     }) => {
         if (layout === "/f/")
             await page.setViewportSize({ height: 1080, width: 1920 });
-        const origin = new URL(baseURL).origin;
-        const fragments = [];
-        const segment = fs.readFileSync(
-            path.resolve(__dirname, "../fixtures/media-runtime/segment00.ts")
-        );
-        for (let index = 0; index < 30; index++) {
-            const mux = new (require("mux.js").mp4.Transmuxer)({
-                baseMediaDecodeTime: index * 2 * 90000,
-                remux: true,
-            });
-            mux.on("data", (data) => {
-                if (!index) fragments.push(Buffer.from(data.initSegment));
-                fragments.push(Buffer.from(data.data));
-            });
-            mux.push(new Uint8Array(segment));
-            mux.flush();
-        }
-        const movie = Buffer.concat(fragments);
-        await context.route("**/*", (route) => {
-            const url = new URL(route.request().url());
-            if (url.origin !== origin) return route.abort();
-            if (url.pathname === "/footer-local/catalog")
-                return route.fulfill({
-                    json: {
-                        items: ["First.mp4", "Next.mp4"].map((name, index) => ({
-                            directory: "Cartoons",
-                            id: String(index),
-                            name,
-                            sourceId: "folder",
-                            url: origin + `/footer-local/${index}.mp4`,
-                        })),
-                        sources: [
-                            {
-                                available: true,
-                                id: "folder",
-                                kind: "folder",
-                                name: "Videos",
-                            },
-                        ],
-                    },
-                });
-            if (/^\/footer-local\/\d.mp4$/.test(url.pathname))
-                return route.fulfill({ body: movie, contentType: "video/mp4" });
-            return route.continue();
-        });
-        await context.routeWebSocket("**/*", (socket) => socket.close());
-        await context.addInitScript((origin) => {
-            localStorage.setItem("ottplaylang", "_eng");
-            localStorage.setItem("ottplayprov", "offline");
-            localStorage.setItem(
-                "localMediaEndpoint",
-                origin + "/footer-local/catalog"
-            );
-            localStorage.setItem("offlinesPlayers", "0");
-            const play = HTMLMediaElement.prototype.play;
-            HTMLMediaElement.prototype.play = function () {
-                this.muted = true;
-                return play.call(this);
-            };
-        }, origin);
-        const openedAt = Date.now() / 1000;
-        await page.goto(layout);
-        await page.keyboard.press("Shift");
-        await page.waitForFunction(() => window.video?.currentTime > 0.2);
+        const openedAt = await bootLocalFolder(page, context, baseURL, layout);
         const first = await expectProgramme(
             page,
             {
@@ -689,3 +700,90 @@ for (const layout of ["/f/pc/", "/f/"]) {
         expect(afterProgress.nextStartedAt).toBe(first.nextStartedAt);
     });
 }
+
+test("Local full-screen native video keeps file arrows, volume and modified seek", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await bootLocalFolder(page, context, baseURL, "/f/pc/", [
+        "First.mp4",
+        "Next.mp4",
+        "Third.mp4",
+    ]);
+    await page.evaluate(() => {
+        window.closeList();
+        window.__localArrowMoves = [];
+        window.__localArrowSeeks = [];
+        const play = window.playChannel;
+        window.playChannel = function (category, index) {
+            window.__localArrowMoves.push({ category, index });
+            return play.apply(this, arguments);
+        };
+        const seek = window.shiftArchive;
+        window.shiftArchive = function (delta) {
+            window.__localArrowSeeks.push(delta);
+            return seek.apply(this, arguments);
+        };
+        window.stbSetVolume(50);
+    });
+    await page.keyboard.press("l");
+    await page.waitForFunction(() => !!document.fullscreenElement);
+    await page.locator("#video").evaluate((video) => {
+        video.tabIndex = 0;
+        video.controls = true;
+        // Model the native video-control bubble ownership that exposed the bug.
+        video.addEventListener("keydown", (event) => event.stopPropagation());
+        video.focus();
+    });
+    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
+    await page.keyboard.press("ArrowUp");
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__ottClassicPlayback.programme()?.title)
+        )
+        .toBe("Next.mp4");
+    await page.waitForFunction(() => window.video.currentTime > 0.1);
+    await page.locator("#video").focus();
+    await page.keyboard.press("ArrowDown");
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__ottClassicPlayback.programme()?.title)
+        )
+        .toBe("First.mp4");
+    await page.waitForFunction(() => window.video.currentTime > 0.1);
+    expect(
+        await page.evaluate(() =>
+            window.__localArrowMoves.map((move) => move.index)
+        )
+    ).toEqual([1, 0]);
+    await page.locator("#video").focus();
+    const volume = await page.evaluate(() => ({
+        current: window.stbGetVolume(),
+        step: window.sVolumeStep,
+    }));
+    await page.keyboard.press("ArrowRight");
+    expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+        volume.current + volume.step,
+        8
+    );
+    await page.keyboard.press("ArrowLeft");
+    expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+        volume.current,
+        8
+    );
+    expect(await page.evaluate(() => window.__localArrowSeeks)).toEqual([]);
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.keyboard.press("Alt+ArrowLeft");
+    expect(await page.evaluate(() => window.__localArrowSeeks)).toEqual([
+        10, -10,
+    ]);
+    expect(
+        await page.evaluate(() =>
+            window.__localArrowMoves.map((move) => move.index)
+        )
+    ).toEqual([1, 0]);
+    expect(errors).toEqual([]);
+});

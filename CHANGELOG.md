@@ -121,6 +121,9 @@
 
 ## [1.1.61] - 2026-10-26
 
+- Keep unmodified desktop Up/Down switching Local video files when the video
+  element has focus; preserve volume, modified seeking and kiosk/input guards.
+
 - Open Plex library entry points in the standard channel list and remove legacy
   sidebar Shuffle/Repeat controls and the trailing Filter row from Plex lists.
   Preserve category navigation, Actions, remote queue order and repeat policy.

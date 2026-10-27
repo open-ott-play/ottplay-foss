@@ -21,6 +21,8 @@ const names = new Set([
     "keyHandler",
     "handleMainKey",
     "keyFun",
+    "plusProg",
+    "minusProg",
 ]);
 const code = ts
     .transpileModule(
@@ -289,6 +291,195 @@ for (const platform of ["pc", "pc2"]) {
         }
     );
 }
+
+function localFixture(
+    platform = "pc",
+    phase = "playing",
+    provider = "offline"
+) {
+    const f = fixture(platform, phase);
+    Object.assign(f.w, {
+        __ottActiveProviderDriver: { id: provider },
+        __ottMedia: { current: () => null },
+        catIndex: 2,
+        curList: [103, 101, 102],
+        p_pref: provider,
+        playChannel(category, index) {
+            f.calls.push(["file", category, index, this.curList[index]]);
+            this.primaryIndex = index;
+        },
+        primaryIndex: 1,
+    });
+    f.w.__ottClassicPlayback.snapshot = () => ({
+        historyTarget: {
+            channelId: "101",
+            kind: "live",
+            sourceId: "offline@folder",
+        },
+        phase,
+        target: {
+            channelId: "channel:101",
+            kind: "vod",
+            sourceId: "offline@folder",
+        },
+    });
+    Object.defineProperty(f.w.document, "fullscreenElement", {
+        value: f.video,
+    });
+    return f;
+}
+
+for (const platform of ["pc", "pc2"]) {
+    for (const phase of ["playing", "paused", "loading"]) {
+        for (const videoFocus of [false, true]) {
+            test(`${platform} Local ${phase} ${videoFocus ? "video" : "document"} arrows switch once`, () => {
+                const f = localFixture(platform, phase);
+                try {
+                    const target = videoFocus ? f.video : f.w.document.body;
+                    if (videoFocus) f.video.focus();
+                    assert.equal(
+                        f.send("ArrowUp", target).defaultPrevented,
+                        true
+                    );
+                    assert.equal(
+                        f.send("ArrowDown", target).defaultPrevented,
+                        true
+                    );
+                    assert.deepEqual(f.calls, [
+                        ["file", 2, 2, 102],
+                        ["file", 2, 1, 101],
+                    ]);
+                } finally {
+                    f.close();
+                }
+            });
+        }
+    }
+    test(`${platform} restored Local category wraps in its shuffled order`, () => {
+        const f = localFixture(platform, "playing", "local");
+        try {
+            f.w.primaryIndex = 2;
+            f.send("ArrowUp", f.video);
+            f.send("ArrowDown", f.video);
+            assert.deepEqual(f.calls, [
+                ["file", 2, 0, 103],
+                ["file", 2, 2, 102],
+            ]);
+        } finally {
+            f.close();
+        }
+    });
+    test(`${platform} Local keeps volume and modified horizontal seek`, () => {
+        const f = localFixture(platform);
+        try {
+            f.send("ArrowLeft", f.video);
+            f.send("ArrowRight", f.video);
+            for (const key of ["altKey", "ctrlKey", "metaKey"]) {
+                f.send("ArrowLeft", f.video, { [key]: true });
+                f.send("ArrowRight", f.video, { [key]: true });
+            }
+            assert.deepEqual(f.calls, [
+                ["volume", -5],
+                ["volume", 5],
+                ["seek", -10],
+                ["seek", 10],
+                ["seek", -10],
+                ["seek", 10],
+                ["seek", -10],
+                ["seek", 10],
+            ]);
+        } finally {
+            f.close();
+        }
+    });
+    test(`${platform} Local vertical modifiers and editable focus are not captured`, () => {
+        const f = localFixture(platform);
+        try {
+            for (const key of ["altKey", "ctrlKey", "metaKey", "shiftKey"]) {
+                assert.equal(
+                    f.send("ArrowUp", f.video, { [key]: true })
+                        .defaultPrevented,
+                    false
+                );
+                assert.equal(
+                    f.send("ArrowDown", f.video, { [key]: true })
+                        .defaultPrevented,
+                    false
+                );
+            }
+            f.w.document.querySelector("input").focus();
+            assert.equal(f.send("ArrowUp", f.video).defaultPrevented, false);
+            assert.deepEqual(f.calls, []);
+        } finally {
+            f.close();
+        }
+    });
+    for (const mode of [
+        "list",
+        "dialog",
+        "standby",
+        "screen",
+        "locked",
+        "strict",
+        "foreign",
+        "live",
+    ]) {
+        test(`${platform} Local ${mode} retains input ownership`, () => {
+            const f = localFixture(platform);
+            try {
+                if (mode === "list" || mode === "dialog")
+                    f.screen({ kind: mode });
+                else if (mode === "standby")
+                    f.w.__ottStandby = { blocked: () => true };
+                else if (mode === "screen")
+                    f.w.__ottKiosk = { screenBlocked: () => true };
+                else if (mode === "locked")
+                    f.w.__ottKiosk = { locked: () => true };
+                else if (mode === "strict")
+                    f.w.__ottKiosk = { strict: () => true };
+                else if (mode === "foreign")
+                    f.w.__ottClassicPlayback.snapshot = () => ({
+                        historyTarget: {
+                            channelId: "102",
+                            kind: "live",
+                            sourceId: "offline@old",
+                        },
+                        phase: "playing",
+                        target: {
+                            channelId: "channel:101",
+                            kind: "vod",
+                            sourceId: "offline@folder",
+                        },
+                    });
+                else
+                    f.w.__ottClassicPlayback.snapshot = () => ({
+                        phase: "playing",
+                        target: { kind: "live" },
+                    });
+                assert.equal(
+                    f.send("ArrowUp", f.video).defaultPrevented,
+                    false
+                );
+                assert.equal(
+                    f.send("ArrowDown", f.video).defaultPrevented,
+                    false
+                );
+                assert.deepEqual(f.calls, []);
+            } finally {
+                f.close();
+            }
+        });
+    }
+}
+test("Local TV vertical keys retain the configured remote mapping", () => {
+    const f = localFixture("lg/webos");
+    try {
+        assert.equal(f.send("ArrowUp", f.video).defaultPrevented, false);
+        assert.deepEqual(f.calls, []);
+    } finally {
+        f.close();
+    }
+});
 
 test("TV remote Plex arrows keep seeking", () => {
     const f = fixture("lg/webos", "loading");

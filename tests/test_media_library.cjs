@@ -13,6 +13,62 @@ function test(name, run) {
     });
 }
 
+test("A missing optional Plex view falls back safely and upgrades after its provider asset loads", () => {
+    const c = fixture();
+    // Contextified globals can retain a deleted property's backing binding.
+    c.__ottPlexList = undefined;
+    assert.equal(
+        vm.runInContext("typeof window.__ottPlexList", c),
+        "undefined"
+    );
+    const views = [];
+    let loads = 0;
+    c.showPage = () => c.__ottClassicScreenPort.commitList();
+    c.__ottChannelListView = {
+        show(view) {
+            views.push(view);
+            c.listArray = view.rows;
+            c.listDataArray = view.rows;
+            c.selIndex = view.selected;
+            c.listKeyHandlerFn = view.key;
+            c.showPage();
+        },
+    };
+    c.__ottCategoryListView = { show() {} };
+    c.__ottMedia.useSource({
+        client: {
+            cancel() {},
+            load(_target, done) {
+                loads++;
+                c.mediaRecords = [
+                    { id: 1, stream_url: "film.mp4", title: "Film" },
+                ];
+                done();
+            },
+        },
+        read: () => null,
+        sourceId: "plex@late-asset",
+        title: "Plex",
+        write() {},
+    });
+    c.mediaList(null);
+    assert.equal(loads, 1);
+    assert.equal(views.length, 0);
+    assert.equal(c.listArray[0].id, 1);
+    assert(!c.listArray.some((row) => row.__ottMediaFilter));
+    assert.equal(c.__ottMedia.snapshot().canRepeat, false);
+    require("./helpers/private-runtime.cjs")(c, "src/plugins/plex-list.ts");
+    c.__ottMedia.show();
+    assert.equal(
+        loads,
+        1,
+        "Loading the presentation module does not refetch Plex media"
+    );
+    assert.equal(views.length, 1);
+    const view = views[0];
+    assert.equal(view.channel(view.rows[0]).__ottMediaItem.id, 1);
+});
+
 test("Retired Plex channel and category descriptors cannot replace a new isolated source", () => {
     const c = fixture();
     c.p_pref = "m3u";

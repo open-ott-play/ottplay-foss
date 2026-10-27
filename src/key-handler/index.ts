@@ -230,9 +230,35 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
                 : event.keyCode === 39
                   ? 1
                   : 0;
-    if (!direction) return false;
+    var fileDirection =
+        event.key === "ArrowUp" ||
+        event.code === "ArrowUp" ||
+        event.keyCode === 38
+            ? 1
+            : event.key === "ArrowDown" ||
+                event.code === "ArrowDown" ||
+                event.keyCode === 40
+              ? -1
+              : 0;
+    if (!direction && !fileDirection) return false;
     var seek = !!(event.altKey || event.ctrlKey || event.metaKey);
     if (!seek && !/^pc(?:2)?$/.test(w.ott_device || "")) return false;
+    var provider = w.__ottActiveProviderDriver;
+    var localFile = /^(offline|local)$/.test(
+        (provider && provider.id) || w.p_pref || ""
+    );
+    var kiosk = w.__ottKiosk;
+    var standby = w.__ottStandby;
+    // Native video controls can consume vertical keys before the bubble handler.
+    // Local files use finite channels, without a media-library queue owner.
+    if (
+        fileDirection &&
+        (!localFile ||
+            seek ||
+            (standby && standby.blocked()) ||
+            (kiosk && kiosk.screenBlocked && kiosk.screenBlocked()))
+    )
+        return false;
     function editable(element: any): boolean {
         while (element) {
             if (
@@ -251,7 +277,6 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     }
     if (editable(event.target) || editable(document.activeElement))
         return false;
-    var kiosk = w.__ottKiosk;
     if (
         kiosk &&
         ((typeof kiosk.strict === "function" && kiosk.strict()) ||
@@ -263,25 +288,40 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
         return false;
     port.reconcile();
     if (port.screens.current()) return false;
+    var action = fileDirection
+        ? fileDirection > 0
+            ? "plusProg"
+            : "minusProg"
+        : seek
+          ? "shiftArchive"
+          : "changeVolume";
     var playback = w.__ottClassicPlayback;
     if (
         !playback ||
         typeof playback.snapshot !== "function" ||
-        typeof w[seek ? "shiftArchive" : "changeVolume"] !== "function"
+        typeof w[action] !== "function"
     )
         return false;
     var state = playback.snapshot();
+    var target = state && state.target;
+    var history = state && state.historyTarget;
     if (
-        !state ||
-        !state.target ||
-        (seek && state.phase !== "playing" && state.phase !== "paused")
+        !target ||
+        (seek && state.phase !== "playing" && state.phase !== "paused") ||
+        (fileDirection &&
+            (target.kind !== "vod" ||
+                !history ||
+                history.kind !== "live" ||
+                target.channelId !== "channel:" + history.channelId ||
+                target.sourceId !== history.sourceId))
     )
         return false;
     event.preventDefault();
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
     if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
-    if (seek) w.shiftArchive(direction * 10);
+    if (fileDirection) w[action]();
+    else if (seek) w.shiftArchive(direction * 10);
     else w.changeVolume(direction * w.sVolumeStep);
     return true;
 }

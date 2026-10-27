@@ -184,7 +184,9 @@ try {
     );
     assert.throws(
         () => inspectBundleSets(root),
-        /legacy complete player bytes .* exceeds budget 1182800/,
+        new RegExp(
+            `legacy complete player bytes .* exceeds budget ${LEGACY_TOTAL_BUDGET.bytes}`
+        ),
         "legacy payload cannot borrow unused optional-asset headroom"
     );
     fs.writeFileSync(oversizedSet, source);

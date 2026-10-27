@@ -1,0 +1,140 @@
+{
+  "purpose": "Shared numbered Plex list and focused desktop Local file arrows; exact locked dependencies; npm run build",
+  "baselineSource": "cd96c047a4a0c06eb01179c5144a02e76ae03bce",
+  "baseline": {
+    "toolchain": {
+      "node": "22.23.4",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entry": [
+      {
+        "bytes": 1047147,
+        "gzipBytes": 323332,
+        "path": "dist/player.js",
+        "sha256": "6990620c9209f4e747394b714ff03948a1b8fb31ad0a60ceb93f033cbac0349c"
+      },
+      {
+        "bytes": 1047105,
+        "gzipBytes": 323394,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "b27722eb47f396ad1740dfdc17b77d204dd7c590dbc90a30701548a066e420aa"
+      },
+      {
+        "bytes": 1047105,
+        "gzipBytes": 323394,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "b27722eb47f396ad1740dfdc17b77d204dd7c590dbc90a30701548a066e420aa"
+      }
+    ],
+    "collections": [
+      {
+        "entry": "dist/player.js",
+        "legacyTotal": {
+          "bytes": 1181853,
+          "gzipBytes": 372839
+        },
+        "total": {
+          "bytes": 1285954,
+          "gzipBytes": 409871
+        }
+      },
+      {
+        "entry": "src-tauri/frontend/dist/player.js",
+        "legacyTotal": {
+          "bytes": 1181811,
+          "gzipBytes": 372901
+        },
+        "total": {
+          "bytes": 1285912,
+          "gzipBytes": 409933
+        }
+      },
+      {
+        "entry": "dist-mobile/dist/player.js",
+        "legacyTotal": {
+          "bytes": 1181811,
+          "gzipBytes": 372901
+        },
+        "total": {
+          "bytes": 1285912,
+          "gzipBytes": 409933
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "toolchain": {
+      "node": "22.23.4",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entry": [
+      {
+        "bytes": 1047713,
+        "gzipBytes": 323722,
+        "path": "dist/player.js",
+        "sha256": "4827ca5591f062054cc378bebdd9dc27bcd036ad2826bc9884e0adc7595bfe91"
+      },
+      {
+        "bytes": 1047671,
+        "gzipBytes": 323780,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "71ccbf5e1d0e1217852f8ab8dc019f4fbefc1933f12712077179a9d55db00a9b"
+      },
+      {
+        "bytes": 1047671,
+        "gzipBytes": 323780,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "71ccbf5e1d0e1217852f8ab8dc019f4fbefc1933f12712077179a9d55db00a9b"
+      }
+    ],
+    "collections": [
+      {
+        "entry": "dist/player.js",
+        "legacyTotal": {
+          "bytes": 1189621,
+          "gzipBytes": 375585
+        },
+        "total": {
+          "bytes": 1293722,
+          "gzipBytes": 412617
+        }
+      },
+      {
+        "entry": "src-tauri/frontend/dist/player.js",
+        "legacyTotal": {
+          "bytes": 1189579,
+          "gzipBytes": 375643
+        },
+        "total": {
+          "bytes": 1293680,
+          "gzipBytes": 412675
+        }
+      },
+      {
+        "entry": "dist-mobile/dist/player.js",
+        "legacyTotal": {
+          "bytes": 1189579,
+          "gzipBytes": 375643
+        },
+        "total": {
+          "bytes": 1293680,
+          "gzipBytes": 412675
+        }
+      }
+    ]
+  },
+  "allowance": {
+    "entryRaw": 0,
+    "entryGzip": 500,
+    "legacyRaw": 8000,
+    "legacyGzip": 3000,
+    "totalRaw": 8000,
+    "totalGzip": 3000
+  },
+  "notes": [
+    "Plex presentation, cold restoration and explicit queue adapter load in the Plex provider asset.",
+    "All provider and other optional asset caps remain unchanged.",
+    "The complete-payload allowance counts provider growth; entry raw limit is unchanged.",
+    "Release revision and version suffix can change final byte counts slightly."
+  ]
+}

@@ -14,6 +14,7 @@ var providerAssetGroups: { [kind: string]: string[][] } = {
     plex: [
         ["__ottPlex", "create", "normalize"],
         ["__ottPlexAuth", "start", "connect", "cancel"],
+        ["__ottPlexList", "create"],
         ["__ottPlexQueueFactory", "create"],
         ["__ottPlexDriver", "create", "mount", "reportLoad"],
     ],

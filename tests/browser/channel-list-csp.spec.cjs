@@ -239,6 +239,7 @@ async function fixturePage(
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
         ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
         ["/dist/player.js", read(stage + "dist/player.js")],
+        ["/dist/provider-plex.js", read(stage + "dist/provider-plex.js")],
         [
             "/dist/subtitle-appearance.js",
             read(stage + "dist/subtitle-appearance.js"),
@@ -2531,6 +2532,25 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         });
         const page = fixture.page;
         try {
+            expect(await page.evaluate(() => !!window.__ottPlexList)).toBe(
+                false
+            );
+            await page.evaluate(
+                () =>
+                    new Promise((resolve, reject) => {
+                        window.__ottProviderAssets.classic.ensure(
+                            "plex",
+                            "",
+                            "fixture",
+                            { active: () => true, own: () => () => {} },
+                            resolve,
+                            reject
+                        );
+                    })
+            );
+            expect(
+                await page.evaluate(() => typeof window.__ottPlexList.create)
+            ).toBe("function");
             await page.evaluate(() => {
                 const fields = [
                     "channels",

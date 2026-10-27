@@ -62,6 +62,7 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
         "src/playback/classic-archive.ts",
         "src/media/library.ts",
         "src/media/journal.ts",
+        "src/plugins/plex-list.ts",
         "src/media/classic-adapter.ts",
         "src/provider/runtime.ts",
         "src/provider/driver-profiles.ts",

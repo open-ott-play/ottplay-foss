@@ -87,6 +87,8 @@ including row numbers, artwork and selection. Remote queues keep source-owned
 catalogue data and callbacks; displaying them never replaces the active TV
 provider's channels, categories or settings. The legacy filter row and sidebar
 shuffle/repeat buttons are omitted; their existing playback APIs remain available.
+The Plex list model loads with its provider asset, while the shared channel
+renderer remains common to every player.
 
 Title filtering is owned by each eligible media source runtime and lasts across navigation,
 pagination and reopening the list. The Filter row and blue remote key use the same
