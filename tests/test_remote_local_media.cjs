@@ -582,32 +582,32 @@ test("early admission waits past denied, unsupported and unrelated files", async
     assert.deepEqual(clone(f.api.playbackOrder()), ["local-3"]);
 });
 
-test("legacy and explicit false commands wait for completion and retain exactly nine response fields", async () => {
-    for (const progressive of [undefined, false]) {
-        for (const op of ["play", "shuffle"]) {
-            const f = pluginFixture({ connected: true });
-            await tick();
-            f.snapshots.push(
-                {
-                    ...sourceCatalog("scanning", 8),
-                    items: [catalog().items[0]],
-                },
-                sourceCatalog("complete", 8)
-            );
-            const extra = progressive === undefined ? {} : { progressive };
-            const reply = await new Promise((resolve) =>
-                execute(f.w, request(op, extra), resolve)
-            );
-            assert.equal(reply.status, "ok");
-            assert.deepEqual(clone(reply.data), contract[op + "_result"]);
-            assert.equal(Object.keys(reply.data).length, 9);
-            assert.equal(f.reads, 2);
-        }
+test("legacy commands wait for completion and retain exactly nine response fields", async () => {
+    for (const op of ["play", "shuffle"]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        f.snapshots.push(
+            {
+                ...sourceCatalog("scanning", 8),
+                items: [catalog().items[0]],
+            },
+            sourceCatalog("complete", 8)
+        );
+        const reply = await new Promise((resolve) =>
+            execute(f.w, request(op), resolve)
+        );
+        assert.equal(reply.status, "ok");
+        assert.deepEqual(clone(reply.data), contract[op + "_result"]);
+        assert.equal(Object.keys(reply.data).length, 9);
+        assert.equal(f.reads, 2);
     }
 });
 
-test("progressive opt-in is a boolean restricted to play and shuffle", async () => {
+test("progressive opt-in is strict true and restricted to play and shuffle", async () => {
     for (const params of [
+        request("play", { progressive: false }),
+        request("shuffle", { progressive: false }),
+        request("play", { progressive: null }),
         request("play", { progressive: "true" }),
         request("shuffle", { progressive: 1 }),
         request("sources", { progressive: true }),

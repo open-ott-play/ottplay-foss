@@ -142,7 +142,7 @@ export function executeRemoteLocalMedia(
         }) ||
         (playableOperation &&
             params.progressive !== undefined &&
-            typeof params.progressive !== "boolean") ||
+            params.progressive !== true) ||
         (listing
             ? params.include_paths !== undefined &&
               typeof params.include_paths !== "boolean"
