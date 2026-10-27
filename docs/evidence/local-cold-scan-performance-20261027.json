@@ -44,10 +44,7 @@
     "large_unavailable": 3,
     "small_available": 46,
     "background_pending_after_completion": 0,
-    "initial_metadata_passes_ms": [
-      20398,
-      20347
-    ],
+    "initial_metadata_passes_ms": [20398, 20347],
     "small_metadata_queue_wait_ms": 20338,
     "small_metadata_read_ms": 3169,
     "small_validation_ms": 112,
