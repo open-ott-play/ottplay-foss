@@ -147,6 +147,24 @@ function fixture(snapshots, options = {}) {
                 aborts++;
             }
         };
+    const uiCode = ts.transpileModule(
+        fs.readFileSync(
+            path.join(__dirname, "../src/plugins/local-media-ui.ts"),
+            "utf8"
+        ),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.None,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText;
+    require("acorn").parse(uiCode, { ecmaVersion: 5 });
+    function loadUi() {
+        vm.runInNewContext(uiCode, { URL, window: w });
+    }
+    const uiCallbacks = [];
+    if (!options.lazyUi) loadUi();
     const module = { exports: {} };
     vm.runInNewContext(source, {
         clearTimeout(task) {
@@ -155,6 +173,13 @@ function fixture(snapshots, options = {}) {
         Date: { now: () => now },
         exports: module.exports,
         require(name) {
+            if (name.includes("remote-feature"))
+                return {
+                    loadRemoteFeature(host, kind, done) {
+                        assert.equal(kind, "local-media-ui");
+                        uiCallbacks.push(done);
+                    },
+                };
             if (name.includes("browser-local-media"))
                 return {
                     installBrowserLocalMedia: () => ({
@@ -192,27 +217,18 @@ function fixture(snapshots, options = {}) {
         },
         URL,
     });
-    vm.runInNewContext(
-        ts.transpileModule(
-            fs.readFileSync(
-                path.join(__dirname, "../src/plugins/local-media-ui.ts"),
-                "utf8"
-            ),
-            {
-                compilerOptions: {
-                    module: ts.ModuleKind.None,
-                    target: ts.ScriptTarget.ES5,
-                },
-            }
-        ).outputText,
-        { URL, window: w }
-    );
     const api = module.exports.installLocalMedia(w);
     return {
         aborts: () => aborts,
         api,
         commands,
+        finishUi(error) {
+            if (!error) loadUi();
+            const callbacks = uiCallbacks.splice(0);
+            callbacks.forEach((done) => done(error));
+        },
         html: () => dialogHtml,
+        pendingUi: () => uiCallbacks.length,
         played: () => played,
         progress: () => progressNode.textContent,
         queued: () => scheduled.length,
@@ -349,6 +365,12 @@ async function flush() {
         clearTimeout,
         exports: module.exports,
         require(name) {
+            if (name.includes("remote-feature"))
+                return {
+                    loadRemoteFeature() {
+                        throw Error("Unexpected UI load");
+                    },
+                };
             if (name.includes("browser-local-media"))
                 return {
                     installBrowserLocalMedia: () => ({}),
@@ -972,6 +994,64 @@ async function flush() {
     await stalled.tick(60000);
     assert.match((await stalledResult).message, /stopped responding/);
     assert.equal(stalled.queued(), 0);
+    {
+        // Cold UI loading cannot delay the data API or revive obsolete screens.
+        const coldPicker = fixture([catalog(1, 1, false)], {
+            lazyUi: true,
+            pickerCancelled: true,
+        });
+        const picker = coldPicker.api.importFiles();
+        assert(
+            coldPicker.commands.some(
+                (c) => c.name === "offline_media_import_files"
+            )
+        );
+        assert.equal(coldPicker.pendingUi(), 0);
+        await picker;
+        const folderPicker = coldPicker.api.importFiles(true);
+        assert(
+            coldPicker.commands.some(
+                (c) => c.name === "offline_media_import_folder"
+            )
+        );
+        assert.equal(coldPicker.pendingUi(), 0);
+        await folderPicker;
+        const latest = fixture([], { lazyUi: true });
+        const older = latest.api.open(false, true, "older"),
+            newer = latest.api.open(false, true, "newer");
+        assert.equal(latest.pendingUi(), 2);
+        latest.finishUi();
+        await Promise.all([older, newer]);
+        latest.w.detailListAction();
+        assert.equal(latest.w.listDetail.innerHTML, "newer");
+        const replaced = fixture([], { lazyUi: true });
+        const obsolete = replaced.api.open(false, true);
+        replaced.w.__ottClassicScreenPort.listOwner = () => ({
+            active: () => true,
+            foreground: () => true,
+        });
+        replaced.finishUi();
+        await obsolete;
+        assert.equal(replaced.w.listArray, undefined);
+        const cancelled = fixture([], { lazyUi: true });
+        const cancelledOpen = cancelled.api.open(false, true);
+        cancelled.api.suspend();
+        cancelled.finishUi();
+        await cancelledOpen;
+        assert.equal(cancelled.w.listArray, undefined);
+        const retry = fixture([], { lazyUi: true });
+        const failed = retry.api.open(false, true);
+        retry.finishUi("unsupported");
+        await failed;
+        assert.equal(retry.w.listArray, undefined);
+        const retried = retry.api.open(false, true);
+        retry.finishUi();
+        await retried;
+        assert(retry.w.listArray.length > 0);
+        console.log(
+            "OK: optional Local UI keeps cold picker synchronous, latest intent, owner/cancel fences and load retry"
+        );
+    }
     console.log(
         "OK: Tauri catalog polling starts early, reports real progress, cancels stale reads, and bounds stalled scans"
     );

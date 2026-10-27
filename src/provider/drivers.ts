@@ -374,7 +374,11 @@ function createOfflineDriver(
             function current(): boolean {
                 return active() && request === revision;
             }
-            function recover(error: string, offerRecovery = true): void {
+            function recover(
+                error: string,
+                offerRecovery = true,
+                notify = true
+            ): void {
                 if (!current()) return;
                 clearLoadTimer();
                 revision++;
@@ -388,7 +392,7 @@ function createOfflineDriver(
                         typeof media.resume === "function"
                     )
                         media.resume(true, error);
-                } else if (error) {
+                } else if (error && notify) {
                     // Keep the active file, but do not hide a failed background
                     // scan behind an apparently complete, truncated queue.
                     var host = window as any;
@@ -413,7 +417,7 @@ function createOfflineDriver(
                     return false;
                 }
                 if (value.cancelled) {
-                    recover("Local catalog scan was cancelled", false);
+                    recover("Local catalog scan was cancelled", false, false);
                     return false;
                 }
                 try {

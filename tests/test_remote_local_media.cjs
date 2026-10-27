@@ -334,7 +334,7 @@ function pluginFixture(options = {}) {
     const install = load("src/plugins/local-media.ts", {
         "../commands/remote-feature": {
             loadRemoteFeature() {
-                throw Error("Unexpected feature load");
+                throw Error("Unexpected UI load");
             },
         },
         "../offline/browser-local-media": {
@@ -587,32 +587,32 @@ test("early admission waits past denied, unsupported and unrelated files", async
     assert.deepEqual(clone(f.api.playbackOrder()), ["local-3"]);
 });
 
-test("legacy and explicit false commands wait for completion and retain exactly nine response fields", async () => {
-    for (const progressive of [undefined, false]) {
-        for (const op of ["play", "shuffle"]) {
-            const f = pluginFixture({ connected: true });
-            await tick();
-            f.snapshots.push(
-                {
-                    ...sourceCatalog("scanning", 8),
-                    items: [catalog().items[0]],
-                },
-                sourceCatalog("complete", 8)
-            );
-            const extra = progressive === undefined ? {} : { progressive };
-            const reply = await new Promise((resolve) =>
-                execute(f.w, request(op, extra), resolve)
-            );
-            assert.equal(reply.status, "ok");
-            assert.deepEqual(clone(reply.data), contract[op + "_result"]);
-            assert.equal(Object.keys(reply.data).length, 9);
-            assert.equal(f.reads, 2);
-        }
+test("legacy commands wait for completion and retain exactly nine response fields", async () => {
+    for (const op of ["play", "shuffle"]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        f.snapshots.push(
+            {
+                ...sourceCatalog("scanning", 8),
+                items: [catalog().items[0]],
+            },
+            sourceCatalog("complete", 8)
+        );
+        const reply = await new Promise((resolve) =>
+            execute(f.w, request(op), resolve)
+        );
+        assert.equal(reply.status, "ok");
+        assert.deepEqual(clone(reply.data), contract[op + "_result"]);
+        assert.equal(Object.keys(reply.data).length, 9);
+        assert.equal(f.reads, 2);
     }
 });
 
-test("progressive opt-in is a boolean restricted to play and shuffle", async () => {
+test("progressive opt-in is strict true and restricted to play and shuffle", async () => {
     for (const params of [
+        request("play", { progressive: false }),
+        request("shuffle", { progressive: false }),
+        request("play", { progressive: null }),
         request("play", { progressive: "true" }),
         request("shuffle", { progressive: 1 }),
         request("sources", { progressive: true }),
@@ -1675,19 +1675,12 @@ test("Local source names retain legal POSIX colons in full listings and exact se
 });
 
 test("successful disconnect clears only the matching source selection on native, Tauri and browser", async () => {
-    const pluginSource = fs.readFileSync(
-        "src/plugins/local-media-ui.ts",
-        "utf8"
-    );
-    const start = pluginSource.indexOf("function removeSource(id:");
-    const end = pluginSource.indexOf("function reconnectSource(", start);
+    const pluginSource = fs.readFileSync("src/plugins/local-media.ts", "utf8");
+    const start = pluginSource.indexOf("    function removeSource(id:");
+    const end = pluginSource.indexOf("    function reconnectSource(", start);
     assert.ok(start > 0 && end > start);
     const code = ts.transpileModule(
-        "export " +
-            pluginSource
-                .slice(start, end)
-                .trim()
-                .replace(/p\s*\.\s*/g, ""),
+        "export " + pluginSource.slice(start, end).trim(),
         {
             compilerOptions: {
                 module: ts.ModuleKind.CommonJS,

@@ -618,39 +618,24 @@ test("standby fences an optional module completing after cancellation", async ()
     assert(!f.calls.some((c) => c[1]?.method === "POST"));
 });
 
-test("optional UI loads before actions and preserves synchronous picker after readiness", async () => {
-    let ready;
+test("cold data imports retain their synchronous picker before optional UI is loaded", async () => {
+    let loads = 0;
     const f = fixture({
         capacitor: true,
         endpoint: "",
-        loadFeature(host, kind, done, load) {
-            assert.equal(kind, "local-media-ui");
-            ready = () => {
-                load(kind);
-                done();
-            };
+        loadFeature() {
+            loads++;
         },
     });
-    // The exported source action uses the same factory as the existing Local row.
-    const first = f.api.importFiles();
-    assert(!f.calls.some((c) => c[0] === "native-import"));
-    // Native picker spy is installed through the fixture's import method below.
-    ready();
-    await first;
-    const before = f.calls.filter((c) => c[0] === "native-import").length;
-    const second = f.api.importFiles();
-    assert.equal(
-        f.calls.filter((c) => c[0] === "native-import").length,
-        before + 1
-    );
-    await second;
+    const pending = f.api.importFiles();
+    assert(f.calls.some((c) => c[0] === "native-import"));
+    assert.equal(loads, 0);
+    await pending;
 });
 
-test("a replaced screen cannot open a picker after its optional UI download", async () => {
+test("a replaced screen cannot reopen after its optional UI download", async () => {
     let ready;
     const f = fixture({
-        capacitor: true,
-        endpoint: "",
         loadFeature(host, kind, done, load) {
             ready = () => {
                 load(kind);
@@ -658,10 +643,10 @@ test("a replaced screen cannot open a picker after its optional UI download", as
             };
         },
     });
-    const pending = f.api.importFiles(),
-        rejected = assert.rejects(pending, /cancelled/);
+    const pending = f.api.open(false, true);
     f.w.listKeyHandler = () => false;
     ready();
-    await rejected;
+    await pending;
+    assert.equal(f.w.listArray, undefined);
     assert(!f.calls.some((c) => c[0] === "native-import"));
 });

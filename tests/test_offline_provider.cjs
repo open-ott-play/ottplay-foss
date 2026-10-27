@@ -926,6 +926,47 @@ test("background source or filter failure alerts once, retains playback and reti
     }
 });
 
+test("intentional background cancellation and retired provider ownership stay silent", async () => {
+    for (const reason of ["cancel", "provider"]) {
+        const f = integrationFixture("offline");
+        let progress, finish;
+        const alerts = [];
+        f.host.clearBootHide = () => {};
+        f.host.alert = (message) => alerts.push(message);
+        f.host.__ottLocalMedia = {
+            list: (cb) => {
+                progress = cb;
+                return new Promise((resolve) => {
+                    finish = resolve;
+                });
+            },
+            resume: () =>
+                assert.fail("retired background scan opened recovery"),
+        };
+        f.host.loadProv();
+        const first = { id: "first", name: "First.mp4", url: "blob:first" };
+        assert.equal(progress({ items: [first], scanning: true }), true);
+        assert.equal(f.completed, 1);
+        if (reason === "provider") f.host.loadProv("demo");
+        const completed = f.completed;
+        const driver = f.host.__ottActiveProviderDriver;
+        assert.equal(
+            progress({ cancelled: true, items: [first], scanning: true }),
+            false
+        );
+        const late = { id: "late", name: "Late.mp4", url: "blob:late" };
+        assert.equal(progress({ items: [first, late], scanning: true }), false);
+        finish({ items: [first, late], scanning: false });
+        await Promise.resolve();
+        assert.deepEqual(alerts, [], reason);
+        assert.equal(f.completed, completed);
+        assert.equal(f.host.__ottActiveProviderDriver, driver);
+        assert.equal(f.host.channels["local-late"], undefined);
+        if (reason === "cancel")
+            assert.equal(driver.stream("local-first"), "blob:first");
+    }
+});
+
 test("progressive profile ownership rejects late batches after binding replacement", async () => {
     const f = integrationFixture("offline");
     let progress,
