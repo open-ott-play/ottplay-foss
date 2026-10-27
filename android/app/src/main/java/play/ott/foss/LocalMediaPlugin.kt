@@ -305,7 +305,7 @@ class LocalMediaPlugin : Plugin() {
             checkWork()
             val value = row(item)
             val first = !availability.anyAvailable()
-            availability.update(item.getString("id"), value.getString("sourceId"), value.getBoolean("available") == true)
+            availability.update(item.getString("id"), sourceId(item), value.getBoolean("available") == true)
             items[item.getString("id")] = value
             scanned++
             if (item.optString("id") == preferredId && value.getBoolean("available") == true) preferredState = "found"
