@@ -2678,10 +2678,12 @@ for (const profile of ["server", "tauri", "capacitor"]) {
             await expect(page.locator("#listCaption")).toHaveText(
                 "Category selection"
             );
-            await page
+            const cartoons = page
                 .locator("#listIn .item")
-                .filter({ hasText: "Cartoons" })
-                .click();
+                .filter({ hasText: "Cartoons" });
+            await cartoons.click();
+            await expect(cartoons).toHaveClass(/ott-selected/);
+            await page.keyboard.press("Enter");
             await expect(page.locator("#listCaption")).toContainText(
                 "Cartoons"
             );
