@@ -1,4 +1,4 @@
-/** Existing Local screen/actions, loaded before their user gestures. */
+/** Existing Local UI owner; feature rows share the same data APIs. */
 function createLocalMediaUi(w: any, p: any): any {
     function startWithFile(sourceId: string): void {
         if (p.locked() || p.settingsLocked()) return;
@@ -291,6 +291,16 @@ function createLocalMediaUi(w: any, p: any): any {
             );
         });
         ((p.last && p.last.items) || []).forEach(function (item: any) {
+            var playback = item.playback;
+            if (playback && playback.mode === "unsupported") {
+                row(
+                    "unsupported-" + item.id,
+                    "Unavailable: " + item.name,
+                    "Native/server compatibility required; no uploads.",
+                    function () {}
+                );
+                return;
+            }
             if (readOnly || item.source === "linked") return;
             row(
                 "remove-copy",
@@ -303,13 +313,13 @@ function createLocalMediaUi(w: any, p: any): any {
                 }
             );
         });
-        if (!p.isNative() && !p.isTauri())
+        if (!p.isTauri())
             row(
                 "server-library",
                 "Server library…",
                 p.remoteEndpoint()
                     ? "A server library is selected. Clear its URL to use files on this device."
-                    : "Optional: connect a library stored on your server. Network access is required.",
+                    : "Optional: use compatible playback from your Server library without uploading originals. Network access is required.",
                 editServer
             );
         row("close", "Close", "Return to player settings.", p.close);

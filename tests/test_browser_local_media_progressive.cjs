@@ -831,6 +831,24 @@ async function flushScans() {
         );
         assert.equal(unknown.reads(), 1);
     }
+    for (const extension of ["avi", "mkv"]) {
+        const unsupported = fixture(
+            1,
+            extension,
+            -1,
+            extension === "avi" ? "video/x-msvideo" : "video/x-matroska"
+        );
+        const value = await unsupported.api.list();
+        assert.equal(
+            value.items.length,
+            1,
+            "unsupported reference remains identifiable"
+        );
+        assert.equal(value.items[0].available, false);
+        assert.equal(value.items[0].url, "");
+        assert.equal(value.items[0].playback.mode, "unsupported");
+        assert.equal(unsupported.revoked(), 0);
+    }
     const changed = await fixture(10000, "mp4", 17).api.list();
     assert.equal(
         changed.items.length,

@@ -9,10 +9,16 @@ interface DriverStorage {
     set(key: string, value: string): void;
 }
 interface DriverCatalog {
-    channels: { [id: string]: any };
-    epg?: { [id: string]: any };
+    channels: {
+        [id: string]: any;
+    };
+    epg?: {
+        [id: string]: any;
+    };
     groupOrder: string[];
-    groups: { [name: string]: Array<string | number> };
+    groups: {
+        [name: string]: Array<string | number>;
+    };
     ids: Array<string | number>;
     incremental?: boolean;
     selectedId?: string | number;
@@ -131,7 +137,9 @@ interface ProviderDriver {
         observe: (writes: any[]) => boolean
     ): any;
     settingsChanged?(): void;
-    settingsPort?: { ports: ProviderDriverPorts };
+    settingsPort?: {
+        ports: ProviderDriverPorts;
+    };
     settingsRevision?(): number;
     storageKey?(key: string): string;
     stream(id: string | number): string;
@@ -141,7 +149,6 @@ type ProviderDriverFactory = (
     ports: ProviderDriverPorts,
     lifetime: DriverLifetime
 ) => ProviderDriver;
-
 function emptyDriverCatalog(): DriverCatalog {
     return {
         channels: Object.create(null),
@@ -150,7 +157,6 @@ function emptyDriverCatalog(): DriverCatalog {
         ids: [],
     };
 }
-
 function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
     var snapshot = emptyDriverCatalog();
     snapshot.ids = catalog.ids.slice();
@@ -181,10 +187,10 @@ function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
     if (catalog.epg) snapshot.epg = detach(catalog.epg);
     return snapshot;
 }
-
 function createDriverRegistry() {
-    var factories: { [id: string]: ProviderDriverFactory } =
-        Object.create(null);
+    var factories: {
+        [id: string]: ProviderDriverFactory;
+    } = Object.create(null);
     return {
         create: function (
             id: string,
@@ -226,16 +232,25 @@ function createDriverRegistry() {
         },
     };
 }
-
 function createOfflineDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
 ): ProviderDriver {
+    // Share exact repeated error/protocol text without changing wire values.
+    var localMessage0 = "cancelPlayback" as const,
+        localMessage1 = "Local profile configuration is unavailable" as const,
+        localMessage2 = "Local profile changed while loading" as const,
+        localMessage3 = "Local videos" as const,
+        localMessage4 = "undefined" as const,
+        localMessage5 = "dialogbox" as const,
+        localMessage6 = ".ott-spinner" as const;
+
     var disposed = false;
     var catalog = emptyDriverCatalog();
     var revision = 0;
     var loadTimer: any = null;
     var loadingOwner: any = null;
+    var playbackCancels: Array<() => void> = [];
     function closeLoading(): void {
         var current = loadingOwner;
         loadingOwner = null;
@@ -268,6 +283,12 @@ function createOfflineDriver(
         dispose: function () {
             disposed = true;
             revision++;
+            playbackCancels.slice().forEach(function (cancel) {
+                cancel();
+            });
+            playbackCancels = [];
+            var media = (window as any).__ottLocalMedia;
+            if (driverField(media, localMessage0)) media.cancelPlayback();
             clearLoadTimer();
             closeLoading();
         },
@@ -299,10 +320,7 @@ function createOfflineDriver(
                               );
                           };
             } catch (_) {
-                done(
-                    emptyDriverCatalog(),
-                    "Local profile configuration is unavailable"
-                );
+                done(emptyDriverCatalog(), localMessage1);
                 return;
             }
             var started = false;
@@ -405,10 +423,7 @@ function createOfflineDriver(
                 try {
                     if (profiles) {
                         if (profileCurrent && !profileCurrent()) {
-                            recover(
-                                "Local profile changed while loading",
-                                false
-                            );
+                            recover(localMessage2, false);
                             return false;
                         }
                         value = profiles.filter(value);
@@ -416,10 +431,7 @@ function createOfflineDriver(
                     if (typeof media.playbackFilter === "function")
                         value = media.playbackFilter(value);
                 } catch (_) {
-                    recover(
-                        "Local profile configuration is unavailable",
-                        false
-                    );
+                    recover(localMessage1, false);
                     return false;
                 }
                 if (final && value.scanning) {
@@ -442,7 +454,12 @@ function createOfflineDriver(
                     );
                 }
                 (value.items || []).forEach(function (item: any) {
-                    if (item.available === false || !item.url) return;
+                    if (
+                        item.available === false ||
+                        !item.url ||
+                        driverField(item.playback, "mode") === "unsupported"
+                    )
+                        return;
                     var id = "local-" + item.id;
                     if (catalog.channels[id]) return;
                     catalog.ids.push(id);
@@ -467,7 +484,7 @@ function createOfflineDriver(
                                 : ""),
                         category: {
                             class: 2,
-                            name: ports.translate("Local videos"),
+                            name: ports.translate(localMessage3),
                         },
                         channel_name: parts[parts.length - 1],
                         logo: "",
@@ -479,11 +496,11 @@ function createOfflineDriver(
                 });
                 if (
                     !started &&
-                    typeof document !== "undefined" &&
+                    typeof document !== localMessage4 &&
                     document.createElement
                 ) {
-                    var panel = document.getElementById("dialogbox");
-                    if (panel && panel.querySelector(".ott-spinner")) {
+                    var panel = document.getElementById(localMessage5);
+                    if (panel && panel.querySelector(localMessage6)) {
                         var progress = panel.querySelector(
                             "[data-local-scanned]"
                         );
@@ -523,7 +540,7 @@ function createOfflineDriver(
                         );
                         progress.textContent = media.progressText
                             ? media.progressText(value)
-                            : ports.translate("Local videos") +
+                            : ports.translate(localMessage3) +
                               ": " +
                               catalog.ids.length;
                     }
@@ -560,14 +577,11 @@ function createOfflineDriver(
                 if (!current()) return false;
                 try {
                     if (profileCurrent && !profileCurrent()) {
-                        recover("Local profile changed while loading", false);
+                        recover(localMessage2, false);
                         return false;
                     }
                 } catch (_) {
-                    recover(
-                        "Local profile configuration is unavailable",
-                        false
-                    );
+                    recover(localMessage1, false);
                     return false;
                 }
                 if (
@@ -599,14 +613,14 @@ function createOfflineDriver(
             function ensureLoadingControls(): void {
                 var host = window as any;
                 var panel =
-                    typeof document !== "undefined" &&
-                    document.getElementById("dialogbox");
+                    typeof document !== localMessage4 &&
+                    document.getElementById(localMessage5);
                 if (
                     !current() ||
                     started ||
                     !panel ||
-                    !panel.querySelector(".ott-spinner") ||
-                    panel.style?.display === "none" ||
+                    !panel.querySelector(localMessage6) ||
+                    driverField(panel.style, "display") === "none" ||
                     !host.__ottClassicScreenPort ||
                     typeof host.renderButtonHint !== "function" ||
                     host.__ottKiosk?.locked()
@@ -677,6 +691,48 @@ function createOfflineDriver(
         logo: function () {
             return "";
         },
+        resolveStream: function (url, done) {
+            var media = (window as any).__ottLocalMedia;
+            var cancelled = false,
+                resolved = "";
+            var current = function () {
+                return !cancelled && active();
+            };
+            var pending = driverField(media, "preparePlayback")
+                ? media.preparePlayback(url, current)
+                : Promise.resolve(url);
+            function retire(): void {
+                playbackCancels = playbackCancels.filter(function (entry) {
+                    return entry !== cancel;
+                });
+            }
+            var cancel = function () {
+                cancelled = true;
+                retire();
+                if (pending.cancel) pending.cancel();
+                if (resolved && driverField(media, localMessage0))
+                    media.cancelPlayback(resolved);
+            };
+            playbackCancels.push(cancel);
+            pending.then(
+                function (value: string) {
+                    retire();
+                    resolved = value;
+                    if (current()) done(value);
+                    else if (driverField(media, localMessage0))
+                        media.cancelPlayback(value);
+                },
+                function () {
+                    retire();
+                    if (current()) {
+                        done(null);
+                        if (driverField(media, "compatibilityFailure"))
+                            media.compatibilityFailure();
+                    }
+                }
+            );
+            return cancel;
+        },
         saveCredentials: function () {},
         stream: function (id) {
             return active() && catalog.channels[id]
@@ -687,7 +743,6 @@ function createOfflineDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 function createDemoDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -747,7 +802,6 @@ function createDemoDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 function createDriverTransport(
     ports: ProviderDriverPorts,
     owner: DriverLifetime,
@@ -814,10 +868,8 @@ function createDriverTransport(
         send: request,
     };
 }
-
 var credentialBusy = false;
 var credentialPending: (() => void) | null = null;
-
 /** Serialize credential writes against reentrant loads, preserving the latest intent. */
 function createCredentialOperations(
     ports: ProviderDriverPorts,
@@ -858,7 +910,9 @@ function createCredentialOperations(
             return result;
         },
         write: function (
-            values: { [key: string]: string },
+            values: {
+                [key: string]: string;
+            },
             current: () => boolean
         ): boolean {
             return (
@@ -869,7 +923,6 @@ function createCredentialOperations(
         },
     };
 }
-
 function createXtreamDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -977,7 +1030,6 @@ function createXtreamDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 var config = credentials();
@@ -1056,7 +1108,6 @@ function createXtreamDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 // OTTPLAY_FULL_ONLY_BEGIN
 function createOperatorDriver(
     profile: ProviderDriverProfile,
@@ -1123,7 +1174,6 @@ function createOperatorDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 var loadedConfig = readConfiguration();
@@ -1309,7 +1359,6 @@ function createOperatorDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 /** Instance orchestration for account-token and named playlist protocols.
  * Credentials, request plans, IDs and stream policies remain owned by the shared core. */
 function createNamedPlaylistDriver(
@@ -1431,7 +1480,6 @@ function createNamedPlaylistDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 bootstrap();
@@ -1565,7 +1613,9 @@ function createNamedPlaylistDriver(
                         : previous.username !== value.username ||
                           previous.password !== value.password;
                 if (!current()) return false;
-                var writes: { [key: string]: string } = {};
+                var writes: {
+                    [key: string]: string;
+                } = {};
                 if (id === "tvteam") writes.www = value.playlist || "";
                 else {
                     writes[
@@ -1607,9 +1657,7 @@ function createNamedPlaylistDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 // OTTPLAY_FULL_ONLY_END
-
 var providerDriverProfiles: ProviderDriverProfile[] = (window as any)
     .__ottProviderDriverProfiles;
 var providerDriverRegistry = createDriverRegistry();
@@ -1689,7 +1737,6 @@ providerDriverProfiles.forEach(function (profile) {
                   }
     );
 });
-
 // OTTPLAY_FULL_ONLY_BEGIN
 function namedCredentialMessage(
     host: any,
@@ -1707,7 +1754,6 @@ function namedCredentialMessage(
             : "Enter a username and password to access this service."
     );
 }
-
 /** The old menu and HTML form are codecs over instance credentials, never driver state. */
 function mountNamedProviderSettings(
     host: any,
@@ -2098,9 +2144,7 @@ function mountNamedProviderSettings(
         };
     }
 }
-
 // OTTPLAY_FULL_ONLY_END
-
 /** Retained UI/storage wire codec. No executable provider script enters this boundary. */
 function mountProviderDriver(
     host: any,
@@ -2349,7 +2393,10 @@ function mountProviderDriver(
         return driver;
     }
     host.__ottActiveProviderDriver = driver;
-    if (id === "offline" && host.__ottLocalMedia?.bindPlaybackOwner)
+    if (
+        id === "offline" &&
+        driverField(host.__ottLocalMedia, "bindPlaybackOwner")
+    )
         host.__ottLocalMedia.bindPlaybackOwner(owner.active);
     host.p_pref = profile.prefix;
     host.ottplayDemoActive = id === "demo";
@@ -2727,9 +2774,12 @@ function mountProviderDriver(
     if (specialized) specialized.mount(host, driver, owner, store);
     return driver;
 }
-
 (window as any).__ottProviderDrivers = {
     createRegistry: createDriverRegistry,
     mount: mountProviderDriver,
     registry: providerDriverRegistry,
 };
+
+function driverField(owner: any, key: string): any {
+    return owner == null ? undefined : owner[key];
+}

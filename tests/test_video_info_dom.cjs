@@ -29,7 +29,11 @@ function functions(file, names) {
         { compilerOptions: { target: ts.ScriptTarget.ES5 } }
     ).outputText;
 }
-const core = functions("src/core/index.ts", ["updateCoreVideoInfo"]);
+const core = functions("src/core/index.ts", [
+    "coreField",
+    "coreCall",
+    "updateCoreVideoInfo",
+]);
 const ui = functions("src/ui/index.ts", ["showChannelInfo", "infoBarHide"]);
 
 function fixture() {

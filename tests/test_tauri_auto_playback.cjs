@@ -1944,6 +1944,388 @@ test("only normalized initial masters extend actual HLS manifest policy", () => 
     }
 });
 
+test("local compatibility VOD uses HLS with source-time resume even under a native-file preference", () => {
+    const url = "https://library.test/compat/item/lease/index.m3u8";
+    const original = "https://library.test/offline-media/item";
+    const cancelled = [];
+    const f = fixture({
+        globals: {
+            __ottLocalMedia: {
+                cancelPlayback: (value) => cancelled.push(value),
+                compatibilityPlayback: () => true,
+                isPlaybackUrl: () => true,
+                playbackSourceUrl: () => original,
+                preparePlayback: () => new Promise(() => {}),
+            },
+        },
+        savedPlayerMode: 0,
+    });
+    f.w.__ottActiveProviderDriver = {
+        id: "offline",
+        resolveStream: (value, done) => {
+            done(value);
+            return () => {};
+        },
+    };
+    const lease = f.w.openCoreEngineLease(
+        { lane: "main", position: 3600, sourceUrl: original, url },
+        () => {}
+    );
+    assert.equal(f.players.length, 1);
+    assert.equal(f.players[0].url, url);
+    assert.equal(f.players[0].config.startPosition, 3600);
+    assert.equal(f.w.__ottCoreCompatibilityUrl, url);
+    assert.equal(
+        f.w.playerMode,
+        0,
+        "compatibility does not rewrite the saved preference"
+    );
+    f.w.video.readyState = 1;
+    f.w.video.duration = 7321.5;
+    f.w.video.currentTime = 0;
+    assert.equal(
+        lease.sample().position,
+        3600,
+        "unbuffered replacement reports its requested source time, not media zero"
+    );
+    f.w.video.currentTime = 120;
+    for (const invalid of [-1, NaN, Infinity]) {
+        f.players[0].config.startPosition = invalid;
+        assert.equal(
+            lease.sample().position,
+            120,
+            "invalid HLS targets fall back to media time"
+        );
+    }
+    f.players[0].config.startPosition = 3600;
+    f.players[0].hasEnoughToStart = true;
+    assert.equal(
+        lease.sample().position,
+        120,
+        "buffered playback reports actual media time"
+    );
+    f.players[0].hasEnoughToStart = false;
+    f.w.video.currentTime = 0;
+    let resumedPreparation = 0;
+    f.w.__ottLocalMedia.preparePlayback = () => {
+        resumedPreparation++;
+        return new Promise(() => {});
+    };
+    lease.pause();
+    lease.resume();
+    assert.equal(
+        resumedPreparation,
+        1,
+        "Resume replaces a possibly expired idle lease"
+    );
+    assert.equal(
+        lease.sample().position,
+        3600,
+        "pause/resume before buffering must not reset the requested source time"
+    );
+    lease.seek(5000);
+    assert.equal(
+        lease.sample().position,
+        5000,
+        "quit during prepare retains the pending source-time seek"
+    );
+    f.w.stopCoreEngine();
+    assert(cancelled.length >= 2);
+    assert(cancelled.every((value) => value === url));
+});
+
+test("compatibility retries retire only their prior main lease before preparing a replacement", () => {
+    const original = "https://library.test/offline-media/movie";
+    const events = [],
+        cancelled = [];
+    let sequence = 0,
+        current,
+        stopping = false;
+    const f = fixture({
+        globals: {
+            __ottLocalMedia: {
+                cancelPlayback(url) {
+                    if (!stopping)
+                        assert.equal(
+                            f.w.__ottCoreCompatibilityUrl,
+                            "",
+                            "tracking is cleared before cancellation is dispatched"
+                        );
+                    cancelled.push(url);
+                    events.push(["cancel", url]);
+                },
+                compatibilityPlayback: () => true,
+                isPlaybackUrl: () => true,
+                playbackSourceUrl: () => original,
+            },
+        },
+        savedPlayerMode: 0,
+    });
+    f.w.__ottCorePipCompatibilityUrl =
+        "https://library.test/compat/pip/index.m3u8";
+    f.w.__ottActiveProviderDriver = {
+        id: "offline",
+        resolveStream(value, done) {
+            if (value !== original) {
+                assert.equal(value, current);
+                done(value);
+                return () => {};
+            }
+            if (current)
+                assert.equal(
+                    cancelled.at(-1),
+                    current,
+                    "prior main lease is retired before replacement preparation"
+                );
+            current =
+                "https://library.test/compat/lease-" +
+                ++sequence +
+                "/index.m3u8";
+            events.push(["prepare", current]);
+            done(current);
+            return () => {};
+        },
+    };
+    f.w.stbPlay(original, 120);
+    for (const wait of [500, 1000]) {
+        const old = current;
+        // Exhaust HLS's two in-place retries to exercise the outer attempt.
+        for (let failure = 0; failure < 3; failure++)
+            f.players.at(-1).emit("error", {
+                details: "fragLoadError",
+                fatal: true,
+                type: "network",
+            });
+        f.advance(wait);
+        assert.notEqual(current, old);
+        assert.equal(f.w.__ottCoreCompatibilityUrl, current);
+        assert.equal(cancelled.filter((url) => url === old).length, 1);
+        assert.equal(events.at(-2)[0], "cancel");
+        assert.equal(events.at(-1)[0], "prepare");
+    }
+    assert(
+        !cancelled.includes(f.w.__ottCorePipCompatibilityUrl),
+        "independent PiP lease is not retired"
+    );
+    stopping = true;
+    f.w.stbStop();
+    assert.equal(cancelled.at(-1), current);
+    assert.equal(cancelled.filter((url) => url === current).length, 1);
+});
+
+test("stopping during compatibility retry prevents a late replacement from attaching", () => {
+    const original = "https://library.test/offline-media/movie";
+    const first = "https://library.test/compat/first/index.m3u8";
+    const cancelled = [];
+    let requests = 0,
+        pending,
+        pendingCancelled = 0;
+    const f = fixture({
+        globals: {
+            __ottLocalMedia: {
+                cancelPlayback: (url) => cancelled.push(url),
+                compatibilityPlayback: () => true,
+                isPlaybackUrl: () => true,
+                playbackSourceUrl: () => original,
+            },
+        },
+        savedPlayerMode: 0,
+    });
+    f.w.__ottActiveProviderDriver = {
+        id: "offline",
+        resolveStream(value, done) {
+            if (value === original && requests++ > 0) {
+                pending = done;
+                return () => {
+                    pendingCancelled++;
+                };
+            }
+            done(first);
+            return () => {};
+        },
+    };
+    f.w.stbPlay(original, 120);
+    for (let failure = 0; failure < 3; failure++)
+        f.players.at(-1).emit("error", {
+            details: "fragLoadError",
+            fatal: true,
+            type: "network",
+        });
+    f.advance(500);
+    assert.equal(typeof pending, "function");
+    assert.deepEqual(cancelled, [first]);
+    assert.equal(f.w.__ottCoreCompatibilityUrl, "");
+    const attached = f.players.length;
+    f.w.stbStop();
+    assert.equal(pendingCancelled, 1);
+    pending("https://library.test/compat/stale/index.m3u8");
+    assert.equal(f.players.length, attached);
+    assert.equal(f.w.__ottCoreCompatibilityUrl, "");
+});
+
+for (const reentry of ["performance callback", "old lease cancellation"]) {
+    test(
+        "synchronous " +
+            reentry +
+            " cannot let a retired compatibility retry cancel new playback",
+        () => {
+            const original = "https://library.test/offline-media/old";
+            const otherOriginal = "https://library.test/offline-media/new";
+            const oldLease = "https://library.test/compat/old/index.m3u8";
+            const newLease = "https://library.test/compat/new/index.m3u8";
+            const pipLease = "https://library.test/compat/pip/index.m3u8";
+            const cancelled = [],
+                resolved = [];
+            let armed = false,
+                replacements = 0;
+            function replace() {
+                if (!armed) return;
+                armed = false;
+                replacements++;
+                f.w.stbPlay(otherOriginal, 240);
+            }
+            const f = fixture({
+                globals: {
+                    __ottLocalMedia: {
+                        cancelPlayback(url) {
+                            cancelled.push(url);
+                            if (
+                                reentry === "old lease cancellation" &&
+                                url === oldLease
+                            )
+                                replace();
+                        },
+                        compatibilityPlayback: (url) =>
+                            url === original ||
+                            url === otherOriginal ||
+                            url.includes("/compat/"),
+                        isPlaybackUrl: () => true,
+                        playbackSourceUrl: (url) =>
+                            url === newLease ? otherOriginal : original,
+                    },
+                    __ottPerfSink: {
+                        changed() {},
+                        recovery(key) {
+                            if (
+                                reentry === "performance callback" &&
+                                key === "streamRetries"
+                            )
+                                replace();
+                        },
+                    },
+                },
+                savedPlayerMode: 0,
+            });
+            f.w.__ottActiveProviderDriver = {
+                id: "offline",
+                resolveStream(value, done) {
+                    resolved.push(value);
+                    done(
+                        value === original
+                            ? oldLease
+                            : value === otherOriginal
+                              ? newLease
+                              : value
+                    );
+                    return () => {};
+                },
+            };
+            f.w.stbPlayPip(pipLease);
+            const pip = f.players.find(
+                (player) => player.media === f.w.videoPip
+            );
+            const pipSource = f.w.videoPip.src;
+            f.w.stbPlay(original, 120);
+            const old = f.players.at(-1);
+            assert.equal(old.url, oldLease);
+            armed = true;
+            for (let failure = 0; failure < 3; failure++)
+                old.emit("error", {
+                    details: "fragLoadError",
+                    fatal: true,
+                    type: "network",
+                });
+            f.advance(500);
+            const current = f.players.at(-1);
+            assert.equal(replacements, 1);
+            assert.equal(
+                resolved.filter((url) => url === original).length,
+                1,
+                "retired retry must not prepare the old original again"
+            );
+            assert.equal(
+                resolved.filter((url) => url === otherOriginal).length,
+                1
+            );
+            assert.equal(f.w.__ottCoreCompatibilityUrl, newLease);
+            assert.equal(current.url, newLease);
+            assert.equal(current.config.startPosition, 240);
+            assert.equal(current.media, f.w.video);
+            assert.equal(current.destroyCalls, 0);
+            assert.equal(cancelled.filter((url) => url === oldLease).length, 1);
+            assert.equal(cancelled.includes(newLease), false);
+            assert.equal(f.w.__ottCorePipCompatibilityUrl, pipLease);
+            assert.equal(pip.destroyCalls, 0);
+            assert.equal(f.w.videoPip.src, pipSource);
+            assert.equal(cancelled.includes(pipLease), false);
+            f.w.stbStop();
+            assert.equal(cancelled.filter((url) => url === newLease).length, 1);
+            assert.equal(current.destroyCalls, 1);
+            assert.equal(f.w.__ottCoreCompatibilityUrl, "");
+            assert.equal(
+                pip.destroyCalls,
+                0,
+                "main Stop keeps the PiP decoder alive"
+            );
+            assert.equal(cancelled.includes(pipLease), false);
+        }
+    );
+}
+
+test("shared local guards preserve optional receiver and missing-method behavior", () => {
+    const f = fixture(),
+        w = f.w;
+    assert.equal(w.coreField(null, "mode"), undefined);
+    assert.equal(w.coreField({ mode: 0 }, "mode"), 0);
+    assert.equal(w.coreCall(null, "blocked", [], 1), undefined);
+    assert.equal(w.coreCall({}, "blocked", [], 3), undefined);
+    assert.throws(() => w.coreCall({}, "blocked", [], 1));
+    let reads = 0;
+    const owner = {
+        get method() {
+            reads++;
+            return function (a) {
+                return this.value + a;
+            };
+        },
+        value: 7,
+    };
+    assert.equal(w.coreCall(owner, "method", [5], 3), 12);
+    assert.equal(reads, 1);
+    delete w.__ottLocalMedia;
+    assert.equal(w.coreCompat("source"), false);
+    w.cancelCoreCompat("source");
+    const calls = [];
+    w.__ottLocalMedia = {
+        cancelPlayback(url) {
+            calls.push([this, url]);
+        },
+        compatibilityPlayback(url) {
+            calls.push([this, url]);
+            return true;
+        },
+    };
+    assert.equal(w.coreCompat("source"), true);
+    w.cancelCoreCompat("source");
+    assert.equal(calls.length, 2);
+    assert(
+        calls.every(
+            ([receiver, url]) =>
+                receiver === w.__ottLocalMedia && url === "source"
+        )
+    );
+});
+
 let failures = 0;
 for (const [name, callback] of cases) {
     try {

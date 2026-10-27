@@ -98,6 +98,7 @@ const CLASSIC_MODULES = [
     "build/offline/local-media-progress.js",
     "build/offline/playback-selection.js",
     "build/offline/profiles.js",
+    "build/plugins/local-compatibility.js",
     "build/plugins/local-media-ui.js",
     "build/plugins/local-media.js",
     "build/provider/assets.js",
@@ -114,6 +115,7 @@ const CLASSIC_MODULES = [
     "build/commands/remote-app-update.js",
     "build/commands/remote-restart.js",
     "build/commands/remote-local-media.js",
+    "build/commands/remote-local-runner.js",
     "build/commands/remote-screenshot.js",
     "build/commands/remote-archive.js",
     "build/commands/remote-notifications.js",
@@ -186,12 +188,14 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     "control-transport": ["build/plugins/hosted-control-transport.js"],
+    "local-compatibility": ["build/plugins/local-compatibility.js"],
     "local-media-ui": ["build/plugins/local-media-ui.js"],
 
     "perf-capture": [
         "build/plugins/perf-sensors.js",
         "build/plugins/perf-capture.js",
     ],
+    "remote-local-runner": ["build/commands/remote-local-runner.js"],
     "remote-provider-fields": [
         "build/plugins/remote-provider-fields.js",
         "build/plugins/remote-plex-folders.js",
@@ -236,6 +240,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottChannelSearch",
     ]),
     "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
+    "build/commands/remote-local-runner.js": Object.freeze([
+        "window.__ottRemoteLocalMediaRun",
+    ]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
     "build/device/adapter.js": Object.freeze(["window.__ottDeviceAdapter"]),
     "build/device/media-backend.js": Object.freeze([
@@ -280,6 +287,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/plugins/hosted-control-transport.js": Object.freeze([
         "window.__ottControlTransport",
         "window.__OTT_CONTROL_TRANSPORT_VERSION__",
+    ]),
+    "build/plugins/local-compatibility.js": Object.freeze([
+        "window.__ottLocalCompatibilityFactory",
     ]),
     "build/plugins/local-media-ui.js": Object.freeze([
         "window.__ottLocalMediaUiFactory",

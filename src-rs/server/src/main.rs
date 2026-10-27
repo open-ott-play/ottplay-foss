@@ -386,7 +386,7 @@ async fn offline_media_routes(readonly_paths: Option<Vec<std::path::PathBuf>>) -
     } else {
         ottplay_core::offline_media::Library::new(directory.into(), token, "server").await?
     };
-    Ok(library.routes())
+    Ok(library.with_compatibility_from_env().await.routes())
 }
 
 async fn refresh_epg_snapshot(

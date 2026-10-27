@@ -663,6 +663,7 @@ function remoteAspectCapabilities(w: any): any {
 }
 
 /** Typed, bounded controls share the command transport's exact-result ACK fence. */
+/** Typed, bounded controls share the command transport's exact-result ACK fence. */
 export function executeRemoteControl(
     w: any,
     action: string,
@@ -671,6 +672,21 @@ export function executeRemoteControl(
     afterReply?: (effect: () => void) => void,
     expiresAt?: number
 ): (() => void) | void {
+    // Share exact repeated error/protocol text without changing wire values.
+    var localMessage0 = "operation" as const,
+        localMessage1 = "unsupported" as const,
+        localMessage2 = "capabilities" as const,
+        localMessage3 = "available" as const,
+        localMessage4 = "previous_channel" as const,
+        localMessage5 = "next_channel" as const,
+        localMessage6 = "step_channel" as const,
+        localMessage7 = "restart_stream" as const,
+        localMessage8 = "reload_player" as const,
+        localMessage9 = "restart_app" as const,
+        localMessage10 = "reboot_device" as const,
+        localMessage11 = "This lifecycle operation is unavailable." as const,
+        localMessage12 = "lifecycle-after-ack" as const;
+
     function fail(status: string, error: string): void {
         done({ data: { error: error }, status: status });
     }
@@ -679,13 +695,13 @@ export function executeRemoteControl(
     }
     var fields =
         action === "lifecycle"
-            ? ["operation"]
+            ? [localMessage0]
             : action === "input"
               ? ["key"]
               : action === "playback"
-                ? ["operation", "position", "offset"]
+                ? [localMessage0, "position", "offset"]
                 : action === "aspect"
-                  ? ["operation", "runtime", "mode"]
+                  ? [localMessage0, "runtime", "mode"]
                   : [];
     if (
         !params ||
@@ -735,7 +751,7 @@ export function executeRemoteControl(
         }
         var target = remoteAspectTarget(w);
         if (!target || (setting && !afterReply)) {
-            aspectFail("unsupported", "unsupported");
+            aspectFail(localMessage1, localMessage1);
             return;
         }
         if (!setting) {
@@ -780,32 +796,32 @@ export function executeRemoteControl(
         return;
     }
     var hooks = w.__ottRemoteLifecycle;
-    var owned = remoteOwnedPlayback(w, action === "capabilities");
+    var owned = remoteOwnedPlayback(w, action === localMessage2);
     function lifecycleAvailable(operation: string): boolean {
         return (
             remoteLifecycleCapability(
                 w,
                 operation as DoctorCapabilityName,
-                action === "capabilities"
-            ).state === "available"
+                action === localMessage2
+            ).state === localMessage3
         );
     }
     var playback =
         owned && owned.kind !== "live" && !remoteKiosk(w)
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
-    if (action === "capabilities") {
+    if (action === localMessage2) {
         var localMedia = w.__ottLocalMedia?.remoteCapabilities
             ? w.__ottLocalMedia.remoteCapabilities()
             : undefined;
         var plexQueue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
         if (plexQueue.retained() || remoteChannelStep(w, -1))
-            playback.push("previous_channel");
+            playback.push(localMessage4);
         if (plexQueue.retained() || remoteChannelStep(w, 1))
-            playback.push("next_channel");
+            playback.push(localMessage5);
         // Generic availability describes the selection state, not the PIN
         // policy of either neighbour. Every requested destination is checked.
-        if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
+        if (remoteChannelStep(w, 0, true)) playback.push(localMessage6);
         reply({
             app_update: remoteAppUpdateAvailable(w)
                 ? { operations: ["status", "prepare", "install"], version: 1 }
@@ -819,17 +835,17 @@ export function executeRemoteControl(
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),
             inspect: {
-                sections: ["doctor", "snapshot", "operation"],
+                sections: ["doctor", "snapshot", localMessage0],
                 version: 1,
             },
             lifecycle: [
-                "restart_stream",
-                "reload_player",
-                "restart_app",
+                localMessage7,
+                localMessage8,
+                localMessage9,
                 "standby",
                 "wake",
                 "exit_app",
-                "reboot_device",
+                localMessage10,
             ].filter(lifecycleAvailable),
             local_media: localMedia,
             local_media_progressive: localMedia ? { version: 1 } : undefined,
@@ -890,10 +906,10 @@ export function executeRemoteControl(
     }
     if (action === "playback") {
         var operation = params.operation;
-        var relative = operation === "step_channel";
+        var relative = operation === localMessage6;
         if (
-            operation === "previous_channel" ||
-            operation === "next_channel" ||
+            operation === localMessage4 ||
+            operation === localMessage5 ||
             relative
         ) {
             if (
@@ -922,7 +938,7 @@ export function executeRemoteControl(
                             expires_at: expiresAt,
                             params: {
                                 op:
-                                    operation === "next_channel"
+                                    operation === localMessage5
                                         ? "next"
                                         : "previous",
                                 runtime: remotePlayerInfo(w).runtime,
@@ -944,11 +960,7 @@ export function executeRemoteControl(
             }
             var selected = remoteChannelStep(
                 w,
-                relative
-                    ? params.offset
-                    : operation === "previous_channel"
-                      ? -1
-                      : 1
+                relative ? params.offset : operation === localMessage4 ? -1 : 1
             );
             if (!selected) {
                 fail(
@@ -999,7 +1011,7 @@ export function executeRemoteControl(
         }
         if (!owned || playback.indexOf(operation) < 0) {
             fail(
-                "unsupported",
+                localMessage1,
                 "Playback control requires a compatible owned stream."
             );
             return;
@@ -1027,7 +1039,7 @@ export function executeRemoteControl(
         var code = remoteInputCode(w, key);
         if (!afterReply || !code) {
             fail(
-                "unsupported",
+                localMessage1,
                 "This key requires supported acknowledged input."
             );
             return;
@@ -1071,38 +1083,38 @@ export function executeRemoteControl(
     var operation = params.operation;
     if (
         [
-            "restart_stream",
-            "reload_player",
-            "restart_app",
+            localMessage7,
+            localMessage8,
+            localMessage9,
             "standby",
             "wake",
             "exit_app",
-            "reboot_device",
+            localMessage10,
         ].indexOf(operation) < 0
     ) {
         fail("rejected", "Use a named lifecycle operation.");
         return;
     }
-    if (operation === "restart_stream" || operation === "reload_player") {
+    if (operation === localMessage7 || operation === localMessage8) {
         var capability = remoteLifecycleCapability(w, operation);
-        if (capability.state !== "available") {
+        if (capability.state !== localMessage3) {
             fail(
                 capability.reason === "policy_restricted"
                     ? "rejected"
-                    : "unsupported",
-                "This lifecycle operation is unavailable."
+                    : localMessage1,
+                localMessage11
             );
             return;
         }
         executeRemoteRestart(
             w,
-            { target: operation === "restart_stream" ? "stream" : "player" },
+            { target: operation === localMessage7 ? "stream" : "player" },
             function (result) {
-                if (result.status === "ok" && operation === "reload_player")
+                if (result.status === "ok" && operation === localMessage8)
                     result.data = {
                         accepted: true,
                         dispatched: false,
-                        effect: "lifecycle-after-ack",
+                        effect: localMessage12,
                         operation: operation,
                     };
                 else if (result.status === "ok")
@@ -1126,7 +1138,7 @@ export function executeRemoteControl(
         return;
     }
     if (!afterReply || !lifecycleAvailable(operation)) {
-        fail("unsupported", "This lifecycle operation is unavailable.");
+        fail(localMessage1, localMessage11);
         return;
     }
     var method = remoteLifecycleMethods[operation];
@@ -1165,7 +1177,7 @@ export function executeRemoteControl(
     reply({
         accepted: true,
         dispatched: false,
-        effect: "lifecycle-after-ack",
+        effect: localMessage12,
         operation: operation,
     });
 }

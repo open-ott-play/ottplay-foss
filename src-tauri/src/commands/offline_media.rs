@@ -62,7 +62,9 @@ async fn runtime(
         .await
         .map_err(str::to_string)?
         .map_err(|_| "Local media storage unavailable")?
-        .with_background(background.inner().clone());
+        .with_background(background.inner().clone())
+        .with_compatibility_from_env()
+        .await;
     let listener = work
         .run(tokio::net::TcpListener::bind("127.0.0.1:0"))
         .await
@@ -139,7 +141,12 @@ pub async fn offline_media_import_files(
         let _picker_work = picker_work;
         app.dialog()
             .file()
-            .add_filter("Media", &["mp4", "m4v", "webm", "ogv", "mp3", "m4a", "ogg"])
+            .add_filter(
+                "Media",
+                &[
+                    "mp4", "m4v", "webm", "ogv", "mp3", "m4a", "ogg", "avi", "mkv",
+                ],
+            )
             .blocking_pick_files()
     })
     .await

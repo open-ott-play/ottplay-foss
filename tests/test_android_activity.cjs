@@ -429,6 +429,10 @@ try {
         "stbIsPlaying",
         "stbStop",
         "getCoreMediaBackend",
+        "coreCompat",
+        "cancelCoreCompat",
+        "coreField",
+        "coreCall",
         "sampleCoreLiveRecovery",
         "openCoreEngineLease",
         "stopCoreEngine",
@@ -453,6 +457,7 @@ try {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
+        _corePendingSeekPosition: null,
         _corePipSession: 0,
         _coreShakaTeardown: null,
         _inLiveRestart: false,
@@ -468,9 +473,11 @@ try {
         coreSourcePreparationCancel: null,
         coreStreamAttempt: null,
         hlsInstance: {
+            config: { startPosition: -1 },
             destroy() {
                 destroyed++;
             },
+            hasEnoughToStart: false,
         },
         setInterval() {
             return 1;

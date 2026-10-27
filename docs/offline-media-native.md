@@ -104,8 +104,10 @@ Stalled reads still reach the shared provider's inactivity timeout.
 New native code requires an APK/IPA/Tauri application update. Updating only the
 hosted page does not install a native picker or permission implementation. The
 native UI assets must be bundled locally for a cold start without a network.
-H.264/AAC in MP4 is a useful portable starting point; this feature adds no codecs
-and performs no transcoding.
+H.264/AAC in MP4 remains the portable direct-play starting point. Optional
+[AVI/MKV compatibility](local-container-compatibility.md) uses an updated Tauri
+or configured server backend with installed FFmpeg tools; mobile/browser direct
+playback does not acquire a transcoder from a hosted-page update.
 
 Android JVM tests cover full/partial reads, seeking, asset offsets, bounds and
 truncation of original sources. iOS syntax and simulator build checks verify API

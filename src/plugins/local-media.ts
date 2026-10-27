@@ -70,6 +70,7 @@ export function installLocalMedia(w: any): any {
         nextImportSelection = "";
     }
     function libraryIdentity(): string {
+        if (serverLibrary()) return "browser:" + remoteEndpoint();
         return isNative()
             ? "capacitor"
             : isTauri()
@@ -95,6 +96,21 @@ export function installLocalMedia(w: any): any {
             return "";
         }
     }
+    function serverLibrary(): boolean {
+        return !isTauri() && !!remoteEndpoint();
+    }
+    function nativeLibrary(): boolean {
+        return isNative() && !serverLibrary();
+    }
+    function normalizePlayback(value: any): any {
+        (value?.items || []).forEach(function (item: any) {
+            if (item.playback?.mode === "unsupported") {
+                item.available = false;
+                item.url = "";
+            }
+        });
+        return value;
+    }
     function getEndpoint(
         refresh = false,
         preferredId?: string,
@@ -119,6 +135,7 @@ export function installLocalMedia(w: any): any {
                     "Local media request failed (" + response.status + ")"
                 );
             return response.json().then(function (value: any) {
+                normalizePlayback(value);
                 if (value && Array.isArray(value.items))
                     value.items.forEach(function (item: any) {
                         if (item.url) item.url = new URL(item.url, url).href;
@@ -128,6 +145,164 @@ export function installLocalMedia(w: any): any {
                 return value;
             });
         });
+    }
+    var localText1 = "local-compatibility" as const,
+        localText4 = "a",
+        localText5 = "Local playback request cancelled";
+    var compatibility: any = null,
+        compatibilityEpoch = 0,
+        loadingCompatibility: any[] = [];
+
+    function loadLocalFeature(kind: "local-compatibility"): Promise<any> {
+        return new Promise(function (resolve, reject) {
+            function finish(error?: string): void {
+                try {
+                    if (
+                        error ||
+                        typeof w.__ottLocalCompatibilityFactory !== "function"
+                    )
+                        throw new Error(
+                            "Local media feature could not be loaded"
+                        );
+                    if (!compatibility)
+                        compatibility = w.__ottLocalCompatibilityFactory(w, {
+                            get a() {
+                                return catalogRevision;
+                            },
+                            get b() {
+                                return last;
+                            },
+                            c: function () {
+                                return (
+                                    playbackIntentContext() +
+                                    ":" +
+                                    compatibilityEpoch
+                                );
+                            },
+                        });
+                    resolve(compatibility);
+                } catch (error) {
+                    reject(error);
+                }
+            }
+            if (w.__ottLocalCompatibilityFactory) finish();
+            else loadRemoteFeature(w, kind, finish);
+        });
+    }
+
+    function localCall(
+        owner: any,
+        key: string,
+        args: any[],
+        flags: number
+    ): any {
+        if (flags & 1 && owner == null) return;
+        var fn = owner[key];
+        if (flags & 2 && fn == null) return;
+        return fn.apply(owner, args);
+    }
+    function localField(owner: any, key: string): any {
+        return owner == null ? undefined : owner[key];
+    }
+    function playbackItem(url: string): any {
+        return compatibility
+            ? compatibility.d(url)
+            : last?.items.filter(function (item: any) {
+                  return item.url === url;
+              })[0];
+    }
+    function compatibilityPlayback(url: string): boolean {
+        return (
+            localField(localField(playbackItem(url), "playback"), "mode") ===
+            "compatibility"
+        );
+    }
+    function cancelPlayback(url?: string): void {
+        loadingCompatibility.slice().forEach(function (pending: any) {
+            if (!url || pending.url === url) pending.cancel();
+        });
+        if (!url) compatibilityEpoch++;
+        localCall(compatibility, localText4, [url], 1);
+    }
+    function preparePlayback(url: string, current?: () => boolean): any {
+        if (!compatibility && w.__ottLocalCompatibilityFactory)
+            loadLocalFeature(localText1).catch(function () {});
+        if (compatibility) return compatibility.f(url, current);
+        if (
+            localField(localField(playbackItem(url), "playback"), "mode") ===
+            "unsupported"
+        )
+            return Promise.reject(
+                new Error(
+                    "AVI/MKV compatibility is unavailable on this library"
+                )
+            );
+        if (!compatibilityPlayback(url)) return Promise.resolve(url);
+        if (
+            localCall(w.__ottStandby, "blocked", [], 1) ||
+            (current && !current()) ||
+            loadingCompatibility.length >= 2
+        )
+            return Promise.reject(new Error(localText5));
+        var cancelled = false,
+            inner: any = null,
+            rejectPending: any,
+            epoch = compatibilityEpoch,
+            scan = catalogRevision,
+            identity = playbackIntentContext();
+        function admitted(): boolean {
+            return (
+                !cancelled &&
+                epoch === compatibilityEpoch &&
+                scan === catalogRevision &&
+                identity === playbackIntentContext() &&
+                !localCall(w.__ottStandby, "blocked", [], 1) &&
+                (!current || current())
+            );
+        }
+        function retire(): void {
+            loadingCompatibility = loadingCompatibility.filter(function (
+                entry: any
+            ) {
+                return entry !== pending;
+            });
+        }
+        var pending: any = {
+            cancel: function () {
+                if (cancelled) return;
+                cancelled = true;
+                retire();
+                if (localField(inner, "cancel")) inner.cancel();
+                rejectPending(new Error(localText5));
+            },
+            url: url,
+        };
+        var result: any = new Promise(function (resolve, reject) {
+            rejectPending = reject;
+            loadingCompatibility.push(pending);
+            loadLocalFeature(localText1)
+                .then(function (owner: any) {
+                    if (!admitted()) throw new Error(localText5);
+                    inner = owner.f(url, admitted);
+                    return inner;
+                })
+                .then(
+                    function (value: any) {
+                        retire();
+                        if (admitted()) resolve(value);
+                        else {
+                            localCall(compatibility, localText4, [value], 1);
+                            reject(new Error(localText5));
+                        }
+                    },
+                    function (error: any) {
+                        retire();
+                        reject(error);
+                    }
+                );
+        });
+        result.cancel = pending.cancel;
+        return result;
     }
     function boundedCatalogRequest(url: string, timeout: number): Promise<any> {
         return new Promise(function (resolve, reject) {
@@ -170,7 +345,7 @@ export function installLocalMedia(w: any): any {
         return pending.then(function (value: any) {
             if (!value || !Array.isArray(value.items))
                 throw new Error("Invalid local media catalog");
-            if (request === catalogRevision) last = value;
+            if (request === catalogRevision) last = normalizePlayback(value);
             return value;
         });
     }
@@ -296,7 +471,7 @@ export function installLocalMedia(w: any): any {
             if (request !== catalogRevision) return false;
             if (!value || !Array.isArray(value.items))
                 throw new Error("Invalid local media catalog");
-            last = value;
+            last = normalizePlayback(value);
             updateLoading(value);
             return !onProgress || onProgress(value) !== false;
         }
@@ -306,7 +481,7 @@ export function installLocalMedia(w: any): any {
             return Promise.resolve({ ...initial, cancelled: true });
         var initialScan =
             initial && sourceId ? localSourceScan(initial, sourceId) : null;
-        var pending = isNative()
+        var pending = nativeLibrary()
             ? boundedLocalRead(function (progress) {
                   return nativeList(progress, preferredId, request);
               })
@@ -557,6 +732,12 @@ export function installLocalMedia(w: any): any {
         );
     }
     function failureMessage(value: any): string {
+        if (
+            value?.items?.some(function (item: any) {
+                return item.playback?.mode === "unsupported";
+            })
+        )
+            return "Some AVI/MKV files need a compatible native or Server library backend. Direct formats remain available; originals are not uploaded.";
         var name = value && value.readErrorName;
         if (
             !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|AbortError|InvalidStateError|QuotaExceededError|TimeoutError|TypeError|UnknownError|Error)$/.test(
@@ -651,7 +832,7 @@ export function installLocalMedia(w: any): any {
                 return value;
             });
         }
-        if (isNative())
+        if (nativeLibrary())
             return remember(
                 (folder ? native.importFolder() : native.importFiles()).then(
                     function (value: any) {
@@ -697,7 +878,7 @@ export function installLocalMedia(w: any): any {
             if (playbackSelection.clearSource(id)) retireRemotePlayback();
             return value;
         }
-        if (isNative())
+        if (nativeLibrary())
             return remember(native.removeSource({ id: id }).then(removed));
         if (isTauri())
             return tauriInvoke<any>("offline_media_remove_source", {
@@ -742,7 +923,7 @@ export function installLocalMedia(w: any): any {
     ): Promise<any> {
         if (locked() || settingsLocked())
             return Promise.reject(new Error("Unlock settings to grant access"));
-        if (isNative()) return remember(native.requestAccess());
+        if (nativeLibrary()) return remember(native.requestAccess());
         if (isTauri()) {
             var missing =
                 last &&
@@ -764,7 +945,8 @@ export function installLocalMedia(w: any): any {
                     : undefined
             )
             .then(function (value: any) {
-                if (request === catalogRevision) last = value;
+                if (request === catalogRevision)
+                    last = normalizePlayback(value);
                 return value;
             });
     }
@@ -777,7 +959,7 @@ export function installLocalMedia(w: any): any {
             return Promise.reject(
                 new Error("Unlock settings to change local files")
             );
-        if (isNative()) return remember(native.remove({ id: id }));
+        if (nativeLibrary()) return remember(native.remove({ id: id }));
         return remember(
             getEndpoint().then(function (base) {
                 return base
@@ -957,7 +1139,7 @@ export function installLocalMedia(w: any): any {
     var api = {
         activate: activate,
         available: function () {
-            return isNative() || isTauri() || !!w.indexedDB;
+            return isNative() || isTauri() || serverLibrary() || !!w.indexedDB;
         },
         bindPlaybackOwner: function (active: () => boolean): void {
             if (!remoteHandoff) return;
@@ -965,11 +1147,17 @@ export function installLocalMedia(w: any): any {
             else retireRemotePlayback();
         },
         cancelNativeList: cancelNativeList,
+        cancelPlayback: cancelPlayback,
         cancelScan: function () {
             catalogRevision++;
             cancelNativeList();
             browser.suspend();
         },
+        compatibilityFailure: function () {
+            if (typeof w.showShift === "function")
+                w.showShift(w._("Local source unavailable"));
+        },
+        compatibilityPlayback: compatibilityPlayback,
         completedSources: function () {
             if (
                 !last ||
@@ -991,6 +1179,7 @@ export function installLocalMedia(w: any): any {
         failureMessage: failureMessage,
         importFiles: importFiles,
         isPlaybackUrl: function (url: string) {
+            if (localCall(compatibility, "c", [url], 1)) return true;
             return !!(
                 last &&
                 last.items.some(function (item: any) {
@@ -1000,7 +1189,13 @@ export function installLocalMedia(w: any): any {
         },
         libraryIdentity: libraryIdentity,
         libraryWrite: function (identity: string) {
-            if (isNative() || isTauri() || identity.indexOf("browser:") !== 0)
+            if (isNative() && identity === "capacitor")
+                return { key: "localMediaEndpoint", value: "" };
+            if (
+                isTauri() ||
+                (isNative() && identity === "browser:") ||
+                identity.indexOf("browser:") !== 0
+            )
                 throw new Error(
                     "This local library belongs to another platform"
                 );
@@ -1040,11 +1235,15 @@ export function installLocalMedia(w: any): any {
             playbackSelection.ordered();
             remoteOrderCurrent = null;
         },
+        playbackSourceUrl: function (url: string) {
+            return localCall(compatibility, "e", [url], 1) || url;
+        },
         preferredState: function (id: string) {
             return last && last.preferred && last.preferred.id === id
                 ? last.preferred.state
                 : undefined;
         },
+        preparePlayback: preparePlayback,
         progressText: function (value: any) {
             return formatLocalMediaProgress(value, w._);
         },
@@ -1296,6 +1495,7 @@ export function installLocalMedia(w: any): any {
             return Promise.resolve(JSON.parse(JSON.stringify(last)));
         },
         suspend: function () {
+            cancelPlayback();
             retireRemotePlayback();
             cancelNativeList();
             catalogRevision++;

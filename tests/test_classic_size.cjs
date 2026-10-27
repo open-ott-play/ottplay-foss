@@ -7,6 +7,8 @@ const ts = require("typescript");
 const {
     ARTIFACTS,
     BUDGET,
+    BASE_TOTAL_BUDGET,
+    LOCAL_COMPATIBILITY_ALLOWANCE,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
@@ -75,23 +77,70 @@ try {
         gzipBytes: 6200,
     });
     assert.equal(
-        TOTAL_BUDGET.bytes,
+        BASE_TOTAL_BUDGET.bytes,
         LEGACY_TOTAL_BUDGET.bytes +
-            // The relocated Local UI shares the existing complete payload allowance.
+            // Relocated assets share the existing complete payload allowance;
+            // their independent caps do not allocate additional TOTAL bytes.
             Object.entries(OPTIONAL_BUDGETS)
-                .filter(([name]) => name !== "local-media-ui")
+                .filter(
+                    ([name]) =>
+                        ![
+                            "local-compatibility",
+                            "local-media-ui",
+                            "remote-local-runner",
+                        ].includes(name)
+                )
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.bytes, 0)
     );
     assert.equal(
-        TOTAL_BUDGET.gzipBytes,
+        BASE_TOTAL_BUDGET.gzipBytes,
         LEGACY_TOTAL_BUDGET.gzipBytes +
-            // The relocated Local UI shares the existing complete payload allowance.
+            // Relocated assets share the existing complete payload allowance;
+            // their independent caps do not allocate additional TOTAL bytes.
             Object.entries(OPTIONAL_BUDGETS)
-                .filter(([name]) => name !== "local-media-ui")
+                .filter(
+                    ([name]) =>
+                        ![
+                            "local-compatibility",
+                            "local-media-ui",
+                            "remote-local-runner",
+                        ].includes(name)
+                )
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1319160, gzipBytes: 420842 });
+    assert.deepEqual(LOCAL_COMPATIBILITY_ALLOWANCE, {
+        bytes: 4480,
+        gzipBytes: 2304,
+    });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1323640, gzipBytes: 423146 });
+    assert.deepEqual(BUDGET, { bytes: 1062760, gzipBytes: 328314 });
+    assert.deepEqual(LEGACY_TOTAL_BUDGET, {
+        bytes: 1205560,
+        gzipBytes: 380214,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
+        bytes: 8500,
+        gzipBytes: 3400,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["local-compatibility"], {
+        bytes: 4800,
+        gzipBytes: 1900,
+    });
+    assert.deepEqual(OPTIONAL_BUDGETS["remote-local-runner"], {
+        bytes: 2700,
+        gzipBytes: 1300,
+    });
+    assert(Object.isFrozen(BASE_TOTAL_BUDGET));
+    assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
+    assert(Object.isFrozen(TOTAL_BUDGET));
+    for (const key of ["bytes", "gzipBytes"])
+        assert.equal(
+            TOTAL_BUDGET[key],
+            BASE_TOTAL_BUDGET[key] + LOCAL_COMPATIBILITY_ALLOWANCE[key]
+        );
     for (const name of Object.keys(OPTIONAL_BUDGETS)) {
         const file = path.join(root, "dist", name + ".js");
         fs.writeFileSync(file, "x".repeat(OPTIONAL_BUDGETS[name].bytes + 1));
@@ -152,6 +201,120 @@ try {
         sets[0].total.gzipBytes,
         measurement.gzipBytes * (9 + optionalCount)
     );
+    // A complete distribution can use exactly one approved allowance; even a
+    // one-byte overrun must fail while all component/legacy caps still pass.
+    const distribution = [
+        "dist/player.js",
+        ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+            (name) => "dist/provider-" + name + ".js"
+        ),
+        ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+            (name) => "dist/" + name + ".js"
+        ),
+    ];
+    const originals = new Map(
+        distribution.map((file) => [
+            file,
+            fs.readFileSync(path.join(root, file)),
+        ])
+    );
+    function restoreDistribution() {
+        for (const [file, bytes] of originals)
+            fs.writeFileSync(path.join(root, file), bytes);
+    }
+    try {
+        for (const file of distribution)
+            fs.writeFileSync(path.join(root, file), "x");
+        fs.writeFileSync(
+            path.join(root, "dist/player.js"),
+            "x".repeat(BUDGET.bytes)
+        );
+        const m3u = path.join(root, "dist/provider-m3u.js");
+        fs.writeFileSync(
+            m3u,
+            "x".repeat(LEGACY_TOTAL_BUDGET.bytes - BUDGET.bytes - 7)
+        );
+        let remaining = TOTAL_BUDGET.bytes - LEGACY_TOTAL_BUDGET.bytes;
+        let spare;
+        const optionalNames = Object.keys(OPTIONAL_BUDGETS);
+        optionalNames.forEach((name, index) => {
+            const bytes = Math.min(
+                OPTIONAL_BUDGETS[name].bytes,
+                remaining - (optionalNames.length - index - 1)
+            );
+            fs.writeFileSync(
+                path.join(root, "dist/" + name + ".js"),
+                "x".repeat(bytes)
+            );
+            remaining -= bytes;
+            if (bytes < OPTIONAL_BUDGETS[name].bytes)
+                spare = path.join(root, "dist/" + name + ".js");
+        });
+        assert.equal(remaining, 0);
+        assert(spare);
+        assert.equal(
+            inspectBundleSets(root)[0].total.bytes,
+            TOTAL_BUDGET.bytes
+        );
+        fs.appendFileSync(spare, "x");
+        assert.throws(
+            () => inspectBundleSets(root),
+            new RegExp(
+                "complete player bytes .* exceeds budget " + TOTAL_BUDGET.bytes
+            )
+        );
+    } finally {
+        restoreDistribution();
+    }
+    // Independently exercise the aggregate gzip gate with incompressible small
+    // fixtures; every per-file and legacy limit must remain satisfied.
+    try {
+        for (const file of distribution)
+            fs.writeFileSync(path.join(root, file), "x");
+        function dense(target) {
+            const bytes = crypto.randomBytes(target - 128);
+            return bytes;
+        }
+        const members = [
+            { budget: BUDGET, bytes: dense(320000), file: "dist/player.js" },
+            ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map((name) => ({
+                budget: PROVIDER_BUDGET,
+                bytes: name === "m3u" ? dense(59000) : Buffer.from("x"),
+                file: "dist/provider-" + name + ".js",
+            })),
+            ...Object.entries(OPTIONAL_BUDGETS).map(([name, budget]) => ({
+                budget,
+                bytes: dense(budget.gzipBytes),
+                file: "dist/" + name + ".js",
+            })),
+        ];
+        const measured = members.map((member) => {
+            fs.writeFileSync(path.join(root, member.file), member.bytes);
+            return measureBundle(member.bytes, member.file, member.budget);
+        });
+        const legacy = measured.slice(0, 9);
+        assert(
+            legacy.reduce((sum, item) => sum + item.gzipBytes, 0) <
+                LEGACY_TOTAL_BUDGET.gzipBytes
+        );
+        assert(
+            measured.reduce((sum, item) => sum + item.bytes, 0) <
+                TOTAL_BUDGET.bytes
+        );
+        assert(
+            measured.reduce((sum, item) => sum + item.gzipBytes, 0) >
+                TOTAL_BUDGET.gzipBytes
+        );
+        assert.throws(
+            () => inspectBundleSets(root),
+            new RegExp(
+                "complete player gzipBytes .* exceeds budget " +
+                    TOTAL_BUDGET.gzipBytes
+            )
+        );
+    } finally {
+        restoreDistribution();
+    }
     const extra = path.join(root, "dist/provider-old.js");
     fs.writeFileSync(extra, source);
     assert.throws(() => inspectBundleSets(root), /Unexpected provider bundle/);
@@ -408,6 +571,12 @@ try {
         /complete player bytes .* exceeds budget/
     );
     const report = writeBundleReport(root, optimizer, ["entry.js"]);
+    assert.deepEqual(report.baseTotalBudget, BASE_TOTAL_BUDGET);
+    assert.deepEqual(
+        report.localCompatibilityAllowance,
+        LOCAL_COMPATIBILITY_ALLOWANCE
+    );
+    assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
     assert.deepEqual(
         JSON.parse(
             fs.readFileSync(

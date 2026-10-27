@@ -18,6 +18,12 @@ folders, and **Disconnect** for each source. There is no separate
 file-manager dialog. The operating system's file/folder picker still appears to
 let you choose what OTT may read.
 
+AVI/MKV compatibility is available through an advertised native or Server library
+backend with installed tools. The existing **Server library…** row is also
+available in Capacitor; clearing its URL returns to native file grants. Browser
+local sources do not gain Xvid decoding or upload source files for conversion.
+See [platform support and the finite VOD contract](local-container-compatibility.md).
+
 In a supported desktop browser or Tauri, **Add folder** and **Add files** start
 playback as soon as the first playable file is available. The remaining catalog
 loads in the background. The picker saves source references before the scan;

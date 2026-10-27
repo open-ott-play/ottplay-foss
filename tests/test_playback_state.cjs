@@ -46,6 +46,7 @@ function fixture(managed = false) {
         },
     };
     const c = {
+        _corePendingSeekPosition: null,
         _corePipSession: 0,
         _inLiveRestart: false,
         _playSession: 1,
@@ -63,6 +64,7 @@ function fixture(managed = false) {
         curList: [101, 202],
         Date,
         document: { getElementById: () => null },
+        hlsInstance: null,
         m3uArr: {
             active: 0,
             M3Us: [
@@ -106,6 +108,10 @@ function fixture(managed = false) {
     c.api.importLegacy(); // Explicit retained-device ingress; snapshot itself is pure.
     include(c, "src/core/index.ts", [
         "configureLiveRecovery",
+        "coreCompat",
+        "coreCall",
+        "coreField",
+        "cancelCoreCompat",
         "getCoreMediaBackend",
         "openCoreEngineLease",
         "sampleCoreLiveRecovery",

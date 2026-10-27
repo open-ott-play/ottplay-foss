@@ -96,7 +96,9 @@ export function installBrowserLocalMedia(w: any): any {
     function media(file: any): boolean {
         return (
             /^(video|audio)\//i.test(file.type || "") ||
-            /\.(mp4|m4v|webm|mp3|m4a|ogg|wav|mov)$/i.test(file.name || "")
+            /\.(mp4|m4v|webm|mp3|m4a|ogg|wav|mov|avi|mkv)$/i.test(
+                file.name || ""
+            )
         );
     }
     function fileTimeout(limit = false): Error {
@@ -303,14 +305,36 @@ export function installBrowserLocalMedia(w: any): any {
             urlApi.revokeObjectURL((urls[id] as any).url);
             delete urls[id];
         }
-        if (!urls[id])
+        var unsupported = /\.avi$/i.test(name);
+        if (/\.mkv$/i.test(name)) {
+            try {
+                unsupported = !w.document
+                    ?.createElement("video")
+                    .canPlayType(file.type || "video/x-matroska");
+            } catch (_) {
+                unsupported = true;
+            }
+        }
+        if (unsupported && urls[id]) {
+            urlApi.revokeObjectURL((urls[id] as any).url);
+            delete urls[id];
+        }
+        if (!unsupported && !urls[id])
             (urls as any)[id] = {
                 signature: signature,
                 url: urlApi.createObjectURL(file),
             };
         return {
             access: "granted",
-            available: true,
+            available: !unsupported,
+            ...(unsupported
+                ? {
+                      playback: {
+                          mode: "unsupported",
+                          reason: "compatibility_unavailable",
+                      },
+                  }
+                : {}),
             directory:
                 name.indexOf("/") >= 0
                     ? name.split("/").slice(-2)[0]
@@ -326,7 +350,7 @@ export function installBrowserLocalMedia(w: any): any {
             size: file.size,
             source: sourceId.indexOf("source-") === 0 ? "linked" : "imported",
             sourceId: sourceId,
-            url: (urls[id] as any).url,
+            url: unsupported ? "" : (urls[id] as any).url,
         };
     }
     // Snapshots are cumulative. A false callback or newer scan cancels traversal;
@@ -428,8 +452,9 @@ export function installBrowserLocalMedia(w: any): any {
             sourceId: string
         ): void {
             if (!active() || live[id]) return;
-            items.push(item(id, file, name, sourceId, live));
-            if (!firstPlayable) {
+            var added = item(id, file, name, sourceId, live);
+            items.push(added);
+            if (!firstPlayable && added.available !== false && added.url) {
                 firstPlayable = true;
                 progress(true);
             }
@@ -908,7 +933,14 @@ export function installBrowserLocalMedia(w: any): any {
                     {
                         accept: {
                             "audio/*": [".mp3", ".m4a", ".ogg", ".wav"],
-                            "video/*": [".mp4", ".m4v", ".webm", ".mov"],
+                            "video/*": [
+                                ".mp4",
+                                ".m4v",
+                                ".webm",
+                                ".mov",
+                                ".avi",
+                                ".mkv",
+                            ],
                         },
                         description: "Video and audio",
                     },
