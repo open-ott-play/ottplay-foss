@@ -121,6 +121,9 @@
 
 ## [1.1.61] - 2026-10-26
 
+- Publish release assets through their verified draft ID and wait within a
+  bounded deadline for GitHub to expose successful release-gate metadata.
+
 - Keep unmodified desktop Up/Down switching Local video files when the video
   element has focus; preserve volume, modified seeking and kiosk/input guards.
 
