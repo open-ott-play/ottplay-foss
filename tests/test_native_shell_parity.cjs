@@ -1062,6 +1062,10 @@ const coreControls = functions("src/core/index.ts", [
     "stbResume",
     "stbStop",
     "getCoreMediaBackend",
+    "coreCompat",
+    "cancelCoreCompat",
+    "coreField",
+    "coreCall",
     "sampleCoreLiveRecovery",
     "openCoreEngineLease",
     "stopCoreEngine",
@@ -1108,9 +1112,11 @@ for (const platform of Object.keys(nativeSources)) {
         },
         coreStreamAttempt: null,
         hlsInstance: {
+            config: { startPosition: -1 },
             destroy() {
                 destroyed++;
             },
+            hasEnoughToStart: false,
         },
         setInterval() {
             return 1;

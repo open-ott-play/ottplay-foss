@@ -320,6 +320,7 @@ function coreBridge(f, kind = "vod") {
                 ts.isFunctionDeclaration(node) &&
                 [
                     "getCoreMediaBackend",
+                    "coreCompat",
                     "stbStop",
                     "stbIsStandby",
                     "configureLiveRecovery",

@@ -64,6 +64,7 @@ function fixture(managed = false) {
         curList: [101, 202],
         Date,
         document: { getElementById: () => null },
+        hlsInstance: null,
         m3uArr: {
             active: 0,
             M3Us: [
