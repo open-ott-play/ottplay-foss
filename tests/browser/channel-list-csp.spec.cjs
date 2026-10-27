@@ -3727,9 +3727,14 @@ test("portrait player settings keep Save visible and persist the selected engine
             .locator("#listIn .btn")
             .filter({ hasText: "Save Settings" });
         await expect(save).toBeVisible();
-        const bounds = await save.boundingBox();
-        expect(bounds.y).toBeGreaterThanOrEqual(0);
-        expect(bounds.y + bounds.height).toBeLessThanOrEqual(1230);
+        // Resizing schedules a list redraw, which can replace the visible Save
+        // node between the locator lookup and boundingBox's layout read.
+        await expect(async () => {
+            const bounds = await save.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds.y).toBeGreaterThanOrEqual(0);
+            expect(bounds.y + bounds.height).toBeLessThanOrEqual(1230);
+        }).toPass();
         expect(
             await page
                 .locator("#list")
