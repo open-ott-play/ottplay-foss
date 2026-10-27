@@ -91,34 +91,34 @@
       {
         "entry": "dist/player.js",
         "legacyTotal": {
-          "bytes": 1189621,
-          "gzipBytes": 375585
+          "bytes": 1189858,
+          "gzipBytes": 375644
         },
         "total": {
-          "bytes": 1293722,
-          "gzipBytes": 412617
+          "bytes": 1293959,
+          "gzipBytes": 412676
         }
       },
       {
         "entry": "src-tauri/frontend/dist/player.js",
         "legacyTotal": {
-          "bytes": 1189579,
-          "gzipBytes": 375643
+          "bytes": 1189816,
+          "gzipBytes": 375702
         },
         "total": {
-          "bytes": 1293680,
-          "gzipBytes": 412675
+          "bytes": 1293917,
+          "gzipBytes": 412734
         }
       },
       {
         "entry": "dist-mobile/dist/player.js",
         "legacyTotal": {
-          "bytes": 1189579,
-          "gzipBytes": 375643
+          "bytes": 1189816,
+          "gzipBytes": 375702
         },
         "total": {
-          "bytes": 1293680,
-          "gzipBytes": 412675
+          "bytes": 1293917,
+          "gzipBytes": 412734
         }
       }
     ]

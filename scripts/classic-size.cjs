@@ -540,7 +540,7 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     // The same feature changes web legacy total from 1181853/372839 to
-    // 1189621/375585; native is 1189579/375643. Count the optional Plex
+    // 1189858/375644; native is 1189816/375702. Count the optional Plex
     // implementation too: +8000 raw/+3000 gzip, including identity room.
     bytes: 1190800,
     gzipBytes: 376046,

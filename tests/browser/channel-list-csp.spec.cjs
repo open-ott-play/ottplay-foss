@@ -2552,6 +2552,11 @@ for (const profile of ["server", "tauri", "capacitor"]) {
                 await page.evaluate(() => typeof window.__ottPlexList.create)
             ).toBe("function");
             await page.evaluate(() => {
+                // Provider startup wires this alias; the offline fixture calls
+                // the private renderer directly during its initial boot.
+                window.channelsList = window._channelsList;
+                window.catIndex = window.primaryIndex = 0;
+                window.curList = window.cList = window.cats.Fixture;
                 const fields = [
                     "channels",
                     "chanels",

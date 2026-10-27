@@ -265,6 +265,23 @@ test("Plex native category roundtrips retain highlighted identity and retire old
         "Retired descriptors cannot reopen category or channel screens"
     );
     assert.equal(c.listArray, restored.rows);
+    restored.key(c.keys.BLUE);
+    const reopeningCategory = categories.at(-1);
+    c.selIndex = reopeningCategory.labels.indexOf("Cartoons");
+    reopeningCategory.key(c.keys.ENTER);
+    c.__ottClassicScreenPort.closeList();
+    c.__ottMedia.open(null);
+    const reopened = views.at(-1);
+    assert.equal(reopened.categoryName, "Cartoons");
+    assert.equal(
+        reopened.selected,
+        1,
+        "Closing and reopening a Plex catalog retains its highlighted item"
+    );
+    assert.equal(
+        reopened.channel(reopened.rows[reopened.selected]).__ottMediaItem.id,
+        3
+    );
 });
 
 test("Plex history and favorites selection never reuses an explicit queue index", () => {
@@ -340,6 +357,13 @@ test("Plex history and favorites selection never reuses an explicit queue index"
         );
         assert.equal(c.__ottMedia.current().sequence.explicit, true);
         c.__ottMedia.open(route);
+        c.__ottClassicScreenPort.closeList();
+        c.__ottMedia.open(null);
+        assert.equal(
+            c.__ottMedia.snapshot().frame.route.kind,
+            route === -1 ? "history" : "favorites",
+            "Reopening a Plex collection keeps its route rather than the catalog"
+        );
         const view = views.at(-1);
         const index = view.rows.findIndex(
             (id) => view.channel(id).__ottMediaItem.id === 99
@@ -362,89 +386,101 @@ test("Plex history and favorites selection never reuses an explicit queue index"
 });
 
 test("Selecting the stopped current Plex row retries without replacing its explicit queue", () => {
-    const c = fixture();
-    c.p_pref = "m3u";
-    c.__ottActiveProviderDriver = { id: "m3u" };
-    const views = [],
-        resolutions = [];
-    const records = [
-        {
-            id: 1,
-            request: { path: "/library/metadata/1" },
-            stream_url: "queue-1.mp4",
-            title: "Queue one",
-        },
-        {
-            id: 2,
-            request: { path: "/library/metadata/2" },
-            stream_url: "queue-2.mp4",
-            title: "Queue two",
-        },
-    ];
-    c.showPage = () => c.__ottClassicScreenPort.commitList();
-    c.__ottChannelListView = {
-        show(view) {
-            views.push(view);
-            c.listArray = view.rows;
-            c.listDataArray = view.rows;
-            c.selIndex = view.selected;
-            c.listKeyHandlerFn = view.key;
-            c.showPage();
-        },
-    };
-    c.__ottCategoryListView = { show() {} };
-    c.__ottMedia.useSource({
-        catalog: () => records.slice(),
-        client: {
-            cancel() {},
-            load(_target, done) {
-                c.mediaRecords = records;
-                done();
+    for (const currentIndex of [0, 2]) {
+        const c = fixture();
+        c.p_pref = "m3u";
+        c.__ottActiveProviderDriver = { id: "m3u" };
+        const views = [],
+            resolutions = [];
+        const records = [
+            {
+                id: 1,
+                request: { path: "/library/metadata/1" },
+                stream_url: "queue-1.mp4",
+                title: "Queue one",
             },
-            resolve(item, done) {
-                resolutions.push(item.id);
-                done({ ...item, stream_url: "fresh-" + item.id + ".mp4" });
+            {
+                id: 2,
+                request: { path: "/library/metadata/2" },
+                stream_url: "queue-2.mp4",
+                title: "Queue two",
             },
-        },
-        read: () => null,
-        sourceId: "plex@retry",
-        title: "Plex",
-        write() {},
-    });
-    c.__ottMedia.playOrderedQueue(
-        records,
-        0,
-        "retry-queue",
-        records[0],
-        () => true,
-        () => {},
-        () => assert.fail("Queue setup failed")
-    );
-    const before = plain(c.__ottMedia.current().sequence);
-    c.__ottClassicPlayback.command({ type: "stop" });
-    assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
-    c.__ottMedia.open(null);
-    c.selIndex = 0;
-    views.at(-1).key(c.keys.ENTER);
-    assert.deepEqual(
-        resolutions,
-        [1],
-        "The stopped current row resolves fresh media"
-    );
-    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
-    const after = plain(c.__ottMedia.current().sequence);
-    assert.equal(after.explicit, true);
-    assert.equal(after.queueId, before.queueId);
-    assert.equal(after.repeat, before.repeat);
-    assert.deepEqual(
-        after.items.map((row) => row.ref),
-        before.items.map((row) => row.ref)
-    );
-    assert.equal(
-        c.calls.filter((row) => row[0] === "play").at(-1)[1],
-        "fresh-1.mp4"
-    );
-    assert.equal(c.p_pref, "m3u");
+        ];
+        // The final occurrence deliberately repeats the same canonical Plex ID.
+        records.push({ ...records[0] });
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.__ottChannelListView = {
+            show(view) {
+                views.push(view);
+                c.listArray = view.rows;
+                c.listDataArray = view.rows;
+                c.selIndex = view.selected;
+                c.listKeyHandlerFn = view.key;
+                c.showPage();
+            },
+        };
+        c.__ottCategoryListView = { show() {} };
+        c.__ottMedia.useSource({
+            catalog: () => records.slice(),
+            client: {
+                cancel() {},
+                load(_target, done) {
+                    c.mediaRecords = records;
+                    done();
+                },
+                resolve(item, done) {
+                    resolutions.push(item.id);
+                    done({ ...item, stream_url: "fresh-" + item.id + ".mp4" });
+                },
+            },
+            read: () => null,
+            sourceId: "plex@retry",
+            title: "Plex",
+            write() {},
+        });
+        c.__ottMedia.playOrderedQueue(
+            records,
+            currentIndex,
+            "retry-queue",
+            records[currentIndex],
+            () => true,
+            () => {},
+            () => assert.fail("Queue setup failed")
+        );
+        const before = plain(c.__ottMedia.current().sequence);
+        c.__ottClassicPlayback.command({ type: "stop" });
+        assert.equal(c.__ottClassicPlayback.snapshot().phase, "stopped");
+        c.__ottMedia.open(null);
+        c.__ottClassicScreenPort.closeList();
+        c.__ottMedia.open(null);
+        assert.equal(
+            views.at(-1).selected,
+            currentIndex,
+            "Reopening retains the exact queue occurrence even when IDs repeat"
+        );
+        c.selIndex = currentIndex;
+        views.at(-1).key(c.keys.ENTER);
+        assert.deepEqual(
+            resolutions,
+            [1],
+            "The stopped current row resolves fresh media"
+        );
+        assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+        const after = plain(c.__ottMedia.current().sequence);
+        assert.equal(after.explicit, true);
+        assert.equal(after.index, currentIndex);
+        assert.equal(after.queueId, before.queueId);
+        assert.equal(after.repeat, before.repeat);
+        assert.deepEqual(
+            after.items.map((row) => row.ref),
+            before.items.map((row) => row.ref)
+        );
+        assert.equal(
+            c.calls.filter((row) => row[0] === "play").at(-1)[1],
+            "fresh-1.mp4"
+        );
+        assert.equal(c.p_pref, "m3u");
+    }
 });
 
 test("Plex library chrome stays linear while generic media keeps its controls", () => {

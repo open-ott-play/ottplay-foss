@@ -247,6 +247,23 @@ function createPlexList(ports: any): any {
                 records.length > 500
             )
                 return true;
+            var frame = ports.library.snapshot("none").frame;
+            if (target === null && frame) {
+                var playing = ports.playback();
+                if (
+                    frame.route.kind === "catalog" &&
+                    playing &&
+                    playing.runtime === ports.api &&
+                    playing.sequence &&
+                    playing.sequence.explicit
+                ) {
+                    // Preserve the selected occurrence when a queue repeats an ID.
+                    ports.library.highlight(playing.sequence.index);
+                    ports.library.show();
+                    return true;
+                }
+                return false;
+            }
             ports.navigate(
                 { kind: "catalog", target: "", title: ports.context.title },
                 true
