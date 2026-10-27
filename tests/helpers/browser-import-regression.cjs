@@ -31,9 +31,11 @@ async function browserImportRegression(
     let clock;
     const browserModule = load("src/offline/browser-local-media.ts");
     const progressModule = load("src/offline/local-media-progress.ts");
+    const selectionModule = load("src/offline/playback-selection.ts");
     const plugin = load("src/plugins/local-media.ts", (name) => {
         if (name.includes("browser-local-media")) return browserModule;
         if (name.includes("local-media-progress")) return progressModule;
+        if (name.includes("playback-selection")) return selectionModule;
         if (name.includes("offline/profiles"))
             return { installOfflineProfiles() {} };
         return { resolveNativePlugin: (_, fallback) => fallback() };

@@ -523,6 +523,31 @@ function createChannelLibrary(
     }
     return {
         active: ports.current,
+        adoptPlaybackOrder: function (order: Array<string | number>): boolean {
+            var all = providerById["system:all"].members;
+            if (
+                order.length !== all.length ||
+                order.some(function (id, index) {
+                    return ids[String(id)] !== all[index];
+                })
+            )
+                return false;
+            return commit(function (draft) {
+                // The local provider owns its compact seeded order. Drop only
+                // obsolete provider membership overrides; retain names, custom
+                // groups, visibility, preferences and parental locks.
+                draft.groups.forEach(function (group) {
+                    if (!providerById[group.id]) return;
+                    group.inheritsMembers = true;
+                    group.members = [];
+                    delete group.known;
+                    delete group.shuffleBefore;
+                });
+                draft.selected = all.length
+                    ? { groupId: "system:all", itemId: all[0] }
+                    : null;
+            });
+        },
         append: function (rows: LibraryChannel[]): void {
             if (!ports.current()) return;
             var addedLocks: string[] = [];

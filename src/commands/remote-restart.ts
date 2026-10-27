@@ -828,6 +828,9 @@ export function executeRemoteControl(
                 "exit_app",
                 "reboot_device",
             ].filter(lifecycleAvailable),
+            local_media: w.__ottLocalMedia?.remoteCapabilities
+                ? w.__ottLocalMedia.remoteCapabilities()
+                : undefined,
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.capabilities()
                 : null,

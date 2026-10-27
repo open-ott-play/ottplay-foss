@@ -145,6 +145,15 @@ function mountChannelLibrary(host: any): void {
         },
         rows
     );
+    var local =
+        host.__ottActiveProviderDriver?.id === "offline" &&
+        host.__ottLocalMedia;
+    var pendingOrder = local?.playbackOrder?.();
+    if (pendingOrder) {
+        if (!channelLibraryInstance.adoptPlaybackOrder(pendingOrder))
+            throw new Error("The local playback order could not be saved");
+        local.playbackOrdered();
+    }
     channelLibraryInstance.persist();
     channelLibraryView = [];
     channelLibraryPublish(host);

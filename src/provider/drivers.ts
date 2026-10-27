@@ -401,6 +401,8 @@ function createOfflineDriver(
                         }
                         value = profiles.filter(value);
                     }
+                    if (typeof media.playbackFilter === "function")
+                        value = media.playbackFilter(value);
                 } catch (_) {
                     recover(
                         "Local profile configuration is unavailable",
@@ -2334,6 +2336,8 @@ function mountProviderDriver(
         return driver;
     }
     host.__ottActiveProviderDriver = driver;
+    if (id === "offline" && host.__ottLocalMedia?.bindPlaybackOwner)
+        host.__ottLocalMedia.bindPlaybackOwner(owner.active);
     host.p_pref = profile.prefix;
     host.ottplayDemoActive = id === "demo";
     function storageKey(key: string): string {

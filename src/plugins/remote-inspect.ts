@@ -17,6 +17,7 @@ export function installRemoteInspection(w: any): any {
         "profile_settings",
         "profile_save",
         "profile_import",
+        "local_media",
         "provider_settings",
         "player_settings",
         "player_settings_patch",
@@ -209,6 +210,7 @@ export function installRemoteInspection(w: any): any {
                 params.op !== "set"
             ) &&
             !(item.action === "plex_folders" && params.op === "list") &&
+            !(item.action === "local_media" && params.op === "sources") &&
             !(item.action === "aspect" && params.operation !== "set") &&
             !(item.action === "notifications" && params.operation !== "set") &&
             !(item.action === "kiosk" && params.mode === "status") &&
@@ -244,6 +246,7 @@ export function installRemoteInspection(w: any): any {
                 item.action === "player_settings" ||
                 item.action === "player_settings_patch" ||
                 item.action === "plex_folders" ||
+                item.action === "local_media" ||
                 ((item.action === "provider_settings" ||
                     item.action === "settings_compare") &&
                     item.params &&

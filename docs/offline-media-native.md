@@ -71,15 +71,22 @@ materialize/cache files themselves. See [iOS limitations and acceptance](offline
 
 ## Tauri desktop
 
-The native dialog plugin chooses local paths; caller-supplied arbitrary paths
-are not exposed as a remote registration API. OTT stores source records and
-linked item paths, validates original files before serving them, and skips
+The native dialog plugin chooses local paths. Updated Tauri builds also accept
+an explicit absolute folder through authenticated remote control, for example
+`ott t1 local connect /Volumes/data/Movies/`, when `absolute_paths` is advertised.
+This path belongs to the target computer. The native command validates the
+directory and reuses an existing canonical binding; it does not add an arbitrary
+filesystem-path endpoint to the loopback HTTP API. See [Tauri source commands
+and limits](tauri-local-media-sources.md#remote-local-videos-commands).
+
+OTT stores source records and linked item paths, validates original files before serving them, and skips
 symlinks during folder enumeration. **Refresh** rescans connected folders to
 discover new media. A local loopback server
 streams byte ranges from those originals using a fresh runtime token/port.
 Disconnecting deletes metadata only. Existing private uploads remain readable.
 OS privacy prompts, file moves and removed drives can invalidate access;
-reconnect through the native picker when necessary.
+reconnect through the native picker when necessary. This desktop path capability
+does not transfer to Android/iOS or grant browser filesystem access.
 
 ## Native rollout and verification
 

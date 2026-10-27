@@ -1,0 +1,13 @@
+{
+  "node": "v26.8.2",
+  "version": "1.1.61",
+  "sourceBase": "6b8d00d6f9e60d1a84b388a4cdb766111e9a8323",
+  "method": "Same locked dependencies and production classic assembler/optimizer; gzip level 9. Baseline is a source archive and candidate is an uncommitted feature tree, with no clean-release claim.",
+  "entries": [
+    { "role": "baseline", "bytes": 1039922, "gzipBytes": 320208 },
+    { "role": "candidate", "bytes": 1051505, "gzipBytes": 323422 }
+  ],
+  "delta": { "bytes": 11583, "gzipBytes": 3214 },
+  "allocation": { "bytes": 12000, "gzipBytes": 3400 },
+  "scope": "The same entry allocation is counted once in the complete legacy payload. Provider and optional-module limits are unchanged. This measures build size, not device playback."
+}

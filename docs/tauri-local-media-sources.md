@@ -3,7 +3,8 @@
 The desktop Local videos provider uses the operating system file/folder picker.
 Selected videos remain in their original location: app data stores only small
 JSON records, not copies of media. A folder selection scans media recursively;
-non-media files and symlinks are skipped. Refresh scans the connected folders again and discovers new files. Existing
+non-media files and symlinks are skipped. Refresh scans the connected folders
+again and discovers new files. Existing
 IDs and unavailable file references are retained; exact source paths are
 deduplicated.
 
@@ -12,6 +13,65 @@ The picker is `tauri-plugin-dialog` 2.7.3, exposed through the application's
 no HTTP API for submitting an arbitrary filesystem path. These commands return
 the private loopback endpoint, and the UI fetches its catalog. They do not upload
 the picked files to that endpoint.
+
+## Remote Local videos commands
+
+An updated Tauri player also accepts an explicitly requested absolute folder
+through authenticated remote control:
+
+```sh
+ott t1 local sources
+ott t1 local connect /Volumes/data/Movies/
+ott t1 local shuffle /Volumes/data/Movies/
+ott t1 local shuffle Movies
+```
+
+An absolute path refers to the filesystem of the computer running `t1`, not the
+working directory of the machine running the CLI. A name such as `Movies` refers
+to a source already connected in that player. The native boundary resolves an
+absolute path to its canonical directory, checks that it can be read, and saves
+the source reference before starting background discovery. Selecting the same
+canonical directory again reuses its existing source ID. A new remote connection
+is rejected once 32 sources are registered; reconnecting an existing root remains
+available. Originals are never copied, and the operating system can still deny
+access to the directory.
+
+A newly connected directory cannot contain, or be contained by, another
+connected source. The command reports this overlap without adding a partial
+source; use the existing source or disconnect that source before connecting the
+replacement directory. This avoids losing or duplicating files in the catalog,
+which currently keeps one source binding per file. A filesystem root, relative
+path, missing directory, or file supplied as a directory is rejected. Discovery
+does not follow child symlinks outside the selected tree.
+
+`local sources` returns names and source IDs without private paths. The explicit
+`local sources --paths` form can include canonical native paths for a private CLI
+profile backup. Windows exports use ordinary drive paths or forward-slash UNC
+paths such as `//nas/videos/Movies`; canonical OS paths remain internal for file
+access and source identity. These paths are not included in the ordinary HTTP
+catalog or playback results. Keep such backups private. Copying a profile does
+not copy media or create a matching filesystem on another player.
+
+Preset verification can give `local_media_sources` an optional absolute `path`
+filter. The native player resolves aliases on its own filesystem, validates the
+directory, and returns its existing binding or an empty list. This read does not
+connect a new source or scan media. It keeps remote preset checks accurate when
+the same directory has a symlink alias or a different Windows path spelling.
+
+The native commands `local_media_capabilities`, `local_media_sources` and
+`local_media_link_folder` are restricted to the main player window and its
+existing approved application origins. The frontend checks the authenticated
+remote request and advertised capability before invoking them. These commands
+do not extend the loopback HTTP API, change playback themselves, or add native
+path access to browser, Android, iOS, or TV builds.
+
+Native directory scans have a separate 100,000-entry bound per source, counting
+the selected root, subdirectories and non-media entries as well as videos. A
+scan that exceeds it reports an incomplete-scan error; remote playback must not
+treat its partial catalog as a complete queue. The remote `local play` and
+`local shuffle` queue limit is 50,000 playable items. Split a larger source into
+smaller, non-overlapping folders. Disconnecting a source while its scan waits
+cannot recreate that source or replace its stable ID.
 
 The picker command schedules background discovery and returns without waiting
 for the entire directory. The private catalog exposes cumulative items with
@@ -69,9 +129,11 @@ implementation, not a sandbox security-scoped bookmark implementation.
 The shared server distribution retains its explicit upload library. Server
 uploads and native desktop source linking are different operations.
 
-Verification completed: Rust core tests cover persisted links, nested scans,
+Automated Rust core tests cover persisted links, nested scans,
 byte-range reads, unavailable originals, unchanged source files after disconnect,
-legacy upload behavior, and symlink exclusion. `cargo check -p ottplay-tauri`
-passes. OS-picker UI and actual video decoding need native app verification.
+legacy upload behavior, symlink exclusion, canonical path lookup, private path
+exports and the source and scan-entry limits. Tauri command tests cover the
+main-window boundary. OS-picker UI and actual video decoding need native app
+verification.
 
 Official picker API: https://v2.tauri.app/plugin/dialog/

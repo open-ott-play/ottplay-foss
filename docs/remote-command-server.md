@@ -392,7 +392,8 @@ restoration. Setting one live channel does not override all other channels.
 
 ### Local video profiles
 
-`ott NAME provider offline` selects **Local videos**. Save the connected source
+`ott NAME provider local` selects **Local videos**; `offline` remains a compatible
+alias and wire identifier. Save the connected source
 selection and current video with `ott NAME profile save 1 Kids`, then restore it
 with `ott NAME profile load 1` (or `profile 1`). Export with `profile export 1
 kids.json`; import into an inactive slot with `profile import 2 kids.json`.
@@ -401,6 +402,24 @@ kids.json`; import into an inactive slot with `profile import 2 kids.json`.
 profiles](offline-profiles.md) for examples, same-device restoration, explicit
 binding on another device and the portable format. Media files and file-access
 grants are never included in these exports.
+
+Updated CLI, controller and player builds also expose source commands through
+the `local_media` capability:
+
+```sh
+ott NAME local sources
+ott NAME local play Movies
+ott NAME local shuffle Movies
+```
+
+Use an exact connected folder name or the source ID from the listing. Browser,
+Android and iOS sources must already have their local file-access permission.
+On Tauri builds advertising `absolute_paths`, `local connect /absolute/folder`
+can register a readable directory on that target computer without starting
+playback. `local sources --paths` explicitly includes private native paths for
+configuration backup; ordinary listings omit them. Neither operation copies
+media or transfers OS permissions. See [native source commands](tauri-local-media-sources.md#remote-local-videos-commands)
+for limits and [local playback](offline-media.md) for platform setup.
 
 ### M3U profiles and restarts
 
