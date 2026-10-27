@@ -68,17 +68,7 @@ function createLocalMediaUi(w: any, p: any): any {
         p.revision++;
         w.editCaption = w._("Media Library URL");
         w.editvar = p.remoteEndpoint();
-        var originalCatalogue = p.catalogRevision,
-            originalRevision = p.revision;
-        function admitted(): boolean {
-            return (
-                p.current() &&
-                !p.locked() &&
-                !p.settingsLocked() &&
-                originalCatalogue === p.catalogRevision &&
-                originalRevision === p.revision
-            );
-        }
+        var admitted = p.captureSettings();
         w.setEdit = function () {
             if (!admitted()) return;
             var value = String(w.editvar || "")

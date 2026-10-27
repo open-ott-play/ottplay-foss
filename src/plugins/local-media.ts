@@ -731,6 +731,19 @@ export function installLocalMedia(w: any): any {
                 (loading && loading.foreground() && owner.active()))
         );
     }
+    function captureSettings(): () => boolean {
+        var catalogue = catalogRevision,
+            intent = revision;
+        return function () {
+            return (
+                current() &&
+                !locked() &&
+                !settingsLocked() &&
+                catalogue === catalogRevision &&
+                intent === revision
+            );
+        };
+    }
     function failureMessage(value: any): string {
         if (
             value?.items?.some(function (item: any) {
@@ -1035,6 +1048,7 @@ export function installLocalMedia(w: any): any {
                     activate: activate,
                     boundedCatalogRequest: boundedCatalogRequest,
                     browser: browser,
+                    captureSettings: captureSettings,
                     get catalogRevision() {
                         return catalogRevision;
                     },
