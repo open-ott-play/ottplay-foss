@@ -87,6 +87,10 @@ impl Drop for Lease {
     }
 }
 impl WorkLease {
+    pub(crate) fn epoch(&self) -> u64 {
+        self.0.generation
+    }
+
     /// Serialize a short in-memory publication with the standby transition.
     pub fn publish<T>(&self, publish: impl FnOnce() -> T) -> Result<T, &'static str> {
         let state = self

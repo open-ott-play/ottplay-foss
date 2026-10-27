@@ -72,6 +72,7 @@ pub struct Library {
 #[derive(Default)]
 struct ScanState {
     jobs: usize,
+    work_epoch: Option<u64>,
     scanned: u64,
     records: std::collections::HashMap<String, (Record, bool)>,
     cached: bool,
@@ -138,6 +139,47 @@ impl NativeRequest {
     }
 }
 impl ScanState {
+    // Call only inside the lease's publication gate with the scan lock held.
+    // Old epochs remain accounted for by BackgroundWork.pending, but cannot
+    // block or mutate the current epoch's catalog.
+    fn adopt_epoch(&mut self, epoch: u64) {
+        if self.work_epoch.is_some_and(|current| current != epoch) {
+            if self.jobs > 0
+                || self
+                    .source_scans
+                    .values()
+                    .any(|state| matches!(state.state, "pending" | "scanning"))
+            {
+                self.invalidate();
+                self.records.clear();
+                self.scanned = 0;
+                self.error = None;
+            }
+            self.jobs = 0;
+        }
+        self.work_epoch = Some(epoch);
+    }
+
+    fn finish_job(&mut self, work: &crate::background_work::WorkLease, error: Option<String>) {
+        if self.work_epoch != Some(work.epoch()) {
+            return;
+        }
+        let remaining = self.jobs.saturating_sub(1);
+        if work
+            .publish(|| {
+                if let Some(error) = error {
+                    self.error = Some(error);
+                }
+                self.jobs = remaining;
+            })
+            .is_err()
+        {
+            self.invalidate();
+            self.error = Some("Local media scan cancelled".into());
+            self.jobs = remaining;
+        }
+    }
+
     fn invalidate(&mut self) {
         self.cached = false;
         self.preferred = None;
@@ -399,13 +441,25 @@ impl Library {
         token: String,
         paths: Vec<PathBuf>,
     ) -> anyhow::Result<Self> {
-        anyhow::ensure!(!paths.is_empty() && paths.len() <= 32, "Configure 1 to 32 read-only folders");
-        anyhow::ensure!(root.is_absolute(), "Read-only metadata directory must be absolute");
+        anyhow::ensure!(
+            !paths.is_empty() && paths.len() <= 32,
+            "Configure 1 to 32 read-only folders"
+        );
+        anyhow::ensure!(
+            root.is_absolute(),
+            "Read-only metadata directory must be absolute"
+        );
         let mut canonical_paths = Vec::new();
         for path in paths {
-            anyhow::ensure!(path.is_absolute(), "Read-only folders must be absolute paths");
+            anyhow::ensure!(
+                path.is_absolute(),
+                "Read-only folders must be absolute paths"
+            );
             let path = fs::canonicalize(path).await?;
-            anyhow::ensure!(fs::metadata(&path).await?.is_dir(), "Read-only source must be a folder");
+            anyhow::ensure!(
+                fs::metadata(&path).await?.is_dir(),
+                "Read-only source must be a folder"
+            );
             if !canonical_paths.contains(&path) {
                 canonical_paths.push(path);
             }
@@ -435,7 +489,9 @@ impl Library {
     fn allows_record(&self, record: &Record) -> bool {
         self.read_only_paths.as_ref().is_none_or(|roots| {
             record.linked_path.as_ref().is_some_and(|path| {
-                roots.iter().any(|root| path.starts_with(root) && path != root)
+                roots
+                    .iter()
+                    .any(|root| path.starts_with(root) && path != root)
             })
         })
     }
@@ -1039,6 +1095,7 @@ impl Library {
                 .await
                 .map_err(anyhow::Error::msg)?;
             work.publish(|| {
+                scan.adopt_epoch(work.epoch());
                 let rebuild = scan.jobs == 0 && (!scan.cached || scan.error.is_some());
                 if scan.jobs == 0 {
                     // Keep a complete catalog visible while adding another source.
@@ -1068,18 +1125,14 @@ impl Library {
                 .link_paths_inner(paths, folder, &work, expected_source.as_ref())
                 .await;
             let mut scan = library.scan.lock().await;
-            if let Err(error) = result {
-                scan.error = Some(if error.to_string() == NATIVE_SCAN_LIMIT {
+            let error = result.err().map(|error| {
+                if error.to_string() == NATIVE_SCAN_LIMIT {
                     NATIVE_SCAN_LIMIT.into()
                 } else {
                     "Local source could not be completely scanned".into()
-                });
-            }
-            if work.check().is_err() {
-                scan.invalidate();
-                scan.error = Some("Local media scan cancelled".into());
-            }
-            scan.jobs -= 1;
+                }
+            });
+            scan.finish_job(&work, error);
         });
         Ok(())
     }
@@ -1184,6 +1237,9 @@ impl Library {
         if self.storage != "device" || work.check().is_err() {
             return;
         }
+        if self.prepare_scan_epoch(&work).await.is_err() {
+            return;
+        }
         let preferred = match preferred_id {
             Some(id) => self.preferred_record(id, &work).await,
             None => None,
@@ -1225,6 +1281,9 @@ impl Library {
         if self.storage != "device" || work.check().is_err() {
             return;
         }
+        if self.prepare_scan_epoch(&work).await.is_err() {
+            return;
+        }
         let preferred = match preferred_id {
             Some(id) => self.preferred_record(id, &work).await,
             None => None,
@@ -1248,6 +1307,7 @@ impl Library {
                 return;
             };
             let start = work.publish(|| {
+                scan.adopt_epoch(work.epoch());
                 if scan.jobs > 0 || (!force_refresh && scan.cached) {
                     scan.cache_preferred(preferred);
                     return false;
@@ -1268,16 +1328,16 @@ impl Library {
         }
         tokio::spawn(async move {
             if !matches!(work.run(library.records(&work)).await, Ok(Ok(_))) {
-                library.scan.lock().await.error =
-                    Some("Local media metadata could not be read".into());
+                let mut scan = library.scan.lock().await;
+                if scan.work_epoch == Some(work.epoch()) {
+                    let _ = work.publish(|| {
+                        scan.error = Some("Local media metadata could not be read".into())
+                    });
+                }
             }
             library.refresh_sources_inner(&work).await;
             let mut scan = library.scan.lock().await;
-            if work.check().is_err() {
-                scan.invalidate();
-                scan.error = Some("Local media scan cancelled".into());
-            }
-            scan.jobs -= 1;
+            scan.finish_job(&work, None);
         });
     }
 
@@ -1295,6 +1355,18 @@ impl Library {
             .entry(id.to_string())
             .or_insert_with(|| Arc::new(Mutex::new(())))
             .clone()
+    }
+
+    async fn prepare_scan_epoch(
+        &self,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<()> {
+        let mut scan = work
+            .run(self.scan.lock())
+            .await
+            .map_err(anyhow::Error::msg)?;
+        work.publish(|| scan.adopt_epoch(work.epoch()))
+            .map_err(anyhow::Error::msg)
     }
 
     fn reserve_source(scan: &mut ScanState, id: &str) -> u64 {
@@ -1317,6 +1389,28 @@ impl Library {
         scan.source_scans
             .get(id)
             .is_some_and(|state| state.generation == generation)
+    }
+
+    fn complete_source(
+        scan: &mut ScanState,
+        id: &str,
+        generation: u64,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<()> {
+        work.publish(|| {
+            anyhow::ensure!(
+                scan.work_epoch == Some(work.epoch()),
+                "Local source scan superseded"
+            );
+            let state = scan
+                .source_scans
+                .get_mut(id)
+                .filter(|state| state.generation == generation)
+                .ok_or_else(|| anyhow::anyhow!("Local source scan superseded"))?;
+            state.state = "complete";
+            Ok(())
+        })
+        .map_err(anyhow::Error::msg)?
     }
 
     /// Prioritize one complete source without waiting for unrelated discovery.
@@ -1353,6 +1447,7 @@ impl Library {
                 return Ok(());
             }
             work.publish(|| {
+                scan.adopt_epoch(work.epoch());
                 scan.jobs += 1;
                 Self::reserve_source(&mut scan, id)
             })
@@ -1363,11 +1458,7 @@ impl Library {
         tokio::spawn(async move {
             let _ = library.scan_source(source, &work, Some(generation)).await;
             let mut scan = library.scan.lock().await;
-            if work.check().is_err() {
-                scan.invalidate();
-                scan.error = Some("Local media scan cancelled".into());
-            }
-            scan.jobs -= 1;
+            scan.finish_job(&work, None);
         });
         Ok(())
     }
@@ -1482,13 +1573,16 @@ impl Library {
             };
             if expected_source.is_none() {
                 let mut scan = self.scan.lock().await;
-                if scan
-                    .source_scans
-                    .get(&source.id)
-                    .is_some_and(|state| state.state == "complete")
-                {
-                    scan.source_scans.remove(&source.id);
-                }
+                work.publish(|| {
+                    if scan
+                        .source_scans
+                        .get(&source.id)
+                        .is_some_and(|state| state.state == "complete")
+                    {
+                        scan.source_scans.remove(&source.id);
+                    }
+                })
+                .map_err(anyhow::Error::msg)?;
             }
             self.scan_source(source, work, None).await?;
         }
@@ -1503,6 +1597,7 @@ impl Library {
     ) -> anyhow::Result<()> {
         let worker = self.source_worker(&source.id).await;
         let _worker = work.run(worker.lock()).await.map_err(anyhow::Error::msg)?;
+        self.prepare_scan_epoch(work).await?;
         let generation = {
             let _binding = work
                 .run(self.mutation.lock())
@@ -1519,31 +1614,44 @@ impl Library {
                 "Local source is disconnected"
             );
             let mut scan = self.scan.lock().await;
-            if let Some(generation) = reserved {
-                anyhow::ensure!(
-                    Self::owns_source(&scan, &source.id, generation),
-                    "Local source scan superseded"
-                );
-            }
-            if scan
-                .source_scans
-                .get(&source.id)
-                .is_some_and(|state| state.state == "complete")
-            {
-                return Ok(());
-            }
-            let generation = scan
-                .source_scans
-                .get(&source.id)
-                .filter(|state| matches!(state.state, "pending" | "scanning"))
-                .map(|state| state.generation)
-                .unwrap_or_else(|| Self::reserve_source(&mut scan, &source.id));
-            scan.source_scans.get_mut(&source.id).unwrap().state = "scanning";
-            generation
+            work.publish(|| -> anyhow::Result<Option<u64>> {
+                if let Some(generation) = reserved {
+                    anyhow::ensure!(
+                        Self::owns_source(&scan, &source.id, generation),
+                        "Local source scan superseded"
+                    );
+                }
+                if scan
+                    .source_scans
+                    .get(&source.id)
+                    .is_some_and(|state| state.state == "complete")
+                {
+                    return Ok(None);
+                }
+                let generation = scan
+                    .source_scans
+                    .get(&source.id)
+                    .filter(|state| matches!(state.state, "pending" | "scanning"))
+                    .map(|state| state.generation)
+                    .unwrap_or_else(|| Self::reserve_source(&mut scan, &source.id));
+                if let Some(state) = scan.source_scans.get_mut(&source.id) {
+                    state.state = "scanning";
+                }
+                Ok(Some(generation))
+            })
+            .map_err(anyhow::Error::msg)??
+        };
+        let Some(generation) = generation else {
+            return Ok(());
         };
         let result = self.scan_source_inner(&source, generation, work).await;
         if let Err(error) = &result {
-            let root_unavailable = self.scan.lock().await.source_scans.get(&source.id)
+            let root_unavailable = self
+                .scan
+                .lock()
+                .await
+                .source_scans
+                .get(&source.id)
                 .is_some_and(|state| state.generation == generation && state.available.is_none());
             if root_unavailable && work.check().is_ok() {
                 // A priority worker may own this source before the global
@@ -1553,27 +1661,37 @@ impl Library {
                 if let Ok(records) = self.source_metadata(&source, true, work).await {
                     for indexed in records {
                         if let Ok(actual) = self.record(&indexed.id).await {
-                            if actual.source_id == indexed.source_id && actual.linked_path == indexed.linked_path {
-                                if self.publish_source_record(&source, generation, actual, false, work).await.is_err() { break; }
+                            if actual.source_id == indexed.source_id
+                                && actual.linked_path == indexed.linked_path
+                            {
+                                if self
+                                    .publish_source_record(&source, generation, actual, false, work)
+                                    .await
+                                    .is_err()
+                                {
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
             let mut scan = self.scan.lock().await;
-            if let Some(state) = scan
-                .source_scans
-                .get_mut(&source.id)
-                .filter(|s| s.generation == generation)
-            {
-                state.state = "error";
-                state.available.get_or_insert(false);
-                state.error = Some(if error.to_string() == NATIVE_SCAN_LIMIT {
-                    NATIVE_SCAN_LIMIT.into()
-                } else {
-                    "Local source could not be completely scanned".into()
-                });
-            }
+            let _ = work.publish(|| {
+                if let Some(state) = scan
+                    .source_scans
+                    .get_mut(&source.id)
+                    .filter(|s| s.generation == generation)
+                {
+                    state.state = "error";
+                    state.available.get_or_insert(false);
+                    state.error = Some(if error.to_string() == NATIVE_SCAN_LIMIT {
+                        NATIVE_SCAN_LIMIT.into()
+                    } else {
+                        "Local source could not be completely scanned".into()
+                    });
+                }
+            });
         }
         result
     }
@@ -1619,7 +1737,12 @@ impl Library {
                 Self::owns_source(&scan, &source.id, generation),
                 "Local source scan superseded"
             );
-            scan.source_scans.get_mut(&source.id).unwrap().available = Some(true);
+            work.publish(|| {
+                if let Some(state) = scan.source_scans.get_mut(&source.id) {
+                    state.available = Some(true);
+                }
+            })
+            .map_err(anyhow::Error::msg)?;
         }
         let mut known = HashMap::<PathBuf, Record>::new();
         for record in self.source_metadata(source, true, work).await? {
@@ -1671,7 +1794,11 @@ impl Library {
             count_native_scan_entry(&mut count)?;
             #[cfg(test)]
             anyhow::ensure!(count <= self.scan_entry_limit, NATIVE_SCAN_LIMIT);
-            self.scan.lock().await.scanned += 1;
+            {
+                let mut scan = self.scan.lock().await;
+                work.publish(|| scan.scanned += 1)
+                    .map_err(anyhow::Error::msg)?;
+            }
             let metadata = match fs::symlink_metadata(&path).await {
                 Ok(metadata) => metadata,
                 Err(error) if path == root => return Err(error.into()),
@@ -1786,10 +1913,7 @@ impl Library {
         fs::rename(temporary, index).await?;
         anyhow::ensure!(!incomplete, "Local source could not be completely scanned");
         let mut scan = self.scan.lock().await;
-        work.publish(|| {
-            scan.source_scans.get_mut(&source.id).unwrap().state = "complete";
-        })
-        .map_err(anyhow::Error::msg)?;
+        Self::complete_source(&mut scan, &source.id, generation, work)?;
         Ok(())
     }
 
@@ -1798,10 +1922,20 @@ impl Library {
         let Ok(work) = self.background.enter() else {
             return;
         };
+        if self.prepare_scan_epoch(&work).await.is_err() {
+            return;
+        }
         {
             let mut scan = self.scan.lock().await;
-            if scan.jobs == 0 {
-                scan.source_scans.clear();
+            if work
+                .publish(|| {
+                    if scan.jobs == 0 {
+                        scan.source_scans.clear();
+                    }
+                })
+                .is_err()
+            {
+                return;
             }
         }
         self.refresh_sources_inner(&work).await;
@@ -1849,7 +1983,10 @@ impl Library {
     }
 
     pub async fn disconnect_source(&self, id: &str) -> anyhow::Result<()> {
-        anyhow::ensure!(self.read_only_paths.is_none(), "Read-only sources cannot be disconnected");
+        anyhow::ensure!(
+            self.read_only_paths.is_none(),
+            "Read-only sources cannot be disconnected"
+        );
         let work = self.background.enter().map_err(anyhow::Error::msg)?;
         anyhow::ensure!(valid_id(id), "Invalid source ID");
         let source = {
@@ -2032,7 +2169,8 @@ impl Library {
         }
         // Preserve source order while avoiding a quadratic scan for libraries
         // containing many individually linked/imported files.
-        let mut source_ids: HashSet<String> = sources.iter().map(|source| source.id.clone()).collect();
+        let mut source_ids: HashSet<String> =
+            sources.iter().map(|source| source.id.clone()).collect();
         for item in &items {
             if source_ids.insert(item.source_id.clone()) {
                 sources.push(Source {
@@ -2052,9 +2190,17 @@ impl Library {
         Ok(Catalog {
             available: true,
             items,
-            storage: if self.read_only_paths.is_some() { "server".into() } else { self.storage.clone() },
+            storage: if self.read_only_paths.is_some() {
+                "server".into()
+            } else {
+                self.storage.clone()
+            },
             persistent: true,
-            upload_url: if self.read_only_paths.is_some() { String::new() } else { format!("{base}/import") },
+            upload_url: if self.read_only_paths.is_some() {
+                String::new()
+            } else {
+                format!("{base}/import")
+            },
             direct_sources: self.storage == "device" && self.read_only_paths.is_none(),
             read_only: self.read_only_paths.is_some(),
             sources,
@@ -2129,14 +2275,16 @@ async fn catalog(
         Ok(()) => {
             if l.read_only_paths.is_some() {
                 if query.refresh {
-                    l.start_refresh_sources_with_preferred(query.preferred_id.as_deref()).await;
+                    l.start_refresh_sources_with_preferred(query.preferred_id.as_deref())
+                        .await;
                 } else if let Ok(work) = l.background.enter() {
-                    l.ensure_catalog_tracked(query.preferred_id.as_deref(), work).await;
+                    l.ensure_catalog_tracked(query.preferred_id.as_deref(), work)
+                        .await;
                 }
             }
             match l.catalog().await {
-            Ok(c) => Json(c).into_response(),
-            Err(e) => e.into_response(),
+                Ok(c) => Json(c).into_response(),
+                Err(e) => e.into_response(),
             }
         }
         Err(e) => e.into_response(),
@@ -2486,6 +2634,191 @@ async fn media(
 mod tests {
     use super::*;
 
+    #[test]
+    fn stale_job_cleanup_preserves_new_epoch_source_and_counter() {
+        for cleanup_before_completion in [true, false] {
+            let background = crate::background_work::BackgroundWork::default();
+            let old = background.enter().unwrap();
+            let mut scan = ScanState::default();
+            old.publish(|| {
+                scan.adopt_epoch(old.epoch());
+                scan.jobs = 2;
+                scan.cached = true;
+            })
+            .unwrap();
+            Library::reserve_source(&mut scan, "old");
+            background.set_standby(true);
+            background.set_standby(false);
+            let current = background.enter().unwrap();
+            current
+                .publish(|| {
+                    scan.adopt_epoch(current.epoch());
+                    scan.jobs = 1;
+                    scan.cached = true;
+                })
+                .unwrap();
+            let generation = Library::reserve_source(&mut scan, "current");
+            if cleanup_before_completion {
+                scan.finish_job(&old, Some("stale error".into()));
+            }
+            Library::complete_source(&mut scan, "current", generation, &current).unwrap();
+            if !cleanup_before_completion {
+                scan.finish_job(&old, Some("stale error".into()));
+            }
+            assert_eq!(scan.jobs, 1);
+            assert!(scan.cached);
+            assert!(scan.error.is_none());
+            assert_eq!(scan.source_scans["current"].state, "complete");
+            assert_eq!(scan.source_scans.len(), 1);
+            scan.finish_job(&current, None);
+            scan.finish_job(&old, None);
+            assert_eq!(scan.jobs, 0, "old jobs cannot decrement the current epoch");
+        }
+    }
+
+    #[test]
+    fn completion_after_io_rejects_missing_or_replaced_source_generation() {
+        for replacement in [false, true] {
+            let background = crate::background_work::BackgroundWork::default();
+            let work = background.enter().unwrap();
+            let mut scan = ScanState::default();
+            work.publish(|| {
+                scan.adopt_epoch(work.epoch());
+                scan.jobs = 1;
+            })
+            .unwrap();
+            let old_generation = Library::reserve_source(&mut scan, "source");
+            // This is the state change allowed while the index rename awaits IO.
+            scan.invalidate();
+            let new_generation = replacement.then(|| Library::reserve_source(&mut scan, "source"));
+            assert!(Library::complete_source(&mut scan, "source", old_generation, &work).is_err());
+            if let Some(generation) = new_generation {
+                assert_eq!(scan.source_scans["source"].state, "pending");
+                assert_eq!(scan.source_scans["source"].generation, generation);
+                Library::complete_source(&mut scan, "source", generation, &work).unwrap();
+            }
+            scan.finish_job(&work, None);
+            assert_eq!(
+                scan.jobs, 0,
+                "superseded completion must return without panicking"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn normal_catalog_admission_adopts_wake_epoch_before_old_jobs_drain() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let background = crate::background_work::BackgroundWork::default();
+        let library = Library::new(base.clone(), "t".repeat(32), "device")
+            .await
+            .unwrap()
+            .with_background(background.clone());
+        let old = background.enter().unwrap();
+        {
+            let mut scan = library.scan.lock().await;
+            old.publish(|| {
+                scan.adopt_epoch(old.epoch());
+                scan.jobs = 2;
+                scan.cached = true;
+                Library::reserve_source(&mut scan, "old");
+            })
+            .unwrap();
+        }
+        background.set_standby(true);
+        background.set_standby(false);
+        let current = background.enter().unwrap();
+        library.ensure_catalog_tracked(None, current.clone()).await;
+        {
+            let mut scan = library.scan.lock().await;
+            assert_eq!(scan.work_epoch, Some(current.epoch()));
+            assert!(!scan.source_scans.contains_key("old"));
+            let current_jobs = scan.jobs;
+            assert!(
+                current_jobs <= 1,
+                "old jobs cannot block new catalog admission"
+            );
+            scan.finish_job(&old, Some("late old failure".into()));
+            assert_eq!(scan.jobs, current_jobs);
+            assert!(scan.error.is_none());
+        }
+        drop(old);
+        drop(current);
+        wait_for_drain(&background).await;
+        let catalog = library.catalog().await.unwrap();
+        assert!(!catalog.scanning);
+        assert!(catalog.scan_error.is_none());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn wake_admission_survives_old_worker_cleanup_without_waiting() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let old_folder = base.join("Old");
+        let movies = base.join("Movies");
+        fs::create_dir_all(&old_folder).await.unwrap();
+        fs::create_dir_all(&movies).await.unwrap();
+        fs::write(movies.join("movie.mp4"), b"video").await.unwrap();
+        let background = crate::background_work::BackgroundWork::default();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap()
+            .with_background(background.clone());
+        let old_work = background.enter().unwrap();
+        let sources = library.source_records().await.unwrap();
+        let old_source = library
+            .register_source(&old_folder, true, &sources, &old_work, None)
+            .await
+            .unwrap();
+        let worker = library.source_worker(&old_source.id).await;
+        let held_worker = worker.lock().await;
+        library
+            .prioritize_source_tracked(&old_source.id, old_work.clone())
+            .await
+            .unwrap();
+        let mut held_scan = library.scan.lock().await;
+        assert!(held_scan.jobs > 0);
+        background.set_standby(true);
+        background.set_standby(false);
+        let current = background.enter().unwrap();
+        current
+            .publish(|| held_scan.adopt_epoch(current.epoch()))
+            .unwrap();
+        assert_eq!(held_scan.jobs, 0);
+        drop(held_scan);
+        drop(old_work);
+        let selected = library
+            .start_link_folder_path_tracked(movies, current.clone())
+            .await
+            .unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                let scan = library.scan.lock().await;
+                if scan
+                    .source_scans
+                    .get(&selected.id)
+                    .is_some_and(|state| state.state == "complete")
+                {
+                    assert_eq!(scan.work_epoch, Some(current.epoch()));
+                    assert!(scan.cached);
+                    assert!(scan.error.is_none());
+                    break;
+                }
+                drop(scan);
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("new source must complete while the old source worker is held");
+        drop(held_worker);
+        drop(current);
+        wait_for_drain(&background).await;
+        let catalog = library.catalog().await.unwrap();
+        assert!(!catalog.scanning);
+        assert!(catalog.scan_error.is_none());
+        assert_eq!(catalog.items.len(), 1);
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
     #[tokio::test]
     async fn disconnect_during_metadata_read_preserves_other_files() {
         let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
@@ -2554,8 +2887,13 @@ mod tests {
         fs::create_dir_all(&folder).await.unwrap();
         fs::write(folder.join("movie.mp4"), b"video").await.unwrap();
         let root = base.join("metadata");
-        let first = Library::new(root.clone(), "t".repeat(32), "device").await.unwrap();
-        let source = first.start_link_folder_path_tracked(folder.clone(), first.background.enter().unwrap()).await.unwrap();
+        let first = Library::new(root.clone(), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let source = first
+            .start_link_folder_path_tracked(folder.clone(), first.background.enter().unwrap())
+            .await
+            .unwrap();
         wait_for_drain(&first.background).await;
         let item_id = first.catalog().await.unwrap().items[0].id.clone();
         fs::remove_dir_all(folder).await.unwrap();
@@ -2563,14 +2901,25 @@ mod tests {
         let gate = Arc::new(Mutex::new(()));
         let held = gate.lock().await;
         library.metadata_read_gate = Some(gate.clone());
-        library.prioritize_source_tracked(&source.id, library.background.enter().unwrap()).await.unwrap();
+        library
+            .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
+            .await
+            .unwrap();
         let catalog = tokio::time::timeout(std::time::Duration::from_secs(2), async {
             loop {
                 let catalog = library.catalog().await.unwrap();
-                if catalog.source_scans.iter().any(|state| state.source_id == source.id && state.state == "error") { break catalog; }
+                if catalog
+                    .source_scans
+                    .iter()
+                    .any(|state| state.source_id == source.id && state.state == "error")
+                {
+                    break catalog;
+                }
                 tokio::task::yield_now().await;
             }
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(catalog.scanning, "global metadata pass is still held");
         assert_eq!(catalog.items.len(), 1);
         assert_eq!(catalog.items[0].id, item_id);
@@ -3604,7 +3953,9 @@ mod tests {
     #[tokio::test]
     async fn cached_catalog_preserves_name_order_and_unique_source_metadata() {
         let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
-        let library = Library::new(root.clone(), "c".repeat(32), "device").await.unwrap();
+        let library = Library::new(root.clone(), "c".repeat(32), "device")
+            .await
+            .unwrap();
         let source_id = "f".repeat(32);
         let source = SourceRecord {
             id: source_id.clone(),
@@ -3627,12 +3978,20 @@ mod tests {
                 let record = Record {
                     id: id.clone(),
                     // Duplicate names exercise the deterministic ID tie-breaker.
-                    name: if index % 2 == 0 { "VIDEO".into() } else { "video".into() },
+                    name: if index % 2 == 0 {
+                        "VIDEO".into()
+                    } else {
+                        "video".into()
+                    },
                     size: 1,
                     mime: "video/mp4".into(),
                     extension: "mp4".into(),
                     linked_path: None,
-                    source_id: if index < 2 { Some(source_id.clone()) } else { None },
+                    source_id: if index < 2 {
+                        Some(source_id.clone())
+                    } else {
+                        None
+                    },
                 };
                 scan.records.insert(id, (record, index % 2 == 0));
             }
@@ -3658,11 +4017,18 @@ mod tests {
         let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         let originals = base.join("originals");
         fs::create_dir_all(&originals).await.unwrap();
-        fs::write(originals.join("movie.mp4"), b"video").await.unwrap();
-        let mut library = Library::new(base.join("state"), "f".repeat(32), "device").await.unwrap();
+        fs::write(originals.join("movie.mp4"), b"video")
+            .await
+            .unwrap();
+        let mut library = Library::new(base.join("state"), "f".repeat(32), "device")
+            .await
+            .unwrap();
         library.read_only_paths = Some(Arc::new(vec![originals.clone()]));
         let held = library.mutation.lock().await;
-        library.start_link_paths(vec![originals], true).await.unwrap();
+        library
+            .start_link_paths(vec![originals], true)
+            .await
+            .unwrap();
         for id in ["source-browser-folder:movie.mp4", "../../outside.mp4"] {
             let response = catalog(
                 State(library.clone()),
@@ -3674,14 +4040,18 @@ mod tests {
             )
             .await;
             assert_eq!(response.status(), StatusCode::OK);
-            let bytes = axum::body::to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+            let bytes = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+                .await
+                .unwrap();
             let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
             assert_eq!(value["scanning"], true);
             assert_eq!(value["preferred"]["id"], id);
             assert_eq!(value["preferred"]["state"], "missing");
         }
         drop(held);
-        while library.scan.lock().await.jobs != 0 { tokio::task::yield_now().await; }
+        while library.scan.lock().await.jobs != 0 {
+            tokio::task::yield_now().await;
+        }
         fs::remove_dir_all(base).await.unwrap();
     }
 
@@ -3701,9 +4071,13 @@ mod tests {
         }
         let token = "r".repeat(32);
         let library = Library::new_read_only(root.clone(), token.clone(), vec![originals.clone()])
-            .await.unwrap();
+            .await
+            .unwrap();
         let initial = library.catalog().await.unwrap();
-        assert!(initial.scanning, "constructor must not await the full source scan");
+        assert!(
+            initial.scanning,
+            "constructor must not await the full source scan"
+        );
         assert!(initial.read_only);
         assert!(!initial.direct_sources);
         assert!(initial.upload_url.is_empty());
@@ -3711,10 +4085,14 @@ mod tests {
         let early = tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
                 let snapshot = library.catalog().await.unwrap();
-                if !snapshot.items.is_empty() { break snapshot; }
+                if !snapshot.items.is_empty() {
+                    break snapshot;
+                }
                 tokio::task::yield_now().await;
             }
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(early.scanning && early.items.len() < 192);
         let id = early.items[0].id.clone();
         let source_id = early.items[0].source_id.clone();
@@ -3737,27 +4115,65 @@ mod tests {
         assert_eq!(range.status(), StatusCode::PARTIAL_CONTENT);
         assert_eq!(range.headers()["content-range"], "bytes 2-5/10");
         assert_eq!(range.bytes().await.unwrap(), "2345");
-        let head = client.head(format!("{endpoint}/{id}")).send().await.unwrap();
+        let head = client
+            .head(format!("{endpoint}/{id}"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(head.status(), StatusCode::OK);
         assert_eq!(head.headers()["content-length"], "10");
         assert!(head.bytes().await.unwrap().is_empty());
-        assert_eq!(client.get(format!("{origin}/offline-media/{}/{id}", "x".repeat(32)))
-            .send().await.unwrap().status(), StatusCode::NOT_FOUND);
-        assert_eq!(client.post(format!("{endpoint}/import?name=copy.mp4"))
-            .body("data").send().await.unwrap().status(), StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(client.delete(format!("{endpoint}/{id}"))
-            .send().await.unwrap().status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(
+            client
+                .get(format!("{origin}/offline-media/{}/{id}", "x".repeat(32)))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            client
+                .post(format!("{endpoint}/import?name=copy.mp4"))
+                .body("data")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::METHOD_NOT_ALLOWED
+        );
+        assert_eq!(
+            client
+                .delete(format!("{endpoint}/{id}"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::METHOD_NOT_ALLOWED
+        );
         assert!(library.disconnect_source(&source_id).await.is_err());
-        let preflight = client.request(reqwest::Method::OPTIONS, &endpoint).send().await.unwrap();
-        assert_eq!(preflight.headers()["access-control-allow-methods"], "GET, HEAD, OPTIONS");
+        let preflight = client
+            .request(reqwest::Method::OPTIONS, &endpoint)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            preflight.headers()["access-control-allow-methods"],
+            "GET, HEAD, OPTIONS"
+        );
         let response = client.get(&endpoint).send().await.unwrap();
         let body = response.text().await.unwrap();
         assert!(!body.contains(&base_dir.to_string_lossy().to_string()));
         assert!(!body.contains("linked_path"));
         assert!(!root.join("copy.mp4").exists());
-        while library.scan.lock().await.jobs != 0 { tokio::task::yield_now().await; }
+        while library.scan.lock().await.jobs != 0 {
+            tokio::task::yield_now().await;
+        }
         assert_eq!(std::fs::read_dir(&originals).unwrap().count(), 192);
-        assert_eq!(fs::read(originals.join("movie-000.mp4")).await.unwrap(), b"0123456789");
+        assert_eq!(
+            fs::read(originals.join("movie-000.mp4")).await.unwrap(),
+            b"0123456789"
+        );
         server.abort();
         fs::remove_dir_all(base_dir).await.unwrap();
     }
@@ -3772,19 +4188,34 @@ mod tests {
         fs::create_dir_all(&second).await.unwrap();
         fs::write(first.join("old.mp4"), b"old").await.unwrap();
         fs::write(second.join("new.mp4"), b"new").await.unwrap();
-        let old = Library::new_read_only(root.clone(), "s".repeat(32), vec![first.clone()]).await.unwrap();
-        while old.scan.lock().await.jobs != 0 { tokio::task::yield_now().await; }
+        let old = Library::new_read_only(root.clone(), "s".repeat(32), vec![first.clone()])
+            .await
+            .unwrap();
+        while old.scan.lock().await.jobs != 0 {
+            tokio::task::yield_now().await;
+        }
         let old_id = old.catalog().await.unwrap().items[0].id.clone();
-        let current = Library::new_read_only(root, "s".repeat(32), vec![second.clone()]).await.unwrap();
-        while current.scan.lock().await.jobs != 0 { tokio::task::yield_now().await; }
-        assert_eq!(current.record(&old_id).await.err().unwrap().0, StatusCode::NOT_FOUND);
+        let current = Library::new_read_only(root, "s".repeat(32), vec![second.clone()])
+            .await
+            .unwrap();
+        while current.scan.lock().await.jobs != 0 {
+            tokio::task::yield_now().await;
+        }
+        assert_eq!(
+            current.record(&old_id).await.err().unwrap().0,
+            StatusCode::NOT_FOUND
+        );
         let snapshot = current.catalog().await.unwrap();
         assert_eq!(snapshot.items.len(), 1);
         assert_eq!(snapshot.items[0].name, "new.mp4");
         assert_eq!(snapshot.sources.len(), 1);
         assert!(current.link_paths(vec![first.clone()], true).await.is_err());
         let inside = first.join("forbidden-cache");
-        assert!(Library::new_read_only(inside.clone(), "s".repeat(32), vec![first]).await.is_err());
+        assert!(
+            Library::new_read_only(inside.clone(), "s".repeat(32), vec![first])
+                .await
+                .is_err()
+        );
         assert!(!inside.exists());
         fs::remove_dir_all(base_dir).await.unwrap();
     }
@@ -4739,10 +5170,24 @@ mod tests {
             catalog.scan_error.is_none(),
             "one disconnected source must not reject the playable catalog"
         );
-        let unavailable = catalog.sources.iter().find(|source| !source.available).unwrap();
-        assert!(catalog.source_scans.iter().any(|state| state.source_id == unavailable.id && state.state == "error"));
-        let available = catalog.sources.iter().find(|source| source.available).unwrap();
-        assert!(catalog.source_scans.iter().any(|state| state.source_id == available.id && state.state == "complete"));
+        let unavailable = catalog
+            .sources
+            .iter()
+            .find(|source| !source.available)
+            .unwrap();
+        assert!(catalog
+            .source_scans
+            .iter()
+            .any(|state| state.source_id == unavailable.id && state.state == "error"));
+        let available = catalog
+            .sources
+            .iter()
+            .find(|source| source.available)
+            .unwrap();
+        assert!(catalog
+            .source_scans
+            .iter()
+            .any(|state| state.source_id == available.id && state.state == "complete"));
         assert_eq!(catalog.items.len(), 2);
         assert_eq!(
             catalog.items.iter().filter(|item| item.available).count(),
