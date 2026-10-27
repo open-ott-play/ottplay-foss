@@ -1049,6 +1049,12 @@ async fn capture(
     timeout: Duration,
 ) -> Result<Vec<u8>> {
     clear_child_proxies(&mut cmd);
+    // FFmpeg/ffprobe are background workers, including discovery probes.
+    #[cfg(windows)]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
     check(work)?;
     if *cancelled.borrow() {
         return Err(Error::Cancelled);
@@ -1169,6 +1175,21 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn all_compatibility_children_use_the_windows_no_console_spawn_boundary() {
+        // Command exposes no creation-flags getter. Keep the single shared
+        // spawn boundary and its Windows-only setup auditable without spawning.
+        let production = include_str!("local_compatibility.rs")
+            .split("\n#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap();
+        assert_eq!(production.matches(".spawn()").count(), 1);
+        let capture = production.split_once("async fn capture(").unwrap().1;
+        let compact = capture.split_whitespace().collect::<Vec<_>>().join(" ");
+        let setup = "#[cfg(windows)] { const CREATE_NO_WINDOW: u32 = 0x0800_0000; cmd.creation_flags(CREATE_NO_WINDOW); }";
+        assert!(compact.contains(setup));
+        assert!(compact.find(setup).unwrap() < compact.find(".spawn()").unwrap());
+    }
     #[test]
     fn private_media_children_explicitly_remove_all_proxy_variants() {
         for name in CHILD_PROXY_VARIABLES {
