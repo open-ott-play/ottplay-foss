@@ -173,8 +173,11 @@ export function installLocalMedia(w: any): any {
                                 return last;
                             },
                             c: function () {
-                                return playbackIntentContext() + ":" +
-                                    compatibilityEpoch;
+                                return (
+                                    playbackIntentContext() +
+                                    ":" +
+                                    compatibilityEpoch
+                                );
                             },
                         });
                     resolve(compatibility);

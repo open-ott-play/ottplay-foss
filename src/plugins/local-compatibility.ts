@@ -201,8 +201,7 @@ function createLocalCompatibility(w: any, p: any): any {
                 var cancel = new URL("cancel", prepare);
                 Promise.resolve(w.fetch(prepare.href, postOptions(controller)))
                     .then(function (response: any) {
-                        if (!response.ok)
-                            throw new Error(localText3);
+                        if (!response.ok) throw new Error(localText3);
                         return response.json();
                     })
                     .then(function (value: any) {
