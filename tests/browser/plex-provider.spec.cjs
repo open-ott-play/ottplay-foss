@@ -286,52 +286,54 @@ for (const format of ["JSON", "XML"]) {
     );
 }
 
-// Folder browsing remains a supported Media API for controllers and saved
-// media queues, while ordinary profile startup now uses the channel playlist.
-async function openLegacyPlex(page, restore = false) {
+// Exercise the actual channel-style provider UI, including production routing.
+async function openPlexChannels(page) {
     await page.waitForFunction(
         () =>
             window.__ottActiveProviderDriver?.libraryReady() &&
             window.providerMediaClient &&
             !window.__ottActiveProviderDriver.catalogLoading()
     );
-    if (!restore)
-        await page.waitForFunction(
-            () =>
-                !window.cList.length ||
-                window.__ottClassicPlayback.snapshot().phase === "playing"
-        );
-    await page.evaluate((restore) => {
-        if (!restore) window.stbStop();
-        // The full catalog is already ready. Opening the credentials editor
-        // would retire it; explicit Media browsing must preserve that catalog.
+    await page.evaluate(() => {
+        window.stbStop();
         window.closeList();
-        window.__ottChannels.mount(window);
         window.__ottMedia.useSource(null);
-        const open = () =>
-            window.__ottMedia.open({
-                path: "/library/sections",
-                plexSource: window.__ottMedia.sourceId(),
-                title: "Plex",
-            });
-        if (!restore || !window.__ottMedia.restoreLast(open)) open();
-    }, restore);
+        window.__ottMedia.open(null);
+    });
+    await expect(page.locator("#listCaption")).toContainText(
+        await page.evaluate(() => window._("Channel list. Category: "))
+    );
+    await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
+    await expect(page.locator("#listPodval")).not.toContainText("Filter");
 }
 
-async function select(page, title) {
+async function selectPlexChannel(page, title) {
     await page.waitForFunction(
         (title) =>
-            window.__ottMedia
-                ?.snapshot()
-                .frame?.items.some((item) => item.title === title),
+            window.listArray?.some((id) => {
+                const row = window.channels[id];
+                return (
+                    row &&
+                    (row.channel_name === title ||
+                        row.__ottMediaItem?.title === title)
+                );
+            }),
         title
     );
-    await page.evaluate((title) => {
-        const index = window.__ottMedia
-            .snapshot()
-            .frame.items.findIndex((item) => item.title === title);
-        window.__ottMedia.select(index);
+    const index = await page.evaluate((title) => {
+        const index = window.listArray.findIndex((id) => {
+            const row = window.channels[id];
+            return (
+                row &&
+                (row.channel_name === title ||
+                    row.__ottMediaItem?.title === title)
+            );
+        });
+        if (window.selIndex !== index) window.setSelect(index);
+        return index;
     }, title);
+    await page.locator("#it" + index).focus();
+    await page.keyboard.press("Enter");
 }
 
 test("Plex load failure preserves a restored strict kiosk until remote unlock", async ({
@@ -392,7 +394,13 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
             });
         }
         if (url.pathname === "/library/sections/7/all")
-            return json({ Metadata: [] });
+            return json({
+                Metadata: [
+                    { ratingKey: "42", title: "Kiosk film", type: "movie" },
+                ],
+                size: 1,
+                totalSize: 1,
+            });
         if (url.pathname === "/library/sections/7/folder")
             return json({
                 Metadata: [
@@ -461,10 +469,8 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
     );
     await page.goto("/f/pc/");
     await page.keyboard.press("Shift");
-    await openLegacyPlex(page);
-    await select(page, "Kiosk library");
-    await select(page, "Browse folders");
-    await select(page, "Kiosk film");
+    await openPlexChannels(page);
+    await selectPlexChannel(page, "Kiosk film");
     await page.waitForFunction(
         () =>
             window.__ottClassicPlayback.snapshot().phase === "playing" &&
@@ -484,8 +490,10 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
         expect(replies[count].status).toBe("ok");
         return replies[count].data;
     }
-    expect(await kiosk({ mode: "on", strict: true })).toMatchObject({
-        media: { title: "Kiosk film", total: 1 },
+    expect(
+        await kiosk({ mode: "on", query: "Kiosk film", strict: true })
+    ).toMatchObject({
+        channel: { id: "plex-42" },
         provider: "plex",
         state: "locked",
         strict: true,
@@ -502,7 +510,7 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
     await page.reload();
     await expect.poll(() => failedLoads).toBe(1);
     expect(await kiosk({ mode: "status" })).toMatchObject({
-        media: { title: "Kiosk film", total: 1 },
+        channel: { id: "plex-42" },
         provider: "plex",
         state: "locked",
         strict: true,
@@ -534,7 +542,7 @@ test("Plex load failure preserves a restored strict kiosk until remote unlock", 
 const touchTest = test.extend({ hasTouch: true });
 
 touchTest(
-    "Plex file selection shows an owned wait through collection and resolution, cancels and retries",
+    "Plex native channel selection shows an owned wait, cancels and retries resolution",
     async ({ page, context, baseURL }) => {
         const local = new URL(baseURL).origin;
         const title = "Винни-Пух <тест>";
@@ -582,7 +590,13 @@ touchTest(
             if (url.pathname === "/library/sections/7/all")
                 return route.fulfill({
                     headers,
-                    json: { MediaContainer: { Metadata: [] } },
+                    json: {
+                        MediaContainer: {
+                            Metadata: rows,
+                            size: 2,
+                            totalSize: 2,
+                        },
+                    },
                 });
             if (url.pathname === "/library/sections/7/folder") {
                 if (hold) {
@@ -592,8 +606,34 @@ touchTest(
                 return folder(route);
             }
             if (/^\/library\/metadata\/\d+$/.test(url.pathname)) {
-                metadata.push(route);
-                return;
+                if (hold) {
+                    metadata.push(route);
+                    return;
+                }
+                return route.fulfill({
+                    headers,
+                    json: {
+                        MediaContainer: {
+                            Metadata: [
+                                {
+                                    ...rows[0],
+                                    Media: [
+                                        {
+                                            audioCodec: "mp3",
+                                            container: "avi",
+                                            Part: [
+                                                {
+                                                    key: "/library/parts/42/file.avi",
+                                                },
+                                            ],
+                                            videoCodec: "mpeg4",
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    },
+                });
             }
             if (url.pathname.endsWith("/decision"))
                 return route.fulfill({
@@ -667,91 +707,40 @@ touchTest(
         );
         await page.goto("/f/pc/");
         await page.keyboard.press("Shift");
-        await openLegacyPlex(page);
-        await select(page, "My library");
-        await select(
-            page,
-            await page.evaluate(() => window._("Browse folders"))
-        );
+        await openPlexChannels(page);
         await expect(page.locator("#list")).toContainText(title);
+        const beforeCancelled = await page.evaluate(() => ({
+            generation: window.__ottClassicPlayback.snapshot().generation,
+            phase: window.__ottClassicPlayback.snapshot().phase,
+            ref: window.__ottMedia.current()?.ref,
+        }));
         hold = true;
-        await page.keyboard.press("Enter");
-        await expect.poll(() => collections.length).toBe(1);
+        await selectPlexChannel(page, title);
+        await expect.poll(() => metadata.length).toBe(1);
         const dialog = page.locator("#dialogbox");
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText("Загрузка. Подождите…");
-        await expect(dialog).toContainText(title);
         await expect(dialog.locator(".ott-spinner")).toBeVisible();
-        // The modal owns remote keys until a user explicitly tabs to a control.
-        // Auto-focusing Cancel would turn this Enter into an unintended dismissal.
         await expect(dialog).toBeFocused();
-        expect(
-            await page.evaluate(
-                () => window.__ottScreens.current().model.parent.kind
-            )
-        ).toBe("list");
+        const selected = await page.evaluate(() => window.selIndex);
         for (const key of ["ArrowDown", "ArrowUp", "Enter"])
             await page.keyboard.press(key);
         await expect(dialog).toBeVisible();
-        expect(collections).toHaveLength(1);
-        await page.evaluate(() => window.__ottMedia.select(1));
-        await page.locator("#it1").click();
-        expect(await page.evaluate(() => window.selIndex)).toBe(0);
-        await page.locator("#it1").hover();
-        await page.mouse.wheel(0, 100);
-        expect(await page.evaluate(() => window.selIndex)).toBe(0);
-        const box = await page.locator("#it1").boundingBox();
-        await page.touchscreen.tap(
-            box.x + box.width / 2,
-            box.y + box.height / 2
-        );
-        expect(await page.evaluate(() => window.selIndex)).toBe(0);
-        const repeat = await page.evaluate(
-            () => window.__ottMedia.snapshot().repeat
-        );
-        await page
-            .locator('#mediaPlaybackControls [data-ott-key="57"]')
-            .click({ position: { x: 10, y: 10 } });
-        await page.getByRole("button", { exact: true, name: "Фильтр" }).click();
-        expect(
-            await page.evaluate(() => window.__ottMedia.snapshot().repeat)
-        ).toBe(repeat);
-        await expect(page.locator("#listEdit")).toBeHidden();
-        expect(collections.length).toBe(1);
-        expect(metadata.length).toBe(0);
-        expect(
-            await page.evaluate(
-                () => window.__ottMedia.snapshot().frame.selected
-            )
-        ).toBe(0);
-        await page.screenshot({
-            path: test.info().outputPath("plex-file-collecting.png"),
-        });
-        await page.keyboard.press("Backspace");
-        await expect(dialog).toBeHidden();
-        await folder(collections[0]);
-        expect(
-            await page.evaluate(() => window.__ottMedia.current())
-        ).toBeNull();
-
-        await page.keyboard.press("Enter");
-        await expect.poll(() => collections.length).toBe(2);
-        await folder(collections[1]);
-        await expect.poll(() => metadata.length).toBe(1);
-        await expect(dialog.locator(".ott-spinner")).toBeVisible();
-        await page.screenshot({
-            path: test.info().outputPath("plex-file-resolving.png"),
-        });
+        await expect(page.locator("#list_window")).toBeHidden();
+        expect(await page.evaluate(() => window.selIndex)).toBe(selected);
+        expect(metadata).toHaveLength(1);
+        await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
         await page.keyboard.press("Backspace");
         await expect(dialog).toBeHidden();
         await metadata[0].fulfill({ headers, json: { MediaContainer: {} } });
         expect(
-            await page.evaluate(() => window.__ottMedia.current())
-        ).toBeNull();
-
-        await page.keyboard.press("Enter");
-        await expect.poll(() => collections.length).toBe(3);
-        await folder(collections[2]);
+            await page.evaluate(() => ({
+                generation: window.__ottClassicPlayback.snapshot().generation,
+                phase: window.__ottClassicPlayback.snapshot().phase,
+                ref: window.__ottMedia.current()?.ref,
+            }))
+        ).toEqual(beforeCancelled);
+        await selectPlexChannel(page, title);
         for (let attempt = 0; attempt < 3; attempt++) {
             await expect.poll(() => metadata.length).toBe(attempt + 2);
             await expect(dialog.locator(".ott-spinner")).toBeVisible();
@@ -767,9 +756,7 @@ touchTest(
         await expect(dialog.locator(".ott-spinner")).toHaveCount(0);
         await page.keyboard.press("Enter");
         await expect(dialog).toBeHidden();
-        await page.keyboard.press("Enter");
-        await expect.poll(() => collections.length).toBe(4);
-        await folder(collections[3]);
+        await selectPlexChannel(page, title);
         await expect.poll(() => metadata.length).toBe(5);
         await metadata[4].fulfill({
             headers,
@@ -777,6 +764,7 @@ touchTest(
                 MediaContainer: {
                     Metadata: [
                         {
+                            ...rows[0],
                             Media: [
                                 {
                                     audioCodec: "mp3",
@@ -787,32 +775,26 @@ touchTest(
                                     videoCodec: "mpeg4",
                                 },
                             ],
-                            ratingKey: "42",
-                            type: "movie",
                         },
                     ],
                 },
             },
         });
-        await page.waitForFunction(() => {
-            const video = document.querySelector("video");
-            return (
+        await page.waitForFunction(
+            () =>
                 window.__ottClassicPlayback.snapshot().phase === "playing" &&
-                video.currentTime > 0.2 &&
-                !video.error
-            );
-        });
+                window.video.currentTime > 0.2 &&
+                !window.video.error
+        );
         await expect(dialog).toBeHidden();
         await expect(page.locator("#buffering")).toBeHidden();
         await expect(page.locator("#list_window")).toBeHidden();
-        await page.screenshot({
-            path: test.info().outputPath("plex-file-playing.png"),
-        });
+        expect(collections).toHaveLength(0);
         expect(errors).toEqual([]);
     }
 );
 
-test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of history", async ({
+test("Plex native channels preserve seek, resume, Actions order and access URL privacy", async ({
     page,
     context,
     baseURL,
@@ -820,14 +802,6 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
     const local = new URL(baseURL).origin;
     const requests = [];
     const errors = [];
-    let expandedFolder = false;
-    let failCollection = false;
-    let holdCollection = false;
-    let releaseCollection;
-    let holdDecision = false;
-    let releaseDecision;
-    const folderOffsets = [];
-    const folderParents = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
@@ -842,81 +816,19 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
                 Directory: [{ key: "7", title: "My library", type: "movie" }],
             });
         if (url.pathname === "/library/sections/7/all")
-            return json({ Metadata: [] });
-        if (url.pathname === "/hubs/search")
             return json({
-                Hub: [
+                Metadata: [
                     {
-                        Metadata: [
-                            {
-                                ratingKey: "42",
-                                title: "Test film",
-                                type: "movie",
-                            },
-                        ],
+                        ratingKey: "42",
+                        title: "  ",
+                        titleSort: "Test film",
+                        type: "movie",
                     },
-                ],
-            });
-        if (url.pathname === "/library/sections/7/folder") {
-            const level = Number(url.searchParams.get("parent") || 0);
-            folderParents.push(level);
-            if (level === 3 && failCollection)
-                return route.fulfill({
-                    body: "Unavailable",
-                    headers,
-                    status: 503,
-                });
-            if (level === 3 && holdCollection)
-                await new Promise((release) => {
-                    releaseCollection = release;
-                });
-            if (level === 3 && expandedFolder) {
-                const offset = Number(
-                    url.searchParams.get("X-Plex-Container-Start") || 0
-                );
-                folderOffsets.push(offset);
-                const rows = [
-                    {
-                        key: "/library/sections/7/folder?parent=4",
-                        title: "Child folder",
-                    },
-                    { ratingKey: "42", title: "Test film", type: "movie" },
                     { ratingKey: "43", title: "Following film", type: "movie" },
-                ];
-                return json({
-                    Metadata: rows.slice(offset, offset + 2),
-                    offset,
-                    size: Math.min(2, rows.length - offset),
-                    totalSize: rows.length,
-                });
-            }
-            return json(
-                level < 3
-                    ? {
-                          Metadata: [
-                              {
-                                  key:
-                                      "/library/sections/7/folder?parent=" +
-                                      (level + 1),
-                                  title: "Folder " + (level + 1),
-                              },
-                          ],
-                      }
-                    : {
-                          Metadata: [
-                              {
-                                  ratingKey: "42",
-                                  title: "  ",
-                                  titleSort: "Test film",
-                                  type: "movie",
-                              },
-                          ],
-                          offset: 0,
-                          size: 1,
-                          totalSize: 1,
-                      }
-            );
-        }
+                ],
+                size: 2,
+                totalSize: 2,
+            });
         if (/^\/library\/metadata\/(42|43)$/.test(url.pathname))
             return json({
                 Metadata: [
@@ -935,10 +847,6 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
                 ],
             });
         if (url.pathname.endsWith("/decision")) {
-            if (holdDecision)
-                await new Promise((release) => {
-                    releaseDecision = release;
-                });
             return json({
                 generalDecisionCode: 1001,
                 Metadata: [{ Media: [{ Part: [{ decision: "transcode" }] }] }],
@@ -994,152 +902,45 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
         { plex, token }
     );
     await page.goto("/f/pc/");
-    // Real users activate the page with a remote/key/click before selecting media.
     await page.keyboard.press("Shift");
-    await openLegacyPlex(page);
-    await select(page, "My library");
-    await select(page, "Browse folders");
-    for (let level = 1; level <= 3; level++)
-        await select(page, "Folder " + level);
-    const depth = await page.evaluate(
-        () => window.__ottMedia.snapshot().frames.length
+    await openPlexChannels(page);
+    expect(
+        await page.locator("#listIn .ott-channel-number").allTextContents()
+    ).toEqual(["1", "2"]);
+    await expect(page.locator("#listIn")).toContainText("Test film");
+    const original = await page.evaluate(() => window.listArray.slice());
+    await page.getByRole("button", { exact: true, name: "Actions" }).click();
+    await page.getByRole("button", { exact: true, name: /Shuffle/ }).click();
+    expect(
+        (await page.evaluate(() => window.listArray.slice())).sort()
+    ).toEqual(original.slice().sort());
+    await expect(page.locator("#listPopUp")).toBeVisible();
+    await page
+        .getByRole("button", { exact: true, name: /Reset order/ })
+        .click();
+    expect(await page.evaluate(() => window.listArray.slice())).toEqual(
+        original
     );
-    expect(depth).toBeGreaterThanOrEqual(5);
-    await page.evaluate(() => window.__ottMedia.back());
-    await select(page, "Folder 3");
-    const folderTrail = await page.evaluate(() =>
-        window.__ottMedia.snapshot().frames.map((frame) => frame.route.title)
+    await page.getByRole("button", { exact: true, name: "Actions" }).click();
+    await selectPlexChannel(page, "Test film");
+    await page.waitForFunction(
+        () =>
+            window.__ottClassicPlayback.snapshot().phase === "playing" &&
+            window.video.currentTime > 0.2 &&
+            !window.video.error
     );
-    await page.evaluate(() => {
-        window.sFavorites = 1;
-        document.querySelector("video").muted = true;
-    });
-    const controls = page.locator("#mediaPlaybackControls");
-    const loadingShuffle = await page.evaluate(() =>
-        window._("Shuffle: Loading...")
-    );
-    const shuffle = (state) =>
-        controls.getByRole("button", {
-            exact: true,
-            name: state === "Loading..." ? loadingShuffle : "Shuffle: " + state,
-        });
-    await expect(shuffle("Off")).toBeVisible();
-    await expect(shuffle("Off")).toHaveAttribute("data-state", "off");
-    await expect(shuffle("Off")).toHaveAttribute("aria-pressed", "false");
-    await expect(
-        controls.getByRole("button", { name: "Repeat: All" })
-    ).toBeVisible();
-    await page.keyboard.press("9");
-    await expect(
-        controls.getByRole("button", { name: "Repeat: One" })
-    ).toHaveAttribute("data-state", "one");
-    // Playwright models NumLock off: Shift selects the numeric keypad value.
-    await page.keyboard.press("Shift+Numpad9");
-    await expect(
-        controls.getByRole("button", { name: "Repeat: Off" })
-    ).toHaveAttribute("data-state", "off");
-    // Pointer activation follows the same state cycle as physical digits.
-    for (const [before, after] of [
-        ["Off", "All"],
-        ["All", "One"],
-        ["One", "Off"],
-    ]) {
-        await controls
-            .getByRole("button", { name: "Repeat: " + before })
-            .click();
-        await expect(
-            controls.getByRole("button", { name: "Repeat: " + after })
-        ).toBeVisible();
-    }
-    const panel = await page.locator("#listDetail").boundingBox();
-    const toolbar = await controls.boundingBox();
-    expect(toolbar.x).toBeGreaterThanOrEqual(panel.x);
-    expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(
-        panel.x + panel.width
-    );
-    expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(
-        panel.y + panel.height
-    );
-    await page.screenshot({
-        path: test.info().outputPath("plex-controls.png"),
-    });
-    expect(await page.locator("#list").innerText()).toContain("Test film");
-    holdCollection = true;
-    await page.keyboard.press("5");
-    await expect.poll(() => typeof releaseCollection).toBe("function");
-    await expect(shuffle("Loading...")).toBeVisible();
-    await expect(shuffle("Loading...")).toHaveAttribute(
-        "data-state",
-        "loading"
-    );
-    await expect(shuffle("Loading...")).toHaveAttribute("aria-busy", "true");
-    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
-    await page.screenshot({
-        path: test.info().outputPath("plex-controls-loading.png"),
-    });
-    holdCollection = false;
-    releaseCollection();
-    await page.waitForFunction(() =>
-        Array.from(document.querySelectorAll("video")).some(
-            (video) => video.currentTime > 0.2 && !video.error
-        )
-    );
-    const shuffledGeneration = await page.evaluate(
-        () => window.__ottClassicPlayback.snapshot().generation
-    );
-    await page.evaluate(() => window.__ottMedia.open(null));
-    await expect(shuffle("On")).toBeVisible();
-    await expect(shuffle("On")).toHaveAttribute("data-state", "on");
-    await expect(shuffle("On")).toHaveAttribute("aria-pressed", "true");
-    await page.screenshot({
-        path: test.info().outputPath("plex-controls-active.png"),
-    });
-    const playing = await page.evaluate(() => ({
-        id: window.__ottMedia.current().ref.itemId,
-        position: document.querySelector("video").currentTime,
-    }));
-    // Turning shuffle off changes the queue, not the current media attempt.
-    await page.keyboard.press("Shift+Numpad5");
-    await expect(shuffle("Off")).toBeVisible();
-    await expect(shuffle("Off")).toHaveAttribute("aria-pressed", "false");
-    const ordered = await page.evaluate(() => ({
-        generation: window.__ottClassicPlayback.snapshot().generation,
-        id: window.__ottMedia.current().ref.itemId,
-        position: document.querySelector("video").currentTime,
-    }));
-    expect(ordered.generation).toBe(shuffledGeneration);
-    expect(ordered.id).toBe(playing.id);
-    expect(ordered.position).toBeGreaterThanOrEqual(playing.position);
-    await page.keyboard.press("5");
-    await page.waitForFunction((previousGeneration) => {
-        const playback = window.__ottClassicPlayback.snapshot();
-        const video = document.querySelector("video");
-        return (
-            playback.generation > previousGeneration &&
-            playback.phase === "playing" &&
-            video.readyState >= 2 &&
-            video.currentTime > 0.2 &&
-            !video.seeking &&
-            !video.error
-        );
-    }, shuffledGeneration);
     const state = await page.evaluate(() => ({
         current: window.__ottMedia.current()?.payload.__ottPlexPlayback.type,
         journals: Object.keys(localStorage)
             .filter((key) => key.includes("mediaJournal.v1:"))
             .map((key) => localStorage.getItem(key)),
         provider: localStorage.getItem("ottplayprov"),
-        queue: window.__ottMedia
-            .current()
-            ?.sequence.items.map((item) => item.title),
-        repeat: window.__ottMedia.current()?.sequence.repeat,
     }));
     expect(state.provider).toBe("plex");
     expect(state.current).toBe("hls");
-    expect(state.queue).toEqual(["Test film"]);
-    expect(state.repeat).toBe("off");
     expect(state.journals.length).toBeGreaterThan(0);
     expect(JSON.stringify(state.journals)).not.toContain(token);
+    expect(JSON.stringify(state.journals)).not.toContain("start.m3u8");
     expect(requests).toContain("/video/:/transcode/universal/decision");
     // Desktop modifier arrows seek even with saved volume bindings; plain
     // arrows remain available to menus and dialogs. Exercise the real router.
@@ -1207,7 +1008,7 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
     // Visible list/dialog owners still receive arrows without seeking the
     // underlying paused movie or falling through to the volume bindings.
     await page.evaluate(() => window.__ottMedia.open(null));
-    await expect(page.locator("#listCaption")).toContainText("Folder 3");
+    await expect(page.locator("#listCaption")).toContainText("Channel list");
     for (const [key, keyCode] of [
         ["ArrowLeft", 37],
         ["ArrowRight", 39],
@@ -1260,150 +1061,30 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
     const resolvesBeforeReload = requests.filter(
         (path) => path === "/library/metadata/42"
     ).length;
-    // A fresh folder listing can grow between sessions; resume must collect
-    // later pages without descending into its child folders.
-    expandedFolder = true;
-    holdCollection = true;
-    releaseCollection = undefined;
-    holdDecision = true;
     await page.reload();
-    await openLegacyPlex(page, true);
-    await expect.poll(() => typeof releaseCollection).toBe("function");
-    const startupSpinner = page.locator("#dialogbox .ott-spinner");
-    await expect(startupSpinner).toBeVisible();
-    await expect(page.locator("#dialogbox")).toContainText(
-        "Loading… please wait…"
-    );
-    await page.waitForTimeout(3500);
-    await expect(startupSpinner).toBeVisible();
-    holdCollection = false;
-    releaseCollection();
-    await expect.poll(() => typeof releaseDecision).toBe("function");
-    await expect(startupSpinner).toBeVisible();
-    await page.screenshot({
-        path: test.info().outputPath("plex-restoring.png"),
-    });
-    holdDecision = false;
-    releaseDecision();
-    await page.waitForFunction(() => {
-        const video = document.querySelector("video");
-        return (
-            window.__ottMedia?.current() &&
-            video.currentTime >= 12.375 &&
-            !video.error
-        );
-    });
-    expect(
-        await page.evaluate(() => window.__ottMedia.current().ref.itemId)
-    ).toBe(bookmark.itemId);
-    await expect(startupSpinner).toBeHidden();
-    expect(
-        requests.filter((path) => path === "/library/metadata/42").length
-    ).toBeGreaterThan(resolvesBeforeReload);
-    expect(
-        await page.evaluate(() => document.querySelector("video").currentTime)
-    ).toBeLessThan(15);
-    await page.evaluate(() => window.__ottMedia.open(null));
-    await expect(page.locator("#listCaption")).toContainText("Folder 3");
-    await expect(page.locator("#list")).toContainText("Following film");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowUp");
-    expect(
-        await page.evaluate(() => window.__ottMedia.current().ref.itemId)
-    ).toBe(bookmark.itemId);
-    const restoredFolder = await page.evaluate(() => {
-        const view = window.__ottMedia.snapshot();
-        return {
-            selected: view.frame.items[view.frame.selected].ref.itemId,
-            titles: view.frame.items.map((item) => item.title),
-            trail: view.frames.map((frame) => frame.route.title),
-        };
-    });
-    expect(restoredFolder.trail).toEqual(folderTrail);
-    expect(restoredFolder.selected).toBe(bookmark.itemId);
-    expect(restoredFolder.titles).toEqual(
-        expect.arrayContaining(["Child folder", "Test film", "Following film"])
-    );
-    expect(folderOffsets).toContain(2);
-    const resolvesBeforeEnd = requests.filter(
-        (path) => path === "/library/metadata/43"
-    ).length;
-    await page.waitForFunction(() => {
-        const video = document.querySelector("video");
-        return (
-            video.readyState >= 2 &&
-            Number.isFinite(video.duration) &&
-            !video.seeking
-        );
-    });
-    await page.evaluate(() => {
-        const video = document.querySelector("video");
-        video.currentTime = video.duration - 1;
-    });
-    await page.waitForFunction(() => {
-        const current = window.__ottMedia.current();
-        const video = document.querySelector("video");
-        return (
-            current?.payload.request.path === "/library/metadata/43" &&
-            video.currentTime > 0.2 &&
-            video.currentTime < 5 &&
-            !video.error
-        );
-    });
-    expect(
-        requests.filter((path) => path === "/library/metadata/43").length
-    ).toBe(resolvesBeforeEnd + 1);
-    expect(folderOffsets.every((offset) => offset === 0 || offset === 2)).toBe(
-        true
-    );
-    expect(folderParents).not.toContain(4);
-    await page.evaluate(() => window.closeList());
-    await page.keyboard.press("ArrowDown");
-    await page.waitForFunction(
-        () =>
-            window.__ottMedia.current()?.payload.request.path ===
-                "/library/metadata/42" &&
-            document.querySelector("video").currentTime > 0.2
-    );
-    await page.keyboard.press("ArrowUp");
-    await page.waitForFunction(
-        () =>
-            window.__ottMedia.current()?.payload.request.path ===
-                "/library/metadata/43" &&
-            document.querySelector("video").currentTime > 0.2
-    );
-    // A transient catalog error must not permanently disable full-screen
-    // arrows after the individual file has successfully resumed.
-    await page.evaluate(() => {
-        const playing = window.__ottMedia.current();
-        window.__ottMedia.checkpoint(playing.ref, 1, true);
-    });
-    failCollection = true;
-    await page.reload();
-    await openLegacyPlex(page, true);
+    await page.keyboard.press("Shift");
     await page.waitForFunction(
         () =>
             window.__ottMedia?.current()?.payload.request.path ===
-                "/library/metadata/43" &&
-            document.querySelector("video").currentTime > 0.2
+                "/library/metadata/42" &&
+            window.video.currentTime >= 12.375 &&
+            !window.video.error
     );
     expect(
-        await page.evaluate(() => window.__ottMedia.current().sequence)
-    ).toBeNull();
-    failCollection = false;
-    await page.keyboard.press("ArrowDown");
-    await page.waitForFunction(
-        () =>
-            window.__ottMedia.current()?.payload.request.path ===
-                "/library/metadata/42" &&
-            document.querySelector("video").currentTime > 0.2
-    );
+        requests.filter((path) => path === "/library/metadata/42").length
+    ).toBeGreaterThan(resolvesBeforeReload);
+    await page.evaluate(() => window.closeList());
     await page.keyboard.press("ArrowUp");
     await page.waitForFunction(
         () =>
             window.__ottMedia.current()?.payload.request.path ===
-                "/library/metadata/43" &&
-            document.querySelector("video").currentTime > 0.2
+                "/library/metadata/43" && window.video.currentTime > 0.2
+    );
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+        () =>
+            window.__ottMedia.current()?.payload.request.path ===
+                "/library/metadata/42" && window.video.currentTime > 0.2
     );
     const stopsBefore = requests.filter((path) =>
         path.endsWith("/stop")
@@ -1412,60 +1093,10 @@ test("Explicit Plex Media browsing plays direct HLS and keeps access URLs out of
     await expect
         .poll(() => requests.filter((path) => path.endsWith("/stop")).length)
         .toBe(stopsBefore + 1);
-    await page.evaluate(() => window.__ottMedia.open("plexsearch?search=Test"));
-    await expect(
-        controls.getByRole("button", { name: "Repeat: Off" })
-    ).toBeVisible();
-    await expect(
-        controls.getByRole("button", { name: /^Shuffle:/ })
-    ).toHaveCount(0);
-    const stoppedGeneration = await page.evaluate(
-        () => window.__ottClassicPlayback.snapshot().generation
-    );
-    await select(page, "Test film");
-    await page.waitForFunction((previousGeneration) => {
-        const state = window.__ottClassicPlayback.snapshot();
-        const video = document.querySelector("video");
-        return (
-            state.generation > previousGeneration &&
-            state.phase === "playing" &&
-            video.currentTime > 0.2 &&
-            video.readyState >= 2 &&
-            Number.isFinite(video.duration) &&
-            video.duration > 0.2 &&
-            !video.seeking &&
-            !video.error
-        );
-    }, stoppedGeneration);
-    await page.evaluate(() => {
-        const video = document.querySelector("video");
-        // Leave actual media before EOF: the transport stream's audio ends
-        // slightly before the duration advertised by the synthetic playlist.
-        video.currentTime = video.duration - 1;
-    });
-    await page.waitForFunction(() => {
-        const key = Object.keys(localStorage).find((key) =>
-            key.includes("mediaJournal.v1:")
-        );
-        return (
-            window.__ottClassicPlayback.snapshot().phase === "stopped" &&
-            JSON.parse(localStorage.getItem(key)).history[0].position === 0
-        );
-    });
-    const completedResolves = requests.filter(
-        (path) => path === "/library/metadata/42"
-    ).length;
-    await page.reload();
-    await openLegacyPlex(page, true);
-    await expect(page.locator("body")).toContainText("My library");
-    expect(await page.evaluate(() => window.__ottMedia.current())).toBeNull();
-    expect(
-        requests.filter((path) => path === "/library/metadata/42").length
-    ).toBe(completedResolves);
     expect(errors).toEqual([]);
 });
 
-test("Plex appends folder pages without changing selection or Back ownership and retries a failed cursor", async ({
+test("Plex appends native catalog pages without changing highlighted channel or category", async ({
     page,
     context,
     baseURL,
@@ -1492,20 +1123,7 @@ test("Plex appends folder pages without changing selection or Back ownership and
             return json({
                 Directory: [{ key: "7", title: "My library", type: "movie" }],
             });
-        if (url.pathname === "/library/sections/7/all")
-            return json({ Metadata: [], title2: "Folder" });
-        if (url.pathname === "/library/sections/7/folder") {
-            if (!url.searchParams.has("parent"))
-                return json({
-                    Metadata: [
-                        {
-                            key: "/library/sections/7/folder?parent=17",
-                            title: "Turtles",
-                        },
-                    ],
-                    title2: "Folder",
-                });
-            expect(url.searchParams.get("parent")).toBe("17");
+        if (url.pathname === "/library/sections/7/all") {
             const offset = Number(
                 request.headers()["x-plex-container-start"] || 0
             );
@@ -1555,156 +1173,69 @@ test("Plex appends folder pages without changing selection or Back ownership and
         { plex, token }
     );
 
-    async function view() {
-        return page.evaluate(() => {
-            const state = window.__ottMedia.snapshot();
-            const frame = state.frame;
-            const cursor = frame.items.findIndex(
-                (item) => item.payload.__ottMediaNext
-            );
-            return {
-                cursor,
-                cursorState:
-                    cursor < 0
-                        ? null
-                        : frame.items[cursor].payload.__ottMediaPageState ||
-                          null,
-                depth: state.frames.length,
-                ids: frame.items
-                    .filter((item) => item.payload.request)
-                    .map((item) => item.payload.request.path),
-                route: frame.route,
-                selected: frame.selected,
-                selectedTitle: frame.items[frame.selected]?.title,
-                uiSelected: window.selIndex,
-                uiTitle: window.listArray[window.selIndex]?.title,
-            };
-        });
-    }
-    async function highlightCursor(distance = 0) {
-        await page.evaluate((distance) => {
-            const state = window.__ottMedia.snapshot();
-            const cursor = state.frame.items.findIndex(
-                (item) => item.payload.__ottMediaNext
-            );
-            if (cursor < 0) throw new Error("Missing owned pagination cursor");
-            window.setSelect(cursor - distance);
-        }, distance);
-    }
-    async function release(offset, status = 200) {
+    async function release(offset) {
         await expect
             .poll(() => pending.some((row) => row.offset === offset))
             .toBe(true);
         const index = pending.findIndex((row) => row.offset === offset);
-        pending.splice(index, 1)[0].release(status);
+        pending.splice(index, 1)[0].release(200);
     }
-
     await page.goto("/f/pc/");
-    await openLegacyPlex(page);
-    await select(page, "My library");
-    await select(page, "Browse folders");
-    await select(page, "Turtles");
-    await expect(page.locator("#listCaption")).toContainText("Turtles");
-    const initial = await view();
-    expect(initial.route.title).toBe("Turtles");
-    expect(initial.ids).toHaveLength(8);
-    expect(initial.cursor).toBe(8);
-    expect(requests).toEqual([0]);
-
-    // Highlighting a real row near the end prefetches without pressing Enter.
-    await highlightCursor(2);
+    await page.keyboard.press("Shift");
+    await page.waitForFunction(() => window.cList?.length === 8);
+    await page.evaluate(() => {
+        window.stbStop();
+        window.closeList();
+        window.__ottMedia.open(null);
+        window.setSelect(6);
+    });
+    await expect(page.locator("#it6")).toHaveClass(/ott-selected/);
+    expect(
+        await page.locator("#listIn .ott-channel-number").allTextContents()
+    ).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    const highlighted = await page.evaluate(
+        () => window.listArray[window.selIndex]
+    );
+    expect(highlighted).toBe("plex-106");
     await expect.poll(() => requests).toEqual([0, 8]);
-    const highlighted = await view();
-    expect(highlighted.selectedTitle).toBe("Film 07");
-    const loading = await page.evaluate(() => window._("Loading..."));
-    expect(highlighted.cursorState).toBe("loading");
-    await expect(page.locator("#list")).toContainText(loading);
-    await testInfo.attach("plex-folder-loading", {
+    await release(8);
+    await page.waitForFunction(() => window.cList.length === 12);
+    expect(await page.evaluate(() => window.listArray[window.selIndex])).toBe(
+        highlighted
+    );
+    await page.getByRole("button", { exact: true, name: "Category" }).click();
+    const library = page
+        .locator("#listIn .item")
+        .filter({ hasText: "My library" });
+    await library.click();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#listCaption")).toContainText("My library");
+    await page.evaluate(() => window.setSelect(6));
+    for (const offset of [12, 16]) {
+        await release(offset);
+        await page.waitForFunction(
+            (length) => window.cList.length === length,
+            offset + 4
+        );
+        expect(
+            await page.evaluate(() => window.listArray[window.selIndex])
+        ).toBe(highlighted);
+        await expect(page.locator("#listCaption")).toContainText("My library");
+    }
+    await page.waitForFunction(
+        () => !window.__ottActiveProviderDriver.catalogLoading()
+    );
+    expect(requests).toEqual([0, 8, 12, 16]);
+    expect(await page.evaluate(() => window.listArray.slice())).toEqual(
+        rows.map((row) => "plex-" + row.ratingKey)
+    );
+    await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
+    await expect(page.locator("#listIn")).not.toContainText("Next");
+    await expect(page.locator("#listPodval")).not.toContainText("Filter");
+    await testInfo.attach("plex-native-catalog-complete", {
         body: await page.screenshot(),
         contentType: "image/png",
     });
-    await release(8);
-    await expect.poll(async () => (await view()).ids.length).toBe(12);
-    const appended = await view();
-    expect(appended.route).toEqual(initial.route);
-    expect(appended.depth).toBe(initial.depth);
-    expect(appended.ids.slice(0, 8)).toEqual(initial.ids);
-    expect(appended.selected).toBe(highlighted.selected);
-    expect(appended.selectedTitle).toBe(highlighted.selectedTitle);
-    expect(appended.uiTitle).toBe(highlighted.selectedTitle);
-
-    // A selected cursor becomes the first inserted row at that exact index.
-    await highlightCursor();
-    await expect.poll(() => requests).toEqual([0, 8, 12]);
-    const cursor = (await view()).selected;
-    await release(12);
-    await expect.poll(async () => (await view()).ids.length).toBe(16);
-    const inserted = await view();
-    expect(inserted.selected).toBe(cursor);
-    expect(inserted.uiSelected).toBe(cursor);
-    expect(inserted.selectedTitle).toBe("Film 13");
-    expect(inserted.uiTitle).toBe("Film 13");
-    expect(inserted.depth).toBe(initial.depth);
-    await testInfo.attach("plex-folder-appended", {
-        body: await page.screenshot(),
-        contentType: "image/png",
-    });
-
-    // Fail closed with all prior rows intact, then retry the same cursor.
-    await highlightCursor();
-    await expect.poll(() => requests).toEqual([0, 8, 12, 16]);
-    await release(16, 503);
-    const retry = await page.evaluate(() =>
-        window._("Could not load. Select to retry.")
-    );
-    await expect.poll(async () => (await view()).cursorState).toBe("error");
-    expect((await view()).ids).toEqual(inserted.ids);
-    await expect(page.locator("#list")).toContainText(retry);
-    await page.evaluate(() => window.listKeyHandler(window.keys.ENTER));
-    await expect.poll(() => requests).toEqual([0, 8, 12, 16, 16]);
-    await release(16);
-    await expect.poll(async () => (await view()).ids.length).toBe(20);
-    const complete = await view();
-    expect(complete.cursor).toBe(-1);
-    expect(complete.ids).toEqual(
-        rows.map((row) => "/library/metadata/" + row.ratingKey)
-    );
-    expect(complete.selectedTitle).toBe("Film 17");
-    expect(complete.route).toEqual(initial.route);
-    expect(complete.depth).toBe(initial.depth);
-    await page.evaluate(() => window.__ottMedia.back());
-    expect((await view()).depth).toBe(initial.depth - 1);
-    expect((await view()).route.target.path).toBe("/library/sections/7/folder");
-    await expect(page.locator("#list")).toContainText("Turtles");
-
-    // Leave a new pending visit; even its late response cannot reopen it.
-    await select(page, "Turtles");
-    await expect.poll(async () => (await view()).ids.length).toBe(8);
-    await highlightCursor(2);
-    await expect.poll(() => pending.some((row) => row.offset === 8)).toBe(true);
-    const aborted = page.waitForEvent("requestfailed", {
-        predicate: (request) => {
-            const url = new URL(request.url());
-            return (
-                url.origin === plex &&
-                url.pathname === "/library/sections/7/folder" &&
-                url.searchParams.get("X-Plex-Container-Start") === "8"
-            );
-        },
-    });
-    await page.evaluate(() => window.__ottMedia.back());
-    await aborted;
-    const parent = await view();
-    await release(8);
-    await page.evaluate(
-        () =>
-            new Promise((done) =>
-                requestAnimationFrame(() => requestAnimationFrame(done))
-            )
-    );
-    expect(await view()).toEqual(parent);
-    await expect(page.locator("#list")).toContainText("Turtles");
-    await expect(page.locator("#list")).not.toContainText("Film 09");
     expect(errors).toEqual([]);
 });
 
@@ -1853,10 +1384,8 @@ for (const { engine, strict } of [
             await page.setViewportSize({ height: 720, width: 960 });
             await page.goto(engine === "video.js" ? "/f/pc2/" : "/f/pc/");
             await page.keyboard.press("Shift");
-            await openLegacyPlex(page);
-            await select(page, "Aspect library");
-            await select(page, "Browse folders");
-            await select(page, films[0].title);
+            await openPlexChannels(page);
+            await selectPlexChannel(page, films[0].title);
             async function ready(id) {
                 const target =
                     "request:" +
@@ -2074,7 +1603,7 @@ for (const { engine, strict } of [
                         )
                     ).toBe(true);
             }
-            // Explicit Media playback shares preferences with its configured flat playlist.
+            // Native Plex channels use the same media aspect preferences.
             expect(await page.evaluate(() => window.cList.length)).toBe(2);
             await page.evaluate(() => window.stbToggleAspectRatio());
             await page
@@ -2103,23 +1632,35 @@ for (const { engine, strict } of [
                     () =>
                         new Promise((resolve) =>
                             window.__ottKiosk.request(
-                                { mode: "on", strict: true },
+                                {
+                                    mode: "on",
+                                    query: "Aspect episode 1",
+                                    strict: true,
+                                },
                                 resolve
                             )
                         )
                 );
                 expect(kiosk.status).toBe("ok");
                 expect(kiosk.data).toMatchObject({
-                    media: { index: 0, title: films[0].title, total: 2 },
+                    channel: { id: "plex-42" },
                     strict: true,
                 });
                 expect(await aspect()).toEqual({
                     mode: "fill",
                     savedMode: "fill",
                 });
+                await page.waitForFunction(
+                    () =>
+                        window.__ottClassicPlayback.snapshot().phase ===
+                            "playing" &&
+                        Number.isFinite(window.video.duration) &&
+                        window.video.duration > 0.5 &&
+                        window.video.currentTime > 0.1
+                );
                 // Observe the real decoder event before the application's target
-                // listener advances the queue. Only this episode may reach its end;
-                // the next one loops to keep later assertions independent of timing.
+                // listener replays the pinned channel. Only the current attempt
+                // reaches its end; the restarted attempt loops for later assertions.
                 const ending = await page.evaluate(() => {
                     const media = window.video;
                     const duration = media.duration;
@@ -2154,7 +1695,14 @@ for (const { engine, strict } of [
                     return { duration, loop: media.loop };
                 });
                 expect(ending.loop).toBe(false);
-                await ready("43");
+                await page.waitForFunction(
+                    () =>
+                        window.__aspectEnded &&
+                        window.__ottClassicPlayback.snapshot().phase ===
+                            "playing" &&
+                        window.video.currentTime < window.video.duration - 1
+                );
+                await ready("42");
                 const ended = await page.evaluate(() => window.__aspectEnded);
                 expect(ended).toMatchObject({
                     aspect: { mode: "fill", savedMode: "fill" },
@@ -2169,22 +1717,20 @@ for (const { engine, strict } of [
                     body: JSON.stringify(ended, null, 2),
                     contentType: "application/json",
                 });
-                // Kiosk checkpoints its cursor every five seconds. Wait for the
-                // real durable write before testing fresh-page restoration.
+                // Check the real durable pinned-channel policy before testing
+                // fresh-page restoration.
                 await page.waitForFunction(() => {
                     const saved = JSON.parse(
                         window.stbGetPersistedItem("__ottKioskV1") || "null"
                     );
                     return (
                         saved?.strict === true &&
-                        saved.media.index === 1 &&
-                        saved.media.records[1].request.path ===
-                            "/library/metadata/43"
+                        saved.channel?.id === "plex-42"
                     );
                 });
             } else {
                 await page.evaluate(() => window.__ottMedia.open(null));
-                await select(page, films[1].title);
+                await selectPlexChannel(page, films[1].title);
                 await ready("43");
             }
             expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
@@ -2199,7 +1745,7 @@ for (const { engine, strict } of [
                 await page.waitForFunction(
                     () => window.curList?.[window.primaryIndex] === "plex-43"
                 );
-            await ready("43");
+            await ready(strict ? "42" : "43");
             expect(await page.evaluate(() => window.__ottKiosk.strict())).toBe(
                 strict
             );

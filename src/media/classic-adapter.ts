@@ -6,7 +6,9 @@ var mediaClassicPlayback: any = null;
 
 /** Installation libraries own their loader and storage independently of TV providers. */
 interface ClassicMediaSource {
+    catalog?(): any[];
     client: any;
+    library?: { id: string; title: string; type?: string } | null;
     read(key: string): string | null;
     readPersisted?(key: string): string | null;
     sourceId: string;
@@ -296,6 +298,7 @@ function classicMediaRuntime(): any {
     var checkpointItem = "";
     var rendering = false;
     var filterText = "";
+    var plexList: any = null;
     var pendingStart: any = null;
     var automaticRequest: any = null;
     var automaticGeneration = 0;
@@ -304,18 +307,14 @@ function classicMediaRuntime(): any {
     var shuffleRequest: any = null;
     var completionRequest: any = null;
     var skipRequest: any = null;
-    var startupLoading: ScreenOwner | null = null;
     var manualLoading: any = null;
-    var restored = false;
     var repeat = "all";
     var repeatKey = "mediaRepeat.v1:" + source;
     var screenOwner: any = null;
     var screenRevision = -1;
     var pageScheduled = -1;
     function finishStartupLoading() {
-        var owner = startupLoading;
-        startupLoading = null;
-        if (owner) owner.close();
+        if (plexList) plexList.finishStartup();
     }
     function finishManualLoading(request: any, cancelled = false) {
         if (!request) return;
@@ -569,7 +568,7 @@ function classicMediaRuntime(): any {
     }
     function project(view: MediaLibraryView, render = true) {
         if (!current()) return;
-        (view as any).filter = filterText;
+        (view as any).filter = plexLibrary() ? "" : filterText;
         decorate(view);
         var frame = view.frame;
         // Provider codecs may append incremental rows to this full-page projection.
@@ -601,7 +600,8 @@ function classicMediaRuntime(): any {
         if (render && typeof w.__ottRenderMedia === "function") {
             rendering = true;
             try {
-                w.__ottRenderMedia(view);
+                var plex = plexPresentation();
+                if (!plex || !plex.render(view)) w.__ottRenderMedia(view);
             } finally {
                 rendering = false;
             }
@@ -610,6 +610,8 @@ function classicMediaRuntime(): any {
     }
     function load(route: MediaRoute, done: any) {
         bindScreen();
+        var plex = plexPresentation();
+        if (plex && plex.load(done)) return;
         if (!current() || typeof provider !== "function") {
             done([], route.title);
             return;
@@ -685,7 +687,62 @@ function classicMediaRuntime(): any {
             w.enterPinAndSetAccess(proceed, rejected);
         else proceed();
     }
+    function plexLibrary(): boolean {
+        return /^plex(?:@|$)/.test(source);
+    }
+    /** Optional Plex presentation has source-local access to its runtime ports. */
+    function plexPresentation(): any {
+        if (!plexList && w.__ottPlexList)
+            plexList = w.__ottPlexList.create({
+                api: api,
+                authorize: authorize,
+                beforeOpen: function () {
+                    return (
+                        !skipRequest ||
+                        !skipRequest.loading ||
+                        cancelNavigationAuto()
+                    );
+                },
+                bindScreen: bindScreen,
+                clearAutomatic: function () {
+                    automaticRequest = null;
+                },
+                client: classicMediaClient,
+                collectFolder: collectFolder,
+                context: context,
+                copy: copy,
+                current: current,
+                describe: describe,
+                generation: function () {
+                    return automaticGeneration;
+                },
+                host: w,
+                journal: journal,
+                library: library,
+                limit: limit,
+                mediaClient: mediaClient,
+                navigate: navigate,
+                playable: playable,
+                playback: function () {
+                    return mediaClassicPlayback;
+                },
+                rendering: function (value: boolean) {
+                    var previous = rendering;
+                    rendering = value;
+                    return previous;
+                },
+                resolve: resolve,
+                restoreFolder: restoreFolder,
+                sequenceFor: sequenceFor,
+                showLoading: showLoading,
+                skip: skipPlayback,
+                source: source,
+                title: classicMediaTitle,
+            });
+        return plexList;
+    }
     function decorate(view: any) {
+        view.canFilter = !plexLibrary();
         view.repeat = repeat;
         view.shuffle = shuffleRequest
             ? "loading"
@@ -696,6 +753,7 @@ function classicMediaRuntime(): any {
               ? "on"
               : "off";
         view.canRepeat = !!(
+            !plexLibrary() &&
             !view.loading &&
             view.frame &&
             view.frame.route.kind === "catalog" &&
@@ -706,8 +764,11 @@ function classicMediaRuntime(): any {
     function updateControls() {
         if (!current() || typeof w.__ottUpdateMediaControls !== "function")
             return;
-        var view = {};
+        var view: any = {};
         decorate(view);
+        // Mode updates only touch an existing toolbar; full renders decide
+        // availability from their frame without copying the catalogue here.
+        view.canRepeat = !plexLibrary();
         w.__ottUpdateMediaControls(view);
     }
     function canCollect(target: any) {
@@ -721,6 +782,7 @@ function classicMediaRuntime(): any {
         describe: function (records: any[], route: MediaRoute) {
             var items = describe(records, route);
             if (
+                !plexLibrary() &&
                 library.snapshot("none").frames.length === 1 &&
                 w.sFavorites !== -1
             ) {
@@ -745,7 +807,8 @@ function classicMediaRuntime(): any {
             return items;
         },
         filter: function (items: MediaLibraryItem[], route: MediaRoute) {
-            if (route.kind === "variants") return items;
+            // Do not keep an invisible filter when revisiting a Plex list.
+            if (plexLibrary() || route.kind === "variants") return items;
             var query = normalizedFilter(filterText);
             var result = items.filter(function (item) {
                 var payload = item.payload;
@@ -963,10 +1026,15 @@ function classicMediaRuntime(): any {
             accept(null);
         }
     }
-    function skipPlayback(direction: number) {
+    function skipPlayback(
+        direction: number,
+        dispatched?: () => void,
+        retry = false
+    ) {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
-        if (!playback || playback.runtime !== api || !direction) return;
+        if (!playback || playback.runtime !== api || (!direction && !retry))
+            return;
         if (sequence && sequence.channel) {
             movePlaylistEntry(playback, direction, false);
             return;
@@ -1014,10 +1082,11 @@ function classicMediaRuntime(): any {
                 (!request || skipRequest === request) &&
                 automaticGeneration === revision &&
                 state.generation === generation + (afterEnd ? 1 : 0) &&
-                state.target &&
-                state.target.kind === "vod" &&
-                state.target.sourceId === source &&
-                state.target.channelId === playback.ref.itemId
+                (retry ||
+                    (state.target &&
+                        state.target.kind === "vod" &&
+                        state.target.sourceId === source &&
+                        state.target.channelId === playback.ref.itemId))
             );
         }
         if (!valid()) return;
@@ -1055,7 +1124,7 @@ function classicMediaRuntime(): any {
         index =
             ((index % sequence.items.length) + sequence.items.length) %
             sequence.items.length;
-        if (index === sequence.index) return;
+        if (index === sequence.index && !retry) return;
         request = {
             feedback: feedback,
             index: index,
@@ -1087,7 +1156,7 @@ function classicMediaRuntime(): any {
                     },
                     true,
                     valid,
-                    undefined,
+                    dispatched,
                     undefined,
                     finish
                 );
@@ -1750,6 +1819,7 @@ function classicMediaRuntime(): any {
                 );
         },
         filter: function () {
+            if (plexLibrary()) return;
             var admitted = api.capture();
             library.cancelPage();
             if (!admitted()) return;
@@ -1772,6 +1842,9 @@ function classicMediaRuntime(): any {
                 });
             };
             if (typeof w.showEditKey === "function") w.showEditKey();
+        },
+        hasLegacyListTools: function () {
+            return !plexLibrary();
         },
         highlight: function (index: number, revision: number) {
             if (manualLoading) return;
@@ -1796,6 +1869,8 @@ function classicMediaRuntime(): any {
             }, 0);
         },
         open: function (target: any, title?: string, label?: any) {
+            var plex = plexPresentation();
+            if (plex && plex.open(target)) return;
             if (skipRequest && skipRequest.loading && !cancelNavigationAuto())
                 return;
             var view = library.snapshot("none");
@@ -2048,35 +2123,18 @@ function classicMediaRuntime(): any {
             dispatched: () => void,
             failed: () => void
         ) {
-            var items = describe(records, {
-                kind: "catalog",
-                target: "",
-                title: "Plex",
-            });
-            if (!items[index] || !current() || !guard()) return failed();
-            api.cancelAuto();
-            resolve(
-                items[index],
-                {
-                    explicit: true,
-                    index: index,
-                    items: items,
-                    onError: failed,
-                    queueId: queueId,
-                    repeat: "off",
-                    replace: true,
-                },
-                true,
-                guard,
-                dispatched,
-                { position: 0, resolved: resolved, unavailable: failed },
-                function (started) {
-                    if (!started) failed();
-                }
-            );
-            return function () {
-                api.cancelAuto();
-            };
+            var plex = plexPresentation();
+            return plex
+                ? plex.playOrderedQueue(
+                      records,
+                      index,
+                      queueId,
+                      resolved,
+                      guard,
+                      dispatched,
+                      failed
+                  )
+                : failed();
         },
         playQueue: function (
             records: any[],
@@ -2196,18 +2254,8 @@ function classicMediaRuntime(): any {
                 sequence: start && start.sequence,
                 ticket: ticket,
             };
-            var driver = w.__ottActiveProviderDriver;
-            if (
-                driver &&
-                driver.id === "plex" &&
-                typeof driver.rememberPlayback === "function"
-            ) {
-                try {
-                    driver.rememberPlayback(item.payload);
-                } catch (_) {
-                    // A failed optional cursor write cannot prevent playback.
-                }
-            }
+            var plex = plexPresentation();
+            if (plex) plex.remember(item.payload);
             return {
                 channel: start && start.sequence && start.sequence.channel,
                 item: item.payload,
@@ -2337,97 +2385,8 @@ function classicMediaRuntime(): any {
             return true;
         },
         restoreLast: function (onUnavailable?: () => void) {
-            if (!current() || restored) return false;
-            restored = true;
-            if (
-                w.sFavorites === -1 ||
-                !limit() ||
-                !mediaClient ||
-                !mediaClient.stableRequests ||
-                typeof mediaClient.resolve !== "function" ||
-                (mediaClassicPlayback && mediaClassicPlayback.runtime === api)
-            )
-                return false;
-            var saved = journal.read();
-            var row = saved.document.history[0];
-            if (
-                !current() ||
-                !saved.writable ||
-                !row ||
-                row.sourceId !== source ||
-                !isFinite(row.position) ||
-                row.position <= 0 ||
-                !row.payload.request
-            )
-                return false;
-            var payload = copy(row.payload);
-            payload.__ottMediaRef = { itemId: row.itemId, sourceId: source };
-            payload.__ottMediaRefresh = true;
-            var item = describe([payload], { kind: "history", title: "" })[0];
-            if (!playable(item)) return false;
-            var admitted = library.capture();
-            var revision = automaticGeneration + 1;
-            api.cancelAuto();
-            if (!current() || !admitted() || revision !== automaticGeneration)
-                return true;
-            if (typeof w.__ottClassicPlayback.reconcile === "function")
-                w.__ottClassicPlayback.reconcile();
-            var generation = w.__ottClassicPlayback.snapshot().generation;
-            function valid() {
-                return (
-                    current() &&
-                    mediaClient === classicMediaClient() &&
-                    admitted() &&
-                    revision === automaticGeneration &&
-                    w.__ottClassicPlayback.snapshot().generation === generation
-                );
-            }
-            function unavailable() {
-                if (!valid()) return;
-                finishStartupLoading();
-                if (onUnavailable) onUnavailable();
-            }
-            authorize(item, function () {
-                if (!valid()) return;
-                var loading = showLoading(function () {
-                    if (!valid()) return;
-                    api.cancelAuto();
-                    if (current() && onUnavailable) onUnavailable();
-                });
-                startupLoading = loading;
-                loading.own(function () {
-                    if (startupLoading === loading) api.cancelAuto();
-                });
-                try {
-                    collectFolder(item, valid, function (folder) {
-                        if (!valid()) return;
-                        if (folder) {
-                            if (!restoreFolder(item, folder)) return;
-                            admitted = library.capture();
-                        }
-                        if (valid())
-                            resolve(
-                                item,
-                                folder
-                                    ? folder.sequence
-                                    : sequenceFor(item, folder !== false),
-                                true,
-                                valid,
-                                undefined,
-                                {
-                                    position: row.position,
-                                    unavailable: unavailable,
-                                }
-                            );
-                    });
-                } catch (_) {
-                    if (valid()) {
-                        automaticRequest = null;
-                        unavailable();
-                    }
-                }
-            });
-            return true;
+            var plex = plexPresentation();
+            return !!plex && plex.restoreLast(onUnavailable);
         },
         restoreProjection: function () {
             collections();
@@ -2568,7 +2527,7 @@ function classicMediaRuntime(): any {
             collectionRequest = ticket;
             shuffleRequest = ticket;
             var received = false;
-            var query = normalizedFilter(filterText);
+            var query = plexLibrary() ? "" : normalizedFilter(filterText);
             function valid() {
                 return (
                     current() &&
@@ -2698,7 +2657,7 @@ function classicMediaRuntime(): any {
         },
         snapshot: function () {
             var view = library.snapshot();
-            view.filter = filterText;
+            view.filter = plexLibrary() ? "" : filterText;
             decorate(view);
             return view;
         },
@@ -2877,6 +2836,9 @@ function classicMediaRuntime(): any {
     },
     filter: function () {
         classicMediaRuntime().filter();
+    },
+    hasLegacyListTools: function () {
+        return classicMediaRuntime().hasLegacyListTools();
     },
     highlight: function (index: number, revision: number) {
         classicMediaRuntime().highlight(index, revision);

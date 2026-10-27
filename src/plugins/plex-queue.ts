@@ -48,6 +48,47 @@ function createRemotePlexQueue(
         }
         return output;
     }
+    /** Keep source-owned TV categories without exposing Plex filesystem paths. */
+    function catalogRecords(records: any[], library: any): any[] {
+        var label = library ? title(library.title, 160) : "";
+        var libraryId = library
+            ? "plex:/library/sections/" + library.id + "/all"
+            : "";
+        return records.map(function (record: any) {
+            var item = Object.assign({}, record);
+            var groups = Array.isArray(item.__ottMediaCategories)
+                ? item.__ottMediaCategories.slice()
+                : [];
+            function add(id: string, name: string): void {
+                if (
+                    !groups.some(function (group: any) {
+                        return group && group.id === id;
+                    })
+                )
+                    groups.push({ id: id, name: name });
+            }
+            if (libraryId) add(libraryId, label);
+            var directory = item.__ottMediaFileDirectory;
+            delete item.__ottMediaFileDirectory;
+            if (
+                directory &&
+                typeof directory.id === "string" &&
+                /^[a-z0-9]+-[a-z0-9]+$/.test(directory.id) &&
+                typeof directory.name === "string" &&
+                directory.name.trim()
+            ) {
+                var name =
+                    (label ? label + " / " : "") + title(directory.name, 160);
+                add((libraryId || "plex") + ":directory:" + directory.id, name);
+                if (!item.__ottMediaCollection && !item.__ottMediaSequence)
+                    item.__ottMediaCollection = name;
+            }
+            if (!item.__ottMediaCollection && label)
+                item.__ottMediaCollection = label;
+            if (groups.length) item.__ottMediaCategories = groups;
+            return item;
+        });
+    }
     function state(): any {
         if (queue && queue.source) {
             var media = w.__ottMedia.current();
@@ -420,6 +461,7 @@ function createRemotePlexQueue(
                         );
                         return;
                     }
+                    records = catalogRecords(records, selectedLibrary);
                     owned.records = records;
                     if (op !== "preview" && !allowed()) {
                         finish(
@@ -446,8 +488,21 @@ function createRemotePlexQueue(
                             finish("Plex playback could not start.");
                             return;
                         }
+                        var libraryMetadata = selectedLibrary
+                            ? {
+                                  id: selectedLibrary.id,
+                                  title: title(selectedLibrary.title, 160),
+                                  type: selectedLibrary.type,
+                              }
+                            : null;
                         var source = {
+                            catalog: function () {
+                                return queue === owned && config() === saved
+                                    ? owned.records.slice()
+                                    : [];
+                            },
                             client: client,
+                            library: libraryMetadata,
                             read: function (key: string) {
                                 return w.stbGetItem("plex" + key);
                             },
@@ -458,7 +513,9 @@ function createRemotePlexQueue(
                                     : null;
                             },
                             sourceId: sourceId,
-                            title: "Plex",
+                            title: libraryMetadata
+                                ? libraryMetadata.title
+                                : "Plex",
                             write: function (key: string, value: string) {
                                 w.stbSetItem("plex" + key, value);
                             },

@@ -126,6 +126,16 @@
 
 ## [1.1.61] - 2026-10-26
 
+- Publish release assets through their verified draft ID and wait within a
+  bounded deadline for GitHub to expose successful release-gate metadata.
+
+- Keep unmodified desktop Up/Down switching Local video files when the video
+  element has focus; preserve volume, modified seeking and kiosk/input guards.
+
+- Open Plex library entry points in the standard channel list and remove legacy
+  sidebar Shuffle/Repeat controls and the trailing Filter row from Plex lists.
+  Preserve category navigation, Actions, remote queue order and repeat policy.
+
 - Allow interface font sizes from 20% to 200%, with 100% as the default.
   Apply changes immediately and preserve the saved size across player reloads
   and provider changes. Resize list pages to keep enlarged text and settings

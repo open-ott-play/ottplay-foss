@@ -70,6 +70,39 @@ function fixture(host = {}) {
     return { assets, ensure, host, publish, requests };
 }
 
+test("Plex readiness requires the optional native-list factory and retries an incomplete asset", () => {
+    const f = fixture();
+    f.publish("plex");
+    delete f.host.__ottPlexList;
+    let completed = 0,
+        failed = 0;
+    f.ensure(
+        "plex",
+        owner(),
+        () => completed++,
+        () => failed++
+    );
+    assert.equal(
+        f.requests.length,
+        1,
+        "Existing Plex factories do not bypass the missing list module"
+    );
+    f.requests[0].ready();
+    assert.equal(completed, 0);
+    assert.equal(failed, 1);
+    f.ensure(
+        "plex",
+        owner(),
+        () => completed++,
+        () => failed++
+    );
+    assert.equal(f.requests.length, 2);
+    f.host.__ottPlexList = { create() {} };
+    f.requests[1].ready();
+    assert.equal(completed, 1);
+    assert.equal(failed, 1);
+});
+
 test("standby counts in-flight scripts until settlement and denies new loads", () => {
     const f = fixture({ clearInterval, clearTimeout, Promise, setTimeout });
     vm.runInContext(

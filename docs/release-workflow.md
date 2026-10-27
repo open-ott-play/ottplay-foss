@@ -113,6 +113,13 @@ Stable `vX.Y.Z` copies the tested RC bytes without rebuilding. No override or
 force-tag option exists. Expired/missing evidence requires a new RC. A partial
 upload remains an unpublished draft; inspect it before any manual recovery.
 
+GitHub may briefly expose stale run or gate metadata. The publisher waits up to
+five minutes in total for the exact run, attempt and successful Release gate;
+failed, skipped or conflicting results still fail immediately. Assets upload to
+the draft's verified release ID, without a second lookup by tag. An ambiguous
+upload result is not retried automatically; the draft remains available for
+inspection.
+
 GitHub releases do not deploy production. Existing push/tag/CI deployment hooks
 must be migrated or disabled before enabling automatic prereleases. Container
 and PyPI publication use verified stable assets as a separate explicit operation.
@@ -155,6 +162,13 @@ projects receive the local client, whose contracts run in the toolkit. Update th
 `python3 scripts/install_release.py /path/to/consumer` from the toolkit checkout;
 add `--check` to detect drift without writing files. The installer is not vendored
 into consumer repositories.
+
+The publisher includes narrowly scoped upstream backports
+[`26b77fd2`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/26b77fd2be74e56bbeffdccfcef71f6970cdfbfc)
+(upload by release ID) and
+[`574d62e9`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/574d62e90c072d333ca0a376399210a581cd6d04)
+(bounded gate-metadata wait). Application signing and asset restrictions are
+unchanged.
 
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule),
 [protected environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),

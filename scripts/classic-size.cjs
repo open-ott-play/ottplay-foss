@@ -356,11 +356,16 @@ const { gzipSync } = require("node:zlib");
 // bytes with Node 22.23.4 and beta.9999. Allow 96 bytes including identity room.
 // Opt-in live recovery and feedback handoff add 5758 raw entry bytes over
 // v1.1.60 on Node 26.12.1. Reserve +6000/+2100 raw/gzip; retain native/CI room.
+// Shared numbered Plex lists and focused Local file arrows: Node 22.23.4
+// baseline cd96c047 is 1047147/323332 web bytes/gzip; the candidate is
+// 1047713/323722 (native 1047671/323780). Plex presentation and cold restore
+// load with its provider. Keep the entry raw limit; allow 500 gzip bytes for
+// this measured feature, native transformation and release identity.
 // Local source commands, guarded activation and compact seeded playback order
 // add 12155 raw / 3332 gzip bytes over 58c52527 on Node 26.8.2, same 1.1.61
 // identity. Allocate 12200 / 3400 once, retaining existing native/release room.
 // See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
-const BUDGET = Object.freeze({ bytes: 1060200, gzipBytes: 327046 });
+const BUDGET = Object.freeze({ bytes: 1060200, gzipBytes: 327546 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -538,9 +543,10 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count the same 96-byte VOD allowance once: Node 22.23.4 beta.9999 native
 // legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
-    // Count the measured Local media entry allocation once in the full payload.
-    bytes: 1195000,
-    gzipBytes: 376446,
+    // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
+    // allocations exactly once in the complete payload.
+    bytes: 1203000,
+    gzipBytes: 379446,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -583,8 +589,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // payload exactly once, alongside the independently bounded optional capture.
 // Count the reviewed recovery allowances (+6300/+2200) and HLS v3
 // optional allowance (+2000/+704) once each; individual budgets stay bounded.
-// Include the same Local media entry increment; optional caps stay unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1308600, gzipBytes: 417074 });
+// Include both feature increments once; provider and optional caps stay fixed.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1316600, gzipBytes: 420074 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

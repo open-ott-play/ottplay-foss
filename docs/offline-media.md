@@ -149,6 +149,12 @@ file also starts it from the beginning; automatic position restoration applies
 to player startup. Closing while a slow file is still opening retains its pending
 resume position.
 
+On desktop, while the video is playing without an open menu, **Up** selects the
+next file and **Down** selects the previous file in the current category and
+channel-list order. This also works when the fullscreen video has keyboard focus.
+**Left/Right** adjusts volume; modified Left/Right retains seeking. These shortcuts
+do not bypass kiosk restrictions or intercept text entry and open menus.
+
 When a local video finishes, playback advances to the next file in the current
 channel-list order, including a shuffled order. The playlist repeat setting
 controls what happens at the end of the list; repeat-one plays the same file
