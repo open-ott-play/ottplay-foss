@@ -3093,6 +3093,26 @@ mod tests {
             .unwrap();
         wait_for_drain(&first.background).await;
         let item_id = first.catalog().await.unwrap().items[0].id.clone();
+        // Folder records are deferred to their source worker at startup. An
+        // unrelated individual file must keep the global metadata pass held.
+        let original = base.join("individual.mp4");
+        fs::write(&original, b"video").await.unwrap();
+        let original = fs::canonicalize(original).await.unwrap();
+        let individual = Record {
+            id: uuid::Uuid::new_v4().simple().to_string(),
+            name: "Individual".into(),
+            size: 5,
+            mime: "video/mp4".into(),
+            extension: "mp4".into(),
+            linked_path: Some(original.clone()),
+            source_id: None,
+        };
+        fs::write(
+            root.join(format!("{}.json", individual.id)),
+            serde_json::to_vec(&individual).unwrap(),
+        )
+        .await
+        .unwrap();
         fs::remove_dir_all(folder).await.unwrap();
         let mut library = Library::new(root, "t".repeat(32), "device").await.unwrap();
         let gate = Arc::new(Mutex::new(()));
@@ -3109,6 +3129,7 @@ mod tests {
                     .source_scans
                     .iter()
                     .any(|state| state.source_id == source.id && state.state == "error")
+                    && library.original_checks.lock().unwrap().contains(&original)
                 {
                     break catalog;
                 }
@@ -3124,7 +3145,17 @@ mod tests {
         assert!(catalog.scan_error.is_none());
         drop(held);
         wait_for_drain(&library.background).await;
-        assert_eq!(library.catalog().await.unwrap().items[0].id, item_id);
+        let catalog = library.catalog().await.unwrap();
+        assert!(!catalog.scanning);
+        assert_eq!(catalog.items.len(), 2);
+        assert!(catalog
+            .items
+            .iter()
+            .any(|item| item.id == item_id && !item.available));
+        assert!(catalog
+            .items
+            .iter()
+            .any(|item| item.id == individual.id && item.available));
         fs::remove_dir_all(base).await.unwrap();
     }
 
