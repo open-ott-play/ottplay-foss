@@ -100,3 +100,11 @@ player's newer lease. The server must fence child/cache publication by lease
 and standby epoch. Runtime error text and original filesystem paths are not
 forwarded into the client notice. Browser/server connection failures and revoked
 source access remain failures; they do not trigger imports or permission resets.
+
+The lease protocol loads `dist/local-compatibility.js` on the first compatibility
+playback request. The existing Local library screen and its picker actions load
+`dist/local-media-ui.js` when that screen opens. Direct playback and remote catalog
+commands do not download either asset. Cancellation applies while a download is
+pending; failed downloads can be retried. The file picker still opens directly
+from its Enter/click action after the screen has loaded. Both assets remain in
+the complete distribution size accounting.

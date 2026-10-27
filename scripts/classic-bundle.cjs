@@ -98,6 +98,8 @@ const CLASSIC_MODULES = [
     "build/offline/local-media-progress.js",
     "build/offline/playback-selection.js",
     "build/offline/profiles.js",
+    "build/plugins/local-compatibility.js",
+    "build/plugins/local-media-ui.js",
     "build/plugins/local-media.js",
     "build/provider/assets.js",
     "build/provider/index.js",
@@ -185,6 +187,8 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
 });
 const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     "control-transport": ["build/plugins/hosted-control-transport.js"],
+    "local-compatibility": ["build/plugins/local-compatibility.js"],
+    "local-media-ui": ["build/plugins/local-media-ui.js"],
 
     "perf-capture": [
         "build/plugins/perf-sensors.js",
@@ -278,6 +282,12 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/plugins/hosted-control-transport.js": Object.freeze([
         "window.__ottControlTransport",
         "window.__OTT_CONTROL_TRANSPORT_VERSION__",
+    ]),
+    "build/plugins/local-compatibility.js": Object.freeze([
+        "window.__ottLocalCompatibilityFactory",
+    ]),
+    "build/plugins/local-media-ui.js": Object.freeze([
+        "window.__ottLocalMediaUiFactory",
     ]),
     "build/plugins/native-http.js": Object.freeze([
         "window.installTauriHttpTransport",

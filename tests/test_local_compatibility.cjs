@@ -102,6 +102,10 @@ function fixture(options = {}) {
         };
     }
     const native = {
+        importFiles: () => {
+            calls.push(["native-import"]);
+            return Promise.resolve(clone(catalog));
+        },
         list: async () => {
             calls.push(["native-list"]);
             return clone(catalog);
@@ -142,6 +146,14 @@ function fixture(options = {}) {
     if (options.capacitor) w.Capacitor = { isNativePlatform: () => true };
     const exports = {};
     const requires = {
+        "../commands/remote-feature": {
+            loadRemoteFeature: (host, kind, done) => {
+                if (options.loadFeature)
+                    return options.loadFeature(host, kind, done, loadFeature);
+                loadFeature(kind);
+                done();
+            },
+        },
         "../offline/browser-local-media": {
             installBrowserLocalMedia: () => ({ suspend() {} }),
             installOfflineShell() {},
@@ -155,6 +167,23 @@ function fixture(options = {}) {
         "../offline/profiles": { installOfflineProfiles() {} },
         "./native-bridge": { resolveNativePlugin: () => native },
     };
+    function loadFeature(kind) {
+        vm.runInNewContext(compile("src/plugins/" + kind + ".ts"), {
+            clearTimeout: (id) => timers.delete(id),
+            Promise,
+            setTimeout: (fn, ms) => {
+                const id = {};
+                timers.set(id, { fn, ms });
+                return id;
+            },
+            URL,
+            window: w,
+        });
+    }
+    if (!options.loadFeature) {
+        loadFeature("local-media-ui");
+        loadFeature("local-compatibility");
+    }
     vm.runInNewContext(compile("src/plugins/local-media.ts"), {
         clearTimeout: (id) => timers.delete(id),
         exports,
@@ -517,4 +546,116 @@ test("a changed Server library cannot receive a late lease from its predecessor"
     assert(
         f.calls.some((c) => c[0] === prepareUrl.replace(/prepare$/, "cancel"))
     );
+});
+
+test("optional compatibility download is cancellable before any prepare POST", async () => {
+    let ready;
+    const f = fixture({
+        loadFeature(host, kind, done, load) {
+            ready = () => {
+                load(kind);
+                done();
+            };
+        },
+    });
+    await f.api.list();
+    assert.equal(await f.api.preparePlayback(base + "/mp4"), base + "/mp4");
+    assert.equal(ready, undefined);
+    const pending = f.api.preparePlayback(sourceUrl);
+    const rejected = assert.rejects(pending, /cancelled/);
+    pending.cancel();
+    await rejected;
+    ready();
+    await flush();
+    assert(!f.calls.some((c) => c[1]?.method === "POST"));
+});
+
+test("optional compatibility load failure permits a fresh retry", async () => {
+    let attempts = 0;
+    const f = fixture({
+        loadFeature(host, kind, done, load) {
+            if (++attempts === 1) done("unsupported");
+            else {
+                load(kind);
+                done();
+            }
+        },
+    });
+    await f.api.list();
+    await assert.rejects(
+        f.api.preparePlayback(sourceUrl),
+        /could not be loaded/
+    );
+    const url = await f.api.preparePlayback(sourceUrl);
+    assert(f.api.isPlaybackUrl(url));
+    assert.equal(attempts, 2);
+});
+
+test("standby fences an optional module completing after cancellation", async () => {
+    let ready;
+    const f = fixture({
+        loadFeature(host, kind, done, load) {
+            ready = () => {
+                load(kind);
+                done();
+            };
+        },
+    });
+    await f.api.list();
+    const pending = f.api.preparePlayback(sourceUrl),
+        rejected = assert.rejects(pending, /cancelled/);
+    f.block();
+    f.api.suspend();
+    await rejected;
+    ready();
+    await flush();
+    assert(!f.calls.some((c) => c[1]?.method === "POST"));
+});
+
+test("optional UI loads before actions and preserves synchronous picker after readiness", async () => {
+    let ready;
+    const f = fixture({
+        capacitor: true,
+        endpoint: "",
+        loadFeature(host, kind, done, load) {
+            assert.equal(kind, "local-media-ui");
+            ready = () => {
+                load(kind);
+                done();
+            };
+        },
+    });
+    // The exported source action uses the same factory as the existing Local row.
+    const first = f.api.importFiles();
+    assert(!f.calls.some((c) => c[0] === "native-import"));
+    // Native picker spy is installed through the fixture's import method below.
+    ready();
+    await first;
+    const before = f.calls.filter((c) => c[0] === "native-import").length;
+    const second = f.api.importFiles();
+    assert.equal(
+        f.calls.filter((c) => c[0] === "native-import").length,
+        before + 1
+    );
+    await second;
+});
+
+test("a replaced screen cannot open a picker after its optional UI download", async () => {
+    let ready;
+    const f = fixture({
+        capacitor: true,
+        endpoint: "",
+        loadFeature(host, kind, done, load) {
+            ready = () => {
+                load(kind);
+                done();
+            };
+        },
+    });
+    const pending = f.api.importFiles(),
+        rejected = assert.rejects(pending, /cancelled/);
+    f.w.listKeyHandler = () => false;
+    ready();
+    await rejected;
+    assert(!f.calls.some((c) => c[0] === "native-import"));
 });

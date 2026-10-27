@@ -332,6 +332,11 @@ function pluginFixture(options = {}) {
             stbSetItem: (key, value) => data.set(key, value),
         };
     const install = load("src/plugins/local-media.ts", {
+        "../commands/remote-feature": {
+            loadRemoteFeature() {
+                throw Error("Unexpected feature load");
+            },
+        },
         "../offline/browser-local-media": {
             installBrowserLocalMedia: () => ({ suspend() {} }),
             installOfflineShell() {},
@@ -1438,12 +1443,19 @@ test("Local source names retain legal POSIX colons in full listings and exact se
 });
 
 test("successful disconnect clears only the matching source selection on native, Tauri and browser", async () => {
-    const pluginSource = fs.readFileSync("src/plugins/local-media.ts", "utf8");
-    const start = pluginSource.indexOf("    function removeSource(id:");
-    const end = pluginSource.indexOf("    function reconnectSource(", start);
+    const pluginSource = fs.readFileSync(
+        "src/plugins/local-media-ui.ts",
+        "utf8"
+    );
+    const start = pluginSource.indexOf("function removeSource(id:");
+    const end = pluginSource.indexOf("function reconnectSource(", start);
     assert.ok(start > 0 && end > start);
     const code = ts.transpileModule(
-        "export " + pluginSource.slice(start, end).trim(),
+        "export " +
+            pluginSource
+                .slice(start, end)
+                .trim()
+                .replace(/p\s*\.\s*/g, ""),
         {
             compilerOptions: {
                 module: ts.ModuleKind.CommonJS,

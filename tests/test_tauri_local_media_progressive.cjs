@@ -192,6 +192,21 @@ function fixture(snapshots, options = {}) {
         },
         URL,
     });
+    vm.runInNewContext(
+        ts.transpileModule(
+            fs.readFileSync(
+                path.join(__dirname, "../src/plugins/local-media-ui.ts"),
+                "utf8"
+            ),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.None,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText,
+        { URL, window: w }
+    );
     const api = module.exports.installLocalMedia(w);
     return {
         aborts: () => aborts,

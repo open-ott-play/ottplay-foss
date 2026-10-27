@@ -6,7 +6,9 @@ export function loadRemoteFeature(
     feature:
         | "perf-capture"
         | "remote-settings-lifecycle"
-        | "runtime-debug-details",
+        | "runtime-debug-details"
+        | "local-compatibility"
+        | "local-media-ui",
     done: (error?: string) => void
 ): void {
     var loads = w.__ottRemoteFeatureLoads || (w.__ottRemoteFeatureLoads = {});

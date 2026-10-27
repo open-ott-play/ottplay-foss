@@ -77,18 +77,32 @@ try {
     assert.equal(
         TOTAL_BUDGET.bytes,
         LEGACY_TOTAL_BUDGET.bytes +
-            Object.values(OPTIONAL_BUDGETS).reduce(
-                (sum, budget) => sum + budget.bytes,
-                0
-            )
+            // Relocated assets share the existing complete payload allowance;
+            // their independent caps do not allocate additional TOTAL bytes.
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(
+                    ([name]) =>
+                        !["local-compatibility", "local-media-ui"].includes(
+                            name
+                        )
+                )
+                .map(([, budget]) => budget)
+                .reduce((sum, budget) => sum + budget.bytes, 0)
     );
     assert.equal(
         TOTAL_BUDGET.gzipBytes,
         LEGACY_TOTAL_BUDGET.gzipBytes +
-            Object.values(OPTIONAL_BUDGETS).reduce(
-                (sum, budget) => sum + budget.gzipBytes,
-                0
-            )
+            // Relocated assets share the existing complete payload allowance;
+            // their independent caps do not allocate additional TOTAL bytes.
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(
+                    ([name]) =>
+                        !["local-compatibility", "local-media-ui"].includes(
+                            name
+                        )
+                )
+                .map(([, budget]) => budget)
+                .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
     for (const name of Object.keys(OPTIONAL_BUDGETS)) {
         const file = path.join(root, "dist", name + ".js");
