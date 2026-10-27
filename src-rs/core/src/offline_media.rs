@@ -5432,6 +5432,71 @@ mod tests {
                 .status(),
             StatusCode::METHOD_NOT_ALLOWED
         );
+        assert_eq!(
+            client
+                .delete(format!("{endpoint}/sources/{source_id}"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        for url in [&endpoint, &format!("{endpoint}/{id}")] {
+            assert_eq!(
+                client.post(url.as_str()).send().await.unwrap().status(),
+                StatusCode::METHOD_NOT_ALLOWED,
+                "compatibility POST support must not enable media mutations"
+            );
+        }
+        let lease = "a".repeat(32);
+        for operation in ["prepare", "cancel"] {
+            assert_eq!(
+                client
+                    .post(format!(
+                        "{origin}/offline-media/{}/compat/{id}/{operation}",
+                        "x".repeat(32)
+                    ))
+                    .header("X-OTT-Playback-Lease", &lease)
+                    .send()
+                    .await
+                    .unwrap()
+                    .status(),
+                StatusCode::NOT_FOUND,
+                "compatibility POST must authenticate before doing work"
+            );
+        }
+        // Compatibility routes exist on read-only libraries without enabling
+        // imports or deletion. This fixture deliberately has no media tools.
+        let prepare = client
+            .post(format!("{endpoint}/compat/{id}/prepare"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(prepare.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            prepare.json::<serde_json::Value>().await.unwrap()["code"],
+            "compatibility_unavailable"
+        );
+        assert_eq!(
+            client
+                .post(format!("{endpoint}/compat/{id}/cancel"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST,
+            "cancellation requires an explicit valid playback lease"
+        );
+        assert_eq!(
+            client
+                .post(format!("{endpoint}/compat/{id}/cancel"))
+                .header("X-OTT-Playback-Lease", &lease)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NO_CONTENT
+        );
         assert!(library.disconnect_source(&source_id).await.is_err());
         let preflight = client
             .request(reqwest::Method::OPTIONS, &endpoint)
@@ -5440,7 +5505,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             preflight.headers()["access-control-allow-methods"],
-            "GET, HEAD, OPTIONS"
+            "GET, HEAD, POST, OPTIONS"
         );
         let response = client.get(&endpoint).send().await.unwrap();
         let body = response.text().await.unwrap();

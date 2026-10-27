@@ -390,6 +390,8 @@ jobs:
           cargo test --locked -p ottplay-core audio_normalization --lib -- --include-ignored
           cargo test --locked -p ottplay-server normalization --bin ottplay-server -- --include-ignored
           python3 tests/test_normalize_m3u_overlay.py
+      - name: Verify local AVI and MKV HTTP playback with generated media
+        run: bash scripts/test-local-container-compatibility.sh
       - name: Verify private Linux playback selection guards
         run: cargo test --locked --manifest-path tests/linux-media-compat/Cargo.toml
       - name: Test Linux playback packaging contracts
