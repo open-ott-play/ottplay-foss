@@ -558,11 +558,11 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
-    // Relocate existing Local UI plus compatibility into fixed lazy assets.
-    // ES5/production-name-policy isolated measurement: 3527/1529 and 8553/3331
-    // raw/gzip. Complete TOTAL remains unchanged and counts both assets once.
+    // Compatibility is net-new; Local UI and the admitted command runner move
+    // existing code off startup. Every emitted asset remains counted once.
+    // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
     "local-compatibility": Object.freeze({ bytes: 4800, gzipBytes: 1900 }),
-    "local-media-ui": Object.freeze({ bytes: 12600, gzipBytes: 4400 }),
+    "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
     // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
@@ -574,6 +574,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Allocate the measured +1988/+679 as +2000/+704, retaining prior headroom.
     // Main and legacy-total limits remain unchanged; total counts this once.
     "perf-capture": Object.freeze({ bytes: 22200, gzipBytes: 8528 }),
+    "remote-local-runner": Object.freeze({ bytes: 2700, gzipBytes: 1300 }),
     // Provider scalar codecs and the paginated Plex folder collection reuse normal
     // save paths. Node22 development: provider fields15528/5460, settings20128/6781;
     // moving legacy Plex setup into the optional asset leaves legacy1175608/370795.
@@ -601,7 +602,18 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // optional allowance (+2000/+704) once each; individual budgets stay bounded.
 // Include both feature increments once; provider and optional caps stay fixed.
 // Count independent folder scans once; preserve legacy plus optional allocation.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
+const BASE_TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
+// Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
+// Local UI or command runner a second copy of their existing payload allowance.
+const LOCAL_COMPATIBILITY_ALLOWANCE = Object.freeze({
+    bytes: 4096,
+    gzipBytes: 2048,
+});
+const TOTAL_BUDGET = Object.freeze({
+    bytes: BASE_TOTAL_BUDGET.bytes + LOCAL_COMPATIBILITY_ALLOWANCE.bytes,
+    gzipBytes:
+        BASE_TOTAL_BUDGET.gzipBytes + LOCAL_COMPATIBILITY_ALLOWANCE.gzipBytes,
+});
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",
@@ -731,8 +743,10 @@ function writeBundleReport(
         );
     const report = {
         artifacts: measured,
+        baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
         legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+        localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -770,10 +784,12 @@ if (require.main === module) {
 }
 module.exports = {
     ARTIFACTS,
+    BASE_TOTAL_BUDGET,
     BUDGET,
     inspectBundleSets,
     inspectBundles,
     LEGACY_TOTAL_BUDGET,
+    LOCAL_COMPATIBILITY_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

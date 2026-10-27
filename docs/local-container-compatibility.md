@@ -115,3 +115,15 @@ singleflight, deadline and cancellation checks run before the fixed
 `dist/remote-local-runner.js` execution asset is loaded. Download time counts
 toward the same deadline. A cancelled, expired or superseded request cannot
 enter the deferred source/catalog/playback chain.
+
+## Distribution budget
+
+The immutable complete-player base allowance is 1,319,160 raw bytes and 420,842
+gzip bytes. AVI/MKV compatibility adds one explicit net-new allowance of 4,096
+raw bytes and 2,048 gzip bytes, giving a complete cap of 1,323,256 / 422,890.
+Main, legacy, provider and existing optional-asset limits keep their prior values.
+The relocated Local UI retains its 8,500 / 3,400 cap; the relocated Local command
+runner has a separate 2,700 / 1,300 cap. Compatibility keeps 4,800 / 1,900.
+These per-asset caps are not added again to the complete allowance: every emitted
+asset is included exactly once in each distribution's measured total. The build
+report records the base, named compatibility allowance and effective total.
