@@ -520,6 +520,11 @@ impl Library {
                 ))
                 .with_state(self);
         }
+        // The library is host configuration, not a request extractor. Keep the
+        // trusted filesystem root captured by mutation handlers; only tokens
+        // and IDs come from the HTTP request.
+        let remove_source_library = self.clone();
+        let remove_item_library = self.clone();
         Router::new()
             .route("/offline-media/:token", get(catalog).options(preflight))
             .route(
@@ -528,11 +533,18 @@ impl Library {
             )
             .route(
                 "/offline-media/:token/sources/:id",
-                axum::routing::delete(remove_source).options(preflight),
+                axum::routing::delete(move |path: Path<(String, String)>| {
+                    remove_source(remove_source_library.clone(), path)
+                })
+                .options(preflight),
             )
             .route(
                 "/offline-media/:token/:id",
-                get(media).delete(remove).options(preflight),
+                get(media)
+                    .delete(move |path: Path<(String, String)>| {
+                        remove(remove_item_library.clone(), path)
+                    })
+                    .options(preflight),
             )
             .layer(DefaultBodyLimit::disable())
             .with_state(self)
@@ -696,16 +708,20 @@ impl Library {
     async fn record(&self, id: &str) -> Result<Record, Failure> {
         self.read_record(id, None).await
     }
-    async fn read_record(&self, id: &str, work: Option<&ReadWork>) -> Result<Record, Failure> {
+    fn metadata_path(&self, id: &str) -> Result<PathBuf, Failure> {
         if !valid_id(id) {
             return Err((StatusCode::NOT_FOUND, "Media not found"));
         }
-        // A range request must not rescan every metadata record before it can
-        // return the first video byte from a large library.
         let path = self.root.join(format!("{id}.json"));
         if !path.starts_with(&self.root) || path.parent() != Some(self.root.as_path()) {
             return Err((StatusCode::NOT_FOUND, "Media not found"));
         }
+        Ok(path)
+    }
+    async fn read_record(&self, id: &str, work: Option<&ReadWork>) -> Result<Record, Failure> {
+        // A range request must not rescan every metadata record before it can
+        // return the first video byte from a large library.
+        let path = self.metadata_path(id)?;
         let metadata = checked(work, fs::symlink_metadata(&path))
             .await?
             .map_err(|_| (StatusCode::NOT_FOUND, "Media not found"))?;
@@ -2032,7 +2048,10 @@ impl Library {
                     fs::remove_file(path).await?;
                 }
             }
-            match fs::remove_file(self.root.join(format!("{}.json", record.id))).await {
+            let metadata_path = self
+                .metadata_path(&record.id)
+                .map_err(|_| anyhow::anyhow!("Invalid media ID"))?;
+            match fs::remove_file(metadata_path).await {
                 Ok(()) => (),
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
                 Err(error) => return Err(error.into()),
@@ -2435,7 +2454,7 @@ async fn import_inner(
     drop(_lock);
     l.catalog().await
 }
-async fn remove(State(l): State<Library>, Path((token, id)): Path<(String, String)>) -> Response {
+async fn remove(l: Library, Path((token, id)): Path<(String, String)>) -> Response {
     let result: Result<Catalog, Failure> = async {
         l.authorize(&token)?;
         let work = l
@@ -2448,13 +2467,14 @@ async fn remove(State(l): State<Library>, Path((token, id)): Path<(String, Strin
                 "Player background work cancelled",
             )
         })?;
+        let metadata_path = l.metadata_path(&id)?;
         let record = l.record(&id).await?;
         if record.linked_path.is_none() {
             fs::remove_file(l.path(&record).await?)
                 .await
                 .map_err(storage_error)?;
         }
-        fs::remove_file(l.root.join(format!("{id}.json")))
+        fs::remove_file(metadata_path)
             .await
             .map_err(storage_error)?;
         {
@@ -2473,10 +2493,7 @@ async fn remove(State(l): State<Library>, Path((token, id)): Path<(String, Strin
     cors(&mut r);
     r
 }
-async fn remove_source(
-    State(l): State<Library>,
-    Path((token, id)): Path<(String, String)>,
-) -> Response {
+async fn remove_source(l: Library, Path((token, id)): Path<(String, String)>) -> Response {
     let result = async {
         l.authorize(&token)?;
         l.disconnect_source(&id).await.map_err(storage_error)?;
@@ -5427,6 +5444,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(options.status(), StatusCode::NO_CONTENT);
+        let unauthorized_url = url.replace(&"c".repeat(32), &"x".repeat(32));
+        assert_eq!(
+            client
+                .delete(&unauthorized_url)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            client.get(&url).send().await.unwrap().status(),
+            StatusCode::OK,
+            "a rejected delete must preserve the media"
+        );
         assert_eq!(
             client.delete(&url).send().await.unwrap().status(),
             StatusCode::OK
@@ -5437,6 +5469,56 @@ mod tests {
         );
         task.abort();
         fs::remove_dir_all(root).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn http_source_delete_authenticates_and_keeps_linked_original() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("originals");
+        fs::create_dir_all(&originals).await.unwrap();
+        let original = originals.join("movie.mp4");
+        fs::write(&original, b"original video").await.unwrap();
+        let token = "s".repeat(32);
+        let library = Library::new(base.join("state"), token.clone(), "device")
+            .await
+            .unwrap();
+        library.link_paths(vec![originals], true).await.unwrap();
+        let source_id = library.catalog().await.unwrap().sources[0].id.clone();
+        let routes = library.clone().routes();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, routes).await.unwrap() });
+        let client = reqwest::Client::new();
+        assert_eq!(
+            client
+                .delete(format!(
+                    "{origin}/offline-media/{}/sources/{source_id}",
+                    "x".repeat(32)
+                ))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(library.catalog().await.unwrap().items.len(), 1);
+        assert_eq!(
+            client
+                .delete(format!(
+                    "{origin}/offline-media/{token}/sources/{source_id}"
+                ))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
+        );
+        let after = library.catalog().await.unwrap();
+        assert!(after.sources.is_empty());
+        assert!(after.items.is_empty());
+        assert_eq!(fs::read(original).await.unwrap(), b"original video");
+        server.abort();
+        fs::remove_dir_all(base).await.unwrap();
     }
 
     #[tokio::test]
@@ -5604,8 +5686,7 @@ mod tests {
             "gggggggggggggggggggggggggggggggg",
             "",
         ] {
-            let response =
-                remove(State(library.clone()), Path((token.clone(), id.to_owned()))).await;
+            let response = remove(library.clone(), Path((token.clone(), id.to_owned()))).await;
             assert_eq!(response.status(), StatusCode::NOT_FOUND, "id={id}");
             assert!(library.disconnect_source(id).await.is_err(), "id={id}");
         }
