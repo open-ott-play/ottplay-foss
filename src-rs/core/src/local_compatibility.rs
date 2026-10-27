@@ -1179,10 +1179,10 @@ mod tests {
     fn all_compatibility_children_use_the_windows_no_console_spawn_boundary() {
         // Command exposes no creation-flags getter. Keep the single shared
         // spawn boundary and its Windows-only setup auditable without spawning.
-        let production = include_str!("local_compatibility.rs")
-            .split("\n#[cfg(test)]\nmod tests")
-            .next()
-            .unwrap();
+        // Windows checkout may use CRLF; keep test-only source out of the
+        // production spawn audit on either platform.
+        let source = include_str!("local_compatibility.rs").replace("\r\n", "\n");
+        let production = source.split("\n#[cfg(test)]\nmod tests").next().unwrap();
         assert_eq!(production.matches(".spawn()").count(), 1);
         let capture = production.split_once("async fn capture(").unwrap().1;
         let compact = capture.split_whitespace().collect::<Vec<_>>().join(" ");
