@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "purpose": "Bounded cold Local catalog discovery, independent selected-source completion, and truthful progress for existing IDs.",
+  "base_revision": "dcf28e9df685cc23269d6b72dc58b3c7736e0173",
+  "native_source_sha256": "f4411dc14bf5a99d22d7761af467f629118ba8027293208fde1c6a867b3e6b01",
+  "implementation": {
+    "metadata_pass_limit_per_library": 2,
+    "original_probe_limit_per_source": 4,
+    "probe_limit_per_library": 8,
+    "traversal_metadata_batch": 4,
+    "metadata_record_read_limit_bytes": 4097,
+    "metadata_record_accept_limit_bytes": 4096,
+    "queue_and_entry_limits_changed": false,
+    "shared_metadata_cache_added": false
+  },
+  "fixture": {
+    "type": "Private metadata and binding copies; read-only access to original NAS paths",
+    "metadata_records": 13657,
+    "large_source_records": 13611,
+    "small_source_records": 46,
+    "source_indexes_absent_at_start": true,
+    "copied_video_files": 0,
+    "media_content_read": false,
+    "original_files_modified": false,
+    "runtime_worker_threads": 4,
+    "runtime_max_blocking_threads": 8,
+    "catalog_poll_interval_ms": 500
+  },
+  "validation": {
+    "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 cargo test --offline --locked -p ottplay-core --lib",
+    "passed": 158,
+    "ignored": 3,
+    "failed": 0,
+    "core_test_log_sha256": "7a2cc7c631d3533a565be02b955487c35df777c7fbc0ae19694dff85be2ff254",
+    "library_build_log_sha256": "db1995d5e5bb6231b2812fac6553a5fafce7b2d44ed67639b31ee9008ea557f6",
+    "peer_review": "Native implementation and progress/publication ownership independently reviewed."
+  },
+  "isolated_full": {
+    "small_source_ready_ms": 24129,
+    "full_catalog_complete_ms": 54028,
+    "all_legacy_ids_preserved": true,
+    "catalog_records": 13657,
+    "large_available": 13608,
+    "large_unavailable": 3,
+    "small_available": 46,
+    "background_pending_after_completion": 0,
+    "initial_metadata_passes_ms": [
+      20398,
+      20347
+    ],
+    "small_metadata_queue_wait_ms": 20338,
+    "small_metadata_read_ms": 3169,
+    "small_validation_ms": 112,
+    "small_traversal_ms": 26,
+    "large_validation_ms": 29372,
+    "large_traversal_ms": 4083
+  },
+  "isolated_repeat": {
+    "small_source_ready_ms": 29710,
+    "all_small_source_legacy_ids_preserved": true,
+    "large_source_still_scanning": true,
+    "stopped_after_selected_source_completed": true,
+    "standby_drain_ms": 52,
+    "background_pending_after_drain": 0
+  },
+  "initial_nonisolated_attempt": {
+    "small_source_ready_ms": 83051,
+    "result": "Exceeded the command budget; retained as failed evidence.",
+    "later_observation": "A previous native player process remained running; competing I/O could not be excluded. No causal attribution is made.",
+    "harness_assertion_correction": "The initial harness incorrectly required every persisted original to be available. Three known unavailable originals are retained; subsequent checks compare all legacy IDs separately from availability."
+  },
+  "regressions": [
+    "A 46-item source completes while another source has four original probes blocked.",
+    "Cold bootstrap preserves legacy UUIDs without duplicate startup folder probes.",
+    "Disconnect and standby stop admission and drain existing filesystem work.",
+    "Source admission errors cannot certify complete empty catalogs.",
+    "Completed checks advance scanned with fixed IDs; blocked I/O emits no synthetic progress.",
+    "Existing preferred-item, missing-file, symlink, unavailable-source and cancellation tests pass."
+  ],
+  "limits": [
+    "Cold bootstrap still reads legacy metadata; measured runs do not establish a universal filesystem latency bound.",
+    "The initial nonisolated attempt exceeded the command budget. Competing scans or slow mounts may still require waiting for confirmed progress before retrying.",
+    "Incomplete catalogs are never accepted as complete queues. Runtime, generation and absolute command deadlines remain enforced."
+  ],
+  "private_artifact_sha256": {
+    "initial": {
+      "main.rs": "4922f1bf9364a39e1857e3321b2366753e2d4a564db70aa712492e3b01a0a27c",
+      "result.log": "1f8ec42cb68f4477992ac1d084dd04a1e7c5aca520416de6a1a5b97ce148cfa9",
+      "run-receipt.json": "5f3f128d0db607984e735bdc6bb0b74d00724243abd19954196c2f0efe97012e"
+    },
+    "isolated_full": {
+      "main.rs": "994d6f46dfcf111c942eb1f091f11ca2581bb856652bea46c415cfbbece9a2fd",
+      "result.log": "392dcc038ac6385ea9c4a983d2e6ae63924c695bbbe7d344589746928b6a5361",
+      "run-receipt.json": "9d37d1e4df9e6ffd91ba0d98244a9c5575b75116a9c8a9766723f9157468b8a2"
+    },
+    "isolated_repeat": {
+      "main.rs": "fff113b3458c11e18ba7c7271200cce6bdc4068a9c39895fefdec1e3b6680639",
+      "result.log": "ac452f0dda296da128c7db749eacb0b96abca3c9e304959671bc90b1145e83c6",
+      "run-receipt.json": "a508b25547a84c280a0bce0f1c00a739abede07db91bf067ca8861ce8afd889b"
+    }
+  }
+}
