@@ -274,7 +274,7 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     if (
         !state ||
         !state.target ||
-        (state.phase !== "playing" && state.phase !== "paused")
+        (seek && state.phase !== "playing" && state.phase !== "paused")
     )
         return false;
     event.preventDefault();
@@ -511,6 +511,22 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             (/^plex(?:@|$)/.test(media.ref.sourceId) ||
                 (media.sequence && media.sequence.channel))
         ) {
+            // Legacy/direct key dispatch must keep desktop volume semantics
+            // while Plex loads, even when the selected provider is still TV.
+            if (
+                /^pc(?:2)?$/.test(w.ott_device || "") &&
+                (command.id === "left" || command.id === "right") &&
+                !event.altKey &&
+                !event.ctrlKey &&
+                !event.metaKey &&
+                !event.shiftKey
+            ) {
+                call(
+                    "changeVolume",
+                    (command.id === "left" ? -1 : 1) * w.sVolumeStep
+                );
+                return;
+            }
             if (command.id === "left" || command.id === "right")
                 call("shiftArchive", command.id === "left" ? -10 : 10);
             else w.__ottMedia.skip(command.id === "up" ? 1 : -1);
@@ -833,7 +849,7 @@ var nativeListTouch: {
 var nativeListInertia: { release: () => void } | null = null;
 var nativeListFrame = 0;
 
-// Native list gestures use row distances; other shells retain remote gestures.
+// Capacitor keeps its native editor and first-tap activation policy.
 function capacitorOnly(): boolean {
     return typeof (window as any).Capacitor !== "undefined";
 }
@@ -1318,7 +1334,8 @@ function forwardNativeListTouch(e: TouchEvent): void {
 }
 
 function startNativeListTouch(e: any): void {
-    if (!capacitorOnly() || tCount !== 1) return;
+    // Admit actual touch input in every shell, including hybrid desktop browsers.
+    if (tCount !== 1) return;
     var w = window as any;
     var target = e.target as HTMLElement;
     var list = document.getElementById("listIn");
@@ -1635,9 +1652,10 @@ function body_handleTouchEnd(e: any): void {
                         null
                     );
                 }
-                // Only a stationary native list gesture activates on its first
-                // tap. Mouse clicks and remote navigation retain their policy.
-                (clickEvent as any).ottNativeListTap = !!nativeListTouch;
+                // Capacitor keeps first-tap activation; browser list taps retain
+                // their selection policy alongside mouse and remote input.
+                (clickEvent as any).ottNativeListTap =
+                    capacitorOnly() && !!nativeListTouch;
                 e.target.dispatchEvent(clickEvent);
             }
         }

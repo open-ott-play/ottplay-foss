@@ -587,6 +587,10 @@ var keyStrings = {
     "List type": "Listetype",
     "Lists settings": "Listeinnstillinger",
     Live: "Direkte",
+    "Live recovery attempts": "Forsøk på gjenoppretting av direktesending",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Strømmen kunne ikke spilles av · Forsøk på gjenoppretting av direktesending %1/%2",
+    "Live stall timeout, s": "Tidsgrense ved stopp, s",
     Load: "Last",
     "Load built-in playlist:": "Last inn innebygd spilleliste:",
     "Load playlist": "Last inn spilleliste",
@@ -785,6 +789,7 @@ var keyStrings = {
     "Records library is empty": "Opptaksbiblioteket er tomt",
     "Records not supported by provider":
         "Opptak støttes ikke av denne leverandøren",
+    "Recovering stream (%1/%2)": "Kobler på nytt … (%1/%2)",
     "Release date": "Utgivelsesdato",
     "Remember previous channels": "Husk tidligere kanaler",
     "Reminder: %1 — %2 in %3 min": "Påminnelse: %1 — %2 om %3 min",
@@ -1007,6 +1012,7 @@ var keyStrings = {
         "Stopp avspillingen og gå tilbake til direktesendingen",
     "Stop screenshots": "Stopp skjermbilder",
     "Stream could not be played": "Strømmen kunne ikke spilles av",
+    "Stream stalled. Restart in %1 s": "Start strømmen på nytt · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Tidsavbrudd for strømmen. Velg kanalen for å prøve på nytt.",
     "Stream type: %1": "Strømtype: %1",

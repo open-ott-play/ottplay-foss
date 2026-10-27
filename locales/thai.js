@@ -570,6 +570,10 @@ var keyStrings = {
     "List type": "ประเภทรายการ",
     "Lists settings": "การตั้งค่ารายการ",
     Live: "ถ่ายทอดสด",
+    "Live recovery attempts": "จำนวนครั้งที่พยายามกู้คืนถ่ายทอดสด",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ไม่สามารถเล่นสตรีมได้ · จำนวนครั้งที่พยายามกู้คืนถ่ายทอดสด %1/%2",
+    "Live stall timeout, s": "เวลารอเมื่อถ่ายทอดสดค้าง, วินาที",
     Load: "โหลด",
     "Load built-in playlist:": "โหลดเพลย์ลิสต์ในตัว:",
     "Load playlist": "โหลดเพลย์ลิสต์",
@@ -761,6 +765,7 @@ var keyStrings = {
     "Records for channel: ": "รายการที่บันทึกไว้สำหรับช่อง: ",
     "Records library is empty": "ไลบรารีของโปรแกรมที่บันทึกไว้ว่างเปล่า",
     "Records not supported by provider": "ผู้ให้บริการรายนี้ไม่รองรับโปรแกรมที่บันทึกไว้",
+    "Recovering stream (%1/%2)": "กำลังเชื่อมต่อใหม่... (%1/%2)",
     "Release date": "วันที่วางจำหน่าย",
     "Remember previous channels": "จำช่องก่อนหน้า",
     "Reminder: %1 — %2 in %3 min": "คำเตือน: %1 — %2 ใน %3 นาที",
@@ -978,6 +983,7 @@ var keyStrings = {
     "Stop playback and return to live": "หยุดการเล่นและกลับสู่การถ่ายทอดสด",
     "Stop screenshots": "หยุดภาพหน้าจอ",
     "Stream could not be played": "ไม่สามารถเล่นสตรีมได้",
+    "Stream stalled. Restart in %1 s": "เริ่มสตรีมใหม่ · %1 วินาที",
     "Stream timed out. Select the channel to retry.":
         "หมดเวลารอสตรีม เลือกช่องเพื่อลองอีกครั้ง",
     "Stream type: %1": "ประเภทสตรีม: %1",

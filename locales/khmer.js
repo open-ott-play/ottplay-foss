@@ -573,6 +573,10 @@ var keyStrings = {
     "List type": "ប្រភេទបញ្ជី",
     "Lists settings": "ការកំណត់បញ្ជី",
     Live: "ផ្សាយផ្ទាល់",
+    "Live recovery attempts": "ចំនួនព្យាយាមស្ដារការផ្សាយផ្ទាល់",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ការស្ទ្រីមមិនអាចលេងបានទេ។ · ចំនួនព្យាយាមស្ដារការផ្សាយផ្ទាល់ %1/%2",
+    "Live stall timeout, s": "ពេលរង់ចាំការគាំង, វិនាទី",
     Load: "ផ្ទុក",
     "Load built-in playlist:": "ផ្ទុកបញ្ជីចាក់ដែលភ្ជាប់មកជាមួយ៖",
     "Load playlist": "ផ្ទុកបញ្ជីចាក់",
@@ -769,6 +773,7 @@ var keyStrings = {
     "Records library is empty": "បណ្ណាល័យនៃកម្មវិធីដែលបានថតទុកគឺទទេ",
     "Records not supported by provider":
         "អ្នកផ្តល់សេវានេះមិនគាំទ្រកម្មវិធីដែលបានកត់ត្រាទេ។",
+    "Recovering stream (%1/%2)": "កំពុងភ្ជាប់ឡើងវិញ... (%1/%2)",
     "Release date": "កាលបរិច្ឆេទចេញផ្សាយ",
     "Remember previous channels": "ចងចាំឆានែលពីមុន",
     "Reminder: %1 — %2 in %3 min": "ការរំលឹក៖ %1 — %2 ក្នុង %3 នាទី",
@@ -990,6 +995,7 @@ var keyStrings = {
         "បញ្ឈប់ការចាក់សារថ្មី ហើយត្រលប់ទៅការផ្សាយបន្តផ្ទាល់",
     "Stop screenshots": "បញ្ឈប់ការថតអេក្រង់",
     "Stream could not be played": "ការស្ទ្រីមមិនអាចលេងបានទេ។",
+    "Stream stalled. Restart in %1 s": "ចាប់ផ្តើមការផ្សាយឡើងវិញ · %1 វិនាទី",
     "Stream timed out. Select the channel to retry.":
         "អស់ពេលរង់ចាំការផ្សាយ។ ជ្រើសរើសប៉ុស្តិ៍ដើម្បីព្យាយាមម្តងទៀត។",
     "Stream type: %1": "ប្រភេទស្ទ្រីម៖ %1",

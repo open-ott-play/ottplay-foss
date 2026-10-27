@@ -596,6 +596,10 @@ var keyStrings = {
     "List type": "Vrsta seznama",
     "Lists settings": "Nastavitve seznama",
     Live: "V živo",
+    "Live recovery attempts": "Poskusi obnovitve prenosa v živo",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Toka ni bilo mogoče predvajati · Poskusi obnovitve prenosa v živo %1/%2",
+    "Live stall timeout, s": "Časovna omejitev zastoja, s",
     Load: "obremenitev",
     "Load built-in playlist:": "Naloži vgrajeni seznam predvajanja:",
     "Load playlist": "Naloži seznam predvajanja",
@@ -794,6 +798,7 @@ var keyStrings = {
     "Records for channel: ": "Posnetki za kanal: ",
     "Records library is empty": "Knjižnica posnetkov je prazna",
     "Records not supported by provider": "Ta ponudnik ne podpira snemanja",
+    "Recovering stream (%1/%2)": "Ponovna povezava ... (%1/%2)",
     "Release date": "Datum izdaje",
     "Remember previous channels": "Zapomni si prejšnje kanale",
     "Reminder: %1 — %2 in %3 min": "Opomnik: %1 — %2 čez %3 min",
@@ -1019,6 +1024,7 @@ var keyStrings = {
         "Ustavi predvajanje in se vrni na prenos v živo",
     "Stop screenshots": "Ustavi posnetke zaslona",
     "Stream could not be played": "Toka ni bilo mogoče predvajati",
+    "Stream stalled. Restart in %1 s": "Znova zaženi tok · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Čas čakanja na tok je potekel. Izberite kanal za ponovni poskus.",
     "Stream type: %1": "Vrsta toka: %1",

@@ -561,6 +561,10 @@ var keyStrings = {
     "List type": "የዝርዝር ዓይነት",
     "Lists settings": "የዝርዝር ቅንብሮች",
     Live: "ቀጥታ ስርጭት",
+    "Live recovery attempts": "የቀጥታ ስርጭት መልሶ ማግኛ ሙከራዎች",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ዥረቱን ማጫወት አልተቻለም · የቀጥታ ስርጭት መልሶ ማግኛ ሙከራዎች %1/%2",
+    "Live stall timeout, s": "የመቆም ጊዜ ገደብ፣ ሰ",
     Load: "ጫን",
     "Load built-in playlist:": "አብሮ የተካተተ አጫዋች ዝርዝር ጫን፦",
     "Load playlist": "አጫዋች ዝርዝር ጫን",
@@ -754,6 +758,7 @@ var keyStrings = {
     "Records for channel: ": "የሰርጡ ቀረጻዎች፦ ",
     "Records library is empty": "የቀረጻ ቤተ መጻሕፍት ባዶ ነው",
     "Records not supported by provider": "ይህ አቅራቢ ቀረጻዎችን አይደግፍም",
+    "Recovering stream (%1/%2)": "እንደገና በመገናኘት ላይ… (%1/%2)",
     "Release date": "የተለቀቀበት ቀን",
     "Remember previous channels": "የቀደሙ ሰርጦችን አስታውስ",
     "Reminder: %1 — %2 in %3 min": "ማስታወሻ፦ %1 — %2 በ%3 ደቂቃ ውስጥ",
@@ -967,6 +972,7 @@ var keyStrings = {
     "Stop playback and return to live": "መልሶ ማጫወትን አቁም እና ወደ ቀጥታ ስርጭት ተመለስ",
     "Stop screenshots": "ቅጽበታዊ ገጽ እይታዎችን ያቁሙ",
     "Stream could not be played": "ዥረቱን ማጫወት አልተቻለም",
+    "Stream stalled. Restart in %1 s": "ዥረቱን እንደገና አስጀምር · %1 ሰከንድ",
     "Stream timed out. Select the channel to retry.":
         "የስርጭቱ የጥበቃ ጊዜ አልቋል። እንደገና ለመሞከር ቻናሉን ይምረጡ።",
     "Stream type: %1": "የዥረት ዓይነት፦ %1",

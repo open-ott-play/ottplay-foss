@@ -581,6 +581,10 @@ var keyStrings = {
     "List type": "نوع لیست",
     "Lists settings": "تنظیمات لیست",
     Live: "پخش زنده",
+    "Live recovery attempts": "تعداد تلاش بازیابی پخش زنده",
+    "Live recovery attempts exhausted (%1/%2)":
+        "جریان پخش نشد · تعداد تلاش بازیابی پخش زنده %1/%2",
+    "Live stall timeout, s": "مهلت توقف پخش زنده، ثانیه",
     Load: "بارگذاری",
     "Load built-in playlist:": "بارگیری لیست پخش داخلی:",
     "Load playlist": "بارگذاری لیست پخش",
@@ -780,6 +784,7 @@ var keyStrings = {
     "Records library is empty": "کتابخانه برنامه های ضبط شده خالی است",
     "Records not supported by provider":
         "این ارائه دهنده برنامه های ضبط شده را پشتیبانی نمی کند",
+    "Recovering stream (%1/%2)": "در حال اتصال مجدد… (%1/%2)",
     "Release date": "تاریخ انتشار",
     "Remember previous channels": "کانال های قبلی را به خاطر بسپارید",
     "Reminder: %1 — %2 in %3 min": "یادآوری: %1 — %2 در دقیقه %3",
@@ -1005,6 +1010,8 @@ var keyStrings = {
     "Stop playback and return to live": "پخش را متوقف کنید و به زندگی بازگردید",
     "Stop screenshots": "اسکرین شات ها را متوقف کنید",
     "Stream could not be played": "جریان پخش نشد",
+    "Stream stalled. Restart in %1 s":
+        "جریان را دوباره راه اندازی کنید · %1 ثانیه",
     "Stream timed out. Select the channel to retry.":
         "مهلت انتظار پخش پایان یافت. برای تلاش مجدد کانال را انتخاب کنید.",
     "Stream type: %1": "نوع جریان: %1",

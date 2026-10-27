@@ -600,6 +600,10 @@ var keyStrings = {
     "List type": "Nooca liiska",
     "Lists settings": "Dejinta liiska",
     Live: "Toos",
+    "Live recovery attempts": "Isku dayada soo celinta baahinta tooska ah",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Baahinta waa la daari waayey · Isku dayada soo celinta baahinta tooska ah %1/%2",
+    "Live stall timeout, s": "Waqtiga sugidda hakadka, s",
     Load: "Soo rar",
     "Load built-in playlist:": "Soo rar liiska daarista ee ku dhex jira:",
     "Load playlist": "Soo rar liiska daarista",
@@ -801,6 +805,7 @@ var keyStrings = {
     "Records for channel: ": "Duubista kanaalka: ",
     "Records library is empty": "Maktabadda duubistu waa madhan tahay",
     "Records not supported by provider": "Bixiyahani ma taageero duubista",
+    "Recovering stream (%1/%2)": "Dib ayaa loo xidhayaa… (%1/%2)",
     "Release date": "Taariikhda soo saarista",
     "Remember previous channels": "Xusuuso kanaalladii hore",
     "Reminder: %1 — %2 in %3 min":
@@ -1027,6 +1032,7 @@ var keyStrings = {
         "Jooji daarista oo ku noqo baahinta tooska ah",
     "Stop screenshots": "Jooji sawir-qaadista shaashadda",
     "Stream could not be played": "Baahinta waa la daari waayey",
+    "Stream stalled. Restart in %1 s": "Dib u bilow baahinta · %1 ilb",
     "Stream timed out. Select the channel to retry.":
         "Waqtigii sugitaanka baahinta wuu dhammaaday. Dooro kanaalka si aad mar kale isugu daydo.",
     "Stream type: %1": "Nooca baahinta: %1",

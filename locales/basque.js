@@ -597,6 +597,10 @@ var keyStrings = {
     "List type": "Zerrenda mota",
     "Lists settings": "Zerrenden ezarpenak",
     Live: "Zuzenean",
+    "Live recovery attempts": "Zuzenekoa berreskuratzeko saiakerak",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ezin izan da transmisioa erreproduzitu · Zuzenekoa berreskuratzeko saiakerak %1/%2",
+    "Live stall timeout, s": "Blokeoaren itxaronaldia, s",
     Load: "Kargatu",
     "Load built-in playlist:": "Kargatu zerrenda integratua:",
     "Load playlist": "Kargatu erreprodukzio-zerrenda",
@@ -796,6 +800,7 @@ var keyStrings = {
     "Records library is empty": "Grabazio-liburutegia hutsik dago",
     "Records not supported by provider":
         "Hornitzaile honek ez ditu grabazioak onartzen",
+    "Recovering stream (%1/%2)": "Berriro konektatzen… (%1/%2)",
     "Release date": "Argitaratze-data",
     "Remember previous channels": "Gogoratu aurreko kanalak",
     "Reminder: %1 — %2 in %3 min": "Oroigarria: %1 — %2 %3 min barru",
@@ -1022,6 +1027,7 @@ var keyStrings = {
         "Gelditu erreprodukzioa eta itzuli zuzenekora",
     "Stop screenshots": "Gelditu pantaila-argazkiak",
     "Stream could not be played": "Ezin izan da transmisioa erreproduzitu",
+    "Stream stalled. Restart in %1 s": "Berrabiarazi transmisioa · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Igorpenaren itxaronaldia agortu da. Hautatu kanala berriro saiatzeko.",
     "Stream type: %1": "Transmisio mota: %1",

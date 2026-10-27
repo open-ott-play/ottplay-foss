@@ -590,6 +590,10 @@ var keyStrings = {
     "List type": "Listetype",
     "Lists settings": "Listeindstillinger",
     Live: "Direkte",
+    "Live recovery attempts": "Forsøg på gendannelse af live-tv",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Stream kunne ikke afspilles · Forsøg på gendannelse af live-tv %1/%2",
+    "Live stall timeout, s": "Tidsgrænse for stop, s",
     Load: "Indlæs",
     "Load built-in playlist:": "Indlæs den indbyggede afspilningsliste:",
     "Load playlist": "Indlæs afspilningsliste",
@@ -788,6 +792,7 @@ var keyStrings = {
     "Records library is empty": "Optagelsesbiblioteket er tomt",
     "Records not supported by provider":
         "Optagelser understøttes ikke af denne udbyder",
+    "Recovering stream (%1/%2)": "Genopretter forbindelse... (%1/%2)",
     "Release date": "Udgivelsesdato",
     "Remember previous channels": "Husk tidligere kanaler",
     "Reminder: %1 — %2 in %3 min": "Påmindelse: %1 — %2 om %3 min",
@@ -1009,6 +1014,7 @@ var keyStrings = {
         "Stop afspilning, og vend tilbage til direkte tv",
     "Stop screenshots": "Stop skærmbilleder",
     "Stream could not be played": "Stream kunne ikke afspilles",
+    "Stream stalled. Restart in %1 s": "Genstart stream · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Streamens tidsgrænse blev overskredet. Vælg kanalen for at prøve igen.",
     "Stream type: %1": "Strømtype: %1",

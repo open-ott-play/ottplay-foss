@@ -21,6 +21,20 @@ function createPerformanceSensors(w: any, ports: any): any {
         taskMax = 0,
         taskDropped = 0;
     var maximum = 9007199254740991;
+    var errorDetails: any = {
+        bufferAppendError: "buffer_append_error",
+        bufferNudgeOnStall: "buffer_nudge_on_stall",
+        bufferSeekOverHole: "buffer_seek_over_hole",
+        bufferStalledError: "buffer_stalled_error",
+        fragLoadError: "frag_load_error",
+        fragLoadTimeOut: "frag_load_timeout",
+        fragParsingError: "frag_parsing_error",
+        levelEmptyError: "level_empty_error",
+        levelLoadError: "level_load_error",
+        levelLoadTimeOut: "level_load_timeout",
+        manifestLoadError: "manifest_load_error",
+        manifestLoadTimeOut: "manifest_load_timeout",
+    };
     var supported = {
         long_tasks: !!(
             ports.origin !== null &&
@@ -110,6 +124,7 @@ function createPerformanceSensors(w: any, ports: any): any {
         var handle = backend && backend.current(lane),
             media: any = null,
             hls: any = null,
+            initialPolicy: any = null,
             generation: number | null = null;
         if (handle && handle.diagnosticMedia) {
             var attachment = handle.diagnosticMedia();
@@ -117,6 +132,11 @@ function createPerformanceSensors(w: any, ports: any): any {
                 media = attachment.media;
                 hls = attachment.hls;
                 generation = integer(attachment.generation);
+                if (ports.hlsPolicy && attachment.initialHlsBufferPolicy)
+                    initialPolicy = policyValues(
+                        attachment.initialHlsBufferPolicy,
+                        true
+                    );
             }
         }
         if (generation === null && lane === "main" && w.__ottClassicPlayback) {
@@ -132,6 +152,7 @@ function createPerformanceSensors(w: any, ports: any): any {
             handle: handle,
             handleId: handle ? integer(handle.id) : null,
             hls: hls,
+            initialPolicy: initialPolicy,
             media: media,
         };
     }
@@ -163,6 +184,20 @@ function createPerformanceSensors(w: any, ports: any): any {
             return null;
         }
     }
+    function errorDetail(detail: any): string {
+        if (typeof detail !== "string") return "other";
+        if (Object.prototype.hasOwnProperty.call(errorDetails, detail))
+            return errorDetails[detail];
+        if (ports.hlsPolicy) {
+            if (detail === "bufferFullError") return "buffer_full_error";
+            if (detail === "bufferAppendNoProgress")
+                return "buffer_append_no_progress";
+            if (detail === "bufferAddCodecError")
+                return "buffer_add_codec_error";
+            if (detail === "internalException") return "internal_exception";
+        }
+        return "other";
+    }
     function pts(value: any, start: string, end: string): any {
         var a = number(field(value, start), maximum, -maximum),
             b = number(field(value, end), maximum, -maximum);
@@ -182,13 +217,15 @@ function createPerformanceSensors(w: any, ports: any): any {
             var stream = field(streams, track);
             if (!stream) return;
             var values = pts(stream, "startPTS", "endPTS");
-            tracks.push({
+            var item: any = {
                 end_pts_seconds: values.end,
                 start_pts_seconds: values.start,
                 track: track,
-            });
+            };
+            if (ports.hlsPolicy) item.partial = bool(field(stream, "partial"));
+            tracks.push(item);
         });
-        emit(owner, "hls_fragment", {
+        var value: any = {
             discontinuity_counter: integer(field(frag, "cc")),
             elementary_streams: tracks,
             end_pts_seconds: times.end,
@@ -199,7 +236,13 @@ function createPerformanceSensors(w: any, ports: any): any {
             part_index: integer(field(part, "index")),
             start_pts_seconds: times.start,
             start_seconds: span.start,
-        });
+        };
+        if (ports.hlsPolicy) {
+            value.fragment_gap = bool(field(frag, "gap"));
+            value.part_gap = bool(field(part, "gap"));
+            value.part_independent = bool(field(part, "independent"));
+        }
+        emit(owner, "hls_fragment", value);
     }
     function hlsBuffers(owner: any, data: any): void {
         if (!owner.sourceId) return;
@@ -225,16 +268,52 @@ function createPerformanceSensors(w: any, ports: any): any {
             });
         });
     }
-    function hlsConfig(owner: any): void {
-        if (!ports.hlsDetails || !owner || !owner.hls || !owner.sourceId)
-            return;
-        var config = field(owner.hls, "config"),
-            value: any = {};
+    function policyValues(config: any, snake: boolean): any {
+        var value: any = {};
         [
             ["max_buffer_length_seconds", "maxBufferLength"],
             ["max_max_buffer_length_seconds", "maxMaxBufferLength"],
             ["max_buffer_size_bytes", "maxBufferSize"],
             ["back_buffer_length_seconds", "backBufferLength"],
+        ].forEach(function (pair) {
+            var observed = field(config, pair[snake ? 0 : 1]);
+            value[pair[0]] =
+                pair[0] === "max_buffer_size_bytes"
+                    ? integer(observed)
+                    : number(observed);
+        });
+        return value;
+    }
+    function hlsBufferPolicy(owner: any, observation: string): void {
+        if (!ports.hlsPolicy || !owner.hls || !owner.sourceId) return;
+        var value = policyValues(field(owner.hls, "config"), false),
+            cap = value.max_max_buffer_length_seconds;
+        if (!owner.policyObserved || cap !== owner.previousCap) {
+            emit(owner, "hls_buffer_policy", {
+                cause: "unknown",
+                current: value,
+                event: owner.policyObserved
+                    ? "cap_observation_changed"
+                    : "snapshot",
+                initial: owner.initialPolicy || policyValues(null, true),
+                initial_source: owner.initialPolicy
+                    ? "constructor_snapshot"
+                    : "unavailable",
+                observation: observation,
+                previous_max_max_buffer_length_seconds: owner.policyObserved
+                    ? owner.previousCap
+                    : null,
+            });
+            owner.previousCap = cap;
+            owner.policyObserved = true;
+        }
+    }
+    function hlsConfig(owner: any, observation = "sample"): void {
+        if (!ports.hlsDetails || !owner || !owner.hls || !owner.sourceId)
+            return;
+        var config = field(owner.hls, "config"),
+            value = policyValues(config, false);
+        [
             ["max_buffer_hole_seconds", "maxBufferHole"],
             ["high_buffer_watchdog_period_seconds", "highBufferWatchdogPeriod"],
             ["nudge_offset_seconds", "nudgeOffset"],
@@ -246,7 +325,6 @@ function createPerformanceSensors(w: any, ports: any): any {
         ].forEach(function (pair) {
             var observed = field(config, pair[1]);
             value[pair[0]] =
-                pair[0] === "max_buffer_size_bytes" ||
                 pair[0] === "nudge_max_retry"
                     ? integer(observed)
                     : number(observed);
@@ -256,6 +334,7 @@ function createPerformanceSensors(w: any, ports: any): any {
             owner.config = encoded;
             emit(owner, "hls_config", value);
         }
+        hlsBufferPolicy(owner, observation);
     }
     function hlsLive(owner: any): void {
         if (!ports.hlsDetails || !owner.hls || !owner.sourceId) return;
@@ -340,21 +419,7 @@ function createPerformanceSensors(w: any, ports: any): any {
         if (status === null)
             status = integer(data.response && data.response.code, 599);
         if (status !== null && status < 100) status = null;
-        var details: any = {
-            bufferAppendError: "buffer_append_error",
-            bufferNudgeOnStall: "buffer_nudge_on_stall",
-            bufferSeekOverHole: "buffer_seek_over_hole",
-            bufferStalledError: "buffer_stalled_error",
-            fragLoadError: "frag_load_error",
-            fragLoadTimeOut: "frag_load_timeout",
-            fragParsingError: "frag_parsing_error",
-            levelEmptyError: "level_empty_error",
-            levelLoadError: "level_load_error",
-            levelLoadTimeOut: "level_load_timeout",
-            manifestLoadError: "manifest_load_error",
-            manifestLoadTimeOut: "manifest_load_timeout",
-        };
-        emit(owner, "hls", {
+        var value: any = {
             buffer_duration_ms: duration(buffering.start, buffering.end),
             bytes: integer(stats.loaded),
             category:
@@ -365,15 +430,7 @@ function createPerformanceSensors(w: any, ports: any): any {
                       : data.type === "mediaError"
                         ? "media"
                         : "other",
-            detail:
-                event === "error"
-                    ? Object.prototype.hasOwnProperty.call(
-                          details,
-                          data.details
-                      )
-                        ? details[data.details]
-                        : "other"
-                    : null,
+            detail: event === "error" ? errorDetail(data.details) : null,
             event: event,
             fatal: event === "error" ? bool(data.fatal) : null,
             first_byte_at_ms: first,
@@ -391,6 +448,44 @@ function createPerformanceSensors(w: any, ports: any): any {
                 begin !== null || first !== null || end !== null
                     ? "performance"
                     : "unavailable",
+        };
+        if (ports.hlsPolicy) {
+            value.stats_retry = value.retries;
+            delete value.retries;
+        }
+        emit(owner, "hls", value);
+    }
+    function hlsErrorAction(owner: any, data: any): void {
+        if (!ports.hlsPolicy || !owner.sourceId) return;
+        var action = field(data, "errorAction"),
+            type = field(data, "type"),
+            detail = field(data, "details"),
+            frag = field(data, "frag"),
+            part = field(data, "part"),
+            actionId = integer(field(action, "action"), 5),
+            actions = [
+                "do_nothing",
+                "send_end_callback",
+                "send_alternate_to_penalty_box",
+                "remove_alternate_permanently",
+                "insert_discontinuity",
+                "retry_request",
+            ];
+        emit(owner, "hls_error_action", {
+            action: actionId === null ? null : actions[actionId],
+            category:
+                type === "networkError"
+                    ? "network"
+                    : type === "mediaError"
+                      ? "media"
+                      : "other",
+            detail: errorDetail(detail),
+            flags: integer(field(action, "flags"), 31),
+            fragment_sequence: integer(field(frag, "sn")),
+            level: integer(frag ? field(frag, "level") : field(data, "level")),
+            part_index: integer(field(part, "index")),
+            resolved: bool(field(action, "resolved")),
+            retry_budget_count: integer(field(action, "retryCount")),
         });
     }
     function attach(lane: string): void {
@@ -457,6 +552,11 @@ function createPerformanceSensors(w: any, ports: any): any {
             var name = events[pair[0]];
             if (!name) return;
             var callback = function (_event: any, data: any) {
+                if (ports.hlsPolicy)
+                    safe(function () {
+                        hlsBufferPolicy(next, "hls_event");
+                        if (pair[1] === "error") hlsErrorAction(next, data);
+                    });
                 if (
                     ports.hlsDetails &&
                     (pair[1] === "fragment" || pair[1] === "fragment_buffered")
@@ -494,6 +594,7 @@ function createPerformanceSensors(w: any, ports: any): any {
         if (ports.hlsDetails && events.BUFFER_APPENDED) {
             var appended = function (_event: any, data: any) {
                 safe(function () {
+                    hlsBufferPolicy(next, "hls_event");
                     hlsBuffers(next, data);
                 });
             };
@@ -502,7 +603,7 @@ function createPerformanceSensors(w: any, ports: any): any {
                 hls.off(events.BUFFER_APPENDED, appended);
             });
         }
-        hlsConfig(next);
+        hlsConfig(next, "attachment");
     }
     function buffers(media: any, position: any): any {
         var empty = {

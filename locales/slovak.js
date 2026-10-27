@@ -596,6 +596,10 @@ var keyStrings = {
     "List type": "Typ zoznamu",
     "Lists settings": "Nastavenia zoznamu",
     Live: "Naživo",
+    "Live recovery attempts": "Pokusy o obnovenie živého vysielania",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Stream sa nepodarilo prehrať · Pokusy o obnovenie živého vysielania %1/%2",
+    "Live stall timeout, s": "Časový limit zaseknutia, s",
     Load: "Načítať",
     "Load built-in playlist:": "Načítať vstavaný zoznam skladieb:",
     "Load playlist": "Načítať zoznam skladieb",
@@ -796,6 +800,7 @@ var keyStrings = {
     "Records library is empty": "Knižnica nahrávok je prázdna",
     "Records not supported by provider":
         "Nahrávky nie sú podporované týmto poskytovateľom",
+    "Recovering stream (%1/%2)": "Opätovné pripojenie… (%1/%2)",
     "Release date": "Dátum vydania",
     "Remember previous channels": "Zapamätajte si predchádzajúce kanály",
     "Reminder: %1 — %2 in %3 min": "Pripomienka: %1 – %2 o %3 min",
@@ -1022,6 +1027,7 @@ var keyStrings = {
         "Zastaviť prehrávanie a vrátiť sa k živému vysielaniu",
     "Stop screenshots": "Zastavte snímky obrazovky",
     "Stream could not be played": "Stream sa nepodarilo prehrať",
+    "Stream stalled. Restart in %1 s": "Reštartujte stream · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Vypršal časový limit streamu. Vyberte kanál a skúste to znova.",
     "Stream type: %1": "Typ streamu: %1",

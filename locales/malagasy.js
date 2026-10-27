@@ -614,6 +614,10 @@ var keyStrings = {
     "List type": "Karazana lisitra",
     "Lists settings": "Fikirakirana lisitra",
     Live: "Fandefasana mivantana",
+    "Live recovery attempts": "Andrana famerenana fampitana mivantana",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Tsy afaka nandefa ny fikorianana · Andrana famerenana fampitana mivantana %1/%2",
+    "Live stall timeout, s": "Fe-potoana fiandrasana fijanonana, s",
     Load: "Raiso",
     "Load built-in playlist:": "Raiso ny lisitra fandefasana efa tafiditra:",
     "Load playlist": "Raiso ny lisitra fandefasana",
@@ -818,6 +822,7 @@ var keyStrings = {
     "Records library is empty": "Foana ny tranombokin'ny rakitsary",
     "Records not supported by provider":
         "Tsy manohana rakitsary ity mpamatsy ity",
+    "Recovering stream (%1/%2)": "Mampifandray indray… (%1/%2)",
     "Release date": "Daty namoahana",
     "Remember previous channels": "Tadidio ny fantsona teo aloha",
     "Reminder: %1 — %2 in %3 min": "Fampahatsiahivana: %1 — %2 afaka %3 min",
@@ -1053,6 +1058,7 @@ var keyStrings = {
         "Atsaharo ny fandefasana ary miverena amin'ny mivantana",
     "Stop screenshots": "Atsaharo ny pikantsary",
     "Stream could not be played": "Tsy afaka nandefa ny fikorianana",
+    "Stream stalled. Restart in %1 s": "Avereno atomboka ny fikorianana · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Tapitra ny fotoana niandrasana ny fandefasana. Safidio ny fantsona hanandrana indray.",
     "Stream type: %1": "Karazana fikorianana: %1",

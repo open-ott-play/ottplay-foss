@@ -607,6 +607,10 @@ var keyStrings = {
     "List type": "Τύπος λίστας",
     "Lists settings": "Ρυθμίσεις λιστών",
     Live: "Ζωντανά",
+    "Live recovery attempts": "Προσπάθειες επαναφοράς ζωντανής ροής",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Δεν ήταν δυνατή η αναπαραγωγή της ροής · Προσπάθειες επαναφοράς ζωντανής ροής %1/%2",
+    "Live stall timeout, s": "Χρονικό όριο παγώματος, δ",
     Load: "Φόρτωση",
     "Load built-in playlist:": "Φόρτωση ενσωματωμένης λίστας αναπαραγωγής:",
     "Load playlist": "Φόρτωση λίστας αναπαραγωγής",
@@ -810,6 +814,7 @@ var keyStrings = {
     "Records library is empty": "Η βιβλιοθήκη εγγραφών είναι κενή",
     "Records not supported by provider":
         "Οι εγγραφές δεν υποστηρίζονται από αυτόν τον πάροχο",
+    "Recovering stream (%1/%2)": "Επανασύνδεση… (%1/%2)",
     "Release date": "Ημερομηνία κυκλοφορίας",
     "Remember previous channels": "Απομνημόνευση προηγούμενων καναλιών",
     "Reminder: %1 — %2 in %3 min": "Υπενθύμιση: %1 — %2 σε %3 λεπτά",
@@ -1040,6 +1045,7 @@ var keyStrings = {
         "Διακοπή αναπαραγωγής και επιστροφή στη ζωντανή μετάδοση",
     "Stop screenshots": "Διακοπή στιγμιότυπων οθόνης",
     "Stream could not be played": "Δεν ήταν δυνατή η αναπαραγωγή της ροής",
+    "Stream stalled. Restart in %1 s": "Επανεκκίνηση ροής · %1 δ",
     "Stream timed out. Select the channel to retry.":
         "Έληξε το χρονικό όριο της ροής. Επιλέξτε το κανάλι για νέα προσπάθεια.",
     "Stream type: %1": "Τύπος ροής: %1",

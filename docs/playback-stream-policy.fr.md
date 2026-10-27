@@ -56,7 +56,7 @@ Les secours concernent **uniquement le direct**. Les requêtes d'archives et de 
 - Les erreurs de chargement Shaka et les événements d'erreur critiques partagent ce chemin ; les erreurs d'annulation sont ignorées. Le rattachement attend la destruction asynchrone de Shaka.
 - La récupération résout de nouveau une référence Stalker opaque et prépare à nouveau l'accès protégé à la source. Elle ne réutilise pas une URL loopback iOS expirée. La position VOD/archives est relevée avant le démontage ; les secours en direct commencent au bord du direct.
 
-La politique n'ajoute pas un second surveillant d'images figées. La récupération existante kiosk, Auto/native et HLS couvre toujours ses propres cas de défaillance observés. Un flux bloqué silencieusement sans erreur signalée par un détecteur existant nécessite un diagnostic séparé.
+La récupération facultative fondée sur l'horloge média du direct est décrite ci-dessous. Les mécanismes existants de kiosk, Auto/native et HLS conservent leurs périmètres et le comportement de leurs moteurs.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Les tests vérifient le filtrage de qualité avec un ordre non monotone des variantes, les métadonnées indisponibles, l'édition limitée à une source, les conflits d'emplacements, les erreurs dupliquées, les budgets bornés, les erreurs d'autorisation HTTP, l'annulation par pause/arrêt/source, le démontage Shaka et la conservation de position VOD. Les cinq nouveaux libellés de lecture sont traduits dans les 88 packs linguistiques livrés ; la parité automatique n'est pas une révision par un locuteur natif. La lecture physique TV/D1 et les manifestes propres aux fournisseurs nécessitent encore une validation sur appareil. [Source modifiable du diagramme](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Récupération d'un direct bloqué
+
+Dans **Paramètres → Paramètres d'interface**, choisissez **Tentatives de récupération du direct** (0–5) et **Délai de blocage du direct, s** (10/15/20/30). Les valeurs par défaut sont 0 tentative et 15 secondes. Zéro désactive uniquement ce mécanisme de surveillance ; la récupération existante des erreurs du moteur reste inchangée. Les paramètres suivent le fonctionnement habituel Enregistrer/Annuler.
+
+Après confirmation de la progression de la lecture, l'arrêt de l'horloge média du direct principal appelle le `backend.restart()` existant. La pause, le déplacement dans la vidéo, les pages masquées, l'état hors ligne et kiosk suspendent l'observation ; les archives, la VOD et la voie PiP sont exclues. Le PiP natif masque l'OSD HTML. Un changement de chaîne, de source ou de génération annule l'observation précédente. Une lecture initiale qui ne progresse jamais reste soumise au traitement existant du démarrage et des erreurs. Le remplacement du décodeur et une progression brève ne renouvellent pas le nombre d'essais disponibles : dix secondes de progression continue le renouvellent. Une fois la limite atteinte, aucun redémarrage supplémentaire n'est déclenché par la surveillance pour ce blocage. Une récupération du moteur en attente est prioritaire ; les erreurs terminales d'autorisation, de DRM ou de qualité ne peuvent pas être contournées. Le mécanisme observe le temps média, et non l'affichage physique de l'image ni les images figées alors que l'horloge média continue d'avancer.
+
+Pour un test de base sans abonnement, choisissez **Essayer la démo**. Une fois la lecture démarrée, définissez temporairement `document.getElementById("video").playbackRate = 0` dans les DevTools de l'onglet de test ; rétablissez ensuite la valeur 1. La pause est volontairement exclue de la récupération des blocages.

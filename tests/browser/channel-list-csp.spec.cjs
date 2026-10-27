@@ -427,6 +427,23 @@ async function listTouchFixture(browser, native = true) {
     return fixture;
 }
 
+// Keep the ordinary browser input path while matching the portrait Family Hub.
+// Other fixtures retain their desktop/native viewport and touch configuration.
+function pcTouchListFixture(browser) {
+    return listTouchFixture(
+        {
+            newContext: (options) =>
+                browser.newContext({
+                    ...options,
+                    hasTouch: true,
+                    isMobile: false,
+                    viewport: { height: 1280, width: 721 },
+                }),
+        },
+        false
+    );
+}
+
 for (const direction of [-1, 1]) {
     test(`native fast flick coasts across several pages (${direction})`, async ({
         browser,
@@ -882,10 +899,10 @@ test("native list swipe cancels an added finger after paging in either lift orde
     }
 });
 
-test("browser list swipe retains legacy remote navigation", async ({
+test("browser list swipe follows row distance without activating a channel", async ({
     browser,
 }) => {
-    const fixture = await listTouchFixture(browser, false);
+    const fixture = await pcTouchListFixture(browser);
     try {
         const result = await fixture.page.evaluate(() => {
             window.changeSelect(10);
@@ -893,14 +910,161 @@ test("browser list swipe retains legacy remote navigation", async ({
             window.__touchSend("touchmove", -10);
             return window.__touchSend("touchend", -10);
         });
-        expect(result.index).toBe(9);
+        expect(result.index).toBe(20);
         expect(await fixture.page.evaluate(() => window.__touchClicks)).toEqual(
+            []
+        );
+        expect(await fixture.page.evaluate(() => window.__touchPlayed)).toEqual(
             []
         );
         expect(fixture.errors).toEqual([]);
         expect(fixture.unexpectedRequests).toEqual([]);
     } finally {
         await fixture.close();
+    }
+});
+
+test("browser trusted touch crosses replaced channel pages and cancels cleanly", async ({
+    browser,
+    browserName,
+}) => {
+    test.skip(
+        browserName !== "chromium",
+        "CDP provides trusted touch movement"
+    );
+    const fixture = await pcTouchListFixture(browser);
+    const page = fixture.page;
+    try {
+        const start = await page.evaluate(() => {
+            _channelsList(0, 20);
+            const target = document.getElementById("it20");
+            window.__pcTouchTarget = target;
+            window.__pcDetachedClicks = 0;
+            window.__pcTrustedTouchSeen = false;
+            target.addEventListener(
+                "touchstart",
+                (event) => {
+                    window.__pcTrustedTouchSeen = event.isTrusted;
+                },
+                { once: true }
+            );
+            target.addEventListener("click", () => window.__pcDetachedClicks++);
+            const rect = target.getBoundingClientRect();
+            return {
+                capacitor: typeof window.Capacitor,
+                height: window.__ottListRowH,
+                touch: navigator.maxTouchPoints,
+                viewport: [innerWidth, innerHeight],
+                x: rect.left + 20,
+                y: rect.top + rect.height / 2,
+            };
+        });
+        expect(start).toMatchObject({
+            capacitor: "undefined",
+            touch: 1,
+            viewport: [721, 1280],
+        });
+        const cdp = await page.context().newCDPSession(page);
+        const touch = (type, y) =>
+            cdp.send("Input.dispatchTouchEvent", {
+                touchPoints:
+                    type === "touchEnd" || type === "touchCancel"
+                        ? []
+                        : [{ id: 1, x: start.x, y }],
+                type,
+            });
+        await touch("touchStart", start.y);
+        expect(await page.evaluate(() => window.__pcTrustedTouchSeen)).toBe(
+            true
+        );
+        for (let step = 1; step <= 8; step++) {
+            // A slow drag has no inertia: the row distance is deterministic.
+            await page.clock.runFor(150);
+            await touch("touchMove", start.y - step * start.height);
+            expect(await page.evaluate(() => window.selIndex)).toBe(20 + step);
+            if (step >= 5)
+                expect(
+                    await page.evaluate(
+                        () => window.__pcTouchTarget.isConnected
+                    )
+                ).toBe(false);
+        }
+        await touch("touchEnd");
+        await page.clock.runFor(1600);
+        expect(await page.evaluate(() => window.selIndex)).toBe(28);
+        await expect(page.locator("#it28")).toBeVisible();
+
+        // A cancelled gesture must not coast or activate its final row; a fresh
+        // gesture afterwards must still work, including back across a page.
+        const rect = await page.locator("#it28").boundingBox();
+        const nextY = rect.y + rect.height / 2;
+        await touch("touchStart", nextY);
+        await page.clock.runFor(150);
+        await touch("touchMove", nextY - 3 * start.height);
+        expect(await page.evaluate(() => window.selIndex)).toBe(31);
+        await touch("touchCancel");
+        await page.clock.runFor(1600);
+        expect(await page.evaluate(() => window.selIndex)).toBe(31);
+        const reset = await page.locator("#it31").boundingBox();
+        const resetY = reset.y + reset.height / 2;
+        await touch("touchStart", resetY);
+        for (let step = 1; step <= 8; step++) {
+            await page.clock.runFor(150);
+            await touch("touchMove", resetY + step * start.height);
+        }
+        await touch("touchEnd");
+        await page.clock.runFor(1600);
+        expect(await page.evaluate(() => window.selIndex)).toBe(23);
+        await expect(page.locator("#it23")).toBeVisible();
+        expect(await page.evaluate(() => window.__pcDetachedClicks)).toBe(0);
+        expect(await page.evaluate(() => window.__touchClicks)).toEqual([]);
+        expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+        expect(await page.evaluate(() => window.isListVisible)).toBe(true);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("browser portrait touch keeps tap mouse keyboard and wheel selection policy", async ({
+    browser,
+}) => {
+    for (const input of ["touch", "mouse", "keyboard"]) {
+        const fixture = await pcTouchListFixture(browser);
+        const page = fixture.page;
+        try {
+            await page.evaluate(() => {
+                window.stbBindKeyHandler();
+                window.changeSelect(4);
+            });
+            await page.locator("#it4").hover();
+            await page.mouse.wheel(0, -120);
+            await expect
+                .poll(() => page.evaluate(() => window.selIndex))
+                .toBe(3);
+            await page.mouse.wheel(0, 120);
+            await expect
+                .poll(() => page.evaluate(() => window.selIndex))
+                .toBe(4);
+            if (input === "touch") await page.locator("#it5").tap();
+            else if (input === "mouse") await page.locator("#it5").click();
+            else await page.keyboard.press("ArrowDown");
+            expect(await page.evaluate(() => window.selIndex)).toBe(5);
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([]);
+            expect(await page.evaluate(() => window.isListVisible)).toBe(true);
+            if (input === "touch") await page.locator("#it5").tap();
+            else if (input === "mouse") await page.locator("#it5").click();
+            else await page.keyboard.press("Enter");
+            expect(await page.evaluate(() => window.__touchPlayed)).toEqual([
+                [0, 5],
+            ]);
+            expect(await page.evaluate(() => window.isListVisible)).toBe(false);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
     }
 });
 

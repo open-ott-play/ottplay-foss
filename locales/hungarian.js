@@ -594,6 +594,10 @@ var keyStrings = {
     "List type": "Lista típusa",
     "Lists settings": "Listabeállítások",
     Live: "Élő",
+    "Live recovery attempts": "Élő adás helyreállítási kísérletei",
+    "Live recovery attempts exhausted (%1/%2)":
+        "A stream nem játszható le · Élő adás helyreállítási kísérletei %1/%2",
+    "Live stall timeout, s": "Elakadás időkorlátja, mp",
     Load: "Betöltés",
     "Load built-in playlist:": "Beépített lejátszási lista betöltése:",
     "Load playlist": "Playlist betöltése",
@@ -793,6 +797,7 @@ var keyStrings = {
     "Records library is empty": "A felvételtár üres",
     "Records not supported by provider":
         "Ez a szolgáltató nem támogatja a felvételeket",
+    "Recovering stream (%1/%2)": "Újracsatlakozás… (%1/%2)",
     "Release date": "Megjelenés dátuma",
     "Remember previous channels": "Előző csatornák megjegyzése",
     "Reminder: %1 — %2 in %3 min": "Emlékeztető: %1 — %2, %3 perc múlva",
@@ -1023,6 +1028,7 @@ var keyStrings = {
         "Lejátszás leállítása és visszatérés az élő adáshoz",
     "Stop screenshots": "Képernyőképek leállítása",
     "Stream could not be played": "A stream nem játszható le",
+    "Stream stalled. Restart in %1 s": "Adatfolyam újraindítása · %1 mp",
     "Stream timed out. Select the channel to retry.":
         "A közvetítés várakozási ideje lejárt. Az újrapróbálkozáshoz válassza ki a csatornát.",
     "Stream type: %1": "Adatfolyam típusa: %1",

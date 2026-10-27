@@ -581,6 +581,10 @@ var keyStrings = {
     "List type": "목록 유형",
     "Lists settings": "목록 설정",
     Live: "실시간 방송",
+    "Live recovery attempts": "실시간 방송 복구 시도 횟수",
+    "Live recovery attempts exhausted (%1/%2)":
+        "스트림을 재생할 수 없습니다. · 실시간 방송 복구 시도 횟수 %1/%2",
+    "Live stall timeout, s": "실시간 멈춤 제한 시간, 초",
     Load: "불러오기",
     "Load built-in playlist:": "내장 재생 목록 로드:",
     "Load playlist": "재생목록 불러오기",
@@ -778,6 +782,7 @@ var keyStrings = {
     "Records library is empty": "녹화된 프로그램 라이브러리가 비어 있습니다.",
     "Records not supported by provider":
         "이 공급자는 녹화된 프로그램을 지원하지 않습니다.",
+    "Recovering stream (%1/%2)": "재접속 중… (%1/%2)",
     "Release date": "발매일",
     "Remember previous channels": "이전 채널 기억하기",
     "Reminder: %1 — %2 in %3 min": "알림: %1 — %3 분의 %2",
@@ -998,6 +1003,7 @@ var keyStrings = {
     "Stop playback and return to live": "재생을 중지하고 라이브로 돌아갑니다.",
     "Stop screenshots": "스크린샷 중지",
     "Stream could not be played": "스트림을 재생할 수 없습니다.",
+    "Stream stalled. Restart in %1 s": "스트림 다시 시작 · %1 초",
     "Stream timed out. Select the channel to retry.":
         "스트림 대기 시간이 초과되었습니다. 채널을 선택하여 다시 시도하세요.",
     "Stream type: %1": "스트림 유형: %1",

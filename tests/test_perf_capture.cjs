@@ -12,6 +12,9 @@ const contract = JSON.parse(
 const hlsContract = JSON.parse(
     fs.readFileSync("tests/fixtures/remote/perf-capture-v2.json", "utf8")
 );
+const policyContract = JSON.parse(
+    fs.readFileSync("tests/fixtures/remote/perf-capture-v3.json", "utf8")
+);
 const code = (name) => {
     const result = ts.transpileModule(
         fs.readFileSync("src/plugins/" + name + ".ts", "utf8"),
@@ -28,24 +31,31 @@ const code = (name) => {
 const controls = code("perf-capture"),
     sensors = code("perf-sensors"),
     runtime = code("runtime-debug");
+const policyReceipts = [];
 const clone = (value) => JSON.parse(JSON.stringify(value));
 function schema(value, shape, wire = contract) {
-    if (shape.$ref)
-        return schema(value, wire.$defs[shape.$ref.split("/").at(-1)], wire);
-    if (shape.oneOf) shape = { anyOf: shape.oneOf };
-    if (shape.anyOf) {
-        assert(
-            shape.anyOf.some((candidate) => {
-                try {
-                    schema(value, candidate, wire);
-                    return true;
-                } catch {
-                    return false;
-                }
-            })
-        );
-        return;
+    if (shape === true || shape === undefined) return;
+    assert.notEqual(shape, false, "false schema");
+    function matches(candidate) {
+        try {
+            schema(value, candidate, wire);
+            return true;
+        } catch {
+            return false;
+        }
     }
+    if (shape.$ref)
+        schema(value, wire.$defs[shape.$ref.split("/").at(-1)], wire);
+    if (shape.allOf)
+        shape.allOf.forEach((candidate) => schema(value, candidate, wire));
+    if (shape.oneOf)
+        assert.equal(shape.oneOf.filter(matches).length, 1, "oneOf");
+    if (shape.anyOf) assert(shape.anyOf.some(matches), "anyOf");
+    if (shape.if !== undefined) {
+        const branch = matches(shape.if) ? shape.then : shape.else;
+        if (branch !== undefined) schema(value, branch, wire);
+    }
+    if (Object.hasOwn(shape, "const")) assert.deepEqual(value, shape.const);
     if (shape.enum)
         assert(
             shape.enum.some((item) => Object.is(item, value)),
@@ -79,14 +89,15 @@ function schema(value, shape, wire = contract) {
             assert(value.length <= shape.maxItems);
         value.forEach((item) => schema(item, shape.items, wire));
     } else if (value && typeof value === "object") {
+        const properties = shape.properties || {};
         (shape.required || []).forEach((key) =>
             assert(Object.hasOwn(value, key), `required ${key}`)
         );
         Object.keys(value).forEach((key) => {
             if (shape.additionalProperties === false)
-                assert(Object.hasOwn(shape.properties, key), `extra ${key}`);
-            if (shape.properties[key])
-                schema(value[key], shape.properties[key], wire);
+                assert(Object.hasOwn(properties, key), `extra ${key}`);
+            if (Object.hasOwn(properties, key))
+                schema(value[key], properties[key], wire);
         });
     }
 }
@@ -163,6 +174,7 @@ function fixture(options = {}) {
         dropped = 0,
         position = 4,
         hls = fakeHls(),
+        initialPolicy = null,
         generation = 1,
         id = 1;
     Object.defineProperties(media, {
@@ -201,7 +213,12 @@ function fixture(options = {}) {
     let handle = {
         diagnosticAttempt: () => attempt,
         diagnosticEngine: () => "hls.js",
-        diagnosticMedia: () => ({ generation, hls, media }),
+        diagnosticMedia: () => ({
+            generation,
+            hls,
+            initialHlsBufferPolicy: initialPolicy,
+            media,
+        }),
         id,
     };
     const backend = {
@@ -261,7 +278,12 @@ function fixture(options = {}) {
             ...extra,
         };
         const result = clone(api.request({ params, ...input }));
-        const wire = params.version === 2 ? hlsContract : contract;
+        const wire =
+            params.version === 3
+                ? policyContract
+                : params.version === 2
+                  ? hlsContract
+                  : contract;
         if (result.status === "ok")
             schema(result.data, wire.responses[op], wire);
         else if (op in wire.requests) schema(result.data, wire.error, wire);
@@ -282,6 +304,8 @@ function fixture(options = {}) {
         attempt,
         backend,
         close() {
+            if (receipts.some((receipt) => receipt.params.version === 3))
+                policyReceipts.push(...receipts);
             w.__ottRuntimeDebug.dispose();
             w.close();
         },
@@ -295,6 +319,7 @@ function fixture(options = {}) {
         get hls() {
             return hls;
         },
+        initialPolicy: (value) => (initialPolicy = value),
         media,
         get observer() {
             return observer;
@@ -304,6 +329,7 @@ function fixture(options = {}) {
         replace() {
             const old = hls;
             hls = fakeHls();
+            initialPolicy = null;
             generation++;
             handle = { ...handle, id: ++id };
             listeners.forEach((fn) => fn({ type: "open" }));
@@ -1311,6 +1337,291 @@ test("natural expiry retires extended capture before a fresh legacy start", () =
     assert.equal(f.hls.count(), 5);
     f.close();
 });
+test("HLS policy capture is explicit and rejects every lower-version mutation", () => {
+    const f = fixture({ version: 3 });
+    f.request("status");
+    assert.equal(f.timers.size, 0);
+    assert.equal(f.hls.count(), 0);
+    assert.equal(f.request("start").data.session.capture_version, 3);
+    assert.equal(f.hls.count(), 6);
+    const timers = f.timers.size;
+    for (const version of [1, 2]) {
+        for (const op of ["status", "read", "stop", "start"]) {
+            const args = { version };
+            if (op === "read") args.after_seq = 0;
+            assert.equal(f.request(op, args).data.error, "unsupported");
+            assert.equal(f.request("status").data.session.state, "active");
+        }
+        assert.equal(
+            f.request("start", {
+                session_id: "b".repeat(32),
+                version,
+            }).data.error,
+            "unsupported"
+        );
+    }
+    assert.equal(f.timers.size, timers);
+    f.request("stop");
+    assert.equal(f.hls.count(), 0);
+    assert.equal(f.request("start", { version: 2 }).data.error, "unsupported");
+    assert.equal(
+        f.request("start", {
+            session_id: "b".repeat(32),
+            version: 2,
+        }).data.session.capture_version,
+        2
+    );
+    f.hls.emit(Hls.Events.ERROR, { details: "bufferFullError" });
+    const old = f.request("read", {
+        after_seq: 0,
+        session_id: "b".repeat(32),
+        version: 3,
+    }).data;
+    assert.equal(old.session.capture_version, 2);
+    assert(
+        !old.events.some((e) =>
+            ["hls_buffer_policy", "hls_error_action"].includes(e.kind)
+        )
+    );
+    assert.equal(old.events.find((e) => e.kind === "hls").data.detail, "other");
+    f.close();
+    for (const version of [1, 2]) {
+        const legacy = fixture({ version });
+        legacy.request("start");
+        legacy.hls.emit(Hls.Events.FRAG_LOADED, {
+            frag: { stats: { retry: 2 } },
+        });
+        const modernRead = legacy.request("read", {
+            after_seq: 0,
+            version: 3,
+        }).data;
+        assert.equal(modernRead.session.capture_version, version);
+        const hls = modernRead.events.find((e) => e.kind === "hls").data;
+        assert.equal(hls.retries, 2);
+        assert(!Object.hasOwn(hls, "stats_retry"));
+        legacy.close();
+    }
+});
+test("v3 schema conditional branches reject cross-version event payloads", () => {
+    for (const version of [1, 2, 3]) {
+        const f = fixture({ version });
+        f.request("start");
+        f.hls.emit(Hls.Events.FRAG_LOADED, { frag: { stats: { retry: 1 } } });
+        const observed = f.request("read", { after_seq: 0, version: 3 }).data;
+        schema(observed, policyContract.responses.read, policyContract);
+        const wrong = clone(observed);
+        const hls = wrong.events.find((event) => event.kind === "hls").data;
+        if (version === 3) {
+            hls.retries = hls.stats_retry;
+            delete hls.stats_retry;
+        } else {
+            hls.stats_retry = hls.retries;
+            delete hls.retries;
+        }
+        assert.throws(() =>
+            schema(wrong, policyContract.responses.read, policyContract)
+        );
+        f.close();
+    }
+    const f = fixture({ version: 3 });
+    const start = f.request("start").data;
+    for (const version of [1, 2]) {
+        const wrong = clone(start);
+        wrong.session.capture_version = version;
+        assert.throws(() =>
+            schema(wrong, policyContract.responses.start, policyContract)
+        );
+    }
+    f.close();
+});
+test("HLS policy distinguishes raw retry statistics, recovery decisions and fragment flags", () => {
+    const f = fixture({ version: 3 });
+    f.request("start");
+    f.advance(1000, false);
+    const frag = {
+        cc: 0,
+        elementaryStreams: {
+            audio: { endPTS: 10, partial: true, startPTS: 0 },
+        },
+        end: 10,
+        gap: false,
+        level: 1,
+        sn: 42,
+        start: 0,
+        stats: { retry: 0 },
+    };
+    const part = { gap: false, independent: true, index: 3, stats: frag.stats };
+    f.hls.emit(Hls.Events.FRAG_LOADED, { frag, part });
+    frag.stats.retry = 1;
+    frag.gap = part.gap = true;
+    f.hls.emit(Hls.Events.FRAG_BUFFERED, { frag, part });
+    f.hls.emit(Hls.Events.ERROR, {
+        details: "fragLoadError",
+        errorAction: {
+            action: 5,
+            flags: 3,
+            privateUrl: "PRIVATE CONTENT MUST NOT APPEAR",
+            resolved: true,
+            retryCount: 7,
+        },
+        frag,
+        part,
+        type: "networkError",
+    });
+    const events = all(f).events;
+    const stats = events.filter((e) => e.kind === "hls");
+    assert.deepEqual(
+        stats.map((e) => e.data.stats_retry),
+        [0, 1, 1]
+    );
+    assert(stats.every((e) => !Object.hasOwn(e.data, "retries")));
+    assert(stats.every((e) => !Object.hasOwn(e.data, "network_retries")));
+    const flags = events.filter((e) => e.kind === "hls_fragment");
+    assert.equal(flags[0].data.fragment_gap, false);
+    assert.equal(flags[1].data.fragment_gap, true);
+    assert.equal(flags[1].data.part_gap, true);
+    assert.equal(flags[1].data.part_independent, true);
+    assert.equal(flags[1].data.elementary_streams[0].partial, true);
+    const action = events.find((e) => e.kind === "hls_error_action").data;
+    assert.deepEqual(action, {
+        action: "retry_request",
+        category: "network",
+        detail: "frag_load_error",
+        flags: 3,
+        fragment_sequence: 42,
+        level: 1,
+        part_index: 3,
+        resolved: true,
+        retry_budget_count: 7,
+    });
+    assert(!JSON.stringify(events).includes("PRIVATE CONTENT"));
+    f.hls.emit(Hls.Events.ERROR, {
+        details: "internalException",
+        errorAction: { action: 6, flags: 32, resolved: "yes", retryCount: -1 },
+        type: "mediaError",
+    });
+    const unavailable = all(f)
+        .events.filter((e) => e.kind === "hls_error_action")
+        .at(-1).data;
+    assert.equal(unavailable.action, null);
+    assert.equal(unavailable.flags, null);
+    assert.equal(unavailable.retry_budget_count, null);
+    assert.equal(unavailable.resolved, null);
+    assert.equal(unavailable.detail, "internal_exception");
+    for (const [details, detail] of [
+        ["bufferFullError", "buffer_full_error"],
+        ["bufferAppendNoProgress", "buffer_append_no_progress"],
+        ["bufferAddCodecError", "buffer_add_codec_error"],
+    ]) {
+        f.hls.emit(Hls.Events.ERROR, { details, type: "mediaError" });
+        const observed = all(f)
+            .events.filter((e) => e.kind === "hls_error_action")
+            .at(-1);
+        assert.equal(observed.data.detail, detail);
+    }
+    f.close();
+});
+test("HLS cap changes are bounded observations with immutable initial policy and unknown causes", () => {
+    const f = fixture({ version: 3 });
+    const initial = {
+        back_buffer_length_seconds: 15,
+        max_buffer_length_seconds: 20,
+        max_buffer_size_bytes: 32000000,
+        max_max_buffer_length_seconds: 60,
+    };
+    f.initialPolicy(initial);
+    f.hls.config = {
+        backBufferLength: 15,
+        maxBufferLength: 20,
+        maxBufferSize: 32000000,
+        maxMaxBufferLength: 5.005,
+    };
+    f.request("start");
+    const timers = f.timers.size;
+    let policies = all(f).events.filter((e) => e.kind === "hls_buffer_policy");
+    assert.equal(policies.length, 1);
+    assert.equal(policies[0].data.event, "snapshot");
+    assert.equal(policies[0].data.observation, "attachment");
+    assert.equal(policies[0].data.previous_max_max_buffer_length_seconds, null);
+    assert.equal(policies[0].data.initial.max_max_buffer_length_seconds, 60);
+    assert.equal(policies[0].data.current.max_max_buffer_length_seconds, 5.005);
+    initial.max_max_buffer_length_seconds = 999;
+    f.hls.config.maxMaxBufferLength = 2.5;
+    f.hls.emit(Hls.Events.ERROR, {
+        details: "bufferFullError",
+        type: "mediaError",
+    });
+    policies = all(f).events.filter((e) => e.kind === "hls_buffer_policy");
+    assert.equal(policies.length, 2);
+    assert.equal(policies[1].data.initial.max_max_buffer_length_seconds, 60);
+    assert.equal(policies[1].data.current.max_max_buffer_length_seconds, 2.5);
+    assert.equal(
+        policies[1].data.previous_max_max_buffer_length_seconds,
+        5.005
+    );
+    assert.equal(policies[1].data.event, "cap_observation_changed");
+    assert.equal(policies[1].data.observation, "hls_event");
+    assert.equal(policies[1].data.cause, "unknown");
+    f.advance(1000);
+    assert.equal(
+        all(f).events.filter((e) => e.kind === "hls_buffer_policy").length,
+        2
+    );
+    f.hls.config.maxMaxBufferLength = Infinity;
+    f.advance(1000);
+    f.hls.config.maxMaxBufferLength = 7;
+    f.advance(1000);
+    policies = all(f).events.filter((e) => e.kind === "hls_buffer_policy");
+    assert.equal(policies.length, 4);
+    assert.equal(policies[2].data.current.max_max_buffer_length_seconds, null);
+    assert.equal(policies[2].data.observation, "sample");
+    assert.equal(policies[3].data.previous_max_max_buffer_length_seconds, null);
+    assert.equal(policies[3].data.current.max_max_buffer_length_seconds, 7);
+    assert.equal(f.timers.size, timers);
+    const old = f.replace();
+    const after = all(f).events.length;
+    old.emit(Hls.Events.ERROR, { details: "bufferFullError" });
+    assert.equal(all(f).events.length, after);
+    const fresh = all(f)
+        .events.filter((e) => e.kind === "hls_buffer_policy")
+        .at(-1);
+    assert.equal(fresh.data.event, "snapshot");
+    assert.equal(fresh.data.initial_source, "unavailable");
+    assert(Object.values(fresh.data.initial).every((v) => v === null));
+    assert.notEqual(fresh.source_id, policies[0].source_id);
+    f.request("stop");
+    f.close();
+});
+test("HLS policy session keeps existing byte and event limits during callback storms", () => {
+    const f = fixture({ version: 3 });
+    f.request("start", { duration_seconds: 600 });
+    for (let i = 0; i < 3000; i++) {
+        f.hls.config.maxMaxBufferLength = i;
+        f.hls.emit(Hls.Events.ERROR, {
+            details: "fragLoadError",
+            errorAction: {
+                action: 5,
+                flags: 31,
+                resolved: false,
+                retryCount: i,
+            },
+            type: "networkError",
+        });
+    }
+    const status = f.request("status").data.session;
+    assert(status.event_count <= 1024);
+    assert(status.bytes <= 524288);
+    assert(status.rate_dropped > 0);
+    const page = all(f);
+    assert(page.events.every((e) => JSON.stringify(e).length <= 2048));
+    assert(page.events.every((e) => !/[^\x00-\x7f]/.test(JSON.stringify(e))));
+    f.request("stop");
+    assert.equal(f.hls.count(), 0);
+    const highwater = f.request("status").data.session.next_seq;
+    f.hls.emit(Hls.Events.ERROR, { details: "bufferFullError" });
+    assert.equal(f.request("status").data.session.next_seq, highwater);
+    f.close();
+});
 (async () => {
     let failures = 0;
     for (const { name, fn } of tests) {
@@ -1323,6 +1634,12 @@ test("natural expiry retires extended capture before a fresh legacy start", () =
         }
     }
     assert.equal(failures, 0);
+    if (process.env.OTT_PERF_HLS_POLICY_CORPUS)
+        fs.writeFileSync(
+            process.env.OTT_PERF_HLS_POLICY_CORPUS,
+            JSON.stringify(policyReceipts, null, 2) + "\n",
+            { mode: 0o600 }
+        );
     console.log(tests.length + " performance capture groups passed");
 })().catch((e) => {
     console.error(e);

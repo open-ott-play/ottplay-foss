@@ -2,7 +2,7 @@
 use std::{
     fs,
     io::Write,
-    net::{TcpListener, TcpStream},
+    net::TcpListener,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::atomic::{AtomicU64, Ordering},
@@ -171,6 +171,7 @@ fn run_server(fixture: &Fixture, accepted: bool) {
             .unwrap(),
     );
     let deadline = Instant::now() + Duration::from_secs(5);
+    let readiness = format!("ottplay-server: https://127.0.0.1:{tls_port}");
     loop {
         if let Some(status) = server.0.try_wait().unwrap() {
             let message = fs::read_to_string(fixture.0.join("server.log")).unwrap();
@@ -185,7 +186,14 @@ fn run_server(fixture: &Fixture, accepted: bool) {
             );
             return;
         }
-        if accepted && TcpStream::connect(("127.0.0.1", tls_port)).is_ok() {
+        // Only this child's post-bind announcement proves it owns the listener.
+        // A raw TCP probe can connect to another owner of the released port.
+        if accepted
+            && fs::read_to_string(fixture.0.join("server.log"))
+                .unwrap()
+                .lines()
+                .any(|line| line == readiness)
+        {
             verified_health(&fixture.0, tls_port);
             return;
         }
@@ -233,20 +241,25 @@ fn verified_health(path: &Path, port: u16) {
         if Instant::now() >= deadline {
             let _ = client.kill();
             let _ = client.wait();
-            panic!("HTTPS client timeout");
+            panic!(
+                "HTTPS client timeout; server log:\n{}",
+                fs::read_to_string(path.join("server.log")).unwrap()
+            );
         }
         thread::sleep(Duration::from_millis(10));
     }
     let output = client.wait_with_output().unwrap();
     assert!(
         output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
+        "HTTPS verification failed: {}\nserver log:\n{}",
+        String::from_utf8_lossy(&output.stderr),
+        fs::read_to_string(path.join("server.log")).unwrap()
     );
     assert!(
         output.stdout.starts_with(b"HTTP/1.1 200"),
-        "{}",
-        String::from_utf8_lossy(&output.stdout)
+        "Unexpected HTTPS response: {}\nserver log:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        fs::read_to_string(path.join("server.log")).unwrap()
     );
 }
 

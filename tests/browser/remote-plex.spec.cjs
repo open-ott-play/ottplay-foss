@@ -26,6 +26,10 @@ test("remote Plex loads lazily, ends its exact queue and restores a current favo
     const metadataRequests = [];
     const pending = [];
     const results = new Map();
+    let releaseFirstManifest;
+    const firstManifest = new Promise((resolve) => {
+        releaseFirstManifest = resolve;
+    });
     let sequence = 0;
     page.on("pageerror", (error) => errors.push(error.message));
     const item = (id) => ({
@@ -109,6 +113,7 @@ test("remote Plex loads lazily, ends its exact queue and restores a current favo
                 });
             if (url.pathname.endsWith("/start.m3u8")) {
                 streams.push(url.searchParams.get("path"));
+                if (streams.length === 1) await firstManifest;
                 return route.fulfill({
                     body: fs.readFileSync(path.join(mediaRoot, "index.m3u8")),
                     contentType: "application/vnd.apple.mpegurl",
@@ -244,6 +249,48 @@ test("remote Plex loads lazily, ends its exact queue and restores a current favo
     const play = await rpc("plex_queue", { ids, op: "play", runtime });
     expect(play.status).toBe("ok");
     await expect(page.locator("#list_window")).toBeHidden();
+    try {
+        await expect.poll(() => streams.length).toBe(1);
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.__ottClassicPlayback.snapshot().phase
+                )
+            )
+            .toBe("loading");
+        const volume = await page.evaluate(() => {
+            window.stbSetVolume(50);
+            window.__queueSeeks = [];
+            const seek = window.shiftArchive;
+            window.shiftArchive = function (delta) {
+                window.__queueSeeks.push(delta);
+                return seek.apply(this, arguments);
+            };
+            const video = document.querySelector("video");
+            video.tabIndex = 0;
+            video.focus();
+            return { current: window.stbGetVolume(), step: window.sVolumeStep };
+        });
+        await page.keyboard.press("ArrowRight");
+        expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+            volume.current + volume.step,
+            8
+        );
+        await page.keyboard.press("ArrowLeft");
+        expect(await page.evaluate(() => window.stbGetVolume())).toBeCloseTo(
+            volume.current,
+            8
+        );
+        expect(await page.evaluate(() => window.__queueSeeks)).toEqual([]);
+        expect(
+            await page.evaluate(
+                () => window.__ottMedia.current().sequence.index
+            )
+        ).toBe(0);
+        expect(streams).toEqual(["/library/metadata/33"]);
+    } finally {
+        releaseFirstManifest();
+    }
     await expect
         .poll(() => page.evaluate(() => window.__queueEnded), {
             timeout: 20000,

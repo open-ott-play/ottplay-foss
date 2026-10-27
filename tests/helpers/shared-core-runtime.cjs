@@ -55,6 +55,7 @@ module.exports = function sharedCoreRuntime(context, options = {}) {
         "src/device/media-session.ts",
         "src/device/native-pip.ts",
         "src/playback/session.ts",
+        "src/playback/live-recovery.ts",
         "src/playback/journal.ts",
         "src/playback/classic-adapter.ts",
         "src/playback/archive.ts",

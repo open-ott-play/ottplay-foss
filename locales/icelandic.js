@@ -578,6 +578,10 @@ var keyStrings = {
     "List type": "Tegund lista",
     "Lists settings": "Listastillingar",
     Live: "Beint",
+    "Live recovery attempts": "Tilraunir til að endurheimta beina útsendingu",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ekki tókst að spila straum · Tilraunir til að endurheimta beina útsendingu %1/%2",
+    "Live stall timeout, s": "Tímamörk stöðvunar, sek",
     Load: "Hlaða",
     "Load built-in playlist:": "Hlaða innbyggðum spilunarlista:",
     "Load playlist": "Hlaða spilunarlista",
@@ -775,6 +779,7 @@ var keyStrings = {
     "Records library is empty": "Upptökusafnið er tómt",
     "Records not supported by provider":
         "Þessi þjónustuaðili styður ekki upptökur",
+    "Recovering stream (%1/%2)": "Tengist aftur… (%1/%2)",
     "Release date": "Útgáfudagur",
     "Remember previous channels": "Muna fyrri rásir",
     "Reminder: %1 — %2 in %3 min": "Áminning: %1 — %2 eftir %3 mín",
@@ -997,6 +1002,7 @@ var keyStrings = {
         "Stöðva spilun og fara í beina útsendingu",
     "Stop screenshots": "Stöðva skjámyndir",
     "Stream could not be played": "Ekki tókst að spila straum",
+    "Stream stalled. Restart in %1 s": "Endurræsa straum · %1 sek",
     "Stream timed out. Select the channel to retry.":
         "Biðtími streymis rann út. Veldu rásina til að reyna aftur.",
     "Stream type: %1": "Tegund straums: %1",

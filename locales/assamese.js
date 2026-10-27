@@ -571,6 +571,10 @@ var keyStrings = {
     "List type": "তালিকাৰ প্ৰকাৰ",
     "Lists settings": "তালিকাৰ ছেটিংছ",
     Live: "পোনপটীয়া",
+    "Live recovery attempts": "পোনপটীয়া সম্প্ৰচাৰ পুনৰুদ্ধাৰৰ চেষ্টা",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ষ্ট্ৰিম চলাব পৰা নগ’ল · পোনপটীয়া সম্প্ৰচাৰ পুনৰুদ্ধাৰৰ চেষ্টা %1/%2",
+    "Live stall timeout, s": "সম্প্ৰচাৰ স্থবিৰতাৰ সময়সীমা, ছেকেণ্ড",
     Load: "লোড কৰক",
     "Load built-in playlist:": "অন্তৰ্নিৰ্মিত প্লেলিষ্ট লোড কৰক:",
     "Load playlist": "প্লেলিষ্ট লোড কৰক",
@@ -765,6 +769,7 @@ var keyStrings = {
     "Records for channel: ": "এই চেনেলৰ ৰেকৰ্ডিং: ",
     "Records library is empty": "ৰেকৰ্ডিং লাইব্ৰেৰী খালী",
     "Records not supported by provider": "এই প্ৰদানকাৰীয়ে ৰেকৰ্ডিং সমৰ্থন নকৰে",
+    "Recovering stream (%1/%2)": "পুনৰ সংযোগ হৈ আছে… (%1/%2)",
     "Release date": "মুক্তিৰ তাৰিখ",
     "Remember previous channels": "আগৰ চেনেলসমূহ মনত ৰাখক",
     "Reminder: %1 — %2 in %3 min": "সোঁৱৰণী: %1 — %2 আৰু %3 মিনিটৰ পিছত",
@@ -984,6 +989,7 @@ var keyStrings = {
         "প্লেবেক বন্ধ কৰি পোনপটীয়া সম্প্ৰচাৰলৈ উভতি যাওক",
     "Stop screenshots": "স্ক্ৰীণশ্বট বন্ধ কৰক",
     "Stream could not be played": "ষ্ট্ৰিম চলাব পৰা নগ’ল",
+    "Stream stalled. Restart in %1 s": "ষ্ট্ৰিম পুনৰ আৰম্ভ কৰক · %1 ছেকেণ্ড",
     "Stream timed out. Select the channel to retry.":
         "ষ্ট্ৰীমৰ অপেক্ষাৰ সময় শেষ হ’ল। পুনৰ চেষ্টা কৰিবলৈ চেনেলটো বাছক।",
     "Stream type: %1": "ষ্ট্ৰিমৰ প্ৰকাৰ: %1",

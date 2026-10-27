@@ -598,6 +598,10 @@ var keyStrings = {
     "List type": "Тизменин түрү",
     "Lists settings": "Тизменин жөндөөлөрү",
     Live: "Түз эфир",
+    "Live recovery attempts": "Түз эфирди калыбына келтирүү аракеттери",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Агым ойнотулган жок · Түз эфирди калыбына келтирүү аракеттери %1/%2",
+    "Live stall timeout, s": "Тоңуп калууну күтүү убактысы, с",
     Load: "Жүктөө",
     "Load built-in playlist:": "Камтылган ойнотуу тизмесин жүктөө:",
     "Load playlist": "Ойнотуу тизмесин жүктөө",
@@ -798,6 +802,7 @@ var keyStrings = {
     "Records library is empty": "Жаздыруулар китепканасы бош",
     "Records not supported by provider":
         "Бул провайдер жаздырууларды колдобойт",
+    "Recovering stream (%1/%2)": "Кайра туташууда… (%1/%2)",
     "Release date": "Чыккан күнү",
     "Remember previous channels": "Мурунку каналдарды эстеп калуу",
     "Reminder: %1 — %2 in %3 min": "Эскертме: %1 — %2, %3 мүнөттөн кийин",
@@ -1020,6 +1025,7 @@ var keyStrings = {
     "Stop playback and return to live": "Ойнотууну токтотуп түз эфирге кайтуу",
     "Stop screenshots": "Скриншотторду токтотуу",
     "Stream could not be played": "Агым ойнотулган жок",
+    "Stream stalled. Restart in %1 s": "Агымды кайра баштоо · %1 сек",
     "Stream timed out. Select the channel to retry.":
         "Агымды күтүү убактысы бүттү. Кайра аракет кылуу үчүн каналды тандаңыз.",
     "Stream type: %1": "Агымдын түрү: %1",

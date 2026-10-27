@@ -599,6 +599,10 @@ var keyStrings = {
     "List type": "Tipo di elenco",
     "Lists settings": "Impostazioni elenchi",
     Live: "Diretta",
+    "Live recovery attempts": "Tentativi di ripristino della diretta",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Impossibile riprodurre il flusso · Tentativi di ripristino della diretta %1/%2",
+    "Live stall timeout, s": "Timeout del blocco della diretta, s",
     Load: "Carica",
     "Load built-in playlist:": "Carica playlist integrata:",
     "Load playlist": "Carica playlist",
@@ -800,6 +804,7 @@ var keyStrings = {
     "Records library is empty": "La raccolta registrazioni è vuota",
     "Records not supported by provider":
         "Le registrazioni non sono supportate dal fornitore",
+    "Recovering stream (%1/%2)": "Riconnessione… (%1/%2)",
     "Release date": "Data di uscita",
     "Remember previous channels": "Ricorda i canali precedenti",
     "Reminder: %1 — %2 in %3 min": "Promemoria: %1 — %2 tra %3 min",
@@ -1028,6 +1033,7 @@ var keyStrings = {
         "Interrompi riproduzione e torna alla diretta",
     "Stop screenshots": "Interrompe gli screenshot",
     "Stream could not be played": "Impossibile riprodurre il flusso",
+    "Stream stalled. Restart in %1 s": "Riavvia flusso · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Tempo di attesa del flusso scaduto. Seleziona il canale per riprovare.",
     "Stream type: %1": "Tipo di flusso: %1",

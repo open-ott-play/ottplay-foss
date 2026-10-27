@@ -606,6 +606,10 @@ var keyStrings = {
     "List type": "Uhlobo lohlu",
     "Lists settings": "Izilungiselelo zohlu",
     Live: "Bukhoma",
+    "Live recovery attempts": "Imizamo yokubuyisela ukusakaza bukhoma",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ukusakaza akukwazanga ukudlalwa · Imizamo yokubuyisela ukusakaza bukhoma %1/%2",
+    "Live stall timeout, s": "Isikhathi sokulinda ukuma, s",
     Load: "Layisha",
     "Load built-in playlist:": "Layisha uhlu lokudlala olwakhelwe ngaphakathi:",
     "Load playlist": "Layisha uhlu lokudlala",
@@ -805,6 +809,7 @@ var keyStrings = {
     "Records library is empty": "Umtapo wokurekhodiwe awunalutho",
     "Records not supported by provider":
         "Lo mhlinzeki akakusekeli okurekhodiwe",
+    "Recovering stream (%1/%2)": "Kuxhunywa futhi… (%1/%2)",
     "Release date": "Usuku lokukhishwa",
     "Remember previous channels": "Khumbula iziteshi ezedlule",
     "Reminder: %1 — %2 in %3 min":
@@ -1034,6 +1039,7 @@ var keyStrings = {
         "Misa ukudlala bese ubuyela kokubukhoma",
     "Stop screenshots": "Misa izithombe-skrini",
     "Stream could not be played": "Ukusakaza akukwazanga ukudlalwa",
+    "Stream stalled. Restart in %1 s": "Qala kabusha ukusakaza · %1 imizuz",
     "Stream timed out. Select the channel to retry.":
         "Isikhathi sokulinda ukusakaza siphelile. Khetha isiteshi ukuze uzame futhi.",
     "Stream type: %1": "Uhlobo lokusakaza: %1",

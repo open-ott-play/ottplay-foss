@@ -587,6 +587,10 @@ var keyStrings = {
     "List type": "Listtyp",
     "Lists settings": "Listinställningar",
     Live: "Direktsändning",
+    "Live recovery attempts": "Försök att återställa direktsändning",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Strömmen kunde inte spelas upp · Försök att återställa direktsändning %1/%2",
+    "Live stall timeout, s": "Tidsgräns vid stopp, s",
     Load: "Läs in",
     "Load built-in playlist:": "Läs in inbyggd spellista:",
     "Load playlist": "Läs in spellista",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records library is empty": "Inspelningsbiblioteket är tomt",
     "Records not supported by provider":
         "Leverantören stöder inte inspelningar",
+    "Recovering stream (%1/%2)": "Återansluter… (%1/%2)",
     "Release date": "Utgivningsdatum",
     "Remember previous channels": "Kom ihåg tidigare kanaler",
     "Reminder: %1 — %2 in %3 min": "Påminnelse: %1 — %2 om %3 min",
@@ -1007,6 +1012,7 @@ var keyStrings = {
         "Stoppa uppspelning och återgå till direktsändning",
     "Stop screenshots": "Stoppa skärmdumpar",
     "Stream could not be played": "Strömmen kunde inte spelas upp",
+    "Stream stalled. Restart in %1 s": "Starta om strömmen · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Tidsgränsen för strömmen överskreds. Välj kanalen för att försöka igen.",
     "Stream type: %1": "Strömtyp: %1",

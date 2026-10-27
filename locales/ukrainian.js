@@ -586,6 +586,10 @@ var keyStrings = {
     "List type": "Тип списку",
     "Lists settings": "Налаштування списків",
     Live: "Прямий ефір",
+    "Live recovery attempts": "Спроби відновлення прямого ефіру",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Не вдалося відтворити потік · Спроби відновлення прямого ефіру %1/%2",
+    "Live stall timeout, s": "Тайм-аут зависання ефіру, с",
     Load: "Завантажити",
     "Load built-in playlist:": "Завантажити вбудований список:",
     "Load playlist": "Завантажити плейлист",
@@ -783,6 +787,7 @@ var keyStrings = {
     "Records for channel: ": "Записи каналу: ",
     "Records library is empty": "Бібліотека записів порожня",
     "Records not supported by provider": "Провайдер не підтримує записи",
+    "Recovering stream (%1/%2)": "Повторне підключення… (%1/%2)",
     "Release date": "Дата виходу",
     "Remember previous channels": "Запам’ятовувати попередні канали",
     "Reminder: %1 — %2 in %3 min": "Нагадування: %1 — %2 через %3 хв",
@@ -1006,6 +1011,7 @@ var keyStrings = {
         "Зупинити відтворення й повернутися до ефіру",
     "Stop screenshots": "Зупинити знімки екрана",
     "Stream could not be played": "Не вдалося відтворити потік",
+    "Stream stalled. Restart in %1 s": "Перезапустити потік · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Час очікування потоку минув. Виберіть канал, щоб повторити спробу.",
     "Stream type: %1": "Тип потоку: %1",

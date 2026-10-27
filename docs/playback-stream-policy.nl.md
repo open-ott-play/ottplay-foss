@@ -56,7 +56,7 @@ Reserves zijn **alleen voor live**. Archief- en VOD-aanvragen gebruiken nooit ee
 - Shaka-laadfouten en kritieke foutgebeurtenissen delen dit pad; annuleringsfouten worden genegeerd. Opnieuw koppelen wacht op de asynchrone vernietiging van Shaka.
 - Herstel lost een ondoorzichtige Stalker-verwijzing opnieuw op en bereidt beschermde brontoegang opnieuw voor. Het hergebruikt geen verlopen iOS-loopback-URL. De VOD-/archiefpositie wordt vóór het afbreken vastgelegd; live-reserves beginnen op hun actuele livepunt.
 
-Het beleid introduceert geen tweede bewaker voor stilstaande frames. Bestaand kiosk-, Auto/native- en HLS-herstel blijft de eigen waargenomen fouten dekken. Een stream die stil vastloopt zonder foutmelding door een bestaande detector heeft aparte diagnose nodig.
+Optioneel herstel op basis van de mediaklok van liveweergave wordt hieronder beschreven. Bestaand herstel voor kiosk, Auto/native en HLS behoudt zijn eigen toepassingsgebied en enginegedrag.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 De tests controleren kwaliteitsfiltering bij niet-monotone variantvolgorde, ontbrekende metadata, brongebonden bewerking, positieconflicten, dubbele fouten, begrensde budgetten, HTTP-autorisatiefouten, annuleren via pauze/stop/bron, Shaka-afbouw en behoud van VOD-positie. De vijf nieuwe afspeellabels zijn vertaald in alle 88 meegeleverde taalpakketten; automatische gelijkheidscontrole is geen beoordeling door moedertaalsprekers. Fysieke TV/D1-weergave en providerspecifieke manifesten vereisen nog apparaatvalidatie. [Bewerkbare diagrambron](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Herstel van vastgelopen liveweergave
+
+Kies bij **Instellingen → Interface-instellingen** het aantal **Liveherstelpogingen** (0–5) en de **Time-out bij vastgelopen liveweergave, s** (10/15/20/30). Standaard zijn dit 0 pogingen en 15 seconden. Nul schakelt alleen deze bewaking uit; bestaand herstel van enginefouten blijft ongewijzigd. De instellingen volgen de gebruikelijke procedure Opslaan/Annuleren.
+
+Nadat voortgang van de weergave is bevestigd, roept een stilstaande mediaklok van de hoofd-livestream het bestaande `backend.restart()` aan. Pauzeren, naar een positie springen, verborgen pagina's, de offlinestatus en kiosk onderbreken de bewaking; archief, VOD en het PiP-pad zijn uitgesloten. Native PiP verbergt het HTML-OSD. Een wijziging van kanaal, bron of generatie beëindigt de oude bewaking. Een eerste afspeelpoging die nooit voortgang maakt, blijft onder de bestaande opstart- en foutafhandeling vallen. Het vervangen van de decoder en korte voortgang vernieuwen het aantal beschikbare pogingen niet: tien seconden onafgebroken voortgang doen dat wel. Na het bereiken van de limiet volgen voor deze stilstand geen verdere herstarts door de bewaking. Wachtend engineherstel heeft voorrang; definitieve autorisatie-, DRM- of kwaliteitsfouten kunnen niet worden omzeild. Dit volgt de mediatijd, niet de fysieke beeldweergave of bevroren beelden terwijl de mediaklok doorloopt.
+
+Kies **Demo proberen** voor een basistest zonder abonnement. Stel tijdens het afspelen tijdelijk `document.getElementById("video").playbackRate = 0` in via DevTools van het testtabblad; zet de waarde daarna terug op 1. Pauzeren is bewust uitgesloten van herstel bij stilstand.

@@ -571,6 +571,10 @@ var keyStrings = {
     "List type": "نوع القائمة",
     "Lists settings": "إعدادات القائمة",
     Live: "بث مباشر",
+    "Live recovery attempts": "محاولات استعادة البث المباشر",
+    "Live recovery attempts exhausted (%1/%2)":
+        "تعذر تشغيل الدفق · محاولات استعادة البث المباشر %1/%2",
+    "Live stall timeout, s": "مهلة توقف البث، ث",
     Load: "تحميل",
     "Load built-in playlist:": "تحميل قائمة التشغيل المدمجة:",
     "Load playlist": "تحميل قائمة التشغيل",
@@ -766,6 +770,7 @@ var keyStrings = {
     "Records for channel: ": "البرامج المسجلة للقناة: ",
     "Records library is empty": "مكتبة البرامج المسجلة فارغة",
     "Records not supported by provider": "لا يدعم هذا المزود البرامج المسجلة",
+    "Recovering stream (%1/%2)": "جارٍ إعادة الاتصال... (%1/%2)",
     "Release date": "تاريخ الإصدار",
     "Remember previous channels": "تذكر القنوات السابقة",
     "Reminder: %1 — %2 in %3 min": "تذكير: %1 — %2 في %3 دقيقة",
@@ -987,6 +992,7 @@ var keyStrings = {
         "إيقاف التشغيل والعودة إلى البث المباشر",
     "Stop screenshots": "إيقاف لقطات الشاشة",
     "Stream could not be played": "تعذر تشغيل الدفق",
+    "Stream stalled. Restart in %1 s": "إعادة تشغيل البث · %1 ث",
     "Stream timed out. Select the channel to retry.":
         "انتهت مهلة البث. اختر القناة لإعادة المحاولة.",
     "Stream type: %1": "نوع الدفق: %1",

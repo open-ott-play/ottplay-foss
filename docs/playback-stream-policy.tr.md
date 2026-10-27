@@ -56,7 +56,7 @@ Yedekler **yalnızca canlı yayın** içindir. Arşiv ve VOD istekleri canlı al
 - Shaka yükleme hataları ve kritik hata olayları aynı yolu paylaşır; iptal hataları yok sayılır. Yeniden bağlanma, Shaka'nın eşzamansız yok edilmesini bekler.
 - Kurtarma opak Stalker başvurusunu tekrar çözer ve korunan kaynak erişimini yeniden hazırlar. Süresi geçmiş iOS loopback URL'sini kullanmaz. VOD/arşiv konumu sökümden önce alınır; canlı yedekler kendi canlı ucundan başlar.
 
-Politika donmuş kareler için ikinci bir gözcü eklemez. Mevcut kiosk, Auto/native ve HLS kurtarmaları kendi gözlenen hata durumlarını karşılamayı sürdürür. Mevcut algılayıcılardan hiçbiri hata bildirmeden sessizce takılan akış ayrı tanı gerektirir.
+Canlı yayının medya saatine dayalı isteğe bağlı kurtarma aşağıda açıklanmıştır. Mevcut kiosk, Auto/native ve HLS kurtarmaları kendi kapsamlarını ve motor davranışlarını korur.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Testler monoton olmayan varyant sırasıyla kalite filtrelemesini, bulunmayan meta veriyi, kaynak kapsamlı düzenlemeyi, yuva çakışmalarını, yinelenen hataları, sınırlı bütçeleri, HTTP yetkilendirme hatalarını, pause/stop/kaynak iptalini, Shaka sökümünü ve VOD konumu korumasını sınar. Beş yeni oynatma etiketi dağıtılan 88 dil paketinin tümünde çevrilmiştir; otomatik eşitlik, anadili konuşan incelemesi değildir. Fiziksel TV/D1 oynatma ve sağlayıcıya özel manifestler hâlâ cihaz doğrulaması gerektirir. [Düzenlenebilir diyagram kaynağı](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Takılan canlı yayını kurtarma
+
+**Ayarlar → Arayüz ayarları** altında **Canlı yayın kurtarma denemeleri** (0–5) ve **Canlı yayın takılma zaman aşımı, sn** (10/15/20/30) seçeneklerini belirleyin. Varsayılanlar 0 deneme ve 15 saniyedir. Sıfır yalnızca bu izleyiciyi devre dışı bırakır; mevcut motor hatası kurtarması değişmez. Ayarlar normal Kaydet/İptal akışını kullanır.
+
+Oynatmanın ilerlediği doğrulandıktan sonra ana canlı yayının medya saati durursa mevcut `backend.restart()` çağrılır. Duraklatma, konum arama, gizli sayfalar, çevrimdışı durum ve kiosk gözlemi askıya alır; arşiv, VOD ve PiP kanalı kapsam dışıdır. Yerel PiP, HTML OSD'yi gizler. Kanal, kaynak veya nesil değişiklikleri eski gözlemi iptal eder. Hiç ilerlemeyen ilk oynatma, mevcut başlatma/hata işleme mekanizmalarına bağlı kalır. Kod çözücünün değiştirilmesi ve kısa süreli ilerleme deneme bütçesini yenilemez: on saniye kesintisiz ilerleme yeniler. Sınıra ulaşılınca izleyici bu takılma için başka yeniden başlatma yapmaz. Bekleyen motor kurtarması önceliklidir; kesin yetkilendirme, DRM veya kalite hataları aşılamaz. Bu mekanizma medya zamanını izler; fiziksel görüntü sunumunu veya medya saati ilerlerken donmuş kalan kareleri izlemez.
+
+Abonelik gerektirmeyen temel bir test için **Demoyu dene** seçeneğini kullanın. Oynatma başladıktan sonra test sekmesinin DevTools bölümünde geçici olarak `document.getElementById("video").playbackRate = 0` ayarlayın; ardından değeri 1'e geri döndürün. Duraklatma, takılma kurtarmasının kapsamı dışında özellikle bırakılmıştır.

@@ -576,6 +576,10 @@ var keyStrings = {
     "List type": "Irú àkójọ",
     "Lists settings": "Ètò àkójọ",
     Live: "Ìgbóhùnsáfẹ́fẹ́ tààrà",
+    "Live recovery attempts": "Ìgbìyànjú ìmúpadàbọ̀ ìgbóhùnsáfẹ́fẹ́ tààrà",
+    "Live recovery attempts exhausted (%1/%2)":
+        "A kò lè ṣeré ìṣàn · Ìgbìyànjú ìmúpadàbọ̀ ìgbóhùnsáfẹ́fẹ́ tààrà %1/%2",
+    "Live stall timeout, s": "Àkókò ìdúró fún dídì, s",
     Load: "Gbé wọlé",
     "Load built-in playlist:": "Gbé àkójọ ìṣeré inú ẹ̀rọ wọlé:",
     "Load playlist": "Gbé àkójọ ìṣeré wọlé",
@@ -774,6 +778,7 @@ var keyStrings = {
     "Records library is empty": "Ilé-ìkàwé ìgbàsílẹ̀ ṣófo",
     "Records not supported by provider":
         "Olùpèsè yìí kò ṣe àtìlẹ́yìn fún ìgbàsílẹ̀",
+    "Recovering stream (%1/%2)": "Ń tún sopọ̀… (%1/%2)",
     "Release date": "Ọjọ́ ìtújáde",
     "Remember previous channels": "Rántí àwọn ìkànnì tó ṣáájú",
     "Reminder: %1 — %2 in %3 min": "Ìránnilétí: %1 — %2 ní ìṣẹ́jú %3",
@@ -993,6 +998,7 @@ var keyStrings = {
         "Dá ìṣeré dúró kí o sì padà sí ìgbóhùnsáfẹ́fẹ́ tààrà",
     "Stop screenshots": "Duro awọn àwòrán iboju",
     "Stream could not be played": "A kò lè ṣeré ìṣàn",
+    "Stream stalled. Restart in %1 s": "Tún ìṣàn bẹ̀rẹ̀ · %1 ìṣẹ́jú-àáyá",
     "Stream timed out. Select the channel to retry.":
         "Àkókò dídúró fún ìṣàn ti parí. Yan ìkànnì láti tún gbìyànjú.",
     "Stream type: %1": "Irú ìṣàn: %1",

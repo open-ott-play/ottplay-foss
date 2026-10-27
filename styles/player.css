@@ -109,6 +109,23 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
+/* Same OSD scale and rounded panel as the channel number; never captures input. */
+#liveRecoveryStatus {
+    top: 8%;
+    left: 50%;
+    z-index: 4;
+    display: none;
+    max-width: 65%;
+    padding: 10px 16px;
+    font-size: 20px;
+    color: #f0f0f0;
+    text-align: center;
+    pointer-events: none;
+    background-color: rgba(8, 14, 20, 0.84);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    transform: translateX(-50%);
+}
 #permanentTime {
     position: absolute;
     top: 20px;

@@ -589,6 +589,10 @@ var keyStrings = {
     "List type": "Listan tyyppi",
     "Lists settings": "Luettelon asetukset",
     Live: "Suora lähetys",
+    "Live recovery attempts": "Suoran lähetyksen palautusyritykset",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Striimiä ei voitu toistaa · Suoran lähetyksen palautusyritykset %1/%2",
+    "Live stall timeout, s": "Jumiutumisen aikaraja, s",
     Load: "Lataa",
     "Load built-in playlist:": "Lataa sisäänrakennettu soittolista:",
     "Load playlist": "Lataa soittolista",
@@ -787,6 +791,7 @@ var keyStrings = {
     "Records library is empty": "Tallennekirjasto on tyhjä",
     "Records not supported by provider":
         "Tämä palveluntarjoaja ei tue tallenteita",
+    "Recovering stream (%1/%2)": "Yhdistetään uudelleen… (%1/%2)",
     "Release date": "Julkaisupäivä",
     "Remember previous channels": "Muista aiemmat kanavat",
     "Reminder: %1 — %2 in %3 min": "Muistutus: %1 - %2 %3 minuutissa",
@@ -1008,6 +1013,7 @@ var keyStrings = {
         "Pysäytä toisto ja palaa suoraan lähetykseen",
     "Stop screenshots": "Lopeta kuvakaappaukset",
     "Stream could not be played": "Striimiä ei voitu toistaa",
+    "Stream stalled. Restart in %1 s": "Käynnistä stream uudelleen · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Suoratoiston aikakatkaisu. Yritä uudelleen valitsemalla kanava.",
     "Stream type: %1": "Striimin tyyppi: %1",

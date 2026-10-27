@@ -592,6 +592,10 @@ var keyStrings = {
     "List type": "Vrsta popisa",
     "Lists settings": "Postavke popisa",
     Live: "Uživo",
+    "Live recovery attempts": "Pokušaji oporavka prijenosa uživo",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Stream se nije mogao reproducirati · Pokušaji oporavka prijenosa uživo %1/%2",
+    "Live stall timeout, s": "Vrijeme čekanja zastoja, s",
     Load: "Opterećenje",
     "Load built-in playlist:": "Učitaj ugrađeni popis za reprodukciju:",
     "Load playlist": "Učitaj popis za reprodukciju",
@@ -791,6 +795,7 @@ var keyStrings = {
     "Records library is empty": "Biblioteka snimaka je prazna",
     "Records not supported by provider":
         "Ovaj pružatelj usluga ne podržava snimke",
+    "Recovering stream (%1/%2)": "Ponovno povezivanje... (%1/%2)",
     "Release date": "Datum izlaska",
     "Remember previous channels": "Zapamtite prethodne kanale",
     "Reminder: %1 — %2 in %3 min": "Podsjetnik: %1 — %2 za %3 min",
@@ -1016,6 +1021,7 @@ var keyStrings = {
         "Zaustavi reprodukciju i vrati se na prijenos uživo",
     "Stop screenshots": "Zaustavite snimke zaslona",
     "Stream could not be played": "Stream se nije mogao reproducirati",
+    "Stream stalled. Restart in %1 s": "Ponovno pokrenite stream · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Vrijeme čekanja prijenosa je isteklo. Odaberite kanal za ponovni pokušaj.",
     "Stream type: %1": "Vrsta streama: %1",

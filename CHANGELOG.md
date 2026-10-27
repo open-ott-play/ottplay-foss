@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Keep plain desktop Left/Right arrows on volume control while a remote Plex
+  queue loads or recovers. Preserve modifier-arrow seeking, Up/Down queue
+  navigation, and television remote mappings.
+- Allow touchscreen browsers to drag and flick through channel and settings
+  lists across page boundaries. Preserve browser click selection, native tap
+  activation, mouse-wheel navigation and remote-control behavior.
+- Add opt-in recovery for a main live stream that stops advancing without a
+  fatal error: 0–5 attempts, 10/15/20/30-second deadlines and a countdown OSD.
+  Keep it disabled by default, preserve engine/kiosk recovery ownership and
+  exclude archive/VOD and intentional pause. The OSD yields playback-feedback
+  presentation without changing its deadlines or terminal decisions.
+- Add explicitly selected version 3 HLS diagnostics for initial/current buffer
+  policy, observed cap changes, error-action metadata and fragment/part flags.
+  Distinguish mutable statistics from network retries, keep unavailable causes
+  unknown, and preserve existing capture versions and collection limits.
 - Reduce repeated catalogue work while restoring large playback histories,
   publishing VPortal category updates, and listing local media on the Rust
   server and Android. Preserve ordering, source availability and profile data;

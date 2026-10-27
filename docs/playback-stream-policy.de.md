@@ -56,7 +56,7 @@ Ersatzquellen gelten **nur für Live-TV**. Archiv- und VOD-Anfragen nutzen niema
 - Shaka-Ladefehler und kritische Fehlerereignisse teilen diesen Pfad; Abbruchfehler werden ignoriert. Erneutes Anbinden wartet auf die asynchrone Zerstörung von Shaka.
 - Die Wiederherstellung löst eine undurchsichtige Stalker-Referenz erneut auf und bereitet den geschützten Quellenzugriff neu vor. Sie verwendet keine abgelaufene iOS-Loopback-URL wieder. Die VOD-/Archivposition wird vor dem Abbau erfasst; Live-Ersatzquellen beginnen an ihrem aktuellen Live-Rand.
 
-Die Richtlinie führt keinen zweiten Wächter für eingefrorene Bilder ein. Die bestehende kiosk-, Auto/native- und HLS-Wiederherstellung deckt weiterhin ihre eigenen beobachteten Fehlerfälle ab. Ein Stream, der stillsteht, ohne dass ein vorhandener Detektor einen Fehler meldet, braucht eine separate Diagnose.
+Die optionale Wiederherstellung anhand der Medienzeit eines Live-Streams wird unten beschrieben. Bestehende kiosk-, Auto/native- und HLS-Wiederherstellung behalten ihren jeweiligen Geltungsbereich und ihr Engine-Verhalten.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Die Tests prüfen Qualitätsfilter bei nichtmonotoner Variantenreihenfolge, fehlende Metadaten, quellengebundene Bearbeitung, Platzkonflikte, doppelte Fehler, begrenzte Budgets, HTTP-Autorisierungsfehler, Abbruch durch Pause/Stop/Quellenwechsel, Shaka-Abbau und Erhalt der VOD-Position. Die fünf neuen Wiedergabelabels sind in allen 88 mitgelieferten Sprachpaketen übersetzt; automatischer Gleichheitsabgleich ersetzt keine muttersprachliche Prüfung. Physische TV/D1-Wiedergabe und anbieterspezifische Manifeste erfordern weiterhin Gerätevalidierung. [Bearbeitbare Diagrammquelle](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Wiederherstellung bei stockendem Live-Stream
+
+Wählen Sie unter **Einstellungen → Oberflächeneinstellungen** die **Live-Wiederherstellungsversuche** (0–5) und das **Zeitlimit für stockende Live-Wiedergabe, s** (10/15/20/30). Standard sind 0 Versuche und 15 Sekunden. Null deaktiviert nur diesen Wächter; die bestehende Wiederherstellung nach Engine-Fehlern bleibt unverändert. Die Einstellungen verwenden den üblichen Ablauf Speichern/Abbrechen.
+
+Nach bestätigtem Wiedergabefortschritt ruft eine stillstehende Medienuhr des Haupt-Live-Streams das bestehende `backend.restart()` auf. Pause, Positionssuche, ausgeblendete Seiten, Offline-Zustand und kiosk unterbrechen die Beobachtung; Archiv, VOD und die PiP-Spur sind ausgeschlossen. Natives PiP blendet das HTML-OSD aus. Ein Wechsel von Kanal, Quelle oder Generation beendet die alte Beobachtung. Eine anfängliche Wiedergabe, die nie voranschreitet, bleibt Aufgabe der bestehenden Start-/Fehlerbehandlung. Decoderwechsel und kurzer Fortschritt erneuern das Versuchskontingent nicht: Dazu sind zehn Sekunden ununterbrochener Fortschritt nötig. Nach Ausschöpfen des Limits erfolgen für diesen Stillstand keine weiteren Wächter-Neustarts. Eine anstehende Engine-Wiederherstellung hat Vorrang; endgültige Autorisierungs-, DRM- oder Qualitätsfehler können nicht umgangen werden. Beobachtet wird die Medienzeit, nicht die tatsächliche Bildausgabe oder eingefrorene Bilder bei weiterlaufender Medienuhr.
+
+Wählen Sie für einen grundlegenden Test ohne Abonnement **Demo ausprobieren**. Setzen Sie nach dem Wiedergabestart in den DevTools des Test-Tabs vorübergehend `document.getElementById("video").playbackRate = 0`; stellen Sie den Wert anschließend auf 1 zurück. Eine Pause ist absichtlich von der Stillstandswiederherstellung ausgeschlossen.

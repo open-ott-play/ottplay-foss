@@ -585,6 +585,10 @@ var keyStrings = {
     "List type": "Sanawyň görnüşi",
     "Lists settings": "Sanaw sazlamalary",
     Live: "Göni ýaýlym",
+    "Live recovery attempts": "Göni ýaýlymy dikeltmek synanyşyklary",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ýaýlymy oýnadyp bolmady · Göni ýaýlymy dikeltmek synanyşyklary %1/%2",
+    "Live stall timeout, s": "Doňma garaşmagynyň möhleti, s",
     Load: "Ýükle",
     "Load built-in playlist:": "Içindäki oýnatma sanawyny ýükle:",
     "Load playlist": "Oýnatma sanawyny ýükle",
@@ -782,6 +786,7 @@ var keyStrings = {
     "Records for channel: ": "Kanalyň ýazgylary: ",
     "Records library is empty": "Ýazgylar kitaphanasy boş",
     "Records not supported by provider": "Bu üpjün ediji ýazgylary goldamaýar",
+    "Recovering stream (%1/%2)": "Gaýtadan birikdirilýär… (%1/%2)",
     "Release date": "Çykan senesi",
     "Remember previous channels": "Öňki kanallary ýatda sakla",
     "Reminder: %1 — %2 in %3 min": "Ýatlatma: %1 — %2, %3 minutdan",
@@ -1001,6 +1006,7 @@ var keyStrings = {
     "Stop playback and return to live": "Oýnatmagy duruz we göni ýaýlyma gaýt",
     "Stop screenshots": "Ekran suratlaryny duruzyň",
     "Stream could not be played": "Ýaýlymy oýnadyp bolmady",
+    "Stream stalled. Restart in %1 s": "Ýaýlymy täzeden başlat · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Akymyň garaşmak wagty gutardy. Gaýtadan synanyşmak üçin kanaly saýlaň.",
     "Stream type: %1": "Ýaýlymyň görnüşi: %1",

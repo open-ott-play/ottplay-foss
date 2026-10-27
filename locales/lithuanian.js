@@ -591,6 +591,10 @@ var keyStrings = {
     "List type": "Sąrašo tipas",
     "Lists settings": "Sąrašų nustatymai",
     Live: "Tiesiogiai",
+    "Live recovery attempts": "Tiesioginės transliacijos atkūrimo bandymai",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Nepavyko paleisti srauto · Tiesioginės transliacijos atkūrimo bandymai %1/%2",
+    "Live stall timeout, s": "Strigimo laukimo laikas, s",
     Load: "Įkelti",
     "Load built-in playlist:": "Įkelti įtaisytąjį grojaraštį:",
     "Load playlist": "Įkelti grojaraštį",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records for channel: ": "Kanalo įrašai: ",
     "Records library is empty": "Įrašų biblioteka tuščia",
     "Records not supported by provider": "Šis teikėjas nepalaiko įrašų",
+    "Recovering stream (%1/%2)": "Jungiamasi iš naujo… (%1/%2)",
     "Release date": "Išleidimo data",
     "Remember previous channels": "Įsiminti ankstesnius kanalus",
     "Reminder: %1 — %2 in %3 min": "Priminimas: %1 — %2 po %3 min.",
@@ -1008,6 +1013,7 @@ var keyStrings = {
         "Sustabdyti atkūrimą ir grįžti į tiesioginę transliaciją",
     "Stop screenshots": "Sustabdyti ekrano kopijų darymą",
     "Stream could not be played": "Nepavyko paleisti srauto",
+    "Stream stalled. Restart in %1 s": "Paleisti srautą iš naujo · %1 sek.",
     "Stream timed out. Select the channel to retry.":
         "Srauto laukimo laikas baigėsi. Pasirinkite kanalą ir bandykite dar kartą.",
     "Stream type: %1": "Srauto tipas: %1",

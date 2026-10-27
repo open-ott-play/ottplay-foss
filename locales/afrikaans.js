@@ -591,6 +591,10 @@ var keyStrings = {
     "List type": "Lystipe",
     "Lists settings": "Lysinstellings",
     Live: "Regstreekse uitsending",
+    "Live recovery attempts": "Regstreekse herstelpogings",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Stroom kon nie afgespeel word nie · Regstreekse herstelpogings %1/%2",
+    "Live stall timeout, s": "Vaslooptydperk, s",
     Load: "Laai",
     "Load built-in playlist:": "Laai ingeboude snitlys:",
     "Load playlist": "Laai snitlys",
@@ -790,6 +794,7 @@ var keyStrings = {
     "Records library is empty": "Opnamebiblioteek is leeg",
     "Records not supported by provider":
         "Hierdie verskaffer ondersteun nie opnames nie",
+    "Recovering stream (%1/%2)": "Verbind weer… (%1/%2)",
     "Release date": "Vrystellingsdatum",
     "Remember previous channels": "Onthou vorige kanale",
     "Reminder: %1 — %2 in %3 min": "Herinnering: %1 — %2 oor %3 min",
@@ -1012,6 +1017,7 @@ var keyStrings = {
         "Stop afspeel en keer terug na regstreekse uitsending",
     "Stop screenshots": "Stop skermkiekies",
     "Stream could not be played": "Stroom kon nie afgespeel word nie",
+    "Stream stalled. Restart in %1 s": "Herbegin stroom · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Die stroom het uitgetel. Kies die kanaal om weer te probeer.",
     "Stream type: %1": "Stroomtipe: %1",

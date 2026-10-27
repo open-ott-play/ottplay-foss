@@ -568,6 +568,10 @@ var keyStrings = {
     "List type": "జాబితా రకం",
     "Lists settings": "జాబితా సెట్టింగ్‌లు",
     Live: "ప్రత్యక్ష ప్రసారం",
+    "Live recovery attempts": "ప్రత్యక్ష ప్రసార పునరుద్ధరణ ప్రయత్నాలు",
+    "Live recovery attempts exhausted (%1/%2)":
+        "స్ట్రీమ్ ప్లే చేయడం సాధ్యపడలేదు · ప్రత్యక్ష ప్రసార పునరుద్ధరణ ప్రయత్నాలు %1/%2",
+    "Live stall timeout, s": "ప్రసార నిలుపుదల సమయ పరిమితి, సె",
     Load: "లోడ్",
     "Load built-in playlist:": "అంతర్నిర్మిత ప్లేజాబితాను లోడ్ చేయండి:",
     "Load playlist": "ప్లేజాబితాను లోడ్ చేయండి",
@@ -761,6 +765,7 @@ var keyStrings = {
     "Records for channel: ": "ఛానెల్ కోసం రికార్డింగ్‌లు: ",
     "Records library is empty": "రికార్డింగ్ లైబ్రరీ ఖాళీగా ఉంది",
     "Records not supported by provider": "రికార్డింగ్‌లకు ఈ ప్రొవైడర్ మద్దతు లేదు",
+    "Recovering stream (%1/%2)": "మళ్లీ కనెక్ట్ అవుతోంది… (%1/%2)",
     "Release date": "విడుదల తేదీ",
     "Remember previous channels": "మునుపటి ఛానెల్‌లను గుర్తుంచుకోండి",
     "Reminder: %1 — %2 in %3 min": "రిమైండర్: %1 — %3 నిమిలో %2",
@@ -976,6 +981,7 @@ var keyStrings = {
     "Stop playback and return to live": "ప్లేబ్యాక్‌ని ఆపివేసి, ప్రత్యక్ష ప్రసారానికి తిరిగి వెళ్లండి",
     "Stop screenshots": "స్క్రీన్‌షాట్‌లను ఆపు",
     "Stream could not be played": "స్ట్రీమ్ ప్లే చేయడం సాధ్యపడలేదు",
+    "Stream stalled. Restart in %1 s": "స్ట్రీమ్‌ని పునఃప్రారంభించండి · %1 సెకన్లు",
     "Stream timed out. Select the channel to retry.":
         "స్ట్రీమ్ కోసం వేచి ఉండే సమయం ముగిసింది. మళ్లీ ప్రయత్నించడానికి ఛానెల్‌ను ఎంచుకోండి.",
     "Stream type: %1": "స్ట్రీమ్ రకం: %1",
