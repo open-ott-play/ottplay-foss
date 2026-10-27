@@ -441,6 +441,13 @@ async function animationStyle(banner, time) {
         return {
             background: surface.backgroundColor,
             clip: style.clipPath,
+            iconOpacity: element.querySelector(".remote-notify-icon")
+                ? Number(
+                      getComputedStyle(
+                          element.querySelector(".remote-notify-icon")
+                      ).opacity
+                  )
+                : null,
             names: element
                 .getAnimations({ subtree: true })
                 .map((animation) => animation.animationName)
@@ -468,12 +475,15 @@ test("remote banner slides and reveals, holds then fades without restarting or e
     const start = await animationStyle(h.banner, 0);
     expect(start.names.sort()).toEqual([
         "remoteNotifyFade",
+        "remoteNotifyFade",
         "remoteNotifyIn",
+        "remoteNotifySurfaceIn",
         "remoteNotifySurfaceIn",
     ]);
     expect(start.x).toBeGreaterThan(start.width);
     expect(start.clip).toContain("46%");
     expect(start.surfaceOpacity).toBeLessThanOrEqual(0.05);
+    expect(start.iconOpacity).toBeCloseTo(start.surfaceOpacity, 3);
     expect(start.opacity).toBe(1);
     expect(start.textOpacity).toBe(1);
     expect(start.background).toBe("rgba(22, 28, 39, 0.37)");
@@ -482,6 +492,7 @@ test("remote banner slides and reveals, holds then fades without restarting or e
     expect(shown.x).toBeCloseTo(0, 3);
     expect(shown.clip).not.toContain("46%");
     expect(shown.surfaceOpacity).toBeCloseTo(1, 3);
+    expect(shown.iconOpacity).toBeCloseTo(shown.surfaceOpacity, 3);
     expect(shown.opacity).toBe(1);
     expect(shown.textOpacity).toBe(1);
     expect((await animationStyle(h.banner, 979)).surfaceOpacity).toBeCloseTo(
@@ -491,6 +502,7 @@ test("remote banner slides and reveals, holds then fades without restarting or e
     const fading = await animationStyle(h.banner, 2500);
     expect(fading.surfaceOpacity).toBeLessThan(0.9);
     expect(fading.surfaceOpacity).toBeGreaterThan(0.4);
+    expect(fading.iconOpacity).toBeCloseTo(fading.surfaceOpacity, 3);
     expect(fading.opacity).toBe(1);
     expect(fading.textOpacity).toBe(1);
     await h.banner.evaluate((element) => {

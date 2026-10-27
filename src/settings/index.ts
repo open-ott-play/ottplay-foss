@@ -47,7 +47,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property pageSize          - Number of items per page in channel list.
  * @property fontShift         - Font size adjustment shift.
  * @property fontSize          - Base font size index.
- * @property uiFontScale       - Interface text scale in percent (50–200).
+ * @property uiFontScale       - Interface text scale in percent (20–200).
  * @property arrowFun          - Remote arrow key function mapping.
  * @property rewFun            - Rewind button function mapping.
  * @property pnFun             - P+/P- button function mapping.
@@ -748,7 +748,7 @@ export const settingsSchema: SettingDefinition[] = [
     defineSetting("deviceUuid", "sDeviceUuid", {}),
     defineSetting("localHttpEnabled", "sLocalHttpEnabled"),
     defineSetting("commandServerEnabled", "commandServerEnabled"),
-    defineSetting("uiFontScale", "sUiFontScale", { range: [50, 200] }, [
+    defineSetting("uiFontScale", "sUiFontScale", { range: [20, 200] }, [
         "setFontSize",
     ]),
 ];

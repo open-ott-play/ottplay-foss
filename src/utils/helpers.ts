@@ -144,7 +144,7 @@ export function listInContentHeight(): number {
 export function uiFontScale(): number {
     var value = (window as any).sUiFontScale;
     return typeof value === "number" &&
-        value >= 50 &&
+        value >= 20 &&
         value <= 200 &&
         Math.floor(value) === value
         ? value / 100
