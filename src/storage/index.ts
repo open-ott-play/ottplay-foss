@@ -921,20 +921,18 @@ export function installLocalPlaybackSession(
         session = null;
         reset();
     };
-    adapter.getI = function (key, fallback = 0) {
-        var value = parseInt(adapter.get(key) || "", 10);
-        return isNaN(value) ? fallback : value;
-    };
-    adapter.has = function (key) {
-        return adapter.get(key) !== null;
-    };
-    adapter.hasValue = function (key) {
-        var value = adapter.get(key);
-        return value !== null && value !== "";
-    };
-    adapter.setI = function (key, value) {
-        adapter.set(key, String(value));
-    };
+    // Keep the same adapter and aliases; reuse its standard typed shortcuts.
+    var shortcuts = createStorageAdapter(
+        adapter.get,
+        adapter.set,
+        adapter.del,
+        adapter.clear,
+        adapter.dump
+    );
+    adapter.getI = shortcuts.getI;
+    adapter.has = shortcuts.has;
+    adapter.hasValue = shortcuts.hasValue;
+    adapter.setI = shortcuts.setI;
     return adapter;
 }
 export const storage: StorageAdapter = (() => {

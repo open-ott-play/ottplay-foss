@@ -233,7 +233,10 @@ function test(name, action) {
 function sessionFixture(backing) {
     const f = uiFixture(backing);
     vm.runInContext(
-        declarations("src/storage/index.ts", ["installLocalPlaybackSession"]),
+        declarations("src/storage/index.ts", [
+            "createStorageAdapter",
+            "installLocalPlaybackSession",
+        ]),
         f.w
     );
     const raw = {
