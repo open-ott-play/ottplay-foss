@@ -1436,12 +1436,14 @@ function startCoreEngine(
               session,
               sourceUrl,
               function (next: string, savedPosition?: number) {
+                  if (session !== _playSession) return;
                   var resumePosition =
                       _corePendingSeekPosition !== null
                           ? _corePendingSeekPosition
                           : savedPosition;
                   revision++;
                   retireCompatibility();
+                  if (session !== _playSession) return;
                   cancelCoreSourcePreparation();
                   cancelCoreAutoPlayback();
                   cancelCoreNativeHls();
