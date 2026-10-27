@@ -357,7 +357,7 @@ const { gzipSync } = require("node:zlib");
 // Opt-in live recovery and feedback handoff add 5758 raw entry bytes over
 // v1.1.60 on Node 26.12.1. Reserve +6000/+2100 raw/gzip; retain native/CI room.
 // Local source commands, guarded activation and compact seeded playback order
-// add 12115 raw / 3324 gzip bytes over 6b8d00d6 on Node 26.8.2, same 1.1.61
+// add 12155 raw / 3332 gzip bytes over 58c52527 on Node 26.8.2, same 1.1.61
 // identity. Allocate 12200 / 3400 once, retaining existing native/release room.
 // See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
 const BUDGET = Object.freeze({ bytes: 1060200, gzipBytes: 327046 });
