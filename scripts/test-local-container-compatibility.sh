@@ -14,10 +14,13 @@ trap 'rm -rf -- "$compat_fixtures"' EXIT
     -f lavfi -i 'testsrc2=size=160x90:rate=12:duration=12' \
     -f lavfi -i 'sine=frequency=440:sample_rate=44100:duration=12' \
     -c:v mpeg4 -q:v 8 -c:a ac3 -shortest "$compat_fixtures/xvid-ac3.avi"
+# AAC-LC primes 1024 samples. Offset only fixture audio before encoding so its
+# first packet and the unshifted video/cues start at zero on Linux and macOS.
 "$compat_ffmpeg" -hide_banner -loglevel error \
     -f lavfi -i 'testsrc2=size=160x90:rate=12:duration=12' \
     -f lavfi -i 'sine=frequency=660:sample_rate=44100:duration=12' \
-    -c:v libx264 -preset ultrafast -g 24 -pix_fmt yuv420p -c:a aac \
+    -c:v libx264 -preset ultrafast -g 24 -pix_fmt yuv420p \
+    -af 'asetpts=PTS+1024/SR/TB' -c:a aac -profile:a aac_low -ar 44100 \
     -shortest "$compat_fixtures/h264-aac.mkv"
 
 export OTT_LOCAL_FFMPEG="$compat_ffmpeg"

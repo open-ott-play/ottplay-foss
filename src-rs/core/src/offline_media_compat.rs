@@ -485,6 +485,40 @@ mod tests {
                 (p, Sha256::digest(bytes).to_vec())
             })
             .collect();
+        // Remux coverage requires zero-origin video/cues, not merely a container
+        // shifted forward to hide the AAC encoder's negative priming packet.
+        let ffprobe = std::env::var_os("OTT_LOCAL_FFPROBE")
+            .map(PathBuf::from)
+            .expect("explicit synthetic ffprobe");
+        let mkv = fixtures.join("h264-aac.mkv");
+        let metadata = media_tool(
+            ffprobe,
+            &[
+                "-v",
+                "error",
+                "-show_entries",
+                "format=start_time:stream=codec_type,start_time",
+                "-of",
+                "json",
+                mkv.to_str().unwrap(),
+            ],
+            &[],
+        )
+        .await;
+        let metadata: serde_json::Value = serde_json::from_slice(&metadata.stdout).unwrap();
+        let video = metadata["streams"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|stream| stream["codec_type"] == "video")
+            .unwrap();
+        for start in [&metadata["format"]["start_time"], &video["start_time"]] {
+            let start = start.as_str().unwrap().parse::<f64>().unwrap();
+            assert!(
+                start.is_finite() && start.abs() < 0.001,
+                "synthetic remux fixture must have zero container/video origin: {metadata}"
+            );
+        }
         let root =
             std::env::temp_dir().join(format!("local-compat-smoke-{}", uuid::Uuid::new_v4()));
         let token = "s".repeat(32);
