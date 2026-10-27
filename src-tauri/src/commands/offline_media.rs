@@ -1,5 +1,6 @@
 //! Native-picked local sources, served directly through a private loopback endpoint.
 use serde::Serialize;
+use std::collections::HashMap;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
@@ -10,7 +11,10 @@ struct Runtime {
     library: ottplay_core::offline_media::Library,
 }
 #[derive(Default)]
-pub struct OfflineMediaState(Mutex<Option<Runtime>>);
+pub struct OfflineMediaState(
+    Mutex<Option<Runtime>>,
+    Mutex<HashMap<String, ottplay_core::offline_media::NativeRequest>>,
+);
 #[derive(Serialize)]
 pub struct Endpoint {
     endpoint: String,
@@ -93,6 +97,7 @@ pub async fn offline_media_endpoint(
     state: State<'_, OfflineMediaState>,
     refresh: Option<bool>,
     preferred_id: Option<String>,
+    source_id: Option<String>,
 ) -> Result<Endpoint, String> {
     let current = runtime(
         &app,
@@ -102,6 +107,17 @@ pub async fn offline_media_endpoint(
         true,
     )
     .await?;
+    if let Some(source_id) = source_id {
+        let work = app
+            .state::<ottplay_core::background_work::BackgroundWork>()
+            .enter()
+            .map_err(str::to_string)?;
+        current
+            .library
+            .prioritize_source_tracked(&source_id, work)
+            .await
+            .map_err(|_| "Local source is unavailable")?;
+    }
     Ok(Endpoint {
         endpoint: current.endpoint,
         picker_cancelled: None,
@@ -252,12 +268,17 @@ pub async fn local_media_sources(
     state: State<'_, OfflineMediaState>,
     include_paths: Option<bool>,
     path: Option<String>,
+    selection: Option<String>,
 ) -> Result<LocalMediaSources, String> {
     require_main(window.label())?;
     let current = runtime(&app, &state, None, false, false).await?;
     let sources = current
         .library
-        .native_sources(include_paths.unwrap_or(false), path.map(Into::into))
+        .native_sources_selected(
+            include_paths.unwrap_or(false),
+            path.map(Into::into),
+            selection.as_deref(),
+        )
         .await
         .map_err(|_| "Local sources unavailable; select an accessible absolute directory")?;
     Ok(LocalMediaSources {
@@ -274,19 +295,39 @@ pub async fn local_media_link_folder(
     window: tauri::WebviewWindow,
     state: State<'_, OfflineMediaState>,
     path: String,
+    deadline_ms: Option<u64>,
+    request_id: Option<String>,
 ) -> Result<LocalMediaFolder, String> {
     require_main(window.label())?;
     if path.len() > 4096 || path.chars().any(char::is_control) {
         return Err("Invalid local folder path".into());
     }
+    let request_id = request_id.unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
+    validate_request_id(&request_id)?;
+    let now = now_ms();
+    let request = {
+        let mut requests = state.1.lock().await;
+        requests.retain(|_, request| !request.expired());
+        if requests.len() >= 128 {
+            return Err("Too many local source requests".into());
+        }
+        requests
+            .entry(request_id.clone())
+            .or_insert_with(|| {
+                ottplay_core::offline_media::NativeRequest::new(
+                    deadline_ms.unwrap_or(now + 60000).min(now + 60000),
+                )
+            })
+            .clone()
+    };
     let work = app
         .state::<ottplay_core::background_work::BackgroundWork>()
         .enter()
         .map_err(str::to_string)?;
     let current = runtime(&app, &state, None, false, false).await?;
-    let source = current
+    let result = current
         .library
-        .start_link_folder_path_tracked(path.into(), work)
+        .start_link_folder_request(path.into(), work, request)
         .await
         .map_err(|error| {
             if error.to_string() == ottplay_core::offline_media::NATIVE_SOURCE_OVERLAP {
@@ -296,11 +337,54 @@ pub async fn local_media_link_folder(
             } else {
                 "Unable to link local folder; select an accessible absolute directory"
             }
-        })?;
+        });
+    state.1.lock().await.remove(&request_id);
+    let source = result?;
     Ok(LocalMediaFolder {
         endpoint: current.endpoint,
         source,
     })
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
+}
+
+fn validate_request_id(id: &str) -> Result<(), String> {
+    if id.is_empty()
+        || id.len() > 128
+        || !id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"-_.:".contains(&c))
+    {
+        return Err("Invalid local source request ID".into());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn local_media_cancel_request(
+    window: tauri::WebviewWindow,
+    state: State<'_, OfflineMediaState>,
+    request_id: String,
+) -> Result<(), String> {
+    require_main(window.label())?;
+    validate_request_id(&request_id)?;
+    let mut requests = state.1.lock().await;
+    requests.retain(|_, request| !request.expired());
+    // Retain a short-lived tombstone if cancellation wins the invoke race.
+    if requests.len() >= 128 && !requests.contains_key(&request_id) {
+        return Err("Too many local source requests".into());
+    }
+    requests
+        .entry(request_id)
+        .or_insert_with(|| ottplay_core::offline_media::NativeRequest::new(now_ms() + 60000))
+        .cancel();
+    Ok(())
 }
 
 #[cfg(test)]

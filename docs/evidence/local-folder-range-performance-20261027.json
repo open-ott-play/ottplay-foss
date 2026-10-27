@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "scope": "Native folder discovery under concurrent loopback HTTP Range reads; no live-player performance claim",
+  "base_commit": "e4082ac3f32db0897ef14ec44335bf6f422667da",
+  "production_file": "src-rs/core/src/offline_media.rs",
+  "production_file_sha256": "64232684bd2b0e758968079016b803af24c03e5197ba3f47950701ea4965fd28",
+  "fixture": {
+    "metadata_records": 13657,
+    "small_source_records": 46,
+    "large_source_records": 13611,
+    "large_available": 13608,
+    "large_unavailable": 3,
+    "input_sha256": "3146fcfbb92a94c85a3e9e553c6711ad9d5eb5c474322ecbc81c45aeff8a14c2",
+    "originals_read_only": true,
+    "mount_type": "AFP",
+    "metadata_indexes_initially_absent": true
+  },
+  "method": {
+    "runtime_workers": 4,
+    "max_blocking_threads": 8,
+    "range_chunk_bytes": 262144,
+    "range_interval_ms": 250,
+    "range_file_bytes": 1488446471,
+    "range_bytes_limit": 671088640,
+    "range_request_timeout_seconds": 30,
+    "scan_limit_seconds": 180,
+    "background_drain_limit_seconds": 30,
+    "outer_kill_seconds": 270,
+    "catalog_poll_ms": 500,
+    "latency_acceptance_ms": 45000,
+    "body_validation": "HTTP 206, exact Content-Range and consumed body length; payloads discarded",
+    "os_nas_caches_purged": false,
+    "live_players_during_runs": "Paused or closed by the operator; standalone isolated core harness"
+  },
+  "runs": [
+    {
+      "label": "baseline",
+      "description": "Baseline; fresh metadata copy; source index absent",
+      "production_file_sha256": "84b91b3a480113655b771ca8e29969a37aa0820f4dc53b04793320cb70206508",
+      "binary_sha256": "9e8e2a460c9c1653f776394f7b7f272eb3dced67329263c4e9fe4e523c1587b7",
+      "small_source_ready_ms": 25641,
+      "full_completion_ms": null,
+      "censored_after_ms": 180045,
+      "large_source_phases": {
+        "source-metadata_ms": 41102,
+        "validation_ms": 100008,
+        "traversal_ms": null
+      },
+      "completion_verified": false,
+      "all_legacy_ids_verified": false,
+      "both_sources_within_45_seconds": false,
+      "reader": {
+        "bytes": 164888576,
+        "elapsed_ms": 180045,
+        "error": null,
+        "max_ms": 1441,
+        "p95_ms": 589,
+        "requests": 629
+      },
+      "drain_pending": 0,
+      "drain_ms": 52,
+      "outer_timeout": false,
+      "log_sha256": "a10547eafa52d833e91d714e150c40bc9765be7afa8fd29ee639fa6386307e29",
+      "result_sha256": "7212d8f932c60c6f3899f3fdfe1b92aa9272b29c289790f094abbc277762030f"
+    },
+    {
+      "label": "candidate",
+      "description": "Walk-first only; fresh metadata copy; source index absent",
+      "production_file_sha256": "3125ee817cf37eb5cbef12dfa9bf44e29e173328bb67926c7f2771e76e0167c1",
+      "binary_sha256": "bc40521b4e560010ec8d6281e836c5365adeb3e07ac00d0c3c28fd5ead6b211e",
+      "small_source_ready_ms": 18595,
+      "full_completion_ms": 92573,
+      "censored_after_ms": null,
+      "large_source_phases": {
+        "source-metadata_ms": 19399,
+        "validation_ms": 612,
+        "traversal_ms": 72326
+      },
+      "completion_verified": true,
+      "all_legacy_ids_verified": true,
+      "both_sources_within_45_seconds": false,
+      "reader": {
+        "bytes": 94109696,
+        "elapsed_ms": 92621,
+        "error": null,
+        "max_ms": 1447,
+        "p95_ms": 268,
+        "requests": 359
+      },
+      "drain_pending": 0,
+      "drain_ms": 0,
+      "outer_timeout": false,
+      "log_sha256": "1e10ec0e41c700d1ae5d115a47d23db6de41d0e573b5d15efac7768bccdceefb",
+      "result_sha256": "a6fda66841deb11807551d6f46f01ba80d2d58be2871e93e480bb7317c977cbf"
+    },
+    {
+      "label": "candidate-fast",
+      "description": "Cached enumeration types; reused metadata; source index removed",
+      "production_file_sha256": "64232684bd2b0e758968079016b803af24c03e5197ba3f47950701ea4965fd28",
+      "binary_sha256": "270db1254090bf7bdcbb46d726e1959680c6092c11b598abc7d590689c7b725d",
+      "small_source_ready_ms": 2008,
+      "full_completion_ms": 11226,
+      "censored_after_ms": null,
+      "large_source_phases": {
+        "source-metadata_ms": 3024,
+        "validation_ms": 858,
+        "traversal_ms": 7178
+      },
+      "completion_verified": true,
+      "all_legacy_ids_verified": true,
+      "both_sources_within_45_seconds": true,
+      "reader": {
+        "bytes": 11534336,
+        "elapsed_ms": 11253,
+        "error": null,
+        "max_ms": 708,
+        "p95_ms": 136,
+        "requests": 44
+      },
+      "drain_pending": 0,
+      "drain_ms": 0,
+      "outer_timeout": false,
+      "log_sha256": "8183d079b4032797acbfb6417e588d721f03b13fd126e374c28a86d7d0f8d440",
+      "result_sha256": "2fb7dd6fab8876f95aafe98ad5bf3581cd49f08b5b7694707c563e15351349e9"
+    },
+    {
+      "label": "candidate-fast-fresh",
+      "description": "Cached enumeration types; fresh metadata copy; source index absent",
+      "production_file_sha256": "64232684bd2b0e758968079016b803af24c03e5197ba3f47950701ea4965fd28",
+      "binary_sha256": "270db1254090bf7bdcbb46d726e1959680c6092c11b598abc7d590689c7b725d",
+      "small_source_ready_ms": 22606,
+      "full_completion_ms": 28831,
+      "censored_after_ms": null,
+      "large_source_phases": {
+        "source-metadata_ms": 21159,
+        "validation_ms": 956,
+        "traversal_ms": 6387
+      },
+      "completion_verified": true,
+      "all_legacy_ids_verified": true,
+      "both_sources_within_45_seconds": true,
+      "reader": {
+        "bytes": 26738688,
+        "elapsed_ms": 28832,
+        "error": null,
+        "max_ms": 878,
+        "p95_ms": 527,
+        "requests": 102
+      },
+      "drain_pending": 0,
+      "drain_ms": 0,
+      "outer_timeout": false,
+      "log_sha256": "8a2fd810c431355902af36ec658b25853d03dfc7993a120ff728b9b9e45b5046",
+      "result_sha256": "b242b605e404445b165f22d4ca5ef0d4c7c2ec25d530957c3fb584cbbf847690"
+    }
+  ],
+  "tests": {
+    "command": "cargo test --offline --locked -p ottplay-core --lib",
+    "passed": 164,
+    "ignored": 3,
+    "failed": 0,
+    "log_sha256": "7035d14d4d49e12aa9b5aa0fa42a2d06d24ee0d6fc4bc02ced45f412be9fa35d",
+    "peer_review": "Native metadata, generation, cancellation, directory guards and serving invariants reviewed independently"
+  },
+  "limits": [
+    "Fresh metadata means a new copy without indexes, not an evicted OS or NAS cache. Runs were sequential; cache effects remain.",
+    "The baseline did not finish before the 180-second cap; its completion time is censored.",
+    "The reused-metadata fast run is reported separately from the fresh-copy confirmation.",
+    "This validates discovery and guarded byte-range serving, not a video decoder, a packaged Tauri build, or every network condition.",
+    "Enumeration-time availability is not an immutable filesystem snapshot or a guarantee of subsequent successful open or decode."
+  ]
+}

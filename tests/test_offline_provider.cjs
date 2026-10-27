@@ -11,6 +11,42 @@ function fixture(initial) {
     return f;
 }
 
+test("local driver reloads through the playback catalogue port without reading the global manager", async () => {
+    const f = fixture();
+    let reads = 0;
+    const media = {
+        list() {
+            assert.fail(
+                "the selected-source reload requested the global manager catalogue"
+            );
+        },
+        playbackList() {
+            assert.equal(this, media);
+            reads++;
+            return Promise.resolve({
+                items: [
+                    {
+                        id: "selected",
+                        name: "Selected.mp4",
+                        url: "blob:session-" + reads,
+                    },
+                ],
+            });
+        },
+    };
+    f.host.__ottLocalMedia = media;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        const driver = f.mount("offline");
+        const value = await new Promise((resolve) => driver.load(resolve));
+        assert.deepEqual(Array.from(value.ids), ["local-selected"]);
+        assert.equal(
+            driver.stream("local-selected"),
+            "blob:session-" + attempt
+        );
+    }
+    assert.equal(reads, 2);
+});
+
 test("restored local folder leaves the boot splash before its catalog resolves", async () => {
     const f = integrationFixture("offline");
     let resolveCatalog;

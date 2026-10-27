@@ -365,7 +365,12 @@ const { gzipSync } = require("node:zlib");
 // add 12155 raw / 3332 gzip bytes over 58c52527 on Node 26.8.2, same 1.1.61
 // identity. Allocate 12200 / 3400 once, retaining existing native/release room.
 // See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
-const BUDGET = Object.freeze({ bytes: 1060200, gzipBytes: 327546 });
+// Independent folder scans, per-source completion and cancellation fencing add
+// 2539 raw / at most 715 gzip bytes on Node 22.23.4 with the same candidate
+// identity. Allocate 2560 / 768, retaining previous native/release headroom.
+// See docs/evidence/local-source-priority-size-20261027.json. This keeps the
+// first Local command independent of an additional lazy asset download.
+const BUDGET = Object.freeze({ bytes: 1062760, gzipBytes: 328314 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -544,9 +549,9 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
-    // allocations exactly once in the complete payload.
-    bytes: 1203000,
-    gzipBytes: 379446,
+    // allocations exactly once, plus independent folder scans (+2560/+768).
+    bytes: 1205560,
+    gzipBytes: 380214,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -590,7 +595,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count the reviewed recovery allowances (+6300/+2200) and HLS v3
 // optional allowance (+2000/+704) once each; individual budgets stay bounded.
 // Include both feature increments once; provider and optional caps stay fixed.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1316600, gzipBytes: 420074 });
+// Count independent folder scans once; preserve legacy plus optional allocation.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

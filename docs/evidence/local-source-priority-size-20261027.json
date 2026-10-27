@@ -1,0 +1,106 @@
+{
+  "purpose": "Independent complete-folder playback while other sources scan, stable per-source generations, scoped cancellation and protection against late native responses. Keep these correctness checks available without a new first-command asset download.",
+  "toolchain": {
+    "node": "v22.23.4",
+    "zlib": "1.3.1-e00f703",
+    "typescript": "5.9.3",
+    "terser": "5.51.2",
+    "packageLockSha256": "b686c059c9a8408fd6c13248dd88cec9015a0223c90b948098ec2038e54fabe1"
+  },
+  "integrationHead": "a9b04c9b96b2801d4ffd90c89979877008972187",
+  "featureBase": "f3dbfe82b10fcf08150ae741121e8f8bb5c70e9e",
+  "method": "Production classic assembler and optimizer with locked dependencies; gzip level 9. The controlled baseline is the integration tree with only the four listed TypeScript files restored from featureBase, leaving the merged Plex changes unchanged. Native measurements apply the production system-icon transformation after optimization. Synthetic comparison outputs measure feature cost; they are not release attestations.",
+  "controlledIdentity": {
+    "version": "1.1.61-local-candidate.20261027.a9b04c9",
+    "sourceRevision": "a9b04c9b96b2801d4ffd90c89979877008972187",
+    "sourceRevisionLength": 40,
+    "buildId": "bundle- followed by the SHA-256 of the assembled version-substituted entry before identity replacement"
+  },
+  "sources": [
+    {
+      "path": "src/commands/remote-local-media.ts",
+      "baselineSha256": "ba5c29f78856a5f216e952d491a326f869fb2f3640e600d79ffc7af216702a35",
+      "candidateSha256": "254f6a326eb8cf4d8544a18dc3235092ae7b7a6f2113bf796ee678df12f128fd"
+    },
+    {
+      "path": "src/offline/playback-selection.ts",
+      "baselineSha256": "face43391e6bbe4295d0ace1ca9fc1fbc4ed6bb1971b2d3b9c6a3897c3a12063",
+      "candidateSha256": "26e16e1ea2178ee7dca4b202bcd75742c133e2d12efaa280cdbb0c6f609d434e"
+    },
+    {
+      "path": "src/plugins/local-media.ts",
+      "baselineSha256": "45565e85670de57fd5b410a349790d8ea4857619d6fba4e361e7c577eb37f14b",
+      "candidateSha256": "8c2bf57347129f349ae27fb79af0b3ec20e7bc71a60337d5a9fa5eec4d2f4bf6"
+    },
+    {
+      "path": "src/provider/drivers.ts",
+      "baselineSha256": "ac71f1bd5fb37c1a9d32eaa5bfeae3fbb5bfcd2e544eeeb57c3e4817464b01e3",
+      "candidateSha256": "b3c60e7c4a21f31826965d8835ae0c9f349a85a923d6ecda93492fecef223db2"
+    }
+  ],
+  "controlled": {
+    "baselineWeb": {
+      "bytes": 1059967,
+      "gzipBytes": 327199,
+      "sha256": "4e7acf215481c9d9acf24760020e322d70c9fb146b7b9cd156bebb1061999871"
+    },
+    "candidateWeb": {
+      "bytes": 1062506,
+      "gzipBytes": 327912,
+      "sha256": "1942b7636fc01995094c86710f72f741f9309e6e113ab6f8aab95ae231430feb"
+    },
+    "baselineNative": {
+      "bytes": 1059925,
+      "gzipBytes": 327257,
+      "sha256": "a13389624e14931ba7f2fd15b9b8ef1f56d2cd6decfe041b04ee4c9391737363"
+    },
+    "candidateNative": {
+      "bytes": 1062464,
+      "gzipBytes": 327972,
+      "sha256": "1b2bcc414e836f70af8a33477ab06b612e3b179f9acfcd21da5c085e80c45d95"
+    },
+    "deltaWeb": {
+      "bytes": 2539,
+      "gzipBytes": 713
+    },
+    "deltaNative": {
+      "bytes": 2539,
+      "gzipBytes": 715
+    }
+  },
+  "candidateWithoutSourceRevision": {
+    "web": {
+      "bytes": 1062466,
+      "gzipBytes": 327871,
+      "sha256": "6e3063c8cc7cb278846ab301f91ab3a2bc54a54ccb3959c8a3c16b69f8b10ed9"
+    },
+    "native": {
+      "bytes": 1062424,
+      "gzipBytes": 327930,
+      "sha256": "940cf18a03062073d581366fd1ed34d3670bc758c33757ff0de41aaaa5d5f12c"
+    }
+  },
+  "controlledCollections": {
+    "legacyWeb": {
+      "bytes": 1204651,
+      "gzipBytes": 379834
+    },
+    "legacyNative": {
+      "bytes": 1204609,
+      "gzipBytes": 379894
+    },
+    "completeWeb": {
+      "bytes": 1308752,
+      "gzipBytes": 416866
+    },
+    "completeNative": {
+      "bytes": 1308710,
+      "gzipBytes": 416926
+    }
+  },
+  "allocation": {
+    "bytes": 2560,
+    "gzipBytes": 768
+  },
+  "scope": "Apply this increment once to entry and legacy collection caps; carry it into the complete cap to preserve the enforced legacy-plus-optional allocation identity. Every provider and optional cap remains unchanged. ES5 parsing, payload accounting, native staging and release checks remain enforced. Size measurements do not claim device playback verification."
+}

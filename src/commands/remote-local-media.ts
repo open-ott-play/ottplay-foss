@@ -1,4 +1,7 @@
-import { orderLocalItems } from "../offline/playback-selection";
+import {
+    localSourceScan,
+    orderLocalItems,
+} from "../offline/playback-selection";
 import { remotePlayerInfo } from "./remote-restart";
 
 /** Runtime-bound operations on sources already owned by this player. */
@@ -218,7 +221,8 @@ export function executeRemoteLocalMedia(
                     : media.remoteSources(
                           !!params.include_paths,
                           params.path,
-                          current
+                          current,
+                          listing ? undefined : params.source
                       )
             );
         })
@@ -232,7 +236,9 @@ export function executeRemoteLocalMedia(
             // starts a new scan, preventing long scans from ever completing
             // when the controller retries a timed-out play request.
             if (value.sources.length) return { source: value.sources[0] };
-            return observe(media.remoteConnect(params.source));
+            return observe(
+                media.remoteConnect(params.source, current, deadline)
+            );
         })
         .then(function (value: any) {
             if (!current()) error("runtime_changed");
@@ -281,53 +287,73 @@ export function executeRemoteLocalMedia(
                 };
             }
             if (operation === "connect") return result(0);
-            return observe(media.remoteCatalog(current)).then(function (
-                catalog: any
-            ) {
-                if (!current()) error("runtime_changed");
-                if (catalog.scanning || catalog.cancelled)
-                    error("catalog_loading");
-                if (catalog.scanError) error("catalog_unavailable");
-                if (catalog.reconnectRequired) error("source_unavailable");
-                var permitted = w.__ottOfflineProfiles
-                    ? w.__ottOfflineProfiles.filter(catalog)
-                    : catalog;
-                var items = (permitted.items || []).filter(function (
-                    item: any
-                ) {
-                    return (
-                        item.sourceId === source.id &&
-                        item.available !== false &&
-                        !!item.url
-                    );
-                });
-                if (!items.length) error("empty_source");
-                if (items.length > 50000) error("too_many_items");
-                var known: { [id: string]: boolean } = Object.create(null);
-                items.forEach(function (item: any) {
-                    if (!text(item.id, 256) || known[item.id])
+            return observe(media.remoteCatalog(current, source.id)).then(
+                function (catalog: any) {
+                    if (!current()) error("runtime_changed");
+                    var scan = localSourceScan(catalog, source.id);
+                    if (scan && scan.state === "error")
                         error("catalog_unavailable");
-                    known[item.id] = true;
-                });
-                var seed =
-                    operation === "shuffle"
-                        ? Math.floor(Math.random() * 4294967295) + 1
-                        : null;
-                items = orderLocalItems(items, seed);
-                if (!current()) error("runtime_changed");
-                media.remoteActivate(
-                    source.id,
-                    items.map(function (item: any) {
-                        return item.id;
-                    }),
-                    catalog,
-                    function () {
-                        return remotePlayerInfo(w).runtime === runtime;
-                    },
-                    seed
-                );
-                return result(items.length);
-            });
+                    if (
+                        catalog.cancelled ||
+                        (scan ? scan.state !== "complete" : catalog.scanning)
+                    )
+                        error("catalog_loading");
+                    if (
+                        catalog.scanError &&
+                        (!scan || scan.state !== "complete")
+                    )
+                        error("catalog_unavailable");
+                    if (catalog.reconnectRequired) error("source_unavailable");
+                    if (
+                        !(catalog.sources || []).some(function (entry: any) {
+                            return (
+                                entry.id === source.id &&
+                                entry.kind === "folder" &&
+                                entry.available !== false
+                            );
+                        })
+                    )
+                        error("source_unavailable");
+                    var permitted = w.__ottOfflineProfiles
+                        ? w.__ottOfflineProfiles.filter(catalog)
+                        : catalog;
+                    var items = (permitted.items || []).filter(function (
+                        item: any
+                    ) {
+                        return (
+                            item.sourceId === source.id &&
+                            item.available !== false &&
+                            !!item.url
+                        );
+                    });
+                    if (!items.length) error("empty_source");
+                    if (items.length > 50000) error("too_many_items");
+                    var known: { [id: string]: boolean } = Object.create(null);
+                    items.forEach(function (item: any) {
+                        if (!text(item.id, 256) || known[item.id])
+                            error("catalog_unavailable");
+                        known[item.id] = true;
+                    });
+                    var seed =
+                        operation === "shuffle"
+                            ? Math.floor(Math.random() * 4294967295) + 1
+                            : null;
+                    items = orderLocalItems(items, seed);
+                    if (!current()) error("runtime_changed");
+                    media.remoteActivate(
+                        source.id,
+                        items.map(function (item: any) {
+                            return item.id;
+                        }),
+                        catalog,
+                        function () {
+                            return remotePlayerInfo(w).runtime === runtime;
+                        },
+                        seed
+                    );
+                    return result(items.length);
+                }
+            );
         })
         .then(
             function (data: any) {

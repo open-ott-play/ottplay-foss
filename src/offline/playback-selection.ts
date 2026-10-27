@@ -18,6 +18,36 @@ export function orderLocalItems(items: any[], seed: number | null): any[] {
     return result;
 }
 
+/** Native source completion is scoped to the same atomic catalogue snapshot. */
+export function localSourceScan(catalog: any, source: string): any {
+    if (catalog.sourceScans === undefined) return null;
+    function invalid(): never {
+        throw {
+            localMediaCode: "catalog_unavailable",
+            message: "Invalid local source scan",
+        };
+    }
+    if (!Array.isArray(catalog.sourceScans)) return invalid();
+    var found: any = null;
+    catalog.sourceScans.forEach(function (scan: any) {
+        if (!scan || scan.sourceId !== source) return;
+        if (
+            found ||
+            typeof scan.generation !== "number" ||
+            !isFinite(scan.generation) ||
+            Math.floor(scan.generation) !== scan.generation ||
+            scan.generation < 1 ||
+            scan.generation > 9007199254740991 ||
+            ["pending", "scanning", "complete", "error"].indexOf(scan.state) < 0
+        )
+            invalid();
+        found = scan;
+    });
+    // An advertised source protocol cannot fall back to global completion
+    // before the requested folder has an authoritative scan record.
+    return found || { generation: 0, state: "pending" };
+}
+
 /** A playback selection never removes a connected source or grants file access. */
 export function createLocalPlaybackSelection(
     w: any,
@@ -67,6 +97,14 @@ export function createLocalPlaybackSelection(
         filter: function (catalog: any): any {
             var value = read();
             if (!value) return catalog;
+            var scan = localSourceScan(catalog, value.source);
+            if (scan && scan.state === "error")
+                throw new Error(
+                    "The selected local source could not be scanned"
+                );
+            var scanning = scan
+                ? scan.state !== "complete"
+                : !!catalog.scanning;
             var sources = (catalog.sources || []).filter(function (
                 source: any
             ) {
@@ -86,9 +124,12 @@ export function createLocalPlaybackSelection(
                 // A seeded permutation needs the full set. No partial scan may
                 // publish an order that changes again under an active decoder.
                 items:
-                    value.seed !== null && catalog.scanning
+                    (value.seed !== null || scan) && scanning
                         ? []
                         : orderLocalItems(items, value.seed),
+                scanError:
+                    scan && scan.generation ? undefined : catalog.scanError,
+                scanning: scanning,
                 sources: sources,
             };
         },
@@ -117,6 +158,10 @@ export function createLocalPlaybackSelection(
             pending = ids.map(function (id) {
                 return "local-" + id;
             });
+        },
+        source: function (): string | undefined {
+            var value = read();
+            return value ? value.source : undefined;
         },
     };
 }
