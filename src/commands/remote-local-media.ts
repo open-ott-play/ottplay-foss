@@ -214,13 +214,25 @@ export function executeRemoteLocalMedia(
             if (!current()) error("runtime_changed");
             return observe(
                 path
-                    ? media.remoteConnect(params.source)
+                    ? media.remoteSources(false, params.source, current)
                     : media.remoteSources(
                           !!params.include_paths,
                           params.path,
                           current
                       )
             );
+        })
+        .then(function (value: any) {
+            if (!path) return value;
+            if (!current()) error("runtime_changed");
+            if (!value || !Array.isArray(value.sources))
+                error("catalog_unavailable");
+            if (value.sources.length > 1) error("source_ambiguous");
+            // Canonical lookup is read-only. Re-linking an existing folder
+            // starts a new scan, preventing long scans from ever completing
+            // when the controller retries a timed-out play request.
+            if (value.sources.length) return { source: value.sources[0] };
+            return observe(media.remoteConnect(params.source));
         })
         .then(function (value: any) {
             if (!current()) error("runtime_changed");

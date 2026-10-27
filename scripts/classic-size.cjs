@@ -355,7 +355,7 @@ const { gzipSync } = require("node:zlib");
 // Periodic channel-backed VOD checkpoints measure 321463 native entry gzip
 // bytes with Node 22.23.4 and beta.9999. Allow 96 bytes including identity room.
 // Local source commands, guarded activation and compact seeded playback order
-// add 11583 raw / 3214 gzip bytes over 6b8d00d6 on Node 26.8.2, same 1.1.61
+// add 11817 raw / 3266 gzip bytes over 6b8d00d6 on Node 26.8.2, same 1.1.61
 // identity. Allocate 12000 / 3400 once, retaining existing native/release room.
 // See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
 const BUDGET = Object.freeze({ bytes: 1054000, gzipBytes: 324946 });

@@ -1337,6 +1337,7 @@ export function installLocalMedia(w: any): any {
             pending.cancel = function () {
                 if (request !== catalogRevision) return;
                 catalogRevision++;
+                last = null;
                 cancelNativeList();
                 browser.suspend();
             };

@@ -288,7 +288,8 @@ test("singleflight rejects overlap without releasing the active operation", asyn
     assert.equal(f.w.__ottLocalMediaRequestActive, false);
 });
 
-function pluginFixture() {
+function pluginFixture(options = {}) {
+    let linked = !!options.connected;
     const data = new Map(),
         calls = [],
         snapshots = [],
@@ -333,10 +334,16 @@ function pluginFixture() {
                 if (name === "local_media_sources")
                     return {
                         endpoint: "http://localhost/catalog",
-                        sources: [source, other],
+                        sources: args.path
+                            ? linked
+                                ? [source]
+                                : []
+                            : [source, other],
                     };
-                if (name === "local_media_link_folder")
+                if (name === "local_media_link_folder") {
+                    linked = true;
                     return { endpoint: "http://localhost/catalog", source };
+                }
                 if (name === "offline_media_endpoint")
                     return { endpoint: "http://localhost/catalog" };
                 throw Error(name);
@@ -859,4 +866,94 @@ test("real request dispatcher preserves local cancellation and structured kiosk 
         dispatch({ action: "local_media", params: request("sources") }, done)
     );
     assert.equal(result.status, "ok");
+});
+
+test("existing absolute folders are reused without relinking or starting a replacement scan", async () => {
+    for (const op of ["play", "shuffle", "connect"]) {
+        const f = pluginFixture({ connected: true });
+        await tick();
+        f.snapshots.push(catalog());
+        const reply = await new Promise((resolve) =>
+            execute(
+                f.w,
+                request(op, { source: "/Volumes/data/Movies/" }),
+                resolve
+            )
+        );
+        assert.equal(reply.status, "ok");
+        assert.equal(reply.data.source.id, source.id);
+        assert.equal(
+            f.calls.some((call) => call[0] === "local_media_link_folder"),
+            false
+        );
+        const lookup = f.calls.find(
+            (call) => call[0] === "local_media_sources"
+        );
+        assert.deepEqual(clone(lookup[1]), {
+            includePaths: false,
+            path: "/Volumes/data/Movies/",
+        });
+        assert.equal(
+            f.calls.some(
+                (call) =>
+                    call[0] === "offline_media_endpoint" && call[1].refresh
+            ),
+            false
+        );
+        if (op === "connect")
+            assert.equal(
+                f.calls.some((call) => call[0] === "offline_media_endpoint"),
+                false
+            );
+    }
+});
+
+test("unavailable or ambiguous canonical folders never fall back to reconnecting another source", async () => {
+    for (const [sources, code] of [
+        [[{ ...source, available: false }], "source_unavailable"],
+        [[{ ...source, kind: "file" }], "source_unavailable"],
+        [[source, other], "source_ambiguous"],
+    ]) {
+        const f = fixture();
+        f.w.__ottLocalMedia.remoteSources = async () => ({ sources });
+        const reply = await f.request(
+            request("shuffle", { source: "/Volumes/data/Movies" })
+        );
+        assert.equal(reply.data.error, code);
+        assert.deepEqual(f.calls, []);
+    }
+});
+
+test("retry after a timed-out new-folder scan reuses its binding and reads the completed catalog", async () => {
+    const f = pluginFixture();
+    await tick();
+    f.w.__ottActiveProviderDriver = { id: "offline" };
+    f.snapshots.push(
+        { ...catalog(), items: [catalog().items[0]], scanning: true },
+        catalog()
+    );
+    const params = request("shuffle", { source: "/Volumes/data/Movies" });
+    const first = await new Promise((resolve) =>
+        execute(f.w, params, resolve, (Date.now() + 30) / 1000)
+    );
+    assert.equal(first.data.error, "catalog_loading");
+    assert.equal(
+        f.calls.some((call) => call[0] === "provider"),
+        false
+    );
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    const second = await new Promise((resolve) =>
+        execute(f.w, params, resolve)
+    );
+    assert.equal(second.status, "ok");
+    assert.equal(second.data.count, 3);
+    assert.equal(
+        f.calls.filter((call) => call[0] === "local_media_link_folder").length,
+        1
+    );
+    assert.equal(
+        f.calls.filter((call) => call[0] === "offline_media_endpoint").length,
+        2
+    );
+    assert.equal(f.calls.filter((call) => call[0] === "provider").length, 1);
 });
