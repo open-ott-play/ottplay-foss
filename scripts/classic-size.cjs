@@ -606,8 +606,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({ bytes: 1319160, gzipBytes: 420842 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
 const LOCAL_COMPATIBILITY_ALLOWANCE = Object.freeze({
-    bytes: 4096,
-    gzipBytes: 2048,
+    // Measured owned-lease snapshots and source-time resume require another
+    // 384/192 over the initial feature allocation; no startup/legacy increase.
+    bytes: 4480,
+    gzipBytes: 2240,
 });
 const TOTAL_BUDGET = Object.freeze({
     bytes: BASE_TOTAL_BUDGET.bytes + LOCAL_COMPATIBILITY_ALLOWANCE.bytes,
