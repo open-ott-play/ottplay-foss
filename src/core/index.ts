@@ -3767,6 +3767,22 @@ function openCoreEngineLease(
         callback: () => void;
     }> = [];
     var session = pip ? _corePipSession + 1 : _playSession + 1;
+    function sourcePosition(): number {
+        if (!pip) {
+            if (_corePendingSeekPosition !== null)
+                return _corePendingSeekPosition;
+            // Before the replacement HLS has buffered, currentTime may still
+            // be zero. Keep the requested source position through pause/quit.
+            if (
+                hlsInstance &&
+                !hlsInstance.hasEnoughToStart &&
+                isFinite(hlsInstance.config.startPosition) &&
+                hlsInstance.config.startPosition >= 0
+            )
+                return hlsInstance.config.startPosition;
+        }
+        return media ? media.currentTime : 0;
+    }
     function active() {
         return (
             session === (pip ? _corePipSession : _playSession) &&
@@ -3913,12 +3929,7 @@ function openCoreEngineLease(
                 waitingForPlayback &&
                 (window as any).__ottCoreCompatibilityUrl
             ) {
-                seekCoreMedia(
-                    _corePendingSeekPosition !== null
-                        ? _corePendingSeekPosition
-                        : media.currentTime,
-                    session
-                );
+                seekCoreMedia(sourcePosition(), session);
                 return;
             }
             var feedback = !pip && (window as any).__ottPlaybackFeedback;
@@ -3933,12 +3944,7 @@ function openCoreEngineLease(
             return {
                 duration: media ? media.duration : NaN,
                 paused: !media || media.paused,
-                position:
-                    !pip && _corePendingSeekPosition !== null
-                        ? _corePendingSeekPosition
-                        : media
-                          ? media.currentTime
-                          : 0,
+                position: sourcePosition(),
                 ready: media ? media.readyState : 0,
             };
         },

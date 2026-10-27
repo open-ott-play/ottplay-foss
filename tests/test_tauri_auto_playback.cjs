@@ -1982,7 +1982,30 @@ test("local compatibility VOD uses HLS with source-time resume even under a nati
     );
     f.w.video.readyState = 1;
     f.w.video.duration = 7321.5;
+    f.w.video.currentTime = 0;
+    assert.equal(
+        lease.sample().position,
+        3600,
+        "unbuffered replacement reports its requested source time, not media zero"
+    );
     f.w.video.currentTime = 120;
+    for (const invalid of [-1, NaN, Infinity]) {
+        f.players[0].config.startPosition = invalid;
+        assert.equal(
+            lease.sample().position,
+            120,
+            "invalid HLS targets fall back to media time"
+        );
+    }
+    f.players[0].config.startPosition = 3600;
+    f.players[0].hasEnoughToStart = true;
+    assert.equal(
+        lease.sample().position,
+        120,
+        "buffered playback reports actual media time"
+    );
+    f.players[0].hasEnoughToStart = false;
+    f.w.video.currentTime = 0;
     let resumedPreparation = 0;
     f.w.__ottLocalMedia.preparePlayback = () => {
         resumedPreparation++;
@@ -1994,6 +2017,11 @@ test("local compatibility VOD uses HLS with source-time resume even under a nati
         resumedPreparation,
         1,
         "Resume replaces a possibly expired idle lease"
+    );
+    assert.equal(
+        lease.sample().position,
+        3600,
+        "pause/resume before buffering must not reset the requested source time"
     );
     lease.seek(5000);
     assert.equal(
