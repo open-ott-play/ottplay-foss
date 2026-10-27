@@ -795,6 +795,9 @@ export function executeRemoteControl(
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
     if (action === "capabilities") {
+        var localMedia = w.__ottLocalMedia?.remoteCapabilities
+            ? w.__ottLocalMedia.remoteCapabilities()
+            : undefined;
         var plexQueue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
         if (plexQueue.retained() || remoteChannelStep(w, -1))
             playback.push("previous_channel");
@@ -828,9 +831,8 @@ export function executeRemoteControl(
                 "exit_app",
                 "reboot_device",
             ].filter(lifecycleAvailable),
-            local_media: w.__ottLocalMedia?.remoteCapabilities
-                ? w.__ottLocalMedia.remoteCapabilities()
-                : undefined,
+            local_media: localMedia,
+            local_media_progressive: localMedia ? { version: 1 } : undefined,
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.capabilities()
                 : null,
