@@ -1,3 +1,9 @@
+// Pool repeated type strings and UI literals in the ES5 player; names are private and collision-checked.
+const _ft = "function";
+const _ut = "undefined";
+const _nt = "number";
+const _bs = "#buffering";
+const _ct = "contain";
 /**
  * Core STB player — video element management, playback control,
  * fullscreen, PiP, aspect ratio, audio/subtitle tracks.
@@ -64,16 +70,16 @@ export var playerModeNames =
 
 /** Identify only the standalone Android TV test host, never a native app shell. */
 export function isOttplayTestWebView(): boolean {
-    if (typeof window === "undefined") return false;
+    if (typeof window === _ut) return false;
     var w = window as any;
     try {
         if (
             w.ott_device !== "android" ||
-            typeof w.Capacitor !== "undefined" ||
-            typeof w.__ottNativeRuntime !== "undefined" ||
-            typeof w.Android !== "undefined" ||
-            typeof w.__TAURI__ !== "undefined" ||
-            typeof w.__TAURI_INTERNALS__ !== "undefined"
+            typeof w.Capacitor !== _ut ||
+            typeof w.__ottNativeRuntime !== _ut ||
+            typeof w.Android !== _ut ||
+            typeof w.__TAURI__ !== _ut ||
+            typeof w.__TAURI_INTERNALS__ !== _ut
         )
             return false;
         var ua = w.navigator && w.navigator.userAgent;
@@ -88,7 +94,7 @@ export function isOttplayTestWebView(): boolean {
 
 /** Auto handles stream formats on webOS, Tauri and the marked Android test host. */
 export function getDefaultPlayerMode(): number {
-    if (typeof window === "undefined") return 0;
+    if (typeof window === _ut) return 0;
     return (window as any).OttPlayCore.classicPlaybackDefaultMode(
         (window as any).ott_device === "lg/webos",
         !!((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__),
@@ -107,7 +113,7 @@ export function normalizePlayerMode(mode: number): number {
         function () {
             return (
                 !video ||
-                typeof video.canPlayType !== "function" ||
+                typeof video.canPlayType !== _ft ||
                 !!video.canPlayType("application/vnd.apple.mpegurl")
             );
         },
@@ -118,9 +124,9 @@ export function normalizePlayerMode(mode: number): number {
 }
 /** Availability before download must not rewrite a saved MSE preference. */
 function coreHlsAvailable(): boolean {
-    return typeof Hls !== "undefined"
+    return typeof Hls !== _ut
         ? !!Hls.isSupported()
-        : typeof (window as any).__ottLoadMediaEngine === "function";
+        : typeof (window as any).__ottLoadMediaEngine === _ft;
 }
 
 function loadCoreMediaEngine(
@@ -128,12 +134,12 @@ function loadCoreMediaEngine(
     ready: (ok: boolean) => void
 ): void {
     var load = (window as any).__ottLoadMediaEngine;
-    if (typeof load === "function") load(engine, ready);
+    if (typeof load === _ft) load(engine, ready);
     else
         ready(
             engine === "hls"
-                ? typeof Hls !== "undefined" && !!Hls.isSupported()
-                : typeof shaka !== "undefined" && !!shaka.Player
+                ? typeof Hls !== _ut && !!Hls.isSupported()
+                : typeof shaka !== _ut && !!shaka.Player
         );
 }
 
@@ -251,9 +257,7 @@ function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
 function corePlexPlaybackHint(url: string): "file" | "mse" | null {
     var library = (window as any).__ottMedia;
     var current =
-        library && typeof library.current === "function"
-            ? library.current()
-            : null;
+        library && typeof library.current === _ft ? library.current() : null;
     var payload = current && current.payload;
     if (!payload || payload.stream_url !== url || !payload.__ottPlexPlayback)
         return null;
@@ -281,9 +285,7 @@ export function restoreDemoMute(): void {
 }
 
 function isCoreThenable(value: unknown): value is PromiseLike<unknown> {
-    return (
-        !!value && typeof (value as PromiseLike<unknown>).then === "function"
-    );
+    return !!value && typeof (value as PromiseLike<unknown>).then === _ft;
 }
 
 /** Older WebKit play() returns void; modern autoplay failures must be consumed. */
@@ -350,7 +352,7 @@ function seekCoreMedia(
     var applied = apply();
     if (
         (!applied || media.readyState === 0) &&
-        typeof media.addEventListener === "function"
+        typeof media.addEventListener === _ft
     ) {
         var clear = function (): void {
             media.removeEventListener("loadedmetadata", onMetadata);
@@ -373,7 +375,7 @@ function seekCoreMedia(
 function destroyCoreShaka(): void {
     var player = window.player;
     window.player = null;
-    if (!player || typeof player.destroy !== "function") return;
+    if (!player || typeof player.destroy !== _ft) return;
     try {
         var pending = player.destroy();
         if (isCoreThenable(pending)) {
@@ -461,7 +463,7 @@ function createCoreHlsBitrateMeter(): {
             if (
                 !frag ||
                 frag.type !== "main" ||
-                typeof frag.sn !== "number" ||
+                typeof frag.sn !== _nt ||
                 frag.bitrateTest
             )
                 return;
@@ -471,10 +473,10 @@ function createCoreHlsBitrateMeter(): {
             if (!(bytes > 0) && data.payload) bytes = data.payload.byteLength;
             var seconds = part ? part.duration : frag.duration;
             if (
-                typeof bytes !== "number" ||
+                typeof bytes !== _nt ||
                 !(bytes > 0) ||
                 !isFinite(bytes) ||
-                typeof seconds !== "number" ||
+                typeof seconds !== _nt ||
                 !(seconds > 0) ||
                 !isFinite(seconds)
             )
@@ -522,7 +524,7 @@ export function updateCoreVideoInfo(opening = false): void {
     } else {
         var decoded = (video as any).webkitVideoDecodedByteCount;
         var position = video.currentTime;
-        if (typeof decoded === "number" && decoded >= 0 && isFinite(decoded)) {
+        if (typeof decoded === _nt && decoded >= 0 && isFinite(decoded)) {
             if (
                 video.seeking ||
                 decoded < prevDecodedBytes ||
@@ -644,11 +646,11 @@ function publishTauriFullscreen(next: boolean): void {
     var w = window as any;
     w.__ottTauriNativeFs = next;
     try {
-        if (next && typeof w.closeList === "function") {
+        if (next && typeof w.closeList === _ft) {
             var visible = !!w.isListVisible;
             try {
                 if (
-                    typeof w.$ !== "undefined" &&
+                    typeof w.$ !== _ut &&
                     (w.$("#list_window").is(":visible") ||
                         w.$("#list_osd").is(":visible"))
                 )
@@ -668,15 +670,15 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
             var api = w.__TAURI__,
                 tw = api && api.window;
             var current =
-                tw && typeof tw.getCurrentWindow === "function"
+                tw && typeof tw.getCurrentWindow === _ft
                     ? tw.getCurrentWindow()
-                    : tw && typeof tw.getCurrent === "function"
+                    : tw && typeof tw.getCurrent === _ft
                       ? tw.getCurrent()
                       : null;
             if (!current) {
                 var updated = w.__TAURI__,
                     webview = updated && updated.webviewWindow;
-                if (webview && typeof webview.getCurrent === "function")
+                if (webview && typeof webview.getCurrent === _ft)
                     current = webview.getCurrent();
             }
             var cached = !!w.__ottTauriNativeFs;
@@ -684,7 +686,7 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
                 var want = !(typeof probed === "boolean" ? probed : cached);
                 var latest = w.__TAURI__,
                     core = latest && latest.core;
-                if (core && typeof core.invoke === "function")
+                if (core && typeof core.invoke === _ft)
                     return runTauriFullscreenCall(function () {
                         return core.invoke("set_fullscreen", {
                             fullscreen: want,
@@ -692,7 +694,7 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
                     }).then(function () {
                         return want;
                     });
-                if (current && typeof current.setFullscreen === "function")
+                if (current && typeof current.setFullscreen === _ft)
                     return runTauriFullscreenCall(function () {
                         return current.setFullscreen(want);
                     }).then(function () {
@@ -701,10 +703,10 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
                 return null;
             }
             var probed: any = cached;
-            if (current && typeof current.isFullscreen === "function") {
+            if (current && typeof current.isFullscreen === _ft) {
                 try {
                     probed = current.isFullscreen();
-                    if (probed && typeof probed.then === "function")
+                    if (probed && typeof probed.then === _ft)
                         return Promise.resolve(probed).then(set, function () {
                             return set(cached);
                         });
@@ -724,8 +726,7 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
         try {
             var tauri = index === 0 ? w.__TAURI__ : null;
             api = index === 0 ? tauri && tauri.core : w.__TAURI_INTERNALS__;
-            if (!api || typeof api.invoke !== "function")
-                return request(index + 1);
+            if (!api || typeof api.invoke !== _ft) return request(index + 1);
         } catch (caught) {
             error = caught;
             return request(index + 1);
@@ -767,13 +768,12 @@ export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
     try {
         var tauri = w.__TAURI__,
             core = tauri && tauri.core;
-        if (core && typeof core.invoke === "function") api = core;
+        if (core && typeof core.invoke === _ft) api = core;
     } catch (_) {}
     if (!api) {
         try {
             var internals = w.__TAURI_INTERNALS__;
-            if (internals && typeof internals.invoke === "function")
-                api = internals;
+            if (internals && typeof internals.invoke === _ft) api = internals;
         } catch (_) {}
     }
     if (!api) {
@@ -816,8 +816,8 @@ export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
  * fullscreen without any global KeyL shortcut.
  */
 export function installTauriFsKeyCapture(): void {
-    if (typeof window === "undefined") return;
-    if (typeof (window as any).__TAURI__ === "undefined") return;
+    if (typeof window === _ut) return;
+    if (typeof (window as any).__TAURI__ === _ut) return;
     if ((window as any).__ottTauriFsKeyCapture) return;
     (window as any).__ottTauriFsKeyCapture = true;
     document.addEventListener(
@@ -844,9 +844,9 @@ export function installTauriFsKeyCapture(): void {
             var key = ev.key || "";
             var code = ev.code || "";
             var kc =
-                typeof ev.keyCode === "number" && ev.keyCode
+                typeof ev.keyCode === _nt && ev.keyCode
                     ? ev.keyCode
-                    : typeof ev.which === "number" && ev.which
+                    : typeof ev.which === _nt && ev.which
                       ? ev.which
                       : 0;
             var isL =
@@ -858,7 +858,7 @@ export function installTauriFsKeyCapture(): void {
                 var editing = false;
                 try {
                     if (
-                        typeof (window as any).$ !== "undefined" &&
+                        typeof (window as any).$ !== _ut &&
                         (window as any).$("#listEdit").is(":visible")
                     )
                         editing = true;
@@ -869,7 +869,7 @@ export function installTauriFsKeyCapture(): void {
                 void stbToggleTauriNativeFullscreen();
                 if (ev.preventDefault) ev.preventDefault();
                 if (ev.stopPropagation) ev.stopPropagation();
-                if (typeof (ev as any).stopImmediatePropagation === "function")
+                if (typeof (ev as any).stopImmediatePropagation === _ft)
                     (ev as any).stopImmediatePropagation();
                 return;
             }
@@ -880,7 +880,7 @@ export function installTauriFsKeyCapture(): void {
                 void stbSetTauriNativeFullscreen(false);
                 if (ev.preventDefault) ev.preventDefault();
                 if (ev.stopPropagation) ev.stopPropagation();
-                if (typeof (ev as any).stopImmediatePropagation === "function")
+                if (typeof (ev as any).stopImmediatePropagation === _ft)
                     (ev as any).stopImmediatePropagation();
             }
         },
@@ -893,9 +893,9 @@ export function stbEventToKeyCode(event: any): number {
 
     // Prefer classic keyCode/which; some hosts (incl. Tauri webview) report 0.
     var keyCode =
-        typeof event.keyCode === "number" && event.keyCode
+        typeof event.keyCode === _nt && event.keyCode
             ? event.keyCode
-            : typeof event.which === "number" && event.which
+            : typeof event.which === _nt && event.which
               ? event.which
               : 0;
     var key = event.key || "";
@@ -986,7 +986,7 @@ export function stbEventToKeyCode(event: any): number {
     // Do not open exitPortal. Relies on macOS simple fullscreen so Escape
     // reaches the webview; never register a system-wide letter shortcut.
     if (keyCode === 27) {
-        var inTauriEsc = typeof (window as any).__TAURI__ !== "undefined";
+        var inTauriEsc = typeof (window as any).__TAURI__ !== _ut;
         if (inTauriEsc && (window as any).__ottTauriNativeFs) {
             void stbSetTauriNativeFullscreen(false);
             if (event.preventDefault) event.preventDefault();
@@ -1000,7 +1000,7 @@ export function stbEventToKeyCode(event: any): number {
         // On Tauri the capture-phase document listener in
         // installTauriFsKeyCapture owns L (stopImmediatePropagation
         // keeps window.onkeydown from running), so do NOT toggle here.
-        var inTauri = typeof (window as any).__TAURI__ !== "undefined";
+        var inTauri = typeof (window as any).__TAURI__ !== _ut;
         if (!inTauri) {
             if (isNormalScreen()) openFullscreen();
             else closeFullscreen();
@@ -1177,7 +1177,7 @@ function createCoreStreamAttempt(
                 report(denied ? "access-denied" : "failed");
                 if ((window as any).__ottPlaybackFeedback)
                     (window as any).__ottPlaybackFeedback.fail();
-                $("#buffering").hide();
+                $(_bs).hide();
                 showShift(
                     denied
                         ? _("Source sign-in required")
@@ -1272,7 +1272,7 @@ function startCoreEngine(
     if (
         window.__ottDebug &&
         window.__ottDebug.enabled &&
-        typeof window.__ottDebug.beginSession === "function"
+        typeof window.__ottDebug.beginSession === _ft
     ) {
         window.__ottDebug.beginSession(url);
     }
@@ -1335,7 +1335,7 @@ function startCoreEngine(
                     coreStreamFailure("auth");
                 }
             );
-            if (!settled && typeof cancel === "function")
+            if (!settled && typeof cancel === _ft)
                 coreSourcePreparationCancel = cancel;
         }
         if (url.indexOf("ottplay-stalker:") === 0) {
@@ -1470,10 +1470,7 @@ function startCorePlayback(
               : playerMode;
         var engine =
             requestedMode === 1 ? "hls" : requestedMode === 2 ? "shaka" : "";
-        if (
-            engine &&
-            typeof (window as any).__ottLoadMediaEngine === "function"
-        ) {
+        if (engine && typeof (window as any).__ottLoadMediaEngine === _ft) {
             var attempt = _coreNativeAttempt;
             loadCoreMediaEngine(engine, function (ok) {
                 if (session !== _playSession || attempt !== _coreNativeAttempt)
@@ -1504,7 +1501,7 @@ function startCorePlayback(
     cancelCoreNativeHls();
     _coreHlsBitrate = null;
     resetCoreNativeBitrate();
-    forceMse = forceMse && typeof Hls !== "undefined" && Hls.isSupported();
+    forceMse = forceMse && typeof Hls !== _ut && Hls.isSupported();
     var auto =
         !nativeFile &&
         !forceMse &&
@@ -1525,19 +1522,13 @@ function startCorePlayback(
         ((window as any).ottplayDemoActive === true &&
             /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url));
     var _pm =
-        mode === 1 &&
-        !_forceNative &&
-        typeof Hls !== "undefined" &&
-        Hls.isSupported()
+        mode === 1 && !_forceNative && typeof Hls !== _ut && Hls.isSupported()
             ? "hls.js"
             : mode === 2 && !_forceNative
               ? "shaka"
               : "html5";
     var useHls =
-        mode === 1 &&
-        !_forceNative &&
-        typeof Hls !== "undefined" &&
-        Hls.isSupported();
+        mode === 1 && !_forceNative && typeof Hls !== _ut && Hls.isSupported();
     _corePlaybackMode = useHls ? 1 : mode === 2 && !_forceNative ? 2 : 0;
     coreNativeAttached = false;
     var streamPolicy = (window as any).__ottStreamPolicy;
@@ -1547,7 +1538,7 @@ function startCorePlayback(
     var owner = streamPolicy && streamPolicy.capture();
     var bufferPreference = bufSize;
     try {
-        if (!bufferPreference && typeof window.stbGetItem === "function")
+        if (!bufferPreference && typeof window.stbGetItem === _ft)
             bufferPreference = window.stbGetItem("sBufSize");
     } catch (_) {
         /* Storage is optional for playback. */
@@ -1566,7 +1557,7 @@ function startCorePlayback(
         // single timeout was aborting the stream (then video error 3 DECODE).
         var _isArchive =
             (position && position > 0) ||
-            (typeof window.playType === "number" && window.playType > 0);
+            (typeof window.playType === _nt && window.playType > 0);
         var hlsConfig: any = {
             backBufferLength: bufferPolicy.hls.backBufferLength,
             capLevelToPlayerSize: false,
@@ -1606,7 +1597,7 @@ function startCorePlayback(
         if (
             window.__ottDebug &&
             window.__ottDebug.enabled &&
-            typeof window.__ottDebug.attachHls === "function"
+            typeof window.__ottDebug.attachHls === _ft
         ) {
             window.__ottDebug.attachHls(hlsInstance);
         }
@@ -1633,15 +1624,15 @@ function startCorePlayback(
                         hlsInstance.config.startPosition = video!.currentTime;
                     var lvls = hlsInstance.levels || [];
                     var failed =
-                        data.frag && typeof data.frag.level === "number"
+                        data.frag && typeof data.frag.level === _nt
                             ? data.frag.level
-                            : typeof data.level === "number"
+                            : typeof data.level === _nt
                               ? data.level
                               : hlsInstance.currentLevel;
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
                         hlsInstance.autoLevelCapping = cap;
-                        if (typeof hlsInstance.removeLevel === "function") {
+                        if (typeof hlsInstance.removeLevel === _ft) {
                             hlsInstance.removeLevel(failed);
                             hlsInstance.startLoad(
                                 _corePendingSeek ||
@@ -1673,7 +1664,7 @@ function startCorePlayback(
                         try {
                             canNative = !!(
                                 video &&
-                                typeof video.canPlayType === "function" &&
+                                typeof video.canPlayType === _ft &&
                                 video.canPlayType(
                                     "application/vnd.apple.mpegurl"
                                 )
@@ -1726,7 +1717,7 @@ function startCorePlayback(
                                     window as any
                                 ).__ottPlaybackFeedback?.visible()
                             ) {
-                                $("#buffering").hide();
+                                $(_bs).hide();
                                 $("#video_res").html(
                                     "<br/>error DECODE" +
                                         (appendFail ? " (HD Orig)" : "") +
@@ -1792,7 +1783,7 @@ function startCorePlayback(
                 applyChannelPreference("aAudios", function (i: number) {
                     if (hlsInstance) hlsInstance.audioTrack = i;
                 });
-                if (typeof (window as any).refreshAudioBadge === "function")
+                if (typeof (window as any).refreshAudioBadge === _ft)
                     (window as any).refreshAudioBadge();
             }
         );
@@ -1804,7 +1795,7 @@ function startCorePlayback(
     } else if (
         mode === 2 &&
         !_forceNative &&
-        typeof shaka !== "undefined" &&
+        typeof shaka !== _ut &&
         shaka.Player &&
         shaka.Player.isBrowserSupported()
     ) {
@@ -1813,7 +1804,7 @@ function startCorePlayback(
             ? new shaka.Player()
             : new shaka.Player(video);
         window.player = playbackShaka;
-        if (typeof playbackShaka.configure === "function")
+        if (typeof playbackShaka.configure === _ft)
             playbackShaka.configure({
                 restrictions: {
                     maxBandwidth: limits.maxBitrate || Infinity,
@@ -1852,7 +1843,7 @@ function startCorePlayback(
                 status
             );
         };
-        if (typeof playbackShaka.addEventListener === "function")
+        if (typeof playbackShaka.addEventListener === _ft)
             playbackShaka.addEventListener("error", function (event: any) {
                 if (event.detail && event.detail.severity === 2)
                     failed(event.detail);
@@ -1935,7 +1926,7 @@ function startCorePlayback(
                 _coreAutoCancel = watchAutoNativePlayback(
                     media,
                     sourceUrl,
-                    typeof Hls !== "undefined" ? Hls : null,
+                    typeof Hls !== _ut ? Hls : null,
                     {
                         active: function () {
                             return active() && playerMode === 3;
@@ -1957,11 +1948,7 @@ function startCorePlayback(
                         },
                         loadHls: function (ready) {
                             loadCoreMediaEngine("hls", function (ok) {
-                                ready(
-                                    ok && typeof Hls !== "undefined"
-                                        ? Hls
-                                        : null
-                                );
+                                ready(ok && typeof Hls !== _ut ? Hls : null);
                             });
                         },
                         monitorDroppedFrames: !!(
@@ -2037,7 +2024,7 @@ function stopCoreEngine(): void {
     // Removing src alone can leave the selected native resource buffering.
     // Reset it after detaching engines so Stop also aborts its network fetch.
     try {
-        if (typeof video!.load === "function") video!.load();
+        if (typeof video!.load === _ft) video!.load();
     } catch (_) {
         console.warn("[Stop] Could not reset the main media resource.");
     }
@@ -2133,7 +2120,7 @@ export function stbSetPosTime(v: number): void {
     getCoreMediaBackend().seek(v);
     if (
         (window as any).playType < 0 &&
-        typeof (window as any).updateMediaInfo === "function"
+        typeof (window as any).updateMediaInfo === _ft
     )
         (window as any).updateMediaInfo();
 }
@@ -2218,12 +2205,10 @@ export function stbSetWindow(): void {
 export function stbInfo(): void {
     $("#listAbout").append("<br/>userAgent: " + navigator.userAgent);
     var devId =
-        typeof localStorage !== "undefined"
-            ? localStorage.getItem("deviceId")
-            : null;
+        typeof localStorage !== _ut ? localStorage.getItem("deviceId") : null;
     if (devId) $("#listAbout").append("<br/>Device ID: " + devId);
     var localUrl =
-        typeof localStorage !== "undefined"
+        typeof localStorage !== _ut
             ? localStorage.getItem("local_poll_url")
             : null;
     if (localUrl) $("#listAbout").append("<br/>Local Poll URL: " + localUrl);
@@ -2254,7 +2239,7 @@ export function captureAspectTarget(): any {
     var transport = (window as any).__ottCoreTransport;
     var play = transport && transport.play;
     var preference =
-        typeof captureChannelPreference === "function"
+        typeof captureChannelPreference === _ft
             ? captureChannelPreference("aAspects")
             : null;
     var generation = aspectGeneration;
@@ -2310,7 +2295,7 @@ function refreshSubtitleStyle(): void {
  * Side effects: Direct DOM CSS mutation on #video!.
  */
 export function applyAspectRatio(): void {
-    var fit = ["contain", "cover"][aspectRatio] || "contain";
+    var fit = [_ct, "cover"][aspectRatio] || _ct;
     var box = document.getElementById("vdiv");
     // Optional engines may put #video on a wrapper; intrinsic dimensions
     // always belong to the retained media element. CSS still sizes #video.
@@ -2336,12 +2321,12 @@ export function applyAspectRatio(): void {
     // let flex (#vdiv) center it (contain) or absolute-center the cover crop.
     if (cw > 0 && ch > 0 && vw > 0 && vh > 0) {
         var scale =
-            fit === "contain"
+            fit === _ct
                 ? Math.min(cw / vw, ch / vh)
                 : Math.max(cw / vw, ch / vh);
         var w = Math.max(1, Math.round(vw * scale));
         var h = Math.max(1, Math.round(vh * scale));
-        if (fit === "contain") {
+        if (fit === _ct) {
             $("#video").css({
                 bottom: "",
                 height: h + "px",
@@ -2374,14 +2359,14 @@ export function applyAspectRatio(): void {
         return;
     }
     // Fallback before metadata: CSS contain max-box / cover fill + flex center.
-    if (fit === "contain") {
+    if (fit === _ct) {
         $("#video").css({
             bottom: "",
             height: "auto",
             left: "",
             "max-height": "100%",
             "max-width": "100%",
-            "object-fit": "contain",
+            "object-fit": _ct,
             "object-position": "center center",
             position: "relative",
             right: "",
@@ -2576,7 +2561,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         !engineLoaded &&
         !local &&
         requestedMode === 1 &&
-        typeof (window as any).__ottLoadMediaEngine === "function"
+        typeof (window as any).__ottLoadMediaEngine === _ft
     ) {
         loadCoreMediaEngine("hls", function () {
             if (session === _corePipSession) startCorePipEngine(url, true);
@@ -2600,7 +2585,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         initialPipHlsBufferPolicy = null;
     }
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
-    var canHls = typeof Hls !== "undefined" && Hls.isSupported();
+    var canHls = typeof Hls !== _ut && Hls.isSupported();
     var mode =
         normalized && canHls
             ? 1
@@ -2638,7 +2623,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
             _corePipAutoCancel = watchAutoNativePlayback(
                 media,
                 url,
-                typeof Hls !== "undefined" ? Hls : null,
+                typeof Hls !== _ut ? Hls : null,
                 {
                     active: function () {
                         return (
@@ -2658,11 +2643,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
                                 videoPip !== media
                             )
                                 return;
-                            if (
-                                ok &&
-                                typeof Hls !== "undefined" &&
-                                Hls.isSupported()
-                            )
+                            if (ok && typeof Hls !== _ut && Hls.isSupported())
                                 startHls();
                             else {
                                 media.src = url;
@@ -2673,9 +2654,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
                     },
                     loadHls: function (ready) {
                         loadCoreMediaEngine("hls", function (ok) {
-                            ready(
-                                ok && typeof Hls !== "undefined" ? Hls : null
-                            );
+                            ready(ok && typeof Hls !== _ut ? Hls : null);
                         });
                     },
                     restore: function () {
@@ -2709,7 +2688,7 @@ function stopCorePipEngine(): void {
     }
     videoPip!.removeAttribute("src");
     try {
-        if (typeof videoPip!.load === "function") videoPip!.load();
+        if (typeof videoPip!.load === _ft) videoPip!.load();
     } catch (_) {
         console.warn("[Stop] Could not reset the PiP media resource.");
     }
@@ -2729,7 +2708,7 @@ export function setPipPosition(): void {
     // Legacy setPipPosBuf reads sPipSize / sPipPos globals — keep in sync.
     var win = window as any;
     function num(v: any, fallback: number): number {
-        var n = typeof v === "number" ? v : parseInt(v, 10);
+        var n = typeof v === _nt ? v : parseInt(v, 10);
         return isNaN(n) ? fallback : n;
     }
     if (win.sPipSize !== undefined) pipSize = num(win.sPipSize, pipSize);
@@ -2789,7 +2768,7 @@ export function stbSetBuffer(): void {
  * Side effects: Creates and appends a <style> element to document.head if CSS exists.
  */
 export function stbCSS(): void {
-    if (typeof window.stbGetItem !== "function") return;
+    if (typeof window.stbGetItem !== _ft) return;
     var css = window.stbGetItem("stb_custom_css");
     if (css) {
         var s = document.createElement("style");
@@ -2806,10 +2785,7 @@ export function stbCSS(): void {
  * Side effects: May update `playerMode`; never changes the stored preference.
  */
 export function setPlayer(): void {
-    if (
-        typeof window !== "undefined" &&
-        (window as any).ott_device === "lg/webos"
-    ) {
+    if (typeof window !== _ut && (window as any).ott_device === "lg/webos") {
         setPlayerMode(3);
         return;
     }
@@ -2839,15 +2815,15 @@ export function stbExit(): void {
 /** Keep remote input working when an embedding host replaces window.onkeydown. */
 export function stbBindKeyHandler(): void {
     var w = window as any;
-    if (typeof w.__ottKeydownListener !== "function") {
+    if (typeof w.__ottKeydownListener !== _ft) {
         w.__ottKeydownListener = function (event: KeyboardEvent): void {
-            if (typeof w.keyHandler === "function") w.keyHandler(event);
+            if (typeof w.keyHandler === _ft) w.keyHandler(event);
         };
     }
     // Initialization historically replaced the property handler. Clear it so
     // an earlier property binding cannot deliver the same key a second time.
     w.onkeydown = null;
-    if (typeof w.addEventListener === "function") {
+    if (typeof w.addEventListener === _ft) {
         // Reusing this callback makes repeated initialization idempotent.
         w.addEventListener("keydown", w.__ottKeydownListener, false);
     } else {
@@ -2917,9 +2893,9 @@ export function stbInit(): void {
     if (!host.__ottCoreResizeListener)
         host.__ottCoreResizeListener = function () {
             showViewportSizeIndicator();
-            if (typeof window.setFontSize === "function") window.setFontSize();
-            if (typeof window.setListPos === "function") window.setListPos();
-            if (typeof window.setColor === "function") window.setColor();
+            if (typeof window.setFontSize === _ft) window.setFontSize();
+            if (typeof window.setListPos === _ft) window.setListPos();
+            if (typeof window.setColor === _ft) window.setColor();
             // Re-apply video fit/center after layout — sync path alone left explicit
             // px sizes from 1.1.29 stuck at the pre-resize crop.
             var refreshVideo = function () {
@@ -2972,20 +2948,20 @@ export function stbInit(): void {
                 video!.addEventListener("click", _blurVid);
             } catch (_tab) {}
             video!.addEventListener("waiting", function () {
-                $("#buffering").show();
+                $(_bs).show();
                 $("#video_res").text(_("Connecting..."));
             });
             video!.addEventListener("loadstart", function () {
-                $("#buffering").show();
+                $(_bs).show();
                 $("#video_res").text(_("Loading..."));
             });
             video!.addEventListener("canplay", function () {
                 if (!host.__ottPlaybackFeedback?.visible()) {
-                    $("#buffering").hide();
+                    $(_bs).hide();
                     $("#video_res").text("");
                 }
                 updateCoreVideoInfo();
-                if (typeof applyChannelPreference === "function") {
+                if (typeof applyChannelPreference === _ft) {
                     applyChannelPreference("aAspects", setAspect);
                     applyChannelPreference("aZooms", setZoom);
                     setSubtitleTrack();
@@ -2993,7 +2969,7 @@ export function stbInit(): void {
                 }
             });
             video!.addEventListener("playing", function () {
-                $("#buffering").hide();
+                $(_bs).hide();
             });
             video!.addEventListener("error", function () {
                 var _p =
@@ -3025,7 +3001,7 @@ export function stbInit(): void {
                     host.__ottPlaybackFeedback?.visible()
                 )
                     return;
-                $("#buffering").hide();
+                $(_bs).hide();
                 $("#video_res").html(
                     "<br/>error " +
                         (err?.code ?? 0) +
@@ -3083,7 +3059,7 @@ export function stbInit(): void {
                 updateCoreVideoInfo();
             }, 1000);
         };
-        if (host.__ottStandby && typeof host.__ottStandby.ready === "function")
+        if (host.__ottStandby && typeof host.__ottStandby.ready === _ft)
             host.__ottStandby.ready(startInfoTimer);
         else startInfoTimer();
         videoPip = document.getElementById("videopip") as HTMLVideoElement;
@@ -3126,7 +3102,7 @@ function videoEvent(event: Event): void {
         if (
             window.__ottDebug &&
             window.__ottDebug.enabled &&
-            typeof window.__ottDebug.onVideoEvent === "function"
+            typeof window.__ottDebug.onVideoEvent === _ft
         ) {
             window.__ottDebug.onVideoEvent(event);
         }
@@ -3284,8 +3260,8 @@ export function stbSetStandby(standby: boolean): void {
                 if (coreDeviceEffects.standby) coreDeviceEffects.standby(false);
             });
             document.body.style.backgroundColor = "";
-            if (typeof w.startPlayer === "function") w.startPlayer();
-            if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
+            if (typeof w.startPlayer === _ft) w.startPlayer();
+            if (typeof w.setSleepTimeout === _ft) w.setSleepTimeout();
         });
         return;
     }
@@ -3303,17 +3279,17 @@ export function stbSetStandby(standby: boolean): void {
         w.previewChan = null;
         w.pipIndex = null;
         attempt(function () {
-            if (typeof w.closeList === "function") w.closeList(false);
+            if (typeof w.closeList === _ft) w.closeList(false);
         });
         attempt(function () {
             var queue = w.__ottPlexQueue;
-            if (queue && typeof queue.stop === "function") queue.stop();
+            if (queue && typeof queue.stop === _ft) queue.stop();
         });
         attempt(function () {
-            if (typeof stbStop === "function") stbStop();
+            if (typeof stbStop === _ft) stbStop();
         });
         attempt(function () {
-            if (typeof stbStopPip === "function") stbStopPip();
+            if (typeof stbStopPip === _ft) stbStopPip();
         });
         document.body.style.backgroundColor = "#000";
         var launchEl = document.getElementById("launch");
@@ -3326,9 +3302,9 @@ export function stbSetStandby(standby: boolean): void {
         }
     } else {
         document.body.style.backgroundColor = "";
-        if (typeof window.startPlayer === "function") window.startPlayer();
+        if (typeof window.startPlayer === _ft) window.startPlayer();
     }
-    if (typeof window.setSleepTimeout === "function") window.setSleepTimeout();
+    if (typeof window.setSleepTimeout === _ft) window.setSleepTimeout();
 }
 
 /** Toggle standby; remote Stop can reassert teardown without waking. */
@@ -3343,22 +3319,22 @@ export function toggleStandby(): void {
 
 /** Safely invoke stbToggleAspectRatio if it exists. */
 export function toggleAspectRatio(): void {
-    if (typeof stbToggleAspectRatio === "function") stbToggleAspectRatio();
+    if (typeof stbToggleAspectRatio === _ft) stbToggleAspectRatio();
 }
 
 /** Safely invoke stbToggleZoom if it exists. */
 export function toggleZoom(): void {
-    if (typeof stbToggleZoom === "function") stbToggleZoom();
+    if (typeof stbToggleZoom === _ft) stbToggleZoom();
 }
 
 /** Safely invoke stbToggleAudioTrack if it exists. */
 export function toggleAudioTrack(): void {
-    if (typeof stbToggleAudioTrack === "function") stbToggleAudioTrack();
+    if (typeof stbToggleAudioTrack === _ft) stbToggleAudioTrack();
 }
 
 /** Safely invoke stbToggleSubtitle if it exists. */
 export function toggleSubtitle(): void {
-    if (typeof stbToggleSubtitle === "function") stbToggleSubtitle();
+    if (typeof stbToggleSubtitle === _ft) stbToggleSubtitle();
 }
 
 /**
@@ -3424,13 +3400,13 @@ export function setAutorun(): void {
     var autorun = window.stbGetItem ? window.stbGetItem("sAutorun") : null;
     if (autorun == null && window.stbGetItem)
         autorun = window.stbGetItem("stb_autorun");
-    if (autorun === "1" && typeof window.startPlayer === "function") {
+    if (autorun === "1" && typeof window.startPlayer === _ft) {
         window.startPlayer();
     }
 }
 
 /** On DOM ready, set a pointer cursor on the body (touch/STB UI convention). */
-if (typeof document !== "undefined" && document.body) {
+if (typeof document !== _ut && document.body) {
     document.body.style.cursor = "pointer";
 }
 
@@ -3452,7 +3428,7 @@ function configureLiveRecovery(): void {
             w.__ottLiveRecoveryOSD.render(coreLiveRecovery.snapshot().status);
     };
     var unsubscribe = coreMediaBackend.subscribe(refresh);
-    var media = typeof video !== "undefined" ? video : null;
+    var media = typeof video !== _ut ? video : null;
     var events = [
         "timeupdate",
         "playing",
@@ -3462,24 +3438,21 @@ function configureLiveRecovery(): void {
         "enterpictureinpicture",
         "leavepictureinpicture",
     ];
-    if (media && typeof media.addEventListener === "function")
+    if (media && typeof media.addEventListener === _ft)
         events.forEach(function (name) {
             media!.addEventListener(name, refresh);
         });
-    if (
-        typeof document !== "undefined" &&
-        typeof document.addEventListener === "function"
-    )
+    if (typeof document !== _ut && typeof document.addEventListener === _ft)
         document.addEventListener("visibilitychange", refresh);
     coreLiveRecovery.detachUI = function () {
         unsubscribe();
-        if (media && typeof media.removeEventListener === "function")
+        if (media && typeof media.removeEventListener === _ft)
             events.forEach(function (name) {
                 media!.removeEventListener(name, refresh);
             });
         if (
-            typeof document !== "undefined" &&
-            typeof document.removeEventListener === "function"
+            typeof document !== _ut &&
+            typeof document.removeEventListener === _ft
         )
             document.removeEventListener("visibilitychange", refresh);
     };
@@ -3634,7 +3607,7 @@ function openCoreEngineLease(
     cssOnly = false
 ): MediaEngineLease {
     var pip = request.lane === "pip";
-    if (!pip && typeof applyChannelPreference === "function") {
+    if (!pip && typeof applyChannelPreference === _ft) {
         applyChannelPreference("aAspects", setAspect);
         applyChannelPreference("aZooms", setZoom);
     }
@@ -3683,7 +3656,7 @@ function openCoreEngineLease(
         );
     }
     function observe() {
-        if (media && typeof media.addEventListener === "function")
+        if (media && typeof media.addEventListener === _ft)
             [
                 "playing",
                 "pause",
@@ -3729,8 +3702,8 @@ function openCoreEngineLease(
                     : media!.textTracks;
             if (
                 !list ||
-                typeof list.addEventListener !== "function" ||
-                typeof list.removeEventListener !== "function"
+                typeof list.addEventListener !== _ft ||
+                typeof list.removeEventListener !== _ft
             )
                 return;
             var callback = function () {
@@ -3779,7 +3752,7 @@ function openCoreEngineLease(
         },
         dispose: function () {
             listeners.forEach(function (listener) {
-                if (media && typeof media.removeEventListener === "function")
+                if (media && typeof media.removeEventListener === _ft)
                     media.removeEventListener(listener.name, listener.callback);
             });
             listeners = [];
@@ -3908,7 +3881,7 @@ export function stbPlayPip(url: string): void {
 export function stbStopPip(): void {
     getCoreMediaBackend().stop("pip");
 }
-if (typeof window !== "undefined") {
+if (typeof window !== _ut) {
     (window as any).__ottCoreBackend = getCoreMediaBackend;
     // Observers must not create a backend or trigger transport reconciliation.
     (window as any).__ottCoreBackendPeek = function () {
