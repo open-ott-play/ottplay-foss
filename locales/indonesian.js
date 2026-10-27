@@ -588,6 +588,10 @@ var keyStrings = {
     "List type": "Jenis daftar",
     "Lists settings": "Pengaturan daftar",
     Live: "Langsung",
+    "Live recovery attempts": "Percobaan pemulihan siaran langsung",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Aliran tidak dapat diputar · Percobaan pemulihan siaran langsung %1/%2",
+    "Live stall timeout, s": "Batas waktu siaran macet, dtk",
     Load: "Muat",
     "Load built-in playlist:": "Muat daftar putar bawaan:",
     "Load playlist": "Muat daftar putar",
@@ -785,6 +789,7 @@ var keyStrings = {
     "Records library is empty": "Pustaka rekaman kosong",
     "Records not supported by provider":
         "Rekaman tidak didukung oleh penyedia ini",
+    "Recovering stream (%1/%2)": "Menghubungkan ulang… (%1/%2)",
     "Release date": "Tanggal rilis",
     "Remember previous channels": "Ingat saluran sebelumnya",
     "Reminder: %1 — %2 in %3 min": "Pengingat: %1 — %2 dalam %3 mnt",
@@ -1009,6 +1014,7 @@ var keyStrings = {
         "Hentikan pemutaran dan kembali ke siaran langsung",
     "Stop screenshots": "Hentikan tangkapan layar",
     "Stream could not be played": "Aliran tidak dapat diputar",
+    "Stream stalled. Restart in %1 s": "Mulai ulang aliran · %1 dtk",
     "Stream timed out. Select the channel to retry.":
         "Waktu tunggu siaran habis. Pilih saluran untuk mencoba lagi.",
     "Stream type: %1": "Jenis aliran: %1",

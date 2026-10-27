@@ -63,8 +63,8 @@ try {
         Object.keys(CLASSIC_OPTIONAL_BUNDLES).sort()
     );
     assert.deepEqual(OPTIONAL_BUDGETS["subtitle-appearance"], {
-        bytes: 7800,
-        gzipBytes: 3300,
+        bytes: 8100,
+        gzipBytes: 3400,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["remote-settings-extras"], {
         bytes: 7000,
@@ -101,8 +101,8 @@ try {
         gzipBytes: 1900,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["perf-capture"], {
-        bytes: 20200,
-        gzipBytes: 7824,
+        bytes: 22200,
+        gzipBytes: 8528,
     });
     const providerFieldsPath = path.join(
         root,
@@ -110,7 +110,7 @@ try {
     );
     const crypto = require("node:crypto");
     const denseFields = Buffer.concat(
-        Array.from({ length: 256 }, (_, index) =>
+        Array.from({ length: 288 }, (_, index) =>
             crypto.createHash("sha256").update(String(index)).digest()
         )
     ).toString("base64");
@@ -127,7 +127,7 @@ try {
     fs.writeFileSync(perfPath, denseFields);
     assert.throws(
         () => inspectBundleSets(root),
-        /perf-capture\.js: gzipBytes .* exceeds budget 7824/
+        /perf-capture\.js: gzipBytes .* exceeds budget 8528/
     );
     fs.writeFileSync(perfPath, source);
     const extrasPath = path.join(root, "dist/remote-settings-extras.js");
@@ -184,7 +184,7 @@ try {
     );
     assert.throws(
         () => inspectBundleSets(root),
-        /legacy complete player bytes .* exceeds budget 1176800/,
+        /legacy complete player bytes .* exceeds budget 1182800/,
         "legacy payload cannot borrow unused optional-asset headroom"
     );
     fs.writeFileSync(oversizedSet, source);

@@ -21,7 +21,7 @@ version at runtime.
   Conforming native APIs are preserved. Proposals are not included merely
   because a new core-js release offers them.
 - The legacy web profile retains jQuery **1.11.1** and Shaka Player **3.3.19**.
-  Native shells use npm-locked jQuery **4.0.0** and Shaka Player **5.2.10**.
+  Native shells use npm-locked jQuery **4.0.0** and Shaka Player **5.3.2**.
   These are explicit packaging profiles. Neither uses a user-agent-triggered
   CDN substitution. Updating HLS does not establish that the other libraries'
   current native versions can run on the old web profile.
@@ -139,6 +139,12 @@ lacks MSE; polyfills must not manufacture a positive capability result.
    HLS UMD bytes unchanged and preserve the identified worker modification.
    Update this document and `THIRD-PARTY-NOTICES.md` when the recorded versions
    or license requirements change.
+   This also applies to dependency updates outside the four generated media
+   assets: the fingerprint includes the complete canonical lockfile. A
+   `Stale media URL version` failure means the generated files and both source
+   HTML bootstrap URLs need to be refreshed and committed with that lockfile.
+   Keep the pre-build CI check so a build cannot silently hide missing files
+   in the pull request.
 4. Run `npm run test:media` and `npm run typecheck`. The VM test executes actual
    shipped HLS and worker code with missing APIs, and includes a failing
    unpolyfilled control, asynchronous Promise behavior, collection semantics,

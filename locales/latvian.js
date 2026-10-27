@@ -592,6 +592,10 @@ var keyStrings = {
     "List type": "Saraksta veids",
     "Lists settings": "Sarakstu iestatījumi",
     Live: "Tiešraide",
+    "Live recovery attempts": "Tiešraides atjaunošanas mēģinājumi",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Neizdevās atskaņot straumi · Tiešraides atjaunošanas mēģinājumi %1/%2",
+    "Live stall timeout, s": "Iestrēgšanas noildze, s",
     Load: "Ielādēt",
     "Load built-in playlist:": "Ielādēt iebūvēto atskaņošanas sarakstu:",
     "Load playlist": "Ielādēt atskaņošanas sarakstu",
@@ -792,6 +796,7 @@ var keyStrings = {
     "Records library is empty": "Ierakstu bibliotēka ir tukša",
     "Records not supported by provider":
         "Šis pakalpojuma sniedzējs neatbalsta ierakstus",
+    "Recovering stream (%1/%2)": "Savienojas atkārtoti… (%1/%2)",
     "Release date": "Izlaišanas datums",
     "Remember previous channels": "Atcerēties iepriekšējos kanālus",
     "Reminder: %1 — %2 in %3 min": "Atgādinājums: %1 — %2 pēc %3 min.",
@@ -1015,6 +1020,7 @@ var keyStrings = {
         "Apturēt atskaņošanu un atgriezties tiešraidē",
     "Stop screenshots": "Apturēt ekrānuzņēmumu uzņemšanu",
     "Stream could not be played": "Neizdevās atskaņot straumi",
+    "Stream stalled. Restart in %1 s": "Pārstartēt straumi · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Straumes gaidīšanas laiks ir beidzies. Atlasiet kanālu, lai mēģinātu vēlreiz.",
     "Stream type: %1": "Straumes veids: %1",

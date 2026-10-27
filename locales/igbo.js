@@ -582,6 +582,10 @@ var keyStrings = {
     "List type": "Ụdị ndepụta",
     "Lists settings": "Ntọala ndepụta",
     Live: "Mgbasa ozi ozugbo",
+    "Live recovery attempts": "Mgbalị iweghachi mgbasa ozi dị ndụ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Enweghị ike ịkpọ iyi · Mgbalị iweghachi mgbasa ozi dị ndụ %1/%2",
+    "Live stall timeout, s": "Oge nchere nkwụsị mgbasa ozi, s",
     Load: "Bugo",
     "Load built-in playlist:": "Bugo ndepụta ọkpụkpọ agbakwunyere:",
     "Load playlist": "Bugo ndepụta ọkpụkpọ",
@@ -778,6 +782,7 @@ var keyStrings = {
     "Records library is empty": "Ọba ndekọ tọgbọrọ chakoo",
     "Records not supported by provider":
         "Onye na-eweta ọrụ a anaghị akwado ndekọ",
+    "Recovering stream (%1/%2)": "Ana ejikọ ọzọ… (%1/%2)",
     "Release date": "Ụbọchị mwepụta",
     "Remember previous channels": "Cheta ọwa ndị gara aga",
     "Reminder: %1 — %2 in %3 min": "Ncheta: %1 — %2 n'ime nkeji %3",
@@ -997,6 +1002,7 @@ var keyStrings = {
         "Kwụsị ọkpụkpọ ma laghachi na mgbasa ozugbo",
     "Stop screenshots": "Kwụsị nseta ihuenyo",
     "Stream could not be played": "Enweghị ike ịkpọ iyi",
+    "Stream stalled. Restart in %1 s": "Malitegharịa iyi · %1 sekọnd",
     "Stream timed out. Select the channel to retry.":
         "Oge ichere mgbasa ozi agwụla. Họrọ ọwa ahụ iji nwaa ọzọ.",
     "Stream type: %1": "Ụdị iyi: %1",

@@ -30,7 +30,10 @@ import {
 } from "../storage/index";
 import { listPreviewRect } from "../utils/helpers";
 import { watchAutoNativePlayback } from "./auto-playback";
-import { coreBufferPolicy } from "./buffer-policy";
+import {
+    coreBufferPolicy,
+    snapshotInitialHlsBufferPolicy,
+} from "./buffer-policy";
 import { createNativeHlsTransport, isNativeHlsUrl } from "./native-hls";
 
 /** Reference to the primary <video> DOM element. */
@@ -185,6 +188,7 @@ export var strLANG = "SHIFT";
 
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
+var initialHlsBufferPolicy: any = null;
 // True only after this core attached a native source to the owned element.
 var coreNativeAttached = false;
 var corePipNativeAttached = false;
@@ -397,6 +401,7 @@ export function clearPlayTimeInterval(): void {
 }
 /** Active hls.js instance for the PiP video!. */
 var hlsPipInstance: any = null;
+var initialPipHlsBufferPolicy: any = null;
 var _corePipSession = 0;
 var _corePipAutoCancel: ((restoreNative?: boolean) => void) | null = null;
 /** Whether the player is currently in fullscreen mode. */
@@ -1033,6 +1038,7 @@ interface CoreStreamAttempt {
     fail(kind: string, status?: number, position?: number): void;
     pause(): void;
     resume(): boolean;
+    state(): { pending: boolean; terminal: boolean };
 }
 var coreStreamAttempt: CoreStreamAttempt | null = null;
 // Retained for the whole engine lease: an internal retry must not erase history.
@@ -1193,6 +1199,9 @@ function createCoreStreamAttempt(
             schedule();
             return true;
         },
+        state: function () {
+            return { pending: pending, terminal: ended };
+        },
     };
 }
 function coreStreamFailure(
@@ -1255,6 +1264,7 @@ function startCoreEngine(
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
+        initialHlsBufferPolicy = null;
     }
     cancelCoreSeek();
     destroyCoreShaka();
@@ -1373,6 +1383,7 @@ function startCoreEngine(
                   if (hlsInstance) {
                       hlsInstance.destroy();
                       hlsInstance = null;
+                      initialHlsBufferPolicy = null;
                   }
                   destroyCoreShaka();
                   if (video) {
@@ -1579,6 +1590,7 @@ function startCorePlayback(
             hlsConfig.manifestLoadingMaxRetry = 1;
         }
         hlsInstance = new Hls(coreHlsConfig(hlsConfig, originalUrl));
+        initialHlsBufferPolicy = snapshotInitialHlsBufferPolicy(hlsInstance);
         reportCorePerformance();
         var playbackHls = hlsInstance;
         var bitrateMeter = createCoreHlsBitrateMeter();
@@ -1611,6 +1623,7 @@ function startCorePlayback(
                     coreStreamFailure("auth", httpStatus);
                     hlsInstance.destroy();
                     hlsInstance = null;
+                    initialHlsBufferPolicy = null;
                     return;
                 }
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
@@ -1681,6 +1694,7 @@ function startCorePlayback(
                                 : nativePosition;
                         hlsInstance.destroy();
                         hlsInstance = null;
+                        initialHlsBufferPolicy = null;
                         // Auto already tried native. Never loop back to the
                         // decoder that silently dropped this stream's video.
                         if (
@@ -1735,6 +1749,7 @@ function startCorePlayback(
                         );
                         hlsInstance.destroy();
                         hlsInstance = null;
+                        initialHlsBufferPolicy = null;
                     } else {
                         hlsInstance.startLoad(
                             _corePendingSeek || !hlsInstance.hasEnoughToStart
@@ -1746,6 +1761,7 @@ function startCorePlayback(
                     coreStreamFailure("decode");
                     hlsInstance.destroy();
                     hlsInstance = null;
+                    initialHlsBufferPolicy = null;
                 }
             }
         });
@@ -1754,6 +1770,7 @@ function startCorePlayback(
             if (streamPolicy && !streamPolicy.hls(playbackHls, limits)) {
                 playbackHls.destroy();
                 hlsInstance = null;
+                initialHlsBufferPolicy = null;
                 coreStreamFailure("quality");
                 return;
             }
@@ -2015,6 +2032,7 @@ function stopCoreEngine(): void {
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
+        initialHlsBufferPolicy = null;
     }
     // Removing src alone can leave the selected native resource buffering.
     // Reset it after detaching engines so Stop also aborts its network fetch.
@@ -2579,6 +2597,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     if (hlsPipInstance) {
         hlsPipInstance.destroy();
         hlsPipInstance = null;
+        initialPipHlsBufferPolicy = null;
     }
     var auto = playerMode === 3 && getDefaultPlayerMode() === 3;
     var canHls = typeof Hls !== "undefined" && Hls.isSupported();
@@ -2596,6 +2615,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
             )
         );
         hlsPipInstance = pipHls;
+        initialPipHlsBufferPolicy = snapshotInitialHlsBufferPolicy(pipHls);
         reportCorePerformance();
         pipHls.on(Hls.Events.MANIFEST_PARSED, function () {
             if (session === _corePipSession && hlsPipInstance === pipHls)
@@ -2685,6 +2705,7 @@ function stopCorePipEngine(): void {
     if (hlsPipInstance) {
         hlsPipInstance.destroy();
         hlsPipInstance = null;
+        initialPipHlsBufferPolicy = null;
     }
     videoPip!.removeAttribute("src");
     try {
@@ -3415,6 +3436,102 @@ if (typeof document !== "undefined" && document.body) {
 
 /** Modern browser engines are ports; the backend owns the request and observations. */
 var coreMediaBackend: any = null;
+var coreLiveRecovery: any = null;
+/** Called by committed settings effects; disabled mode creates no polling timer. */
+function configureLiveRecovery(): void {
+    if (!coreLiveRecovery) return;
+    if (coreLiveRecovery.detachUI) coreLiveRecovery.detachUI();
+    coreLiveRecovery.detachUI = null;
+    coreLiveRecovery.configure();
+    var w = window as any;
+    if (!(w.sLiveRecoveryAttempts > 0 && w.sLiveRecoveryAttempts <= 5)) return;
+    // Observe presentation only while enabled. Zero retains the original engine listeners.
+    var refresh = function () {
+        coreLiveRecovery.refresh();
+        if (w.__ottLiveRecoveryOSD)
+            w.__ottLiveRecoveryOSD.render(coreLiveRecovery.snapshot().status);
+    };
+    var unsubscribe = coreMediaBackend.subscribe(refresh);
+    var media = typeof video !== "undefined" ? video : null;
+    var events = [
+        "timeupdate",
+        "playing",
+        "pause",
+        "seeking",
+        "emptied",
+        "enterpictureinpicture",
+        "leavepictureinpicture",
+    ];
+    if (media && typeof media.addEventListener === "function")
+        events.forEach(function (name) {
+            media!.addEventListener(name, refresh);
+        });
+    if (
+        typeof document !== "undefined" &&
+        typeof document.addEventListener === "function"
+    )
+        document.addEventListener("visibilitychange", refresh);
+    coreLiveRecovery.detachUI = function () {
+        unsubscribe();
+        if (media && typeof media.removeEventListener === "function")
+            events.forEach(function (name) {
+                media!.removeEventListener(name, refresh);
+            });
+        if (
+            typeof document !== "undefined" &&
+            typeof document.removeEventListener === "function"
+        )
+            document.removeEventListener("visibilitychange", refresh);
+    };
+}
+(window as any).configureLiveRecovery = configureLiveRecovery;
+function sampleCoreLiveRecovery(): LiveRecoverySample | null {
+    var w = window as any;
+    var playback = w.__ottClassicPlayback;
+    var handle = coreMediaBackend.current();
+    if (
+        !playback ||
+        !handle ||
+        !handle.active() ||
+        !w.__ottCoreTransport ||
+        w.stbPlay !== w.__ottCoreTransport.play
+    )
+        return null;
+    var state = playback.snapshot();
+    if (
+        !state.target ||
+        state.target.kind !== "live" ||
+        state.phase === "stopped"
+    )
+        return null;
+    var media = video;
+    if (!media) return null;
+    var attempt = coreStreamAttempt && coreStreamAttempt.state();
+    return {
+        activity: JSON.stringify(coreAttemptCounters || {}),
+        blocked:
+            state.phase === "paused" ||
+            w.forcePlay === false ||
+            media.seeking ||
+            media.ended ||
+            (media.paused && handle.snapshot().phase !== "loading") ||
+            document.visibilityState === "hidden" ||
+            w.navigator.onLine === false ||
+            !!(w.__ottKiosk && w.__ottKiosk.enabled()) ||
+            !!(coreAvTest && coreAvTest.active()),
+        handleId: handle.id,
+        key: JSON.stringify([
+            state.target.sourceId,
+            state.target.channelId,
+            state.generation,
+        ]),
+        position: media.currentTime,
+        ready: !media.paused && media.readyState >= 2,
+        recovering: !!(attempt && attempt.pending),
+        terminal: !!(attempt && attempt.terminal),
+    };
+}
+
 var coreDeviceEffects: any = {};
 export function getCoreMediaBackend(): any {
     if (coreMediaBackend) return coreMediaBackend;
@@ -3482,6 +3599,33 @@ export function getCoreMediaBackend(): any {
             return setInterval(callback, delay);
         },
     });
+    coreLiveRecovery = (window as any).__ottLiveRecovery.create({
+        clearInterval: function (timer: any) {
+            clearInterval(timer);
+        },
+        now: function () {
+            return performance.now();
+        },
+        report: function (status: LiveRecoveryStatus) {
+            var osd = (window as any).__ottLiveRecoveryOSD;
+            if (osd) osd.render(status);
+        },
+        restart: function () {
+            return coreMediaBackend.restart();
+        },
+        sample: sampleCoreLiveRecovery,
+        setInterval: function (callback: () => void, delay: number) {
+            return setInterval(callback, delay);
+        },
+        settings: function () {
+            var w = window as any;
+            return {
+                attempts: w.sLiveRecoveryAttempts,
+                timeout: w.sLiveRecoveryTimeout,
+            };
+        },
+    });
+    configureLiveRecovery();
     return coreMediaBackend;
 }
 function openCoreEngineLease(
@@ -3621,9 +3765,17 @@ function openCoreEngineLease(
                 : null;
         },
         diagnosticMedia: function () {
-            return active() && media
-                ? { hls: pip ? hlsPipInstance : hlsInstance, media: media }
-                : null;
+            if (!active() || !media) return null;
+            var hls = pip ? hlsPipInstance : hlsInstance,
+                policy = pip
+                    ? initialPipHlsBufferPolicy
+                    : initialHlsBufferPolicy;
+            return {
+                hls: hls,
+                initialHlsBufferPolicy:
+                    hls && policy ? Object.assign({}, policy) : null,
+                media: media,
+            };
         },
         dispose: function () {
             listeners.forEach(function (listener) {

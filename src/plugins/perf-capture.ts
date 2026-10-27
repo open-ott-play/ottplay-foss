@@ -229,7 +229,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         if (active) admitted();
         if (!report) return null;
         var result = Object.assign({}, report);
-        if (version === 2) result.capture_version = captureVersion;
+        if (version >= 2) result.capture_version = captureVersion;
         result.elapsed_ms = active ? clock().at : report.elapsed_ms;
         result.remaining_ms = active
             ? Math.max(0, result.duration_seconds * 1000 - result.elapsed_ms)
@@ -247,7 +247,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
     function request(input: any): any {
         var p = input.params || {},
             op = p.op,
-            version = p.version === 2 ? 2 : 1;
+            version = p.version === 3 ? 3 : p.version === 2 ? 2 : 1;
         function fail(error: string): any {
             return {
                 data: {
@@ -285,7 +285,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         else if (op === "status") optional = ["session_id"];
         else return fail("invalid_request");
         if (
-            (p.version !== 1 && p.version !== 2) ||
+            (p.version !== 1 && p.version !== 2 && p.version !== 3) ||
             required.some(function (key) {
                 return !Object.prototype.hasOwnProperty.call(p, key);
             }) ||
@@ -317,8 +317,7 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
         // receive an extended capture, or silently change its saved options.
         if (
             report &&
-            captureVersion === 2 &&
-            version === 1 &&
+            version < captureVersion &&
             !(op === "start" && !active && p.session_id !== report.id)
         )
             return fail("unsupported");
@@ -390,7 +389,8 @@ function createPerformanceCapture(w: any, runtime: () => string): any {
                     clock: clock,
                     current: admitted,
                     emit: store,
-                    hlsDetails: version === 2,
+                    hlsDetails: version >= 2,
+                    hlsPolicy: version === 3,
                     lease: lease,
                     longTasks: longTasks,
                     origin: performanceClock ? origin : null,

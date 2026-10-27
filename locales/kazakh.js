@@ -588,6 +588,10 @@ var keyStrings = {
     "List type": "Тізім түрі",
     "Lists settings": "Тізім баптаулары",
     Live: "Тікелей эфир",
+    "Live recovery attempts": "Тікелей эфирді қалпына келтіру әрекеттері",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ағынды ойнату мүмкін болмады · Тікелей эфирді қалпына келтіру әрекеттері %1/%2",
+    "Live stall timeout, s": "Қатып қалуды күту уақыты, с",
     Load: "Жүктеу",
     "Load built-in playlist:": "Кірістірілген ойнату тізімін жүктеу:",
     "Load playlist": "Ойнату тізімін жүктеу",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records for channel: ": "Арна жазбалары: ",
     "Records library is empty": "Жазбалар кітапханасы бос",
     "Records not supported by provider": "Провайдер жазбаларды қолдамайды",
+    "Recovering stream (%1/%2)": "Қайта қосылуда… (%1/%2)",
     "Release date": "Шығарылған күні",
     "Remember previous channels": "Алдыңғы арналарды есте сақтау",
     "Reminder: %1 — %2 in %3 min": "Еске салу: %1 — %2, %3 минуттан кейін",
@@ -1009,6 +1014,7 @@ var keyStrings = {
         "Ойнатуды тоқтатып, тікелей эфирге қайту",
     "Stop screenshots": "Скриншоттарды тоқтату",
     "Stream could not be played": "Ағынды ойнату мүмкін болмады",
+    "Stream stalled. Restart in %1 s": "Ағынды қайта іске қосу · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Ағынды күту уақыты аяқталды. Қайталап көру үшін арнаны таңдаңыз.",
     "Stream type: %1": "Ағын түрі: %1",

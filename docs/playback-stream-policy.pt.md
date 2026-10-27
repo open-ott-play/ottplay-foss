@@ -56,7 +56,7 @@ As reservas são **apenas para direto**. Solicitações de arquivo e VOD nunca u
 - Falhas de carregamento e eventos críticos de erro do Shaka partilham este caminho; erros de cancelamento são ignorados. A reconexão espera pela destruição assíncrona do Shaka.
 - A recuperação resolve novamente uma referência opaca Stalker e prepara de novo o acesso protegido à fonte. Não reutiliza um URL loopback iOS expirado. A posição VOD/arquivo é recolhida antes da desmontagem; reservas de direto começam no seu ponto atual de transmissão.
 
-A política não introduz um segundo monitor de fotogramas parados. A recuperação existente de kiosk, Auto/native e HLS continua a cobrir os seus próprios casos de falha observados. Um fluxo que para silenciosamente sem erro comunicado por um detetor existente precisa de diagnóstico separado.
+A recuperação opcional baseada no relógio de mídia da transmissão ao vivo é descrita abaixo. A recuperação existente de kiosk, Auto/native e HLS mantém seus próprios escopos e o comportamento dos motores.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Os testes exercitam filtragem de qualidade com variantes em ordem não monótona, metadados indisponíveis, edição no âmbito da fonte, conflitos de posições, erros duplicados, orçamentos limitados, falhas de autorização HTTP, cancelamento por pausa/paragem/fonte, desmontagem Shaka e retenção da posição VOD. Os cinco novos rótulos de reprodução estão traduzidos nos 88 pacotes linguísticos incluídos; a paridade automática não é revisão por falantes nativos. A reprodução física TV/D1 e manifestos específicos dos fornecedores ainda exigem validação no dispositivo. [Fonte editável do diagrama](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Recuperação de transmissão ao vivo travada
+
+Em **Configurações → Configurações da interface**, selecione **Tentativas de recuperação ao vivo** (0–5) e **Tempo limite de travamento ao vivo, s** (10/15/20/30). Os valores padrão são 0 tentativas e 15 segundos. Zero desativa apenas este monitor; a recuperação existente de erros do motor permanece inalterada. As configurações usam o fluxo normal Salvar/Cancelar.
+
+Após confirmar o avanço da reprodução, a parada do relógio de mídia da transmissão ao vivo principal aciona o `backend.restart()` existente. Pausa, busca de posição, páginas ocultas, estado offline e kiosk suspendem a observação; arquivo, VOD e a via PiP são excluídos. O PiP nativo oculta o OSD HTML. Mudanças de canal, fonte ou geração cancelam a observação anterior. A reprodução inicial que nunca avança continua sujeita ao tratamento existente de inicialização e erros. Trocas de decodificador e avanços breves não renovam o limite de tentativas: dez segundos de avanço contínuo o renovam. Esgotar o limite interrompe novas reinicializações do monitor para aquele travamento. Uma recuperação pendente do motor tem prioridade; erros terminais de autorização, DRM ou qualidade não podem ser contornados. Isso observa o tempo de mídia, não a apresentação física da imagem nem quadros congelados enquanto o relógio de mídia continua avançando.
+
+Para um teste básico sem assinatura, escolha **Experimentar demonstração**. Após o início da reprodução, defina temporariamente `document.getElementById("video").playbackRate = 0` no DevTools da aba de teste; depois restaure o valor para 1. Pausar é intencionalmente excluído da recuperação de travamentos.

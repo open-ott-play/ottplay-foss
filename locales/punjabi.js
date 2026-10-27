@@ -571,6 +571,10 @@ var keyStrings = {
     "List type": "ਸੂਚੀ ਦੀ ਕਿਸਮ",
     "Lists settings": "ਸੂਚੀ ਸੈਟਿੰਗਾਂ",
     Live: "ਲਾਈਵ ਪ੍ਰਸਾਰਣ",
+    "Live recovery attempts": "ਲਾਈਵ ਪ੍ਰਸਾਰਣ ਬਹਾਲੀ ਦੀਆਂ ਕੋਸ਼ਿਸ਼ਾਂ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ਸਟ੍ਰੀਮ ਨੂੰ ਚਲਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ · ਲਾਈਵ ਪ੍ਰਸਾਰਣ ਬਹਾਲੀ ਦੀਆਂ ਕੋਸ਼ਿਸ਼ਾਂ %1/%2",
+    "Live stall timeout, s": "ਪ੍ਰਸਾਰਣ ਰੁਕਣ ਦੀ ਸਮਾਂ ਸੀਮਾ, ਸਕਿੰਟ",
     Load: "ਲੋਡ ਕਰੋ",
     "Load built-in playlist:": "ਬਿਲਟ-ਇਨ ਪਲੇਲਿਸਟ ਲੋਡ ਕਰੋ:",
     "Load playlist": "ਪਲੇਲਿਸਟ ਲੋਡ ਕਰੋ",
@@ -767,6 +771,7 @@ var keyStrings = {
     "Records library is empty": "ਰਿਕਾਰਡਿੰਗਜ਼ ਲਾਇਬ੍ਰੇਰੀ ਖਾਲੀ ਹੈ",
     "Records not supported by provider":
         "ਰਿਕਾਰਡਿੰਗ ਇਸ ਪ੍ਰਦਾਤਾ ਦੁਆਰਾ ਸਮਰਥਿਤ ਨਹੀਂ ਹਨ",
+    "Recovering stream (%1/%2)": "ਮੁੜ ਕਨੈਕਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ... (%1/%2)",
     "Release date": "ਰੀਲੀਜ਼ ਦੀ ਮਿਤੀ",
     "Remember previous channels": "ਪਿਛਲੇ ਚੈਨਲਾਂ ਨੂੰ ਯਾਦ ਰੱਖੋ",
     "Reminder: %1 — %2 in %3 min": "ਰੀਮਾਈਂਡਰ: %1 — %3 ਮਿੰਟ ਵਿੱਚ %2",
@@ -983,6 +988,7 @@ var keyStrings = {
     "Stop playback and return to live": "ਪਲੇਬੈਕ ਬੰਦ ਕਰੋ ਅਤੇ ਲਾਈਵ 'ਤੇ ਵਾਪਸ ਜਾਓ",
     "Stop screenshots": "ਸਕ੍ਰੀਨਸ਼ਾਟ ਰੋਕੋ",
     "Stream could not be played": "ਸਟ੍ਰੀਮ ਨੂੰ ਚਲਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ",
+    "Stream stalled. Restart in %1 s": "ਸਟ੍ਰੀਮ ਨੂੰ ਮੁੜ-ਸ਼ੁਰੂ ਕਰੋ · %1 ਸਕਿੰਟ",
     "Stream timed out. Select the channel to retry.":
         "ਸਟ੍ਰੀਮ ਦੀ ਉਡੀਕ ਦਾ ਸਮਾਂ ਮੁੱਕ ਗਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਚੈਨਲ ਚੁਣੋ।",
     "Stream type: %1": "ਸਟ੍ਰੀਮ ਦੀ ਕਿਸਮ: %1",

@@ -592,6 +592,10 @@ var keyStrings = {
     "List type": "Тип листе",
     "Lists settings": "Подешавања листе",
     Live: "Уживо",
+    "Live recovery attempts": "Покушаји опоравка преноса уживо",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Стрим није могао да се пусти · Покушаји опоравка преноса уживо %1/%2",
+    "Live stall timeout, s": "Време чекања застоја, с",
     Load: "Учитај",
     "Load built-in playlist:": "Учитај уграђену листу за репродукцију:",
     "Load playlist": "Учитај плејлисту",
@@ -789,6 +793,7 @@ var keyStrings = {
     "Records for channel: ": "Снимци за канал: ",
     "Records library is empty": "Библиотека снимака је празна",
     "Records not supported by provider": "Овај провајдер не подржава снимке",
+    "Recovering stream (%1/%2)": "Поновно повезивање… (%1/%2)",
     "Release date": "Датум изласка",
     "Remember previous channels": "Запамтите претходне канале",
     "Reminder: %1 — %2 in %3 min": "Подсетник: %1 — %2 за %3 мин",
@@ -1012,6 +1017,7 @@ var keyStrings = {
         "Заустави репродукцију и врати се на пренос уживо",
     "Stop screenshots": "Зауставите снимке екрана",
     "Stream could not be played": "Стрим није могао да се пусти",
+    "Stream stalled. Restart in %1 s": "Поново покрените стрим · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Време чекања преноса је истекло. Изаберите канал за поновни покушај.",
     "Stream type: %1": "Тип тока: %1",

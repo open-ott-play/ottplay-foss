@@ -318,13 +318,18 @@ function coreBridge(f, kind = "vod") {
         .filter(
             (node) =>
                 ts.isFunctionDeclaration(node) &&
-                ["getCoreMediaBackend", "stbStop", "stbIsStandby"].includes(
-                    node.name?.text
-                )
+                [
+                    "getCoreMediaBackend",
+                    "stbStop",
+                    "stbIsStandby",
+                    "configureLiveRecovery",
+                    "sampleCoreLiveRecovery",
+                ].includes(node.name?.text)
         )
         .map((node) => node.getText(source).replace(/^export /, ""))
         .join("\n");
     load(f.context, "src/playback/session.ts");
+    load(f.context, "src/playback/live-recovery.ts");
     const state = f.context.__ottPlaybackSession.createState(() => {});
     function select(nextKind = kind) {
         state.open({
@@ -372,6 +377,7 @@ function coreBridge(f, kind = "vod") {
         },
         _standby: false,
         clearInterval: f.ports.clearInterval,
+        coreLiveRecovery: null,
         coreMediaBackend: null,
         openCoreEngineLease: f.ports.open,
         setInterval: f.ports.setInterval,
@@ -1409,8 +1415,16 @@ test("engine diagnostics follow ownership, suspension and natural stop without s
 test("media diagnostics keep the main generation out of independent PiP", (f) => {
     const main = f.backend.open({ url: "main" });
     const pip = f.backend.open({ lane: "pip", url: "pip" });
-    const mainMedia = { hls: {}, media: {} };
-    const pipMedia = { hls: {}, media: {} };
+    const mainMedia = {
+        hls: {},
+        initialHlsBufferPolicy: { max_buffer_length_seconds: 20 },
+        media: {},
+    };
+    const pipMedia = {
+        hls: {},
+        initialHlsBufferPolicy: { max_buffer_length_seconds: 10 },
+        media: {},
+    };
     f.leases[0].media = mainMedia;
     f.leases[1].media = pipMedia;
     const commandCount = f.commands.length;
@@ -1418,6 +1432,14 @@ test("media diagnostics keep the main generation out of independent PiP", (f) =>
     assert.equal(pip.diagnosticMedia().generation, null);
     assert.equal(pip.diagnosticMedia().media, pipMedia.media);
     assert.equal(pip.diagnosticMedia().hls, pipMedia.hls);
+    assert.equal(
+        main.diagnosticMedia().initialHlsBufferPolicy.max_buffer_length_seconds,
+        20
+    );
+    assert.equal(
+        pip.diagnosticMedia().initialHlsBufferPolicy.max_buffer_length_seconds,
+        10
+    );
     assert.equal(f.commands.length, commandCount);
 
     f.domain({ generation: 2, kind: "vod", position: 0 });

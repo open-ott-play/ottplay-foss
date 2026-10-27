@@ -2099,3 +2099,32 @@ for (const profile of [
 console.log(
     "OK: buffer values survive UI readback, cancel and unrelated save across device lists"
 );
+
+// Live recovery is opt-in and uses the ordinary transactional settings editor.
+{
+    const { w, stored, typed } = fixture();
+    assert.equal(typed().liveRecoveryAttempts, 0);
+    assert.equal(typed().liveRecoveryTimeout, 15);
+    w.settingsInterface();
+    const attempts = w.listArray.find(
+        (row) => row.settingId === "liveRecoveryAttempts"
+    );
+    const timeout = w.listArray.find(
+        (row) => row.settingId === "liveRecoveryTimeout"
+    );
+    attempts.val = attempts.settingValues.indexOf(5);
+    timeout.val = timeout.settingValues.indexOf(30);
+    assert.equal(w.__ottSettingsEditor.save(), true);
+    assert.equal(stored.get("sLiveRecoveryAttempts"), "5");
+    assert.equal(stored.get("sLiveRecoveryTimeout"), "30");
+    assert.equal(typed().liveRecoveryAttempts, 5);
+    assert.equal(typed().liveRecoveryTimeout, 30);
+    w.settingsInterface();
+    assert.equal(
+        w.listArray.find((row) => row.settingId === "liveRecoveryTimeout").val,
+        3
+    );
+}
+console.log(
+    "OK: live recovery defaults and semantic values persist through the settings editor"
+);

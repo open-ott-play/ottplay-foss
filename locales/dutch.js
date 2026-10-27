@@ -597,6 +597,10 @@ var keyStrings = {
     "List type": "Lijsttype",
     "Lists settings": "Lijstinstellingen",
     Live: "Live-uitzending",
+    "Live recovery attempts": "Herstelpogingen voor live-tv",
+    "Live recovery attempts exhausted (%1/%2)":
+        "De stream kon niet worden afgespeeld · Herstelpogingen voor live-tv %1/%2",
+    "Live stall timeout, s": "Time-out bij vastlopen, s",
     Load: "Laden",
     "Load built-in playlist:": "Ingebouwde afspeellijst laden:",
     "Load playlist": "Afspeellijst laden",
@@ -796,6 +800,7 @@ var keyStrings = {
     "Records library is empty": "Opnamebibliotheek is leeg",
     "Records not supported by provider":
         "Opnamen worden niet ondersteund door deze provider",
+    "Recovering stream (%1/%2)": "Opnieuw verbinden… (%1/%2)",
     "Release date": "Verschijningsdatum",
     "Remember previous channels": "Vorige zenders onthouden",
     "Reminder: %1 — %2 in %3 min": "Herinnering: %1 — %2 over %3 min",
@@ -1023,6 +1028,7 @@ var keyStrings = {
         "Afspelen stoppen en terugkeren naar live",
     "Stop screenshots": "Schermafbeeldingen stoppen",
     "Stream could not be played": "De stream kon niet worden afgespeeld",
+    "Stream stalled. Restart in %1 s": "Stream herstarten · %1 s",
     "Stream timed out. Select the channel to retry.":
         "De wachttijd voor de stream is verstreken. Selecteer het kanaal om het opnieuw te proberen.",
     "Stream type: %1": "Streamtype: %1",

@@ -558,6 +558,10 @@ var keyStrings = {
     "List type": "ປະເພດລາຍການ",
     "Lists settings": "ການຕັ້ງຄ່າລາຍການ",
     Live: "ຖ່າຍທອດສົດ",
+    "Live recovery attempts": "ຈຳນວນຄັ້ງກູ້ຄືນການຖ່າຍທອດສົດ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມ · ຈຳນວນຄັ້ງກູ້ຄືນການຖ່າຍທອດສົດ %1/%2",
+    "Live stall timeout, s": "ເວລາລໍຖ້າການຄ້າງ, ວິນາທີ",
     Load: "ໂຫຼດ",
     "Load built-in playlist:": "ໂຫຼດລາຍການຫຼິ້ນທີ່ມີໃຫ້:",
     "Load playlist": "ໂຫຼດລາຍການຫຼິ້ນ",
@@ -748,6 +752,7 @@ var keyStrings = {
     "Records for channel: ": "ບັນທຶກລາຍການຂອງຊ່ອງ: ",
     "Records library is empty": "ຄັງບັນທຶກລາຍການວ່າງເປົ່າ",
     "Records not supported by provider": "ຜູ້ໃຫ້ບໍລິການນີ້ບໍ່ຮອງຮັບບັນທຶກລາຍການ",
+    "Recovering stream (%1/%2)": "ກຳລັງເຊື່ອມຕໍ່ຄືນ… (%1/%2)",
     "Release date": "ວັນທີເຜີຍແຜ່",
     "Remember previous channels": "ຈື່ຊ່ອງກ່ອນໜ້າ",
     "Reminder: %1 — %2 in %3 min": "ແຈ້ງເຕືອນ: %1 — %2 ໃນອີກ %3 ນາທີ",
@@ -962,6 +967,7 @@ var keyStrings = {
     "Stop playback and return to live": "ຢຸດການຫຼິ້ນ ແລະ ກັບໄປຖ່າຍທອດສົດ",
     "Stop screenshots": "ຢຸດພາບໜ້າຈໍ",
     "Stream could not be played": "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມ",
+    "Stream stalled. Restart in %1 s": "ເລີ່ມສະຕຣີມຄືນ · %1 ວິ",
     "Stream timed out. Select the channel to retry.":
         "ໝົດເວລາລໍຖ້າການຖ່າຍທອດ. ເລືອກຊ່ອງເພື່ອລອງໃໝ່.",
     "Stream type: %1": "ປະເພດສະຕຣີມ: %1",

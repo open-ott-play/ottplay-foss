@@ -590,6 +590,10 @@ var keyStrings = {
     "List type": "فہرست کی قسم",
     "Lists settings": "فہرست کی ترتیبات",
     Live: "لائیو نشریات",
+    "Live recovery attempts": "براہ راست نشریات بحال کرنے کی کوششیں",
+    "Live recovery attempts exhausted (%1/%2)":
+        "سلسلہ چلایا نہیں جا سکا · براہ راست نشریات بحال کرنے کی کوششیں %1/%2",
+    "Live stall timeout, s": "نشریات رکنے کی مہلت، سیکنڈ",
     Load: "لوڈ",
     "Load built-in playlist:": "بلٹ ان پلے لسٹ لوڈ کریں:",
     "Load playlist": "پلے لسٹ لوڈ کریں۔",
@@ -789,6 +793,7 @@ var keyStrings = {
     "Records library is empty": "ریکارڈنگز لائبریری خالی ہے۔",
     "Records not supported by provider":
         "ریکارڈنگز اس فراہم کنندہ کے ذریعہ تعاون یافتہ نہیں ہیں۔",
+    "Recovering stream (%1/%2)": "دوبارہ منسلک ہو رہا ہے… (%1/%2)",
     "Release date": "ریلیز کی تاریخ",
     "Remember previous channels": "پچھلے چینلز کو یاد رکھیں",
     "Reminder: %1 — %2 in %3 min": "یاد دہانی: %1 — %2 %3 منٹ میں",
@@ -1013,6 +1018,7 @@ var keyStrings = {
         "پلے بیک بند کریں اور لائیو پر واپس جائیں۔",
     "Stop screenshots": "اسکرین شاٹس روکیں۔",
     "Stream could not be played": "سلسلہ چلایا نہیں جا سکا",
+    "Stream stalled. Restart in %1 s": "سلسلہ دوبارہ شروع کریں۔ · %1 سیکنڈ",
     "Stream timed out. Select the channel to retry.":
         "اسٹریم کے انتظار کا وقت ختم ہو گیا۔ دوبارہ کوشش کے لیے چینل منتخب کریں۔",
     "Stream type: %1": "سلسلہ کی قسم: %1",

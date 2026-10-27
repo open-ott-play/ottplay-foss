@@ -589,6 +589,10 @@ var keyStrings = {
     "List type": "Nau'in jeri",
     "Lists settings": "Saitunan jeri",
     Live: "Watsa shirye-shirye kai tsaye",
+    "Live recovery attempts": "Ƙoƙarin dawo da watsa kai tsaye",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Ba a iya kunna rafin ba · Ƙoƙarin dawo da watsa kai tsaye %1/%2",
+    "Live stall timeout, s": "Lokacin jiran tsayawar watsa, s",
     Load: "Loda",
     "Load built-in playlist:": "Loda jerin kunnawa da aka haɗa:",
     "Load playlist": "Loda jerin kunnawa",
@@ -788,6 +792,7 @@ var keyStrings = {
     "Records library is empty": "Ɗakin rikodi babu komai a ciki",
     "Records not supported by provider":
         "Wannan mai bada sabis ba ya goyon bayan rikodi",
+    "Recovering stream (%1/%2)": "Ana sake haɗawa… (%1/%2)",
     "Release date": "Ranar fitarwa",
     "Remember previous channels": "Tuna tashoshin baya",
     "Reminder: %1 — %2 in %3 min": "Tunatarwa: %1 — %2 cikin minti %3",
@@ -1008,6 +1013,7 @@ var keyStrings = {
         "Dakatar da kunnawa kuma koma kai tsaye",
     "Stop screenshots": "Dakatar da hotunan allo",
     "Stream could not be played": "Ba a iya kunna rafin ba",
+    "Stream stalled. Restart in %1 s": "Sake kunna rafi · %1 sakan",
     "Stream timed out. Select the channel to retry.":
         "Lokacin jiran watsa shirye-shirye ya ƙare. Zaɓi tashar don sake gwadawa.",
     "Stream type: %1": "Nau'in rafi: %1",

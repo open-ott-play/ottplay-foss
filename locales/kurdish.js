@@ -591,6 +591,10 @@ var keyStrings = {
     "List type": "Cureyê lîsteyê",
     "Lists settings": "Mîhengên lîsteyê",
     Live: "Weşana zindî",
+    "Live recovery attempts": "Hewldanên vegerandina weşana zindî",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Weşan nehat lêdan · Hewldanên vegerandina weşana zindî %1/%2",
+    "Live stall timeout, s": "Dema bendê ya rawestanê, ç",
     Load: "Barkirin",
     "Load built-in playlist:": "Lîsteya lêdanê ya çêkirî bar bike:",
     "Load playlist": "Lîsteya lêdanê bar bike",
@@ -787,6 +791,7 @@ var keyStrings = {
     "Records library is empty": "Pirtûkxaneya tomarkirinê vala ye",
     "Records not supported by provider":
         "Qeyd ji hêla vê pêşkêşker ve nayê piştgirî kirin",
+    "Recovering stream (%1/%2)": "Ji nû ve tê girêdan… (%1/%2)",
     "Release date": "Dîroka berdanê",
     "Remember previous channels": "Kanalên berê bi bîr bîne",
     "Reminder: %1 — %2 in %3 min": "Bîranîn: %1 — %2 piştî %3 deqîqeyan",
@@ -1015,6 +1020,8 @@ var keyStrings = {
         "Lêdanê bisekinîne û vegere weşana zindî",
     "Stop screenshots": "Girtina wêneyên ekranê rawestîne",
     "Stream could not be played": "Weşan nehat lêdan",
+    "Stream stalled. Restart in %1 s":
+        "Weşanê ji nû ve dest pê bike · %1 çirke",
     "Stream timed out. Select the channel to retry.":
         "Dema li benda weşanê qediya. Ji bo dîsa ceribandinê kanalê hilbijêre.",
     "Stream type: %1": "Cureyê weşanê: %1",

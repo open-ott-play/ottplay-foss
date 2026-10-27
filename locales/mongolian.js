@@ -595,6 +595,10 @@ var keyStrings = {
     "List type": "Жагсаалтын төрөл",
     "Lists settings": "Жагсаалтын тохиргоо",
     Live: "Шууд эфир",
+    "Live recovery attempts": "Шууд дамжуулалт сэргээх оролдлого",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Урсгалыг тоглуулж чадсангүй · Шууд дамжуулалт сэргээх оролдлого %1/%2",
+    "Live stall timeout, s": "Гацалтын хүлээх хугацаа, с",
     Load: "Ачаалах",
     "Load built-in playlist:": "Суурилуулсан тоглуулах жагсаалт ачаалах:",
     "Load playlist": "Тоглуулах жагсаалт ачаалах",
@@ -794,6 +798,7 @@ var keyStrings = {
     "Records library is empty": "Бичлэгийн сан хоосон",
     "Records not supported by provider":
         "Энэ үйлчилгээ үзүүлэгч бичлэг дэмждэггүй",
+    "Recovering stream (%1/%2)": "Дахин холбогдож байна… (%1/%2)",
     "Release date": "Гарсан огноо",
     "Remember previous channels": "Өмнөх сувгуудыг санах",
     "Reminder: %1 — %2 in %3 min": "Сануулга: %1 — %2, %3 минутын дараа",
@@ -1016,6 +1021,7 @@ var keyStrings = {
         "Тоглуулалтыг зогсоогоод шууд эфирт буцах",
     "Stop screenshots": "Дэлгэцийн агшинг зогсоо",
     "Stream could not be played": "Урсгалыг тоглуулж чадсангүй",
+    "Stream stalled. Restart in %1 s": "Урсгалыг дахин эхлүүлэх · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Дамжуулалтыг хүлээх хугацаа дууслаа. Дахин оролдохын тулд сувгийг сонгоно уу.",
     "Stream type: %1": "Урсгалын төрөл: %1",

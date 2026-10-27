@@ -589,6 +589,10 @@ var keyStrings = {
     "List type": "Liste türü",
     "Lists settings": "Liste ayarları",
     Live: "Canlı",
+    "Live recovery attempts": "Canlı yayın kurtarma denemeleri",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Akış oynatılamadı · Canlı yayın kurtarma denemeleri %1/%2",
+    "Live stall timeout, s": "Canlı yayın donma süresi, sn",
     Load: "Yükle",
     "Load built-in playlist:": "Yerleşik oynatma listesini yükle:",
     "Load playlist": "Oynatma listesini yükle",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records for channel: ": "Kanal kayıtları: ",
     "Records library is empty": "Kayıt kitaplığı boş",
     "Records not supported by provider": "Bu sağlayıcı kayıtları desteklemiyor",
+    "Recovering stream (%1/%2)": "Yeniden bağlanılıyor… (%1/%2)",
     "Release date": "Yayın tarihi",
     "Remember previous channels": "Önceki kanalları hatırla",
     "Reminder: %1 — %2 in %3 min": "Hatırlatma: %1 — %2, %3 dk sonra",
@@ -1009,6 +1014,7 @@ var keyStrings = {
     "Stop playback and return to live": "Oynatmayı durdur ve canlıya dön",
     "Stop screenshots": "Ekran görüntülerini durdur",
     "Stream could not be played": "Akış oynatılamadı",
+    "Stream stalled. Restart in %1 s": "Akışı yeniden başlat · %1 sn",
     "Stream timed out. Select the channel to retry.":
         "Yayın zaman aşımına uğradı. Yeniden denemek için kanalı seçin.",
     "Stream type: %1": "Akış türü: %1",

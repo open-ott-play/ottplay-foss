@@ -573,6 +573,10 @@ var keyStrings = {
     "List type": "सूची प्रकार",
     "Lists settings": "सूची सेटिंग्ज",
     Live: "थेट प्रक्षेपण",
+    "Live recovery attempts": "थेट प्रसारण पुनर्प्राप्तीचे प्रयत्न",
+    "Live recovery attempts exhausted (%1/%2)":
+        "प्रवाह प्ले केला जाऊ शकला नाही · थेट प्रसारण पुनर्प्राप्तीचे प्रयत्न %1/%2",
+    "Live stall timeout, s": "प्रसारण अडकल्याची वेळमर्यादा, से",
     Load: "लोड करा",
     "Load built-in playlist:": "अंगभूत प्लेलिस्ट लोड करा:",
     "Load playlist": "प्लेलिस्ट लोड करा",
@@ -767,6 +771,7 @@ var keyStrings = {
     "Records for channel: ": "चॅनेलसाठी रेकॉर्डिंग: ",
     "Records library is empty": "रेकॉर्डिंग लायब्ररी रिकामी आहे",
     "Records not supported by provider": "रेकॉर्डिंग या प्रदात्याद्वारे समर्थित नाहीत",
+    "Recovering stream (%1/%2)": "पुन्हा कनेक्ट करत आहे... (%1/%2)",
     "Release date": "प्रकाशन तारीख",
     "Remember previous channels": "मागील चॅनेल लक्षात ठेवा",
     "Reminder: %1 — %2 in %3 min": "रिमाइंडर: %1 — %3 मिनिटात %2",
@@ -984,6 +989,7 @@ var keyStrings = {
     "Stop playback and return to live": "प्लेबॅक थांबवा आणि थेट वर परत या",
     "Stop screenshots": "स्क्रीनशॉट थांबवा",
     "Stream could not be played": "प्रवाह प्ले केला जाऊ शकला नाही",
+    "Stream stalled. Restart in %1 s": "स्ट्रीम रीस्टार्ट करा · %1 सेकंद",
     "Stream timed out. Select the channel to retry.":
         "स्ट्रीमची प्रतीक्षा करण्याची वेळ संपली. पुन्हा प्रयत्न करण्यासाठी चॅनल निवडा.",
     "Stream type: %1": "प्रवाह प्रकार: %1",

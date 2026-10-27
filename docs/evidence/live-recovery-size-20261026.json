@@ -1,0 +1,37 @@
+{
+  "base": "v1.1.60",
+  "baseCommit": "10fb57e92db2f4bb066c5c3fd858d0b7f4499bdb",
+  "node": "26.12.1",
+  "zlib": "1.2.12",
+  "scope": "same-toolchain production server frontend; main entry plus lazy settings only; provider budgets unchanged",
+  "before": {
+    "player": {
+      "bytes": 1039463,
+      "gzipBytes": 320034
+    },
+    "subtitle-appearance": {
+      "bytes": 7493,
+      "gzipBytes": 3281
+    }
+  },
+  "after": {
+    "player": {
+      "bytes": 1045221,
+      "gzipBytes": 321798
+    },
+    "subtitle-appearance": {
+      "bytes": 7732,
+      "gzipBytes": 3354
+    }
+  },
+  "delta": {
+    "player": {
+      "bytes": 5758,
+      "gzipBytes": 1764
+    },
+    "subtitle-appearance": {
+      "bytes": 239,
+      "gzipBytes": 73
+    }
+  }
+}

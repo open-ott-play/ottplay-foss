@@ -602,6 +602,10 @@ var keyStrings = {
     "List type": "Lloji i listës",
     "Lists settings": "Cilësimet e listave",
     Live: "Drejtpërdrejt",
+    "Live recovery attempts": "Përpjekjet e rikthimit të transmetimit",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Transmetimi nuk mund të luhej · Përpjekjet e rikthimit të transmetimit %1/%2",
+    "Live stall timeout, s": "Koha e bllokimit, s",
     Load: "Ngarko",
     "Load built-in playlist:": "Ngarko listën e integruar të luajtjes:",
     "Load playlist": "Ngarko listën e luajtjes",
@@ -802,6 +806,7 @@ var keyStrings = {
     "Records library is empty": "Biblioteka e regjistrimeve është bosh",
     "Records not supported by provider":
         "Regjistrimet nuk mbështeten nga ky ofrues",
+    "Recovering stream (%1/%2)": "Po rilidhet… (%1/%2)",
     "Release date": "Data e lëshimit",
     "Remember previous channels": "Mbani mend kanalet e mëparshme",
     "Reminder: %1 — %2 in %3 min": "Përkujtues: %1 — %2 në %3 min",
@@ -1028,6 +1033,7 @@ var keyStrings = {
         "Ndalo riprodhimin dhe kthehu në transmetimin e drejtpërdrejtë",
     "Stop screenshots": "Ndalo pamjet e ekranit",
     "Stream could not be played": "Transmetimi nuk mund të luhej",
+    "Stream stalled. Restart in %1 s": "Rinis transmetimin · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Koha e pritjes së transmetimit mbaroi. Zgjidhni kanalin për të provuar përsëri.",
     "Stream type: %1": "Lloji i rrjedhës: %1",

@@ -562,6 +562,10 @@ var keyStrings = {
     "List type": "ତାଲିକା ପ୍ରକାର",
     "Lists settings": "ତାଲିକା ସେଟିଂସ୍",
     Live: "ସିଧା ପ୍ରସାରଣ",
+    "Live recovery attempts": "ସିଧା ପ୍ରସାରଣ ପୁନରୁଦ୍ଧାର ପ୍ରୟାସ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ଷ୍ଟ୍ରିମ୍ ଚଲାଇହେଲା ନାହିଁ · ସିଧା ପ୍ରସାରଣ ପୁନରୁଦ୍ଧାର ପ୍ରୟାସ %1/%2",
+    "Live stall timeout, s": "ପ୍ରସାରଣ ଅଟକିବା ସମୟସୀମା, ସେକେଣ୍ଡ",
     Load: "ଲୋଡ୍ କରନ୍ତୁ",
     "Load built-in playlist:": "ଅନ୍ତର୍ନିହିତ ପ୍ଲେଲିଷ୍ଟ ଲୋଡ୍ କରନ୍ତୁ:",
     "Load playlist": "ପ୍ଲେଲିଷ୍ଟ ଲୋଡ୍ କରନ୍ତୁ",
@@ -754,6 +758,7 @@ var keyStrings = {
     "Records for channel: ": "ଚ୍ୟାନେଲ୍‌ର ରେକର୍ଡିଂ: ",
     "Records library is empty": "ରେକର୍ଡିଂ ଲାଇବ୍ରେରୀ ଖାଲି",
     "Records not supported by provider": "ଏହି ପ୍ରଦାନକାରୀ ରେକର୍ଡିଂ ସମର୍ଥନ କରନ୍ତି ନାହିଁ",
+    "Recovering stream (%1/%2)": "ପୁନଃସଂଯୋଗ ହେଉଛି… (%1/%2)",
     "Release date": "ମୁକ୍ତି ତାରିଖ",
     "Remember previous channels": "ପୂର୍ବ ଚ୍ୟାନେଲ୍ ମନେ ରଖନ୍ତୁ",
     "Reminder: %1 — %2 in %3 min": "ସ୍ମାରକ: %1 — %2, %3 ମିନିଟ୍‌ରେ",
@@ -967,6 +972,7 @@ var keyStrings = {
     "Stop playback and return to live": "ପ୍ଲେବ୍ୟାକ୍ ବନ୍ଦ କରି ସିଧା ପ୍ରସାରଣକୁ ଫେରନ୍ତୁ",
     "Stop screenshots": "ସ୍କ୍ରିନସଟ୍ ବନ୍ଦ କରନ୍ତୁ।",
     "Stream could not be played": "ଷ୍ଟ୍ରିମ୍ ଚଲାଇହେଲା ନାହିଁ",
+    "Stream stalled. Restart in %1 s": "ଷ୍ଟ୍ରିମ୍ ପୁନଃଆରମ୍ଭ କରନ୍ତୁ · %1 ସେ",
     "Stream timed out. Select the channel to retry.":
         "ଷ୍ଟ୍ରିମ୍ ପାଇଁ ଅପେକ୍ଷା ସମୟ ସରିଗଲା। ପୁଣି ଚେଷ୍ଟା କରିବାକୁ ଚ୍ୟାନେଲ୍ ବାଛନ୍ତୁ।",
     "Stream type: %1": "ଷ୍ଟ୍ରିମ୍ ପ୍ରକାର: %1",

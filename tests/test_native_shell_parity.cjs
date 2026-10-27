@@ -1054,6 +1054,7 @@ const coreControls = functions("src/core/index.ts", [
     "countCoreAttempt",
     "createCoreStreamAttempt",
     "cancelCoreNativeHls",
+    "configureLiveRecovery",
     "destroyCoreShaka",
     "resetCoreNativeBitrate",
     "stbContinue",
@@ -1061,6 +1062,7 @@ const coreControls = functions("src/core/index.ts", [
     "stbResume",
     "stbStop",
     "getCoreMediaBackend",
+    "sampleCoreLiveRecovery",
     "openCoreEngineLease",
     "stopCoreEngine",
     "stbIsPlaying",
@@ -1099,6 +1101,7 @@ for (const platform of Object.keys(nativeSources)) {
         },
         coreAvTest: null,
         coreDeviceEffects: {},
+        coreLiveRecovery: null,
         coreMediaBackend: null,
         coreSourcePreparationCancel() {
             cancelled++;
@@ -1117,6 +1120,8 @@ for (const platform of Object.keys(nativeSources)) {
             return timerId;
         },
         showShift() {},
+        sLiveRecoveryAttempts: 0,
+        sLiveRecoveryTimeout: 15,
         video: {
             pause() {
                 this.paused = true;
@@ -1133,6 +1138,10 @@ for (const platform of Object.keys(nativeSources)) {
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
     require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/playback/live-recovery.ts"
+    );
     w.startCoreEngine = () => {
         w._playSession++;
     };

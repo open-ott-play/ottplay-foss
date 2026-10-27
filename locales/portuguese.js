@@ -599,6 +599,10 @@ var keyStrings = {
     "List type": "Tipo de lista",
     "Lists settings": "Configurações das listas",
     Live: "Em direto",
+    "Live recovery attempts": "Tentativas de recuperação em direto",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Não foi possível reproduzir o fluxo · Tentativas de recuperação em direto %1/%2",
+    "Live stall timeout, s": "Tempo limite de bloqueio, s",
     Load: "Carregar",
     "Load built-in playlist:": "Carregar lista integrada:",
     "Load playlist": "Carregar lista",
@@ -797,6 +801,7 @@ var keyStrings = {
     "Records for channel: ": "Gravações do canal: ",
     "Records library is empty": "A biblioteca de gravações está vazia",
     "Records not supported by provider": "O fornecedor não suporta gravações",
+    "Recovering stream (%1/%2)": "A voltar a ligar… (%1/%2)",
     "Release date": "Data de lançamento",
     "Remember previous channels": "Memorizar canais anteriores",
     "Reminder: %1 — %2 in %3 min": "Lembrete: %1 — %2 em %3 min",
@@ -1025,6 +1030,7 @@ var keyStrings = {
     "Stop playback and return to live": "Parar reprodução e voltar ao direto",
     "Stop screenshots": "Parar capturas de tela",
     "Stream could not be played": "Não foi possível reproduzir o fluxo",
+    "Stream stalled. Restart in %1 s": "Reiniciar fluxo · %1 s",
     "Stream timed out. Select the channel to retry.":
         "O tempo de espera da transmissão terminou. Selecione o canal para tentar novamente.",
     "Stream type: %1": "Tipo de fluxo: %1",

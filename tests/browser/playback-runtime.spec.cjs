@@ -2284,3 +2284,100 @@ test("subtitle appearance loads on demand and preserves native cue positioning",
         path: test.info().outputPath("subtitle-appearance-default.png"),
     });
 });
+
+test("live recovery OSD follows watchdog countdown without a second timer", async ({
+    page,
+}) => {
+    await page.route("**/*", (route) =>
+        new URL(route.request().url()).hostname === "127.0.0.1"
+            ? route.continue()
+            : route.abort()
+    );
+    await page.goto("/f/pc/");
+    await page.waitForFunction(
+        () => !!window.__ottLiveRecovery && !!window.__ottLiveRecoveryOSD
+    );
+    await page.waitForFunction(
+        () =>
+            typeof window.closeList === "function" &&
+            document.getElementById("listCaption").textContent
+    );
+    await page.evaluate(() => window.closeList());
+    await page.evaluate(() => {
+        let time = 0,
+            tick;
+        window.__ottPlaybackFeedback.begin();
+        const sample = {
+            activity: "0",
+            blocked: false,
+            handleId: 1,
+            key: "fixture-live",
+            position: 0,
+            ready: true,
+            recovering: false,
+            terminal: false,
+        };
+        const observer = window.__ottLiveRecovery.create({
+            clearInterval() {},
+            now: () => time,
+            report: (status) => window.__ottLiveRecoveryOSD.render(status),
+            restart() {
+                sample.handleId++;
+                sample.position = 0;
+            },
+            sample: () => sample,
+            setInterval(callback) {
+                tick = callback;
+                return 1;
+            },
+            settings: () => ({ attempts: 1, timeout: 10 }),
+        });
+        observer.configure();
+        window.__indicatorFixture = {
+            observer,
+            sample,
+            step(moving = false) {
+                time += 1000;
+                if (moving) sample.position++;
+                tick();
+            },
+        };
+        const f = window.__indicatorFixture;
+        f.step();
+        f.step(true);
+        f.step(true);
+        f.step();
+        f.step();
+    });
+    const osd = page.locator("#liveRecoveryStatus");
+    await expect(osd).toBeHidden();
+    await page.evaluate(() => window.__indicatorFixture.step());
+    await expect(osd).toBeVisible();
+    await expect(osd).toContainText(/7/);
+    await expect(osd).toHaveCSS("pointer-events", "none");
+    await expect(page.locator("#video_res")).toHaveText("");
+    await expect(page.locator("#buffering")).toBeHidden();
+    await page.screenshot({
+        path: test.info().outputPath("live-recovery-countdown.png"),
+    });
+    await page.evaluate(() => {
+        const f = window.__indicatorFixture;
+        for (let n = 0; n < 7; n++) f.step();
+    });
+    await expect(osd).toContainText(/1\/1/);
+    await page.screenshot({
+        path: test.info().outputPath("live-recovery-restarting.png"),
+    });
+    await page.evaluate(() => {
+        const f = window.__indicatorFixture;
+        for (let n = 0; n < 11; n++) f.step();
+    });
+    await expect(osd).toHaveText(/exhausted|исчерпаны/i);
+    await page.evaluate(() => {
+        const f = window.__indicatorFixture;
+        f.sample.position++;
+        f.observer.refresh();
+    });
+    await expect(osd).toBeHidden();
+    await page.evaluate(() => window.__indicatorFixture.observer.dispose());
+});

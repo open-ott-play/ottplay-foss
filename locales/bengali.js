@@ -571,6 +571,10 @@ var keyStrings = {
     "List type": "তালিকার ধরন",
     "Lists settings": "তালিকা সেটিংস",
     Live: "লাইভ সম্প্রচার",
+    "Live recovery attempts": "সরাসরি সম্প্রচার পুনরুদ্ধারের চেষ্টা",
+    "Live recovery attempts exhausted (%1/%2)":
+        "স্ট্রিম চালানো যাবে না · সরাসরি সম্প্রচার পুনরুদ্ধারের চেষ্টা %1/%2",
+    "Live stall timeout, s": "সম্প্রচার স্থবিরতার সময়সীমা, সেকেন্ড",
     Load: "লোড",
     "Load built-in playlist:": "অন্তর্নির্মিত প্লেলিস্ট লোড করুন:",
     "Load playlist": "প্লেলিস্ট লোড করুন",
@@ -765,6 +769,7 @@ var keyStrings = {
     "Records for channel: ": "চ্যানেলের জন্য রেকর্ডিং: ",
     "Records library is empty": "রেকর্ডিং লাইব্রেরি খালি",
     "Records not supported by provider": "রেকর্ডিং এই প্রদানকারী দ্বারা সমর্থিত নয়",
+    "Recovering stream (%1/%2)": "পুনরায় সংযোগ করা হচ্ছে... (%1/%2)",
     "Release date": "প্রকাশের তারিখ",
     "Remember previous channels": "আগের চ্যানেলগুলো মনে রাখুন",
     "Reminder: %1 — %2 in %3 min": "অনুস্মারক: %1 — %3 মিনিটে %2",
@@ -983,6 +988,7 @@ var keyStrings = {
     "Stop playback and return to live": "প্লেব্যাক বন্ধ করুন এবং লাইভে ফিরে আসুন",
     "Stop screenshots": "স্ক্রিনশট বন্ধ করুন",
     "Stream could not be played": "স্ট্রিম চালানো যাবে না",
+    "Stream stalled. Restart in %1 s": "স্ট্রীম রিস্টার্ট করুন · %1 সেকেন্ড",
     "Stream timed out. Select the channel to retry.":
         "স্ট্রিমের অপেক্ষার সময় শেষ হয়েছে। আবার চেষ্টা করতে চ্যানেলটি নির্বাচন করুন।",
     "Stream type: %1": "স্ট্রিমের ধরন: %1",

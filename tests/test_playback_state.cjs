@@ -58,6 +58,7 @@ function fixture(managed = false) {
         clearTimeout() {},
         console,
         coreDeviceEffects: {},
+        coreLiveRecovery: null,
         coreMediaBackend: null,
         curList: [101, 202],
         Date,
@@ -88,6 +89,8 @@ function fixture(managed = false) {
         setTimeout() {},
         settings: { prevCount: 2 },
         sFavorites: 0,
+        sLiveRecoveryAttempts: 0,
+        sLiveRecoveryTimeout: 15,
         stbGetLen: () => video.duration,
         stbGetPosTime: () => video.currentTime,
         video,
@@ -102,8 +105,10 @@ function fixture(managed = false) {
     c.api = c.__ottClassicPlayback;
     c.api.importLegacy(); // Explicit retained-device ingress; snapshot itself is pure.
     include(c, "src/core/index.ts", [
+        "configureLiveRecovery",
         "getCoreMediaBackend",
         "openCoreEngineLease",
+        "sampleCoreLiveRecovery",
         "stbIsPlaying",
         "stbIsStandby",
     ]);

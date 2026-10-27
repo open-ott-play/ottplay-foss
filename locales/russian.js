@@ -585,6 +585,10 @@ var keyStrings = {
     "List type": "Тип листа",
     "Lists settings": "Настройки списков",
     Live: "Прямой эфир",
+    "Live recovery attempts": "Попытки автовосстановления live",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Попытки восстановления исчерпаны (%1/%2)",
+    "Live stall timeout, s": "Таймаут зависания live, с",
     Load: "Загрузить",
     "Load built-in playlist:": "Загрузить встроенный плейлист:",
     "Load playlist": "Загрузить плейлист",
@@ -783,6 +787,7 @@ var keyStrings = {
     "Records for channel: ": "Записи канала: ",
     "Records library is empty": "Библиотека записей пуста",
     "Records not supported by provider": "Провайдер не поддерживает записи",
+    "Recovering stream (%1/%2)": "Восстанавливаем поток (%1/%2)",
     "Release date": "Дата выхода",
     "Remember previous channels": "Запоминать предыдущие каналы",
     "Reminder: %1 — %2 in %3 min": "Напоминание: %1 — %2 через %3 мин",
@@ -1004,6 +1009,7 @@ var keyStrings = {
         "Остановить воспроизведение и вернуться в эфир",
     "Stop screenshots": "Запретить снимки экрана",
     "Stream could not be played": "Не удалось воспроизвести поток",
+    "Stream stalled. Restart in %1 s": "Поток завис. Перезапуск через %1 с",
     "Stream timed out. Select the channel to retry.":
         "Время ожидания потока истекло. Выберите канал, чтобы повторить попытку.",
     "Stream type: %1": "Тип потока: %1",

@@ -585,6 +585,10 @@ var keyStrings = {
     "List type": "Loendi tüüp",
     "Lists settings": "Loendi seaded",
     Live: "Otse",
+    "Live recovery attempts": "Otseülekande taastamiskatsed",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Voogu ei saanud esitada · Otseülekande taastamiskatsed %1/%2",
+    "Live stall timeout, s": "Hangumise ajalõpp, s",
     Load: "Laadige",
     "Load built-in playlist:": "Laadige sisseehitatud esitusloend:",
     "Load playlist": "Laadi esitusloend",
@@ -784,6 +788,7 @@ var keyStrings = {
     "Records library is empty": "Salvestiste teek on tühi",
     "Records not supported by provider":
         "See teenusepakkuja ei toeta salvestusi",
+    "Recovering stream (%1/%2)": "Uuesti ühendamine… (%1/%2)",
     "Release date": "Väljalaske kuupäev",
     "Remember previous channels": "Pidage meeles eelmisi kanaleid",
     "Reminder: %1 — %2 in %3 min": "Meeldetuletus: %1 – %2 %3 minuti pärast",
@@ -1006,6 +1011,7 @@ var keyStrings = {
         "Peata taasesitus ja naase otseülekandesse",
     "Stop screenshots": "Peatage ekraanipildid",
     "Stream could not be played": "Voogu ei saanud esitada",
+    "Stream stalled. Restart in %1 s": "Taaskäivitage voog · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Voo ooteaeg sai läbi. Uuesti proovimiseks valige kanal.",
     "Stream type: %1": "Voo tüüp: %1",

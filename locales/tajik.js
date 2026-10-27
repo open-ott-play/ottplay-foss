@@ -593,6 +593,10 @@ var keyStrings = {
     "List type": "Навъи рӯйхат",
     "Lists settings": "Танзимоти рӯйхатҳо",
     Live: "Пахши зинда",
+    "Live recovery attempts": "Кӯшишҳои барқарорсозии пахши мустақим",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Пахш иҷро нашуд · Кӯшишҳои барқарорсозии пахши мустақим %1/%2",
+    "Live stall timeout, s": "Муҳлати интизории таваққуф, с",
     Load: "Бор кунед",
     "Load built-in playlist:": "Рӯйхати пахши дохилиро бор кунед:",
     "Load playlist": "Рӯйхати пахшро бор кунед",
@@ -792,6 +796,7 @@ var keyStrings = {
     "Records library is empty": "Китобхонаи сабтҳо холӣ аст",
     "Records not supported by provider":
         "Ин таъминкунанда сабтҳоро дастгирӣ намекунад",
+    "Recovering stream (%1/%2)": "Пайвастшавии дубора… (%1/%2)",
     "Release date": "Санаи нашр",
     "Remember previous channels": "Каналҳои пешинаро дар хотир нигоҳ доред",
     "Reminder: %1 — %2 in %3 min": "Ёдрас: %1 — %2 пас аз %3 дақ",
@@ -1016,6 +1021,7 @@ var keyStrings = {
         "Пахшро қатъ кунед ва ба пахши зинда баргардед",
     "Stop screenshots": "Скриншотҳоро қатъ кунед",
     "Stream could not be played": "Пахш иҷро нашуд",
+    "Stream stalled. Restart in %1 s": "Пахшро аз нав оғоз кунед · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Вақти интизории ҷараён ба охир расид. Барои кӯшиши дубора каналро интихоб кунед.",
     "Stream type: %1": "Навъи пахш: %1",

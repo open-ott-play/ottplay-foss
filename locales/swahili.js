@@ -598,6 +598,11 @@ var keyStrings = {
     "List type": "Aina ya orodha",
     "Lists settings": "Mipangilio ya orodha",
     Live: "Moja kwa moja",
+    "Live recovery attempts":
+        "Majaribio ya kurejesha matangazo ya moja kwa moja",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Mtiririko haukuweza kuchezwa · Majaribio ya kurejesha matangazo ya moja kwa moja %1/%2",
+    "Live stall timeout, s": "Muda wa kusubiri kukwama, s",
     Load: "Mzigo",
     "Load built-in playlist:": "Pakia orodha ya kucheza iliyojumuishwa:",
     "Load playlist": "Pakia orodha ya kucheza",
@@ -797,6 +802,7 @@ var keyStrings = {
     "Records library is empty": "Maktaba ya rekodi ni tupu",
     "Records not supported by provider":
         "Rekodi hazitumiki na mtoa huduma huyu",
+    "Recovering stream (%1/%2)": "Inaunganisha upya... (%1/%2)",
     "Release date": "Tarehe ya kutolewa",
     "Remember previous channels": "Kumbuka chaneli zilizopita",
     "Reminder: %1 — %2 in %3 min": "Kikumbusho: %1 — %2 baada ya dakika %3",
@@ -1021,6 +1027,7 @@ var keyStrings = {
         "Simamisha uchezaji na urudi kwenye matangazo ya moja kwa moja",
     "Stop screenshots": "Simamisha picha za skrini",
     "Stream could not be played": "Mtiririko haukuweza kuchezwa",
+    "Stream stalled. Restart in %1 s": "Anzisha tena mtiririko · %1 sek",
     "Stream timed out. Select the channel to retry.":
         "Muda wa kusubiri mtiririko umeisha. Chagua chaneli ili kujaribu tena.",
     "Stream type: %1": "Aina ya mtiririko: %1",

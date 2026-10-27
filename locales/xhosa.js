@@ -607,6 +607,10 @@ var keyStrings = {
     "List type": "Uhlobo loluhlu",
     "Lists settings": "Iisetingi zoluhlu",
     Live: "Usasazo ngqo",
+    "Live recovery attempts": "Iinzame zokubuyisela usasazo oluphilayo",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Usasazo alukwazanga ukudlalwa · Iinzame zokubuyisela usasazo oluphilayo %1/%2",
+    "Live stall timeout, s": "Ixesha lokulinda ukuma, s",
     Load: "Layisha",
     "Load built-in playlist:": "Layisha uluhlu lokudlala olwakhelweyo:",
     "Load playlist": "Layisha uluhlu lokudlala",
@@ -806,6 +810,7 @@ var keyStrings = {
     "Records library is empty": "Ithala loshicilelo lweenkqubo alinanto",
     "Records not supported by provider":
         "Lo mboneleli akaluxhasi ushicilelo lweenkqubo",
+    "Recovering stream (%1/%2)": "Kuqhagamshelwa kwakhona… (%1/%2)",
     "Release date": "Umhla wokukhutshwa",
     "Remember previous channels": "Khumbula amajelo adlulileyo",
     "Reminder: %1 — %2 in %3 min": "Isikhumbuzo: %1 — %2 kwimizuzu %3",
@@ -1033,6 +1038,7 @@ var keyStrings = {
         "Misa ukudlala uze ubuyele kusasazo ngqo",
     "Stop screenshots": "Yeka ukuthatha imifanekiso yesikrini",
     "Stream could not be played": "Usasazo alukwazanga ukudlalwa",
+    "Stream stalled. Restart in %1 s": "Qala usasazo kwakhona · %1 imizuzwana",
     "Stream timed out. Select the channel to retry.":
         "Ixesha lokulinda umsinga liphelile. Khetha ijelo ukuze uzame kwakhona.",
     "Stream type: %1": "Uhlobo losasazo: %1",

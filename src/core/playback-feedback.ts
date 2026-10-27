@@ -5,6 +5,8 @@
     var expired = false;
     var timer: ReturnType<typeof setTimeout> | null = null;
     var armed = false;
+    var recoveryOverlay = false;
+    var lastMessage = "";
     var source = "";
     var position = 0;
     var sampledAt = 0;
@@ -50,6 +52,10 @@
         timer = null;
     }
     function render(message: string): void {
+        lastMessage = message;
+        // The live watchdog owns presentation only; retain this controller's
+        // original deadline and terminal state while its OSD is visible.
+        if (recoveryOverlay) message = "";
         // Keep status inside the existing metadata column. Its normal footer
         // timeout owns visibility; media events must not reopen the footer.
         var spinner = document.getElementById("buffering");
@@ -148,6 +154,11 @@
         },
         retry: function (): void {
             waiting(host._("Retrying..."), 30000);
+        },
+        setRecoveryOverlay: function (visible: boolean): void {
+            if (recoveryOverlay === visible) return;
+            recoveryOverlay = visible;
+            render(lastMessage);
         },
         stop: stop,
         visible: function (): boolean {

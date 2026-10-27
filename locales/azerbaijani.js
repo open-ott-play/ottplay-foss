@@ -589,6 +589,10 @@ var keyStrings = {
     "List type": "Siyahı növü",
     "Lists settings": "Siyahı ayarları",
     Live: "Canlı yayım",
+    "Live recovery attempts": "Canlı yayımı bərpa cəhdləri",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Axını oxutmaq mümkün olmadı · Canlı yayımı bərpa cəhdləri %1/%2",
+    "Live stall timeout, s": "Yayımın donma müddəti, san",
     Load: "Yüklə",
     "Load built-in playlist:": "Daxili pleylisti yüklə:",
     "Load playlist": "Pleylisti yüklə",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records for channel: ": "Kanalın yazıları: ",
     "Records library is empty": "Yazılar kitabxanası boşdur",
     "Records not supported by provider": "Provayder yazıları dəstəkləmir",
+    "Recovering stream (%1/%2)": "Yenidən qoşulur… (%1/%2)",
     "Release date": "Buraxılış tarixi",
     "Remember previous channels": "Əvvəlki kanalları yadda saxla",
     "Reminder: %1 — %2 in %3 min": "Xatırlatma: %1 — %2, %3 dəq sonra",
@@ -1010,6 +1015,7 @@ var keyStrings = {
         "Oynatmanı dayandır və canlı yayıma qayıt",
     "Stop screenshots": "Ekran görüntülərini dayandırın",
     "Stream could not be played": "Axını oxutmaq mümkün olmadı",
+    "Stream stalled. Restart in %1 s": "Yayımı yenidən başlat · %1 san",
     "Stream timed out. Select the channel to retry.":
         "Yayım üçün gözləmə vaxtı bitdi. Yenidən cəhd etmək üçün kanalı seçin.",
     "Stream type: %1": "Yayım növü: %1",

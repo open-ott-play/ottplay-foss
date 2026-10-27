@@ -608,6 +608,10 @@ var keyStrings = {
     "List type": "Tipus de llista",
     "Lists settings": "Configuració de les llistes",
     Live: "En directe",
+    "Live recovery attempts": "Intents de recuperació en directe",
+    "Live recovery attempts exhausted (%1/%2)":
+        "No s’ha pogut reproduir la transmissió · Intents de recuperació en directe %1/%2",
+    "Live stall timeout, s": "Temps límit de bloqueig, s",
     Load: "Carrega",
     "Load built-in playlist:": "Carrega una llista integrada:",
     "Load playlist": "Carrega una llista",
@@ -811,6 +815,7 @@ var keyStrings = {
     "Records library is empty": "La biblioteca d’enregistraments és buida",
     "Records not supported by provider":
         "Aquest proveïdor no admet enregistraments",
+    "Recovering stream (%1/%2)": "S’està tornant a connectar… (%1/%2)",
     "Release date": "Data d’estrena",
     "Remember previous channels": "Recorda els canals anteriors",
     "Reminder: %1 — %2 in %3 min": "Recordatori: %1 — %2 d’aquí a %3 min",
@@ -1043,6 +1048,7 @@ var keyStrings = {
         "Atura la reproducció i torna al directe",
     "Stop screenshots": "Atura les captures de pantalla",
     "Stream could not be played": "No s’ha pogut reproduir la transmissió",
+    "Stream stalled. Restart in %1 s": "Reinicia la transmissió · %1 s",
     "Stream timed out. Select the channel to retry.":
         "S'ha esgotat el temps d'espera de la transmissió. Seleccioneu el canal per tornar-ho a provar.",
     "Stream type: %1": "Tipus de transmissió: %1",

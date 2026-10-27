@@ -596,6 +596,10 @@ var keyStrings = {
     "List type": "Roʻyxat turi",
     "Lists settings": "Roʻyxat sozlamalari",
     Live: "Jonli efir",
+    "Live recovery attempts": "Jonli efirni tiklash urinishlari",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Oqimni ijro etib bo‘lmadi · Jonli efirni tiklash urinishlari %1/%2",
+    "Live stall timeout, s": "Efir qotishini kutish vaqti, s",
     Load: "Yuklash",
     "Load built-in playlist:": "Ichki pleylistni yuklash:",
     "Load playlist": "Playlistni yuklash",
@@ -795,6 +799,7 @@ var keyStrings = {
     "Records library is empty": "Yozuvlar kutubxonasi boʻsh",
     "Records not supported by provider":
         "Bu provayder yozuvlarni qoʻllab-quvvatlamaydi",
+    "Recovering stream (%1/%2)": "Qayta ulanmoqda… (%1/%2)",
     "Release date": "Chiqarilgan sana",
     "Remember previous channels": "Oldingi kanallarni eslab qolish",
     "Reminder: %1 — %2 in %3 min": "Eslatma: %1 — %2, %3 daqiqadan keyin",
@@ -1020,6 +1025,7 @@ var keyStrings = {
         "Ijroni toʻxtatish va jonli efirga qaytish",
     "Stop screenshots": "Skrinshotlarni to'xtating",
     "Stream could not be played": "Oqimni ijro etib bo‘lmadi",
+    "Stream stalled. Restart in %1 s": "Oqimni qayta ishga tushirish · %1 son",
     "Stream timed out. Select the channel to retry.":
         "Oqimni kutish vaqti tugadi. Qayta urinish uchun kanalni tanlang.",
     "Stream type: %1": "Oqim turi: %1",

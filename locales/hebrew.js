@@ -565,6 +565,10 @@ var keyStrings = {
     "List type": "סוג רשימה",
     "Lists settings": "הגדרות רשימות",
     Live: "שידור חי",
+    "Live recovery attempts": "ניסיונות שחזור שידור חי",
+    "Live recovery attempts exhausted (%1/%2)":
+        "לא ניתן היה להפעיל את הזרם · ניסיונות שחזור שידור חי %1/%2",
+    "Live stall timeout, s": "זמן המתנה לתקיעת שידור, שניות",
     Load: "טען",
     "Load built-in playlist:": "טען פלייליסט מובנה:",
     "Load playlist": "טען פלייליסט",
@@ -759,6 +763,7 @@ var keyStrings = {
     "Records for channel: ": "הקלטות לערוץ: ",
     "Records library is empty": "ספריית ההקלטות ריקה",
     "Records not supported by provider": "הספק הזה אינו תומך בהקלטות",
+    "Recovering stream (%1/%2)": "מתחבר מחדש… (%1/%2)",
     "Release date": "תאריך יציאה",
     "Remember previous channels": "זכור ערוצים קודמים",
     "Reminder: %1 — %2 in %3 min": "תזכורת: %1 — %2 בעוד %3 דקות",
@@ -973,6 +978,7 @@ var keyStrings = {
     "Stop playback and return to live": "הפסק ניגון וחזור לשידור חי",
     "Stop screenshots": "עצור צילומי מסך",
     "Stream could not be played": "לא ניתן היה להפעיל את הזרם",
+    "Stream stalled. Restart in %1 s": "הפעל מחדש את השידור · %1 שנ׳",
     "Stream timed out. Select the channel to retry.":
         "תם הזמן הקצוב לזרם. יש לבחור בערוץ כדי לנסות שוב.",
     "Stream type: %1": "סוג שידור: %1",

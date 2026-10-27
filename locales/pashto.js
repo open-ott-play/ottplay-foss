@@ -584,6 +584,10 @@ var keyStrings = {
     "List type": "د لیست ډول",
     "Lists settings": "د لېستونو امستنې",
     Live: "ژوندۍ خپرونه",
+    "Live recovery attempts": "د ژوندۍ خپرونې د بیا رغونې هڅې",
+    "Live recovery attempts exhausted (%1/%2)":
+        "خپرونه پلې نه شوه · د ژوندۍ خپرونې د بیا رغونې هڅې %1/%2",
+    "Live stall timeout, s": "د خپرونې د درېدو انتظار، ثانیې",
     Load: "بار کول",
     "Load built-in playlist:": "جوړ شوی پلې‌لېست پورته کړئ:",
     "Load playlist": "پلې‌لېست پورته کړئ",
@@ -782,6 +786,7 @@ var keyStrings = {
     "Records library is empty": "د ثبت کتابتون خالي دی",
     "Records not supported by provider":
         "ریکارډونه د دې چمتو کونکي لخوا نه ملاتړ کیږي",
+    "Recovering stream (%1/%2)": "بیا نښلول… (%1/%2)",
     "Release date": "د خپریدو نیټه",
     "Remember previous channels": "پخواني چینلونه په یاد ولرئ",
     "Reminder: %1 — %2 in %3 min": "یادونه: %1 — %2 په %3 دقیقو کې",
@@ -1003,6 +1008,7 @@ var keyStrings = {
         "پلې کول ودروئ او ژوندۍ خپرونې ته لاړ شئ",
     "Stop screenshots": "سکرین شاټونه بند کړئ",
     "Stream could not be played": "خپرونه پلې نه شوه",
+    "Stream stalled. Restart in %1 s": "جریان بیا پیل کړئ · %1 ثانیې",
     "Stream timed out. Select the channel to retry.":
         "د خپرونې د انتظار وخت پای ته ورسېد. د بیا هڅې لپاره چینل وټاکئ.",
     "Stream type: %1": "د خپرونې ډول: %1",

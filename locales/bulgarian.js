@@ -596,6 +596,10 @@ var keyStrings = {
     "List type": "Тип списък",
     "Lists settings": "Настройки на списъците",
     Live: "На живо",
+    "Live recovery attempts": "Опити за възстановяване на живо",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Потокът не може да се възпроизведе · Опити за възстановяване на живо %1/%2",
+    "Live stall timeout, s": "Изчакване при блокиране, сек",
     Load: "Зареди",
     "Load built-in playlist:": "Зареждане на вграден плейлист:",
     "Load playlist": "Зареди плейлист",
@@ -793,6 +797,7 @@ var keyStrings = {
     "Records for channel: ": "Записи за канал: ",
     "Records library is empty": "Библиотеката със записи е празна",
     "Records not supported by provider": "Доставчикът не поддържа записи",
+    "Recovering stream (%1/%2)": "Повторно свързване… (%1/%2)",
     "Release date": "Дата на излизане",
     "Remember previous channels": "Запомняне на предишните канали",
     "Reminder: %1 — %2 in %3 min": "Напомняне: %1 — %2 след %3 мин",
@@ -1021,6 +1026,7 @@ var keyStrings = {
         "Спиране на възпроизвеждането и връщане на живо",
     "Stop screenshots": "Спиране на екранни снимки",
     "Stream could not be played": "Потокът не може да се възпроизведе",
+    "Stream stalled. Restart in %1 s": "Рестартиране на потока · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Времето за изчакване на потока изтече. Изберете канала за повторен опит.",
     "Stream type: %1": "Тип поток: %1",

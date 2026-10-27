@@ -555,6 +555,10 @@ var keyStrings = {
     "List type": "列表类型",
     "Lists settings": "列表设置",
     Live: "直播",
+    "Live recovery attempts": "直播恢复尝试次数",
+    "Live recovery attempts exhausted (%1/%2)":
+        "无法播放流 · 直播恢复尝试次数 %1/%2",
+    "Live stall timeout, s": "直播卡顿超时，秒",
     Load: "加载",
     "Load built-in playlist:": "加载内置播放列表：",
     "Load playlist": "加载播放列表",
@@ -746,6 +750,7 @@ var keyStrings = {
     "Records for channel: ": "频道录制节目： ",
     "Records library is empty": "录制节目库为空",
     "Records not supported by provider": "该提供商不支持录制的节目",
+    "Recovering stream (%1/%2)": "重新连接…… (%1/%2)",
     "Release date": "发售日期",
     "Remember previous channels": "记住以前的频道",
     "Reminder: %1 — %2 in %3 min": "提醒：%1 — %2（%3 分钟）",
@@ -957,6 +962,7 @@ var keyStrings = {
     "Stop playback and return to live": "停止播放并返回直播",
     "Stop screenshots": "停止截图",
     "Stream could not be played": "无法播放流",
+    "Stream stalled. Restart in %1 s": "重新启动流 · %1 秒",
     "Stream timed out. Select the channel to retry.":
         "流媒体连接超时。请选择频道重试。",
     "Stream type: %1": "流类型：%1",
