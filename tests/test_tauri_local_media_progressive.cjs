@@ -17,6 +17,22 @@ const source = ts.transpileModule(
 ).outputText;
 require("acorn").parse(source, { ecmaVersion: 5 });
 const helperModule = { exports: {} };
+const selectionModule = { exports: {} };
+vm.runInNewContext(
+    ts.transpileModule(
+        fs.readFileSync(
+            path.join(__dirname, "../src/offline/playback-selection.ts"),
+            "utf8"
+        ),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText,
+    { exports: selectionModule.exports }
+);
 vm.runInNewContext(
     ts.transpileModule(
         fs.readFileSync(
@@ -151,10 +167,13 @@ function fixture(snapshots, options = {}) {
                 return { installOfflineProfiles() {} };
             if (name.includes("local-media-progress"))
                 return helperModule.exports;
+            if (name.includes("playback-selection"))
+                return selectionModule.exports;
             return {
                 resolveNativePlugin: () =>
                     options.native || { list: () => options.read() },
                 tauriInvoke: async (name, args) => {
+                    if (name === "local_media_capabilities") return {};
                     commands.push({ args, name });
                     if (name === "offline_media_endpoint" && options.endpoint)
                         return options.endpoint();
@@ -324,6 +343,8 @@ async function flush() {
                 return { installOfflineProfiles() {} };
             if (name.includes("local-media-progress"))
                 return helperModule.exports;
+            if (name.includes("playback-selection"))
+                return selectionModule.exports;
             return { resolveNativePlugin: () => native };
         },
         setTimeout,

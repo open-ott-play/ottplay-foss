@@ -1,6 +1,7 @@
 # Local video profiles
 
-The `offline` provider is shown as **Local videos**. It plays connected folders
+Select **Local videos** with `provider local`; its compatible wire identifier
+remains `offline`. It plays connected folders
 and files directly on Android, iOS, Tauri and supported desktop browsers. Use
 [the main hosted player](https://player.ottplay.here.now/) for the web version.
 A profile stores a library selection and a selected video. It never contains
@@ -13,7 +14,7 @@ Update the player, control server and CLI together. Check `ott d1 caps` for
 `offline_profiles` version 1. Select the provider before managing its 15 slots:
 
 ```sh
-ott d1 provider offline
+ott d1 provider local
 ott d1 profiles
 ott d1 profile save 1 Kids
 ott d1 profile export 1 kids.json

@@ -1,6 +1,6 @@
 # Privacy Policy — OTT-play FOSS
 
-**Last updated:** 2026-10-16
+**Last updated:** 2026-10-27
 
 Published by **alvit**. For privacy or support questions, contact [alvit.work@gmail.com](mailto:alvit.work@gmail.com).
 
@@ -97,6 +97,23 @@ For store listing fields, use this document's stable URL:
 
 `https://github.com/open-ott-play/ottplay-foss/blob/main/docs/privacy-policy.md`
 
-## Local video imports
+## Local video sources
 
-Local videos are copied into this device’s app storage or this browser origin’s IndexedDB. Browser imports are not uploaded to here.now. If you explicitly choose a server library, the selected files are uploaded to that server. Removing site data, clearing app storage or uninstalling removes device-local copies. Profile backups do not include the video files.
+New Local videos selections retain references to original files and folders.
+Depending on the platform, the app stores browser file handles, Android document
+grants, iOS bookmarks, or native paths, together with source names and media
+metadata. Videos are not copied into OTT storage by these linked-source
+operations and browser selections are not uploaded to here.now. The operating
+system or a cloud document provider may maintain its own cache.
+
+A server library can stream existing files, including through a read-only local
+helper. Selecting that library does not itself upload videos. An explicit upload
+to a writable server library copies the selected bytes to that server. Older
+application/browser imports may remain as private copies until removed.
+
+Clearing site/application data or uninstalling removes stored references and
+application-owned copies; it does not delete linked originals. Numbered Local
+videos profile exports contain descriptions and selection, not media, native
+paths or access grants. An explicit native `local sources --paths` remote-control
+request can return private filesystem paths to the configured controller and CLI
+for a local configuration backup. Ordinary source listings omit these paths.

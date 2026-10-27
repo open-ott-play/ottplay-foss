@@ -807,7 +807,12 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
 // wall clock may differ from the controller, but network delay still consumes TTL.
 {
     const previousClock = clock;
-    for (const action of ["plex_queue", "plex_library", "playback"])
+    for (const action of [
+        "plex_queue",
+        "plex_library",
+        "playback",
+        "local_media",
+    ])
         for (const skew of [-120, 120])
             for (const lifetime of [30, 90]) {
                 clock = 5000000;
@@ -818,7 +823,13 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
                         ? { ids: ["1", "2"], op: "play", runtime: "page-1" }
                         : action === "plex_library"
                           ? { library_id: "16", op: "play", runtime: "page-1" }
-                          : { operation: "next_channel" };
+                          : action === "local_media"
+                            ? {
+                                  op: "shuffle",
+                                  runtime: "page-1",
+                                  source: "Movies",
+                              }
+                            : { operation: "next_channel" };
                 let dispatched;
                 let completeWork;
                 let cancellations = 0;
@@ -860,7 +871,15 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
                 rpc.next();
                 const result = JSON.parse(rpc.requests.at(-1).request.body);
                 assert.equal(result.status, "rejected");
-                assert.match(result.data.error, /timed out/i);
+                if (action === "local_media")
+                    assert.deepEqual(result.data, {
+                        error: "catalog_loading",
+                        op: "shuffle",
+                        runtime: "page-1",
+                        state: "error",
+                        version: 1,
+                    });
+                else assert.match(result.data.error, /timed out/i);
                 if (action === "plex_library")
                     assert.deepEqual(result.data, {
                         error: "Plex queue request timed out.",

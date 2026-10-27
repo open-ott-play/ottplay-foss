@@ -486,32 +486,42 @@ export function createCommandServer(
                             var executionDeadline = Date.now() + executionMs;
                             var executionError = function (
                                 message: string,
-                                libraryError: string
+                                libraryError: string,
+                                localError = "native_error"
                             ): any {
-                                return item.action === "favorites"
+                                return item.action === "local_media"
                                     ? {
-                                          error: "timeout",
+                                          error: localError,
                                           op: item.params.op,
                                           runtime: item.params.runtime,
                                           state: "error",
                                           version: 1,
                                       }
-                                    : item.action === "plex_library"
+                                    : item.action === "favorites"
                                       ? {
-                                            error: libraryError,
+                                            error: "timeout",
                                             op: item.params.op,
                                             runtime: item.params.runtime,
                                             state: "error",
                                             version: 1,
                                         }
-                                      : { error: message };
+                                      : item.action === "plex_library"
+                                        ? {
+                                              error: libraryError,
+                                              op: item.params.op,
+                                              runtime: item.params.runtime,
+                                              state: "error",
+                                              version: 1,
+                                          }
+                                        : { error: message };
                             };
                             var executionTimer = w.setTimeout(function () {
                                 var abortWork = cancelExecution;
                                 finishExecution({
                                     data: executionError(
                                         "Request timed out in the player.",
-                                        "Plex queue request timed out."
+                                        "Plex queue request timed out.",
+                                        "catalog_loading"
                                     ),
                                     status: "rejected",
                                 });
@@ -648,6 +658,7 @@ export function createCommandServer(
                                     item.action === "player_settings" ||
                                     item.action === "player_settings_patch" ||
                                     item.action === "plex_folders" ||
+                                    item.action === "local_media" ||
                                     item.action === "provider_settings" ||
                                     item.action === "settings_compare"
                                 )

@@ -10,6 +10,7 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
+import { executeRemoteLocalMedia } from "./remote-local-media";
 import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
@@ -362,6 +363,8 @@ export function executeRemoteRequest(
     var params = request.params || {};
     if (request.action === "perf_capture")
         return executeRemotePerformance(w, request, done);
+    if (request.action === "local_media")
+        return executeRemoteLocalMedia(w, params, done, request.expires_at);
     if (
         [
             "player_settings",
@@ -1209,6 +1212,7 @@ export function executeRemoteRequest(
     }
     if (request.action === "provider") {
         var query = String(params.query).toLowerCase();
+        if (query === "local") query = "offline";
         var providerSearch = caselessKey(query);
         var all = providers();
         var found = all.filter(function (row) {

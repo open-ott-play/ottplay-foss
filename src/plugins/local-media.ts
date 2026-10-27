@@ -6,6 +6,7 @@ import {
     formatLocalMediaProgress,
     localMediaProgressTimeout,
 } from "../offline/local-media-progress";
+import { createLocalPlaybackSelection } from "../offline/playback-selection";
 import { installOfflineProfiles } from "../offline/profiles";
 import { resolveNativePlugin, tauriInvoke } from "./native-bridge";
 
@@ -33,7 +34,44 @@ export function installLocalMedia(w: any): any {
     var endpoint = "";
     var importedSelection = "";
     var nextImportSelection = "";
+    var remoteHandoff: any = null;
+    var remoteOrderCurrent: (() => boolean) | null = null;
+    var remoteGeneration = 0;
+    var nativeSourcePaths = false;
+    var playbackSelection = createLocalPlaybackSelection(w, function () {
+        var profiles = w.__ottOfflineProfiles;
+        return (
+            libraryIdentity() +
+            ":" +
+            (profiles?.namespace?.() || "offline") +
+            ":" +
+            (profiles?.current?.()?.binding_id || "")
+        );
+    });
     var pendingFileKey = "localMediaPendingFile";
+    function playbackIntentContext(): string {
+        var profiles = w.__ottOfflineProfiles;
+        return JSON.stringify([
+            libraryIdentity(),
+            profiles?.namespace?.() || "offline",
+            profiles?.current?.() || null,
+            w.stbGetItem("offlineProfileBindings") || "",
+        ]);
+    }
+    function retireRemotePlayback(): void {
+        remoteGeneration++;
+        remoteHandoff = null;
+        remoteOrderCurrent = null;
+        playbackSelection.ordered();
+        nextImportSelection = "";
+    }
+    function libraryIdentity(): string {
+        return isNative()
+            ? "capacitor"
+            : isTauri()
+              ? "tauri"
+              : "browser:" + remoteEndpoint();
+    }
     function isNative(): boolean {
         return !!(
             w.Capacitor &&
@@ -219,10 +257,25 @@ export function installLocalMedia(w: any): any {
     function list(
         onProgress?: (value: any) => boolean | void,
         preferredId?: string,
-        prioritySources?: string[]
+        prioritySources?: string[],
+        admitted?: () => boolean
     ): Promise<any> {
         if (w.__ottStandby?.blocked())
             return Promise.reject(w.__ottStandby.error());
+        if (remoteHandoff) {
+            var handoff = remoteHandoff;
+            remoteHandoff = null;
+            if (
+                w.__ottActiveProviderDriver?.id === "offline" &&
+                handoff.current()
+            ) {
+                handoff.bindCatalog();
+                last = handoff.catalog;
+                return Promise.resolve(handoff.catalog);
+            }
+            playbackSelection.ordered();
+            remoteOrderCurrent = null;
+        }
         var request = ++catalogRevision;
         last = null;
         function accept(value: any): boolean {
@@ -248,7 +301,8 @@ export function installLocalMedia(w: any): any {
                             request,
                             accept,
                             !!onProgress,
-                            preferredId
+                            preferredId,
+                            admitted
                         )
                       : boundedLocalRead(function (progress) {
                             return browser.list(
@@ -353,20 +407,23 @@ export function installLocalMedia(w: any): any {
         request: number,
         accept: (value: any) => boolean,
         progressive: boolean,
-        preferredId?: string
+        preferredId?: string,
+        admitted?: () => boolean
     ): Promise<any> {
         var catalogUrl = base;
         var preferredSent = !preferredId || isTauri();
         var signature = "";
         var changedAt = Date.now();
         function read(): Promise<any> {
+            if (admitted && !admitted())
+                return Promise.resolve({ cancelled: true, items: [] });
             return boundedCatalogRequest(
                 catalogUrl,
                 Math.max(1, 60000 - (Date.now() - changedAt))
             ).then(function (value) {
                 if (!value || !Array.isArray(value.items))
                     throw new Error("Invalid local media catalog");
-                if (request !== catalogRevision)
+                if (request !== catalogRevision || (admitted && !admitted()))
                     return { ...value, cancelled: true };
                 if (!preferredSent && value.readOnly) {
                     var url = new URL(base);
@@ -422,6 +479,7 @@ export function installLocalMedia(w: any): any {
                 });
             if (result && result.pickerCancelled)
                 return Promise.resolve({ pickerCancelled: true });
+            playbackSelection.clear();
             var pending = list(
                 function (value) {
                     updateLoading(value);
@@ -454,7 +512,12 @@ export function installLocalMedia(w: any): any {
         }
         if (isNative())
             return remember(
-                folder ? native.importFolder() : native.importFiles()
+                (folder ? native.importFolder() : native.importFiles()).then(
+                    function (value: any) {
+                        if (!value?.pickerCancelled) playbackSelection.clear();
+                        return value;
+                    }
+                )
             );
         // A picker may outlive its screen. Its saved handle is still valid, but
         // its completion must not replace a newer catalog or start playback.
@@ -489,18 +552,25 @@ export function installLocalMedia(w: any): any {
             return Promise.reject(
                 new Error("Unlock settings to disconnect sources")
             );
-        if (isNative()) return remember(native.removeSource({ id: id }));
+        function removed(value: any): any {
+            if (playbackSelection.clearSource(id)) retireRemotePlayback();
+            return value;
+        }
+        if (isNative())
+            return remember(native.removeSource({ id: id }).then(removed));
         if (isTauri())
             return tauriInvoke<any>("offline_media_remove_source", {
                 id: id,
-            }).then(function () {
-                return list();
-            });
+            })
+                .then(removed)
+                .then(function () {
+                    return list();
+                });
         if (remoteEndpoint())
             return Promise.reject(
                 new Error("Manage sources on the server itself.")
             );
-        return remember(browser.removeSource(id));
+        return remember(browser.removeSource(id).then(removed));
     }
     function reconnectSource(id: string): Promise<any> {
         if (locked() || settingsLocked())
@@ -1108,6 +1178,11 @@ export function installLocalMedia(w: any): any {
         available: function () {
             return isNative() || isTauri() || !!w.indexedDB;
         },
+        bindPlaybackOwner: function (active: () => boolean): void {
+            if (!remoteHandoff) return;
+            if (remoteHandoff.current()) remoteHandoff.bindOwner(active);
+            else retireRemotePlayback();
+        },
         cancelNativeList: cancelNativeList,
         cancelScan: function () {
             catalogRevision++;
@@ -1127,6 +1202,7 @@ export function installLocalMedia(w: any): any {
             });
         },
         didRestoreLibrary: function () {
+            retireRemotePlayback();
             catalogRevision++;
             last = null;
         },
@@ -1140,13 +1216,7 @@ export function installLocalMedia(w: any): any {
                 })
             );
         },
-        libraryIdentity: function () {
-            return isNative()
-                ? "capacitor"
-                : isTauri()
-                  ? "tauri"
-                  : "browser:" + remoteEndpoint();
-        },
+        libraryIdentity: libraryIdentity,
         libraryWrite: function (identity: string) {
             if (isNative() || isTauri() || identity.indexOf("browser:") !== 0)
                 throw new Error(
@@ -1162,6 +1232,20 @@ export function installLocalMedia(w: any): any {
         },
         list: list,
         open: open,
+        playbackFilter: playbackSelection.filter,
+        playbackOrder: function () {
+            if (remoteOrderCurrent && !remoteOrderCurrent()) {
+                retireRemotePlayback();
+            }
+            return w.__ottActiveProviderDriver?.id === "offline" &&
+                remoteOrderCurrent?.()
+                ? playbackSelection.order()
+                : null;
+        },
+        playbackOrdered: function () {
+            playbackSelection.ordered();
+            remoteOrderCurrent = null;
+        },
         preferredState: function (id: string) {
             return last && last.preferred && last.preferred.id === id
                 ? last.preferred.state
@@ -1171,6 +1255,136 @@ export function installLocalMedia(w: any): any {
             return formatLocalMediaProgress(value, w._);
         },
         progressTimeout: localMediaProgressTimeout,
+        remoteActivate: function (
+            source: string,
+            ids: string[],
+            catalog: any,
+            admitted: () => boolean,
+            seed: number | null = null
+        ): void {
+            if (
+                !admitted() ||
+                locked() ||
+                settingsLocked() ||
+                typeof w.loadProv !== "function"
+            )
+                throw { localMediaCode: "restricted" };
+            var generation = ++remoteGeneration;
+            var activating = true;
+            var expectedLoad: any;
+            var playbackOwner: (() => boolean) | null = null;
+            var catalogLoad: any = null;
+            var selectionContext = playbackIntentContext();
+            function ownsActivation(): boolean {
+                try {
+                    return (
+                        generation === remoteGeneration &&
+                        admitted() &&
+                        !w.__ottStandby?.blocked?.() &&
+                        selectionContext === playbackIntentContext() &&
+                        (playbackOwner
+                            ? playbackOwner() &&
+                              (!catalogLoad ||
+                                  catalogLoad === w.__ottCommandChannelLoad)
+                            : activating ||
+                              expectedLoad === w.__ottCommandChannelLoad)
+                    );
+                } catch (_) {
+                    return false;
+                }
+            }
+            playbackSelection.select(source, ids, seed);
+            if (!ownsActivation()) throw { localMediaCode: "runtime_changed" };
+            remoteOrderCurrent = ownsActivation;
+            nextImportSelection = "local-" + ids[0];
+            remoteHandoff = {
+                bindCatalog: function () {
+                    catalogLoad = w.__ottCommandChannelLoad;
+                },
+                bindOwner: function (active: () => boolean) {
+                    playbackOwner = active;
+                },
+                catalog: catalog,
+                current: ownsActivation,
+            };
+            finishLoading();
+            opened = false;
+            revision++;
+            if (typeof w.closeList === "function") w.closeList();
+            w.stbSetItem("ottplayprov", "offline");
+            try {
+                w.loadProv("offline");
+            } finally {
+                expectedLoad = w.__ottCommandChannelLoad;
+                activating = false;
+            }
+        },
+        remoteCapabilities: function () {
+            if (!api.available()) return undefined;
+            return {
+                absolute_paths: nativeSourcePaths,
+                max_items: 50000,
+                max_sources: 32,
+                operations: ["sources", "play", "shuffle", "connect"],
+                version: 1,
+            };
+        },
+        remoteCatalog: function (current?: () => boolean): Promise<any> {
+            if (w.__ottActiveProviderDriver?.id === "offline" && last?.scanning)
+                return Promise.reject({ localMediaCode: "catalog_loading" });
+            var pending: any = list(
+                function () {
+                    return !current || current();
+                },
+                undefined,
+                undefined,
+                current
+            );
+            var request = catalogRevision;
+            pending.cancel = function () {
+                if (request !== catalogRevision) return;
+                catalogRevision++;
+                last = null;
+                cancelNativeList();
+                browser.suspend();
+            };
+            return pending;
+        },
+        remoteConnect: function (path: string): Promise<any> {
+            if (!isTauri() || !nativeSourcePaths)
+                return Promise.reject({ localMediaCode: "unsupported" });
+            return tauriInvoke<any>("local_media_link_folder", {
+                path: path,
+            }).then(function (value) {
+                last = null;
+                return value;
+            });
+        },
+        remoteSources: function (
+            includePaths = false,
+            path?: string,
+            current?: () => boolean
+        ): Promise<any> {
+            if (isTauri() && nativeSourcePaths)
+                return tauriInvoke<any>("local_media_sources", {
+                    includePaths: includePaths,
+                    ...(path === undefined ? {} : { path: path }),
+                });
+            if (includePaths || path)
+                return Promise.reject(
+                    new Error("Native source paths are unavailable")
+                );
+            if (last && !last.scanning && !last.cancelled)
+                return Promise.resolve({ sources: last.sources || [] });
+            if (w.__ottActiveProviderDriver?.id === "offline")
+                return Promise.reject({ localMediaCode: "catalog_loading" });
+            var pending: any = api.remoteCatalog(current);
+            var result: any = pending.then(function (value: any) {
+                return { sources: value.sources || [] };
+            });
+            result.cancel = pending.cancel;
+            return result;
+        },
         remove: remove,
         resume: function (skipScan = false, message = "") {
             // Backend exception text may contain private file paths. Keep only
@@ -1203,12 +1417,15 @@ export function installLocalMedia(w: any): any {
             return Promise.resolve(JSON.parse(JSON.stringify(last)));
         },
         suspend: function () {
+            retireRemotePlayback();
             cancelNativeList();
             catalogRevision++;
             revision++;
             close();
         },
         takeImportSelection: function () {
+            if (remoteHandoff && !remoteHandoff.current())
+                retireRemotePlayback();
             var selected = nextImportSelection;
             nextImportSelection = "";
             try {
@@ -1231,6 +1448,18 @@ export function installLocalMedia(w: any): any {
         title: title,
     };
     w.__ottLocalMedia = api;
+    if (isTauri())
+        tauriInvoke<any>("local_media_capabilities", {}).then(
+            function (value) {
+                nativeSourcePaths = !!(
+                    value &&
+                    value.version === 1 &&
+                    value.absolutePaths === true &&
+                    value.sourcePaths === true
+                );
+            },
+            function () {}
+        );
     installOfflineProfiles(w, api);
     w.popLocalMedia = open;
     return api;
