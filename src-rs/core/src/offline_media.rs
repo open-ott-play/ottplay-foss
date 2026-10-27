@@ -843,18 +843,36 @@ impl Library {
             self.storage == "device",
             "Native sources are unavailable on this server"
         );
-        {
-            let mut scan = self.scan.lock().await;
-            if scan.jobs == 0 {
-                scan.records.clear();
-                scan.cached = true;
-                scan.scanned = 0;
-                scan.error = None;
-            }
-            scan.jobs += 1;
-        }
+        let rebuild = {
+            let mut scan = work
+                .run(self.scan.lock())
+                .await
+                .map_err(anyhow::Error::msg)?;
+            work.publish(|| {
+                let rebuild = scan.jobs == 0 && (!scan.cached || scan.error.is_some());
+                if scan.jobs == 0 {
+                    // Keep a complete catalog visible while adding another source.
+                    // An invalid snapshot must rebuild every other connected root
+                    // before this job can mark the library complete again.
+                    if rebuild {
+                        scan.records.clear();
+                    }
+                    scan.cached = true;
+                    scan.scanned = 0;
+                    scan.error = None;
+                }
+                scan.jobs += 1;
+                rebuild
+            })
+            .map_err(anyhow::Error::msg)?
+        };
         let library = self.clone();
         tokio::spawn(async move {
+            if rebuild {
+                library
+                    .refresh_sources_except(&work, expected_source.as_ref())
+                    .await;
+            }
             let result = library
                 .link_paths_inner(paths, folder, &work, expected_source.as_ref())
                 .await;
@@ -865,6 +883,10 @@ impl Library {
                 } else {
                     "Local source could not be completely scanned".into()
                 });
+            }
+            if work.check().is_err() {
+                scan.invalidate();
+                scan.error = Some("Local media scan cancelled".into());
             }
             scan.jobs -= 1;
         });
@@ -1220,6 +1242,14 @@ impl Library {
         self.refresh_sources_inner(&work).await;
     }
     async fn refresh_sources_inner(&self, work: &crate::background_work::WorkLease) {
+        self.refresh_sources_except(work, None).await;
+    }
+
+    async fn refresh_sources_except(
+        &self,
+        work: &crate::background_work::WorkLease,
+        excluded_source: Option<&SourceRecord>,
+    ) {
         if work.check().is_err() {
             return;
         }
@@ -1233,7 +1263,13 @@ impl Library {
             if work.check().is_err() {
                 return;
             }
-            if source.kind != "folder" {
+            if source.kind != "folder"
+                || excluded_source.is_some_and(|excluded| {
+                    excluded.id == source.id
+                        && excluded.path == source.path
+                        && excluded.kind == source.kind
+                })
+            {
                 continue;
             }
             // Unmounted, moved or denied sources remain visible for reconnection.
@@ -1814,6 +1850,118 @@ async fn media(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn local_connection_preserves_valid_catalog_while_link_job_waits() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let first = base.join("First");
+        let second = base.join("Second");
+        fs::create_dir_all(&first).await.unwrap();
+        fs::create_dir_all(&second).await.unwrap();
+        fs::write(first.join("First.mp4"), b"first").await.unwrap();
+        fs::write(second.join("Second.mp4"), b"second")
+            .await
+            .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        library.start_link_paths(vec![first], true).await.unwrap();
+        wait_for_drain(&library.background).await;
+        let original = library.catalog().await.unwrap();
+        assert_eq!(original.items.len(), 1);
+        let original_id = original.items[0].id.clone();
+        let guard = library.mutation.lock().await;
+        library.start_link_paths(vec![second], true).await.unwrap();
+        let pending = library.catalog().await.unwrap();
+        assert!(pending.scanning);
+        assert!(pending
+            .items
+            .iter()
+            .any(|item| item.id == original_id && item.available));
+        drop(guard);
+        wait_for_drain(&library.background).await;
+        let complete = library.catalog().await.unwrap();
+        assert!(!complete.scanning);
+        assert!(complete.scan_error.is_none());
+        assert_eq!(complete.items.len(), 2);
+        assert!(complete.items.iter().any(|item| item.id == original_id));
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn local_connection_rebuilds_other_sources_after_restart_or_invalidation() {
+        for restarted in [true, false] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let first = base.join("First");
+            let second = base.join("Second");
+            let removed = base.join("Removed");
+            let metadata = base.join("metadata");
+            for directory in [&first, &second, &removed] {
+                fs::create_dir_all(directory).await.unwrap();
+            }
+            fs::write(first.join("First.mp4"), b"first").await.unwrap();
+            fs::write(second.join("Second.mp4"), b"second")
+                .await
+                .unwrap();
+            fs::write(removed.join("Removed.mp4"), b"removed")
+                .await
+                .unwrap();
+            let library = Library::new(metadata.clone(), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            library
+                .start_link_paths(vec![first.clone(), removed], true)
+                .await
+                .unwrap();
+            wait_for_drain(&library.background).await;
+            let original = library.catalog().await.unwrap();
+            let original_id = original
+                .items
+                .iter()
+                .find(|item| item.name == "First.mp4")
+                .unwrap()
+                .id
+                .clone();
+            let removed_id = original
+                .sources
+                .iter()
+                .find(|source| source.name == "Removed")
+                .unwrap()
+                .id
+                .clone();
+            library.disconnect_source(&removed_id).await.unwrap();
+            let library = if restarted {
+                Library::new(metadata, "t".repeat(32), "device")
+                    .await
+                    .unwrap()
+            } else {
+                library
+            };
+            fs::write(first.join("Added.mp4"), b"added").await.unwrap();
+            library
+                .start_link_folder_path_tracked(second, library.background.enter().unwrap())
+                .await
+                .unwrap();
+            wait_for_drain(&library.background).await;
+            let complete = library.catalog().await.unwrap();
+            assert!(!complete.scanning);
+            assert!(complete.scan_error.is_none());
+            assert_eq!(complete.items.len(), 3, "restarted={restarted}");
+            assert!(complete.items.iter().any(|item| item.id == original_id));
+            assert!(complete.items.iter().any(|item| item.name == "Added.mp4"));
+            assert!(!complete
+                .sources
+                .iter()
+                .any(|source| source.id == removed_id));
+            assert!(!complete.items.iter().any(|item| item.name == "Removed.mp4"));
+            library
+                .ensure_catalog_tracked(None, library.background.enter().unwrap())
+                .await;
+            assert_eq!(library.scan.lock().await.jobs, 0);
+            assert_eq!(library.catalog().await.unwrap().items.len(), 3);
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
 
     #[test]
     fn native_scan_entry_budget_is_separate_from_playable_item_count() {

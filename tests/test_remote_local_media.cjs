@@ -698,13 +698,19 @@ test("invalid wire source identities are rejected before any playback mutation",
     for (const bad of [
         { ...source, id: "invalid/id" },
         { ...source, name: "x".repeat(513) },
-        { ...source, name: "https:secret" },
+        { ...source, name: "https://secret" },
         { ...source, name: "folder/subfolder" },
     ]) {
         const f = fixture();
         f.value.sources = [bad];
         assert.equal(
-            (await f.request(request("play"))).data.error,
+            (
+                await f.request(
+                    request("play", {
+                        source: bad.id === source.id ? source.id : "Movies",
+                    })
+                )
+            ).data.error,
             "catalog_unavailable"
         );
         assert.deepEqual(f.calls, []);
@@ -956,4 +962,97 @@ test("retry after a timed-out new-folder scan reuses its binding and reads the c
         2
     );
     assert.equal(f.calls.filter((call) => call[0] === "provider").length, 1);
+});
+
+test("Local source names retain legal POSIX colons in full listings and exact selections", async () => {
+    const f = fixture();
+    f.value.sources = [
+        { ...source, name: "Anime:2024" },
+        { ...other, name: "Kids: Cartoons" },
+    ];
+    const listed = await f.request(request("sources"));
+    assert.equal(listed.status, "ok");
+    assert.deepEqual(listed.data.sources, f.value.sources);
+    for (const source of f.value.sources) {
+        const played = await f.request(
+            request("shuffle", { source: source.name })
+        );
+        assert.equal(played.status, "ok");
+        assert.equal(played.data.source.name, source.name);
+        assert.equal(played.data.source.id, source.id);
+    }
+    f.value.sources.push({ ...other, id: "bad/id" });
+    assert.equal(
+        (await f.request(request("sources"))).data.error,
+        "catalog_unavailable"
+    );
+});
+
+test("successful disconnect clears only the matching source selection on native, Tauri and browser", async () => {
+    const pluginSource = fs.readFileSync("src/plugins/local-media.ts", "utf8");
+    const start = pluginSource.indexOf("    function removeSource(id:");
+    const end = pluginSource.indexOf("    function reconnectSource(", start);
+    assert.ok(start > 0 && end > start);
+    const code = ts.transpileModule(
+        "export " + pluginSource.slice(start, end).trim(),
+        {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }
+    ).outputText;
+    for (const mode of ["native", "tauri", "browser"])
+        for (const outcome of ["selected", "unrelated", "failed"]) {
+            const stored = new Map();
+            let retired = 0,
+                identity = "library:profile-a";
+            const w = {
+                stbGetItem: (key) => stored.get(key),
+                stbSetItem: (key, value) => stored.set(key, value),
+            };
+            const selected = selection.createLocalPlaybackSelection(
+                w,
+                () => identity
+            );
+            selected.select(source.id, ["1", "2", "3"], 42);
+            identity = "library:profile-b";
+            const before = stored.get("localMediaPlaybackSelection");
+            const backend = async () => {
+                if (outcome === "failed") throw Error("disconnect failed");
+                return { items: [], sources: [other] };
+            };
+            const context = {
+                browser: { removeSource: backend },
+                exports: {},
+                isNative: () => mode === "native",
+                isTauri: () => mode === "tauri",
+                list: async () => ({ items: [], sources: [other] }),
+                locked: () => false,
+                native: { removeSource: backend },
+                playbackSelection: selected,
+                remember: (value) => value,
+                remoteEndpoint: () => "",
+                retireRemotePlayback: () => retired++,
+                settingsLocked: () => false,
+                tauriInvoke: backend,
+            };
+            vm.runInNewContext(code, context);
+            const operation = context.exports.removeSource(
+                outcome === "unrelated" ? other.id : source.id
+            );
+            if (outcome === "failed")
+                await assert.rejects(operation, /disconnect failed/);
+            else await operation;
+            assert.equal(
+                stored.get("localMediaPlaybackSelection"),
+                outcome === "selected" ? "" : before,
+                mode + ":" + outcome
+            );
+            assert.equal(
+                retired,
+                outcome === "selected" ? 1 : 0,
+                mode + ":" + outcome
+            );
+        }
 });

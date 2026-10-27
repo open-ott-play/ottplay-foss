@@ -552,18 +552,25 @@ export function installLocalMedia(w: any): any {
             return Promise.reject(
                 new Error("Unlock settings to disconnect sources")
             );
-        if (isNative()) return remember(native.removeSource({ id: id }));
+        function removed(value: any): any {
+            if (playbackSelection.clearSource(id)) retireRemotePlayback();
+            return value;
+        }
+        if (isNative())
+            return remember(native.removeSource({ id: id }).then(removed));
         if (isTauri())
             return tauriInvoke<any>("offline_media_remove_source", {
                 id: id,
-            }).then(function () {
-                return list();
-            });
+            })
+                .then(removed)
+                .then(function () {
+                    return list();
+                });
         if (remoteEndpoint())
             return Promise.reject(
                 new Error("Manage sources on the server itself.")
             );
-        return remember(browser.removeSource(id));
+        return remember(browser.removeSource(id).then(removed));
     }
     function reconnectSource(id: string): Promise<any> {
         if (locked() || settingsLocked())

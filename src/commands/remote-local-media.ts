@@ -88,7 +88,7 @@ export function executeRemoteLocalMedia(
             typeof source.id !== "string" ||
             !/^[A-Za-z0-9_.:-]{1,256}$/.test(source.id) ||
             !text(source.name, 512) ||
-            /[\\/]|^[a-z][a-z0-9+.-]*:/i.test(source.name) ||
+            /[\\/]/.test(source.name) ||
             ["file", "folder"].indexOf(source.kind) < 0 ||
             (source.available !== undefined &&
                 typeof source.available !== "boolean")

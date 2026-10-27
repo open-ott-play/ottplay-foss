@@ -355,10 +355,10 @@ const { gzipSync } = require("node:zlib");
 // Periodic channel-backed VOD checkpoints measure 321463 native entry gzip
 // bytes with Node 22.23.4 and beta.9999. Allow 96 bytes including identity room.
 // Local source commands, guarded activation and compact seeded playback order
-// add 11817 raw / 3266 gzip bytes over 6b8d00d6 on Node 26.8.2, same 1.1.61
-// identity. Allocate 12000 / 3400 once, retaining existing native/release room.
+// add 12115 raw / 3324 gzip bytes over 6b8d00d6 on Node 26.8.2, same 1.1.61
+// identity. Allocate 12200 / 3400 once, retaining existing native/release room.
 // See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
-const BUDGET = Object.freeze({ bytes: 1054000, gzipBytes: 324946 });
+const BUDGET = Object.freeze({ bytes: 1054200, gzipBytes: 324946 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -537,7 +537,7 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Count the measured Local media entry allocation once in the full payload.
-    bytes: 1188800,
+    bytes: 1189000,
     gzipBytes: 374346,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
@@ -573,7 +573,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Carry the approved 96-byte VOD checkpoint allowance into the complete
 // payload exactly once, alongside the independently bounded optional capture.
 // Include the same Local media entry increment; optional caps stay unchanged.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1300100, gzipBytes: 414170 });
+const TOTAL_BUDGET = Object.freeze({ bytes: 1300300, gzipBytes: 414170 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

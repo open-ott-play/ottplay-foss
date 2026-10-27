@@ -25,7 +25,7 @@ export function createLocalPlaybackSelection(
 ): any {
     var key = "localMediaPlaybackSelection";
     var pending: string[] | null = null;
-    function read(): any {
+    function read(requireContext = true): any {
         var raw = w.stbGetItem(key);
         if (!raw) return null;
         var value = JSON.parse(raw);
@@ -45,12 +45,24 @@ export function createLocalPlaybackSelection(
                     Math.floor(value.seed) !== value.seed))
         )
             throw new Error("Invalid local playback selection");
-        return value.library === identity() ? value : null;
+        return !requireContext || value.library === identity() ? value : null;
     }
     return {
         clear: function (): void {
             w.stbSetItem(key, "");
             pending = null;
+        },
+        clearSource: function (id: string): boolean {
+            // A disconnected binding may be selected by another saved profile.
+            var value = read(false);
+            if (!value || value.source !== id) return false;
+            w.stbSetItem(key, "");
+            if (w.stbGetItem(key))
+                throw new Error(
+                    "The disconnected local source selection could not be cleared"
+                );
+            pending = null;
+            return true;
         },
         filter: function (catalog: any): any {
             var value = read();
