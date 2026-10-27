@@ -407,11 +407,33 @@ for (const device of ["lg/webos", "lg/netcast", "pc"]) {
             for (const menu of ["stbOptions", "settingsInterface"]) {
                 await page.evaluate((name) => window[name](), menu);
                 await expect(page.locator("#list")).toBeVisible();
+                await expect(page.locator("#listCaption")).toHaveText(
+                    menu === "stbOptions"
+                        ? "STB settings"
+                        : "Interface settings"
+                );
                 await expect(
                     page
                         .locator("#list")
                         .getByRole("option", { name: /^Streaming player type/ })
                 ).toHaveCount(device === "lg/webos" ? 0 : 1);
+                // Settings are paginated. Reach the buffer row through the
+                // real remote handler instead of assuming it is on page one.
+                const bufferIndex = await page.evaluate(() =>
+                    window.listArray.findIndex(
+                        (row) => row.settingId === "bufSize"
+                    )
+                );
+                expect(bufferIndex).toBeGreaterThanOrEqual(0);
+                await expect
+                    .poll(() => page.evaluate(() => window.selIndex))
+                    .toBe(0);
+                for (let index = 0; index < bufferIndex; index++) {
+                    await page.keyboard.press("ArrowDown");
+                    await expect
+                        .poll(() => page.evaluate(() => window.selIndex))
+                        .toBe(index + 1);
+                }
                 await expect(
                     page
                         .locator("#list")
