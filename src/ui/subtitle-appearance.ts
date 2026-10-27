@@ -250,7 +250,7 @@
         var noyes = [label("no"), label("yes")];
         var fontScales: number[] = [];
         // Include exact remote values while keeping the selector ascending.
-        for (var scale = 50; scale <= 200; scale++)
+        for (var scale = 20; scale <= 200; scale++)
             if (scale % 10 === 0 || scale === host.sUiFontScale)
                 fontScales.push(scale);
         var tz = (host.arrTimezone || ["system", "0"]).slice();
