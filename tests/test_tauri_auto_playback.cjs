@@ -349,6 +349,160 @@ test("Tauri Auto switches sustained native frame loss directly to HLS once", () 
     );
 });
 
+function localStallFixture() {
+    const f = fixture();
+    f.w.__ottLocalMedia = { isPlaybackUrl: (url) => url === "local.mp4" };
+    f.w.startCoreEngine("local.mp4", 195);
+    return f;
+}
+test("Local native startup stall retries twice at its retained position then stops", () => {
+    const f = localStallFixture();
+    for (let retry = 0; retry < 2; retry++) {
+        f.advance(30000);
+        assert.equal(f.w.coreStreamAttempt.state().pending, true);
+        f.advance(retry ? 1000 : 500);
+        ready(f.w.video, true);
+        assert.equal(f.w.video.currentTime, 195);
+    }
+    f.advance(30000);
+    assert.equal(f.w.coreStreamAttempt.state().terminal, true);
+    assert.equal(
+        f.w.video.sourceHistory.filter((x) => x === "local.mp4").length,
+        3
+    );
+    f.advance(60000);
+    assert.equal(
+        f.w.video.sourceHistory.filter((x) => x === "local.mp4").length,
+        3
+    );
+});
+test("Local playing stalls preserve position and meaningful progress renews the retry budget", () => {
+    const f = localStallFixture();
+    ready(f.w.video, true);
+    f.w.video.currentTime = 240;
+    f.advance(30000);
+    f.advance(2000);
+    ready(f.w.video, true);
+    assert.equal(f.w.video.currentTime, 240);
+    for (let i = 0; i < 3; i++) {
+        f.w.video.currentTime += 1;
+        f.advance(1000);
+    }
+    for (let i = 0; i < 2; i++) {
+        f.advance(30000);
+        f.advance(2000);
+        ready(f.w.video, true);
+    }
+    assert.equal(f.w.coreStreamAttempt.state().terminal, false);
+    f.advance(30000);
+    assert.equal(f.w.coreStreamAttempt.state().terminal, true);
+});
+test("Local watchdog ignores focus but suspends paused time and is cancelled by stop or replacement", () => {
+    for (const action of ["stop", "replace"]) {
+        const f = localStallFixture();
+        f.w.video.paused = true;
+        f.advance(60000);
+        assert.equal(f.w.coreAttemptCounters.streamRetries, 0);
+        f.w.video.paused = false;
+        f.w.document.visibilityState = "hidden";
+        f.advance(30000);
+        assert.equal(f.w.coreStreamAttempt.state().pending, true);
+        if (action === "stop") f.w.stopCoreEngine();
+        else f.w.startCoreEngine("other.mp4", 20);
+        const history = f.w.video.sourceHistory.length;
+        f.advance(60000);
+        assert.equal(f.w.video.sourceHistory.length, history);
+    }
+});
+
+test("Local seek and end cannot trigger a spurious retry", () => {
+    const f = localStallFixture();
+    ready(f.w.video, true);
+    f.w.video.seeking = true;
+    f.advance(60000);
+    assert.equal(f.w.coreAttemptCounters.streamRetries, 0);
+    f.w.video.currentTime = 500;
+    f.w.video.seeking = false;
+    f.advance(30000);
+    f.advance(500);
+    ready(f.w.video, true);
+    assert.equal(f.w.video.currentTime, 500);
+    f.w.video.ended = true;
+    const starts = f.w.video.sourceHistory.length;
+    f.advance(60000);
+    assert.equal(f.w.video.sourceHistory.length, starts);
+    assert.equal(f.w.coreStreamAttempt.state().pending, false);
+});
+test("Local stall timer fences provider changes and synchronous replacement during retry", () => {
+    for (const action of ["provider", "stop", "replace"]) {
+        const f = localStallFixture();
+        if (action === "provider")
+            f.w.__ottActiveProviderDriver = { id: "other" };
+        else
+            f.w.__ottPerfSink = {
+                recovery() {
+                    if (action === "stop") f.w.stopCoreEngine();
+                    else f.w.startCoreEngine("replacement.mp4", 44);
+                },
+            };
+        f.advance(33000);
+        assert.equal(
+            f.w.video.sourceHistory.filter((x) => x === "local.mp4").length,
+            1
+        );
+        f.advance(60000);
+        assert.equal(
+            f.w.video.sourceHistory.filter((x) => x === "local.mp4").length,
+            1
+        );
+        assert.equal([...f.timers.values()].length, 0);
+    }
+});
+
+for (const transition of ["end", "provider"]) {
+    for (const timing of ["queued window", "synchronous retry report"]) {
+        test(
+            "Local queued retry rejects " + transition + " during " + timing,
+            () => {
+                const f = localStallFixture();
+                f.advance(30000);
+                assert.equal(f.w.coreStreamAttempt.state().pending, true);
+                function retire() {
+                    if (transition === "end") f.w.video.ended = true;
+                    else f.w.__ottActiveProviderDriver = { id: "replacement" };
+                }
+                if (timing === "queued window") retire();
+                else
+                    f.w.__ottPerfSink = {
+                        recovery(key) {
+                            if (key === "streamRetries") retire();
+                        },
+                    };
+                f.advance(500);
+                assert.equal(
+                    f.w.video.sourceHistory.filter((url) => url === "local.mp4")
+                        .length,
+                    1,
+                    "retired local retry must not reopen its source"
+                );
+                assert.equal(f.w.coreStreamAttempt.state().pending, false);
+                assert.equal(f.w.coreStreamAttempt.state().terminal, true);
+                f.advance(60000);
+                assert.equal(
+                    f.w.video.sourceHistory.filter((url) => url === "local.mp4")
+                        .length,
+                    1
+                );
+                assert.equal(
+                    f.timers.size,
+                    0,
+                    "retired watchdog leaves no polling/retry timer"
+                );
+            }
+        );
+    }
+}
+
 test("native frame monitoring keeps smooth, low-FPS and transient startup playback", () => {
     for (const [total, dropped] of [
         [25, 0],
