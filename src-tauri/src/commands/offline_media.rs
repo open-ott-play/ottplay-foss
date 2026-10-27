@@ -23,6 +23,7 @@ async fn runtime(
     state: &OfflineMediaState,
     preferred_id: Option<&str>,
     refresh: bool,
+    discover: bool,
 ) -> Result<Runtime, String> {
     let background = app.state::<ottplay_core::background_work::BackgroundWork>();
     let work = background.enter().map_err(str::to_string)?;
@@ -35,7 +36,7 @@ async fn runtime(
                 .library
                 .start_refresh_sources_with_preferred_tracked(preferred_id, work.clone())
                 .await;
-        } else {
+        } else if discover {
             value
                 .library
                 .ensure_catalog_tracked(preferred_id, work.clone())
@@ -68,9 +69,11 @@ async fn runtime(
         .map_err(|_| "Local media listener unavailable")?;
     let endpoint = format!("http://{address}{}", library.endpoint());
     let server = library.clone();
-    library
-        .start_refresh_sources_with_preferred_tracked(preferred_id, work.clone())
-        .await;
+    if refresh || discover {
+        library
+            .start_refresh_sources_with_preferred_tracked(preferred_id, work.clone())
+            .await;
+    }
     let result = Runtime { endpoint, library };
     work.publish(|| {
         tauri::async_runtime::spawn(async move {
@@ -96,6 +99,7 @@ pub async fn offline_media_endpoint(
         &state,
         preferred_id.as_deref(),
         refresh.unwrap_or(false),
+        true,
     )
     .await?;
     Ok(Endpoint {
@@ -113,7 +117,7 @@ pub async fn offline_media_import_files(
         .state::<ottplay_core::background_work::BackgroundWork>()
         .enter()
         .map_err(str::to_string)?;
-    let current = runtime(&app, &state, None, false).await?;
+    let current = runtime(&app, &state, None, false, true).await?;
     let picker_work = work.clone();
     let selected = tauri::async_runtime::spawn_blocking(move || {
         let _picker_work = picker_work;
@@ -155,7 +159,7 @@ pub async fn offline_media_import_folder(
         .state::<ottplay_core::background_work::BackgroundWork>()
         .enter()
         .map_err(str::to_string)?;
-    let current = runtime(&app, &state, None, false).await?;
+    let current = runtime(&app, &state, None, false, true).await?;
     let picker_work = work.clone();
     let selected = tauri::async_runtime::spawn_blocking(move || {
         let _picker_work = picker_work;
@@ -187,7 +191,7 @@ pub async fn offline_media_remove_source(
     state: State<'_, OfflineMediaState>,
     id: String,
 ) -> Result<Endpoint, String> {
-    let current = runtime(&app, &state, None, false).await?;
+    let current = runtime(&app, &state, None, false, true).await?;
     current
         .library
         .disconnect_source(&id)
@@ -197,4 +201,134 @@ pub async fn offline_media_remove_source(
         endpoint: current.endpoint,
         picker_cancelled: None,
     })
+}
+
+fn require_main(label: &str) -> Result<(), String> {
+    if label == "main" {
+        Ok(())
+    } else {
+        Err("Local source control is restricted to the main window".into())
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMediaCapabilities {
+    version: u8,
+    absolute_paths: bool,
+    source_paths: bool,
+}
+
+#[derive(Serialize)]
+pub struct LocalMediaSources {
+    endpoint: String,
+    sources: Vec<ottplay_core::offline_media::NativeSource>,
+}
+
+#[derive(Serialize)]
+pub struct LocalMediaFolder {
+    endpoint: String,
+    source: ottplay_core::offline_media::NativeSource,
+}
+
+#[tauri::command]
+pub fn local_media_capabilities(
+    window: tauri::WebviewWindow,
+) -> Result<LocalMediaCapabilities, String> {
+    require_main(window.label())?;
+    Ok(LocalMediaCapabilities {
+        version: 1,
+        absolute_paths: true,
+        source_paths: true,
+    })
+}
+
+/// The caller opts in to private paths only for an authenticated source export.
+/// Unlike endpoint discovery this read never starts a media scan.
+#[tauri::command]
+pub async fn local_media_sources(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    state: State<'_, OfflineMediaState>,
+    include_paths: Option<bool>,
+    path: Option<String>,
+) -> Result<LocalMediaSources, String> {
+    require_main(window.label())?;
+    let current = runtime(&app, &state, None, false, false).await?;
+    let sources = current
+        .library
+        .native_sources(include_paths.unwrap_or(false), path.map(Into::into))
+        .await
+        .map_err(|_| "Local sources unavailable; select an accessible absolute directory")?;
+    Ok(LocalMediaSources {
+        endpoint: current.endpoint,
+        sources,
+    })
+}
+
+/// Called after the player validates an authenticated explicit local-folder
+/// command. The native boundary still restricts the window and filesystem input.
+#[tauri::command]
+pub async fn local_media_link_folder(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    state: State<'_, OfflineMediaState>,
+    path: String,
+) -> Result<LocalMediaFolder, String> {
+    require_main(window.label())?;
+    if path.len() > 4096 || path.chars().any(char::is_control) {
+        return Err("Invalid local folder path".into());
+    }
+    let work = app
+        .state::<ottplay_core::background_work::BackgroundWork>()
+        .enter()
+        .map_err(str::to_string)?;
+    let current = runtime(&app, &state, None, false, false).await?;
+    let source = current
+        .library
+        .start_link_folder_path_tracked(path.into(), work)
+        .await
+        .map_err(|error| {
+            if error.to_string() == ottplay_core::offline_media::NATIVE_SOURCE_OVERLAP {
+                ottplay_core::offline_media::NATIVE_SOURCE_OVERLAP
+            } else if error.to_string() == ottplay_core::offline_media::NATIVE_SOURCE_LIMIT {
+                ottplay_core::offline_media::NATIVE_SOURCE_LIMIT
+            } else {
+                "Unable to link local folder; select an accessible absolute directory"
+            }
+        })?;
+    Ok(LocalMediaFolder {
+        endpoint: current.endpoint,
+        source,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_source_control_is_main_window_only() {
+        assert!(require_main("main").is_ok());
+        for label in ["pip", "", "MAIN", "main/child"] {
+            assert!(require_main(label).is_err());
+        }
+        let capability: serde_json::Value =
+            serde_json::from_str(include_str!("../../capabilities/local-media-control.json"))
+                .unwrap();
+        assert_eq!(capability["windows"], serde_json::json!(["main"]));
+        assert_eq!(
+            capability["permissions"],
+            serde_json::json!(["allow-local-media-control"])
+        );
+        assert_eq!(
+            serde_json::to_value(LocalMediaCapabilities {
+                version: 1,
+                absolute_paths: true,
+                source_paths: true
+            })
+            .unwrap(),
+            serde_json::json!({"version":1,"absolutePaths":true,"sourcePaths":true})
+        );
+    }
 }

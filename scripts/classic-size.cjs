@@ -361,7 +361,11 @@ const { gzipSync } = require("node:zlib");
 // 1047713/323722 (native 1047671/323780). Plex presentation and cold restore
 // load with its provider. Keep the entry raw limit; allow 500 gzip bytes for
 // this measured feature, native transformation and release identity.
-const BUDGET = Object.freeze({ bytes: 1048000, gzipBytes: 324146 });
+// Local source commands, guarded activation and compact seeded playback order
+// add 12155 raw / 3332 gzip bytes over 58c52527 on Node 26.8.2, same 1.1.61
+// identity. Allocate 12200 / 3400 once, retaining existing native/release room.
+// See docs/evidence/local-media-size-20261027.json; provider caps stay fixed.
+const BUDGET = Object.freeze({ bytes: 1060200, gzipBytes: 327546 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count every optional family as well, so moving code out of the entry bundle
@@ -539,11 +543,10 @@ const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
 // Count the same 96-byte VOD allowance once: Node 22.23.4 beta.9999 native
 // legacy total measures 370893 gzip bytes; provider and optional caps stay fixed.
 const LEGACY_TOTAL_BUDGET = Object.freeze({
-    // The same feature changes web legacy total from 1181853/372839 to
-    // 1189858/375644; native is 1189816/375702. Count the optional Plex
-    // implementation too: +8000 raw/+3000 gzip, including identity room.
-    bytes: 1190800,
-    gzipBytes: 376046,
+    // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
+    // allocations exactly once in the complete payload.
+    bytes: 1203000,
+    gzipBytes: 379446,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -586,7 +589,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // payload exactly once, alongside the independently bounded optional capture.
 // Count the reviewed recovery allowances (+6300/+2200) and HLS v3
 // optional allowance (+2000/+704) once each; individual budgets stay bounded.
-const TOTAL_BUDGET = Object.freeze({ bytes: 1304400, gzipBytes: 416674 });
+// Include both feature increments once; provider and optional caps stay fixed.
+const TOTAL_BUDGET = Object.freeze({ bytes: 1316600, gzipBytes: 420074 });
 const ARTIFACTS = Object.freeze([
     "dist/player.js",
     "src-tauri/frontend/dist/player.js",

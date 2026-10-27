@@ -1,5 +1,5 @@
 //! Local media: private server imports and native-picked, read-only source references.
-//! Requests can select opaque IDs only, never filesystem paths.
+//! HTTP requests select opaque IDs only. Explicit native commands may link folders.
 use axum::{
     body::{Body, Bytes},
     extract::{DefaultBodyLimit, Path, Query, State},
@@ -22,6 +22,18 @@ use tokio::{
 };
 
 const MAX_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+pub const NATIVE_SOURCE_OVERLAP: &str =
+    "Local folder overlaps an existing source; use the connected source or disconnect it before linking this folder";
+pub const NATIVE_SOURCE_LIMIT: &str =
+    "Local media supports up to 32 connected sources; disconnect a source before adding another";
+const MAX_NATIVE_SCAN_ENTRIES: usize = 100_000;
+const NATIVE_SCAN_LIMIT: &str = "Selected source exceeds the 100,000-entry scan limit";
+
+fn count_native_scan_entry(count: &mut usize) -> anyhow::Result<()> {
+    anyhow::ensure!(*count < MAX_NATIVE_SCAN_ENTRIES, NATIVE_SCAN_LIMIT);
+    *count += 1;
+    Ok(())
+}
 // An abandoned upload is never catalogued. Drop its file handle before the
 // best-effort removal of its partial file (including cancelled requests).
 struct PendingUpload {
@@ -107,6 +119,38 @@ pub struct Source {
     kind: String,
     available: bool,
     access: &'static str,
+}
+/// Native-only source metadata. Paths never enter the HTTP catalog and are
+/// returned only when the caller explicitly requests a private source export.
+#[derive(Clone, Serialize)]
+pub struct NativeSource {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub available: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<PathBuf>,
+}
+
+// Keep OS canonical paths for IO and identity, but make private exports usable
+// by the CLI's ordinary absolute-path contract (including Windows UNC shares).
+fn native_source_export_path(path: &FsPath) -> PathBuf {
+    if let Some(value) = path.to_str() {
+        if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!("//{}", unc.replace('\\', "/")));
+        }
+        if let Some(drive) = value.strip_prefix(r"\\?\") {
+            let bytes = drive.as_bytes();
+            if bytes.len() >= 3
+                && bytes[0].is_ascii_alphabetic()
+                && bytes[1] == b':'
+                && bytes[2] == b'\\'
+            {
+                return PathBuf::from(drive);
+            }
+        }
+    }
+    path.to_path_buf()
 }
 #[derive(Serialize)]
 pub struct Item {
@@ -557,6 +601,221 @@ impl Library {
         Ok(sources)
     }
 
+    /// Read native source bindings without rescanning files or exposing paths
+    /// through the token-authenticated HTTP library API.
+    pub async fn native_sources(
+        &self,
+        include_paths: bool,
+        path_filter: Option<PathBuf>,
+    ) -> anyhow::Result<Vec<NativeSource>> {
+        anyhow::ensure!(
+            self.storage == "device" && self.read_only_paths.is_none(),
+            "Native source bindings are unavailable on this server"
+        );
+        let work = self.background.enter().map_err(anyhow::Error::msg)?;
+        let path_filter = match path_filter {
+            Some(path) => Some(Self::native_folder_path(path, &work).await?),
+            None => None,
+        };
+        let sources = work
+            .run(self.source_records())
+            .await
+            .map_err(anyhow::Error::msg)?
+            .map_err(|_| anyhow::anyhow!("Cannot read media sources"))?;
+        let mut result = Vec::new();
+        for source in sources {
+            work.check().map_err(anyhow::Error::msg)?;
+            if path_filter
+                .as_ref()
+                .is_some_and(|path| *path != source.path)
+            {
+                continue;
+            }
+            let available = if source.kind == "folder" {
+                // Bulk preset checks use this snapshot directly. Apply the
+                // same read-access check as a filtered lookup, and do not let
+                // a replaced parent symlink silently change source identity.
+                let resolved = Self::native_folder_path(source.path.clone(), &work).await;
+                work.check().map_err(anyhow::Error::msg)?;
+                resolved.is_ok_and(|path| path == source.path)
+            } else {
+                work.run(fs::symlink_metadata(&source.path))
+                    .await
+                    .map_err(anyhow::Error::msg)?
+                    .is_ok_and(|metadata| !metadata.file_type().is_symlink() && metadata.is_file())
+            };
+            result.push(NativeSource {
+                id: source.id,
+                name: source.name,
+                kind: source.kind,
+                available,
+                path: include_paths.then(|| native_source_export_path(&source.path)),
+            });
+        }
+        result.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        Ok(result)
+    }
+
+    async fn native_folder_path(
+        path: PathBuf,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<PathBuf> {
+        anyhow::ensure!(
+            path.is_absolute() && path.parent().is_some(),
+            "Select an absolute local folder below the filesystem root"
+        );
+        anyhow::ensure!(
+            path.as_os_str().len() <= 4096 && !path.to_string_lossy().chars().any(char::is_control),
+            "Invalid local folder path"
+        );
+        let path = work
+            .run(fs::canonicalize(path))
+            .await
+            .map_err(anyhow::Error::msg)??;
+        anyhow::ensure!(
+            path.parent().is_some(),
+            "Select a local folder below the filesystem root"
+        );
+        let metadata = work
+            .run(fs::symlink_metadata(&path))
+            .await
+            .map_err(anyhow::Error::msg)??;
+        anyhow::ensure!(
+            metadata.is_dir() && !metadata.file_type().is_symlink(),
+            "Select an accessible local folder"
+        );
+        drop(
+            work.run(fs::read_dir(&path))
+                .await
+                .map_err(anyhow::Error::msg)??,
+        );
+        Ok(path)
+    }
+
+    /// Link an explicitly authorized absolute native folder, returning its
+    /// stable binding before background discovery. This is not an HTTP route.
+    pub async fn start_link_folder_path_tracked(
+        &self,
+        path: PathBuf,
+        work: crate::background_work::WorkLease,
+    ) -> anyhow::Result<NativeSource> {
+        work.check().map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(
+            self.storage == "device" && self.read_only_paths.is_none(),
+            "Native source bindings are unavailable on this server"
+        );
+        let path = Self::native_folder_path(path, &work).await?;
+        let source =
+            {
+                let _lock = work
+                    .run(self.mutation.lock())
+                    .await
+                    .map_err(anyhow::Error::msg)?;
+                let sources = work
+                    .run(self.source_records())
+                    .await
+                    .map_err(anyhow::Error::msg)?
+                    .map_err(|_| anyhow::anyhow!("Cannot read media sources"))?;
+                let existing = sources
+                    .iter()
+                    .any(|source| source.path == path && source.kind == "folder");
+                anyhow::ensure!(existing || sources.len() < 32, NATIVE_SOURCE_LIMIT);
+                anyhow::ensure!(
+                    existing
+                        || !sources.iter().any(|source| source.path.starts_with(&path)
+                            || path.starts_with(&source.path)),
+                    NATIVE_SOURCE_OVERLAP
+                );
+                self.register_source(&path, true, &sources, &work, Some(&path))
+                    .await?
+            };
+        let result = NativeSource {
+            id: source.id.clone(),
+            name: source.name.clone(),
+            kind: source.kind.clone(),
+            available: true,
+            path: None,
+        };
+        self.start_link_paths_owned(vec![source.path.clone()], true, work, Some(source))
+            .await?;
+        Ok(result)
+    }
+
+    async fn register_source(
+        &self,
+        picked: &FsPath,
+        folder: bool,
+        sources: &[SourceRecord],
+        work: &crate::background_work::WorkLease,
+        expected_root: Option<&FsPath>,
+    ) -> anyhow::Result<SourceRecord> {
+        work.check().map_err(anyhow::Error::msg)?;
+        let root = work
+            .run(fs::canonicalize(picked))
+            .await
+            .map_err(anyhow::Error::msg)??;
+        anyhow::ensure!(
+            expected_root.is_none_or(|expected| expected == root),
+            "Local folder identity changed before registration"
+        );
+        anyhow::ensure!(
+            self.read_only_paths
+                .as_ref()
+                .is_none_or(|roots| folder && roots.contains(&root)),
+            "Source is outside the configured read-only folders"
+        );
+        let metadata = work
+            .run(fs::symlink_metadata(&root))
+            .await
+            .map_err(anyhow::Error::msg)??;
+        anyhow::ensure!(
+            !metadata.file_type().is_symlink()
+                && if folder {
+                    metadata.is_dir()
+                } else {
+                    metadata.is_file()
+                },
+            "Invalid selected source"
+        );
+        let id = sources
+            .iter()
+            .find(|s| s.path == root)
+            .map(|s| s.id.clone())
+            .unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
+        let source = SourceRecord {
+            id: id.clone(),
+            name: root
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Local media")
+                .to_string(),
+            kind: if folder { "folder" } else { "file" }.into(),
+            path: root,
+        };
+        // Validate actual read access before persisting the source. Scanning
+        // later retains unavailable entries instead of substituting files.
+        if folder {
+            drop(
+                work.run(fs::read_dir(&source.path))
+                    .await
+                    .map_err(anyhow::Error::msg)??,
+            );
+        } else {
+            drop(
+                work.run(fs::File::open(&source.path))
+                    .await
+                    .map_err(anyhow::Error::msg)??,
+            );
+        }
+        let destination = self.root.join("sources").join(format!("{id}.json"));
+        let temporary = destination.with_extension("part");
+        work.check().map_err(anyhow::Error::msg)?;
+        fs::write(&temporary, serde_json::to_vec(&source)?).await?;
+        work.check().map_err(anyhow::Error::msg)?;
+        fs::rename(temporary, destination).await?;
+        Ok(source)
+    }
+
     /// Schedule native discovery without keeping the webview's invoke pending.
     /// Metadata becomes visible in cumulative catalog snapshots as it is read.
     pub async fn start_link_paths(&self, paths: Vec<PathBuf>, folder: bool) -> anyhow::Result<()> {
@@ -570,27 +829,65 @@ impl Library {
         folder: bool,
         work: crate::background_work::WorkLease,
     ) -> anyhow::Result<()> {
+        self.start_link_paths_owned(paths, folder, work, None).await
+    }
+
+    async fn start_link_paths_owned(
+        &self,
+        paths: Vec<PathBuf>,
+        folder: bool,
+        work: crate::background_work::WorkLease,
+        expected_source: Option<SourceRecord>,
+    ) -> anyhow::Result<()> {
         work.check().map_err(anyhow::Error::msg)?;
         anyhow::ensure!(
             self.storage == "device",
             "Native sources are unavailable on this server"
         );
-        {
-            let mut scan = self.scan.lock().await;
-            if scan.jobs == 0 {
-                scan.records.clear();
-                scan.cached = true;
-                scan.scanned = 0;
-                scan.error = None;
-            }
-            scan.jobs += 1;
-        }
+        let rebuild = {
+            let mut scan = work
+                .run(self.scan.lock())
+                .await
+                .map_err(anyhow::Error::msg)?;
+            work.publish(|| {
+                let rebuild = scan.jobs == 0 && (!scan.cached || scan.error.is_some());
+                if scan.jobs == 0 {
+                    // Keep a complete catalog visible while adding another source.
+                    // An invalid snapshot must rebuild every other connected root
+                    // before this job can mark the library complete again.
+                    if rebuild {
+                        scan.records.clear();
+                    }
+                    scan.cached = true;
+                    scan.scanned = 0;
+                    scan.error = None;
+                }
+                scan.jobs += 1;
+                rebuild
+            })
+            .map_err(anyhow::Error::msg)?
+        };
         let library = self.clone();
         tokio::spawn(async move {
-            let result = library.link_paths_inner(paths, folder, &work).await;
+            if rebuild {
+                library
+                    .refresh_sources_except(&work, expected_source.as_ref())
+                    .await;
+            }
+            let result = library
+                .link_paths_inner(paths, folder, &work, expected_source.as_ref())
+                .await;
             let mut scan = library.scan.lock().await;
-            if result.is_err() {
-                scan.error = Some("Local source could not be completely scanned".into());
+            if let Err(error) = result {
+                scan.error = Some(if error.to_string() == NATIVE_SCAN_LIMIT {
+                    NATIVE_SCAN_LIMIT.into()
+                } else {
+                    "Local source could not be completely scanned".into()
+                });
+            }
+            if work.check().is_err() {
+                scan.invalidate();
+                scan.error = Some("Local media scan cancelled".into());
             }
             scan.jobs -= 1;
         });
@@ -786,11 +1083,11 @@ impl Library {
         });
     }
 
-    /// Called only with paths returned by an OS-native picker, never HTTP input.
+    /// Called only by native source registration, never HTTP input.
     /// Stores names and original paths; no source media is copied or deleted.
     pub async fn link_paths(&self, paths: Vec<PathBuf>, folder: bool) -> anyhow::Result<()> {
         let work = self.background.enter().map_err(anyhow::Error::msg)?;
-        self.link_paths_inner(paths, folder, &work).await
+        self.link_paths_inner(paths, folder, &work, None).await
     }
 
     async fn link_paths_inner(
@@ -798,6 +1095,7 @@ impl Library {
         paths: Vec<PathBuf>,
         folder: bool,
         work: &crate::background_work::WorkLease,
+        expected_source: Option<&SourceRecord>,
     ) -> anyhow::Result<()> {
         work.check().map_err(anyhow::Error::msg)?;
         anyhow::ensure!(
@@ -823,45 +1121,26 @@ impl Library {
             .map_err(|_| anyhow::anyhow!("Cannot read media sources"))?;
         for picked in paths {
             work.check().map_err(anyhow::Error::msg)?;
-            let root = fs::canonicalize(&picked).await?;
-            anyhow::ensure!(self.read_only_paths.as_ref().is_none_or(|roots| folder && roots.contains(&root)), "Source is outside the configured read-only folders");
-            let metadata = fs::metadata(&root).await?;
-            anyhow::ensure!(
-                if folder {
-                    metadata.is_dir()
-                } else {
-                    metadata.is_file()
-                },
-                "Invalid selected source"
-            );
-            let id = sources
-                .iter()
-                .find(|s| s.path == root)
-                .map(|s| s.id.clone())
-                .unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
-            let name = root
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("Local media")
-                .to_string();
-            let source = SourceRecord {
-                id: id.clone(),
-                name,
-                kind: if folder { "folder" } else { "file" }.into(),
-                path: root.clone(),
-            };
-            // Fail an inaccessible selected root, but keep a valid source record
-            // before discovering children so a partial scan remains refreshable.
-            if folder {
-                drop(fs::read_dir(&root).await?);
+            let source = if let Some(expected) = expected_source {
+                anyhow::ensure!(
+                    picked == expected.path
+                        && sources.iter().any(|source| source.id == expected.id
+                            && source.path == expected.path
+                            && source.kind == expected.kind),
+                    "Local source was disconnected before scanning"
+                );
+                let canonical = Self::native_folder_path(picked, work).await?;
+                anyhow::ensure!(
+                    canonical == expected.path,
+                    "Local folder identity changed before scanning"
+                );
+                expected.clone()
             } else {
-                fs::File::open(&root).await?;
-            }
-            let destination = self.root.join("sources").join(format!("{id}.json"));
-            let temporary = destination.with_extension("part");
-            work.check().map_err(anyhow::Error::msg)?;
-            fs::write(&temporary, serde_json::to_vec(&source)?).await?;
-            fs::rename(temporary, destination).await?;
+                self.register_source(&picked, folder, &sources, work, None)
+                    .await?
+            };
+            let root = source.path;
+            let id = source.id;
             let mut pending = vec![root.clone()];
             let mut directories: Vec<fs::ReadDir> = Vec::new();
             let mut count = 0;
@@ -880,14 +1159,13 @@ impl Library {
                 } else {
                     break;
                 };
-                count += 1;
+                count_native_scan_entry(&mut count)?;
                 {
                     let mut scan = self.scan.lock().await;
                     if scan.jobs > 0 {
                         scan.scanned += 1;
                     }
                 }
-                anyhow::ensure!(count <= 20000, "Selected source contains too many entries");
                 let metadata = match fs::symlink_metadata(&path).await {
                     Ok(metadata) => metadata,
                     Err(error) if path == root => return Err(error.into()),
@@ -965,6 +1243,14 @@ impl Library {
         self.refresh_sources_inner(&work).await;
     }
     async fn refresh_sources_inner(&self, work: &crate::background_work::WorkLease) {
+        self.refresh_sources_except(work, None).await;
+    }
+
+    async fn refresh_sources_except(
+        &self,
+        work: &crate::background_work::WorkLease,
+        excluded_source: Option<&SourceRecord>,
+    ) {
         if work.check().is_err() {
             return;
         }
@@ -978,11 +1264,23 @@ impl Library {
             if work.check().is_err() {
                 return;
             }
-            if source.kind != "folder" {
+            if source.kind != "folder"
+                || excluded_source.is_some_and(|excluded| {
+                    excluded.id == source.id
+                        && excluded.path == source.path
+                        && excluded.kind == source.kind
+                })
+            {
                 continue;
             }
             // Unmounted, moved or denied sources remain visible for reconnection.
-            if let Err(_error) = self.link_paths_inner(vec![source.path], true, work).await {
+            if let Err(error) = self
+                .link_paths_inner(vec![source.path.clone()], true, work, Some(&source))
+                .await
+            {
+                if error.to_string() == NATIVE_SCAN_LIMIT {
+                    self.scan.lock().await.error = Some(NATIVE_SCAN_LIMIT.into());
+                }
                 tracing::debug!("Local source currently unavailable during refresh");
             }
         }
@@ -1553,6 +1851,585 @@ async fn media(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn local_connection_preserves_valid_catalog_while_link_job_waits() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let first = base.join("First");
+        let second = base.join("Second");
+        fs::create_dir_all(&first).await.unwrap();
+        fs::create_dir_all(&second).await.unwrap();
+        fs::write(first.join("First.mp4"), b"first").await.unwrap();
+        fs::write(second.join("Second.mp4"), b"second")
+            .await
+            .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        library.start_link_paths(vec![first], true).await.unwrap();
+        wait_for_drain(&library.background).await;
+        let original = library.catalog().await.unwrap();
+        assert_eq!(original.items.len(), 1);
+        let original_id = original.items[0].id.clone();
+        let guard = library.mutation.lock().await;
+        library.start_link_paths(vec![second], true).await.unwrap();
+        let pending = library.catalog().await.unwrap();
+        assert!(pending.scanning);
+        assert!(pending
+            .items
+            .iter()
+            .any(|item| item.id == original_id && item.available));
+        drop(guard);
+        wait_for_drain(&library.background).await;
+        let complete = library.catalog().await.unwrap();
+        assert!(!complete.scanning);
+        assert!(complete.scan_error.is_none());
+        assert_eq!(complete.items.len(), 2);
+        assert!(complete.items.iter().any(|item| item.id == original_id));
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn local_connection_rebuilds_other_sources_after_restart_or_invalidation() {
+        for restarted in [true, false] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let first = base.join("First");
+            let second = base.join("Second");
+            let removed = base.join("Removed");
+            let metadata = base.join("metadata");
+            for directory in [&first, &second, &removed] {
+                fs::create_dir_all(directory).await.unwrap();
+            }
+            fs::write(first.join("First.mp4"), b"first").await.unwrap();
+            fs::write(second.join("Second.mp4"), b"second")
+                .await
+                .unwrap();
+            fs::write(removed.join("Removed.mp4"), b"removed")
+                .await
+                .unwrap();
+            let library = Library::new(metadata.clone(), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            library
+                .start_link_paths(vec![first.clone(), removed], true)
+                .await
+                .unwrap();
+            wait_for_drain(&library.background).await;
+            let original = library.catalog().await.unwrap();
+            let original_id = original
+                .items
+                .iter()
+                .find(|item| item.name == "First.mp4")
+                .unwrap()
+                .id
+                .clone();
+            let removed_id = original
+                .sources
+                .iter()
+                .find(|source| source.name == "Removed")
+                .unwrap()
+                .id
+                .clone();
+            library.disconnect_source(&removed_id).await.unwrap();
+            let library = if restarted {
+                Library::new(metadata, "t".repeat(32), "device")
+                    .await
+                    .unwrap()
+            } else {
+                library
+            };
+            fs::write(first.join("Added.mp4"), b"added").await.unwrap();
+            library
+                .start_link_folder_path_tracked(second, library.background.enter().unwrap())
+                .await
+                .unwrap();
+            wait_for_drain(&library.background).await;
+            let complete = library.catalog().await.unwrap();
+            assert!(!complete.scanning);
+            assert!(complete.scan_error.is_none());
+            assert_eq!(complete.items.len(), 3, "restarted={restarted}");
+            assert!(complete.items.iter().any(|item| item.id == original_id));
+            assert!(complete.items.iter().any(|item| item.name == "Added.mp4"));
+            assert!(!complete
+                .sources
+                .iter()
+                .any(|source| source.id == removed_id));
+            assert!(!complete.items.iter().any(|item| item.name == "Removed.mp4"));
+            library
+                .ensure_catalog_tracked(None, library.background.enter().unwrap())
+                .await;
+            assert_eq!(library.scan.lock().await.jobs, 0);
+            assert_eq!(library.catalog().await.unwrap().items.len(), 3);
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
+
+    #[test]
+    fn native_scan_entry_budget_is_separate_from_playable_item_count() {
+        let mut count = 0;
+        for _ in 0..MAX_NATIVE_SCAN_ENTRIES {
+            count_native_scan_entry(&mut count).unwrap();
+        }
+        assert_eq!(count, 100_000);
+        assert_eq!(
+            count_native_scan_entry(&mut count).unwrap_err().to_string(),
+            NATIVE_SCAN_LIMIT
+        );
+        assert_eq!(count, MAX_NATIVE_SCAN_ENTRIES);
+    }
+
+    #[tokio::test]
+    async fn native_scan_accepts_more_than_twenty_thousand_directory_entries() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        let prepared = originals.clone();
+        tokio::task::spawn_blocking(move || {
+            for index in 0..20_001 {
+                std::fs::write(prepared.join(format!("note-{index}.txt")), b"").unwrap();
+            }
+            std::fs::write(prepared.join("Movie.mp4"), b"video").unwrap();
+        })
+        .await
+        .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        library.link_paths(vec![originals], true).await.unwrap();
+        let catalog = library.catalog().await.unwrap();
+        assert_eq!(catalog.items.len(), 1);
+        assert!(catalog.scan_error.is_none());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn queued_registered_scan_cannot_recreate_a_disconnected_source() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::write(originals.join("Movie.mp4"), b"video")
+            .await
+            .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        library.link_paths(vec![originals], true).await.unwrap();
+        let source = library.source_records().await.unwrap().remove(0);
+        let guard = library.mutation.lock().await;
+        let mut disconnect = Box::pin(library.disconnect_source(&source.id));
+        assert!(futures_util::poll!(disconnect.as_mut()).is_pending());
+        library
+            .start_link_paths_owned(
+                vec![source.path.clone()],
+                true,
+                library.background.enter().unwrap(),
+                Some(source.clone()),
+            )
+            .await
+            .unwrap();
+        drop(guard);
+        disconnect.await.unwrap();
+        wait_for_drain(&library.background).await;
+        assert!(library.source_records().await.unwrap().is_empty());
+        assert!(library
+            .records(&library.background.enter().unwrap())
+            .await
+            .unwrap()
+            .is_empty());
+        assert!(library.catalog().await.unwrap().scan_error.is_some());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_registration_rechecks_canonical_identity_before_persisting() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        let other = base.join("Other");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::create_dir_all(&other).await.unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let work = library.background.enter().unwrap();
+        let validated = Library::native_folder_path(originals.clone(), &work)
+            .await
+            .unwrap();
+        fs::remove_dir(&originals).await.unwrap();
+        std::os::unix::fs::symlink(&other, &originals).unwrap();
+        let _guard = library.mutation.lock().await;
+        assert!(library
+            .register_source(&validated, true, &[], &work, Some(&validated))
+            .await
+            .is_err());
+        assert!(library.source_records().await.unwrap().is_empty());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[test]
+    fn private_source_export_uses_ordinary_absolute_paths() {
+        for (canonical, exported) in [
+            (r"\\?\C:\Movies\Kids", r"C:\Movies\Kids"),
+            (r"\\?\UNC\nas\videos\Kids", "//nas/videos/Kids"),
+            (r"D:\Movies", r"D:\Movies"),
+            ("/Volumes/data/Movies", "/Volumes/data/Movies"),
+            (r"/media/\\?\Movies", r"/media/\\?\Movies"),
+        ] {
+            let original = PathBuf::from(canonical);
+            assert_eq!(
+                native_source_export_path(&original),
+                PathBuf::from(exported)
+            );
+            assert_eq!(original, PathBuf::from(canonical));
+        }
+    }
+
+    #[tokio::test]
+    async fn native_source_filter_resolves_target_path_without_connecting_or_scanning() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        let unconnected = base.join("Unconnected");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::create_dir_all(&unconnected).await.unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let linked = library
+            .start_link_folder_path_tracked(originals.clone(), library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let sources = library
+            .native_sources(true, Some(originals.join(".")))
+            .await
+            .unwrap();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].id, linked.id);
+        assert_eq!(sources[0].name, "Movies");
+        let private = library
+            .native_sources(false, Some(originals.clone()))
+            .await
+            .unwrap();
+        assert!(private[0].path.is_none());
+        #[cfg(unix)]
+        {
+            let alias = base.join("Alias");
+            std::os::unix::fs::symlink(&originals, &alias).unwrap();
+            let sources = library.native_sources(true, Some(alias)).await.unwrap();
+            assert_eq!(sources.len(), 1);
+            assert_eq!(sources[0].id, linked.id);
+        }
+        assert!(library
+            .native_sources(true, Some(unconnected))
+            .await
+            .unwrap()
+            .is_empty());
+        assert_eq!(library.source_records().await.unwrap().len(), 1);
+        fs::write(originals.join("New.mp4"), b"video")
+            .await
+            .unwrap();
+        library.native_sources(true, Some(originals)).await.unwrap();
+        assert!(library
+            .records(&library.background.enter().unwrap())
+            .await
+            .unwrap()
+            .is_empty());
+        for invalid in [
+            base.join("Missing"),
+            PathBuf::from("Movies"),
+            base.join("Movies/New.mp4"),
+        ] {
+            assert!(library.native_sources(true, Some(invalid)).await.is_err());
+        }
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_source_listing_reports_revoked_folder_read_access() {
+        use std::os::unix::fs::PermissionsExt;
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let linked = library
+            .start_link_folder_path_tracked(originals.clone(), library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let before = library.native_sources(false, None).await.unwrap();
+        assert!(before[0].available);
+        assert!(before[0].path.is_none());
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o000))
+            .await
+            .unwrap();
+        let permission_is_enforced = fs::read_dir(&originals).await.is_err();
+        let denied = library.native_sources(true, None).await;
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        eprintln!("folder read permission enforced: {permission_is_enforced}");
+        let denied = denied.unwrap();
+        assert_eq!(denied.len(), 1);
+        assert_eq!(denied[0].id, linked.id);
+        assert!(denied[0].path.is_some());
+        if permission_is_enforced {
+            assert!(!denied[0].available);
+        }
+        let restored = library.native_sources(false, None).await.unwrap();
+        assert!(restored[0].available);
+        assert!(restored[0].path.is_none());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_source_listing_rejects_replaced_ancestor_identity() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let parent = base.join("Original");
+        let originals = parent.join("Movies");
+        let replacement = base.join("Replacement");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::create_dir_all(replacement.join("Movies"))
+            .await
+            .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let linked = library
+            .start_link_folder_path_tracked(originals, library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let original_path = library.native_sources(true, None).await.unwrap()[0]
+            .path
+            .clone();
+        fs::rename(&parent, base.join("Moved")).await.unwrap();
+        std::os::unix::fs::symlink(&replacement, &parent).unwrap();
+        let changed = library.native_sources(true, None).await.unwrap();
+        assert_eq!(changed.len(), 1);
+        assert_eq!(changed[0].id, linked.id);
+        assert_eq!(changed[0].path, original_path);
+        assert!(!changed[0].available);
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_folder_command_limits_new_sources_but_reuses_existing_root() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let canonical = fs::canonicalize(&originals).await.unwrap();
+        fs::create_dir_all(library.root.join("sources"))
+            .await
+            .unwrap();
+        for index in 0..32 {
+            let source = SourceRecord {
+                id: format!("{index:032x}"),
+                name: format!("Source {index}"),
+                kind: "folder".into(),
+                path: if index == 0 {
+                    canonical.clone()
+                } else {
+                    base.join(format!("Other-{index}"))
+                },
+            };
+            fs::write(
+                library
+                    .root
+                    .join("sources")
+                    .join(format!("{}.json", source.id)),
+                serde_json::to_vec(&source).unwrap(),
+            )
+            .await
+            .unwrap();
+        }
+        let extra = base.join("Extra");
+        fs::create_dir_all(&extra).await.unwrap();
+        let error = library
+            .start_link_folder_path_tracked(extra, library.background.enter().unwrap())
+            .await
+            .err()
+            .unwrap();
+        assert_eq!(error.to_string(), NATIVE_SOURCE_LIMIT);
+        assert_eq!(library.source_records().await.unwrap().len(), 32);
+        let reused = library
+            .start_link_folder_path_tracked(originals, library.background.enter().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(reused.id, "0".repeat(32));
+        wait_for_drain(&library.background).await;
+        assert_eq!(library.source_records().await.unwrap().len(), 32);
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_folder_command_persists_one_binding_and_keeps_paths_private() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        let metadata = base.join("metadata");
+        fs::create_dir_all(originals.join("Season 1"))
+            .await
+            .unwrap();
+        fs::write(originals.join("Season 1/episode.mp4"), b"original video")
+            .await
+            .unwrap();
+        let library = Library::new(metadata.clone(), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let folder = library
+            .start_link_folder_path_tracked(originals.clone(), library.background.enter().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(folder.kind, "folder");
+        assert_eq!(folder.name, "Movies");
+        assert!(folder.available);
+        assert!(folder.path.is_none());
+        let sources = library.native_sources(false, None).await.unwrap();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].id, folder.id);
+        assert!(!serde_json::to_value(&sources).unwrap()[0]
+            .as_object()
+            .unwrap()
+            .contains_key("path"));
+        let sources = library.native_sources(true, None).await.unwrap();
+        assert_eq!(
+            sources[0].path.as_ref().unwrap(),
+            &native_source_export_path(&fs::canonicalize(&originals).await.unwrap())
+        );
+        wait_for_drain(&library.background).await;
+        let repeated = library
+            .start_link_folder_path_tracked(
+                originals.join("."),
+                library.background.enter().unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(repeated.id, folder.id);
+        wait_for_drain(&library.background).await;
+        let catalog = library.catalog().await.unwrap();
+        assert_eq!(catalog.items.len(), 1);
+        assert_eq!(catalog.items[0].source_id, folder.id);
+        let public = serde_json::to_value(catalog).unwrap();
+        assert!(!public["sources"][0]
+            .as_object()
+            .unwrap()
+            .contains_key("path"));
+        assert_eq!(
+            fs::read(originals.join("Season 1/episode.mp4"))
+                .await
+                .unwrap(),
+            b"original video"
+        );
+        let reopened = Library::new(metadata, "r".repeat(32), "device")
+            .await
+            .unwrap();
+        assert_eq!(
+            reopened.native_sources(true, None).await.unwrap()[0].id,
+            folder.id
+        );
+        fs::rename(&originals, base.join("moved")).await.unwrap();
+        assert!(!reopened.native_sources(false, None).await.unwrap()[0].available);
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_folder_command_rejects_non_folders_relative_paths_and_root() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let file = base.join("file.mp4");
+        fs::write(&file, b"video").await.unwrap();
+        let filesystem_root = fs::canonicalize(&base)
+            .await
+            .unwrap()
+            .ancestors()
+            .last()
+            .unwrap()
+            .to_path_buf();
+        for path in [
+            PathBuf::from("relative"),
+            base.join("missing"),
+            file,
+            filesystem_root,
+        ] {
+            assert!(library
+                .start_link_folder_path_tracked(path, library.background.enter().unwrap())
+                .await
+                .is_err());
+        }
+        assert!(library.native_sources(true, None).await.unwrap().is_empty());
+        assert_eq!(library.scan.lock().await.jobs, 0);
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_source_commands_reject_shared_servers_and_cancelled_work() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        let shared = Library::new(base.join("shared"), "s".repeat(32), "server")
+            .await
+            .unwrap();
+        assert!(shared.native_sources(true, None).await.is_err());
+        assert!(shared
+            .start_link_folder_path_tracked(originals.clone(), shared.background.enter().unwrap())
+            .await
+            .is_err());
+        let native = Library::new(base.join("native"), "n".repeat(32), "device")
+            .await
+            .unwrap();
+        let work = native.background.enter().unwrap();
+        native.background.set_standby(true);
+        assert!(native
+            .start_link_folder_path_tracked(originals, work)
+            .await
+            .is_err());
+        native.background.set_standby(false);
+        assert!(native.native_sources(true, None).await.unwrap().is_empty());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_folder_command_rejects_new_overlapping_roots_without_registration() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let parent = base.join("Movies");
+        let child = parent.join("Series");
+        fs::create_dir_all(&child).await.unwrap();
+        fs::write(child.join("episode.mp4"), b"video")
+            .await
+            .unwrap();
+        for (index, first, second) in [(0, &parent, &child), (1, &child, &parent)] {
+            let library = Library::new(
+                base.join(format!("metadata-{index}")),
+                "t".repeat(32),
+                "device",
+            )
+            .await
+            .unwrap();
+            let source = library
+                .start_link_folder_path_tracked(first.clone(), library.background.enter().unwrap())
+                .await
+                .unwrap();
+            wait_for_drain(&library.background).await;
+            let error = library
+                .start_link_folder_path_tracked(second.clone(), library.background.enter().unwrap())
+                .await
+                .err()
+                .unwrap();
+            assert_eq!(error.to_string(), NATIVE_SOURCE_OVERLAP);
+            let sources = library.native_sources(true, None).await.unwrap();
+            assert_eq!(sources.len(), 1);
+            assert_eq!(sources[0].id, source.id);
+        }
+        fs::remove_dir_all(base).await.unwrap();
+    }
 
     #[tokio::test]
     async fn cached_catalog_preserves_name_order_and_unique_source_metadata() {
