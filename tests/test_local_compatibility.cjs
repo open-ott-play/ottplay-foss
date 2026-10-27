@@ -408,7 +408,12 @@ function seekFixture(paused = false) {
     });
     vm.createContext(w);
     vm.runInContext(
-        compile("src/core/index.ts", ["cancelCoreSeek", "seekCoreMedia"]),
+        compile("src/core/index.ts", [
+            "cancelCoreSeek",
+            "seekCoreMedia",
+            "coreField",
+            "coreCall",
+        ]),
         w
     );
     return { calls, w, waiting };
@@ -470,6 +475,7 @@ test("offline driver resolves asynchronously and disposal fences a late prepare"
         compile("src/provider/drivers.ts", [
             "emptyDriverCatalog",
             "createOfflineDriver",
+            "driverField",
         ]),
         context
     );

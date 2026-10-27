@@ -1,24 +1,44 @@
+// Manager API keys: a=cancelPlayback, b=compatibilityPlayback, c=isPlaybackUrl, d=playbackItem, e=playbackSourceUrl, f=preparePlayback
+// Private factory keys: a=catalogRevision, b=last, c=libraryIdentity
+// Lease record keys: a=active, b=cancelUrl, c=duration, d=id, e=lease, f=sourceUrl, g=url, h=verified, i=cancel
 /** Loaded only when this local-media feature is used. */
 function createLocalCompatibility(w: any, p: any): any {
+    // Reuse exact protocol/error strings; no messages or wire values change.
+    var localText0 = "compatibility",
+        localText1 = "Local playback request cancelled",
+        localText2 = "application/vnd.apple.mpegurl",
+        localText3 = "Local compatibility playback could not be prepared";
+    function localField(owner: any, key: string): any {
+        return owner == null ? undefined : owner[key];
+    }
     var compatibilityLeases: any[] = [];
     var compatibilityPending: any[] = [];
     function playbackItem(url: string): any {
         var lease = compatibilityLeases.filter(function (entry) {
-            return entry.url === url;
+            return entry.g === url;
         })[0];
         return (
-            p.last &&
-            p.last.items.filter(function (item: any) {
-                return item.url === (lease ? lease.sourceUrl : url);
+            p.b &&
+            p.b.items.filter(function (item: any) {
+                return item.url === (lease ? lease.f : url);
             })[0]
         );
     }
     function compatibilityPlayback(url: string): boolean {
-        return playbackItem(url)?.playback?.mode === "compatibility";
+        return (
+            localField(localField(playbackItem(url), "playback"), "mode") ===
+            localText0
+        );
+    }
+    function postOptions(controller: any, lease?: string): any {
+        var options: any = { method: "POST" };
+        if (controller) options.signal = controller.signal;
+        if (lease) options.headers = { "X-OTT-Playback-Lease": lease };
+        return options;
     }
     function cancelLease(entry: any): void {
-        if (!entry.active) return;
-        entry.active = false;
+        if (!entry.a) return;
+        entry.a = false;
         var controller = w.AbortController ? new w.AbortController() : null;
         var timer = setTimeout(function () {
             if (controller) controller.abort();
@@ -28,11 +48,7 @@ function createLocalCompatibility(w: any, p: any): any {
         }
         try {
             Promise.resolve(
-                w.fetch(entry.cancelUrl, {
-                    headers: { "X-OTT-Playback-Lease": entry.lease },
-                    method: "POST",
-                    ...(controller ? { signal: controller.signal } : {}),
-                })
+                w.fetch(entry.b, postOptions(controller, entry.e))
             ).then(finished, finished);
         } catch (_) {
             finished();
@@ -40,41 +56,39 @@ function createLocalCompatibility(w: any, p: any): any {
     }
     function cancelPlayback(url?: string): void {
         compatibilityPending.slice().forEach(function (pending) {
-            if (!url || pending.sourceUrl === url) pending.cancel();
+            if (!url || pending.f === url) pending.i();
         });
         compatibilityLeases.forEach(function (entry) {
-            if (!url || entry.url === url || entry.sourceUrl === url)
-                cancelLease(entry);
+            if (!url || entry.g === url || entry.f === url) cancelLease(entry);
         });
     }
     function preparePlayback(url: string, current?: () => boolean): any {
         if (w.__ottStandby?.blocked() || (current && !current()))
-            return Promise.reject(
-                new Error("Local playback request cancelled")
-            );
+            return Promise.reject(new Error(localText1));
         var item = playbackItem(url);
         if (
-            item?.playback?.mode === "unsupported" ||
-            (item?.playback?.mode === "compatibility" &&
-                p.last?.compatibility?.available === false)
+            localField(localField(item, "playback"), "mode") ===
+                "unsupported" ||
+            (localField(localField(item, "playback"), "mode") === localText0 &&
+                localField(localField(p.b, localText0), "available") === false)
         )
             return Promise.reject(
                 new Error(
                     "AVI/MKV compatibility is unavailable on this library"
                 )
             );
-        if (!item || item.playback?.mode !== "compatibility")
+        if (!item || localField(item.playback, "mode") !== localText0)
             return Promise.resolve(url);
         var existing = compatibilityLeases.filter(function (entry) {
-            return entry.url === url && entry.active && entry.verified;
+            return entry.g === url && entry.a && entry.h;
         })[0];
         if (existing) return Promise.resolve(url);
         if (compatibilityPending.length >= 2)
             return Promise.reject(
                 new Error("Too many local playback requests")
             );
-        var capturedRevision = p.catalogRevision,
-            identity = p.libraryIdentity();
+        var capturedRevision = p.a,
+            identity = p.c();
         var controller = w.AbortController ? new w.AbortController() : null;
         var stopped = false,
             settled = false,
@@ -82,22 +96,22 @@ function createLocalCompatibility(w: any, p: any): any {
             rejectRequest: any;
         var sourceUrl = item.url;
         var pending: any = {
-            cancel: function () {
+            f: sourceUrl,
+            i: function () {
                 if (stopped) return;
                 stopped = true;
                 if (controller) controller.abort();
-                finish(new Error("Local playback request cancelled"));
+                finish(new Error(localText1));
             },
-            sourceUrl: sourceUrl,
         };
         function admitted(): boolean {
             return (
                 !stopped &&
                 (!current || current()) &&
                 !w.__ottStandby?.blocked() &&
-                capturedRevision === p.catalogRevision &&
-                identity === p.libraryIdentity() &&
-                playbackItem(sourceUrl)?.id === item.id
+                capturedRevision === p.a &&
+                identity === p.c() &&
+                localField(playbackItem(sourceUrl), "id") === item.id
             );
         }
         function finish(error?: any): void {
@@ -114,12 +128,11 @@ function createLocalCompatibility(w: any, p: any): any {
         var result: any = new Promise<string>(function (resolve, reject) {
             rejectRequest = reject;
             timer = setTimeout(function () {
-                pending.cancel();
+                pending.i();
             }, 35000);
             compatibilityPending.push(pending);
             try {
-                if (!admitted())
-                    throw new Error("Local playback request cancelled");
+                if (!admitted()) throw new Error(localText1);
                 var prepare = new URL(item.playback.prepareUrl, sourceUrl);
                 var original = new URL(sourceUrl);
                 if (
@@ -129,18 +142,13 @@ function createLocalCompatibility(w: any, p: any): any {
                     !prepare.pathname.endsWith(
                         "/compat/" + item.id + "/prepare"
                     ) ||
-                    item.playback.mime !== "application/vnd.apple.mpegurl" ||
+                    item.playback.mime !== localText2 ||
                     prepare.search ||
                     prepare.hash
                 )
                     throw new Error("Invalid local compatibility endpoint");
                 var cancel = new URL("cancel", prepare);
-                Promise.resolve(
-                    w.fetch(prepare.href, {
-                        method: "POST",
-                        ...(controller ? { signal: controller.signal } : {}),
-                    })
-                )
+                Promise.resolve(w.fetch(prepare.href, postOptions(controller)))
                     .then(function (response: any) {
                         if (!response.ok)
                             throw new Error(
@@ -165,14 +173,14 @@ function createLocalCompatibility(w: any, p: any): any {
                                 "Invalid local compatibility lease"
                             );
                         var entry = {
-                            active: true,
-                            cancelUrl: cancel.href,
-                            duration: value.duration,
-                            id: item.id,
-                            lease: value.lease,
-                            sourceUrl: sourceUrl,
-                            url: leaseUrl.href,
-                            verified: false,
+                            a: true,
+                            b: cancel.href,
+                            c: value.duration,
+                            d: item.id,
+                            e: value.lease,
+                            f: sourceUrl,
+                            g: leaseUrl.href,
+                            h: false,
                         };
                         compatibilityLeases.push(entry);
                         if (compatibilityLeases.length > 32) {
@@ -183,10 +191,10 @@ function createLocalCompatibility(w: any, p: any): any {
                                 n++
                             )
                                 if (
-                                    !compatibilityLeases[n].active &&
-                                    compatibilityLeases[n].url !==
+                                    !compatibilityLeases[n].a &&
+                                    compatibilityLeases[n].g !==
                                         w.__ottCoreCompatibilityUrl &&
-                                    compatibilityLeases[n].url !==
+                                    compatibilityLeases[n].g !==
                                         w.__ottCorePipCompatibilityUrl
                                 ) {
                                     expired = n;
@@ -204,9 +212,7 @@ function createLocalCompatibility(w: any, p: any): any {
                         }
                         if (!admitted() || settled) {
                             cancelLease(entry);
-                            finish(
-                                new Error("Local playback request cancelled")
-                            );
+                            finish(new Error(localText1));
                             return;
                         }
                         if (
@@ -218,56 +224,51 @@ function createLocalCompatibility(w: any, p: any): any {
                             typeof value.duration !== "number" ||
                             !isFinite(value.duration) ||
                             value.duration <= 0 ||
-                            value.mime !== "application/vnd.apple.mpegurl"
+                            value.mime !== localText2
                         ) {
                             cancelLease(entry);
                             throw new Error(
                                 "Compatibility playback must have a finite source timeline"
                             );
                         }
-                        entry.verified = true;
+                        entry.h = true;
                         finish();
-                        resolve(entry.url);
+                        resolve(entry.g);
                     })
                     .catch(function () {
-                        finish(
-                            new Error(
-                                "Local compatibility playback could not be prepared"
-                            )
-                        );
+                        finish(new Error(localText3));
                     });
             } catch (_) {
-                finish(
-                    new Error(
-                        "Local compatibility playback could not be prepared"
-                    )
-                );
+                finish(new Error(localText3));
             }
         });
-        result.cancel = pending.cancel;
+        result.cancel = pending.i;
         return result;
     }
     return {
-        cancelPlayback,
-        compatibilityPlayback,
-        isPlaybackUrl: function (url: string) {
+        a: cancelPlayback,
+        b: compatibilityPlayback,
+        c: function (url: string) {
             return compatibilityLeases.some(function (entry: any) {
                 return (
-                    entry.verified &&
-                    entry.url === url &&
-                    playbackItem(url)?.id === entry.id
+                    entry.h &&
+                    entry.g === url &&
+                    localField(playbackItem(url), "id") === entry.d
                 );
             });
         },
-        playbackItem,
-        playbackSourceUrl: function (url: string) {
+        d: playbackItem,
+        e: function (url: string) {
             return (
-                compatibilityLeases.filter(function (entry: any) {
-                    return entry.url === url;
-                })[0]?.sourceUrl || url
+                localField(
+                    compatibilityLeases.filter(function (entry: any) {
+                        return entry.g === url;
+                    })[0],
+                    "f"
+                ) || url
             );
         },
-        preparePlayback,
+        f: preparePlayback,
     };
 }
 (window as any).__ottLocalCompatibilityFactory = createLocalCompatibility;

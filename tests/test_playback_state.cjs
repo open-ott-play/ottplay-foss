@@ -107,6 +107,10 @@ function fixture(managed = false) {
     c.api.importLegacy(); // Explicit retained-device ingress; snapshot itself is pure.
     include(c, "src/core/index.ts", [
         "configureLiveRecovery",
+        "coreCompat",
+        "coreCall",
+        "coreField",
+        "cancelCoreCompat",
         "getCoreMediaBackend",
         "openCoreEngineLease",
         "sampleCoreLiveRecovery",

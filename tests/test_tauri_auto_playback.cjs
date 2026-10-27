@@ -2027,8 +2027,8 @@ test("shared local guards preserve optional receiver and missing-method behavior
     assert.equal(w.coreCall(owner, "method", [5], 3), 12);
     assert.equal(reads, 1);
     delete w.__ottLocalMedia;
-    assert.equal(w.coreCompatibilityPlayback("source"), false);
-    w.cancelCoreLocalPlayback("source");
+    assert.equal(w.coreCompat("source"), false);
+    w.cancelCoreCompat("source");
     const calls = [];
     w.__ottLocalMedia = {
         cancelPlayback(url) {
@@ -2039,8 +2039,8 @@ test("shared local guards preserve optional receiver and missing-method behavior
             return true;
         },
     };
-    assert.equal(w.coreCompatibilityPlayback("source"), true);
-    w.cancelCoreLocalPlayback("source");
+    assert.equal(w.coreCompat("source"), true);
+    w.cancelCoreCompat("source");
     assert.equal(calls.length, 2);
     assert(
         calls.every(

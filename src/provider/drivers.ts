@@ -9,10 +9,16 @@ interface DriverStorage {
     set(key: string, value: string): void;
 }
 interface DriverCatalog {
-    channels: { [id: string]: any };
-    epg?: { [id: string]: any };
+    channels: {
+        [id: string]: any;
+    };
+    epg?: {
+        [id: string]: any;
+    };
     groupOrder: string[];
-    groups: { [name: string]: Array<string | number> };
+    groups: {
+        [name: string]: Array<string | number>;
+    };
     ids: Array<string | number>;
     incremental?: boolean;
     selectedId?: string | number;
@@ -131,7 +137,9 @@ interface ProviderDriver {
         observe: (writes: any[]) => boolean
     ): any;
     settingsChanged?(): void;
-    settingsPort?: { ports: ProviderDriverPorts };
+    settingsPort?: {
+        ports: ProviderDriverPorts;
+    };
     settingsRevision?(): number;
     storageKey?(key: string): string;
     stream(id: string | number): string;
@@ -141,7 +149,6 @@ type ProviderDriverFactory = (
     ports: ProviderDriverPorts,
     lifetime: DriverLifetime
 ) => ProviderDriver;
-
 function emptyDriverCatalog(): DriverCatalog {
     return {
         channels: Object.create(null),
@@ -150,7 +157,6 @@ function emptyDriverCatalog(): DriverCatalog {
         ids: [],
     };
 }
-
 function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
     var snapshot = emptyDriverCatalog();
     snapshot.ids = catalog.ids.slice();
@@ -181,10 +187,10 @@ function driverCatalogSnapshot(catalog: DriverCatalog): DriverCatalog {
     if (catalog.epg) snapshot.epg = detach(catalog.epg);
     return snapshot;
 }
-
 function createDriverRegistry() {
-    var factories: { [id: string]: ProviderDriverFactory } =
-        Object.create(null);
+    var factories: {
+        [id: string]: ProviderDriverFactory;
+    } = Object.create(null);
     return {
         create: function (
             id: string,
@@ -226,7 +232,6 @@ function createDriverRegistry() {
         },
     };
 }
-
 function createOfflineDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -274,7 +279,7 @@ function createOfflineDriver(
             });
             playbackCancels = [];
             var media = (window as any).__ottLocalMedia;
-            if (media?.cancelPlayback) media.cancelPlayback();
+            if (driverField(media, "cancelPlayback")) media.cancelPlayback();
             clearLoadTimer();
             closeLoading();
         },
@@ -440,7 +445,7 @@ function createOfflineDriver(
                     if (
                         item.available === false ||
                         !item.url ||
-                        item.playback?.mode === "unsupported"
+                        driverField(item.playback, "mode") === "unsupported"
                     )
                         return;
                     var id = "local-" + item.id;
@@ -606,7 +611,7 @@ function createOfflineDriver(
                     started ||
                     !panel ||
                     !panel.querySelector(".ott-spinner") ||
-                    panel.style?.display === "none" ||
+                    driverField(panel.style, "display") === "none" ||
                     !host.__ottClassicScreenPort ||
                     typeof host.renderButtonHint !== "function" ||
                     host.__ottKiosk?.locked()
@@ -684,7 +689,7 @@ function createOfflineDriver(
             var current = function () {
                 return !cancelled && active();
             };
-            var pending = media?.preparePlayback
+            var pending = driverField(media, "preparePlayback")
                 ? media.preparePlayback(url, current)
                 : Promise.resolve(url);
             function retire(): void {
@@ -696,7 +701,7 @@ function createOfflineDriver(
                 cancelled = true;
                 retire();
                 if (pending.cancel) pending.cancel();
-                if (resolved && media?.cancelPlayback)
+                if (resolved && driverField(media, "cancelPlayback"))
                     media.cancelPlayback(resolved);
             };
             playbackCancels.push(cancel);
@@ -705,13 +710,14 @@ function createOfflineDriver(
                     retire();
                     resolved = value;
                     if (current()) done(value);
-                    else if (media?.cancelPlayback) media.cancelPlayback(value);
+                    else if (driverField(media, "cancelPlayback"))
+                        media.cancelPlayback(value);
                 },
                 function () {
                     retire();
                     if (current()) {
                         done(null);
-                        if (media?.compatibilityFailure)
+                        if (driverField(media, "compatibilityFailure"))
                             media.compatibilityFailure();
                     }
                 }
@@ -728,7 +734,6 @@ function createOfflineDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 function createDemoDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -788,7 +793,6 @@ function createDemoDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 function createDriverTransport(
     ports: ProviderDriverPorts,
     owner: DriverLifetime,
@@ -855,10 +859,8 @@ function createDriverTransport(
         send: request,
     };
 }
-
 var credentialBusy = false;
 var credentialPending: (() => void) | null = null;
-
 /** Serialize credential writes against reentrant loads, preserving the latest intent. */
 function createCredentialOperations(
     ports: ProviderDriverPorts,
@@ -899,7 +901,9 @@ function createCredentialOperations(
             return result;
         },
         write: function (
-            values: { [key: string]: string },
+            values: {
+                [key: string]: string;
+            },
             current: () => boolean
         ): boolean {
             return (
@@ -910,7 +914,6 @@ function createCredentialOperations(
         },
     };
 }
-
 function createXtreamDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime
@@ -1018,7 +1021,6 @@ function createXtreamDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 var config = credentials();
@@ -1097,7 +1099,6 @@ function createXtreamDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 // OTTPLAY_FULL_ONLY_BEGIN
 function createOperatorDriver(
     profile: ProviderDriverProfile,
@@ -1164,7 +1165,6 @@ function createOperatorDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 var loadedConfig = readConfiguration();
@@ -1350,7 +1350,6 @@ function createOperatorDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 /** Instance orchestration for account-token and named playlist protocols.
  * Credentials, request plans, IDs and stream policies remain owned by the shared core. */
 function createNamedPlaylistDriver(
@@ -1472,7 +1471,6 @@ function createNamedPlaylistDriver(
             return operations.run(function (current) {
                 if (!active()) return;
                 var scope = loads.activate("catalog");
-
                 if (!current() || !scope.active()) return;
                 catalog = emptyDriverCatalog();
                 bootstrap();
@@ -1606,7 +1604,9 @@ function createNamedPlaylistDriver(
                         : previous.username !== value.username ||
                           previous.password !== value.password;
                 if (!current()) return false;
-                var writes: { [key: string]: string } = {};
+                var writes: {
+                    [key: string]: string;
+                } = {};
                 if (id === "tvteam") writes.www = value.playlist || "";
                 else {
                     writes[
@@ -1648,9 +1648,7 @@ function createNamedPlaylistDriver(
     owner.own(driver.dispose);
     return driver;
 }
-
 // OTTPLAY_FULL_ONLY_END
-
 var providerDriverProfiles: ProviderDriverProfile[] = (window as any)
     .__ottProviderDriverProfiles;
 var providerDriverRegistry = createDriverRegistry();
@@ -1730,7 +1728,6 @@ providerDriverProfiles.forEach(function (profile) {
                   }
     );
 });
-
 // OTTPLAY_FULL_ONLY_BEGIN
 function namedCredentialMessage(
     host: any,
@@ -1748,7 +1745,6 @@ function namedCredentialMessage(
             : "Enter a username and password to access this service."
     );
 }
-
 /** The old menu and HTML form are codecs over instance credentials, never driver state. */
 function mountNamedProviderSettings(
     host: any,
@@ -2139,9 +2135,7 @@ function mountNamedProviderSettings(
         };
     }
 }
-
 // OTTPLAY_FULL_ONLY_END
-
 /** Retained UI/storage wire codec. No executable provider script enters this boundary. */
 function mountProviderDriver(
     host: any,
@@ -2390,7 +2384,10 @@ function mountProviderDriver(
         return driver;
     }
     host.__ottActiveProviderDriver = driver;
-    if (id === "offline" && host.__ottLocalMedia?.bindPlaybackOwner)
+    if (
+        id === "offline" &&
+        driverField(host.__ottLocalMedia, "bindPlaybackOwner")
+    )
         host.__ottLocalMedia.bindPlaybackOwner(owner.active);
     host.p_pref = profile.prefix;
     host.ottplayDemoActive = id === "demo";
@@ -2768,9 +2765,12 @@ function mountProviderDriver(
     if (specialized) specialized.mount(host, driver, owner, store);
     return driver;
 }
-
 (window as any).__ottProviderDrivers = {
     createRegistry: createDriverRegistry,
     mount: mountProviderDriver,
     registry: providerDriverRegistry,
 };
+
+function driverField(owner: any, key: string): any {
+    return owner == null ? undefined : owner[key];
+}

@@ -263,7 +263,11 @@ function fixture() {
                 "searchMedia",
                 "setCurrent",
             ]) +
-            sourceFunctions("src/core/index.ts", ["updateCoreVideoInfo"]) +
+            sourceFunctions("src/core/index.ts", [
+                "updateCoreVideoInfo",
+                "coreCall",
+                "coreField",
+            ]) +
             sourceFunctions("src/ui/index.ts", [
                 "mediaPlaybackControls",
                 "updateMediaPlaybackControls",

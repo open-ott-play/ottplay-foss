@@ -14,6 +14,7 @@ const source = ts.createSourceFile(
     true
 );
 function functions(names) {
+    names = [...new Set([...names, "coreField", "coreCall"])];
     return ts.transpileModule(
         names
             .map((name) => {
