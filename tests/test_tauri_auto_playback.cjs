@@ -503,6 +503,122 @@ for (const transition of ["end", "provider"]) {
     }
 }
 
+test("Local backend pause/resume retires queued intent and resumes actual media", () => {
+    const f = fixture();
+    f.w.__ottLocalMedia = { isPlaybackUrl: (url) => url === "local.mp4" };
+    const lease = f.w.openCoreEngineLease(
+        { lane: "main", position: 240, url: "local.mp4" },
+        () => {}
+    );
+    ready(f.w.video, true);
+    f.advance(30000);
+    assert.equal(f.w.coreStreamAttempt.state().pending, true);
+    lease.pause();
+    assert.equal(f.w.video.paused, true);
+    const plays = f.w.video.playCalls;
+    lease.resume();
+    assert.equal(f.w.video.playCalls, plays + 1);
+    assert.equal(f.w.video.paused, false);
+    assert.equal(f.w.coreStreamAttempt.state().pending, false);
+    f.advance(500);
+    assert.equal(
+        f.w.video.sourceHistory.filter((url) => url === "local.mp4").length,
+        1
+    );
+    for (let i = 0; i < 3; i++) {
+        f.w.video.currentTime++;
+        f.advance(1000);
+    }
+    assert.equal(f.w.coreStreamAttempt.state().terminal, false);
+    const retained = f.w.video.currentTime;
+    f.advance(32000);
+    assert.equal(
+        f.w.video.sourceHistory.filter((url) => url === "local.mp4").length,
+        2
+    );
+    ready(f.w.video, true);
+    assert.equal(f.w.video.currentTime, retained);
+});
+
+for (const transition of [
+    "completed seek",
+    "active seek",
+    "same-position seek",
+    "native seek",
+    "native pause",
+    "resumed progress",
+]) {
+    for (const timing of ["queued window", "synchronous retry report"]) {
+        test(
+            "Local retry intent rejects " + transition + " during " + timing,
+            () => {
+                const f = localStallFixture();
+                ready(f.w.video, true);
+                f.w.video.currentTime = 240;
+                f.advance(30000);
+                assert.equal(f.w.coreStreamAttempt.state().pending, true);
+                function changeIntent() {
+                    if (transition === "native pause") f.w.video.pause();
+                    else if (transition === "resumed progress")
+                        f.w.video.currentTime += 0.25;
+                    else if (transition === "native seek")
+                        f.w.video.currentTime = 500;
+                    else {
+                        f.w.seekCoreMedia(
+                            transition === "same-position seek" ? 240 : 500,
+                            f.w._playSession
+                        );
+                        f.w.video.seeking = transition === "active seek";
+                    }
+                }
+                if (timing === "queued window") changeIntent();
+                else
+                    f.w.__ottPerfSink = {
+                        recovery(key) {
+                            if (key === "streamRetries") changeIntent();
+                        },
+                    };
+                f.advance(500);
+                assert.equal(
+                    f.w.video.sourceHistory.filter((url) => url === "local.mp4")
+                        .length,
+                    1
+                );
+                assert.equal(f.w.coreStreamAttempt.state().pending, false);
+                assert.equal(
+                    f.w.coreStreamAttempt.state().terminal,
+                    false,
+                    "changed intent cancels only this queued retry"
+                );
+                assert.equal(
+                    f.w.video.currentTime,
+                    transition === "resumed progress"
+                        ? 240.25
+                        : transition.includes("seek") &&
+                            transition !== "same-position seek"
+                          ? 500
+                          : 240
+                );
+                f.w.__ottPerfSink = null;
+                f.w.video.seeking = false;
+                f.w.video.paused = false;
+                const retained = f.w.video.currentTime;
+                f.advance(1000);
+                f.advance(30000);
+                f.advance(2000);
+                assert.equal(
+                    f.w.video.sourceHistory.filter((url) => url === "local.mp4")
+                        .length,
+                    2,
+                    "a subsequent independent stall remains recoverable"
+                );
+                ready(f.w.video, true);
+                assert.equal(f.w.video.currentTime, retained);
+            }
+        );
+    }
+}
+
 test("native frame monitoring keeps smooth, low-FPS and transient startup playback", () => {
     for (const [total, dropped] of [
         [25, 0],

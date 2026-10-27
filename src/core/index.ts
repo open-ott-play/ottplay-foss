@@ -204,6 +204,7 @@ var _playSession = 0;
 var _coreShakaTeardown: PromiseLike<unknown> | null = null;
 var _corePendingSeek: (() => void) | null = null;
 var _corePendingSeekPosition: number | null = null;
+var _coreSeekRevision = 0;
 var _coreAutoCancel: ReturnType<typeof watchAutoNativePlayback> | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
@@ -323,6 +324,7 @@ function seekCoreMedia(
         position < 0
     )
         return;
+    if (!startup) _coreSeekRevision++;
     cancelCoreSeek();
     var local = (window as any).__ottLocalMedia;
     var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
@@ -1136,7 +1138,8 @@ function createCoreStreamAttempt(
     session: number,
     primary: string,
     restart: (url: string, position?: number) => void,
-    admitted?: () => boolean
+    admitted?: () => boolean,
+    captureRetryIntent?: () => (() => boolean) | null
 ): CoreStreamAttempt {
     var policy = (window as any).__ottStreamPolicy;
     var owner = policy && policy.capture();
@@ -1147,6 +1150,15 @@ function createCoreStreamAttempt(
         attempts = 0,
         retries = 0,
         parseRetried = false;
+    var retryIntent: (() => boolean) | null = null;
+    // Intent changes cancel this retry without retiring the playback watcher.
+    function intentCurrent(): boolean {
+        if (!retryIntent || retryIntent()) return true;
+        clear();
+        pending = false;
+        retryIntent = null;
+        return false;
+    }
     var timer: any = null,
         pending = false,
         disposed = false,
@@ -1184,6 +1196,7 @@ function createCoreStreamAttempt(
                 timer = null;
                 if (
                     !active() ||
+                    !intentCurrent() ||
                     !pending ||
                     (window as any).forcePlay === false
                 )
@@ -1191,12 +1204,22 @@ function createCoreStreamAttempt(
                 pending = false;
                 attempts++;
                 countCoreAttempt(session, "streamRetries");
-                if (!active() || (window as any).forcePlay === false) return;
+                if (
+                    !active() ||
+                    !intentCurrent() ||
+                    (window as any).forcePlay === false
+                )
+                    return;
                 report("retrying");
                 if ((window as any).__ottPlaybackFeedback)
                     (window as any).__ottPlaybackFeedback.retry();
                 // Reporting can synchronously end or replace this playback.
-                if (!active() || (window as any).forcePlay === false) return;
+                if (
+                    !active() ||
+                    !intentCurrent() ||
+                    (window as any).forcePlay === false
+                )
+                    return;
                 restart(endpoints[endpoint], resumePosition);
             },
             Math.min(2000, 500 * Math.max(1, attempts + 1))
@@ -1257,6 +1280,7 @@ function createCoreStreamAttempt(
                 );
                 return;
             }
+            retryIntent = captureRetryIntent ? captureRetryIntent() : null;
             pending = true;
             report("waiting");
             showShift(_("Reconnecting…"));
@@ -1268,7 +1292,7 @@ function createCoreStreamAttempt(
         },
         resume: function () {
             if (ended) return true;
-            if (!pending) return false;
+            if (!pending || !intentCurrent()) return false;
             schedule();
             return true;
         },
@@ -1359,6 +1383,22 @@ function startCoreEngine(
     // Shaka detach is asynchronous and may otherwise clear the next engine's src.
     var revision = 0;
     var localRetryCurrent: (() => boolean) | null = null;
+    var localRetryIntent: (() => boolean) | null = null;
+    function captureLocalRetryIntent(): (() => boolean) | null {
+        if (!localRetryCurrent) return null;
+        var media = video!,
+            seekRevision = _coreSeekRevision,
+            queuedPosition = media.currentTime;
+        localRetryIntent = function (): boolean {
+            return (
+                !media.paused &&
+                !media.seeking &&
+                seekRevision === _coreSeekRevision &&
+                media.currentTime === queuedPosition
+            );
+        };
+        return localRetryIntent;
+    }
     function retryCurrent(): boolean {
         return !localRetryCurrent || localRetryCurrent();
     }
@@ -1549,14 +1589,24 @@ function startCoreEngine(
               session,
               sourceUrl,
               function (next: string, savedPosition?: number) {
-                  if (session !== _playSession || !retryCurrent()) return;
+                  if (
+                      session !== _playSession ||
+                      !retryCurrent() ||
+                      (localRetryIntent && !localRetryIntent())
+                  )
+                      return;
                   var resumePosition =
                       _corePendingSeekPosition !== null
                           ? _corePendingSeekPosition
                           : savedPosition;
                   revision++;
                   retireCompatibility();
-                  if (session !== _playSession || !retryCurrent()) return;
+                  if (
+                      session !== _playSession ||
+                      !retryCurrent() ||
+                      (localRetryIntent && !localRetryIntent())
+                  )
+                      return;
                   cancelCoreSourcePreparation();
                   cancelCoreAutoPlayback();
                   cancelCoreNativeHls();
@@ -1584,7 +1634,8 @@ function startCoreEngine(
                   if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
                   else start();
               },
-              retryCurrent
+              retryCurrent,
+              captureLocalRetryIntent
           );
     if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
     else start();
