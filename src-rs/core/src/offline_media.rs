@@ -631,18 +631,19 @@ impl Library {
             {
                 continue;
             }
-            let available = work
-                .run(fs::symlink_metadata(&source.path))
-                .await
-                .map_err(anyhow::Error::msg)?
-                .is_ok_and(|metadata| {
-                    !metadata.file_type().is_symlink()
-                        && if source.kind == "folder" {
-                            metadata.is_dir()
-                        } else {
-                            metadata.is_file()
-                        }
-                });
+            let available = if source.kind == "folder" {
+                // Bulk preset checks use this snapshot directly. Apply the
+                // same read-access check as a filtered lookup, and do not let
+                // a replaced parent symlink silently change source identity.
+                let resolved = Self::native_folder_path(source.path.clone(), &work).await;
+                work.check().map_err(anyhow::Error::msg)?;
+                resolved.is_ok_and(|path| path == source.path)
+            } else {
+                work.run(fs::symlink_metadata(&source.path))
+                    .await
+                    .map_err(anyhow::Error::msg)?
+                    .is_ok_and(|metadata| !metadata.file_type().is_symlink() && metadata.is_file())
+            };
             result.push(NativeSource {
                 id: source.id,
                 name: source.name,
@@ -2140,6 +2141,78 @@ mod tests {
         ] {
             assert!(library.native_sources(true, Some(invalid)).await.is_err());
         }
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_source_listing_reports_revoked_folder_read_access() {
+        use std::os::unix::fs::PermissionsExt;
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let originals = base.join("Movies");
+        fs::create_dir_all(&originals).await.unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let linked = library
+            .start_link_folder_path_tracked(originals.clone(), library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let before = library.native_sources(false, None).await.unwrap();
+        assert!(before[0].available);
+        assert!(before[0].path.is_none());
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o000))
+            .await
+            .unwrap();
+        let permission_is_enforced = fs::read_dir(&originals).await.is_err();
+        let denied = library.native_sources(true, None).await;
+        fs::set_permissions(&originals, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        eprintln!("folder read permission enforced: {permission_is_enforced}");
+        let denied = denied.unwrap();
+        assert_eq!(denied.len(), 1);
+        assert_eq!(denied[0].id, linked.id);
+        assert!(denied[0].path.is_some());
+        if permission_is_enforced {
+            assert!(!denied[0].available);
+        }
+        let restored = library.native_sources(false, None).await.unwrap();
+        assert!(restored[0].available);
+        assert!(restored[0].path.is_none());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn native_source_listing_rejects_replaced_ancestor_identity() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let parent = base.join("Original");
+        let originals = parent.join("Movies");
+        let replacement = base.join("Replacement");
+        fs::create_dir_all(&originals).await.unwrap();
+        fs::create_dir_all(replacement.join("Movies"))
+            .await
+            .unwrap();
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let linked = library
+            .start_link_folder_path_tracked(originals, library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let original_path = library.native_sources(true, None).await.unwrap()[0]
+            .path
+            .clone();
+        fs::rename(&parent, base.join("Moved")).await.unwrap();
+        std::os::unix::fs::symlink(&replacement, &parent).unwrap();
+        let changed = library.native_sources(true, None).await.unwrap();
+        assert_eq!(changed.len(), 1);
+        assert_eq!(changed[0].id, linked.id);
+        assert_eq!(changed[0].path, original_path);
+        assert!(!changed[0].available);
         fs::remove_dir_all(base).await.unwrap();
     }
 
