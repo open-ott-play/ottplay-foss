@@ -172,7 +172,10 @@ export function installLocalMedia(w: any): any {
                             get b() {
                                 return last;
                             },
-                            c: libraryIdentity,
+                            c: function () {
+                                return playbackIntentContext() + ":" +
+                                    compatibilityEpoch;
+                            },
                         });
                     resolve(compatibility);
                 } catch (error) {
@@ -243,13 +246,13 @@ export function installLocalMedia(w: any): any {
             rejectPending: any,
             epoch = compatibilityEpoch,
             scan = catalogRevision,
-            identity = libraryIdentity();
+            identity = playbackIntentContext();
         function admitted(): boolean {
             return (
                 !cancelled &&
                 epoch === compatibilityEpoch &&
                 scan === catalogRevision &&
-                identity === libraryIdentity() &&
+                identity === playbackIntentContext() &&
                 !localCall(w.__ottStandby, "blocked", [], 1) &&
                 (!current || current())
             );

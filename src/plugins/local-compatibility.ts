@@ -1,6 +1,6 @@
 // Manager API keys: a=cancelPlayback, b=compatibilityPlayback, c=isPlaybackUrl, d=playbackItem, e=playbackSourceUrl, f=preparePlayback
-// Private factory keys: a=catalogRevision, b=last, c=libraryIdentity
-// Lease record keys: a=active, b=cancelUrl, c=duration, d=id, e=lease, f=sourceUrl, g=url, h=verified, i=cancel
+// Private factory keys: a=catalogRevision, b=last, c=playbackOwnerIdentity
+// Lease record keys: a=active, b=cancelUrl, c=duration, d=id, e=lease, f=sourceUrl, g=url, h=verified, i=cancel, j=itemSnapshot, k=ownerIdentity
 /** Loaded only when this local-media feature is used. */
 function createLocalCompatibility(w: any, p: any): any {
     // Reuse exact protocol/error strings; no messages or wire values change.
@@ -13,16 +13,38 @@ function createLocalCompatibility(w: any, p: any): any {
     }
     var compatibilityLeases: any[] = [];
     var compatibilityPending: any[] = [];
+    function leaseForUrl(url: string): any {
+        return compatibilityLeases.filter(function (entry) {
+            return entry.g === url ||
+                (entry.f === url && entry.h && entry.k === p.c());
+        }).pop();
+    }
     function playbackItem(url: string): any {
-        var lease = compatibilityLeases.filter(function (entry) {
-            return entry.g === url;
+        var lease = leaseForUrl(url),
+            catalog = p.b;
+        if (lease && (!lease.h || lease.k !== p.c())) return;
+        var item = catalog?.items.filter(function (entry: any) {
+            return entry.url === (lease ? lease.f : url);
         })[0];
-        return (
-            p.b &&
-            p.b.items.filter(function (item: any) {
-                return item.url === (lease ? lease.f : url);
-            })[0]
-        );
+        if (!lease) return item;
+        if (
+            catalog?.available === false ||
+            catalog?.reconnectRequired ||
+            catalog?.scanError ||
+            (catalog && lease.j.sourceId && !(catalog.sources || []).some(function (source: any) {
+                return source.id === lease.j.sourceId && source.available !== false;
+            }))
+        ) return;
+        if (item)
+            return item.id === lease.d && item.sourceId === lease.j.sourceId &&
+                item.available !== false && item.playback?.mode === localText0
+                ? item : undefined;
+        // A refresh clears last and progressive prefixes can omit the playing
+        // item. Only an owned, verified snapshot may bridge that incomplete view.
+        if (!catalog || (catalog.scanning && !(catalog.sourceScans || []).some(function (scan: any) {
+            return scan.sourceId === lease.j.sourceId &&
+                scan.state !== "pending" && scan.state !== "scanning";
+        }))) return lease.j;
     }
     function compatibilityPlayback(url: string): boolean {
         return (
@@ -66,6 +88,9 @@ function createLocalCompatibility(w: any, p: any): any {
         if (w.__ottStandby?.blocked() || (current && !current()))
             return Promise.reject(new Error(localText1));
         var item = playbackItem(url);
+        if (!item && compatibilityLeases.some(function (entry) {
+            return entry.g === url || entry.f === url;
+        })) return Promise.reject(new Error(localText1));
         if (
             localField(localField(item, "playback"), "mode") ===
                 "unsupported" ||
@@ -181,6 +206,17 @@ function createLocalCompatibility(w: any, p: any): any {
                             f: sourceUrl,
                             g: leaseUrl.href,
                             h: false,
+                            j: {
+                                id: item.id,
+                                sourceId: item.sourceId,
+                                url: sourceUrl,
+                                playback: {
+                                    mode: localText0,
+                                    mime: localText2,
+                                    prepareUrl: prepare.href,
+                                },
+                            },
+                            k: identity,
                         };
                         compatibilityLeases.push(entry);
                         if (compatibilityLeases.length > 32) {
@@ -260,12 +296,7 @@ function createLocalCompatibility(w: any, p: any): any {
         d: playbackItem,
         e: function (url: string) {
             return (
-                localField(
-                    compatibilityLeases.filter(function (entry: any) {
-                        return entry.g === url;
-                    })[0],
-                    "f"
-                ) || url
+                localField(playbackItem(url), "url") || url
             );
         },
         f: preparePlayback,
