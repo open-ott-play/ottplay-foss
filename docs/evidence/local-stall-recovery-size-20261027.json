@@ -3,7 +3,7 @@
   "sourceCandidate": "5210515868e0d9b980504da6579b08246378ec1f",
   "node": "22.23.4",
   "status": "canonical_size_verified",
-  "method": "In-memory production optimizer comparison of the changed core module; this is not linked-bundle acceptance.",
+  "method": "The isolatedDelta records the historical in-memory core-module estimate. The canonical section records the later production CI web/native/mobile bundle measurement and comparison; it verifies size, not device playback.",
   "isolatedDelta": {
     "bytes": 1687,
     "gzipBytes": 519
