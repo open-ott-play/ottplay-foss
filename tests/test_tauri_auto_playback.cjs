@@ -2006,6 +2006,50 @@ test("local compatibility VOD uses HLS with source-time resume even under a nati
     assert(cancelled.every((value) => value === url));
 });
 
+test("shared local guards preserve optional receiver and missing-method behavior", () => {
+    const f = fixture(),
+        w = f.w;
+    assert.equal(w.coreField(null, "mode"), undefined);
+    assert.equal(w.coreField({ mode: 0 }, "mode"), 0);
+    assert.equal(w.coreCall(null, "blocked", [], 1), undefined);
+    assert.equal(w.coreCall({}, "blocked", [], 3), undefined);
+    assert.throws(() => w.coreCall({}, "blocked", [], 1));
+    let reads = 0;
+    const owner = {
+        get method() {
+            reads++;
+            return function (a) {
+                return this.value + a;
+            };
+        },
+        value: 7,
+    };
+    assert.equal(w.coreCall(owner, "method", [5], 3), 12);
+    assert.equal(reads, 1);
+    delete w.__ottLocalMedia;
+    assert.equal(w.coreCompatibilityPlayback("source"), false);
+    w.cancelCoreLocalPlayback("source");
+    const calls = [];
+    w.__ottLocalMedia = {
+        cancelPlayback(url) {
+            calls.push([this, url]);
+        },
+        compatibilityPlayback(url) {
+            calls.push([this, url]);
+            return true;
+        },
+    };
+    assert.equal(w.coreCompatibilityPlayback("source"), true);
+    w.cancelCoreLocalPlayback("source");
+    assert.equal(calls.length, 2);
+    assert(
+        calls.every(
+            ([receiver, url]) =>
+                receiver === w.__ottLocalMedia && url === "source"
+        )
+    );
+});
+
 let failures = 0;
 for (const [name, callback] of cases) {
     try {

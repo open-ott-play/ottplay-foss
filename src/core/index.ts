@@ -4,7 +4,6 @@
  *
  * Ported from devices/legacy-core.js.
  */
-
 declare var Hls: any;
 declare var shaka: any;
 declare var $: any;
@@ -35,7 +34,6 @@ import {
     snapshotInitialHlsBufferPolicy,
 } from "./buffer-policy";
 import { createNativeHlsTransport, isNativeHlsUrl } from "./native-hls";
-
 /** Reference to the primary <video> DOM element. */
 export var video: HTMLVideoElement | null = null;
 /** Reference to the PiP (picture-in-picture) <video> DOM element. */
@@ -45,7 +43,6 @@ export var videoPip: HTMLVideoElement | null = null;
  * 0 = native HTML5, 1 = hls.js, 2 = shaka-player, 3 = per-stream Auto.
  */
 export var playerMode = 0;
-
 /**
  * Set the playback engine mode.
  * @param v - 0 (HTML5), 1 (hls.js), 2 (shaka), or 3 (Auto).
@@ -61,7 +58,6 @@ export var playerModeNames =
     getDefaultPlayerMode() === 3
         ? ["html5", "hls.js", "shaka", "auto"]
         : ["html5", "hls.js", "shaka"];
-
 /** Identify only the standalone Android TV test host, never a native app shell. */
 export function isOttplayTestWebView(): boolean {
     if (typeof window === "undefined") return false;
@@ -85,7 +81,6 @@ export function isOttplayTestWebView(): boolean {
         return false;
     }
 }
-
 /** Auto handles stream formats on webOS, Tauri and the marked Android test host. */
 export function getDefaultPlayerMode(): number {
     if (typeof window === "undefined") return 0;
@@ -95,7 +90,6 @@ export function getDefaultPlayerMode(): number {
         isOttplayTestWebView
     );
 }
-
 /** Decode capability probes are lazy: unused engines must not be initialized. */
 export function normalizePlayerMode(mode: number): number {
     return (window as any).OttPlayCore.classicPlaybackMode(
@@ -122,7 +116,6 @@ function coreHlsAvailable(): boolean {
         ? !!Hls.isSupported()
         : typeof (window as any).__ottLoadMediaEngine === "function";
 }
-
 function loadCoreMediaEngine(
     engine: string,
     ready: (ok: boolean) => void
@@ -136,7 +129,6 @@ function loadCoreMediaEngine(
                 : typeof shaka !== "undefined" && !!shaka.Player
         );
 }
-
 /** Useful explicit buffer seconds; zero retains automatic buffering. */
 export var bufferSizes = [
     "0",
@@ -158,7 +150,6 @@ export var bufferSizes = [
     "90",
     "120",
 ];
-
 /** Button label for the Exit key. */
 export var strEXIT = "Esc";
 /** Button label for the Enter key. */
@@ -185,7 +176,6 @@ export var strRETURN = '<span class="fontello">&#xe804;</span>';
 export var strSETUP = "§";
 /** Button label for the Language key. */
 export var strLANG = "SHIFT";
-
 /** Active hls.js instance for the main video!. */
 var hlsInstance: any = null;
 var initialHlsBufferPolicy: any = null;
@@ -212,7 +202,6 @@ var _coreTransientPlayback = false;
 var _coreNativeHls: ReturnType<typeof createNativeHlsTransport> = null;
 var _coreNativeAttempt = 0;
 var _coreNativeHlsCleanup: (() => void) | null = null;
-
 function cancelCoreNativeHls(): void {
     _coreNativeAttempt++;
     if (_coreNativeHls) _coreNativeHls.cancel();
@@ -221,8 +210,10 @@ function cancelCoreNativeHls(): void {
     _coreNativeHlsCleanup = null;
 }
 /** Demo autoplay is temporarily muted; never persist it as the user's choice. */
-var _coreDemoMute: { media: HTMLVideoElement; muted: boolean } | null = null;
-
+var _coreDemoMute: {
+    media: HTMLVideoElement;
+    muted: boolean;
+} | null = null;
 function cancelCoreAutoPlayback(modeChange?: boolean): void {
     if (_coreAutoCancel) _coreAutoCancel(modeChange);
     _coreAutoCancel = null;
@@ -231,7 +222,6 @@ function cancelCoreAutoPlayback(modeChange?: boolean): void {
         _corePipAutoCancel = null;
     }
 }
-
 function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
     return (window as any).OttPlayCore.classicPlaybackAutoMode(
         url,
@@ -246,7 +236,6 @@ function coreAutoMode(url: string, media: HTMLVideoElement | null): number {
         }
     );
 }
-
 /** A resolved Plex format belongs to this catalog item, never to the next channel. */
 function corePlexPlaybackHint(url: string): "file" | "mse" | null {
     var library = (window as any).__ottMedia;
@@ -261,7 +250,6 @@ function corePlexPlaybackHint(url: string): "file" | "mse" | null {
     if (hint.type === "file") return "file";
     return hint.type === "hls" && hint.engine === "mse" ? "mse" : null;
 }
-
 function setCoreDemoMute(enabled: boolean): void {
     enabled = enabled && !_coreTransientPlayback;
     if (_coreDemoMute && (!enabled || _coreDemoMute.media !== video)) {
@@ -274,18 +262,15 @@ function setCoreDemoMute(enabled: boolean): void {
         video.muted = true;
     }
 }
-
 /** Restore the user's mute choice when leaving demo, including paused media. */
 export function restoreDemoMute(): void {
     setCoreDemoMute(false);
 }
-
 function isCoreThenable(value: unknown): value is PromiseLike<unknown> {
     return (
         !!value && typeof (value as PromiseLike<unknown>).then === "function"
     );
 }
-
 /** Older WebKit play() returns void; modern autoplay failures must be consumed. */
 function playCoreMedia(media: HTMLVideoElement): void {
     if (media === video)
@@ -301,13 +286,11 @@ function playCoreMedia(media: HTMLVideoElement): void {
         console.log("[video] play() failed:", error);
     }
 }
-
 function cancelCoreSeek(): void {
     if (_corePendingSeek) _corePendingSeek();
     _corePendingSeek = null;
     _corePendingSeekPosition = null;
 }
-
 /** Some STB engines reject currentTime until loadedmetadata has arrived. */
 function seekCoreMedia(
     position: number,
@@ -327,13 +310,13 @@ function seekCoreMedia(
     if (
         !startup &&
         compatibilityUrl &&
-        local?.compatibilityPlayback?.(compatibilityUrl)
+        coreCall(local, "compatibilityPlayback", [compatibilityUrl], 3)
     ) {
         var seekCancelled = false;
         var sourceUrl = local.playbackSourceUrl(compatibilityUrl);
         _corePendingSeekPosition = position;
         video.pause();
-        if (hlsInstance?.stopLoad) hlsInstance.stopLoad();
+        if (coreField(hlsInstance, "stopLoad")) hlsInstance.stopLoad();
         local.cancelPlayback(compatibilityUrl);
         var preparing = local.preparePlayback(compatibilityUrl, function () {
             return !seekCancelled && session === _playSession;
@@ -389,7 +372,8 @@ function seekCoreMedia(
             var duration = media.duration;
             media.currentTime =
                 startup &&
-                (window as any).__ottActiveProviderDriver?.id === "offline" &&
+                coreField((window as any).__ottActiveProviderDriver, "id") ===
+                    "offline" &&
                 isFinite(duration) &&
                 duration > 0 &&
                 position >= duration
@@ -422,7 +406,6 @@ function seekCoreMedia(
         if (hlsInstance) hlsInstance.startLoad(position);
     }
 }
-
 function destroyCoreShaka(): void {
     var player = window.player;
     window.player = null;
@@ -445,7 +428,6 @@ function destroyCoreShaka(): void {
         console.error("[Shaka] destroy failed:", error);
     }
 }
-
 /**
  * Compatibility hook for retained archive callers. The backend owns timing.
  */
@@ -474,7 +456,6 @@ var aspectGeneration = 0;
 var zoomLevel = 0;
 var zoomScales = [1, 1.25, 1.5, 1.75];
 var zoomLabels = ["100%", "125%", "150%", "175%"];
-
 /** Active PiP size preset index (0 = small, 1 = medium, 2 = large). */
 export var pipSize = 0;
 /** Active PiP corner position index (0 = top-right, 1 = bottom-right, 2 = bottom-left, 3 = top-left). */
@@ -490,13 +471,11 @@ var prevDecodedBytes = -1;
 var prevDecodedMediaTime = -1;
 var _coreNativeMbps = 0;
 var _coreHlsBitrate: ReturnType<typeof createCoreHlsBitrateMeter> | null = null;
-
 function resetCoreNativeBitrate(): void {
     prevDecodedBytes = -1;
     prevDecodedMediaTime = -1;
     _coreNativeMbps = 0;
 }
-
 function createCoreHlsBitrateMeter(): {
     add: (data: any) => void;
     mbps: () => number;
@@ -561,9 +540,8 @@ function createCoreHlsBitrateMeter(): {
         },
     };
 }
-
 export function updateCoreVideoInfo(opening = false): void {
-    if ((window as any).__ottStandby?.blocked()) return;
+    if (coreCall((window as any).__ottStandby, "blocked", [], 1)) return;
     if (!video || !video.videoWidth || video.error) return;
     var res = "<br>" + video.videoWidth + "x" + video.videoHeight;
     var mbps = 0;
@@ -608,7 +586,8 @@ export function updateCoreVideoInfo(opening = false): void {
         }
     }
     // Playback status owns this label until frames resume or playback stops.
-    if ((window as any).__ottPlaybackFeedback?.visible()) return;
+    if (coreCall((window as any).__ottPlaybackFeedback, "visible", [], 1))
+        return;
     // Keep native sampling above alive while the footer is hidden. The UI
     // refreshes metadata before showing it; inline visibility needs no layout.
     var panel = document.getElementById("info1");
@@ -629,7 +608,6 @@ var pipPresets = [
     { x: 384, y: 216 },
     { x: 512, y: 288 },
 ];
-
 /**
  * Check whether the browser is currently NOT in fullscreen mode.
  * Uses vendor-prefixed fullscreen properties for cross-browser support.
@@ -649,7 +627,6 @@ export function isNormalScreen(): boolean {
         return true;
     }
 }
-
 /**
  * Request fullscreen on the entire document element.
  * Tries every vendor-prefixed API (standard, Moz, WebKit, MS).
@@ -663,7 +640,6 @@ export function openFullscreen(): void {
     else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
     else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
 }
-
 /**
  * Exit fullscreen mode.
  * Uses the same vendor-prefixed strategy as openFullscreen.
@@ -677,21 +653,18 @@ export function closeFullscreen(): void {
     else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
     else if (doc.msExitFullscreen) doc.msExitFullscreen();
 }
-
 /** Execute native calls immediately, adopting their result without an ES5 generator. */
 function runTauriFullscreenCall(action: () => any): Promise<any> {
     return new Promise(function (resolve) {
         resolve(action());
     });
 }
-
 function reportTauriFullscreenError(message: string, error?: any): void {
     try {
         if (error === undefined) console.warn(message);
         else console.warn(message, error);
     } catch (_) {}
 }
-
 /** Both public commands publish the native result before collapsing the list. */
 function publishTauriFullscreen(next: boolean): void {
     var w = window as any;
@@ -711,7 +684,6 @@ function publishTauriFullscreen(next: boolean): void {
         }
     } catch (_) {}
 }
-
 /** Toggle uses core, then internals, then the older probe/set window contract. */
 export function stbToggleTauriNativeFullscreen(): Promise<void> {
     var w = window as any,
@@ -812,7 +784,6 @@ export function stbToggleTauriNativeFullscreen(): Promise<void> {
             );
         });
 }
-
 /** Explicit set selects an invoke owner once; command rejection must not toggle or retry. */
 export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
     var w = window as any,
@@ -850,7 +821,6 @@ export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
             );
         });
 }
-
 /**
  * Process a raw key event to toggle fullscreen when keyCode === 76 ('L').
  *
@@ -861,7 +831,6 @@ export function stbSetTauriNativeFullscreen(want: boolean): Promise<void> {
  * Side effects: Toggles fullscreen when 'L' is pressed and prevents the
  *               default browser action (typing 'l' in input fields).
  */
-
 /**
  * Tauri/macOS: native <video> often keeps focus in full-video mode so
  * window.onkeydown never sees L/Escape, while the channel list (no video
@@ -906,7 +875,6 @@ export function installTauriFsKeyCapture(): void {
                 kc === 76 || key === "l" || key === "L" || code === "KeyL";
             var isEsc = kc === 27 || key === "Escape" || code === "Escape";
             if (!isL && !isEsc) return;
-
             if (isL) {
                 var editing = false;
                 try {
@@ -926,7 +894,6 @@ export function installTauriFsKeyCapture(): void {
                     (ev as any).stopImmediatePropagation();
                 return;
             }
-
             // Escape: force exit simple FS when flagged; otherwise let
             // keyHandler run (list close / exitPortal).
             if (isEsc && (window as any).__ottTauriNativeFs) {
@@ -940,10 +907,8 @@ export function installTauriFsKeyCapture(): void {
         true
     );
 }
-
 export function stbEventToKeyCode(event: any): number {
     if (!event) return 0;
-
     // Prefer classic keyCode/which; some hosts (incl. Tauri webview) report 0.
     var keyCode =
         typeof event.keyCode === "number" && event.keyCode
@@ -992,7 +957,6 @@ export function stbEventToKeyCode(event: any): number {
             keyCode = deviceKeys["N" + number] || 48 + number;
         }
     }
-
     if (!keyCode) {
         var physicalDigit = /^Digit([0-9])$/.exec(code);
         if (!physicalDigit && (!key || key === "Unidentified" || digit >= 0))
@@ -1034,7 +998,6 @@ export function stbEventToKeyCode(event: any): number {
             keyCode = 27; // keys.EXIT (menu/back remotes; Android BACK parity)
         else if (key === "l" || key === "L" || code === "KeyL") keyCode = 76;
     }
-
     // Escape while Tauri native/simple fullscreen → force EXIT (not toggle).
     // Do not open exitPortal. Relies on macOS simple fullscreen so Escape
     // reaches the webview; never register a system-wide letter shortcut.
@@ -1047,7 +1010,6 @@ export function stbEventToKeyCode(event: any): number {
             return 0;
         }
     }
-
     if (keyCode === 76) {
         // L/l/KeyL — fullscreen toggle on non-Tauri platforms.
         // On Tauri the capture-phase document listener in
@@ -1064,7 +1026,6 @@ export function stbEventToKeyCode(event: any): number {
     }
     return keyCode;
 }
-
 /**
  * Start playback of a given URL on the main video element.
  * Supports three engine modes: native HTML5, hls.js, and shaka-player.
@@ -1091,7 +1052,10 @@ interface CoreStreamAttempt {
     fail(kind: string, status?: number, position?: number): void;
     pause(): void;
     resume(): boolean;
-    state(): { pending: boolean; terminal: boolean };
+    state(): {
+        pending: boolean;
+        terminal: boolean;
+    };
 }
 var coreStreamAttempt: CoreStreamAttempt | null = null;
 // Retained for the whole engine lease: an internal retry must not erase history.
@@ -1277,7 +1241,6 @@ function cancelCoreSourcePreparation(): void {
     coreSourcePreparationCancel = null;
     if (cancel) cancel();
 }
-
 function startCoreEngine(
     url: string,
     position?: number,
@@ -1288,9 +1251,7 @@ function startCoreEngine(
 ): void {
     var previousCompatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
     if (previousCompatibilityUrl && previousCompatibilityUrl !== url) {
-        (window as any).__ottLocalMedia?.cancelPlayback?.(
-            previousCompatibilityUrl
-        );
+        cancelCoreLocalPlayback(previousCompatibilityUrl);
         (window as any).__ottCoreCompatibilityUrl = "";
     }
     cancelCoreStreamAttempt();
@@ -1366,14 +1327,10 @@ function startCoreEngine(
                     !!(
                         (window as any).__ottLocalMedia &&
                         (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
-                        !(
-                            window as any
-                        ).__ottLocalMedia.compatibilityPlayback?.(url)
+                        !coreCompatibilityPlayback(url)
                     ),
                 (!transient && plexHint === "mse") ||
-                    !!(window as any).__ottLocalMedia?.compatibilityPlayback?.(
-                        url
-                    )
+                    !!coreCompatibilityPlayback(url)
             );
         };
         function prepare(resolved: string): void {
@@ -1406,7 +1363,7 @@ function startCoreEngine(
         }
         if (
             url.indexOf("ottplay-stalker:") === 0 ||
-            (window as any).__ottLocalMedia?.compatibilityPlayback?.(url)
+            coreCompatibilityPlayback(url)
         ) {
             var driver = (window as any).__ottActiveProviderDriver;
             if (!driver || !driver.resolveStream) {
@@ -1477,7 +1434,6 @@ function startCoreEngine(
     window.playType = window.playType ?? 0;
     window.playTime = window.playTime ?? 0;
 }
-
 /** The registered normalization routes require separate rendition playback. */
 function coreNormalizedMse(url: string): boolean {
     try {
@@ -1489,11 +1445,9 @@ function coreNormalizedMse(url: string): boolean {
         return false;
     }
 }
-
 /** Only registered preparation routes extend the initial loading deadline. */
 function coreNormalizedTimeout(url: string): number {
-    if ((window as any).__ottLocalMedia?.compatibilityPlayback?.(url))
-        return 35000;
+    if (coreCompatibilityPlayback(url)) return 35000;
     return coreNormalizedMse(url) && url.indexOf("/play/") > 0 ? 75000 : 0;
 }
 function coreHlsConfig(config: any, url: string): any {
@@ -1501,7 +1455,6 @@ function coreHlsConfig(config: any, url: string): any {
     if (timeout) config.manifestLoadingTimeOut = timeout;
     return config;
 }
-
 /**
  * Start main-video playback using hls.js, Shaka, or native HTML5.
  * Configure transport, resume seeking, and session-scoped Auto HLS fallback.
@@ -1523,7 +1476,7 @@ function startCorePlayback(
     engineLoaded = false
 ): void {
     forceMse = forceMse || (!nativeFile && coreNormalizedMse(originalUrl));
-    if ((window as any).__ottLocalMedia?.compatibilityPlayback?.(url))
+    if (coreCompatibilityPlayback(url))
         (window as any).__ottCoreCompatibilityUrl = url;
     if (
         !engineLoaded &&
@@ -1795,9 +1748,12 @@ function startCorePlayback(
                                 failedPosition >= 0 ? failedPosition : undefined
                             );
                             if (
-                                !(
-                                    window as any
-                                ).__ottPlaybackFeedback?.visible()
+                                !coreCall(
+                                    (window as any).__ottPlaybackFeedback,
+                                    "visible",
+                                    [],
+                                    1
+                                )
                             ) {
                                 $("#buffering").hide();
                                 $("#video_res").html(
@@ -2076,7 +2032,6 @@ function startCorePlayback(
         }
     }
 }
-
 /**
  * Stop playback: pause, remove the src attribute, and destroy the hls.js instance.
  * Side effects: Mutates video element; may free decoder resources.
@@ -2084,8 +2039,7 @@ function startCorePlayback(
 function stopCoreEngine(): void {
     var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
     (window as any).__ottCoreCompatibilityUrl = "";
-    if (compatibilityUrl)
-        (window as any).__ottLocalMedia?.cancelPlayback?.(compatibilityUrl);
+    if (compatibilityUrl) cancelCoreLocalPlayback(compatibilityUrl);
     if ((window as any).__ottPlaybackFeedback)
         (window as any).__ottPlaybackFeedback.stop();
     coreNativeAttached = false;
@@ -2221,7 +2175,6 @@ export function stbSetPosTime(v: number): void {
 export function stbGetLen(): number {
     return video!.duration;
 }
-
 /**
  * Expand the video container to fill the entire viewport (in-page fullscreen,
  * not browser fullscreen API). Sets the isFullscreen flag and reapplies
@@ -2255,7 +2208,6 @@ export function stbToFullScreen(): void {
     applyAspectRatio();
     applyZoom();
 }
-
 /**
  * Shrink the video to a small window (picture-in-window) rather than fullscreen.
  * Position is calculated relative to a 1280×720 design canvas.
@@ -2286,7 +2238,6 @@ export function stbSetWindow(): void {
     applyAspectRatio();
     applyZoom();
 }
-
 /**
  * Append local diagnostic info to the #listAbout element.
  *
@@ -2310,7 +2261,6 @@ export function stbInfo(): void {
     });
     // OTTPLAY_FULL_ONLY_END
 }
-
 /**
  * Set the aspect ratio index and immediately apply it to the video element.
  * @param v - 0 = "contain" (letterbox), 1 = "cover" (crop/fill).
@@ -2322,7 +2272,6 @@ export function setAspect(v: number): void {
     applyAspectRatio();
     applyZoom();
 }
-
 /** Observe the current main-video aspect and capture a fenced durable setter. */
 export function captureAspectTarget(): any {
     var media = video;
@@ -2374,12 +2323,10 @@ export function captureAspectTarget(): any {
         },
     };
 }
-
 function refreshSubtitleStyle(): void {
     var apply = (window as any).applySubtitleAppearance;
     if (apply) apply();
 }
-
 /**
  * Apply the current aspectRatio to the #video element's CSS `object-fit` property.
  * Index 0 → "contain", index 1 → "cover".
@@ -2482,7 +2429,6 @@ export function applyAspectRatio(): void {
     }
     refreshSubtitleStyle();
 }
-
 /**
  * Open a selection box to let the user toggle between "contain" and "cover" aspect ratios.
  * On selection, persists the choice via saveChannelPreference.
@@ -2499,7 +2445,6 @@ export function stbToggleAspectRatio(): void {
         }
     );
 }
-
 /**
  * Check whether more than one audio track is available (hls.js or native).
  * @returns `true` if multiple audio tracks exist.
@@ -2507,7 +2452,6 @@ export function stbToggleAspectRatio(): void {
 export function stbAudioTracksExists(): boolean {
     return avTracks(video, undefined, true).length > 1;
 }
-
 /** Preserve identified native captions when Off clears their active cues. */
 function hasText(t: any): boolean {
     if (!t || (t.kind && t.kind !== "subtitles" && t.kind !== "captions"))
@@ -2522,7 +2466,6 @@ function hasText(t: any): boolean {
         t._ottCC
     );
 }
-
 function avTracks(
     media: HTMLVideoElement | null,
     selected?: number,
@@ -2607,7 +2550,6 @@ function avTracks(
     }
     return rows;
 }
-
 function setSubtitleTrack(index?: number): void {
     if (index === undefined) {
         var owner: any = getCoreMediaBackend().current();
@@ -2621,12 +2563,10 @@ function setSubtitleTrack(index?: number): void {
     }
     avTracks(video, index);
 }
-
 /** The menu and picker use the same engine-aware track discovery. */
 export function stbSubtitleExists(): number {
     return avTracks(video).length;
 }
-
 /**
  * Start PiP (picture-in-picture) playback for a given stream URL.
  * Supports hls.js when playerMode === 1.
@@ -2638,20 +2578,16 @@ export function stbSubtitleExists(): number {
 function startCorePipEngine(url: string, engineLoaded = false): void {
     var previousCompatibilityUrl = (window as any).__ottCorePipCompatibilityUrl;
     if (previousCompatibilityUrl && previousCompatibilityUrl !== url)
-        (window as any).__ottLocalMedia?.cancelPlayback?.(
-            previousCompatibilityUrl
-        );
-    (window as any).__ottCorePipCompatibilityUrl = (
-        window as any
-    ).__ottLocalMedia?.compatibilityPlayback?.(url)
+        cancelCoreLocalPlayback(previousCompatibilityUrl);
+    (window as any).__ottCorePipCompatibilityUrl = coreCompatibilityPlayback(
+        url
+    )
         ? url
         : "";
     // Loading an optional engine is part of this same lease, not another play.
     // Advancing twice makes the original lease unable to pause or dispose it.
     var session = engineLoaded ? _corePipSession : ++_corePipSession;
-    var normalized =
-        coreNormalizedMse(url) ||
-        !!(window as any).__ottLocalMedia?.compatibilityPlayback?.(url);
+    var normalized = coreNormalizedMse(url) || !!coreCompatibilityPlayback(url);
     var requestedMode = normalized
         ? 1
         : playerMode === 3
@@ -2660,7 +2596,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     var local = !!(
         (window as any).__ottLocalMedia &&
         (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
-        !(window as any).__ottLocalMedia.compatibilityPlayback?.(url)
+        !coreCompatibilityPlayback(url)
     );
     if (
         !engineLoaded &&
@@ -2681,7 +2617,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         !!(
             (window as any).__ottLocalMedia &&
             (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
-            !(window as any).__ottLocalMedia.compatibilityPlayback?.(url)
+            !coreCompatibilityPlayback(url)
         );
     if (_corePipAutoCancel) _corePipAutoCancel();
     _corePipAutoCancel = null;
@@ -2784,13 +2720,11 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     $("#videopip").show();
     setPipPosition();
 }
-
 /** Stop PiP, cancel its callbacks, and release the decoder and buffering OSD. */
 function stopCorePipEngine(): void {
     var compatibilityUrl = (window as any).__ottCorePipCompatibilityUrl;
     (window as any).__ottCorePipCompatibilityUrl = "";
-    if (compatibilityUrl)
-        (window as any).__ottLocalMedia?.cancelPlayback?.(compatibilityUrl);
+    if (compatibilityUrl) cancelCoreLocalPlayback(compatibilityUrl);
     corePipNativeAttached = false;
     videoPip!.loop = false;
     _corePipSession++;
@@ -2831,7 +2765,6 @@ export function setPipPosition(): void {
     if (win.sPipPos !== undefined) pipPosition = num(win.sPipPos, pipPosition);
     pipSize = Math.max(0, Math.min(pipPresets.length - 1, pipSize | 0));
     pipPosition = (((pipPosition | 0) % 4) + 4) % 4;
-
     var m = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
     // Legacy: set all four sides (auto clears the opposite corner).
     var css: any = {
@@ -2857,7 +2790,6 @@ export function setPipPosition(): void {
     });
     refreshSubtitleStyle();
 }
-
 /**
  * Configure the video preload behaviour based on the stored buffer size setting.
  * If a positive buffer size is found, sets `preload = "auto"`.
@@ -2877,7 +2809,6 @@ export function stbSetBuffer(): void {
         console.error("[stb] stbSetBuffer error:", e);
     }
 }
-
 /**
  * Inject custom CSS stored in STB settings (key `stb_custom_css`) into the document head.
  *
@@ -2892,7 +2823,6 @@ export function stbCSS(): void {
         document.head.appendChild(s);
     }
 }
-
 /**
  * webOS always selects the engine per stream. Elsewhere, preserve explicit
  * provider preferences; choose Auto in Tauri/the Android test host, or hls.js
@@ -2921,7 +2851,6 @@ export function setPlayer(): void {
         playerMode = 1;
     }
 }
-
 /**
  * Close the current browser window/tab (standard STB exit behaviour).
  */
@@ -2930,7 +2859,6 @@ export function stbExit(): void {
     setCoreDemoMute(false);
     window.close();
 }
-
 /** Keep remote input working when an embedding host replaces window.onkeydown. */
 export function stbBindKeyHandler(): void {
     var w = window as any;
@@ -2949,10 +2877,8 @@ export function stbBindKeyHandler(): void {
         w.onkeydown = w.__ottKeydownListener;
     }
 }
-
 var _viewportSizeTimer: ReturnType<typeof setTimeout> | null = null;
 var _viewportSizeElement: HTMLElement | null = null;
-
 /** Briefly show the live viewport dimensions while the player window is resized. */
 function showViewportSizeIndicator(): void {
     try {
@@ -2990,7 +2916,6 @@ function showViewportSizeIndicator(): void {
         }, 900);
     } catch (_e) {}
 }
-
 /**
  * Initialise the STB player: inject video DOM elements, attach event handlers,
  * go fullscreen, and set the global key handler.
@@ -3075,7 +3000,7 @@ export function stbInit(): void {
                 $("#video_res").text(_("Loading..."));
             });
             video!.addEventListener("canplay", function () {
-                if (!host.__ottPlaybackFeedback?.visible()) {
+                if (!coreCall(host.__ottPlaybackFeedback, "visible", [], 1)) {
                     $("#buffering").hide();
                     $("#video_res").text("");
                 }
@@ -3098,7 +3023,7 @@ export function stbInit(): void {
                         : _corePlaybackMode === 2
                           ? "shaka"
                           : "html5");
-                var err = video?.error;
+                var err = coreField(video, "error");
                 var me = [
                     "",
                     "ABORTED",
@@ -3106,24 +3031,28 @@ export function stbInit(): void {
                     "DECODE",
                     "SRC_NOT_SUPPORTED",
                 ];
-                var errName = err?.code ? me[err.code] || String(err.code) : "";
+                var errName = coreField(err, "code")
+                    ? me[err.code] || String(err.code)
+                    : "";
                 console.log(
                     "video > error: " +
-                        (err?.code || "") +
+                        (coreField(err, "code") || "") +
                         (errName ? "-" + errName : "") +
-                        (err?.message ? " (" + err.message + ")" : "") +
+                        (coreField(err, "message")
+                            ? " (" + err.message + ")"
+                            : "") +
                         " player=" +
                         _p
                 );
                 if (
-                    host.__ottPlaybackFeedback?.inactive() ||
-                    host.__ottPlaybackFeedback?.visible()
+                    coreCall(host.__ottPlaybackFeedback, "inactive", [], 1) ||
+                    coreCall(host.__ottPlaybackFeedback, "visible", [], 1)
                 )
                     return;
                 $("#buffering").hide();
                 $("#video_res").html(
                     "<br/>error " +
-                        (err?.code ?? 0) +
+                        (coreField(err, "code") ?? 0) +
                         (errName ? " " + errName : "") +
                         " (" +
                         _p +
@@ -3201,7 +3130,6 @@ export function stbInit(): void {
         installTauriFsKeyCapture();
     } catch (_fsKey) {}
 }
-
 /**
  * Forward video events to the debug collector and report media errors.
  *
@@ -3227,7 +3155,6 @@ function videoEvent(event: Event): void {
         }
     }
 }
-
 /**
  * Switch to a specific audio track.
  * For hls.js, sets hlsInstance.audioTrack directly.
@@ -3240,7 +3167,6 @@ function videoEvent(event: Event): void {
 function setAudioTrack(index: number): void {
     avTracks(video, index, true);
 }
-
 /**
  * Open a selection box listing all available audio tracks.
  * On selection, switches to the chosen track and persists the choice via saveChannelPreference.
@@ -3250,7 +3176,6 @@ function setAudioTrack(index: number): void {
 export function stbToggleAudioTrack(): void {
     chooseCoreTrack("audio");
 }
-
 function chooseCoreTrack(kind: string): void {
     var audio = kind === "audio";
     var owner = getCoreMediaBackend().current();
@@ -3295,7 +3220,6 @@ function chooseCoreTrack(kind: string): void {
         -1
     );
 }
-
 /**
  * Open a selection box listing all available subtitle tracks (including "Off").
  * On selection, switches to the chosen track and persists via saveChannelPreference.
@@ -3305,7 +3229,6 @@ function chooseCoreTrack(kind: string): void {
 export function stbToggleSubtitle(): void {
     chooseCoreTrack("subtitle");
 }
-
 /**
  * Apply the current zoomLevel to #video (CSS transform scale) and body.stb-zoom.
  * Overflow crop is on #vdiv (see styles/player.css). HS5-safe: also sets -webkit-transform.
@@ -3323,13 +3246,11 @@ export function applyZoom(): void {
     if (scale > 1) document.body.classList.add("stb-zoom");
     else document.body.classList.remove("stb-zoom");
 }
-
 /** Set zoom index and apply immediately. */
 export function setZoom(v: number): void {
     zoomLevel = v;
     applyZoom();
 }
-
 /**
  * Open a selection box for digital zoom (100–175%). Persists via saveChannelPreference(aZooms).
  * Replaces the old body.stb-zoom toggle that had no CSS and looked like a no-op.
@@ -3340,17 +3261,14 @@ export function stbToggleZoom(): void {
         saveChannelPreference("aZooms", v);
     });
 }
-
 /** Internal standby state flag. */
 var _standby = false;
-
 /** Report shared standby state without toggling playback or native wake locks. */
 export function stbIsStandby(): boolean {
     return (window as any).__ottStandby
         ? (window as any).__ottStandby.isStandby()
         : _standby;
 }
-
 /**
  * Set standby mode (black screen + stopped playback).
  *
@@ -3425,37 +3343,30 @@ export function stbSetStandby(standby: boolean): void {
     }
     if (typeof window.setSleepTimeout === "function") window.setSleepTimeout();
 }
-
 /** Toggle standby; remote Stop can reassert teardown without waking. */
 export function stbToggleStandby(): void {
     stbSetStandby(!stbIsStandby());
 }
-
 /** Convenience wrapper for stbToggleStandby. */
 export function toggleStandby(): void {
     stbToggleStandby();
 }
-
 /** Safely invoke stbToggleAspectRatio if it exists. */
 export function toggleAspectRatio(): void {
     if (typeof stbToggleAspectRatio === "function") stbToggleAspectRatio();
 }
-
 /** Safely invoke stbToggleZoom if it exists. */
 export function toggleZoom(): void {
     if (typeof stbToggleZoom === "function") stbToggleZoom();
 }
-
 /** Safely invoke stbToggleAudioTrack if it exists. */
 export function toggleAudioTrack(): void {
     if (typeof stbToggleAudioTrack === "function") stbToggleAudioTrack();
 }
-
 /** Safely invoke stbToggleSubtitle if it exists. */
 export function toggleSubtitle(): void {
     if (typeof stbToggleSubtitle === "function") stbToggleSubtitle();
 }
-
 /**
  * Back up portable STB preferences locally, excluding credentials, consent and nested backups.
  *
@@ -3468,7 +3379,6 @@ export function saveAllOptions(): void {
         window.showShift(_("Settings saved to storage"));
     } catch (e) {}
 }
-
 /**
  * Restore ordinary preferences from a local backup (created by saveAllOptions).
  * Preserves local credentials and disconnects outbound command delivery.
@@ -3486,7 +3396,6 @@ export function loadAllOptions(): void {
         window.showShift(_("Settings loaded from storage"));
     } catch (e) {}
 }
-
 /**
  * Scale the entire body element to fit within the viewport while maintaining
  * the design canvas aspect ratio (1280×720 by default).
@@ -3503,12 +3412,10 @@ export function setTransform(): void {
             ")"
     );
 }
-
 /** Cleanup handler: stop playback on page unload. */
 export function unload(): void {
     stbStop();
 }
-
 /**
  * Legacy player-initialization helper. This does not configure OS startup.
  * Prefer the registered key; preserve old installs only when it is absent.
@@ -3523,12 +3430,10 @@ export function setAutorun(): void {
         window.startPlayer();
     }
 }
-
 /** On DOM ready, set a pointer cursor on the body (touch/STB UI convention). */
 if (typeof document !== "undefined" && document.body) {
     document.body.style.cursor = "pointer";
 }
-
 /** Modern browser engines are ports; the backend owns the request and observations. */
 var coreMediaBackend: any = null;
 var coreLiveRecovery: any = null;
@@ -3626,7 +3531,6 @@ function sampleCoreLiveRecovery(): LiveRecoverySample | null {
         terminal: !!(attempt && attempt.terminal),
     };
 }
-
 var coreDeviceEffects: any = {};
 export function getCoreMediaBackend(): any {
     if (coreMediaBackend) return coreMediaBackend;
@@ -3685,7 +3589,7 @@ export function getCoreMediaBackend(): any {
             var driver = (window as any).__ottActiveProviderDriver;
             if (
                 url.indexOf("ottplay-stalker:") === 0 ||
-                (window as any).__ottLocalMedia?.compatibilityPlayback?.(url)
+                coreCompatibilityPlayback(url)
             ) {
                 if (driver && driver.resolveStream)
                     return driver.resolveStream(url, done);
@@ -3753,12 +3657,8 @@ function openCoreEngineLease(
         var disposePipLease = nativePipLease.dispose;
         nativePipLease.dispose = function (replaced?: boolean) {
             disposePipLease(replaced);
-            if (
-                (window as any).__ottLocalMedia?.compatibilityPlayback?.(
-                    request.url
-                )
-            )
-                (window as any).__ottLocalMedia.cancelPlayback(request.url);
+            if (coreCompatibilityPlayback(request.url))
+                cancelCoreLocalPlayback(request.url);
         };
         return nativePipLease;
     }
@@ -3778,18 +3678,20 @@ function openCoreEngineLease(
         var disposeEngine = optionalEngine.dispose;
         optionalEngine.dispose = function (replaced?: boolean) {
             disposeEngine(replaced);
-            if (
-                (window as any).__ottLocalMedia?.compatibilityPlayback?.(
-                    request.url
-                )
-            )
-                (window as any).__ottLocalMedia.cancelPlayback(request.url);
+            if (coreCompatibilityPlayback(request.url))
+                cancelCoreLocalPlayback(request.url);
             if (!pip) setCoreDemoMute(false);
         };
         return optionalEngine;
     }
-    var listeners: Array<{ name: string; callback: () => void }> = [];
-    var trackListeners: Array<{ target: any; callback: () => void }> = [];
+    var listeners: Array<{
+        name: string;
+        callback: () => void;
+    }> = [];
+    var trackListeners: Array<{
+        target: any;
+        callback: () => void;
+    }> = [];
     var session = pip ? _corePipSession + 1 : _playSession + 1;
     function active() {
         return (
@@ -3921,8 +3823,8 @@ function openCoreEngineLease(
                 (window as any).__ottPlaybackFeedback.stop();
             media.pause();
             if (!pip && (window as any).__ottCoreCompatibilityUrl) {
-                if (hlsInstance?.stopLoad) hlsInstance.stopLoad();
-                (window as any).__ottLocalMedia?.cancelPlayback?.(
+                if (coreField(hlsInstance, "stopLoad")) hlsInstance.stopLoad();
+                cancelCoreLocalPlayback(
                     (window as any).__ottCoreCompatibilityUrl
                 );
             }
@@ -4001,7 +3903,6 @@ function openCoreEngineLease(
     }
     return lease;
 }
-
 var coreAvTest: any = null;
 var coreAvTestTimer: any = null;
 function finishCoreAvTest(): void {
@@ -4037,7 +3938,6 @@ function startCoreAvTest(): boolean {
     start: startCoreAvTest,
     stop: finishCoreAvTest,
 };
-
 export function stbPlayPip(url: string): void {
     if (stbIsStandby()) return;
     if ((window as any).__ottKiosk && (window as any).__ottKiosk.enabled())
@@ -4061,4 +3961,27 @@ if (typeof window !== "undefined") {
         },
         play: stbPlay,
     };
+}
+/** Shared guards avoid duplicating ES5 optional-call expansion in every engine. */
+function coreCompatibilityPlayback(url: string): boolean {
+    var local = (window as any).__ottLocalMedia;
+    return !!(
+        local &&
+        local.compatibilityPlayback &&
+        local.compatibilityPlayback(url)
+    );
+}
+function cancelCoreLocalPlayback(url: string): void {
+    var local = (window as any).__ottLocalMedia;
+    if (local && local.cancelPlayback) local.cancelPlayback(url);
+}
+function coreField(owner: any, key: string): any {
+    return owner == null ? undefined : owner[key];
+}
+
+function coreCall(owner: any, key: string, args: any[], flags: number): any {
+    if (flags & 1 && owner == null) return;
+    var fn = owner[key];
+    if (flags & 2 && fn == null) return;
+    return fn.apply(owner, args);
 }
