@@ -309,6 +309,14 @@ function remote(f) {
                     );
                 },
             };
+        if (name === "./remote-local-media")
+            return {
+                executeRemoteLocalMedia() {
+                    throw new Error(
+                        "Plex provider settings must not change local playback"
+                    );
+                },
+            };
         if (name === "../provider")
             return {
                 checkProviderUrl: (url) => f.host.checkProviderUrl(url),
