@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+
+- Avoid repeated network metadata checks while scanning native Local folders.
+  Reuse validated legacy records and no-follow enumeration types for known
+  files, retain unavailable IDs, and reject changed or incomplete directories.
+  Keep full original-file validation before serving and preferred playback;
+  preserve cancellation and independent selected-folder completion.
+
+- Let Local folder playback finish scanning its selected source independently
+  of other connected folders. Keep source registration responsive during large
+  library scans, preserve complete-folder shuffle on reload, and prevent stale
+  or cancelled requests from replacing newer catalog state.
+
 - Keep plain desktop Left/Right arrows on volume control while a remote Plex
   queue loads or recovers. Preserve modifier-arrow seeking, Up/Down queue
   navigation, and television remote mappings.

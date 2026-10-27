@@ -640,8 +640,9 @@ function createOfflineDriver(
             ensureLoadingControls();
             heartbeat();
             try {
-                media
-                    .list(
+                (media.playbackList || media.list)
+                    .call(
+                        media,
                         function (value: any) {
                             return publish(value, false);
                         },

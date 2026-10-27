@@ -87,6 +87,7 @@ pub fn run() {
             commands::offline_media::local_media_capabilities,
             commands::offline_media::local_media_sources,
             commands::offline_media::local_media_link_folder,
+            commands::offline_media::local_media_cancel_request,
             commands::runtime_diagnostics::runtime_diagnostics,
             commands::tauri_commands::get_epg,
             commands::m3u::match_channels,
