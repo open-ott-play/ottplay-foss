@@ -474,10 +474,10 @@ try {
         coreStreamAttempt: null,
         hlsInstance: {
             config: { startPosition: -1 },
-            hasEnoughToStart: false,
             destroy() {
                 destroyed++;
             },
+            hasEnoughToStart: false,
         },
         setInterval() {
             return 1;
