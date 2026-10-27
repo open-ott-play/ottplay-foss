@@ -379,6 +379,7 @@ jobs:
       - name: Install media tools for isolated normalization checks
         run: |
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo env CI="$CI" python3 scripts/ci-apt-mirror.py
             sudo apt-get update
             sudo apt-get install -y ffmpeg
           fi

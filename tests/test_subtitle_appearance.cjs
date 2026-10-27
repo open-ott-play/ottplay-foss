@@ -180,19 +180,31 @@ console.log(
     const fontHost = {
         document: { styleSheets: sheets },
         location: new URL("https://player.example/f/pc/"),
-        settings: { uiFontScale: 50 },
+        settings: { uiFontScale: 20 },
         URL,
     };
     fontHost.window = fontHost;
     bindScale(fontHost);
     vm.runInNewContext(code, fontHost);
+    for (const value of [20, 23, 40, 50, 100, 200]) {
+        fontHost.settings.uiFontScale = value;
+        assert.equal(fontHost.uiFontScale(), value / 100);
+    }
+    for (const value of [19, 201, 20.5, NaN, Infinity, "20"]) {
+        fontHost.settings.uiFontScale = value;
+        assert.equal(fontHost.uiFontScale(), 1);
+    }
+    fontHost.settings.uiFontScale = 20;
     const scaleFonts = fontHost.__ottSubtitleAppearance.scaleFonts;
     scaleFonts();
-    assert.equal(px.style.fontSize, "10px");
-    assert.equal(vh.style.fontSize, "1.5vh");
-    assert.equal(vw.style.fontSize, "2vw");
-    assert.equal(pt.style.fontSize, "6pt");
-    assert.equal(complex.style.fontSize, "clamp(6.5px, 0.575vw, 10px)");
+    assert.equal(px.style.fontSize, "4px");
+    assert.equal(vh.style.fontSize, "0.6000000000000001vh");
+    assert.equal(vw.style.fontSize, "0.8vw");
+    assert.equal(pt.style.fontSize, "2.4000000000000004pt");
+    assert.equal(
+        complex.style.fontSize,
+        "clamp(2.6px, 0.22999999999999998vw, 4px)"
+    );
     fontHost.settings.uiFontScale = 150;
     sheets.push({
         cssRules: [runtime],
@@ -216,7 +228,7 @@ console.log(
     assert.equal(runtime.style.fontSize, "11px");
     for (const untouched of [cue, external, unknownInline, ...relative])
         assert.equal(untouched.style.writes, undefined);
-    fontHost.settings.uiFontScale = 0;
+    fontHost.settings.uiFontScale = 19;
     scaleFonts();
     assert.equal(
         px.style.fontSize,
