@@ -1,0 +1,17 @@
+{
+  "sourceBase": "656f5a2b8a710917141741b3ed6a337381ffb7f5",
+  "sourceCandidate": "f69cfb0e5e365ce146b0eb6f9137919e03c5c931",
+  "node": "22.23.4",
+  "status": "provisional_pending_canonical_build",
+  "method": "Sum of per-module production optimizer comparisons, not a linked-bundle measurement or acceptance. Canonical CI must enforce every unchanged optional/provider cap.",
+  "isolatedDelta": {
+    "bytes": 5859,
+    "summedGzipBytes": 1785
+  },
+  "allocation": {
+    "bytes": 5632,
+    "gzipBytes": 1792
+  },
+  "isolatedRawEstimateExceedsAllocation": true,
+  "scope": "Session-only remote Local playback, exact storage ownership, explicit atomic profile/kiosk promotion and failure rollback. No general payload headroom and no optional/provider cap increase."
+}

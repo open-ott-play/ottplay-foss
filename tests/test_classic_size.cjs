@@ -10,6 +10,7 @@ const {
     BASE_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
+    LOCAL_COMMAND_SESSION_ALLOWANCE,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
@@ -111,7 +112,11 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1321208, gzipBytes: 421482 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1326840, gzipBytes: 423274 });
+    assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
+        bytes: 5632,
+        gzipBytes: 1792,
+    });
     assert.deepEqual(LOCAL_STALL_RECOVERY_ALLOWANCE, {
         bytes: 2048,
         gzipBytes: 640,
@@ -120,11 +125,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1325688, gzipBytes: 423786 });
-    assert.deepEqual(BUDGET, { bytes: 1064808, gzipBytes: 328954 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1331320, gzipBytes: 425578 });
+    assert.deepEqual(BUDGET, { bytes: 1070440, gzipBytes: 330746 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1207608,
-        gzipBytes: 380854,
+        bytes: 1213240,
+        gzipBytes: 382646,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -281,7 +286,13 @@ try {
             return bytes;
         }
         const members = [
-            { budget: BUDGET, bytes: dense(320000), file: "dist/player.js" },
+            {
+                budget: BUDGET,
+                // Track entry-only feature allocations while retaining room
+                // under the per-file and legacy limits tested below.
+                bytes: dense(BUDGET.gzipBytes - 8000),
+                file: "dist/player.js",
+            },
             ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map((name) => ({
                 budget: PROVIDER_BUDGET,
                 bytes: name === "m3u" ? dense(59000) : Buffer.from("x"),
@@ -585,6 +596,10 @@ try {
     assert.deepEqual(
         report.localStallRecoveryAllowance,
         LOCAL_STALL_RECOVERY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.localCommandSessionAllowance,
+        LOCAL_COMMAND_SESSION_ALLOWANCE
     );
     assert.deepEqual(
         JSON.parse(

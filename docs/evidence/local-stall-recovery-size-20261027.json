@@ -2,7 +2,7 @@
   "sourceBase": "5547d726cea581acbf508bfc064358c020e42a94",
   "sourceCandidate": "5210515868e0d9b980504da6579b08246378ec1f",
   "node": "22.23.4",
-  "status": "provisional_pending_canonical_build",
+  "status": "canonical_size_verified",
   "method": "In-memory production optimizer comparison of the changed core module; this is not linked-bundle acceptance.",
   "isolatedDelta": {
     "bytes": 1687,
@@ -12,5 +12,25 @@
     "bytes": 2048,
     "gzipBytes": 640
   },
-  "scope": "Bounded local HTML5 recovery and queued input ownership checks. Count the same allocation once in entry, legacy and complete budgets. Existing provider and optional limits remain unchanged."
+  "scope": "Bounded local HTML5 recovery and queued input ownership checks. Count the same allocation once in entry, legacy and complete budgets. Existing provider and optional limits remain unchanged.",
+  "canonical": {
+    "run": 40598848353,
+    "head": "656f5a2b8a710917141741b3ed6a337381ffb7f5",
+    "artifactId": 12777906153,
+    "artifactSha256": "7b9641d04b7e7050469075801f52bea1efc80c993fe0561690ca889317951e9a",
+    "mergeTreeEqualsHead": true,
+    "delta": {
+      "bytes": 1580,
+      "webGzipBytes": 480,
+      "nativeGzipBytes": 479
+    },
+    "completeWeb": {
+      "bytes": 1325215,
+      "gzipBytes": 423512
+    },
+    "completeNativeAndMobile": {
+      "bytes": 1325173,
+      "gzipBytes": 423571
+    }
+  }
 }
