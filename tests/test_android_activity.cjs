@@ -453,6 +453,7 @@ try {
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
         _corePendingSeek: null,
+        _corePendingSeekPosition: null,
         _corePipSession: 0,
         _coreShakaTeardown: null,
         _inLiveRestart: false,

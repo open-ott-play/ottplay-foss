@@ -1520,11 +1520,7 @@ export function installLocalMedia(w: any): any {
         },
         compatibilityFailure: function () {
             if (typeof w.showShift === "function")
-                w.showShift(
-                    w._(
-                        "Local compatibility playback could not be prepared. The original file and other local videos are unchanged."
-                    )
-                );
+                w.showShift(w._("Local source unavailable"));
         },
         compatibilityPlayback: compatibilityPlayback,
         completedSources: function () {

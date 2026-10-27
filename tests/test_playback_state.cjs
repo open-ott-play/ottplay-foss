@@ -46,6 +46,7 @@ function fixture(managed = false) {
         },
     };
     const c = {
+        _corePendingSeekPosition: null,
         _corePipSession: 0,
         _inLiveRestart: false,
         _playSession: 1,

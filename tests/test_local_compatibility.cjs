@@ -254,6 +254,13 @@ test("missing tools keeps direct MP4 playable and unsupported identity visible w
     assert.equal(snapshot.items.length, 2);
     assert.equal(snapshot.items[1].id, "a".repeat(32));
     assert.match(f.api.failureMessage(snapshot), /native or Server library/);
+    let failure;
+    f.w._ = (key) => "translated: " + key;
+    f.w.showShift = (message) => {
+        failure = message;
+    };
+    f.api.compatibilityFailure();
+    assert.equal(failure, "translated: Local source unavailable");
     f.api.open(false, true);
     assert(
         f.w.listArray.some((row) => row.id === "unsupported-" + "a".repeat(32))
