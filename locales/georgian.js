@@ -591,6 +591,10 @@ var keyStrings = {
     "List type": "სიის ტიპი",
     "Lists settings": "სიის პარამეტრები",
     Live: "პირდაპირი ეთერი",
+    "Live recovery attempts": "პირდაპირი ეთერის აღდგენის მცდელობები",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ნაკადის დაკვრა ვერ მოხერხდა · პირდაპირი ეთერის აღდგენის მცდელობები %1/%2",
+    "Live stall timeout, s": "გაჭედვის მოლოდინის დრო, წმ",
     Load: "ჩატვირთვა",
     "Load built-in playlist:": "ჩატვირთეთ ჩაშენებული დასაკრავი სია:",
     "Load playlist": "ჩატვირთეთ დასაკრავი სია",
@@ -790,6 +794,7 @@ var keyStrings = {
     "Records library is empty": "ჩანაწერების ბიბლიოთეკა ცარიელია",
     "Records not supported by provider":
         "ჩანაწერები არ არის მხარდაჭერილი ამ პროვაიდერის მიერ",
+    "Recovering stream (%1/%2)": "ხელახლა დაკავშირება… (%1/%2)",
     "Release date": "გამოშვების თარიღი",
     "Remember previous channels": "დაიმახსოვრე წინა არხები",
     "Reminder: %1 — %2 in %3 min": "შეხსენება: %1 — %2 %3 წუთში",
@@ -1011,6 +1016,7 @@ var keyStrings = {
         "შეაჩერე დაკვრა და დაბრუნდი პირდაპირ ეთერში",
     "Stop screenshots": "შეაჩერე ეკრანის ანაბეჭდები",
     "Stream could not be played": "ნაკადის დაკვრა ვერ მოხერხდა",
+    "Stream stalled. Restart in %1 s": "გადატვირთეთ ნაკადი · %1 წმ",
     "Stream timed out. Select the channel to retry.":
         "ნაკადის ლოდინის დრო ამოიწურა. ხელახლა საცდელად აირჩიეთ არხი.",
     "Stream type: %1": "ნაკადის ტიპი: %1",

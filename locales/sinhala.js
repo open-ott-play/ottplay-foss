@@ -574,6 +574,10 @@ var keyStrings = {
     "List type": "ලැයිස්තු වර්ගය",
     "Lists settings": "ලැයිස්තු සැකසීම්",
     Live: "සජීවී විකාශය",
+    "Live recovery attempts": "සජීවී විකාශය යථා තත්ත්වයට පත්කිරීමේ උත්සාහ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ප්‍රවාහය වාදනය කළ නොහැකි විය · සජීවී විකාශය යථා තත්ත්වයට පත්කිරීමේ උත්සාහ %1/%2",
+    "Live stall timeout, s": "විකාශය නතරවීමේ කාල සීමාව, තත්",
     Load: "පූරණය කරන්න",
     "Load built-in playlist:": "පූරණය බිල්ට් ධාවන ලැයිස්තුව:",
     "Load playlist": "ධාවන ලැයිස්තුව පූරණය කරන්න",
@@ -767,6 +771,7 @@ var keyStrings = {
     "Records library is empty": "වාර්තාගත වැඩසටහන් පුස්තකාලය හිස්ය",
     "Records not supported by provider":
         "මෙම සැපයුම්කරු වාර්තාගත වැඩසටහන් සඳහා සහය නොදක්වයි",
+    "Recovering stream (%1/%2)": "නැවත සම්බන්ධ වෙමින්... (%1/%2)",
     "Release date": "මුදා හැරීමේ දිනය",
     "Remember previous channels": "පෙර නාලිකා මතක තබා ගන්න",
     "Reminder: %1 — %2 in %3 min": "මතක් කිරීම: %1 — %2 මිනිත්තු %3",
@@ -986,6 +991,7 @@ var keyStrings = {
     "Stop playback and return to live": "නැවත ධාවනය නවත්වා සජීවීව වෙත ආපසු යන්න",
     "Stop screenshots": "තිරපිටපත් නවත්වන්න",
     "Stream could not be played": "ප්‍රවාහය වාදනය කළ නොහැකි විය",
+    "Stream stalled. Restart in %1 s": "ප්‍රවාහය නැවත ආරම්භ කරන්න · %1 ත.",
     "Stream timed out. Select the channel to retry.":
         "ප්‍රවාහය සඳහා රැඳී සිටීමේ කාලය ඉක්මවා ඇත. නැවත උත්සාහ කිරීමට නාලිකාව තෝරන්න.",
     "Stream type: %1": "ප්‍රවාහ වර්ගය: %1",

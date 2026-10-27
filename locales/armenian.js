@@ -588,6 +588,10 @@ var keyStrings = {
     "List type": "Ցուցակի տեսակ",
     "Lists settings": "Ցուցակների կարգավորումներ",
     Live: "Ուղիղ եթեր",
+    "Live recovery attempts": "Ուղիղ եթերի վերականգնման փորձեր",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Չհաջողվեց նվագարկել հոսքը · Ուղիղ եթերի վերականգնման փորձեր %1/%2",
+    "Live stall timeout, s": "Հոսքի կախման սպասում, վ",
     Load: "Բեռնել",
     "Load built-in playlist:": "Բեռնել ներկառուցված նվագարկման ցուցակը՝",
     "Load playlist": "Բեռնել նվագարկման ցուցակը",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records library is empty": "Տեսագրությունների գրադարանը դատարկ է",
     "Records not supported by provider":
         "Այս մատակարարը չի աջակցում տեսագրություններին",
+    "Recovering stream (%1/%2)": "Կրկին միացում… (%1/%2)",
     "Release date": "Թողարկման ամսաթիվ",
     "Remember previous channels": "Հիշել նախորդ ալիքները",
     "Reminder: %1 — %2 in %3 min": "Հիշեցում՝ %1 — %2՝ %3 րոպեից",
@@ -1016,6 +1021,7 @@ var keyStrings = {
         "Դադարեցնել նվագարկումը և վերադառնալ ուղիղ եթերին",
     "Stop screenshots": "Դադարեցրեք սքրինշոթերը",
     "Stream could not be played": "Չհաջողվեց նվագարկել հոսքը",
+    "Stream stalled. Restart in %1 s": "Վերագործարկել հոսքը · %1 վ",
     "Stream timed out. Select the channel to retry.":
         "Հոսքի սպասման ժամանակը սպառվել է։ Կրկին փորձելու համար ընտրեք ալիքը։",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",

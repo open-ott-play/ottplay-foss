@@ -599,6 +599,10 @@ var keyStrings = {
     "List type": "Tip ta’ lista",
     "Lists settings": "Issettjar tal-listi",
     Live: "Dirett",
+    "Live recovery attempts": "Tentattivi ta’ rkupru tax-xandira diretta",
+    "Live recovery attempts exhausted (%1/%2)":
+        "L-istrim ma setax jindaqq · Tentattivi ta’ rkupru tax-xandira diretta %1/%2",
+    "Live stall timeout, s": "Limitu ta’ waqfien, s",
     Load: "Għabbi",
     "Load built-in playlist:": "Għabbi lista tad-daqq integrata:",
     "Load playlist": "Għabbi lista tad-daqq",
@@ -799,6 +803,7 @@ var keyStrings = {
         "Il-librerija tar-reġistrazzjonijiet hija vojta",
     "Records not supported by provider":
         "Dan il-fornitur ma jappoġġjax reġistrazzjonijiet",
+    "Recovering stream (%1/%2)": "Qed terġa’ ssir konnessjoni… (%1/%2)",
     "Release date": "Data tal-ħruġ",
     "Remember previous channels": "Ftakar il-kanali preċedenti",
     "Reminder: %1 — %2 in %3 min": "Tfakkira: %1 — %2 fi żmien %3 min",
@@ -1026,6 +1031,7 @@ var keyStrings = {
         "Waqqaf id-daqq u erġa’ lura għax-xandira diretta",
     "Stop screenshots": "Waqqaf ritratti tal-iskrin",
     "Stream could not be played": "L-istrim ma setax jindaqq",
+    "Stream stalled. Restart in %1 s": "Erġa’ ibda l-istrim · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Skada l-ħin ta' stennija tal-istrim. Agħżel il-kanal biex terġa' tipprova.",
     "Stream type: %1": "Tip ta’ strim: %1",

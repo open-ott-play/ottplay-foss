@@ -602,6 +602,10 @@ var keyStrings = {
     "List type": "Listentyp",
     "Lists settings": "Listeneinstellungen",
     Live: "Live-Übertragung",
+    "Live recovery attempts": "Wiederherstellungsversuche für Live-TV",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Der Stream konnte nicht wiedergegeben werden · Wiederherstellungsversuche für Live-TV %1/%2",
+    "Live stall timeout, s": "Zeitlimit bei Stillstand, s",
     Load: "Laden",
     "Load built-in playlist:": "Integrierte Wiedergabeliste laden:",
     "Load playlist": "Playlist laden",
@@ -802,6 +806,7 @@ var keyStrings = {
     "Records library is empty": "Aufnahmebibliothek ist leer",
     "Records not supported by provider":
         "Aufnahmen werden von diesem Anbieter nicht unterstützt",
+    "Recovering stream (%1/%2)": "Verbindung wird erneut hergestellt… (%1/%2)",
     "Release date": "Veröffentlichungsdatum",
     "Remember previous channels": "Vorherige Sender merken",
     "Reminder: %1 — %2 in %3 min": "Erinnerung: %1 — %2 in %3 Min.",
@@ -1031,6 +1036,7 @@ var keyStrings = {
     "Stop screenshots": "Screenshots stoppen",
     "Stream could not be played":
         "Der Stream konnte nicht wiedergegeben werden",
+    "Stream stalled. Restart in %1 s": "Stream neu starten · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Zeitüberschreitung beim Stream. Wählen Sie den Kanal, um es erneut zu versuchen.",
     "Stream type: %1": "Streamtyp: %1",

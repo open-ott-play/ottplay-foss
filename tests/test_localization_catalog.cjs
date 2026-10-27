@@ -1491,7 +1491,7 @@ try {
         });
         assert.deepEqual(result.errors, [], result.errors.join("\n"));
         assert.equal(result.localeCount, 88);
-        assert.equal(result.keyCount, 915);
+        assert.equal(result.keyCount, 920);
         console.log(
             `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
         );

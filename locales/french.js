@@ -610,6 +610,10 @@ var keyStrings = {
     "List type": "Type de liste",
     "Lists settings": "Paramètres des listes",
     Live: "Direct",
+    "Live recovery attempts": "Tentatives de reprise du direct",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Impossible de lire le flux · Tentatives de reprise du direct %1/%2",
+    "Live stall timeout, s": "Délai de blocage du direct, s",
     Load: "Charger",
     "Load built-in playlist:": "Charger la liste intégrée :",
     "Load playlist": "Charger la playlist",
@@ -811,6 +815,7 @@ var keyStrings = {
     "Records library is empty": "La bibliothèque d'enregistrements est vide",
     "Records not supported by provider":
         "Ce fournisseur ne prend pas en charge les enregistrements",
+    "Recovering stream (%1/%2)": "Reconnexion… (%1/%2)",
     "Release date": "Date de sortie",
     "Remember previous channels": "Mémoriser les chaînes précédentes",
     "Reminder: %1 — %2 in %3 min": "Rappel : %1 — %2 dans %3 min",
@@ -1042,6 +1047,7 @@ var keyStrings = {
         "Arrêter la lecture et revenir au direct",
     "Stop screenshots": "Arrêter les captures d'écran",
     "Stream could not be played": "Impossible de lire le flux",
+    "Stream stalled. Restart in %1 s": "Redémarrer le flux · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Le délai d'attente du flux est dépassé. Sélectionnez la chaîne pour réessayer.",
     "Stream type: %1": "Type de flux : %1",

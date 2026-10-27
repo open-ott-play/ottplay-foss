@@ -203,3 +203,69 @@ The shared wire fixtures are `tests/fixtures/remote/perf-capture-v1.json` and
 `tests/fixtures/remote/perf-capture-v2.json`; version 1 remains unchanged. See also
 [runtime debug](runtime-debug.md), [typed settings](remote-player-settings.md)
 and [notification presentation](remote-notifications.md).
+
+## HLS policy diagnostics (version 3)
+
+To investigate a reduced buffer limit or a changing fragment retry statistic,
+request version 3 explicitly. Upgrade the controller before the player and CLI;
+the player advertises `perf_capture_hls_policy: {"version": 3}` alongside its
+existing capabilities.
+
+```sh
+ott d1 perf start --duration 120 --hls-policy-details
+# Replace SESSION with the returned ID.
+ott d1 perf stop SESSION
+ott -t 90 d1 perf export SESSION --out ./hls-policy-01
+ott report verify ./hls-policy-01 --json
+```
+
+`--hls-policy-details` and `--hls-details` are mutually exclusive. The latter
+still selects version 2; ordinary starts and notification trials still select
+version 1. A version 3 reader preserves the actual capture version when reading
+an older session. Older readers reject a version 3 session before changing it.
+The version 1/2 wire formats remain unchanged. The additional events share the
+same duration, rate, ring and byte limits; check drop counts and export
+completeness before interpreting missing evidence.
+
+- Version 3 calls the raw HLS statistic `stats_retry`, replacing `retries`.
+  It is a mutable library counter that can increase during gap recovery without
+  another network request. It must not be reported as a network retry total.
+- `hls_error_action` records public error-action metadata at this listener's
+  callback: a bounded action, flags, shared `retry_budget_count` and `resolved`,
+  plus error category/detail and fragment identity. Other listeners may still
+  change the action. `retry_request` does not prove that a request was sent;
+  `resolved` means handled, not network success. Actual network retry totals
+  cannot be derived reliably from the available API and are not exported.
+- `hls_fragment` adds observed `fragment_gap`, `part_gap`, `part_independent`
+  and elementary-stream `partial` flags. Recovery can change gap flags, so they
+  are not exclusively manifest values. Independent is a part marker, not proof
+  of successful decoding; partial is a per-stream marker, not a measurement of
+  whole-fragment or current buffered completeness. Unsupported values are null.
+- `hls_buffer_policy` keeps initial and current maximum buffer length, maximum
+  maximum buffer length, byte budget and back-buffer length separate. Core main
+  and PiP engines copy four numbers immediately after construction, before
+  loading. The fixed metadata adds no timer/listener outside a capture and is
+  tied to the current engine. Other engines report an unavailable initial
+  policy, without reconstructing history from mutable `userConfig`.
+
+A policy `snapshot` is the first capture observation, even if the engine was
+created earlier. `cap_observation_changed` records an observed difference in
+the current `maxMaxBufferLength` limit during an existing callback or the
+existing one-second loop. Null means unavailable: a null transition alone does
+not prove a numeric cap change. Changes between observations may be missed.
+`cause` remains `unknown`; there is no public HLS event that reliably attributes
+these changes. The bounded version 3 error details include `buffer_full_error`,
+`buffer_append_no_progress`, `buffer_add_codec_error` and `internal_exception`
+as contextual evidence, never proof of causation. There are no internal-method
+patches, extra pollers or changes to playback/recovery policy.
+
+For example, initial 60 seconds and first observed 5 seconds establish a
+difference, not its timing or cause. A `stats_retry` change between load and
+buffer callbacks is also only an observation. Start a capture before reproducing
+the issue for better context. The exact additional contract is
+[`perf-capture-v3.json`](../tests/fixtures/remote/perf-capture-v3.json).
+
+These distinctions follow the pinned upstream implementation:
+[mixed retry counter](https://github.com/video-dev/hls.js/blob/v1.7.3/src/controller/stream-controller.ts#L978-L986),
+[shared error-action retry budget](https://github.com/video-dev/hls.js/blob/v1.7.3/src/controller/error-controller.ts#L320-L350),
+and [buffer reduction without a public error event](https://github.com/video-dev/hls.js/blob/v1.7.3/src/controller/base-stream-controller.ts#L611-L634).

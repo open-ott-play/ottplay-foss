@@ -148,6 +148,8 @@ export interface PlayerSettings {
     infoTimeout: number;
     interfaceTheme: number;
     listPosition: number;
+    liveRecoveryAttempts: number;
+    liveRecoveryTimeout: number;
     localCmdUrl: string;
     localHttpDeviceCode: string;
     localHttpEnabled: number;
@@ -255,6 +257,8 @@ export function defaultSettings(): PlayerSettings {
         infoTimeout: 5,
         interfaceTheme: 2,
         listPosition: 0,
+        liveRecoveryAttempts: 0,
+        liveRecoveryTimeout: 15,
         localCmdUrl: "",
         localHttpDeviceCode: "",
         localHttpEnabled: 0,
@@ -428,6 +432,18 @@ function defineSetting(
     };
 }
 export const settingsSchema: SettingDefinition[] = [
+    defineSetting(
+        "liveRecoveryAttempts",
+        "sLiveRecoveryAttempts",
+        { range: [0, 5] },
+        ["configureLiveRecovery"]
+    ),
+    defineSetting(
+        "liveRecoveryTimeout",
+        "sLiveRecoveryTimeout",
+        { values: [10, 15, 20, 30] },
+        ["configureLiveRecovery"]
+    ),
     defineSetting(
         "subtitleFontFamily",
         "sSubtitleFontFamily",

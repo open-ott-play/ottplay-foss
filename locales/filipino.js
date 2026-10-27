@@ -603,6 +603,10 @@ var keyStrings = {
     "List type": "Uri ng listahan",
     "Lists settings": "Mga setting ng listahan",
     Live: "Direktang pagsasahimpapawid",
+    "Live recovery attempts": "Mga pagtatangkang ibalik ang live",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Hindi ma-play ang stream · Mga pagtatangkang ibalik ang live %1/%2",
+    "Live stall timeout, s": "Timeout sa paghinto ng live, s",
     Load: "Magkarga",
     "Load built-in playlist:": "Mag-load ng built-in na playlist:",
     "Load playlist": "Mag-load ng playlist",
@@ -804,6 +808,7 @@ var keyStrings = {
     "Records library is empty": "Walang laman ang library ng mga recording",
     "Records not supported by provider":
         "Ang mga pag-record ay hindi sinusuportahan ng provider na ito",
+    "Recovering stream (%1/%2)": "Kumokonekta muli... (%1/%2)",
     "Release date": "Petsa ng paglabas",
     "Remember previous channels": "Tandaan ang mga nakaraang channel",
     "Reminder: %1 — %2 in %3 min": "Paalala: %1 — %2 sa %3 min",
@@ -1036,6 +1041,7 @@ var keyStrings = {
         "Ihinto ang playback at bumalik sa direktang pagsasahimpapawid",
     "Stop screenshots": "Ihinto ang mga screenshot",
     "Stream could not be played": "Hindi ma-play ang stream",
+    "Stream stalled. Restart in %1 s": "I-restart ang stream · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Naubos ang oras ng paghihintay sa stream. Piliin ang channel upang subukang muli.",
     "Stream type: %1": "Uri ng stream: %1",

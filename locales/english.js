@@ -580,6 +580,10 @@ var keyStrings = {
     "List type": "List type",
     "Lists settings": "List settings",
     Live: "Live",
+    "Live recovery attempts": "Live recovery attempts",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Live recovery attempts exhausted (%1/%2)",
+    "Live stall timeout, s": "Live stall timeout, s",
     Load: "Load",
     "Load built-in playlist:": "Load built-in playlist:",
     "Load playlist": "Load playlist",
@@ -775,6 +779,7 @@ var keyStrings = {
     "Records library is empty": "Recordings library is empty",
     "Records not supported by provider":
         "Recordings are not supported by this provider",
+    "Recovering stream (%1/%2)": "Recovering stream (%1/%2)",
     "Release date": "Release date",
     "Remember previous channels": "Remember previous channels",
     "Reminder: %1 — %2 in %3 min": "Reminder: %1 — %2 in %3 min",
@@ -994,6 +999,7 @@ var keyStrings = {
     "Stop playback and return to live": "Stop playback and return to live",
     "Stop screenshots": "Stop screenshots",
     "Stream could not be played": "Stream could not be played",
+    "Stream stalled. Restart in %1 s": "Stream stalled. Restart in %1 s",
     "Stream timed out. Select the channel to retry.":
         "Stream timed out. Select the channel to retry.",
     "Stream type: %1": "Stream type: %1",

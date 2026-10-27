@@ -33,7 +33,11 @@ interface MediaEngineLease {
     } | null;
     // Read-only identity of the attached engine, never a saved preference.
     diagnosticEngine?(): MediaDiagnosticEngine;
-    diagnosticMedia?(): { media: any; hls: any } | null;
+    diagnosticMedia?(): {
+        media: any;
+        hls: any;
+        initialHlsBufferPolicy?: any;
+    } | null;
     dispose(replaced?: boolean): void;
     pause(): void;
     resume(): void;
@@ -469,6 +473,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                                   ? context.generation
                                   : null,
                           hls: value.hls,
+                          initialHlsBufferPolicy: value.initialHlsBufferPolicy,
                           media: value.media,
                       }
                     : null;

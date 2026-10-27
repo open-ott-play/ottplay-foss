@@ -576,6 +576,10 @@ var keyStrings = {
     "List type": "ലിസ്റ്റ് തരം",
     "Lists settings": "ലിസ്റ്റ് ക്രമീകരണങ്ങൾ",
     Live: "തത്സമയ സംപ്രേക്ഷണം",
+    "Live recovery attempts": "തത്സമയ സംപ്രേഷണ വീണ്ടെടുക്കൽ ശ്രമങ്ങൾ",
+    "Live recovery attempts exhausted (%1/%2)":
+        "സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല · തത്സമയ സംപ്രേഷണ വീണ്ടെടുക്കൽ ശ്രമങ്ങൾ %1/%2",
+    "Live stall timeout, s": "സംപ്രേഷണ തടസ്സ സമയപരിധി, സെ",
     Load: "ലോഡ്",
     "Load built-in playlist:": "ബിൽറ്റ്-ഇൻ പ്ലേലിസ്റ്റ് ലോഡുചെയ്യുക:",
     "Load playlist": "പ്ലേലിസ്റ്റ് ലോഡുചെയ്യുക",
@@ -772,6 +776,7 @@ var keyStrings = {
     "Records for channel: ": "ചാനലിനായുള്ള റെക്കോർഡിംഗുകൾ: ",
     "Records library is empty": "റെക്കോർഡിംഗ് ലൈബ്രറി ശൂന്യമാണ്",
     "Records not supported by provider": "റെക്കോർഡിംഗുകൾ ഈ ദാതാവ് പിന്തുണയ്ക്കുന്നില്ല",
+    "Recovering stream (%1/%2)": "വീണ്ടും ബന്ധിപ്പിക്കുന്നു... (%1/%2)",
     "Release date": "റിലീസ് തീയതി",
     "Remember previous channels": "മുൻ ചാനലുകൾ ഓർക്കുക",
     "Reminder: %1 — %2 in %3 min": "ഓർമ്മപ്പെടുത്തൽ: %1 — %2 %3 മിനിറ്റിൽ",
@@ -993,6 +998,7 @@ var keyStrings = {
     "Stop playback and return to live": "പ്ലേബാക്ക് നിർത്തി ലൈവിലേക്ക് മടങ്ങുക",
     "Stop screenshots": "സ്ക്രീൻഷോട്ടുകൾ നിർത്തുക",
     "Stream could not be played": "സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
+    "Stream stalled. Restart in %1 s": "സ്ട്രീം പുനരാരംഭിക്കുക · %1 സെക്കൻഡ്",
     "Stream timed out. Select the channel to retry.":
         "സ്ട്രീമിനായി കാത്തിരിക്കാനുള്ള സമയം കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കാൻ ചാനൽ തിരഞ്ഞെടുക്കുക.",
     "Stream type: %1": "സ്ട്രീം തരം: %1",

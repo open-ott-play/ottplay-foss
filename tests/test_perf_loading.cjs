@@ -149,18 +149,18 @@ for (const change of [
     assert.equal(f.replies.length, 1);
     assert.equal(f.replies[0].status, "rejected");
 }
-{
+for (const version of [2, 3]) {
     const f = fixture();
     f.request({
         params: {
             op: "start",
             runtime: "page-1",
             session_id: "a".repeat(32),
-            version: 2,
+            version,
         },
     });
     f.scripts[0].fail();
-    assert.equal(f.replies[0].data.version, 2);
+    assert.equal(f.replies[0].data.version, version);
     assert.equal(f.replies[0].data.error, "unsupported");
     assert.equal(f.calls.length, 0);
 }

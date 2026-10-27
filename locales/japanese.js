@@ -586,6 +586,10 @@ var keyStrings = {
     "List type": "リスト型",
     "Lists settings": "リスト設定",
     Live: "ライブ放送",
+    "Live recovery attempts": "ライブ再生の復旧試行回数",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ストリームを再生できませんでした · ライブ再生の復旧試行回数 %1/%2",
+    "Live stall timeout, s": "ライブ停止のタイムアウト、秒",
     Load: "読み込む",
     "Load built-in playlist:": "内蔵プレイリストをロード:",
     "Load playlist": "プレイリストをロードする",
@@ -786,6 +790,7 @@ var keyStrings = {
     "Records library is empty": "録画番組のライブラリが空です",
     "Records not supported by provider":
         "このプロバイダーは録画番組をサポートしていません。",
+    "Recovering stream (%1/%2)": "再接続中… (%1/%2)",
     "Release date": "発売日",
     "Remember previous channels": "以前のチャンネルを記憶",
     "Reminder: %1 — %2 in %3 min": "リマインダー：%1 — %2 は %3 分後に開始",
@@ -1011,6 +1016,7 @@ var keyStrings = {
     "Stop playback and return to live": "再生を停止してライブに戻ります",
     "Stop screenshots": "スクリーンショットを停止する",
     "Stream could not be played": "ストリームを再生できませんでした",
+    "Stream stalled. Restart in %1 s": "ストリーム再開 · %1 秒",
     "Stream timed out. Select the channel to retry.":
         "ストリームがタイムアウトしました。チャンネルを選択して再試行してください。",
     "Stream type: %1": "ストリームタイプ：%1",

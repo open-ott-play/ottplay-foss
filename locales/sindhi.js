@@ -576,6 +576,10 @@ var keyStrings = {
     "List type": "فهرست جو قسم",
     "Lists settings": "فهرست سيٽنگون",
     Live: "سڌي نشريات",
+    "Live recovery attempts": "سڌي نشريات بحال ڪرڻ جون ڪوششون",
+    "Live recovery attempts exhausted (%1/%2)":
+        "اسٽريم هلائي نه سگهيو · سڌي نشريات بحال ڪرڻ جون ڪوششون %1/%2",
+    "Live stall timeout, s": "نشريات بيهڻ جي انتظار جو وقت، سيڪنڊ",
     Load: "لوڊ ڪريو",
     "Load built-in playlist:": "شامل پلي لسٽ لوڊ ڪريو:",
     "Load playlist": "پلي لسٽ لوڊ ڪريو",
@@ -776,6 +780,7 @@ var keyStrings = {
     "Records library is empty": "رڪارڊنگن جي لائبريري خالي آهي",
     "Records not supported by provider":
         "هي فراهم ڪندڙ رڪارڊنگن جي سهائتا نٿو ڪري",
+    "Recovering stream (%1/%2)": "ٻيهر ڳنڍجي رهيو آهي… (%1/%2)",
     "Release date": "جاري ٿيڻ جي تاريخ",
     "Remember previous channels": "اڳوڻا چينل ياد رکو",
     "Reminder: %1 — %2 in %3 min": "يادگيري: %1 — %2، %3 منٽن ۾",
@@ -995,6 +1000,7 @@ var keyStrings = {
     "Stop playback and return to live": "پلي بيڪ روڪي سڌي نشريات ڏانهن موٽو",
     "Stop screenshots": "اسڪرين شاٽ بند ڪريو",
     "Stream could not be played": "اسٽريم هلائي نه سگهيو",
+    "Stream stalled. Restart in %1 s": "اسٽريم ٻيهر شروع ڪريو · %1 سي",
     "Stream timed out. Select the channel to retry.":
         "اسٽريم جو انتظار ختم ٿي ويو. ٻيهر ڪوشش لاءِ چينل چونڊيو.",
     "Stream type: %1": "اسٽريم جو قسم: %1",

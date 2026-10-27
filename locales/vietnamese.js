@@ -582,6 +582,10 @@ var keyStrings = {
     "List type": "Kiểu danh sách",
     "Lists settings": "Cài đặt danh sách",
     Live: "Trực tiếp",
+    "Live recovery attempts": "Số lần khôi phục phát trực tiếp",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Không thể phát luồng · Số lần khôi phục phát trực tiếp %1/%2",
+    "Live stall timeout, s": "Thời gian chờ khi luồng đứng, giây",
     Load: "Tải",
     "Load built-in playlist:": "Tải danh sách phát tích hợp:",
     "Load playlist": "Tải danh sách phát",
@@ -780,6 +784,7 @@ var keyStrings = {
     "Records for channel: ": "Bản ghi của kênh: ",
     "Records library is empty": "Thư viện bản ghi trống",
     "Records not supported by provider": "Nhà cung cấp không hỗ trợ bản ghi",
+    "Recovering stream (%1/%2)": "Đang kết nối lại… (%1/%2)",
     "Release date": "Ngày phát hành",
     "Remember previous channels": "Ghi nhớ kênh trước",
     "Reminder: %1 — %2 in %3 min": "Nhắc nhở: %1 — %2 sau %3 phút",
@@ -1000,6 +1005,7 @@ var keyStrings = {
     "Stop playback and return to live": "Dừng phát và quay lại trực tiếp",
     "Stop screenshots": "Dừng chụp ảnh màn hình",
     "Stream could not be played": "Không thể phát luồng",
+    "Stream stalled. Restart in %1 s": "Khởi động lại luồng · %1 giây",
     "Stream timed out. Select the channel to retry.":
         "Đã hết thời gian chờ luồng phát. Chọn kênh để thử lại.",
     "Stream type: %1": "Loại luồng: %1",

@@ -53,6 +53,7 @@ const CLASSIC_MODULES = [
     "build/debug/playback-debug.js",
     "build/playback/stream-policy.js",
     "build/core/playback-feedback.js",
+    "build/playback/live-recovery.js",
     "build/core/auto-playback.js",
     "build/core/buffer-policy.js",
     "build/core/native-hls.js",
@@ -69,6 +70,7 @@ const CLASSIC_MODULES = [
     "build/ui/classic-screen-port.js",
     "build/ui/menu-registry.js",
     "build/ui/accessibility.js",
+    "build/ui/live-recovery.js",
     "build/ui/index.js",
     "build/ui/subtitle-appearance.js",
     "build/key-handler/index.js",
@@ -262,6 +264,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottClassicArchive",
     ]),
     "build/playback/journal.js": Object.freeze(["window.__ottPlaybackJournal"]),
+    "build/playback/live-recovery.js": Object.freeze([
+        "window.__ottLiveRecovery",
+    ]),
     "build/playback/session.js": Object.freeze(["window.__ottPlaybackSession"]),
     "build/playback/stream-policy.js": Object.freeze([
         "window.__ottStreamPolicy",
@@ -368,6 +373,7 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottScreens",
     ]),
     "build/ui/input-router.js": Object.freeze(["window.__ottInputRouter"]),
+    "build/ui/live-recovery.js": Object.freeze(["window.__ottLiveRecoveryOSD"]),
     "build/ui/menu-registry.js": Object.freeze(["window.__ottMenuRegistry"]),
     "build/ui/screen-controller.js": Object.freeze([
         "window.__ottScreenController",

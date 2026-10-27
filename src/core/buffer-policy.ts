@@ -89,3 +89,35 @@ export function coreBufferPolicy(
         url: url,
     });
 }
+
+/** Fixed constructor-time numbers only; no HLS instance or live config is retained. */
+export function snapshotInitialHlsBufferPolicy(hls: any): any {
+    var config: any;
+    try {
+        config = hls && hls.config;
+    } catch (_) {
+        return null;
+    }
+    if (!config) return null;
+    var snapshot: any = {};
+    [
+        ["max_buffer_length_seconds", "maxBufferLength"],
+        ["max_max_buffer_length_seconds", "maxMaxBufferLength"],
+        ["max_buffer_size_bytes", "maxBufferSize"],
+        ["back_buffer_length_seconds", "backBufferLength"],
+    ].forEach(function (pair) {
+        var value: any;
+        try {
+            value = config[pair[1]];
+        } catch (_) {}
+        snapshot[pair[0]] =
+            typeof value === "number" &&
+            isFinite(value) &&
+            value >= 0 &&
+            value <= 9007199254740991 &&
+            (pair[0] !== "max_buffer_size_bytes" || value % 1 === 0)
+                ? value
+                : null;
+    });
+    return snapshot;
+}

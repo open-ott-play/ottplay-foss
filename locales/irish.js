@@ -599,6 +599,10 @@ var keyStrings = {
     "List type": "Cineál liosta",
     "Lists settings": "Socruithe liostaí",
     Live: "Beo",
+    "Live recovery attempts": "Iarrachtaí athshlánaithe craolta beo",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Níorbh fhéidir an sruth a sheinm · Iarrachtaí athshlánaithe craolta beo %1/%2",
+    "Live stall timeout, s": "Teorainn ama reo, s",
     Load: "Luchtaigh",
     "Load built-in playlist:": "Luchtaigh seinmliosta ionsuite:",
     "Load playlist": "Luchtaigh seinmliosta",
@@ -797,6 +801,7 @@ var keyStrings = {
     "Records library is empty": "Tá leabharlann na dtaifeadtaí folamh",
     "Records not supported by provider":
         "Ní thacaíonn an soláthraí seo le taifeadtaí",
+    "Recovering stream (%1/%2)": "Ag athcheangal… (%1/%2)",
     "Release date": "Dáta eisiúna",
     "Remember previous channels": "Cuimhnigh ar chainéil roimhe seo",
     "Reminder: %1 — %2 in %3 min": "Meabhrúchán: %1 — %2 i gceann %3 nóim",
@@ -1024,6 +1029,7 @@ var keyStrings = {
         "Stad an athsheinm agus fill ar an gcraoladh beo",
     "Stop screenshots": "Stop gabhálacha scáileáin",
     "Stream could not be played": "Níorbh fhéidir an sruth a sheinm",
+    "Stream stalled. Restart in %1 s": "Atosaigh an sruth · %1 soic",
     "Stream timed out. Select the channel to retry.":
         "Tá teorainn ama an tsrutha caite. Roghnaigh an cainéal chun triail eile a bhaint as.",
     "Stream type: %1": "Cineál srutha: %1",

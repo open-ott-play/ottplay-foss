@@ -570,6 +570,10 @@ var keyStrings = {
     "List type": "सूची प्रकार",
     "Lists settings": "सूची सेटिंग",
     Live: "सीधा प्रसारण",
+    "Live recovery attempts": "लाइव प्रसारण बहाली के प्रयास",
+    "Live recovery attempts exhausted (%1/%2)":
+        "स्ट्रीम नहीं चलाया जा सका · लाइव प्रसारण बहाली के प्रयास %1/%2",
+    "Live stall timeout, s": "लाइव रुकने की समय सीमा, सेकंड",
     Load: "लोड करें",
     "Load built-in playlist:": "अंतर्निहित प्लेलिस्ट लोड करें:",
     "Load playlist": "प्लेलिस्ट लोड करें",
@@ -767,6 +771,7 @@ var keyStrings = {
     "Records library is empty": "रिकॉर्डिंग लाइब्रेरी खाली है",
     "Records not supported by provider":
         "रिकॉर्डिंग इस प्रदाता द्वारा समर्थित नहीं हैं",
+    "Recovering stream (%1/%2)": "पुनः कनेक्ट हो रहा है… (%1/%2)",
     "Release date": "रिलीज की तारीख",
     "Remember previous channels": "पिछले चैनल याद रखें",
     "Reminder: %1 — %2 in %3 min": "अनुस्मारक: %1 — %2 %3 मिनट में",
@@ -983,6 +988,7 @@ var keyStrings = {
     "Stop playback and return to live": "प्लेबैक बंद करें और लाइव पर वापस लौटें",
     "Stop screenshots": "स्क्रीनशॉट रोकें",
     "Stream could not be played": "स्ट्रीम नहीं चलाया जा सका",
+    "Stream stalled. Restart in %1 s": "स्ट्रीम पुनः प्रारंभ करें · %1 सेकंड",
     "Stream timed out. Select the channel to retry.":
         "स्ट्रीम की प्रतीक्षा का समय समाप्त हो गया। फिर से प्रयास करने के लिए चैनल चुनें।",
     "Stream type: %1": "स्ट्रीम प्रकार: %1",

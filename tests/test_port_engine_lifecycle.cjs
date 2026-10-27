@@ -2526,6 +2526,56 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     assert.equal(timers.size, 0);
 });
 
+test("constructor buffer policy is captured before source loading and isolated per HLS lane", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    const load = w.Hls.prototype.loadSource;
+    w.Hls.prototype.loadSource = function (url) {
+        this.config.maxMaxBufferLength = 5.005;
+        load.call(this, url);
+    };
+    w.stbPlay("main.m3u8");
+    w.stbPlayPip("pip.m3u8");
+    const backend = w.__ottCoreBackend();
+    const main = backend.current(),
+        pip = backend.current("pip");
+    const mainSnapshot = main.diagnosticMedia();
+    const pipSnapshot = pip.diagnosticMedia();
+    assert.equal(mainSnapshot.hls, players[0]);
+    assert.equal(pipSnapshot.hls, players[1]);
+    assert.equal(mainSnapshot.hls.config.maxMaxBufferLength, 5.005);
+    assert.equal(pipSnapshot.hls.config.maxMaxBufferLength, 5.005);
+    assert(
+        mainSnapshot.initialHlsBufferPolicy.max_max_buffer_length_seconds >
+            5.005
+    );
+    assert(
+        pipSnapshot.initialHlsBufferPolicy.max_max_buffer_length_seconds > 5.005
+    );
+    mainSnapshot.initialHlsBufferPolicy.max_max_buffer_length_seconds = 999;
+    assert.notEqual(
+        main.diagnosticMedia().initialHlsBufferPolicy
+            .max_max_buffer_length_seconds,
+        999
+    );
+    assert.notEqual(
+        pip.diagnosticMedia().initialHlsBufferPolicy
+            .max_max_buffer_length_seconds,
+        999
+    );
+    pip.suspend();
+    assert.equal(pip.diagnosticMedia(), null);
+    assert.equal(main.diagnosticMedia().hls, players[0]);
+    main.suspend();
+    assert.equal(main.diagnosticMedia(), null);
+    main.resume();
+    const replacement = main.diagnosticMedia();
+    assert.notEqual(replacement.hls, players[0]);
+    assert(
+        replacement.initialHlsBufferPolicy.max_max_buffer_length_seconds > 5.005
+    );
+});
+
 (async () => {
     let failures = 0;
     for (const [name, fn] of cases) {

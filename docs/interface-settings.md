@@ -52,6 +52,18 @@ and secondary text `#4a6255`. A separate edge mark identifies the current channe
 moving focus does not transfer that mark. Colour-key cues remain visible in the
 footer. Studio has no new font download, blur requirement or focus animation.
 
+## Touchscreen browsers
+
+The browser player, including `/f/pc/`, supports vertical touch scrolling in
+channel and settings lists. Drag upward to reach later entries and downward to
+reach earlier entries; a quick flick continues briefly after release. Paging
+does not interrupt the gesture, and dragging never activates a channel.
+
+Browser taps keep the same selection and activation behavior as mouse clicks.
+Native Capacitor players retain their existing tap behavior. Mouse-wheel and
+remote navigation, gestures outside the list and text editing are unchanged.
+There is no need to select an Android or Tizen device target to use touch input.
+
 ## Remote font size
 
 On an updated player, read or change the same saved preference through remote

@@ -584,6 +584,10 @@ var keyStrings = {
     "List type": "Тып спіса",
     "Lists settings": "Налады спісаў",
     Live: "Прамы эфір",
+    "Live recovery attempts": "Спробы аднаўлення прамога эфіру",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Не ўдалося прайграць паток · Спробы аднаўлення прамога эфіру %1/%2",
+    "Live stall timeout, s": "Час чакання пры завісанні, с",
     Load: "Загрузіць",
     "Load built-in playlist:": "Загрузіць убудаваны плэйліст:",
     "Load playlist": "Загрузіць плэйліст",
@@ -781,6 +785,7 @@ var keyStrings = {
     "Records for channel: ": "Запісы канала: ",
     "Records library is empty": "Бібліятэка запісаў пустая",
     "Records not supported by provider": "Правайдар не падтрымлівае запісы",
+    "Recovering stream (%1/%2)": "Паўторнае падключэнне… (%1/%2)",
     "Release date": "Дата выхаду",
     "Remember previous channels": "Запамінаць папярэднія каналы",
     "Reminder: %1 — %2 in %3 min": "Напамін: %1 — %2 праз %3 хв",
@@ -1001,6 +1006,7 @@ var keyStrings = {
         "Спыніць прайграванне і вярнуцца ў эфір",
     "Stop screenshots": "Спыніць скрыншоты",
     "Stream could not be played": "Не ўдалося прайграць паток",
+    "Stream stalled. Restart in %1 s": "Перазапусціць паток · %1 с",
     "Stream timed out. Select the channel to retry.":
         "Час чакання патоку скончыўся. Выберыце канал, каб паўтарыць спробу.",
     "Stream type: %1": "Тып патоку: %1",

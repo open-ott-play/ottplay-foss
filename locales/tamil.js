@@ -583,6 +583,10 @@ var keyStrings = {
     "List type": "பட்டியல் வகை",
     "Lists settings": "பட்டியல் அமைப்புகள்",
     Live: "நேரடி ஒளிபரப்பு",
+    "Live recovery attempts": "நேரலை மீட்பு முயற்சிகள்",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ஸ்ட்ரீமை இயக்க முடியவில்லை · நேரலை மீட்பு முயற்சிகள் %1/%2",
+    "Live stall timeout, s": "நேரலை முடக்கக் காத்திருப்பு, வி",
     Load: "ஏற்றவும்",
     "Load built-in playlist:": "உள்ளமைக்கப்பட்ட பிளேலிஸ்ட்டை ஏற்றவும்:",
     "Load playlist": "பிளேலிஸ்ட்டை ஏற்றவும்",
@@ -780,6 +784,7 @@ var keyStrings = {
     "Records for channel: ": "சேனலுக்கான பதிவுகள்: ",
     "Records library is empty": "ரெக்கார்டிங் லைப்ரரி காலியாக உள்ளது",
     "Records not supported by provider": "இந்த வழங்குநரால் பதிவுகள் ஆதரிக்கப்படவில்லை",
+    "Recovering stream (%1/%2)": "மீண்டும் இணைக்கிறது… (%1/%2)",
     "Release date": "வெளியீட்டு தேதி",
     "Remember previous channels": "முந்தைய சேனல்களை நினைவில் கொள்க",
     "Reminder: %1 — %2 in %3 min": "நினைவூட்டல்: %1 — %3 நிமிடத்தில் %2",
@@ -1001,6 +1006,7 @@ var keyStrings = {
         "பிளேபேக்கை நிறுத்திவிட்டு நேரலைக்குத் திரும்பவும்",
     "Stop screenshots": "ஸ்கிரீன்ஷாட்களை நிறுத்து",
     "Stream could not be played": "ஸ்ட்ரீமை இயக்க முடியவில்லை",
+    "Stream stalled. Restart in %1 s": "ஸ்ட்ரீமை மறுதொடக்கம் செய்யவும் · %1 வினாடி",
     "Stream timed out. Select the channel to retry.":
         "ஒளிபரப்புக்கான காத்திருப்பு நேரம் முடிந்தது. மீண்டும் முயற்சிக்க சேனலைத் தேர்ந்தெடுக்கவும்.",
     "Stream type: %1": "ஸ்ட்ரீம் வகை: %1",

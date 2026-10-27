@@ -349,3 +349,136 @@ function fixture() {
 console.log(
     "playback feedback: bounded waits, confirmed progress, late recovery, seeks, pause/stop and source replacement PASS"
 );
+
+// OSD ownership affects presentation, never the upstream deadline or retries.
+{
+    const f = fixture();
+    f.api.begin();
+    f.advance(20000);
+    f.api.setRecoveryOverlay(true);
+    assert.equal(f.text(), "");
+    assert.equal(f.busy(), false);
+    assert.equal(f.timers.size, 1);
+    f.api.retry();
+    assert.equal(f.text(), "");
+    f.advance(10000);
+    assert.equal(f.text(), "");
+    assert.equal(f.timers.size, 0, "original deadline still expires");
+    f.api.setRecoveryOverlay(false);
+    assert.match(f.text(), /timed out/);
+    assert.equal(f.busy(), false);
+    f.w.close();
+}
+{
+    const f = fixture();
+    f.w.document.body.insertAdjacentHTML(
+        "beforeend",
+        '<div id="liveRecoveryStatus" aria-hidden="true"></div>'
+    );
+    for (const file of [
+        "src/playback/live-recovery.ts",
+        "src/ui/live-recovery.ts",
+    ])
+        f.w.eval(
+            ts.transpileModule(fs.readFileSync(file, "utf8"), {
+                compilerOptions: { target: ts.ScriptTarget.ES5 },
+            }).outputText
+        );
+    let time = 0;
+    let tick;
+    let restarts = 0;
+    const sample = {
+        activity: "0",
+        blocked: false,
+        handleId: 1,
+        key: "fixture-live",
+        position: 0,
+        ready: true,
+        recovering: false,
+        terminal: false,
+    };
+    const ui = f.w.__ottLiveRecoveryOSD;
+    const watcher = f.w.__ottLiveRecovery.create({
+        clearInterval() {},
+        now: () => time,
+        report: (state) => ui.render(state),
+        restart() {
+            restarts++;
+            sample.handleId++;
+            sample.position = 0;
+            f.api.begin();
+            f.event("loadstart");
+        },
+        sample: () => sample,
+        setInterval(callback) {
+            tick = callback;
+            return 1;
+        },
+        settings: () => ({ attempts: 1, timeout: 10 }),
+    });
+    function step(moving = false) {
+        time += 1000;
+        f.advance(1000);
+        if (moving) {
+            sample.position++;
+            f.video.currentTime++;
+            f.event("timeupdate");
+            watcher.refresh();
+        }
+        tick();
+    }
+    watcher.configure();
+    f.api.begin();
+    f.event("loadstart");
+    step();
+    step(true);
+    step(true);
+    f.event("waiting");
+    step();
+    step();
+    step();
+    assert.equal(watcher.snapshot().status.phase, "countdown");
+    assert.equal(f.text(), "", "countdown supersedes Buffering");
+    assert.equal(f.busy(), false);
+    sample.recovering = true;
+    step();
+    assert.equal(watcher.snapshot().status.phase, "hidden");
+    assert.equal(
+        f.text(),
+        "Buffering...",
+        "pending engine recovery owns feedback"
+    );
+    sample.recovering = false;
+    step(true);
+    assert.equal(f.text(), "");
+    for (let i = 0; i < 10; i++) step();
+    assert.equal(restarts, 1);
+    assert.equal(
+        f.text(),
+        "",
+        "replacement loadstart cannot cover the recovery OSD"
+    );
+    sample.terminal = true;
+    f.api.fail();
+    watcher.refresh();
+    assert.equal(watcher.snapshot().status.phase, "exhausted");
+    assert.equal(
+        f.text(),
+        "Stream could not be played",
+        "terminal errors stay visible"
+    );
+    sample.terminal = false;
+    step(true);
+    assert.equal(f.text(), "", "actual progress clears both presentations");
+    assert.equal(watcher.snapshot().status.phase, "hidden");
+    assert.equal(
+        watcher.snapshot().attempts,
+        1,
+        "one good frame does not renew budget"
+    );
+    watcher.dispose();
+    f.w.close();
+}
+console.log(
+    "playback feedback: live OSD handoff preserves deadlines, engine recovery and terminal errors PASS"
+);

@@ -605,6 +605,10 @@ var keyStrings = {
     "List type": "Ubwoko bw'urutonde",
     "Lists settings": "Igenamiterere ry'urutonde",
     Live: "Imbonankubone",
+    "Live recovery attempts": "Kugerageza kugarura ikiganiro kizima",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Gukina isakaza byanze · Kugerageza kugarura ikiganiro kizima %1/%2",
+    "Live stall timeout, s": "Igihe cyo gutegereza ihagarara, s",
     Load: "Fungura",
     "Load built-in playlist:": "Fungura urutonde rwo gukina rwubatswemo:",
     "Load playlist": "Fungura urutonde rwo gukina",
@@ -807,6 +811,7 @@ var keyStrings = {
     "Records library is empty": "Isomero ry'ibyafashwe ririmo ubusa",
     "Records not supported by provider":
         "Uyu utanga serivisi ntashyigikira ibyafashwe",
+    "Recovering stream (%1/%2)": "Turongera guhuza… (%1/%2)",
     "Release date": "Itariki byasohokeyeho",
     "Remember previous channels": "Ibuka shene zabanje",
     "Reminder: %1 — %2 in %3 min": "Kwibutsa: %1 — %2 mu minota %3",
@@ -1034,6 +1039,7 @@ var keyStrings = {
         "Hagarika gukina usubire ku mbonankubone",
     "Stop screenshots": "Hagarika gufata amafoto ya ecran",
     "Stream could not be played": "Gukina isakaza byanze",
+    "Stream stalled. Restart in %1 s": "Ongera utangize isakaza · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Igihe cyo gutegereza ikiganiro cyarangiye. Hitamo shene wongere ugerageze.",
     "Stream type: %1": "Ubwoko bw'isakaza: %1",

@@ -586,6 +586,10 @@ var keyStrings = {
     "List type": "Jenis senarai",
     "Lists settings": "Tetapan senarai",
     Live: "Langsung",
+    "Live recovery attempts": "Cubaan pemulihan siaran langsung",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Strim tidak dapat dimainkan · Cubaan pemulihan siaran langsung %1/%2",
+    "Live stall timeout, s": "Had masa siaran tersekat, s",
     Load: "Muatkan",
     "Load built-in playlist:": "Muatkan senarai main terbina dalam:",
     "Load playlist": "Muatkan senarai main",
@@ -782,6 +786,7 @@ var keyStrings = {
     "Records library is empty": "Pustaka rakaman kosong",
     "Records not supported by provider":
         "Rakaman tidak disokong oleh penyedia ini",
+    "Recovering stream (%1/%2)": "Menyambung semula… (%1/%2)",
     "Release date": "Tarikh keluaran",
     "Remember previous channels": "Ingat saluran sebelumnya",
     "Reminder: %1 — %2 in %3 min": "Peringatan: %1 — %2 dalam %3 min",
@@ -1005,6 +1010,7 @@ var keyStrings = {
         "Hentikan main balik dan kembali ke siaran langsung",
     "Stop screenshots": "Hentikan tangkapan skrin",
     "Stream could not be played": "Strim tidak dapat dimainkan",
+    "Stream stalled. Restart in %1 s": "Mulakan semula strim · %1 s",
     "Stream timed out. Select the channel to retry.":
         "Masa menunggu strim telah tamat. Pilih saluran untuk mencuba semula.",
     "Stream type: %1": "Jenis strim: %1",

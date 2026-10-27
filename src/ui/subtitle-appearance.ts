@@ -455,6 +455,18 @@
                         "16 Mbps",
                     ],
                 },
+                {
+                    name: label("Live recovery attempts"),
+                    settingId: "liveRecoveryAttempts",
+                    settingValues: [0, 1, 2, 3, 4, 5],
+                    values: [label("Off"), 1, 2, 3, 4, 5],
+                },
+                {
+                    name: label("Live stall timeout, s"),
+                    settingId: "liveRecoveryTimeout",
+                    settingValues: [10, 15, 20, 30],
+                    values: [10, 15, 20, 30],
+                },
                 choice(label("Buffer Size, s"), "bufSize", host.bufferSizes),
             ])
         );

@@ -100,10 +100,8 @@ remain unchanged when its transport endpoint changes.
   access again. It does not reuse an expired iOS loopback URL. VOD/archive
   position is sampled before teardown; live backups start at their live edge.
 
-The policy does not introduce a second stalled-frame watchdog. Existing kiosk,
-Auto/native and HLS recovery still cover their own observed failure cases. A
-stream that stalls silently without any existing detector reporting an error
-needs separate diagnosis.
+Optional live media-clock recovery is described below. Existing kiosk, Auto/native
+and HLS recovery retain their own scopes and engine behavior.
 
 ## Verification and observability
 
@@ -133,3 +131,26 @@ teardown and VOD position retention. The five new playback labels are translated
 in all 88 shipped language packs; automated parity is not native-speaker review.
 Physical TV/D1 playback and provider-specific manifests still require device
 validation. [Editable diagram source](diagrams/stream-recovery.mmd).
+
+## Live stall recovery
+
+In **Settings → Interface settings**, select **Live recovery attempts** (0–5)
+and **Live stall timeout, s** (10/15/20/30). Defaults are 0 attempts and 15 seconds.
+Zero disables only this watchdog; existing engine error recovery remains unchanged.
+Settings use the normal Save/Cancel flow.
+
+After verified playback progress, a stalled main live media clock invokes the
+existing `backend.restart()`. Pause, seeking, hidden pages, offline state and kiosk
+suspend observation; archive, VOD and the PiP lane are excluded. Native PiP hides
+the HTML OSD. Channel/source/generation
+changes cancel the old observation. Initial playback that never advances remains
+subject to existing startup/error handling. Decoder replacements and brief progress
+do not renew the attempt budget: ten continuous seconds of progress do. Exhausting
+the limit stops further watchdog restarts for that stall. Pending engine recovery
+takes priority; terminal authorization/DRM/quality errors cannot be bypassed.
+This observes media time, not physical picture presentation or frozen frames while
+the media clock keeps advancing.
+
+For a subscription-free smoke test, choose **Try demo**. Once playing, temporarily
+set `document.getElementById("video").playbackRate = 0` in the test tab's DevTools;
+restore it to 1 afterwards. Pausing is intentionally excluded from stall recovery.

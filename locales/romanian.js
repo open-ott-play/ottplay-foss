@@ -602,6 +602,10 @@ var keyStrings = {
     "List type": "Tipul listei",
     "Lists settings": "Setările listelor",
     Live: "În direct",
+    "Live recovery attempts": "Încercări de recuperare a transmisiei live",
+    "Live recovery attempts exhausted (%1/%2)":
+        "Fluxul nu a putut fi redat · Încercări de recuperare a transmisiei live %1/%2",
+    "Live stall timeout, s": "Timp de așteptare la blocare, s",
     Load: "Încarcă",
     "Load built-in playlist:": "Încarcă lista de redare încorporată:",
     "Load playlist": "Încarcă playlistul",
@@ -802,6 +806,7 @@ var keyStrings = {
     "Records library is empty": "Biblioteca de înregistrări este goală",
     "Records not supported by provider":
         "Acest furnizor nu acceptă înregistrări",
+    "Recovering stream (%1/%2)": "Reconectare… (%1/%2)",
     "Release date": "Data lansării",
     "Remember previous channels": "Memorează canalele anterioare",
     "Reminder: %1 — %2 in %3 min": "Memento: %1 — %2 în %3 min",
@@ -1031,6 +1036,7 @@ var keyStrings = {
         "Oprește redarea și revino la transmisia în direct",
     "Stop screenshots": "Opriți capturile de ecran",
     "Stream could not be played": "Fluxul nu a putut fi redat",
+    "Stream stalled. Restart in %1 s": "Repornește fluxul · %1 s",
     "Stream timed out. Select the channel to retry.":
         "A expirat timpul de așteptare al fluxului. Selectați canalul pentru a încerca din nou.",
     "Stream type: %1": "Tip de flux: %1",

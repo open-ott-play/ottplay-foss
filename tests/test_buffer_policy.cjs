@@ -16,9 +16,49 @@ vm.runInNewContext(
 const {
     createBufferPolicy: policy,
     coreBufferPolicy,
+    snapshotInitialHlsBufferPolicy,
     isAceStreamSource,
 } = context.exports;
 const desktop = policy({ deviceMemory: 8, live: true });
+const merged = {
+    backBufferLength: 15,
+    get loader() {
+        throw Error("unrelated HLS fields must not be read");
+    },
+    maxBufferLength: 20,
+    maxBufferSize: 32000000,
+    maxMaxBufferLength: 60,
+};
+const initial = snapshotInitialHlsBufferPolicy({ config: merged });
+merged.maxMaxBufferLength = 5.005;
+assert.equal(initial.max_max_buffer_length_seconds, 60);
+assert.equal(initial.max_buffer_size_bytes, 32000000);
+assert.deepEqual(Object.keys(initial).sort(), [
+    "back_buffer_length_seconds",
+    "max_buffer_length_seconds",
+    "max_buffer_size_bytes",
+    "max_max_buffer_length_seconds",
+]);
+assert.equal(snapshotInitialHlsBufferPolicy(null), null);
+assert.equal(
+    snapshotInitialHlsBufferPolicy({
+        get config() {
+            throw Error("unavailable");
+        },
+    }),
+    null
+);
+const unavailable = snapshotInitialHlsBufferPolicy({
+    config: {
+        get backBufferLength() {
+            throw Error("unavailable");
+        },
+        maxBufferLength: Infinity,
+        maxBufferSize: 2.5,
+        maxMaxBufferLength: -1,
+    },
+});
+assert(Object.values(unavailable).every((value) => value === null));
 assert.equal(desktop.hls.maxBufferLength, 30);
 assert.equal(desktop.hls.maxBufferSize, 120000000);
 assert.equal(desktop.hls.maxMaxBufferLength, 60);

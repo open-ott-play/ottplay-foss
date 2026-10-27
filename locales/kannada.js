@@ -571,6 +571,10 @@ var keyStrings = {
     "List type": "ಪಟ್ಟಿ ಪ್ರಕಾರ",
     "Lists settings": "ಪಟ್ಟಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     Live: "ನೇರ ಪ್ರಸಾರ",
+    "Live recovery attempts": "ನೇರ ಪ್ರಸಾರ ಮರುಸ್ಥಾಪನೆ ಪ್ರಯತ್ನಗಳು",
+    "Live recovery attempts exhausted (%1/%2)":
+        "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ · ನೇರ ಪ್ರಸಾರ ಮರುಸ್ಥಾಪನೆ ಪ್ರಯತ್ನಗಳು %1/%2",
+    "Live stall timeout, s": "ಪ್ರಸಾರ ಸ್ಥಗಿತದ ಸಮಯಮಿತಿ, ಸೆ",
     Load: "ಲೋಡ್",
     "Load built-in playlist:": "ಅಂತರ್ನಿರ್ಮಿತ ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಿ:",
     "Load playlist": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಿ",
@@ -768,6 +772,7 @@ var keyStrings = {
     "Records for channel: ": "ಚಾನಲ್‌ಗಾಗಿ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು: ",
     "Records library is empty": "ರೆಕಾರ್ಡಿಂಗ್ ಲೈಬ್ರರಿ ಖಾಲಿಯಾಗಿದೆ",
     "Records not supported by provider": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಈ ಪೂರೈಕೆದಾರರು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ",
+    "Recovering stream (%1/%2)": "ಮರುಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ… (%1/%2)",
     "Release date": "ಬಿಡುಗಡೆ ದಿನಾಂಕ",
     "Remember previous channels": "ಹಿಂದಿನ ಚಾನಲ್‌ಗಳನ್ನು ನೆನಪಿಡಿ",
     "Reminder: %1 — %2 in %3 min": "ಜ್ಞಾಪನೆ: %1 — %3 ನಿಮಿಷದಲ್ಲಿ %2",
@@ -985,6 +990,7 @@ var keyStrings = {
     "Stop playback and return to live": "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಲೈವ್‌ಗೆ ಹಿಂತಿರುಗಿ",
     "Stop screenshots": "ಸ್ಕ್ರೀನ್‌ಶಾಟ್‌ಗಳನ್ನು ನಿಲ್ಲಿಸಿ",
     "Stream could not be played": "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
+    "Stream stalled. Restart in %1 s": "ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಿ · %1 ಸೆಕೆಂಡ್",
     "Stream timed out. Select the channel to retry.":
         "ಸ್ಟ್ರೀಮ್‌ನ ಕಾಯುವ ಸಮಯ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಚಾನಲ್ ಆಯ್ಕೆಮಾಡಿ.",
     "Stream type: %1": "ಸ್ಟ್ರೀಮ್ ಪ್ರಕಾರ: %1",
