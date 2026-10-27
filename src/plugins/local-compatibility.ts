@@ -14,10 +14,14 @@ function createLocalCompatibility(w: any, p: any): any {
     var compatibilityLeases: any[] = [];
     var compatibilityPending: any[] = [];
     function leaseForUrl(url: string): any {
-        return compatibilityLeases.filter(function (entry) {
-            return entry.g === url ||
-                (entry.f === url && entry.h && entry.k === p.c());
-        }).pop();
+        return compatibilityLeases
+            .filter(function (entry) {
+                return (
+                    entry.g === url ||
+                    (entry.f === url && entry.h && entry.k === p.c())
+                );
+            })
+            .pop();
     }
     function playbackItem(url: string): any {
         var lease = leaseForUrl(url),
@@ -28,23 +32,41 @@ function createLocalCompatibility(w: any, p: any): any {
         })[0];
         if (!lease) return item;
         if (
-            catalog?.available === false ||
-            catalog?.reconnectRequired ||
-            catalog?.scanError ||
-            (catalog && lease.j.sourceId && !(catalog.sources || []).some(function (source: any) {
-                return source.id === lease.j.sourceId && source.available !== false;
-            }))
-        ) return;
+            (catalog && catalog.available === false) ||
+            (catalog && catalog.reconnectRequired) ||
+            (catalog && catalog.scanError) ||
+            (catalog &&
+                lease.j.sourceId &&
+                !(catalog.sources || []).some(function (source: any) {
+                    return (
+                        source.id === lease.j.sourceId &&
+                        source.available !== false
+                    );
+                }))
+        )
+            return;
         if (item)
-            return item.id === lease.d && item.sourceId === lease.j.sourceId &&
-                item.available !== false && item.playback?.mode === localText0
-                ? item : undefined;
+            return item.id === lease.d &&
+                item.sourceId === lease.j.sourceId &&
+                item.available !== false &&
+                item.playback &&
+                item.playback.mode === localText0
+                ? item
+                : undefined;
         // A refresh clears last and progressive prefixes can omit the playing
         // item. Only an owned, verified snapshot may bridge that incomplete view.
-        if (!catalog || (catalog.scanning && !(catalog.sourceScans || []).some(function (scan: any) {
-            return scan.sourceId === lease.j.sourceId &&
-                scan.state !== "pending" && scan.state !== "scanning";
-        }))) return lease.j;
+        if (
+            !catalog ||
+            (catalog.scanning &&
+                !(catalog.sourceScans || []).some(function (scan: any) {
+                    return (
+                        scan.sourceId === lease.j.sourceId &&
+                        scan.state !== "pending" &&
+                        scan.state !== "scanning"
+                    );
+                }))
+        )
+            return lease.j;
     }
     function compatibilityPlayback(url: string): boolean {
         return (
@@ -88,9 +110,13 @@ function createLocalCompatibility(w: any, p: any): any {
         if (w.__ottStandby?.blocked() || (current && !current()))
             return Promise.reject(new Error(localText1));
         var item = playbackItem(url);
-        if (!item && compatibilityLeases.some(function (entry) {
-            return entry.g === url || entry.f === url;
-        })) return Promise.reject(new Error(localText1));
+        if (
+            !item &&
+            compatibilityLeases.some(function (entry) {
+                return entry.g === url || entry.f === url;
+            })
+        )
+            return Promise.reject(new Error(localText1));
         if (
             localField(localField(item, "playback"), "mode") ===
                 "unsupported" ||
@@ -171,14 +197,12 @@ function createLocalCompatibility(w: any, p: any): any {
                     prepare.search ||
                     prepare.hash
                 )
-                    throw new Error("Invalid local compatibility endpoint");
+                    throw new Error(localText3);
                 var cancel = new URL("cancel", prepare);
                 Promise.resolve(w.fetch(prepare.href, postOptions(controller)))
                     .then(function (response: any) {
                         if (!response.ok)
-                            throw new Error(
-                                "Local compatibility playback is unavailable"
-                            );
+                            throw new Error(localText3);
                         return response.json();
                     })
                     .then(function (value: any) {
@@ -194,9 +218,7 @@ function createLocalCompatibility(w: any, p: any): any {
                                     value.lease + "/index.m3u8"
                                 )
                         )
-                            throw new Error(
-                                "Invalid local compatibility lease"
-                            );
+                            throw new Error(localText3);
                         var entry = {
                             a: true,
                             b: cancel.href,
@@ -208,13 +230,13 @@ function createLocalCompatibility(w: any, p: any): any {
                             h: false,
                             j: {
                                 id: item.id,
-                                sourceId: item.sourceId,
-                                url: sourceUrl,
                                 playback: {
-                                    mode: localText0,
                                     mime: localText2,
+                                    mode: localText0,
                                     prepareUrl: prepare.href,
                                 },
+                                sourceId: item.sourceId,
+                                url: sourceUrl,
                             },
                             k: identity,
                         };
@@ -241,9 +263,7 @@ function createLocalCompatibility(w: any, p: any): any {
                             else {
                                 compatibilityLeases.pop();
                                 cancelLease(entry);
-                                throw new Error(
-                                    "Too many local playback leases"
-                                );
+                                throw new Error(localText3);
                             }
                         }
                         if (!admitted() || settled) {
@@ -263,9 +283,7 @@ function createLocalCompatibility(w: any, p: any): any {
                             value.mime !== localText2
                         ) {
                             cancelLease(entry);
-                            throw new Error(
-                                "Compatibility playback must have a finite source timeline"
-                            );
+                            throw new Error(localText3);
                         }
                         entry.h = true;
                         finish();
@@ -295,9 +313,7 @@ function createLocalCompatibility(w: any, p: any): any {
         },
         d: playbackItem,
         e: function (url: string) {
-            return (
-                localField(playbackItem(url), "url") || url
-            );
+            return localField(playbackItem(url), "url") || url;
         },
         f: preparePlayback,
     };

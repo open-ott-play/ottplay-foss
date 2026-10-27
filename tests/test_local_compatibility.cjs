@@ -307,7 +307,11 @@ test("verified lease keeps its source through empty and partial refresh and rene
     const first = await f.api.preparePlayback(sourceUrl);
     reading = deferred();
     const refresh = f.api.list(() => false);
-    assert.equal(f.api.compatibilityPlayback(first), true, "last=null keeps the owned descriptor");
+    assert.equal(
+        f.api.compatibilityPlayback(first),
+        true,
+        "last=null keeps the owned descriptor"
+    );
     assert.equal(f.api.isPlaybackUrl(first), true);
     assert.equal(f.api.playbackSourceUrl(first), sourceUrl);
     f.api.cancelPlayback(first);
@@ -316,11 +320,17 @@ test("verified lease keeps its source through empty and partial refresh and rene
     assert.equal(f.api.playbackSourceUrl(second), sourceUrl);
     const partial = clone(f.catalog);
     partial.scanning = true;
-    partial.sourceScans = [{ sourceId: "folder", state: "scanning", generation: 1 }];
+    partial.sourceScans = [
+        { generation: 1, sourceId: "folder", state: "scanning" },
+    ];
     partial.items = partial.items.slice(0, 1);
-    reading.resolve({ ok: true, json: async () => partial });
+    reading.resolve({ json: async () => partial, ok: true });
     await refresh;
-    assert.equal(f.api.compatibilityPlayback(second), true, "a prefix may omit the active item");
+    assert.equal(
+        f.api.compatibilityPlayback(second),
+        true,
+        "a prefix may omit the active item"
+    );
     f.api.cancelPlayback(second);
     const third = await f.api.preparePlayback(second);
     assert.equal(f.api.playbackSourceUrl(third), sourceUrl);
@@ -328,14 +338,25 @@ test("verified lease keeps its source through empty and partial refresh and rene
     assert.equal(f.timers.size, 0);
 });
 
-for (const kind of ["removed", "source-complete", "source-unavailable", "source-removed", "item-unavailable", "source-mismatch", "id-mismatch", "unsupported"]) {
+for (const kind of [
+    "removed",
+    "source-complete",
+    "source-unavailable",
+    "source-removed",
+    "item-unavailable",
+    "source-mismatch",
+    "id-mismatch",
+    "unsupported",
+]) {
     test("lease snapshot fails closed after " + kind, async () => {
         const f = fixture();
         await f.api.list();
         const lease = await f.api.preparePlayback(sourceUrl);
         if (kind === "item-unavailable") f.catalog.items[1].available = false;
-        else if (kind === "unsupported") f.catalog.items[1].playback.mode = "unsupported";
-        else if (kind === "source-mismatch") f.catalog.items[1].sourceId = "other";
+        else if (kind === "unsupported")
+            f.catalog.items[1].playback.mode = "unsupported";
+        else if (kind === "source-mismatch")
+            f.catalog.items[1].sourceId = "other";
         else if (kind === "id-mismatch") f.catalog.items[1].id = "b".repeat(32);
         else f.catalog.items = f.catalog.items.slice(0, 1);
         if (kind === "source-unavailable") {
@@ -348,7 +369,9 @@ for (const kind of ["removed", "source-complete", "source-unavailable", "source-
         }
         if (kind === "source-complete") {
             f.catalog.scanning = true;
-            f.catalog.sourceScans = [{ sourceId: "folder", state: "complete", generation: 1 }];
+            f.catalog.sourceScans = [
+                { generation: 1, sourceId: "folder", state: "complete" },
+            ];
         }
         await f.api.list(() => false);
         assert.equal(f.api.isPlaybackUrl(lease), false);
@@ -362,14 +385,19 @@ for (const kind of ["removed", "source-complete", "source-unavailable", "source-
 
 for (const kind of ["library", "profile", "bindings", "cancel-all"]) {
     test("lease snapshots cannot cross " + kind + " ownership", async () => {
-        let reading, profile = "old";
+        let reading,
+            profile = "old";
         const f = fixture({ read: () => reading?.promise });
-        f.w.__ottOfflineProfiles = { namespace: () => "offline", current: () => ({ id: profile }) };
+        f.w.__ottOfflineProfiles = {
+            current: () => ({ id: profile }),
+            namespace: () => "offline",
+        };
         await f.api.list();
         const lease = await f.api.preparePlayback(sourceUrl);
         reading = deferred();
         const refresh = f.api.list(() => false);
-        if (kind === "library") f.values.set("localMediaEndpoint", "https://other.test/library");
+        if (kind === "library")
+            f.values.set("localMediaEndpoint", "https://other.test/library");
         if (kind === "profile") profile = "new";
         if (kind === "bindings") f.values.set("offlineProfileBindings", "new");
         if (kind === "cancel-all") f.api.cancelPlayback();
@@ -377,11 +405,15 @@ for (const kind of ["library", "profile", "bindings", "cancel-all"]) {
         await assert.rejects(f.api.preparePlayback(lease));
         await assert.rejects(f.api.preparePlayback(sourceUrl));
         assert.equal(f.calls.filter((c) => c[0] === prepareUrl).length, 1);
-        reading.resolve({ ok: true, json: async () => clone(f.catalog) });
+        reading.resolve({ json: async () => clone(f.catalog), ok: true });
         await refresh;
         if (kind !== "library") {
             const next = await f.api.preparePlayback(sourceUrl);
-            assert.notEqual(next, lease, "fresh accepted metadata can prepare under the new owner");
+            assert.notEqual(
+                next,
+                lease,
+                "fresh accepted metadata can prepare under the new owner"
+            );
         }
         assert.equal(f.timers.size, 0);
     });
@@ -740,4 +772,50 @@ test("a replaced screen cannot reopen after its optional UI download", async () 
     await pending;
     assert.equal(f.w.listArray, undefined);
     assert(!f.calls.some((c) => c[0] === "native-import"));
+});
+
+test("internal endpoint/lease/finite failures keep the exact public error and safe cancellation", async () => {
+    const message = "Local compatibility playback could not be prepared";
+    for (const kind of ["endpoint", "lease", "finite"]) {
+        const f = fixture({
+            prepare: async (url, init, descriptor) => ({
+                json: async () =>
+                    descriptor(
+                        kind === "lease"
+                            ? { lease: "INVALID" }
+                            : kind === "finite"
+                              ? { finite: false }
+                              : {}
+                    ),
+                ok: true,
+            }),
+        });
+        if (kind === "endpoint")
+            f.catalog.items[1].playback.prepareUrl =
+                "https://other.test/prepare";
+        await f.api.list();
+        await assert.rejects(f.api.preparePlayback(sourceUrl), { message });
+        await flush();
+        const cancels = f.calls.filter((c) => c[0].endsWith?.("/cancel"));
+        // A rejected endpoint/lease is never trusted enough to form a cancel.
+        // A validated lease rejected for its finite descriptor is retired.
+        assert.equal(cancels.length, kind === "finite" ? 1 : 0, kind);
+    }
+});
+
+test("lease capacity failure retires only the new lease and retains the same public error", async () => {
+    const f = fixture();
+    await f.api.list();
+    const active = [];
+    for (let n = 0; n < 32; n++)
+        active.push(await f.api.preparePlayback(sourceUrl));
+    await assert.rejects(f.api.preparePlayback(sourceUrl), {
+        message: "Local compatibility playback could not be prepared",
+    });
+    await flush();
+    const cancels = f.calls.filter((c) => c[0].endsWith?.("/cancel"));
+    assert.equal(cancels.length, 1);
+    const retired = cancels[0][1].headers["X-OTT-Playback-Lease"];
+    assert(active.every((url) => !url.includes("/" + retired + "/")));
+    assert(active.every((url) => f.api.isPlaybackUrl(url)));
 });
