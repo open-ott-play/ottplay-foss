@@ -823,12 +823,12 @@ console.log(
     storage.set(
         "playbackJournal",
         JSON.stringify({
-            channelReferences: 1,
             bookmark: {
                 channelId: "11999",
                 groupId: "Favorites",
                 kind: "live",
             },
+            channelReferences: 1,
             history: Array.from({ length: 1000 }, (_, index) => ({
                 channelId: String(11000 + index),
                 groupId: index === 999 ? "Favorites" : "All",
