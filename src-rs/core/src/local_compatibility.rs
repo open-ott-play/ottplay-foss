@@ -4,6 +4,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::{
     collections::HashMap,
+    net::{Ipv4Addr, SocketAddr},
     path::PathBuf,
     process::Stdio,
     sync::{Arc, LazyLock, Mutex},
@@ -169,7 +170,7 @@ pub(crate) struct Input {
 }
 struct Inner {
     tools: Tools,
-    source_base: String,
+    endpoint: PrivateEndpoint,
     client: reqwest::Client,
     leases: Mutex<HashMap<String, Arc<Lease>>>,
     preparing: Mutex<HashMap<String, Preparing>>,
@@ -177,6 +178,37 @@ struct Inner {
     #[cfg(test)]
     before_publication: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     bridge: tokio::task::JoinHandle<()>,
+}
+/// Only the OS-assigned address of our owned IPv4 loopback listener is accepted.
+/// No handler can supply a URL, host, scheme, query, or path to the HTTP client.
+struct PrivateEndpoint {
+    port: u16,
+    capability: String,
+}
+impl PrivateEndpoint {
+    fn new(address: SocketAddr, capability: String) -> Result<Self> {
+        if address.ip() != std::net::IpAddr::V4(Ipv4Addr::LOCALHOST)
+            || address.port() == 0
+            || capability.len() != 64
+            || !capability.bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return Err(Error::Unavailable);
+        }
+        Ok(Self {
+            port: address.port(),
+            capability,
+        })
+    }
+    fn source(&self, id: &str) -> Result<reqwest::Url> {
+        if id.len() != 32 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(Error::Source);
+        }
+        let mut url = reqwest::Url::parse("http://127.0.0.1/").expect("constant loopback URL");
+        url.set_port(Some(self.port))
+            .map_err(|_| Error::Unavailable)?;
+        url.set_path(&format!("/_input/{}/{id}", self.capability));
+        Ok(url)
+    }
 }
 impl Drop for Inner {
     fn drop(&mut self) {
@@ -258,17 +290,26 @@ impl Drop for SegmentGate {
 impl Manager {
     pub(crate) fn new(
         tools: Tools,
-        source_base: String,
+        address: SocketAddr,
+        capability: String,
         bridge: tokio::task::JoinHandle<()>,
-    ) -> Self {
+    ) -> Result<Self> {
+        let endpoint = match PrivateEndpoint::new(address, capability) {
+            Ok(endpoint) => endpoint,
+            Err(e) => {
+                bridge.abort();
+                return Err(e);
+            }
+        };
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
+            .no_proxy()
             .timeout(Duration::from_secs(10))
             .build()
             .expect("fixed local HTTP client");
         let manager = Self(Arc::new(Inner {
             tools,
-            source_base,
+            endpoint,
             client,
             leases: Mutex::new(HashMap::new()),
             preparing: Mutex::new(HashMap::new()),
@@ -287,10 +328,10 @@ impl Manager {
                 Manager(inner).prune();
             }
         });
-        manager
+        Ok(manager)
     }
-    fn source(&self, input: &Input) -> String {
-        format!("{}/{}", self.0.source_base, input.id)
+    fn source(&self, id: &str) -> Result<reqwest::Url> {
+        self.0.endpoint.source(id)
     }
     fn prune(&self) {
         let mut leases = lock(&self.0.leases);
@@ -396,7 +437,7 @@ impl Manager {
             inner: self.0.clone(),
             id: request_id,
         };
-        let source = self.source(&input);
+        let source = self.source(&input.id)?.to_string();
         let mut cmd = Command::new(&self.0.tools.ffprobe);
         cmd.args([
             "-v",
@@ -446,7 +487,7 @@ impl Manager {
             && audio.iter().all(|s| s.codec_name == "aac")
             && probe.format.start_time.parse::<f64>().unwrap_or(0.0).abs() < 0.001;
         let cues = if can_copy {
-            self.cues(&source, input.size, duration, work).await.ok()
+            self.cues(&input.id, input.size, duration, work).await.ok()
         } else {
             None
         };
@@ -612,7 +653,7 @@ impl Manager {
             "-ss",
             &format!("{start:.6}"),
             "-i",
-            &self.source(&input),
+            self.source(&input.id)?.as_str(),
             "-t",
             &format!("{:.6}", end - start),
         ]);
@@ -667,7 +708,7 @@ impl Manager {
     }
     async fn range(
         &self,
-        url: &str,
+        id: &str,
         size: u64,
         start: u64,
         length: usize,
@@ -681,7 +722,7 @@ impl Manager {
             .run(
                 self.0
                     .client
-                    .get(url)
+                    .get(self.source(id)?)
                     .header("Range", format!("bytes={start}-{end}"))
                     .send(),
             )
@@ -705,12 +746,12 @@ impl Manager {
     }
     async fn metadata_element(
         &self,
-        url: &str,
+        id: &str,
         size: u64,
         position: u64,
         work: &WorkLease,
     ) -> Result<Vec<u8>> {
-        let header = self.range(url, size, position, 16, work).await?;
+        let header = self.range(id, size, position, 16, work).await?;
         let (_, start, length, _) = element_header(&header, 0)?;
         if length > MAX_METADATA
             || position
@@ -720,19 +761,13 @@ impl Manager {
         {
             return Err(Error::Unsupported);
         }
-        self.range(url, size, position + start as u64, length, work)
+        self.range(id, size, position + start as u64, length, work)
             .await
     }
     /// Matroska SeekHead->Tracks/Info/Cues; reads at most 3MiB plus 64KiB.
     /// Missing or doubtful index means transcode, never a fabricated copy grid.
-    async fn cues(
-        &self,
-        url: &str,
-        size: u64,
-        duration: f64,
-        work: &WorkLease,
-    ) -> Result<Vec<f64>> {
-        let header = self.range(url, size, 0, 65_536, work).await?;
+    async fn cues(&self, id: &str, size: u64, duration: f64, work: &WorkLease) -> Result<Vec<f64>> {
+        let header = self.range(id, size, 0, 65_536, work).await?;
         let mut at = 0;
         let mut offset = None;
         while at < header.len() {
@@ -783,7 +818,7 @@ impl Manager {
         }
         let mut scale = 0.001;
         if let Some(pos) = locations.get(&0x1549a966) {
-            let body = self.metadata_element(url, size, *pos, work).await?;
+            let body = self.metadata_element(id, size, *pos, work).await?;
             for (id, b) in children(&body)? {
                 if id == 0x2ad7b1 {
                     scale = integer(b)? as f64 / 1_000_000_000.0;
@@ -795,7 +830,7 @@ impl Manager {
         }
         let tracks = self
             .metadata_element(
-                url,
+                id,
                 size,
                 *locations.get(&0x1654ae6b).ok_or(Error::Unsupported)?,
                 work,
@@ -822,7 +857,7 @@ impl Manager {
         let video = video.ok_or(Error::Unsupported)?;
         let cues = self
             .metadata_element(
-                url,
+                id,
                 size,
                 *locations.get(&0x1c53bb6b).ok_or(Error::Unsupported)?,
                 work,
@@ -990,6 +1025,21 @@ impl Drop for Caller {
         self.0.send_replace(true);
     }
 }
+const CHILD_PROXY_VARIABLES: [&str; 6] = [
+    "http_proxy",
+    "HTTP_PROXY",
+    "https_proxy",
+    "HTTPS_PROXY",
+    "all_proxy",
+    "ALL_PROXY",
+];
+fn clear_child_proxies(command: &mut Command) {
+    // This child can read only our private loopback input. Inherited proxy
+    // configuration must not send its capability or original bytes elsewhere.
+    for name in CHILD_PROXY_VARIABLES {
+        command.env_remove(name);
+    }
+}
 /// The worker retains its BackgroundWork lease through kill AND wait/reap.
 async fn capture(
     mut cmd: Command,
@@ -998,6 +1048,7 @@ async fn capture(
     limit: usize,
     timeout: Duration,
 ) -> Result<Vec<u8>> {
+    clear_child_proxies(&mut cmd);
     check(work)?;
     if *cancelled.borrow() {
         return Err(Error::Cancelled);
@@ -1118,6 +1169,59 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn private_media_children_explicitly_remove_all_proxy_variants() {
+        for name in CHILD_PROXY_VARIABLES {
+            let mut command = Command::new("unused-no-process-is-launched");
+            command.env(name, "discard-me");
+            clear_child_proxies(&mut command);
+            assert!(
+                command.as_std().get_envs().any(|(key, value)| {
+                    #[cfg(windows)]
+                    let matches = key.to_string_lossy().eq_ignore_ascii_case(name);
+                    #[cfg(not(windows))]
+                    let matches = key == std::ffi::OsStr::new(name);
+                    matches && value.is_none()
+                }),
+                "{name} must be removed from the child's environment"
+            );
+        }
+    }
+    #[test]
+    fn private_endpoint_has_fixed_loopback_origin_and_opaque_paths() {
+        let endpoint =
+            PrivateEndpoint::new("127.0.0.1:12345".parse().unwrap(), "a".repeat(64)).unwrap();
+        let target = endpoint.source(&"b".repeat(32)).unwrap();
+        assert_eq!(target.scheme(), "http");
+        assert_eq!(target.host_str(), Some("127.0.0.1"));
+        assert_eq!(target.port(), Some(12345));
+        assert!(
+            target.username().is_empty()
+                && target.password().is_none()
+                && target.query().is_none()
+                && target.fragment().is_none()
+        );
+        assert_eq!(
+            target.path(),
+            format!("/_input/{}/{}", "a".repeat(64), "b".repeat(32))
+        );
+        for id in ["", "not-an-opaque-id", &"a".repeat(31), &"g".repeat(32)] {
+            assert!(endpoint.source(id).is_err());
+        }
+        for address in [
+            "127.0.0.1:0",
+            "0.0.0.0:12345",
+            "192.0.2.1:12345",
+            "[::1]:12345",
+        ] {
+            assert!(PrivateEndpoint::new(address.parse().unwrap(), "a".repeat(64)).is_err());
+        }
+        assert!(PrivateEndpoint::new(
+            "127.0.0.1:12345".parse().unwrap(),
+            "not-a-capability".into()
+        )
+        .is_err());
+    }
     fn input() -> Input {
         Input {
             id: "a".repeat(32),
@@ -1151,9 +1255,11 @@ mod tests {
                 ffmpeg: "/unused".into(),
                 ffprobe: "/unused".into(),
             },
-            "http://127.0.0.1:1/private".into(),
+            "127.0.0.1:1".parse().unwrap(),
+            "a".repeat(64),
             tokio::spawn(std::future::pending()),
         )
+        .unwrap()
     }
     #[test]
     fn finite_timeline_has_truthful_tail_and_irregular_copy_boundaries() {

@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use compatibility_routes::{compat_cancel, compat_playlist, compat_prepare, compat_segment};
+
 use futures_util::{stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -604,11 +604,8 @@ impl Library {
         let bridge = tokio::spawn(async move {
             let _ = axum::serve(listener, router).await;
         });
-        self.compatibility = Some(crate::local_compatibility::Manager::new(
-            tools,
-            format!("http://{address}/_input/{token}"),
-            bridge,
-        ));
+        self.compatibility =
+            crate::local_compatibility::Manager::new(tools, address, token, bridge).ok();
         self
     }
     pub fn endpoint(&self) -> String {
@@ -619,22 +616,7 @@ impl Library {
             return Router::new()
                 .route("/offline-media/:token", get(catalog).options(preflight))
                 .route("/offline-media/:token/:id", get(media).options(preflight))
-                .route(
-                    "/offline-media/:token/compat/:id/prepare",
-                    post(compat_prepare).options(preflight),
-                )
-                .route(
-                    "/offline-media/:token/compat/:id/cancel",
-                    post(compat_cancel).options(preflight),
-                )
-                .route(
-                    "/offline-media/:token/compat/:id/:lease/:name",
-                    get(compat_playlist).options(preflight),
-                )
-                .route(
-                    "/offline-media/:token/compat/:id/:lease/:track/:segment",
-                    get(compat_segment).options(preflight),
-                )
+                .merge(compatibility_routes::routes(&self))
                 .layer(axum::middleware::map_response(
                     |mut response: Response| async move {
                         response.headers_mut().insert(
@@ -653,22 +635,7 @@ impl Library {
         let remove_item_library = self.clone();
         Router::new()
             .route("/offline-media/:token", get(catalog).options(preflight))
-            .route(
-                "/offline-media/:token/compat/:id/prepare",
-                post(compat_prepare).options(preflight),
-            )
-            .route(
-                "/offline-media/:token/compat/:id/cancel",
-                post(compat_cancel).options(preflight),
-            )
-            .route(
-                "/offline-media/:token/compat/:id/:lease/:name",
-                get(compat_playlist).options(preflight),
-            )
-            .route(
-                "/offline-media/:token/compat/:id/:lease/:track/:segment",
-                get(compat_segment).options(preflight),
-            )
+            .merge(compatibility_routes::routes(&self))
             .route(
                 "/offline-media/:token/import",
                 post(import).options(preflight),

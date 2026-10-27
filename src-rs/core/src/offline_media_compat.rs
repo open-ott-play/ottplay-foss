@@ -1,6 +1,44 @@
 //! Thin authenticated routes; filesystem access remains owned by offline_media.
 use super::*;
 use crate::local_compatibility::{Error, Input, Manager};
+// Library is trusted host configuration, never an HTTP State extractor.
+pub(super) fn routes(library: &Library) -> Router<Library> {
+    let prepare = library.clone();
+    let cancel = library.clone();
+    let playlist = library.clone();
+    let segment = library.clone();
+    Router::new()
+        .route(
+            "/offline-media/:token/compat/:id/prepare",
+            post(move |path: Path<(String, String)>| compat_prepare(prepare.clone(), path))
+                .options(preflight),
+        )
+        .route(
+            "/offline-media/:token/compat/:id/cancel",
+            post(move |path: Path<(String, String)>, headers: HeaderMap| {
+                compat_cancel(cancel.clone(), path, headers)
+            })
+            .options(preflight),
+        )
+        .route(
+            "/offline-media/:token/compat/:id/:lease/:name",
+            get(move |path: Path<(String, String, String, String)>| {
+                compat_playlist(playlist.clone(), path)
+            })
+            .options(preflight),
+        )
+        .route(
+            "/offline-media/:token/compat/:id/:lease/:track/:segment",
+            get(
+                move |path: Path<(String, String, String, String, String)>,
+                      headers: HeaderMap,
+                      method: Method| {
+                    compat_segment(segment.clone(), path, headers, method)
+                },
+            )
+            .options(preflight),
+        )
+}
 static DELIVERIES: std::sync::LazyLock<Arc<Semaphore>> =
     std::sync::LazyLock::new(|| Arc::new(Semaphore::new(8)));
 fn delivery_body(
@@ -90,7 +128,7 @@ fn manager(l: &Library) -> Result<Manager, Error> {
     l.compatibility.clone().ok_or(Error::Unavailable)
 }
 pub(super) async fn compat_prepare(
-    State(l): State<Library>,
+    l: Library,
     Path((token, id)): Path<(String, String)>,
 ) -> Response {
     if let Err(e) = l.authorize(&token) {
@@ -121,7 +159,7 @@ pub(super) async fn compat_prepare(
     response
 }
 pub(super) async fn compat_cancel(
-    State(l): State<Library>,
+    l: Library,
     Path((token, id)): Path<(String, String)>,
     headers: HeaderMap,
 ) -> Response {
@@ -144,7 +182,7 @@ pub(super) async fn compat_cancel(
     response
 }
 pub(super) async fn compat_playlist(
-    State(l): State<Library>,
+    l: Library,
     Path((token, id, lease, name)): Path<(String, String, String, String)>,
 ) -> Response {
     if let Err(e) = l.authorize(&token) {
@@ -182,7 +220,7 @@ pub(super) async fn compat_playlist(
     response
 }
 pub(super) async fn compat_segment(
-    State(l): State<Library>,
+    l: Library,
     Path((token, id, lease, track, segment)): Path<(String, String, String, String, String)>,
     headers: HeaderMap,
     method: Method,
@@ -261,6 +299,88 @@ pub(super) async fn compat_segment(
 #[cfg(test)]
 mod tests {
     use super::*;
+    async fn media_tool(program: PathBuf, args: &[&str], bytes: &[u8]) -> std::process::Output {
+        let mut child = tokio::process::Command::new(program)
+            .args(args)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        let data = bytes.to_vec();
+        let writer = tokio::spawn(async move { stdin.write_all(&data).await });
+        let output =
+            tokio::time::timeout(std::time::Duration::from_secs(10), child.wait_with_output())
+                .await
+                .unwrap()
+                .unwrap();
+        let written = writer.await.unwrap();
+        assert!(
+            output.status.success(),
+            "synthetic tool failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        written.unwrap();
+        output
+    }
+    async fn assert_segment_decode_and_time(
+        bytes: &[u8],
+        kind: &str,
+        expected_codec: &str,
+        start: f64,
+    ) {
+        let ffprobe = std::env::var_os("OTT_LOCAL_FFPROBE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/opt/homebrew/bin/ffprobe"));
+        let probe = media_tool(
+            ffprobe,
+            &[
+                "-v",
+                "error",
+                "-count_frames",
+                "-show_entries",
+                "stream=codec_type,codec_name,start_time,nb_read_frames",
+                "-of",
+                "json",
+                "pipe:0",
+            ],
+            bytes,
+        )
+        .await;
+        let metadata: serde_json::Value = serde_json::from_slice(&probe.stdout).unwrap();
+        let streams = metadata["streams"].as_array().unwrap();
+        let stream = streams
+            .iter()
+            .find(|stream| stream["codec_type"] == kind)
+            .expect("expected decoded elementary stream");
+        assert_eq!(stream["codec_name"], expected_codec);
+        let frames = stream["nb_read_frames"]
+            .as_str()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        assert!(frames > 0, "segment must decode actual {kind} frames");
+        let actual = stream["start_time"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+        // 100ms is less than two frames at12fps and allows audio codec delay.
+        assert!(
+            actual.is_finite() && (actual - start).abs() <= 0.100,
+            "{kind} segment starts at {actual}, advertised {start}"
+        );
+        let ffmpeg = std::env::var_os("OTT_LOCAL_FFMPEG")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/opt/homebrew/bin/ffmpeg"));
+        media_tool(
+            ffmpeg,
+            &["-nostdin", "-v", "error", "-i", "pipe:0", "-f", "null", "-"],
+            bytes,
+        )
+        .await;
+    }
     #[tokio::test]
     async fn readonly_routes_keep_auth_lease_cors_and_no_mutation() {
         let root =
@@ -368,7 +488,7 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("local-compat-smoke-{}", uuid::Uuid::new_v4()));
         let token = "s".repeat(32);
-        let library = Library::new_read_only(root.clone(), token.clone(), vec![fixtures])
+        let library = Library::new_read_only(root.clone(), token.clone(), vec![fixtures.clone()])
             .await
             .unwrap()
             .with_compatibility_from_env()
@@ -418,6 +538,28 @@ mod tests {
                 .await
                 .unwrap();
             assert_ne!(a["lease"], b["lease"]);
+            let expected_mode = if item.mime == "video/x-matroska" {
+                "remux"
+            } else {
+                "transcode"
+            };
+            if a["mode"] != expected_mode || b["mode"] != expected_mode {
+                let ffprobe = std::env::var_os("OTT_LOCAL_FFPROBE")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("/opt/homebrew/bin/ffprobe"));
+                let path = fixtures.join(&item.name);
+                let diagnostic=media_tool(ffprobe,&["-v","error","-show_entries","format=start_time,duration:stream=codec_type,codec_name,pix_fmt,start_time","-of","json",path.to_str().unwrap()],&[]).await;
+                eprintln!(
+                    "Unexpected synthetic compatibility mode; input codec/origin metadata: {}",
+                    String::from_utf8_lossy(&diagnostic.stdout)
+                );
+            }
+            assert_eq!(
+                a["mode"], expected_mode,
+                "synthetic indexed H264/AAC MKV must exercise real remux"
+            );
+            assert_eq!(b["mode"], expected_mode);
+
             assert_eq!(b["finite"], true);
             assert_eq!(b["timeOrigin"], 0);
             let duration = b["duration"].as_f64().unwrap();
@@ -434,65 +576,55 @@ mod tests {
                 .await
                 .unwrap();
             assert!(master.contains("#EXT-X-STREAM-INF") && !master.contains("#EXT-X-ENDLIST"));
-            let child_url = master_url.trim_end_matches("index.m3u8").to_string() + "video.m3u8";
-            let child = client
-                .get(&child_url)
-                .send()
-                .await
-                .unwrap()
-                .error_for_status()
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
-            assert!(
-                child.contains("#EXT-X-PLAYLIST-TYPE:VOD") && child.ends_with("#EXT-X-ENDLIST\n")
-            );
-            let sum: f64 = child
-                .lines()
-                .filter_map(|s| s.strip_prefix("#EXTINF:"))
-                .map(|s| s.trim_end_matches(',').parse::<f64>().unwrap())
-                .sum();
-            assert!((sum - duration).abs() < 0.00001);
-            let segments: Vec<_> = child
-                .lines()
-                .filter(|s| !s.starts_with('#') && !s.is_empty())
-                .collect();
-            for segment in [segments[0], *segments.last().unwrap()] {
-                let bytes = client
-                    .get(format!("{origin}{segment}"))
+            for (track, kind, codec) in [("video", "video", "h264"), ("audio0", "audio", "aac")] {
+                let child_url =
+                    master_url.trim_end_matches("index.m3u8").to_string() + track + ".m3u8";
+                let child = client
+                    .get(&child_url)
                     .send()
                     .await
                     .unwrap()
                     .error_for_status()
                     .unwrap()
-                    .bytes()
+                    .text()
                     .await
                     .unwrap();
-                let ffmpeg = std::env::var_os("OTT_LOCAL_FFMPEG")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|| PathBuf::from("/opt/homebrew/bin/ffmpeg"));
-                let mut decode = tokio::process::Command::new(ffmpeg)
-                    .args(["-nostdin", "-v", "error", "-i", "pipe:0", "-f", "null", "-"])
-                    .stdin(std::process::Stdio::piped())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::piped())
-                    .kill_on_drop(true)
-                    .spawn()
-                    .unwrap();
-                let mut stdin = decode.stdin.take().unwrap();
-                let writer = tokio::spawn(async move {
-                    stdin.write_all(&bytes).await.unwrap();
-                });
-                let output = tokio::time::timeout(
-                    std::time::Duration::from_secs(10),
-                    decode.wait_with_output(),
-                )
-                .await
-                .unwrap()
-                .unwrap();
-                writer.await.unwrap();
-                assert!(output.status.success(), "synthetic segment decode failed");
+                assert!(
+                    child.contains("#EXT-X-PLAYLIST-TYPE:VOD")
+                        && child.ends_with("#EXT-X-ENDLIST\n")
+                );
+                let mut elapsed = 0.0;
+                let mut pending = None;
+                let mut segments = Vec::new();
+                for line in child.lines() {
+                    if let Some(value) = line.strip_prefix("#EXTINF:") {
+                        pending = Some(value.trim_end_matches(',').parse::<f64>().unwrap());
+                    } else if !line.starts_with('#') && !line.is_empty() {
+                        let length = pending.take().expect("every segment has EXTINF");
+                        assert!(length > 0.0);
+                        segments.push((line, elapsed, length));
+                        elapsed += length;
+                    }
+                }
+                assert!(
+                    (elapsed - duration).abs() < 0.00001,
+                    "finite duration must include the complete original tail"
+                );
+                assert!(!segments.is_empty());
+                for (segment, start, length) in [segments[0], *segments.last().unwrap()] {
+                    assert!(start + length <= duration + 0.00001);
+                    let bytes = client
+                        .get(format!("{origin}{segment}"))
+                        .send()
+                        .await
+                        .unwrap()
+                        .error_for_status()
+                        .unwrap()
+                        .bytes()
+                        .await
+                        .unwrap();
+                    assert_segment_decode_and_time(&bytes, kind, codec, start).await;
+                }
             }
             client
                 .post(format!("{origin}{}", a["cancelUrl"].as_str().unwrap()))
