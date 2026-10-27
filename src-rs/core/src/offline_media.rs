@@ -11,6 +11,7 @@ use axum::{
 use futures_util::{stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     path::{Path as FsPath, PathBuf},
     sync::Arc,
 };
@@ -434,12 +435,7 @@ impl Library {
                 }
             }
         }
-        out.sort_by(|a, b| {
-            a.name
-                .to_lowercase()
-                .cmp(&b.name.to_lowercase())
-                .then(a.id.cmp(&b.id))
-        });
+        out.sort_by_cached_key(|record| (record.name.to_lowercase(), record.id.clone()));
         Ok(out)
     }
     async fn path(&self, record: &Record) -> Result<PathBuf, Failure> {
@@ -1065,12 +1061,8 @@ impl Library {
                 validated
             }
         };
-        records.sort_by(|(a, _), (b, _)| {
-            a.name
-                .to_lowercase()
-                .cmp(&b.name.to_lowercase())
-                .then(a.id.cmp(&b.id))
-        });
+        // Normalize each name once, rather than allocating on every comparison.
+        records.sort_by_cached_key(|(record, _)| (record.name.to_lowercase(), record.id.clone()));
         let mut items = Vec::new();
         for (r, available) in records {
             // Availability is checked when metadata enters a scan snapshot.
@@ -1124,8 +1116,11 @@ impl Library {
                 access: if available { "granted" } else { "unavailable" },
             });
         }
+        // Preserve source order while avoiding a quadratic scan for libraries
+        // containing many individually linked/imported files.
+        let mut source_ids: HashSet<String> = sources.iter().map(|source| source.id.clone()).collect();
         for item in &items {
-            if !sources.iter().any(|s| s.id == item.source_id) {
+            if source_ids.insert(item.source_id.clone()) {
                 sources.push(Source {
                     id: item.source_id.clone(),
                     name: item.name.clone(),
@@ -1558,6 +1553,53 @@ async fn media(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cached_catalog_preserves_name_order_and_unique_source_metadata() {
+        let root = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(root.clone(), "c".repeat(32), "device").await.unwrap();
+        let source_id = "f".repeat(32);
+        let source = SourceRecord {
+            id: source_id.clone(),
+            name: "Selected folder".into(),
+            kind: "folder".into(),
+            path: root.clone(),
+        };
+        fs::create_dir_all(root.join("sources")).await.unwrap();
+        fs::write(root.join("sources").join(format!("{source_id}.json")), serde_json::to_vec(&source).unwrap()).await.unwrap();
+        {
+            let mut scan = library.scan.lock().await;
+            scan.cached = true;
+            for index in (0..2048).rev() {
+                let id = format!("{index:032x}");
+                let record = Record {
+                    id: id.clone(),
+                    // Duplicate names exercise the deterministic ID tie-breaker.
+                    name: if index % 2 == 0 { "VIDEO".into() } else { "video".into() },
+                    size: 1,
+                    mime: "video/mp4".into(),
+                    extension: "mp4".into(),
+                    linked_path: None,
+                    source_id: if index < 2 { Some(source_id.clone()) } else { None },
+                };
+                scan.records.insert(id, (record, index % 2 == 0));
+            }
+        }
+        let catalog = library.catalog().await.unwrap();
+        assert_eq!(catalog.items.len(), 2048);
+        assert!(catalog.items.windows(2).all(|pair| pair[0].id < pair[1].id));
+        assert_eq!(catalog.sources.len(), 2047);
+        assert_eq!(catalog.sources[0].id, source_id);
+        assert_eq!(catalog.sources[0].name, "Selected folder");
+        assert_eq!(catalog.sources[0].kind, "folder");
+        assert!(catalog.sources[0].available);
+        for (item, source) in catalog.items[2..].iter().zip(&catalog.sources[1..]) {
+            assert_eq!(source.id, item.source_id);
+            assert_eq!(source.name, item.name);
+            assert_eq!(source.available, item.available);
+        }
+        fs::remove_dir_all(root).await.unwrap();
+    }
 
     #[tokio::test]
     async fn readonly_foreign_selection_is_missing_while_scan_is_blocked() {

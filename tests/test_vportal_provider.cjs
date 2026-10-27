@@ -679,3 +679,58 @@ for (const title of [
         assert(title.startsWith(channel.channel_name.slice(0, -1)));
     }
 }
+
+{
+    // A late category discovery can update a whole page while another page is
+    // appended. Membership checks must not scan the growing delta per row.
+    const f = create({ vportalprofiles: JSON.stringify(config()) });
+    const batch = 2048;
+    const items = Array.from({ length: batch }, (_, i) => ({
+        __ottMediaCategories: [],
+        __ottPlaylistId:
+            i === 0
+                ? "film"
+                : i === 1
+                  ? "__proto__"
+                  : i === 2
+                    ? "constructor"
+                    : "bulk-" + i,
+        title: "Film " + i,
+    }));
+    const loads = [];
+    f.driver.load((catalog) => loads.push(catalog));
+    f.clients[0].progress(items, false);
+    const before = loads.flatMap((catalog) => Array.from(catalog.ids));
+    items.forEach((item) => {
+        item.__ottMediaCategories = [{ id: "series", name: "Series" }];
+    });
+    const appended = Array.from({ length: batch }, (_, i) => ({
+        __ottPlaylistId: "next-" + i,
+        title: "Next " + i,
+    }));
+    vm.runInContext(
+        `
+        var largeMembershipScans = 0;
+        var savedIndexOf = Array.prototype.indexOf;
+        Array.prototype.indexOf = function (value) {
+            if (this.length >= 2048 && typeof value === "number")
+                largeMembershipScans++;
+            return savedIndexOf.apply(this, arguments);
+        };
+    `,
+        f.host
+    );
+    f.clients[0].progress(items.concat(appended), true);
+    const delta = loads[loads.length - 1];
+    assert.equal(delta.incremental, true);
+    assert.equal(delta.ids.length, batch * 2);
+    assert.equal(new Set(delta.ids).size, batch * 2);
+    assert.deepEqual(Array.from(delta.ids.slice(batch)), Array.from(before));
+    assert(delta.ids.every((id) => delta.channels[id]));
+    assert.equal(
+        f.host.largeMembershipScans,
+        0,
+        "category deltas do not perform a linear membership scan per changed row"
+    );
+    assert(before.every((id) => delta.channels[id].groupId === "series"));
+}

@@ -1,5 +1,4 @@
 import {
-    checkProviderUrl,
     isProviderAllowed,
     providerIds,
     providerLabels,
@@ -507,14 +506,6 @@ export function executeRemoteRequest(
             .filter(function (row) {
                 return row.id && isProviderAllowed(row.id);
             });
-    }
-    function settingsLocked(): boolean {
-        return w.__ottParental
-            ? w.__ottParental.needs("providers") ||
-                  w.__ottParental.needs("settings")
-            : (w.sPSprovs || w.sPSoptions) &&
-                  w.parentPIN !== "*" &&
-                  !w.parentAccess;
     }
     var modernChannels =
         request.action === "channels" &&

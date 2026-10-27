@@ -204,10 +204,12 @@ class LocalMediaPlugin : Plugin() {
         checkWork()
         val port = startServer()
         val records = metadata()
-        val items = records.map { item ->
+        val availability = LocalMediaAvailability()
+        val items = records.mapIndexed { position, item ->
             checkWork()
             var size = item.optLong("size", 0)
             val available = try { openSource(item).use { size = it.size }; true } catch (_: Exception) { false }
+            availability.update(position.toString(), sourceId(item), available)
             JSObject().apply {
                 put("id", item.getString("id")); put("name", item.getString("name")); put("mime", item.getString("mime"))
                 put("directory", item.optString("directory"))
@@ -230,9 +232,9 @@ class LocalMediaPlugin : Plugin() {
         }
         val sourceItems = sources.values.map { source ->
             checkWork()
-            val children = items.filter { it.optString("sourceId") == source.getString("id") }
+            val id = source.getString("id")
             val grant = source.optString("grantUri")
-            val available = if (children.isNotEmpty()) children.any { it.optBoolean("available") }
+            val available = if (availability.containsSource(id)) availability.sourceIsAvailable(id)
                 else context.contentResolver.persistedUriPermissions.any { it.uri.toString() == grant && it.isReadPermission }
             JSObject().put("id", source.getString("id")).put("name", source.getString("name"))
                 .put("kind", source.optString("kind", "file")).put("available", available).put("access", if (available) "granted" else "unavailable")
@@ -252,6 +254,7 @@ class LocalMediaPlugin : Plugin() {
         val ticket = currentWork.get() ?: throw IOException("Local media owner unavailable")
         val sources = sourceMetadata().filter { validId(it.optString("id")) }
         val items = linkedMapOf<String, JSObject>()
+        val availability = LocalMediaAvailability()
         val preferredId = call.getString("preferredId").orEmpty()
         var preferredState = "pending"
         var scanned = 0
@@ -278,7 +281,7 @@ class LocalMediaPlugin : Plugin() {
             }
             val sourceRows = knownSources.values.map { source ->
                 val id = source.getString("id")
-                val available = items.values.any { it.getString("sourceId") == id && it.getBoolean("available") == true } ||
+                val available = availability.sourceIsAvailable(id) ||
                     context.contentResolver.persistedUriPermissions.any { it.uri.toString() == source.optString("grantUri") && it.isReadPermission }
                 JSObject().put("id", id).put("name", source.getString("name")).put("kind", source.optString("kind", "file"))
                     .put("available", available).put("access", if (available) "granted" else "unavailable")
@@ -301,7 +304,8 @@ class LocalMediaPlugin : Plugin() {
         fun accept(item: JSONObject) {
             checkWork()
             val value = row(item)
-            val first = items.values.none { it.getBoolean("available") == true }
+            val first = !availability.anyAvailable()
+            availability.update(item.getString("id"), value.getString("sourceId"), value.getBoolean("available") == true)
             items[item.getString("id")] = value
             scanned++
             if (item.optString("id") == preferredId && value.getBoolean("available") == true) preferredState = "found"
