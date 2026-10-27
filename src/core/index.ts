@@ -1290,11 +1290,14 @@ function startCoreEngine(
     sourceUrl = url,
     transient = false
 ): void {
-    var previousCompatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
-    if (previousCompatibilityUrl && previousCompatibilityUrl !== url) {
-        cancelCoreCompat(previousCompatibilityUrl);
-        (window as any).__ottCoreCompatibilityUrl = "";
+    function retireCompatibility(next?: string): void {
+        var previous = (window as any).__ottCoreCompatibilityUrl;
+        if (previous && previous !== next) {
+            (window as any).__ottCoreCompatibilityUrl = "";
+            cancelCoreCompat(previous);
+        }
     }
+    retireCompatibility(url);
     cancelCoreStreamAttempt();
     coreNativeAttached = false;
     _coreTransientPlayback = transient;
@@ -1438,6 +1441,7 @@ function startCoreEngine(
                           ? _corePendingSeekPosition
                           : savedPosition;
                   revision++;
+                  retireCompatibility();
                   cancelCoreSourcePreparation();
                   cancelCoreAutoPlayback();
                   cancelCoreNativeHls();

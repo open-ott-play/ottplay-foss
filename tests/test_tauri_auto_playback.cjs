@@ -2034,6 +2034,75 @@ test("local compatibility VOD uses HLS with source-time resume even under a nati
     assert(cancelled.every((value) => value === url));
 });
 
+test("compatibility retries retire only their prior main lease before preparing a replacement", () => {
+    const original = "https://library.test/offline-media/movie";
+    const events = [],
+        cancelled = [];
+    let sequence = 0,
+        current;
+    const f = fixture({
+        globals: {
+            __ottLocalMedia: {
+                cancelPlayback(url) {
+                    cancelled.push(url);
+                    events.push(["cancel", url]);
+                },
+                compatibilityPlayback: () => true,
+                isPlaybackUrl: () => true,
+                playbackSourceUrl: () => original,
+            },
+        },
+        savedPlayerMode: 0,
+    });
+    f.w.__ottCorePipCompatibilityUrl =
+        "https://library.test/compat/pip/index.m3u8";
+    f.w.__ottActiveProviderDriver = {
+        id: "offline",
+        resolveStream(value, done) {
+            if (value !== original) {
+                assert.equal(value, current);
+                done(value);
+                return () => {};
+            }
+            if (current)
+                assert.equal(
+                    cancelled.at(-1),
+                    current,
+                    "prior main lease is retired before replacement preparation"
+                );
+            current =
+                "https://library.test/compat/lease-" +
+                ++sequence +
+                "/index.m3u8";
+            events.push(["prepare", current]);
+            done(current);
+            return () => {};
+        },
+    };
+    f.w.stbPlay(original, 120);
+    for (const wait of [500, 1000]) {
+        const old = current;
+        // Exhaust HLS's two in-place retries to exercise the outer attempt.
+        for (let failure = 0; failure < 3; failure++)
+            f.players.at(-1).emit("error", {
+                details: "fragLoadError",
+                fatal: true,
+                type: "network",
+            });
+        f.advance(wait);
+        assert.notEqual(current, old);
+        assert.equal(cancelled.filter((url) => url === old).length, 1);
+        assert.equal(events.at(-2)[0], "cancel");
+        assert.equal(events.at(-1)[0], "prepare");
+    }
+    assert(
+        !cancelled.includes(f.w.__ottCorePipCompatibilityUrl),
+        "independent PiP lease is not retired"
+    );
+    f.w.stbStop();
+    assert.equal(cancelled.at(-1), current);
+});
+
 test("shared local guards preserve optional receiver and missing-method behavior", () => {
     const f = fixture(),
         w = f.w;
