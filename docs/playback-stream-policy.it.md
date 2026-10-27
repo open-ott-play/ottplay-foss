@@ -56,7 +56,7 @@ Le riserve valgono **solo per la diretta**. Le richieste archivio e VOD non usan
 - Errori di caricamento Shaka ed eventi di errore critici condividono questo percorso; gli errori di annullamento vengono ignorati. Il ricollegamento attende la distruzione asincrona di Shaka.
 - Il recupero risolve nuovamente un riferimento opaco Stalker e prepara di nuovo l'accesso protetto alla sorgente. Non riutilizza URL loopback iOS scaduti. La posizione VOD/archivio viene rilevata prima dello smontaggio; le riserve live partono dal loro limite attuale della diretta.
 
-La politica non introduce un secondo sorvegliante dei fotogrammi bloccati. Il recupero esistente kiosk, Auto/native e HLS continua a coprire i propri casi di guasto osservati. Un flusso che si blocca silenziosamente senza errori segnalati dai rilevatori esistenti richiede una diagnosi separata.
+Il recupero facoltativo basato sull'orologio multimediale della diretta è descritto di seguito. Il recupero esistente di kiosk, Auto/native e HLS mantiene i propri ambiti e il comportamento dei motori.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 I test esercitano filtraggio di qualità con ordine non monotono delle varianti, metadati indisponibili, modifica per sorgente, conflitti degli spazi, errori duplicati, budget limitati, errori di autorizzazione HTTP, annullamento per pausa/stop/sorgente, smontaggio Shaka e mantenimento della posizione VOD. Le cinque nuove etichette di riproduzione sono tradotte negli 88 pacchetti linguistici inclusi; la parità automatica non è revisione di madrelingua. La riproduzione fisica TV/D1 e i manifesti specifici dei provider richiedono ancora verifica sul dispositivo. [Sorgente modificabile del diagramma](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Recupero di una diretta bloccata
+
+In **Impostazioni → Impostazioni interfaccia**, selezionare **Tentativi di recupero della diretta** (0–5) e **Timeout del blocco della diretta, s** (10/15/20/30). I valori predefiniti sono 0 tentativi e 15 secondi. Zero disattiva solo questo controllo; il recupero esistente degli errori del motore rimane invariato. Le impostazioni utilizzano il normale flusso Salva/Annulla.
+
+Dopo un avanzamento verificato della riproduzione, l'arresto dell'orologio multimediale della diretta principale richiama il `backend.restart()` esistente. Pausa, ricerca di posizione, pagine nascoste, stato offline e kiosk sospendono l'osservazione; archivio, VOD e flusso PiP sono esclusi. Il PiP nativo nasconde l'OSD HTML. I cambiamenti di canale, sorgente o generazione annullano l'osservazione precedente. Una riproduzione iniziale che non avanza mai rimane soggetta alla gestione esistente di avvio ed errori. La sostituzione del decoder e un breve avanzamento non ripristinano il numero di tentativi disponibili: lo fanno dieci secondi di avanzamento continuo. Esaurito il limite, il controllo non effettua altri riavvii per quel blocco. Un recupero del motore in attesa ha priorità; gli errori terminali di autorizzazione, DRM o qualità non possono essere aggirati. Si osserva il tempo multimediale, non la visualizzazione fisica dell'immagine né i fotogrammi congelati mentre l'orologio multimediale continua ad avanzare.
+
+Per una prova di base senza abbonamento, scegliere **Prova demo**. Una volta avviata la riproduzione, impostare temporaneamente `document.getElementById("video").playbackRate = 0` nei DevTools della scheda di prova; poi ripristinare il valore 1. La pausa è intenzionalmente esclusa dal recupero dei blocchi.

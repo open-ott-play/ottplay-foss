@@ -56,7 +56,7 @@ Cadangan **hanya untuk siaran langsung**. Permintaan arsip dan VOD tidak pernah 
 - Kegagalan pemuatan Shaka dan peristiwa kesalahan kritis berbagi jalur ini; kesalahan pembatalan diabaikan. Pemasangan ulang menunggu penghancuran Shaka yang asinkron.
 - Pemulihan menyelesaikan ulang referensi Stalker yang buram dan menyiapkan lagi akses sumber terlindungi. URL loopback iOS kedaluwarsa tidak dipakai ulang. Posisi VOD/arsip diambil sebelum pembongkaran; cadangan langsung mulai pada ujung siaran langsungnya.
 
-Kebijakan tidak menambahkan pengawas kedua untuk bingkai macet. Pemulihan kiosk, Auto/native, dan HLS yang ada tetap menangani kasus kegagalan yang diamatinya sendiri. Aliran yang macet diam-diam tanpa kesalahan dari detektor yang ada memerlukan diagnosis terpisah.
+Pemulihan opsional berdasarkan waktu media siaran langsung dijelaskan di bawah. Pemulihan kiosk, Auto/native, dan HLS yang sudah ada tetap mempertahankan cakupan dan perilaku mesinnya masing-masing.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Tes menguji penyaringan kualitas dengan urutan varian tidak monoton, metadata tidak tersedia, pengeditan bercakupan sumber, konflik slot, kesalahan duplikat, anggaran berbatas, kegagalan otorisasi HTTP, pembatalan pause/stop/sumber, pembongkaran Shaka, dan pemeliharaan posisi VOD. Lima label pemutaran baru diterjemahkan dalam seluruh 88 paket bahasa yang disertakan; kesetaraan otomatis bukan tinjauan penutur asli. Pemutaran fisik TV/D1 dan manifest khusus penyedia masih memerlukan validasi perangkat. [Sumber diagram yang dapat diedit](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Pemulihan siaran langsung yang macet
+
+Di **Pengaturan → Pengaturan antarmuka**, pilih **Percobaan pemulihan siaran langsung** (0–5) dan **Batas waktu macet siaran langsung, dtk** (10/15/20/30). Nilai bawaan adalah 0 percobaan dan 15 detik. Nol hanya menonaktifkan pemantau ini; pemulihan kesalahan mesin yang sudah ada tidak berubah. Pengaturan menggunakan alur Simpan/Batal seperti biasa.
+
+Setelah kemajuan pemutaran terverifikasi, berhentinya waktu media siaran langsung utama memanggil `backend.restart()` yang sudah ada. Jeda, pencarian posisi, halaman tersembunyi, keadaan luring, dan kiosk menangguhkan pengamatan; arsip, VOD, dan jalur PiP dikecualikan. PiP native menyembunyikan OSD HTML. Perubahan saluran, sumber, atau generasi membatalkan pengamatan lama. Pemutaran awal yang tidak pernah maju tetap ditangani oleh mekanisme awal pemutaran dan kesalahan yang sudah ada. Penggantian dekoder dan kemajuan singkat tidak memperbarui jatah percobaan: sepuluh detik kemajuan terus-menerus yang memperbaruinya. Setelah batas habis, pemantau tidak melakukan mulai ulang tambahan untuk kemacetan tersebut. Pemulihan mesin yang tertunda mendapat prioritas; kesalahan final otorisasi, DRM, atau kualitas tidak dapat dilewati. Yang diamati adalah waktu media, bukan penayangan gambar secara fisik atau bingkai beku saat waktu media terus berjalan.
+
+Untuk pengujian dasar tanpa langganan, pilih **Coba demo**. Setelah pemutaran dimulai, atur sementara `document.getElementById("video").playbackRate = 0` di DevTools tab pengujian; lalu kembalikan ke 1. Jeda sengaja dikecualikan dari pemulihan kemacetan.

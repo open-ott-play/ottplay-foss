@@ -56,7 +56,7 @@ Zapasy działają **tylko na żywo**. Żądania archiwalne i VOD nigdy nie używ
 - Błędy ładowania Shaka i krytyczne zdarzenia błędów korzystają z tej samej ścieżki; błędy anulowania są ignorowane. Ponowne podłączenie czeka na asynchroniczne zniszczenie Shaka.
 - Odzyskiwanie ponownie rozwiązuje nieprzejrzyste odwołanie Stalker i przygotowuje dostęp do chronionego źródła. Nie używa ponownie wygasłego URL loopback iOS. Pozycja VOD/archiwum jest próbkowana przed demontażem; zapasy na żywo zaczynają w swoim bieżącym punkcie transmisji.
 
-Polityka nie dodaje drugiego obserwatora zatrzymanych klatek. Istniejące odzyskiwanie kiosk, Auto/native i HLS nadal obsługuje własne zaobserwowane awarie. Strumień zawieszony bezgłośnie, bez błędu zgłoszonego przez istniejący detektor, wymaga odrębnej diagnozy.
+Opcjonalne odzyskiwanie na podstawie zegara multimediów transmisji na żywo opisano poniżej. Istniejące mechanizmy odzyskiwania kiosk, Auto/native i HLS zachowują własny zakres i zachowanie silnika.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Testy sprawdzają filtrowanie jakości przy niemonotonicznej kolejności wariantów, niedostępne metadane, edycję w zakresie źródła, konflikty pozycji, zduplikowane błędy, ograniczone budżety, błędy autoryzacji HTTP, anulowanie przez pauzę/stop/źródło, demontaż Shaka i zachowanie pozycji VOD. Pięć nowych etykiet odtwarzania przetłumaczono we wszystkich 88 dostarczanych pakietach językowych; automatyczna zgodność nie jest korektą przez rodzimych użytkowników języka. Fizyczne odtwarzanie TV/D1 i manifesty konkretnych dostawców nadal wymagają walidacji na urządzeniu. [Edytowalne źródło diagramu](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Odzyskiwanie zatrzymanej transmisji na żywo
+
+W **Ustawienia → Ustawienia interfejsu** wybierz **Próby odzyskiwania transmisji na żywo** (0–5) oraz **Limit czasu zatrzymania transmisji, s** (10/15/20/30). Domyślne wartości to 0 prób i 15 sekund. Zero wyłącza tylko ten mechanizm nadzoru; istniejące odzyskiwanie po błędach silnika pozostaje bez zmian. Ustawienia korzystają ze zwykłego trybu Zapisz/Anuluj.
+
+Po potwierdzeniu postępu odtwarzania zatrzymanie zegara multimediów głównej transmisji na żywo wywołuje istniejące `backend.restart()`. Pauza, zmiana pozycji, ukryte strony, stan offline i kiosk wstrzymują obserwację; archiwum, VOD i ścieżka PiP są wykluczone. Natywne PiP ukrywa HTML OSD. Zmiany kanału, źródła lub generacji anulują poprzednią obserwację. Początkowe odtwarzanie, które nigdy nie postępuje, nadal podlega istniejącej obsłudze uruchamiania i błędów. Wymiana dekodera i krótki postęp nie odnawiają puli prób: odnawia ją dziesięć sekund nieprzerwanego postępu. Wyczerpanie limitu zatrzymuje dalsze restarty nadzoru dla tego zastoju. Oczekujące odzyskiwanie silnika ma pierwszeństwo; nie można omijać ostatecznych błędów autoryzacji, DRM ani jakości. Obserwowany jest czas multimediów, a nie fizyczne wyświetlanie obrazu czy zamrożone klatki, gdy zegar multimediów nadal postępuje.
+
+Do podstawowego testu bez abonamentu wybierz **Wypróbuj demo**. Po rozpoczęciu odtwarzania tymczasowo ustaw `document.getElementById("video").playbackRate = 0` w DevTools karty testowej; następnie przywróć wartość 1. Pauza jest celowo wykluczona z odzyskiwania po zatrzymaniu.

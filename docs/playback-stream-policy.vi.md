@@ -56,7 +56,7 @@ Dự phòng **chỉ dành cho trực tiếp**. Yêu cầu lưu trữ và VOD kh�
 - Lỗi tải Shaka và sự kiện lỗi nghiêm trọng dùng chung đường này; lỗi hủy được bỏ qua. Gắn lại chờ Shaka hủy bất đồng bộ xong.
 - Khôi phục phân giải lại tham chiếu Stalker mờ và chuẩn bị lại truy cập nguồn được bảo vệ. Nó không dùng lại URL loopback iOS đã hết hạn. Vị trí VOD/lưu trữ được lấy trước khi tháo; nguồn dự phòng trực tiếp bắt đầu ở mép trực tiếp của mình.
 
-Chính sách không thêm bộ giám sát thứ hai cho khung hình đứng. Khôi phục kiosk, Auto/native và HLS sẵn có vẫn xử lý các lỗi đã quan sát riêng. Luồng đứng âm thầm mà không có bộ phát hiện sẵn có nào báo lỗi cần được chẩn đoán riêng.
+Khôi phục tùy chọn dựa trên đồng hồ media của luồng trực tiếp được mô tả bên dưới. Các cơ chế khôi phục kiosk, Auto/native và HLS hiện có giữ nguyên phạm vi và hành vi của bộ máy phát.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Kiểm thử bao gồm lọc chất lượng với thứ tự biến thể không đơn điệu, siêu dữ liệu không có, sửa trong phạm vi nguồn, xung đột ô, lỗi trùng, ngân sách giới hạn, lỗi cấp quyền HTTP, hủy bằng pause/stop/nguồn, tháo Shaka và giữ vị trí VOD. Năm nhãn phát mới được dịch trong cả 88 gói ngôn ngữ đi kèm; kiểm tra tương đương tự động không phải duyệt bởi người bản ngữ. Phát vật lý TV/D1 và manifest riêng của nhà cung cấp vẫn cần xác minh trên thiết bị. [Nguồn sơ đồ có thể sửa](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Khôi phục luồng trực tiếp bị dừng tiến triển
+
+Trong **Cài đặt → Cài đặt giao diện**, chọn **Số lần thử khôi phục trực tiếp** (0–5) và **Thời gian chờ khi luồng trực tiếp bị kẹt, giây** (10/15/20/30). Giá trị mặc định là 0 lần thử và 15 giây. Số 0 chỉ tắt bộ giám sát này; cơ chế khôi phục lỗi của bộ máy phát hiện có không thay đổi. Cài đặt sử dụng quy trình Lưu/Hủy thông thường.
+
+Sau khi xác nhận việc phát đã tiến triển, nếu đồng hồ media của luồng trực tiếp chính ngừng tiến lên, cơ chế sẽ gọi `backend.restart()` hiện có. Tạm dừng, tua tìm vị trí, trang bị ẩn, trạng thái ngoại tuyến và kiosk sẽ tạm ngừng theo dõi; nội dung lưu trữ, VOD và nhánh PiP được loại trừ. PiP gốc ẩn OSD HTML. Thay đổi kênh, nguồn hoặc thế hệ sẽ hủy phiên theo dõi cũ. Lần phát ban đầu chưa từng tiến triển vẫn do cơ chế xử lý khởi động/lỗi hiện có quản lý. Thay bộ giải mã và tiến triển ngắn không làm mới số lần thử: mười giây tiến triển liên tục mới làm điều đó. Khi hết giới hạn, bộ giám sát không khởi động lại thêm cho lần bị kẹt đó. Khôi phục đang chờ của bộ máy phát được ưu tiên; không thể bỏ qua lỗi kết thúc về cấp quyền, DRM hoặc chất lượng. Cơ chế theo dõi thời gian media, không phải hình ảnh hiển thị vật lý hay khung hình bị đóng băng trong khi đồng hồ media vẫn tiến lên.
+
+Để kiểm tra cơ bản mà không cần đăng ký dịch vụ, chọn **Thử bản demo**. Khi đã bắt đầu phát, tạm đặt `document.getElementById("video").playbackRate = 0` trong DevTools của thẻ kiểm tra; sau đó đặt lại thành 1. Tạm dừng được cố ý loại trừ khỏi cơ chế khôi phục khi bị kẹt.

@@ -56,7 +56,7 @@ Los respaldos son **solo para directo**. Las solicitudes de archivo y VOD nunca 
 - Los fallos de carga y eventos de error críticos de Shaka comparten esta ruta; los errores de cancelación se ignoran. La reconexión espera a la destrucción asíncrona de Shaka.
 - La recuperación vuelve a resolver una referencia opaca de Stalker y prepara otra vez el acceso protegido a la fuente. No reutiliza una URL loopback caducada de iOS. La posición VOD/archivo se captura antes del desmontaje; los respaldos de directo empiezan en su borde en vivo.
 
-La política no añade un segundo vigilante de fotogramas detenidos. La recuperación existente de kiosk, Auto/native y HLS sigue cubriendo sus propios fallos observados. Un flujo que se detiene silenciosamente sin que ningún detector existente notifique error requiere diagnóstico aparte.
+La recuperación opcional basada en el reloj multimedia de la emisión en directo se describe más abajo. La recuperación existente de kiosk, Auto/native y HLS conserva sus propios ámbitos y el comportamiento de sus motores.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Las pruebas ejercitan el filtrado de calidad con variantes en orden no monótono, metadatos no disponibles, edición por fuente, conflictos de posiciones, errores duplicados, presupuestos acotados, fallos de autorización HTTP, cancelación por pausa/parada/fuente, desmontaje de Shaka y conservación de posición VOD. Las cinco nuevas etiquetas de reproducción están traducidas en los 88 paquetes de idioma incluidos; la paridad automática no es revisión de hablantes nativos. La reproducción física TV/D1 y los manifiestos específicos de proveedores aún requieren validación en dispositivos. [Fuente editable del diagrama](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Recuperación de una emisión en directo bloqueada
+
+En **Ajustes → Ajustes de interfaz**, seleccione **Intentos de recuperación en directo** (0–5) y **Tiempo de espera de bloqueo en directo, s** (10/15/20/30). Los valores predeterminados son 0 intentos y 15 segundos. Cero desactiva solo este supervisor; la recuperación existente de errores del motor no cambia. Los ajustes utilizan el flujo habitual Guardar/Cancelar.
+
+Tras confirmar que la reproducción avanza, si se detiene el reloj multimedia del directo principal se invoca el `backend.restart()` existente. La pausa, la búsqueda de posición, las páginas ocultas, el estado sin conexión y kiosk suspenden la observación; se excluyen el archivo, VOD y la vía PiP. El PiP nativo oculta el OSD HTML. Los cambios de canal, fuente o generación cancelan la observación anterior. El inicio de reproducción que nunca avanza sigue sujeto al tratamiento existente de arranque y errores. Los reemplazos del decodificador y los avances breves no renuevan el presupuesto de intentos: lo renuevan diez segundos de avance continuo. Agotar el límite impide más reinicios del supervisor para ese bloqueo. Una recuperación pendiente del motor tiene prioridad; no se pueden eludir los errores terminales de autorización, DRM o calidad. Se observa el tiempo multimedia, no la presentación física de la imagen ni los fotogramas congelados mientras el reloj multimedia sigue avanzando.
+
+Para una prueba básica sin suscripción, seleccione **Probar demo**. Una vez iniciada la reproducción, establezca temporalmente `document.getElementById("video").playbackRate = 0` en DevTools de la pestaña de prueba; después restablézcalo a 1. La pausa se excluye deliberadamente de la recuperación por bloqueo.

@@ -56,7 +56,7 @@ Zálohy platí **jen pro živé vysílání**. Archivní požadavky a VOD nikdy 
 - Chyby načítání Shaka a kritické chybové události sdílejí tuto cestu; chyby zrušení se ignorují. Opětovné připojení čeká na asynchronní zničení Shaka.
 - Obnova znovu přeloží neprůhledný odkaz Stalker a připraví chráněný přístup ke zdroji. Nepoužívá znovu prošlé iOS loopback URL. Pozice VOD/archivu se zachytí před odstraněním; živé zálohy začínají na aktuálním živém okraji.
 
-Politika nepřidává druhý dohled nad zastavenými snímky. Existující obnova kiosk, Auto/native a HLS nadále řeší vlastní pozorované chyby. Stream, který se tiše zastaví, aniž některý existující detektor oznámí chybu, potřebuje samostatnou diagnostiku.
+Volitelné obnovení podle mediálního času živého přenosu je popsáno níže. Stávající obnovení kiosk, Auto/native a HLS si zachovává vlastní rozsah a chování přehrávacího enginu.
 
 <a id="verification-and-observability"></a>
 
@@ -78,3 +78,13 @@ node scripts/check-es5.cjs --server-only
 ```
 
 Testy ověřují filtrování kvality s nemonotónním pořadím variant, nedostupná metadata, editaci omezenou zdrojem, konflikty pozic, duplicitní chyby, omezené rozpočty, chyby HTTP autorizace, zrušení pauzou/zastavením/zdrojem, odstranění Shaka a zachování pozice VOD. Pět nových popisků přehrávání je přeloženo ve všech 88 dodávaných jazykových balíčcích; automatická shoda není revize rodilým mluvčím. Fyzické přehrávání TV/D1 a manifesty konkrétních poskytovatelů stále vyžadují ověření na zařízení. [Upravitelný zdroj diagramu](diagrams/stream-recovery.mmd).
+
+<a id="live-stall-recovery"></a>
+
+## Obnovení při zastavení živého přenosu
+
+V **Nastavení → Nastavení rozhraní** vyberte **Počet pokusů o obnovení živého přenosu** (0–5) a **Časový limit zastavení živého přenosu, s** (10/15/20/30). Výchozí hodnoty jsou 0 pokusů a 15 sekund. Nula vypíná pouze tento dohled; stávající obnovení po chybách enginu zůstává beze změny. Nastavení používá obvyklý postup Uložit/Zrušit.
+
+Po ověřeném postupu přehrávání vyvolá zastavený mediální čas hlavního živého přenosu stávající `backend.restart()`. Pozastavení, vyhledávání pozice, skryté stránky, stav offline a kiosk přerušují sledování; archiv, VOD a větev PiP jsou vyloučeny. Nativní PiP skryje HTML OSD. Změny kanálu, zdroje nebo generace ruší původní sledování. Počáteční přehrávání, které se nikdy neposune, nadále řeší stávající obsluha spuštění a chyb. Výměna dekodéru ani krátký postup neobnovují počet dostupných pokusů: obnoví jej deset sekund nepřetržitého postupu. Vyčerpání limitu zastaví další restarty dohledu pro toto zastavení. Čekající obnovení enginu má přednost; konečné chyby autorizace, DRM nebo kvality nelze obejít. Sleduje se mediální čas, nikoli fyzické zobrazení obrazu nebo zamrzlé snímky při nadále postupujícím mediálním čase.
+
+Pro základní test bez předplatného vyberte **Vyzkoušet demo**. Po zahájení přehrávání dočasně nastavte v DevTools testovací karty `document.getElementById("video").playbackRate = 0`; poté hodnotu vraťte na 1. Pozastavení je z obnovení při zastavení úmyslně vyloučeno.
