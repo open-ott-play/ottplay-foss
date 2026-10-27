@@ -356,7 +356,11 @@ function createOfflineDriver(
             function current(): boolean {
                 return active() && request === revision;
             }
-            function recover(error: string, offerRecovery = true, notify = true): void {
+            function recover(
+                error: string,
+                offerRecovery = true,
+                notify = true
+            ): void {
                 if (!current()) return;
                 clearLoadTimer();
                 revision++;
