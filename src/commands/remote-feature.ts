@@ -8,7 +8,8 @@ export function loadRemoteFeature(
         | "remote-settings-lifecycle"
         | "runtime-debug-details"
         | "local-compatibility"
-        | "local-media-ui",
+        | "local-media-ui"
+        | "remote-local-runner",
     done: (error?: string) => void
 ): void {
     var loads = w.__ottRemoteFeatureLoads || (w.__ottRemoteFeatureLoads = {});

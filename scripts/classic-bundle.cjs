@@ -115,6 +115,7 @@ const CLASSIC_MODULES = [
     "build/commands/remote-app-update.js",
     "build/commands/remote-restart.js",
     "build/commands/remote-local-media.js",
+    "build/commands/remote-local-runner.js",
     "build/commands/remote-screenshot.js",
     "build/commands/remote-archive.js",
     "build/commands/remote-notifications.js",
@@ -194,6 +195,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
         "build/plugins/perf-sensors.js",
         "build/plugins/perf-capture.js",
     ],
+    "remote-local-runner": ["build/commands/remote-local-runner.js"],
     "remote-provider-fields": [
         "build/plugins/remote-provider-fields.js",
         "build/plugins/remote-plex-folders.js",
@@ -238,6 +240,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottChannelSearch",
     ]),
     "build/channels/library.js": Object.freeze(["window.__ottChannelLibrary"]),
+    "build/commands/remote-local-runner.js": Object.freeze([
+        "window.__ottRemoteLocalMediaRun",
+    ]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
     "build/device/adapter.js": Object.freeze(["window.__ottDeviceAdapter"]),
     "build/device/media-backend.js": Object.freeze([

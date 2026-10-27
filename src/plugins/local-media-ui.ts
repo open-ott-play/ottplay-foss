@@ -291,11 +291,12 @@ function createLocalMediaUi(w: any, p: any): any {
             );
         });
         ((p.last && p.last.items) || []).forEach(function (item: any) {
-            if (item.playback?.mode === "unsupported") {
+            var playback = item.playback;
+            if (playback && playback.mode === "unsupported") {
                 row(
                     "unsupported-" + item.id,
                     "Unavailable: " + item.name,
-                    "This file needs compatibility playback. Use a compatible native or Server library backend; the original is not uploaded.",
+                    "Native/server compatibility required; no uploads.",
                     function () {}
                 );
                 return;

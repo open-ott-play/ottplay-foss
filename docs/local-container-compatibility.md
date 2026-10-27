@@ -109,3 +109,9 @@ Direct playback and remote catalog commands do not download either asset. Cancel
 pending; failed downloads can be retried. The file picker still opens directly
 from its Enter/click action after the screen has loaded. Both assets remain in
 the complete distribution size accounting.
+
+Local control admission stays in the main runtime: schema, authorization,
+singleflight, deadline and cancellation checks run before the fixed
+`dist/remote-local-runner.js` execution asset is loaded. Download time counts
+toward the same deadline. A cancelled, expired or superseded request cannot
+enter the deferred source/catalog/playback chain.

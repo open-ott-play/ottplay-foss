@@ -34,10 +34,26 @@ function load(file, requires = {}, extra = {}) {
 }
 const selection = load("src/offline/playback-selection.ts");
 const progress = load("src/offline/local-media-progress.ts");
-const execute = load("src/commands/remote-local-media.ts", {
-    "../offline/playback-selection": selection,
-    "./remote-restart": { remotePlayerInfo: (w) => ({ runtime: w.runtime }) },
-}).executeRemoteLocalMedia;
+const runnerWindow = {};
+load("src/commands/remote-local-runner.ts", {}, { window: runnerWindow });
+function deferredExecute(loadFeature, extra = {}) {
+    return load(
+        "src/commands/remote-local-media.ts",
+        {
+            "../offline/playback-selection": selection,
+            "./remote-feature": { loadRemoteFeature: loadFeature },
+            "./remote-restart": {
+                remotePlayerInfo: (w) => ({ runtime: w.runtime }),
+            },
+        },
+        extra
+    ).executeRemoteLocalMedia;
+}
+const execute = deferredExecute((w, name, done) => {
+    assert.equal(name, "remote-local-runner");
+    w.__ottRemoteLocalMediaRun = runnerWindow.__ottRemoteLocalMediaRun;
+    done();
+});
 const source = {
     available: true,
     id: "source-123",
@@ -1742,4 +1758,167 @@ test("successful disconnect clears only the matching source selection on native,
                 mode + ":" + outcome
             );
         }
+});
+
+test("deferred Local runner keeps cold/warm wire shape and singleflight during download", async () => {
+    const f = fixture(),
+        pending = [];
+    let loads = 0;
+    const run = deferredExecute((w, name, done) => {
+        assert.equal(name, "remote-local-runner");
+        loads++;
+        pending.push(done);
+    });
+    const reply = new Promise((resolve) => run(f.w, request("play"), resolve));
+    assert.equal(f.w.__ottLocalMediaRequestActive, true);
+    const second = await new Promise((resolve) =>
+        run(f.w, request("shuffle"), resolve)
+    );
+    assert.equal(second.data.error, "operation_in_progress");
+    assert.equal(loads, 1);
+    f.w.__ottRemoteLocalMediaRun = runnerWindow.__ottRemoteLocalMediaRun;
+    pending.shift()();
+    assert.deepEqual(clone((await reply).data), contract.play_result);
+    const warm = await new Promise((resolve) =>
+        run(f.w, request("play"), resolve)
+    );
+    assert.equal(warm.status, "ok");
+    assert.equal(loads, 1);
+    assert.equal(f.w.__ottLocalMediaRequestActive, false);
+});
+
+test("deferred Local runner never enters after cancel or deadline and releases its owner", async () => {
+    for (const timeout of [false, true]) {
+        const f = fixture();
+        let ready,
+            deadline,
+            entries = 0,
+            replies = 0;
+        const run = deferredExecute(
+            (w, name, done) => {
+                ready = done;
+            },
+            {
+                clearTimeout() {},
+                setTimeout(fn) {
+                    deadline = fn;
+                    return 1;
+                },
+            }
+        );
+        const cancel = run(f.w, request("play"), () => replies++);
+        if (timeout) deadline();
+        else cancel();
+        f.w.__ottRemoteLocalMediaRun = () => {
+            entries++;
+        };
+        ready();
+        await tick();
+        assert.equal(entries, 0);
+        assert.equal(replies, timeout ? 1 : 0);
+        assert.equal(f.w.__ottLocalMediaRequestActive, false);
+    }
+});
+
+test("deferred Local runner rejects runtime, driver, load, profile and standby changes before entry", async () => {
+    for (const kind of ["runtime", "driver", "load", "profile", "standby"]) {
+        const f = fixture();
+        let ready,
+            profile = 1,
+            entries = 0;
+        f.w.__ottOfflineProfiles = {
+            catalogGuard() {
+                const value = profile;
+                return () => profile === value;
+            },
+        };
+        const run = deferredExecute((w, name, done) => {
+            ready = done;
+        });
+        const reply = new Promise((resolve) =>
+            run(f.w, request("play"), resolve)
+        );
+        if (kind === "runtime") f.w.runtime = "page-new";
+        if (kind === "driver") f.w.__ottActiveProviderDriver = {};
+        if (kind === "load") f.w.__ottCommandChannelLoad = {};
+        if (kind === "profile") profile++;
+        if (kind === "standby") f.w.__ottStandby = { blocked: () => true };
+        f.w.__ottRemoteLocalMediaRun = () => {
+            entries++;
+        };
+        ready();
+        assert.equal((await reply).data.error, "runtime_changed", kind);
+        assert.equal(entries, 0);
+        assert.equal(f.w.__ottLocalMediaRequestActive, false);
+    }
+});
+
+test("deferred Local runner load failure and missing factory settle once and permit retry", async () => {
+    for (const error of [undefined, "unsupported"]) {
+        const f = fixture();
+        let ready;
+        const run = deferredExecute((w, name, done) => {
+            ready = done;
+        });
+        const reply = new Promise((resolve) =>
+            run(f.w, request("play"), resolve)
+        );
+        ready(error);
+        const result = await reply;
+        assert.equal(result.status, "unsupported");
+        assert.equal(f.w.__ottLocalMediaRequestActive, false);
+        f.w.__ottRemoteLocalMediaRun = runnerWindow.__ottRemoteLocalMediaRun;
+        assert.equal(
+            (await new Promise((resolve) => run(f.w, request("play"), resolve)))
+                .status,
+            "ok"
+        );
+    }
+});
+
+test("deferred Local runner contains synchronous runner/profile errors without leaked flag", async () => {
+    for (const profileFailure of [false, true]) {
+        const f = fixture();
+        let ready,
+            throwProfile = false,
+            replies = 0;
+        f.w.__ottOfflineProfiles = {
+            catalogGuard: () => () => {
+                if (throwProfile) throw Error("profile");
+                return true;
+            },
+        };
+        const run = deferredExecute((w, name, done) => {
+            ready = done;
+        });
+        const reply = new Promise((resolve) =>
+            run(f.w, request("play"), (value) => {
+                replies++;
+                resolve(value);
+            })
+        );
+        if (profileFailure) throwProfile = true;
+        f.w.__ottRemoteLocalMediaRun = () => {
+            throw Error("runner");
+        };
+        ready();
+        ready();
+        assert.equal((await reply).data.error, "native_error");
+        assert.equal(replies, 1);
+        assert.equal(f.w.__ottLocalMediaRequestActive, false);
+    }
+});
+
+test("invalid Local schema remains synchronous and never downloads the runner", () => {
+    const f = fixture();
+    let replies = 0;
+    const run = deferredExecute(() =>
+        assert.fail("invalid request loaded runner")
+    );
+    run(f.w, request("play", { progressive: false }), (value) => {
+        replies++;
+        assert.equal(value.data.error, "invalid_request");
+    });
+    assert.equal(replies, 1);
+    assert.equal(f.w.__ottLocalMediaRequestActive, undefined);
 });
