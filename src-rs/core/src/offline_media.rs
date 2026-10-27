@@ -3705,8 +3705,20 @@ mod tests {
                 })
                 .await
                 .unwrap();
+                let directory = std::fs::File::open(&source.path).unwrap();
+                let modified = directory.metadata().unwrap().modified().unwrap();
                 fs::remove_file(&path).await.unwrap();
                 std::os::unix::fs::symlink(&outside, &path).unwrap();
+                // Filesystem timestamp granularity can coalesce this replacement
+                // with the original directory stamp. Make the mutated namespace
+                // observably different before releasing the cached-type gate.
+                directory
+                    .set_times(
+                        std::fs::FileTimes::new()
+                            .set_modified(modified + std::time::Duration::from_secs(2)),
+                    )
+                    .unwrap();
+                assert_ne!(directory.metadata().unwrap().modified().unwrap(), modified);
                 gate.add_permits(1);
                 assert!(
                     scan_run.await.unwrap().is_err(),
