@@ -126,7 +126,34 @@ missing or malformed index is rebuilt from local metadata JSON without opening
 other sources' original files. Legacy item IDs are retained during that rebuild;
 new item IDs are stable if scanning is interrupted before the index is saved.
 The original media and its individual metadata record are still validated
-before use. Index files are internal caches, not an editable configuration.
+before playback or serving. Index files are internal caches, not an editable configuration.
+
+
+Folder discovery validates saved metadata and then walks the original directory
+once. Known regular files reuse the no-follow file type captured during
+enumeration, avoiding another per-file network metadata request. New files and
+directories retain their metadata/access checks. Each directory must keep its
+canonical identity; modification stamps are checked again after enumeration.
+A changed or incompletely read directory cannot certify a complete queue.
+
+Catalog availability is an enumeration-time observation, not a guarantee that
+a later open or decode will succeed. Directory stamps are not an immutable
+filesystem snapshot, especially with network attribute caches. Actual media
+serving and preferred-item lookup still perform the full token, metadata,
+source and original-path validation. Missing or unverified saved entries retain
+their IDs and remain unavailable; no partial scan starts a complete-folder
+shuffle.
+
+In the [controlled concurrent-Range test](evidence/local-folder-range-performance-20261027.md),
+the final code completed a fresh, unindexed 13,657-record library in 28.831
+seconds while reading video. This is core-harness evidence, not a fixed latency
+guarantee or installed-player playback verification. The report also preserves
+the slower baseline and the separate warm-metadata measurement.
+
+Scanning performance does not add codecs, containers or transcoding. A source
+may connect successfully yet contain no playable entries. Check the player's
+`supported_formats` when advertised, and diagnose unsupported files separately
+from scan progress or a missing mount.
 
 The preferred lookup accepts only an existing opaque item ID, never a path. It
 is bounded so a missing or unresponsive source cannot block scan startup. An

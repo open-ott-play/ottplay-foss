@@ -40,6 +40,34 @@ fn count_native_scan_entry(count: &mut usize) -> anyhow::Result<()> {
     *count += 1;
     Ok(())
 }
+#[derive(PartialEq)]
+struct DirectoryStamp {
+    modified: Option<std::time::SystemTime>,
+    #[cfg(unix)]
+    identity: (u64, u64, i64, i64),
+}
+impl DirectoryStamp {
+    fn from_metadata(metadata: &std::fs::Metadata) -> Self {
+        #[cfg(unix)]
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            modified: metadata.modified().ok(),
+            #[cfg(unix)]
+            identity: (
+                metadata.dev(),
+                metadata.ino(),
+                metadata.ctime(),
+                metadata.ctime_nsec(),
+            ),
+        }
+    }
+}
+struct ScanDirectory {
+    path: PathBuf,
+    stamp: DirectoryStamp,
+    entries: fs::ReadDir,
+}
+
 // An abandoned upload is never catalogued. Drop its file handle before the
 // best-effort removal of its partial file (including cancelled requests).
 struct PendingUpload {
@@ -76,6 +104,16 @@ pub struct Library {
     original_read_delay: Option<std::time::Duration>,
     #[cfg(test)]
     original_read_gate: Option<(PathBuf, Arc<Semaphore>)>,
+    #[cfg(test)]
+    scan_entries: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    #[cfg(test)]
+    scan_leaf_metadata: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    #[cfg(test)]
+    scan_entry_gate: Option<(PathBuf, Arc<Semaphore>)>,
+    #[cfg(test)]
+    scan_directories: Arc<std::sync::Mutex<Vec<PathBuf>>>,
+    #[cfg(test)]
+    scan_directory_gate: Option<(PathBuf, Arc<Semaphore>)>,
 }
 #[derive(Default)]
 struct ScanState {
@@ -446,6 +484,16 @@ impl Library {
             original_read_delay: None,
             #[cfg(test)]
             original_read_gate: None,
+            #[cfg(test)]
+            scan_entries: Arc::default(),
+            #[cfg(test)]
+            scan_leaf_metadata: Arc::default(),
+            #[cfg(test)]
+            scan_entry_gate: None,
+            #[cfg(test)]
+            scan_directories: Arc::default(),
+            #[cfg(test)]
+            scan_directory_gate: None,
         })
     }
     /// A token-protected, operator-configured library of original files. The
@@ -1809,6 +1857,91 @@ impl Library {
         Ok(())
     }
 
+    // Directory identity replaces repeated ancestor checks for every file in
+    // a folder scan. Serving and preferred lookup still validate full paths.
+    async fn scan_directory(
+        &self,
+        path: &FsPath,
+        root: &FsPath,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<ScanDirectory> {
+        work.check().map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(
+            path == root || path.starts_with(root),
+            "Local directory is outside its source"
+        );
+        let _permit = work
+            .run(self.source_probes.acquire())
+            .await
+            .map_err(anyhow::Error::msg)??;
+        #[cfg(test)]
+        {
+            self.scan_directories
+                .lock()
+                .unwrap()
+                .push(path.to_path_buf());
+            if let Some((selected, gate)) = &self.scan_directory_gate {
+                if path == selected {
+                    gate.acquire().await.unwrap().forget();
+                }
+            }
+        }
+        let metadata = Self::directory_metadata(path, root, work).await?;
+        let entries = fs::read_dir(path).await?;
+        work.check().map_err(anyhow::Error::msg)?;
+        Ok(ScanDirectory {
+            path: path.to_path_buf(),
+            stamp: DirectoryStamp::from_metadata(&metadata),
+            entries,
+        })
+    }
+
+    async fn directory_metadata(
+        path: &FsPath,
+        root: &FsPath,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<std::fs::Metadata> {
+        // Drain admitted OS calls before releasing the work owner and permit.
+        work.check().map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(
+            path == root || path.starts_with(root),
+            "Local directory is outside its source"
+        );
+        let canonical = fs::canonicalize(path).await?;
+        work.check().map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(
+            canonical == path,
+            "Local directory identity changed during scanning"
+        );
+        let metadata = fs::symlink_metadata(path).await?;
+        work.check().map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(
+            metadata.is_dir() && !metadata.file_type().is_symlink(),
+            "Local directory is unavailable"
+        );
+        Ok(metadata)
+    }
+
+    async fn finish_scan_directory(
+        &self,
+        directory: ScanDirectory,
+        root: &FsPath,
+        work: &crate::background_work::WorkLease,
+    ) -> anyhow::Result<()> {
+        let _permit = work
+            .run(self.source_probes.acquire())
+            .await
+            .map_err(anyhow::Error::msg)??;
+        let metadata = Self::directory_metadata(&directory.path, root, work).await?;
+        // A bookend detects ordinary namespace changes, not an atomic filesystem
+        // snapshot; NAS attribute caches may delay them. Serving rechecks paths.
+        anyhow::ensure!(
+            directory.stamp == DirectoryStamp::from_metadata(&metadata),
+            "Local directory changed during scanning"
+        );
+        Ok(())
+    }
+
     async fn scan_source_inner(
         &self,
         source: &SourceRecord,
@@ -1863,10 +1996,28 @@ impl Library {
                 if actual.source_id.as_deref() == Some(&source.id)
                     && actual.linked_path == record.linked_path
                 {
-                    let available = self.path(&actual).await.is_ok();
-                    work.check().map_err(anyhow::Error::msg)?;
-                    self.publish_source_record(source, generation, actual.clone(), available, work)
+                    if source.kind == "folder" {
+                        // Only metadata is validated here. Original-file
+                        // availability comes from the guarded directory walk.
+                        let mut scan = self.scan.lock().await;
+                        anyhow::ensure!(
+                            Self::owns_source(&scan, &source.id, generation),
+                            "Local source scan superseded"
+                        );
+                        work.publish(|| scan.scanned += 1)
+                            .map_err(anyhow::Error::msg)?;
+                    } else {
+                        let available = self.path(&actual).await.is_ok();
+                        work.check().map_err(anyhow::Error::msg)?;
+                        self.publish_source_record(
+                            source,
+                            generation,
+                            actual.clone(),
+                            available,
+                            work,
+                        )
                         .await?;
+                    }
                     return Ok(Some(actual));
                 }
             }
@@ -1900,71 +2051,12 @@ impl Library {
         tracing::debug!(target: "ottplay::local_scan", phase = "validation", state = "complete", source_id = source.id, count = known.len(), elapsed_ms = checks_started.elapsed().as_millis() as u64);
         let traversal_started = std::time::Instant::now();
         let mut pending = vec![root.clone()];
-        let mut directories: Vec<fs::ReadDir> = Vec::new();
+        let mut directories: Vec<ScanDirectory> = Vec::new();
         let mut count = 0;
         let mut incomplete = false;
-        loop {
-            work.check().map_err(anyhow::Error::msg)?;
-            {
-                let scan = self.scan.lock().await;
-                anyhow::ensure!(
-                    Self::owns_source(&scan, &source.id, generation),
-                    "Local source scan superseded"
-                );
-            }
-            let mut batch = Vec::with_capacity(SOURCE_PROBE_CONCURRENCY);
-            while batch.len() < SOURCE_PROBE_CONCURRENCY {
-                let path = if let Some(path) = pending.pop() {
-                    path
-                } else if let Some(directory) = directories.last_mut() {
-                    match directory.next_entry().await {
-                        Ok(Some(entry)) => entry.path(),
-                        Ok(None) => {
-                            directories.pop();
-                            continue;
-                        }
-                        Err(_) => {
-                            incomplete = true;
-                            directories.pop();
-                            continue;
-                        }
-                    }
-                } else {
-                    break;
-                };
-                count_native_scan_entry(&mut count)?;
-                #[cfg(test)]
-                anyhow::ensure!(count <= self.scan_entry_limit, NATIVE_SCAN_LIMIT);
-                batch.push(path);
-            }
-            if batch.is_empty() {
-                break;
-            }
-            {
-                let mut scan = self.scan.lock().await;
-                work.publish(|| scan.scanned += batch.len() as u64)
-                    .map_err(anyhow::Error::msg)?;
-            }
-            let inspected = stream::iter(batch)
-                .map(|path| async move {
-                    let _permit = work
-                        .run(self.source_probes.acquire())
-                        .await
-                        .map_err(anyhow::Error::msg)??;
-                    work.check().map_err(anyhow::Error::msg)?;
-                    #[cfg(test)]
-                    if let Some(delay) = self.original_read_delay {
-                        tokio::time::sleep(delay).await;
-                    }
-                    let metadata = fs::symlink_metadata(&path).await;
-                    work.check().map_err(anyhow::Error::msg)?;
-                    Ok::<_, anyhow::Error>((path, metadata))
-                })
-                .buffer_unordered(SOURCE_PROBE_CONCURRENCY)
-                .collect::<Vec<_>>()
-                .await;
-            // Every submitted operation is drained before propagating errors.
-            for inspected in inspected {
+        let mut seen = HashSet::new();
+        let traversal = async {
+            loop {
                 work.check().map_err(anyhow::Error::msg)?;
                 {
                     let scan = self.scan.lock().await;
@@ -1973,97 +2065,228 @@ impl Library {
                         "Local source scan superseded"
                     );
                 }
-                let (path, metadata) = inspected?;
-                let metadata = match metadata {
-                    Ok(metadata) => metadata,
-                    Err(error) if path == root => return Err(error.into()),
-                    Err(_) => {
-                        incomplete = true;
-                        continue;
-                    }
-                };
-                if metadata.file_type().is_symlink() {
-                    continue;
+                let mut batch = Vec::with_capacity(SOURCE_PROBE_CONCURRENCY);
+                while batch.len() < SOURCE_PROBE_CONCURRENCY {
+                    let (path, entry) = if let Some(path) = pending.pop() {
+                        (path, None)
+                    } else if let Some(directory) = directories.last_mut() {
+                        match directory.entries.next_entry().await {
+                            Ok(Some(entry)) => {
+                                let path = entry.path();
+                                // Without a portable change stamp, retain the
+                                // conservative per-leaf metadata check.
+                                (path, directory.stamp.modified.is_some().then_some(entry))
+                            }
+                            Ok(None) => {
+                                // Verify only after the final prefetched batch
+                                // was processed, including any child directories.
+                                if !batch.is_empty() {
+                                    break;
+                                }
+                                let finished = directories.pop().unwrap();
+                                self.finish_scan_directory(finished, &root, work).await?;
+                                continue;
+                            }
+                            Err(_) => {
+                                incomplete = true;
+                                directories.pop();
+                                continue;
+                            }
+                        }
+                    } else {
+                        break;
+                    };
+                    count_native_scan_entry(&mut count)?;
+                    #[cfg(test)]
+                    anyhow::ensure!(count <= self.scan_entry_limit, NATIVE_SCAN_LIMIT);
+                    let known_size = (source.kind == "folder")
+                        .then(|| known.get(&path).map(|record| record.size))
+                        .flatten();
+                    batch.push((path, entry, known_size));
                 }
-                if metadata.is_dir() {
-                    match fs::read_dir(&path).await {
-                        Ok(directory) => directories.push(directory),
-                        Err(error) if path == root => return Err(error.into()),
-                        Err(_) => incomplete = true,
-                    }
-                    continue;
+                if batch.is_empty() {
+                    break;
                 }
-                if !metadata.is_file() {
-                    continue;
-                }
-                let extension = path
-                    .extension()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("")
-                    .to_ascii_lowercase();
-                let Some(mime) = media_type(&extension) else {
-                    continue;
-                };
-                if known.contains_key(&path) {
-                    continue;
-                }
-                match fs::File::open(&path).await {
-                    Ok(file) => drop(file),
-                    Err(error) if path == root => return Err(error.into()),
-                    Err(_) => {
-                        incomplete = true;
-                        continue;
-                    }
-                }
-                // Stable IDs also recover a record committed before an interrupted
-                // index update, without scanning unrelated source metadata.
-                let mut hash = Sha256::new();
-                hash.update(source.id.as_bytes());
-                hash.update([0]);
-                hash.update(path.as_os_str().as_encoded_bytes());
-                let id = format!("{:x}", hash.finalize())[..32].to_string();
-                let record = Record {
-                    id: id.clone(),
-                    name: path
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("Local media")
-                        .into(),
-                    size: metadata.len(),
-                    mime: mime.into(),
-                    extension,
-                    linked_path: Some(path.clone()),
-                    source_id: Some(source.id.clone()),
-                };
-                let destination = self.root.join(format!("{id}.json"));
-                if let Ok(existing) = self.record(&id).await {
-                    anyhow::ensure!(
-                        existing.linked_path == record.linked_path
-                            && existing.source_id == record.source_id,
-                        "Local media identity collision"
-                    );
-                }
-                let temporary = destination.with_extension("part");
-                fs::write(&temporary, serde_json::to_vec(&record)?).await?;
-                {
-                    let _binding = work
-                        .run(self.mutation.lock())
-                        .await
-                        .map_err(anyhow::Error::msg)?;
+                let inspected = stream::iter(batch)
+                    .map(|(path, entry, known_size)| async move {
+                        let _permit = work
+                            .run(self.source_probes.acquire())
+                            .await
+                            .map_err(anyhow::Error::msg)??;
+                        work.check().map_err(anyhow::Error::msg)?;
+                        #[cfg(test)]
+                        {
+                            self.scan_entries.lock().unwrap().push(path.clone());
+                            if let Some((selected, gate)) = &self.scan_entry_gate {
+                                if path != *selected && path.starts_with(selected) {
+                                    gate.acquire().await.unwrap().forget();
+                                }
+                            }
+                        }
+                        #[cfg(test)]
+                        if let Some(delay) = self.original_read_delay {
+                            tokio::time::sleep(delay).await;
+                        }
+                        // Tokio captures this no-follow type while enumerating.
+                        // A known file needs no duplicate lstat: availability is
+                        // an enumeration-time observation, never serving authority.
+                        let cached = match (entry, known_size) {
+                            (Some(entry), Some(size)) => {
+                                Some(entry.file_type().await.map(|kind| (kind, size)))
+                            }
+                            _ => None,
+                        };
+                        let observation = match cached {
+                            Some(Ok((kind, size))) if kind.is_file() => Ok((kind, size)),
+                            Some(Err(error)) => Err(error),
+                            _ => {
+                                #[cfg(test)]
+                                self.scan_leaf_metadata.lock().unwrap().push(path.clone());
+                                fs::symlink_metadata(&path)
+                                    .await
+                                    .map(|metadata| (metadata.file_type(), metadata.len()))
+                            }
+                        };
+                        work.check().map_err(anyhow::Error::msg)?;
+                        Ok::<_, anyhow::Error>((path, observation))
+                    })
+                    .buffer_unordered(SOURCE_PROBE_CONCURRENCY)
+                    .collect::<Vec<_>>()
+                    .await;
+                // Every submitted operation is drained before propagating errors.
+                for inspected in inspected {
+                    work.check().map_err(anyhow::Error::msg)?;
+                    let (path, observation) = inspected?;
                     {
-                        let scan = self.scan.lock().await;
+                        let mut scan = self.scan.lock().await;
                         anyhow::ensure!(
                             Self::owns_source(&scan, &source.id, generation),
                             "Local source scan superseded"
                         );
+                        work.publish(|| scan.scanned += 1)
+                            .map_err(anyhow::Error::msg)?;
                     }
-                    work.check().map_err(anyhow::Error::msg)?;
-                    fs::rename(temporary, destination).await?;
-                    self.publish_source_record(source, generation, record.clone(), true, work)
+                    let (kind, size) = match observation {
+                        Ok(observation) => observation,
+                        Err(error) if path == root => return Err(error.into()),
+                        Err(_) => {
+                            incomplete = true;
+                            continue;
+                        }
+                    };
+                    if kind.is_symlink() {
+                        continue;
+                    }
+                    if kind.is_dir() {
+                        match self.scan_directory(&path, &root, work).await {
+                            Ok(directory) => directories.push(directory),
+                            Err(error) if path == root => return Err(error.into()),
+                            Err(_) => incomplete = true,
+                        }
+                        continue;
+                    }
+                    if !kind.is_file() {
+                        continue;
+                    }
+                    let extension = path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("")
+                        .to_ascii_lowercase();
+                    let Some(mime) = media_type(&extension) else {
+                        continue;
+                    };
+                    if let Some(record) = known.get(&path) {
+                        if source.kind == "folder" {
+                            self.publish_source_record(
+                                source,
+                                generation,
+                                record.clone(),
+                                true,
+                                work,
+                            )
+                            .await?;
+                            seen.insert(path);
+                        }
+                        continue;
+                    }
+                    match fs::File::open(&path).await {
+                        Ok(file) => drop(file),
+                        Err(error) if path == root => return Err(error.into()),
+                        Err(_) => {
+                            incomplete = true;
+                            continue;
+                        }
+                    }
+                    // Stable IDs also recover a record committed before an interrupted
+                    // index update, without scanning unrelated source metadata.
+                    let mut hash = Sha256::new();
+                    hash.update(source.id.as_bytes());
+                    hash.update([0]);
+                    hash.update(path.as_os_str().as_encoded_bytes());
+                    let id = format!("{:x}", hash.finalize())[..32].to_string();
+                    let record = Record {
+                        id: id.clone(),
+                        name: path
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("Local media")
+                            .into(),
+                        size,
+                        mime: mime.into(),
+                        extension,
+                        linked_path: Some(path.clone()),
+                        source_id: Some(source.id.clone()),
+                    };
+                    let destination = self.root.join(format!("{id}.json"));
+                    if let Ok(existing) = self.record(&id).await {
+                        anyhow::ensure!(
+                            existing.linked_path == record.linked_path
+                                && existing.source_id == record.source_id,
+                            "Local media identity collision"
+                        );
+                    }
+                    let temporary = destination.with_extension("part");
+                    fs::write(&temporary, serde_json::to_vec(&record)?).await?;
+                    {
+                        let _binding = work
+                            .run(self.mutation.lock())
+                            .await
+                            .map_err(anyhow::Error::msg)?;
+                        {
+                            let scan = self.scan.lock().await;
+                            anyhow::ensure!(
+                                Self::owns_source(&scan, &source.id, generation),
+                                "Local source scan superseded"
+                            );
+                        }
+                        work.check().map_err(anyhow::Error::msg)?;
+                        fs::rename(temporary, destination).await?;
+                        self.publish_source_record(source, generation, record.clone(), true, work)
+                            .await?;
+                    }
+                    seen.insert(path.clone());
+                    known.insert(path, record);
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        }
+        .await;
+        if source.kind == "folder" {
+            // A failed subtree still retains its saved references. False means
+            // not confirmed playable; only a successful walk proves absence.
+            for (path, record) in &known {
+                if !seen.contains(path) {
+                    self.publish_source_record(source, generation, record.clone(), false, work)
                         .await?;
                 }
-                known.insert(path, record);
             }
+            traversal?;
+            // A replaced root/ancestor cannot certify the completed snapshot
+            // collected through the old directory handle.
+            drop(self.scan_directory(&root, &root, work).await?);
+        } else {
+            traversal?;
         }
         let index_dir = self.root.join("source-index");
         fs::create_dir_all(&index_dir).await?;
@@ -3334,6 +3557,442 @@ mod tests {
         (source, ids)
     }
 
+    // Exercise exactly one admitted generation without the global startup
+    // sweep scheduling an intentional recovery scan after the injected error.
+    async fn isolated_source_scan(
+        library: &Library,
+        source: &SourceRecord,
+    ) -> tokio::task::JoinHandle<anyhow::Result<()>> {
+        let work = library.background.enter().unwrap();
+        library.prepare_scan_epoch(&work).await.unwrap();
+        let generation = {
+            let mut scan = library.scan.lock().await;
+            work.publish(|| {
+                scan.cached = true;
+                scan.jobs += 1;
+                Library::reserve_source(&mut scan, &source.id)
+            })
+            .unwrap()
+        };
+        let runner = library.clone();
+        let source = source.clone();
+        tokio::spawn(async move {
+            let result = runner.scan_source(source, &work, Some(generation)).await;
+            runner.scan.lock().await.finish_job(&work, None);
+            result
+        })
+    }
+
+    #[tokio::test]
+    async fn folder_walk_preserves_legacy_and_unavailable_ids_without_per_file_realpath() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (source, expected) = seed_legacy_source(&library, &base.join("Movies"), 67).await;
+        let work = library.background.enter().unwrap();
+        let records = library.source_metadata(&source, true, &work).await.unwrap();
+        drop(work);
+        for record in records.iter().take(3) {
+            fs::remove_file(record.linked_path.as_ref().unwrap())
+                .await
+                .unwrap();
+        }
+        library
+            .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        let catalog = library.catalog().await.unwrap();
+        assert_eq!(catalog.source_scans[0].state, "complete");
+        assert!(catalog.scan_error.is_none());
+        assert_eq!(
+            catalog
+                .items
+                .iter()
+                .map(|item| item.id.clone())
+                .collect::<HashSet<_>>(),
+            expected
+        );
+        assert_eq!(
+            catalog.items.iter().filter(|item| item.available).count(),
+            64
+        );
+        assert_eq!(
+            catalog.items.iter().filter(|item| !item.available).count(),
+            3
+        );
+        assert!(library.original_checks.lock().unwrap().is_empty());
+        assert_eq!(
+            *library.scan_leaf_metadata.lock().unwrap(),
+            vec![source.path.clone()],
+            "known regular files reuse enumeration types without another lstat"
+        );
+        assert_eq!(
+            *library.scan_directories.lock().unwrap(),
+            vec![source.path.clone(), source.path.clone()]
+        );
+        let index: Vec<Record> = serde_json::from_slice(
+            &fs::read(
+                library
+                    .root
+                    .join("source-index")
+                    .join(format!("{}.json", source.id)),
+            )
+            .await
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            index
+                .iter()
+                .map(|item| item.id.clone())
+                .collect::<HashSet<_>>(),
+            expected
+        );
+        let item = catalog.items.iter().find(|item| item.available).unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert("range", "bytes=1-3".parse().unwrap());
+        let response = media(
+            State(library.clone()),
+            Path(("t".repeat(32), item.id.clone())),
+            headers,
+            Method::GET,
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(
+            axum::body::to_bytes(response.into_body(), 16)
+                .await
+                .unwrap(),
+            "ide"
+        );
+        assert_eq!(
+            library.original_checks.lock().unwrap().len(),
+            1,
+            "serving must retain full original-path validation"
+        );
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn folder_walk_cached_leaf_type_never_authorizes_a_replaced_original() {
+        for replace_after_enumeration in [false, true] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            let (source, expected) = seed_legacy_source(&library, &base.join("Movies"), 1).await;
+            let id = expected.iter().next().unwrap().clone();
+            let record = library.record(&id).await.unwrap();
+            let path = record.linked_path.clone().unwrap();
+            let outside = base.join("outside.mp4");
+            fs::write(&outside, b"outside").await.unwrap();
+            let gate = Arc::new(Semaphore::new(0));
+            if replace_after_enumeration {
+                library.scan_entry_gate = Some((source.path.clone(), gate.clone()));
+            } else {
+                fs::remove_file(&path).await.unwrap();
+                std::os::unix::fs::symlink(&outside, &path).unwrap();
+            }
+            let scan_run = isolated_source_scan(&library, &source).await;
+            if replace_after_enumeration {
+                tokio::time::timeout(std::time::Duration::from_secs(3), async {
+                    while !library.scan_entries.lock().unwrap().contains(&path) {
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+                fs::remove_file(&path).await.unwrap();
+                std::os::unix::fs::symlink(&outside, &path).unwrap();
+                gate.add_permits(1);
+                assert!(
+                    scan_run.await.unwrap().is_err(),
+                    "directory bookend must reject changed namespace"
+                );
+                assert!(
+                    !library.scan_leaf_metadata.lock().unwrap().contains(&path),
+                    "test must exercise the cached enumeration type"
+                );
+            } else {
+                scan_run.await.unwrap().unwrap();
+            }
+            wait_for_drain(&library.background).await;
+            let catalog = library.catalog().await.unwrap();
+            assert_eq!(catalog.items.len(), 1);
+            assert_eq!(catalog.items[0].id, id);
+            if replace_after_enumeration {
+                assert_eq!(catalog.source_scans[0].state, "error");
+                assert!(catalog.scan_error.is_some());
+            } else {
+                assert_eq!(catalog.source_scans[0].state, "complete");
+                assert!(
+                    !catalog.items[0].available,
+                    "an initial symlink is never a playable file"
+                );
+            }
+            let response = media(
+                State(library.clone()),
+                Path(("t".repeat(32), id)),
+                HeaderMap::new(),
+                Method::GET,
+            )
+            .await;
+            assert!(
+                response.status().is_client_error(),
+                "cached type must not authorize serving the replacement"
+            );
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn folder_walk_rejects_changed_parent_and_final_root_identity() {
+        for final_root in [false, true] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            let (source, expected) = seed_legacy_source(&library, &base.join("Movies"), 1).await;
+            let id = expected.iter().next().unwrap().clone();
+            let mut record = library.record(&id).await.unwrap();
+            let target = if final_root {
+                source.path.clone()
+            } else {
+                let nested = source.path.join("nested");
+                fs::create_dir(&nested).await.unwrap();
+                let destination = nested.join("movie.mp4");
+                fs::rename(record.linked_path.as_ref().unwrap(), &destination)
+                    .await
+                    .unwrap();
+                record.linked_path = Some(destination);
+                fs::write(
+                    library.root.join(format!("{id}.json")),
+                    serde_json::to_vec(&record).unwrap(),
+                )
+                .await
+                .unwrap();
+                nested
+            };
+            let outside = base.join("outside");
+            fs::create_dir(&outside).await.unwrap();
+            fs::write(outside.join("movie.mp4"), b"outside")
+                .await
+                .unwrap();
+            let gate = Arc::new(Semaphore::new(usize::from(final_root)));
+            library.scan_directory_gate = Some((target.clone(), gate.clone()));
+            let scan_run = isolated_source_scan(&library, &source).await;
+            tokio::time::timeout(std::time::Duration::from_secs(3), async {
+                while library
+                    .scan_directories
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .filter(|path| **path == target)
+                    .count()
+                    < if final_root { 2 } else { 1 }
+                {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            fs::rename(&target, base.join("displaced")).await.unwrap();
+            std::os::unix::fs::symlink(&outside, &target).unwrap();
+            gate.add_permits(16);
+            assert!(scan_run.await.unwrap().is_err());
+            wait_for_drain(&library.background).await;
+            let catalog = library.catalog().await.unwrap();
+            assert_eq!(catalog.source_scans[0].state, "error");
+            assert!(catalog.scan_error.is_some());
+            assert_eq!(
+                catalog
+                    .items
+                    .iter()
+                    .map(|item| item.id.clone())
+                    .collect::<HashSet<_>>(),
+                expected
+            );
+            if !final_root {
+                assert!(!catalog.items[0].available);
+            }
+            let response = media(
+                State(library.clone()),
+                Path(("t".repeat(32), id)),
+                HeaderMap::new(),
+                Method::GET,
+            )
+            .await;
+            assert!(
+                response.status().is_client_error(),
+                "redirected originals must never be served"
+            );
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn folder_walk_preserves_unverified_records_when_subtree_access_is_denied() {
+        use std::os::unix::fs::PermissionsExt;
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (source, expected) = seed_legacy_source(&library, &base.join("Movies"), 3).await;
+        let id = expected.iter().next().unwrap().clone();
+        let mut record = library.record(&id).await.unwrap();
+        let denied = source.path.join("denied");
+        fs::create_dir(&denied).await.unwrap();
+        let destination = denied.join("movie.mp4");
+        fs::rename(record.linked_path.as_ref().unwrap(), &destination)
+            .await
+            .unwrap();
+        record.linked_path = Some(destination);
+        fs::write(
+            library.root.join(format!("{id}.json")),
+            serde_json::to_vec(&record).unwrap(),
+        )
+        .await
+        .unwrap();
+        fs::set_permissions(&denied, std::fs::Permissions::from_mode(0o000))
+            .await
+            .unwrap();
+        let enforced = fs::read_dir(&denied).await.is_err();
+        library
+            .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
+            .await
+            .unwrap();
+        wait_for_drain(&library.background).await;
+        fs::set_permissions(&denied, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        if enforced {
+            let catalog = library.catalog().await.unwrap();
+            assert_eq!(catalog.source_scans[0].state, "error");
+            assert!(catalog.scan_error.is_some());
+            assert_eq!(
+                catalog
+                    .items
+                    .iter()
+                    .map(|item| item.id.clone())
+                    .collect::<HashSet<_>>(),
+                expected
+            );
+            assert!(catalog
+                .items
+                .iter()
+                .any(|item| item.id == id && !item.available));
+            assert_eq!(
+                catalog.items.iter().filter(|item| item.available).count(),
+                2
+            );
+        }
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn folder_walk_does_not_trust_deleted_or_changed_index_records() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (source, _) = seed_legacy_source(&library, &base.join("Movies"), 4).await;
+        let work = library.background.enter().unwrap();
+        let records = library.source_metadata(&source, true, &work).await.unwrap();
+        fs::write(
+            library
+                .root
+                .join("source-index")
+                .join(format!("{}.json", source.id)),
+            serde_json::to_vec(&records).unwrap(),
+        )
+        .await
+        .unwrap();
+        fs::remove_file(library.root.join(format!("{}.json", records[0].id)))
+            .await
+            .unwrap();
+        let mut changed = records[1].clone();
+        changed.source_id = Some("other-source".into());
+        fs::write(
+            library.root.join(format!("{}.json", changed.id)),
+            serde_json::to_vec(&changed).unwrap(),
+        )
+        .await
+        .unwrap();
+        let mut changed = records[2].clone();
+        changed.linked_path = Some(base.join("outside.mp4"));
+        fs::write(
+            library.root.join(format!("{}.json", changed.id)),
+            serde_json::to_vec(&changed).unwrap(),
+        )
+        .await
+        .unwrap();
+        library.prepare_scan_epoch(&work).await.unwrap();
+        library.scan.lock().await.cached = true;
+        library
+            .scan_source(source.clone(), &work, None)
+            .await
+            .unwrap();
+        drop(work);
+        let catalog = library.catalog().await.unwrap();
+        assert_eq!(catalog.items.len(), 4);
+        assert!(catalog
+            .items
+            .iter()
+            .all(|item| item.available && item.source_id == source.id));
+        assert!(catalog.items.iter().any(|item| item.id == records[3].id));
+        for invalid in records.iter().take(3) {
+            assert!(
+                !catalog.items.iter().any(|item| item.id == invalid.id),
+                "stale index cannot resurrect invalid metadata"
+            );
+        }
+        assert!(library.original_checks.lock().unwrap().is_empty());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn removing_item_during_folder_walk_retires_its_generation() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (source, expected) = seed_legacy_source(&library, &base.join("Movies"), 8).await;
+        let gate = Arc::new(Semaphore::new(0));
+        library.scan_entry_gate = Some((source.path.clone(), gate.clone()));
+        let scan_run = isolated_source_scan(&library, &source).await;
+        tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            while library.scan_entries.lock().unwrap().len() < SOURCE_PROBE_CONCURRENCY + 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let id = expected.iter().next().unwrap().clone();
+        let response = remove(library.clone(), Path(("t".repeat(32), id.clone()))).await;
+        assert!(response.status().is_success());
+        gate.add_permits(16);
+        assert!(scan_run.await.unwrap().is_err());
+        wait_for_drain(&library.background).await;
+        assert!(!library
+            .catalog()
+            .await
+            .unwrap()
+            .items
+            .iter()
+            .any(|item| item.id == id));
+        assert!(!library
+            .root
+            .join("source-index")
+            .join(format!("{}.json", source.id))
+            .exists());
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
     #[tokio::test]
     async fn cold_small_source_completes_while_other_source_probes_are_blocked() {
         let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
@@ -3343,7 +4002,7 @@ mod tests {
         let (large, _) = seed_legacy_source(&library, &base.join("FFFF"), 512).await;
         let (small, expected) = seed_legacy_source(&library, &base.join("FF"), 46).await;
         let gate = Arc::new(Semaphore::new(0));
-        library.original_read_gate = Some((large.path.clone(), gate.clone()));
+        library.scan_entry_gate = Some((large.path.clone(), gate.clone()));
         library.original_read_delay = Some(std::time::Duration::from_millis(20));
         library
             .prioritize_source_tracked(&large.id, library.background.enter().unwrap())
@@ -3352,11 +4011,11 @@ mod tests {
         tokio::time::timeout(std::time::Duration::from_secs(3), async {
             loop {
                 let count = library
-                    .original_checks
+                    .scan_entries
                     .lock()
                     .unwrap()
                     .iter()
-                    .filter(|path| path.starts_with(&large.path))
+                    .filter(|path| *path != &large.path && path.starts_with(&large.path))
                     .count();
                 if count == SOURCE_PROBE_CONCURRENCY {
                     break;
@@ -3401,19 +4060,19 @@ mod tests {
             "46-item selected source with delayed filesystem completed in {:?}",
             started.elapsed()
         );
-        let checks = library.original_checks.lock().unwrap();
+        let checks = library.scan_entries.lock().unwrap();
         assert_eq!(
             checks
                 .iter()
-                .filter(|path| path.starts_with(&small.path))
+                .filter(|path| *path != &small.path && path.starts_with(&small.path))
                 .count(),
             46,
-            "startup must not duplicate original checks"
+            "each selected file is inspected once during traversal"
         );
         assert_eq!(
             checks
                 .iter()
-                .filter(|path| path.starts_with(&large.path))
+                .filter(|path| *path != &large.path && path.starts_with(&large.path))
                 .count(),
             SOURCE_PROBE_CONCURRENCY
         );
@@ -3427,14 +4086,18 @@ mod tests {
         wait_for_drain(&library.background).await;
         assert_eq!(
             library
-                .original_checks
+                .scan_entries
                 .lock()
                 .unwrap()
                 .iter()
-                .filter(|path| path.starts_with(&large.path))
+                .filter(|path| *path != &large.path && path.starts_with(&large.path))
                 .count(),
             SOURCE_PROBE_CONCURRENCY,
             "cancellation must not admit more original probes"
+        );
+        assert!(
+            library.original_checks.lock().unwrap().is_empty(),
+            "folder scan must not canonicalize every original file"
         );
         fs::remove_dir_all(base).await.unwrap();
     }
@@ -3459,29 +4122,32 @@ mod tests {
         }
         drop(work);
         let gate = Arc::new(Semaphore::new(0));
-        library.original_read_gate = Some((source.path.clone(), gate.clone()));
+        library.scan_entry_gate = Some((source.path.clone(), gate.clone()));
         library
             .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
             .await
             .unwrap();
         tokio::time::timeout(std::time::Duration::from_secs(3), async {
-            while library.original_checks.lock().unwrap().len() < SOURCE_PROBE_CONCURRENCY {
+            while library.scan_entries.lock().unwrap().len() < SOURCE_PROBE_CONCURRENCY + 1 {
                 tokio::task::yield_now().await;
             }
         })
         .await
         .unwrap();
-        assert_eq!(library.catalog().await.unwrap().scanned, 0);
+        let before = library.catalog().await.unwrap().scanned;
         gate.add_permits(SOURCE_PROBE_CONCURRENCY);
         tokio::time::timeout(std::time::Duration::from_secs(3), async {
-            while library.catalog().await.unwrap().scanned < SOURCE_PROBE_CONCURRENCY as u64 {
+            while library.scan_entries.lock().unwrap().len() < 2 * SOURCE_PROBE_CONCURRENCY + 1 {
                 tokio::task::yield_now().await;
             }
         })
         .await
         .unwrap();
         let snapshot = library.catalog().await.unwrap();
-        assert_eq!(snapshot.scanned, SOURCE_PROBE_CONCURRENCY as u64);
+        assert!(
+            snapshot.scanned > before,
+            "completed file checks must advance progress"
+        );
         assert_eq!(
             snapshot
                 .items
@@ -3516,13 +4182,13 @@ mod tests {
             .unwrap();
         let (source, _) = seed_legacy_source(&library, &base.join("Movies"), 128).await;
         let gate = Arc::new(Semaphore::new(0));
-        library.original_read_gate = Some((source.path.clone(), gate.clone()));
+        library.scan_entry_gate = Some((source.path.clone(), gate.clone()));
         library
             .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
             .await
             .unwrap();
         tokio::time::timeout(std::time::Duration::from_secs(3), async {
-            while library.original_checks.lock().unwrap().len() < SOURCE_PROBE_CONCURRENCY {
+            while library.scan_entries.lock().unwrap().len() < SOURCE_PROBE_CONCURRENCY + 1 {
                 tokio::task::yield_now().await;
             }
         })
@@ -3542,8 +4208,8 @@ mod tests {
         removal.await.unwrap().unwrap();
         wait_for_drain(&library.background).await;
         assert_eq!(
-            library.original_checks.lock().unwrap().len(),
-            SOURCE_PROBE_CONCURRENCY
+            library.scan_entries.lock().unwrap().len(),
+            SOURCE_PROBE_CONCURRENCY + 1
         );
         let catalog = library.catalog().await.unwrap();
         assert!(catalog.items.is_empty());
