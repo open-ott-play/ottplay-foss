@@ -505,23 +505,11 @@ function remoteLifecycleCapability(
 }
 
 /** Shared predicates, read-only producers, no backend creation or native probes. */
-/** Shared predicates, read-only producers, no backend creation or native probes. */
 export function remoteDoctorCapabilities(w: any): DoctorCapability[] {
-    // Exact descriptor strings are shared; capability checks and wire values stay unchanged.
-    var doctorLiteral0 = "screenshot" as const,
-        doctorLiteral1 = "diagnostics" as const,
-        doctorLiteral2 = "input" as const,
-        doctorLiteral3 = "function" as const,
-        doctorLiteral4 = "producer_unavailable" as const,
-        doctorLiteral5 = "boolean" as const,
-        doctorLiteral6 = "remote_disconnected" as const,
-        doctorLiteral7 = "ready" as const,
-        doctorLiteral8 = "current_state_unsupported" as const;
-
     var names: DoctorCapabilityName[] = [
-        doctorLiteral0,
-        doctorLiteral1,
-        doctorLiteral2,
+        "screenshot",
+        "diagnostics",
+        "input",
         "restart_stream",
         "reload_player",
         "restart_app",
@@ -532,77 +520,74 @@ export function remoteDoctorCapabilities(w: any): DoctorCapability[] {
     ];
     return names.map(function (name): DoctorCapability {
         try {
-            if (name === doctorLiteral0) {
+            if (name === "screenshot") {
                 var hook = w.__ottRemoteScreenshot;
-                if (!hook || typeof hook.peek !== doctorLiteral3)
-                    return remoteCapability(name, doctorLiteral4);
+                if (!hook || typeof hook.peek !== "function")
+                    return remoteCapability(name, "producer_unavailable");
                 var shot = hook.peek();
-                if (!shot || typeof shot.connected !== doctorLiteral5)
-                    return remoteCapability(name, doctorLiteral4);
+                if (!shot || typeof shot.connected !== "boolean")
+                    return remoteCapability(name, "producer_unavailable");
                 if (!shot.connected)
-                    return remoteCapability(name, doctorLiteral6);
+                    return remoteCapability(name, "remote_disconnected");
                 if (shot.known !== true)
-                    return remoteCapability(name, doctorLiteral4);
+                    return remoteCapability(name, "producer_unavailable");
                 if (shot.supported === false)
                     return remoteCapability(name, "not_implemented");
                 if (shot.busy === true) return remoteCapability(name, "busy");
-                if (shot.ready === true)
-                    return remoteCapability(name, doctorLiteral7);
+                if (shot.ready === true) return remoteCapability(name, "ready");
                 return remoteCapability(
                     name,
                     shot.needsSourceSelection === true
                         ? "source_selection_required"
-                        : doctorLiteral4
+                        : "producer_unavailable"
                 );
             }
-            if (name === doctorLiteral1) {
+            if (name === "diagnostics") {
                 var diagnostics = w.__ottRemoteDiagnostics;
-                if (
-                    !diagnostics ||
-                    typeof diagnostics.status !== doctorLiteral3
-                )
-                    return remoteCapability(name, doctorLiteral4);
+                if (!diagnostics || typeof diagnostics.status !== "function")
+                    return remoteCapability(name, "producer_unavailable");
                 var status = diagnostics.status();
-                if (!status || typeof status.trusted !== doctorLiteral5)
-                    return remoteCapability(name, doctorLiteral4);
+                if (!status || typeof status.trusted !== "boolean")
+                    return remoteCapability(name, "producer_unavailable");
                 if (!status.trusted)
-                    return remoteCapability(name, doctorLiteral6);
+                    return remoteCapability(name, "remote_disconnected");
                 if (status.state === "unavailable")
-                    return remoteCapability(name, doctorLiteral8);
+                    return remoteCapability(name, "current_state_unsupported");
                 if (
                     status.enabled === true &&
-                    (status.state === doctorLiteral7 ||
-                        status.state === "active") &&
+                    (status.state === "ready" || status.state === "active") &&
                     typeof status.runtimeId === "string" &&
                     status.runtimeId.length > 0
                 )
-                    return remoteCapability(name, doctorLiteral7);
-                return remoteCapability(name, doctorLiteral4);
+                    return remoteCapability(name, "ready");
+                return remoteCapability(name, "producer_unavailable");
             }
-            if (name === doctorLiteral2) {
+            if (name === "input") {
                 if (
-                    typeof w.keyHandler !== doctorLiteral3 ||
+                    typeof w.keyHandler !== "function" ||
                     !w.keys ||
                     !w.__ottClassicScreenPort ||
-                    typeof w.__ottClassicScreenPort.normalize !== doctorLiteral3
+                    typeof w.__ottClassicScreenPort.normalize !== "function"
                 )
-                    return remoteCapability(name, doctorLiteral4);
+                    return remoteCapability(name, "producer_unavailable");
                 var keys = Object.keys(remoteKeys);
                 var supported = false;
                 for (var i = 0; i < keys.length; i++) {
                     if (!remoteInputCode(w, keys[i])) continue;
                     supported = true;
                     if (remoteInputAllowed(w, keys[i]))
-                        return remoteCapability(name, doctorLiteral7);
+                        return remoteCapability(name, "ready");
                 }
                 return remoteCapability(
                     name,
-                    supported ? "policy_restricted" : doctorLiteral8
+                    supported
+                        ? "policy_restricted"
+                        : "current_state_unsupported"
                 );
             }
             return remoteLifecycleCapability(w, name, true);
         } catch (_) {
-            return remoteCapability(name, doctorLiteral4);
+            return remoteCapability(name, "producer_unavailable");
         }
     });
 }
@@ -678,7 +663,6 @@ function remoteAspectCapabilities(w: any): any {
 }
 
 /** Typed, bounded controls share the command transport's exact-result ACK fence. */
-/** Typed, bounded controls share the command transport's exact-result ACK fence. */
 export function executeRemoteControl(
     w: any,
     action: string,
@@ -687,21 +671,6 @@ export function executeRemoteControl(
     afterReply?: (effect: () => void) => void,
     expiresAt?: number
 ): (() => void) | void {
-    // Share exact repeated error/protocol text without changing wire values.
-    var localMessage0 = "operation" as const,
-        localMessage1 = "unsupported" as const,
-        localMessage2 = "capabilities" as const,
-        localMessage3 = "available" as const,
-        localMessage4 = "previous_channel" as const,
-        localMessage5 = "next_channel" as const,
-        localMessage6 = "step_channel" as const,
-        localMessage7 = "restart_stream" as const,
-        localMessage8 = "reload_player" as const,
-        localMessage9 = "restart_app" as const,
-        localMessage10 = "reboot_device" as const,
-        localMessage11 = "This lifecycle operation is unavailable." as const,
-        localMessage12 = "lifecycle-after-ack" as const;
-
     function fail(status: string, error: string): void {
         done({ data: { error: error }, status: status });
     }
@@ -710,13 +679,13 @@ export function executeRemoteControl(
     }
     var fields =
         action === "lifecycle"
-            ? [localMessage0]
+            ? ["operation"]
             : action === "input"
               ? ["key"]
               : action === "playback"
-                ? [localMessage0, "position", "offset"]
+                ? ["operation", "position", "offset"]
                 : action === "aspect"
-                  ? [localMessage0, "runtime", "mode"]
+                  ? ["operation", "runtime", "mode"]
                   : [];
     if (
         !params ||
@@ -766,7 +735,7 @@ export function executeRemoteControl(
         }
         var target = remoteAspectTarget(w);
         if (!target || (setting && !afterReply)) {
-            aspectFail(localMessage1, localMessage1);
+            aspectFail("unsupported", "unsupported");
             return;
         }
         if (!setting) {
@@ -811,32 +780,32 @@ export function executeRemoteControl(
         return;
     }
     var hooks = w.__ottRemoteLifecycle;
-    var owned = remoteOwnedPlayback(w, action === localMessage2);
+    var owned = remoteOwnedPlayback(w, action === "capabilities");
     function lifecycleAvailable(operation: string): boolean {
         return (
             remoteLifecycleCapability(
                 w,
                 operation as DoctorCapabilityName,
-                action === localMessage2
-            ).state === localMessage3
+                action === "capabilities"
+            ).state === "available"
         );
     }
     var playback =
         owned && owned.kind !== "live" && !remoteKiosk(w)
             ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
             : [];
-    if (action === localMessage2) {
+    if (action === "capabilities") {
         var localMedia = w.__ottLocalMedia?.remoteCapabilities
             ? w.__ottLocalMedia.remoteCapabilities()
             : undefined;
         var plexQueue = remotePlexQueue(w, remotePlayerInfo(w).runtime);
         if (plexQueue.retained() || remoteChannelStep(w, -1))
-            playback.push(localMessage4);
+            playback.push("previous_channel");
         if (plexQueue.retained() || remoteChannelStep(w, 1))
-            playback.push(localMessage5);
+            playback.push("next_channel");
         // Generic availability describes the selection state, not the PIN
         // policy of either neighbour. Every requested destination is checked.
-        if (remoteChannelStep(w, 0, true)) playback.push(localMessage6);
+        if (remoteChannelStep(w, 0, true)) playback.push("step_channel");
         reply({
             app_update: remoteAppUpdateAvailable(w)
                 ? { operations: ["status", "prepare", "install"], version: 1 }
@@ -850,17 +819,17 @@ export function executeRemoteControl(
                 return remoteInputAllowed(w, key) && !!remoteInputCode(w, key);
             }),
             inspect: {
-                sections: ["doctor", "snapshot", localMessage0],
+                sections: ["doctor", "snapshot", "operation"],
                 version: 1,
             },
             lifecycle: [
-                localMessage7,
-                localMessage8,
-                localMessage9,
+                "restart_stream",
+                "reload_player",
+                "restart_app",
                 "standby",
                 "wake",
                 "exit_app",
-                localMessage10,
+                "reboot_device",
             ].filter(lifecycleAvailable),
             local_media: localMedia,
             local_media_progressive: localMedia ? { version: 1 } : undefined,
@@ -921,10 +890,10 @@ export function executeRemoteControl(
     }
     if (action === "playback") {
         var operation = params.operation;
-        var relative = operation === localMessage6;
+        var relative = operation === "step_channel";
         if (
-            operation === localMessage4 ||
-            operation === localMessage5 ||
+            operation === "previous_channel" ||
+            operation === "next_channel" ||
             relative
         ) {
             if (
@@ -953,7 +922,7 @@ export function executeRemoteControl(
                             expires_at: expiresAt,
                             params: {
                                 op:
-                                    operation === localMessage5
+                                    operation === "next_channel"
                                         ? "next"
                                         : "previous",
                                 runtime: remotePlayerInfo(w).runtime,
@@ -975,7 +944,11 @@ export function executeRemoteControl(
             }
             var selected = remoteChannelStep(
                 w,
-                relative ? params.offset : operation === localMessage4 ? -1 : 1
+                relative
+                    ? params.offset
+                    : operation === "previous_channel"
+                      ? -1
+                      : 1
             );
             if (!selected) {
                 fail(
@@ -1026,7 +999,7 @@ export function executeRemoteControl(
         }
         if (!owned || playback.indexOf(operation) < 0) {
             fail(
-                localMessage1,
+                "unsupported",
                 "Playback control requires a compatible owned stream."
             );
             return;
@@ -1054,7 +1027,7 @@ export function executeRemoteControl(
         var code = remoteInputCode(w, key);
         if (!afterReply || !code) {
             fail(
-                localMessage1,
+                "unsupported",
                 "This key requires supported acknowledged input."
             );
             return;
@@ -1098,38 +1071,38 @@ export function executeRemoteControl(
     var operation = params.operation;
     if (
         [
-            localMessage7,
-            localMessage8,
-            localMessage9,
+            "restart_stream",
+            "reload_player",
+            "restart_app",
             "standby",
             "wake",
             "exit_app",
-            localMessage10,
+            "reboot_device",
         ].indexOf(operation) < 0
     ) {
         fail("rejected", "Use a named lifecycle operation.");
         return;
     }
-    if (operation === localMessage7 || operation === localMessage8) {
+    if (operation === "restart_stream" || operation === "reload_player") {
         var capability = remoteLifecycleCapability(w, operation);
-        if (capability.state !== localMessage3) {
+        if (capability.state !== "available") {
             fail(
                 capability.reason === "policy_restricted"
                     ? "rejected"
-                    : localMessage1,
-                localMessage11
+                    : "unsupported",
+                "This lifecycle operation is unavailable."
             );
             return;
         }
         executeRemoteRestart(
             w,
-            { target: operation === localMessage7 ? "stream" : "player" },
+            { target: operation === "restart_stream" ? "stream" : "player" },
             function (result) {
-                if (result.status === "ok" && operation === localMessage8)
+                if (result.status === "ok" && operation === "reload_player")
                     result.data = {
                         accepted: true,
                         dispatched: false,
-                        effect: localMessage12,
+                        effect: "lifecycle-after-ack",
                         operation: operation,
                     };
                 else if (result.status === "ok")
@@ -1153,7 +1126,7 @@ export function executeRemoteControl(
         return;
     }
     if (!afterReply || !lifecycleAvailable(operation)) {
-        fail(localMessage1, localMessage11);
+        fail("unsupported", "This lifecycle operation is unavailable.");
         return;
     }
     var method = remoteLifecycleMethods[operation];
@@ -1192,7 +1165,7 @@ export function executeRemoteControl(
     reply({
         accepted: true,
         dispatched: false,
-        effect: localMessage12,
+        effect: "lifecycle-after-ack",
         operation: operation,
     });
 }

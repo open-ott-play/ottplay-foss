@@ -227,3 +227,9 @@ main-window boundary. OS-picker UI and actual video decoding need native app
 verification.
 
 Official picker API: https://v2.tauri.app/plugin/dialog/
+
+The existing Local videos screen loads its packaged `dist/local-media-ui.js`
+asset on demand. Source imports, removals, catalog scanning and playback
+activation keep their existing main runtime APIs. File/folder pickers still
+start synchronously from their user action. A late UI download cannot reopen a
+replaced or cancelled screen, and a failed download can be retried.

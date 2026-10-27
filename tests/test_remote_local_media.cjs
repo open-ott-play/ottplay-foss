@@ -332,6 +332,11 @@ function pluginFixture(options = {}) {
             stbSetItem: (key, value) => data.set(key, value),
         };
     const install = load("src/plugins/local-media.ts", {
+        "../commands/remote-feature": {
+            loadRemoteFeature() {
+                throw Error("Unexpected UI load");
+            },
+        },
         "../offline/browser-local-media": {
             installBrowserLocalMedia: () => ({ suspend() {} }),
             installOfflineShell() {},

@@ -7,7 +7,7 @@ const ts = require("typescript");
 async function browserImportRegression(
     root = path.resolve(__dirname, "../..")
 ) {
-    function load(relative, requireModule = require) {
+    function load(relative, requireModule = require, globals = {}) {
         const exports = {};
         const source = ts.transpileModule(
             fs.readFileSync(path.join(root, relative), "utf8"),
@@ -22,6 +22,7 @@ async function browserImportRegression(
         vm.runInNewContext(source, {
             clearTimeout: (id) => id.owner.clear(id),
             exports,
+            ...globals,
             require: requireModule,
             setTimeout: (fn, delay) => clock.set(fn, delay),
             URL,
@@ -311,6 +312,7 @@ async function browserImportRegression(
                     return pending;
                 },
             };
+        load("src/plugins/local-media-ui.ts", require, { window: w });
         const api = plugin.installLocalMedia(w);
         w.__ottOfflineProfiles = {
             current: () => null,

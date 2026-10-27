@@ -77,18 +77,20 @@ try {
     assert.equal(
         TOTAL_BUDGET.bytes,
         LEGACY_TOTAL_BUDGET.bytes +
-            Object.values(OPTIONAL_BUDGETS).reduce(
-                (sum, budget) => sum + budget.bytes,
-                0
-            )
+            // The relocated Local UI shares the existing complete payload allowance.
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(([name]) => name !== "local-media-ui")
+                .map(([, budget]) => budget)
+                .reduce((sum, budget) => sum + budget.bytes, 0)
     );
     assert.equal(
         TOTAL_BUDGET.gzipBytes,
         LEGACY_TOTAL_BUDGET.gzipBytes +
-            Object.values(OPTIONAL_BUDGETS).reduce(
-                (sum, budget) => sum + budget.gzipBytes,
-                0
-            )
+            // The relocated Local UI shares the existing complete payload allowance.
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(([name]) => name !== "local-media-ui")
+                .map(([, budget]) => budget)
+                .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
     for (const name of Object.keys(OPTIONAL_BUDGETS)) {
         const file = path.join(root, "dist", name + ".js");

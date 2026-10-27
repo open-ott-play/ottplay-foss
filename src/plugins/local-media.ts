@@ -1,3 +1,4 @@
+import { loadRemoteFeature } from "../commands/remote-feature";
 import {
     installBrowserLocalMedia,
     installOfflineShell,
@@ -12,7 +13,6 @@ import {
 } from "../offline/playback-selection";
 import { installOfflineProfiles } from "../offline/profiles";
 import { resolveNativePlugin, tauriInvoke } from "./native-bridge";
-
 /** Stable item IDs belong to storage; playback URLs are resolved anew each launch. */
 export function installLocalMedia(w: any): any {
     if (w.__ottLocalMedia) return w.__ottLocalMedia;
@@ -538,6 +538,73 @@ export function installLocalMedia(w: any): any {
         }
         return read();
     }
+    function title(): string {
+        return w._ ? w._("Local videos") : "Local videos";
+    }
+    function locked(): boolean {
+        return !!(w.__ottKiosk && w.__ottKiosk.locked());
+    }
+    function settingsLocked(): boolean {
+        return !!(w.__ottParental && w.__ottParental.needs("settings"));
+    }
+    function current(): boolean {
+        return (
+            opened &&
+            (!handler || w.listKeyHandler === handler) &&
+            (!owner ||
+                owner.foreground() ||
+                (loading && loading.foreground() && owner.active()))
+        );
+    }
+    function failureMessage(value: any): string {
+        var name = value && value.readErrorName;
+        if (
+            !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|AbortError|InvalidStateError|QuotaExceededError|TimeoutError|TypeError|UnknownError|Error)$/.test(
+                name
+            )
+        )
+            return "";
+        var stage = (
+            {
+                enumerating: "Reading folder entries",
+                files: "Reading local files",
+                metadata: "Reading file information",
+                permission: "Checking folder permission",
+                sources: "Reading saved sources",
+            } as any
+        )[value.readErrorPhase];
+        if (typeof stage !== "string") stage = "Local source unavailable";
+        return (w._ ? w._(stage) : stage) + ": " + name;
+    }
+    function updateLoading(value: any): void {
+        progressState = value;
+        if (!loading || !current()) return;
+        var node =
+            w.document && w.document.getElementById("local-media-progress");
+        if (node) node.textContent = formatLocalMediaProgress(value, w._);
+    }
+    function finishLoading(active = loading): void {
+        if (!active) return;
+        if (loading === active) loading = null;
+        active.close();
+    }
+    function close(): void {
+        importedSelection = "";
+        nextImportSelection = "";
+        cancelNativeList();
+        browser.suspend();
+        finishLoading();
+        opened = false;
+        revision++;
+        catalogRevision++;
+        if (
+            !locked() &&
+            !settingsLocked() &&
+            typeof w.optionsList === "function"
+        )
+            w.optionsList(w.popLocalMedia);
+        else if (typeof w.closeList === "function") w.closeList();
+    }
     function importFiles(folder = false): Promise<any> {
         if (locked() || settingsLocked())
             return Promise.reject(
@@ -670,61 +737,6 @@ export function installLocalMedia(w: any): any {
             return value;
         });
     }
-    function startWithFile(sourceId: string): void {
-        if (locked() || settingsLocked()) return;
-        finishLoading();
-        revision++;
-        w.editCaption = w._("Start with file");
-        w.editvar = "";
-        w.setEdit = function () {
-            if (!current() || locked() || settingsLocked()) return;
-            var path = String(w.editvar || "").trim();
-            if (!path) {
-                render("Enter a file path relative to this folder.");
-                return;
-            }
-            run(function () {
-                var request = ++catalogRevision;
-                importedSelection = "";
-                var namespace = w.__ottOfflineProfiles.namespace();
-                return browser.bootstrapFile(sourceId, path).then(
-                    function (value: any) {
-                        if (request !== catalogRevision)
-                            return { cancelled: true, items: [] };
-                        last = value;
-                        var item = value.items.filter(function (entry: any) {
-                            return entry.available !== false && !!entry.url;
-                        })[0];
-                        importedSelection = item ? "local-" + item.id : "";
-                        return value;
-                    },
-                    function (error: any) {
-                        if (
-                            request === catalogRevision &&
-                            current() &&
-                            !locked() &&
-                            !settingsLocked() &&
-                            error?.name === "TimeoutError" &&
-                            namespace === w.__ottOfflineProfiles.namespace()
-                        ) {
-                            w.stbSetItem(
-                                pendingFileKey,
-                                JSON.stringify({
-                                    id: "local-" + sourceId + ":" + path,
-                                    namespace: namespace,
-                                })
-                            );
-                            throw new Error(
-                                "The file is remembered. Restart Chrome completely, then reopen the player."
-                            );
-                        }
-                        throw error;
-                    }
-                );
-            }, true);
-        };
-        w.showEditKey(null);
-    }
     function requestAccess(
         onProgress?: (value: any) => boolean | void
     ): Promise<any> {
@@ -776,88 +788,6 @@ export function installLocalMedia(w: any): any {
             })
         );
     }
-    function title(): string {
-        return w._ ? w._("Local videos") : "Local videos";
-    }
-    function locked(): boolean {
-        return !!(w.__ottKiosk && w.__ottKiosk.locked());
-    }
-    function settingsLocked(): boolean {
-        return !!(w.__ottParental && w.__ottParental.needs("settings"));
-    }
-    function text(value: any): string {
-        return String(value == null ? "" : value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-    function current(): boolean {
-        return (
-            opened &&
-            (!handler || w.listKeyHandler === handler) &&
-            (!owner ||
-                owner.foreground() ||
-                (loading && loading.foreground() && owner.active()))
-        );
-    }
-    function failureMessage(value: any): string {
-        var name = value && value.readErrorName;
-        if (
-            !/^(NotFoundError|NotAllowedError|SecurityError|NotReadableError|AbortError|InvalidStateError|QuotaExceededError|TimeoutError|TypeError|UnknownError|Error)$/.test(
-                name
-            )
-        )
-            return "";
-        var stage = (
-            {
-                enumerating: "Reading folder entries",
-                files: "Reading local files",
-                metadata: "Reading file information",
-                permission: "Checking folder permission",
-                sources: "Reading saved sources",
-            } as any
-        )[value.readErrorPhase];
-        if (typeof stage !== "string") stage = "Local source unavailable";
-        return (w._ ? w._(stage) : stage) + ": " + name;
-    }
-    function updateLoading(value: any): void {
-        progressState = value;
-        if (!loading || !current()) return;
-        var node =
-            w.document && w.document.getElementById("local-media-progress");
-        if (node) node.textContent = formatLocalMediaProgress(value, w._);
-    }
-    function finishLoading(active = loading): void {
-        if (!active) return;
-        if (loading === active) loading = null;
-        active.close();
-    }
-    function close(): void {
-        importedSelection = "";
-        nextImportSelection = "";
-        cancelNativeList();
-        browser.suspend();
-        finishLoading();
-        opened = false;
-        revision++;
-        catalogRevision++;
-        if (
-            !locked() &&
-            !settingsLocked() &&
-            typeof w.optionsList === "function"
-        )
-            w.optionsList(w.popLocalMedia);
-        else if (typeof w.closeList === "function") w.closeList();
-    }
-    function playable(): boolean {
-        return !!(
-            last &&
-            last.items.some(function (item: any) {
-                return item.available !== false && !!item.url;
-            })
-        );
-    }
     function activate(): void {
         if (locked()) return;
         if (!playable()) {
@@ -874,378 +804,155 @@ export function installLocalMedia(w: any): any {
         importedSelection = "";
         w.loadProv("offline");
     }
-    function editServer(): void {
-        if (locked() || settingsLocked()) return;
-        finishLoading();
-        revision++;
-        w.editCaption = w._("Media Library URL");
-        w.editvar = remoteEndpoint();
-        var originalCatalogue = catalogRevision;
-        w.setEdit = function () {
-            if (
-                !current() ||
-                locked() ||
-                settingsLocked() ||
-                originalCatalogue !== catalogRevision
-            )
-                return;
-            var value = String(w.editvar || "")
-                .trim()
-                .replace(/\/+$/, "");
-            if (value) {
-                try {
-                    var parsed = new URL(value);
-                    if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname)
-                        throw new Error("Invalid server URL");
-                } catch (_) {
-                    render("Use a complete HTTP or HTTPS URL.");
+    function playable(): boolean {
+        return !!(
+            last &&
+            last.items.some(function (item: any) {
+                return item.available !== false && !!item.url;
+            })
+        );
+    }
+    var localUi: any = null,
+        uiIntent = 0;
+    function localUiAction(name: string, args: any[]): any {
+        var intent = ++uiIntent;
+        function uiOwner(): any {
+            if (!localUi) {
+                if (typeof w.__ottLocalMediaUiFactory !== "function")
+                    throw new Error("Local media feature could not be loaded");
+                localUi = w.__ottLocalMediaUiFactory(w, {
+                    activate: activate,
+                    boundedCatalogRequest: boundedCatalogRequest,
+                    browser: browser,
+                    get catalogRevision() {
+                        return catalogRevision;
+                    },
+                    set catalogRevision(value: any) {
+                        catalogRevision = value;
+                    },
+                    close: close,
+                    current: current,
+                    failureMessage: failureMessage,
+                    finishLoading: finishLoading,
+                    formatLocalMediaProgress: formatLocalMediaProgress,
+                    getEndpoint: getEndpoint,
+                    get handler() {
+                        return handler;
+                    },
+                    set handler(value: any) {
+                        handler = value;
+                    },
+                    get importedSelection() {
+                        return importedSelection;
+                    },
+                    set importedSelection(value: any) {
+                        importedSelection = value;
+                    },
+                    importFiles: importFiles,
+                    isNative: isNative,
+                    isTauri: isTauri,
+                    get last() {
+                        return last;
+                    },
+                    set last(value: any) {
+                        last = value;
+                    },
+                    list: list,
+                    get loading() {
+                        return loading;
+                    },
+                    set loading(value: any) {
+                        loading = value;
+                    },
+                    locked: locked,
+                    get opened() {
+                        return opened;
+                    },
+                    set opened(value: any) {
+                        opened = value;
+                    },
+                    get owner() {
+                        return owner;
+                    },
+                    set owner(value: any) {
+                        owner = value;
+                    },
+                    pendingFileKey: pendingFileKey,
+                    playable: playable,
+                    get progressState() {
+                        return progressState;
+                    },
+                    set progressState(value: any) {
+                        progressState = value;
+                    },
+                    reconnectSource: reconnectSource,
+                    remoteEndpoint: remoteEndpoint,
+                    remove: remove,
+                    removeSource: removeSource,
+                    requestAccess: requestAccess,
+                    get resuming() {
+                        return resuming;
+                    },
+                    set resuming(value: any) {
+                        resuming = value;
+                    },
+                    get revision() {
+                        return revision;
+                    },
+                    set revision(value: any) {
+                        revision = value;
+                    },
+                    settingsLocked: settingsLocked,
+                    title: title,
+                });
+            }
+            return localUi;
+        }
+        if (localUi || w.__ottLocalMediaUiFactory)
+            return uiOwner()[name].apply(localUi, args);
+        var request = revision,
+            scan = catalogRevision,
+            input = w.listKeyHandler;
+        var screen = w.__ottClassicScreenPort?.listOwner?.();
+        var foreground = screen?.foreground?.();
+        return new Promise(function (resolve, reject) {
+            loadRemoteFeature(w, "local-media-ui", function (error?: string) {
+                if (
+                    intent !== uiIntent ||
+                    (screen &&
+                        (screen !== w.__ottClassicScreenPort?.listOwner?.() ||
+                            (foreground && !screen.foreground()))) ||
+                    request !== revision ||
+                    scan !== catalogRevision ||
+                    input !== w.listKeyHandler ||
+                    w.__ottStandby?.blocked()
+                ) {
+                    reject(new Error("Local media request cancelled"));
                     return;
                 }
-            }
-            w.stbSetItem("localMediaEndpoint", value);
-            catalogRevision++;
-            run(list);
-        };
-        w.showEditKey(null);
-    }
-    function restorePlayback(): void {
-        run(function () {
-            return requestAccess(function () {
-                if (!resuming || !current()) return false;
-                if (!playable()) return true;
-                activate();
-                return false;
-            }).then(function (value) {
-                if (resuming && current() && playable()) activate();
-                return value;
+                try {
+                    if (error)
+                        throw new Error(
+                            "Local media feature could not be loaded"
+                        );
+                    resolve(uiOwner()[name].apply(localUi, args));
+                } catch (error) {
+                    reject(error);
+                }
             });
         });
     }
-    function render(message?: string): void {
-        if (!current()) return;
-        if (locked() || settingsLocked()) {
-            close();
-            return;
-        }
-        if (last?.reconnectRequired && !isNative() && !isTauri())
-            message =
-                (message ? message + " " : "") +
-                "Reconnect the saved folder to renew its access after a drive or network change.";
-        var readOnly = !!(remoteEndpoint() && last?.readOnly);
-        var selected = w.selIndex || 0;
-        var rows: any[] = [];
-        function row(
-            id: string,
-            name: string,
-            description: string,
-            action: () => void
-        ): void {
-            rows.push({
-                action: action,
-                description: description,
-                id: id,
-                name: name,
-            });
-        }
-        if (resuming)
-            row(
-                "resume",
-                "Continue playback",
-                last &&
-                    (last.sources || []).some(function (source: any) {
-                        return source.access === "permission-required";
-                    })
-                    ? "Chrome needs permission to read your saved folder again. Choose Allow on every visit in its prompt to resume automatically on later visits. No video files are copied."
-                    : "Reconnect the original folder or drive, then continue playback. The saved source and video selection are preserved.",
-                restorePlayback
-            );
-        if (!readOnly) {
-            row(
-                "add-folder",
-                "Add folder",
-                !isNative() && !isTauri()
-                    ? "Chrome may ask to view and copy files. This grants read access; OTT plays the originals without storing another media copy."
-                    : "Play files directly from the selected folder without copying them.",
-                function () {
-                    run(function () {
-                        return importFiles(true);
-                    }, !isNative());
-                }
-            );
-            row(
-                "add-files",
-                "Add files",
-                "Play selected files directly without copying them.",
-                function () {
-                    run(function () {
-                        return importFiles();
-                    }, !isNative());
-                }
-            );
-        }
-        if (
-            !readOnly &&
-            last &&
-            (last.sources || []).some(function (source: any) {
-                return !source.available;
-            })
-        )
-            row(
-                "grant-access",
-                "Grant access",
-                "Allow access to previously connected sources.",
-                function () {
-                    if (resuming) restorePlayback();
-                    else run(requestAccess);
-                }
-            );
-        var profiles = w.__ottOfflineProfiles;
-        if (profiles && profiles.current())
-            row(
-                "bind-profile",
-                "Bind loaded profile to connected sources",
-                "Explicitly match this profile's source names and saved video to folders connected on this device. Ambiguous or missing sources are rejected.",
-                function () {
-                    run(function () {
-                        return profiles.bindCurrent();
-                    });
-                }
-            );
-        row("refresh", "Refresh", "Read connected folders again.", function () {
-            run(function () {
-                if (readOnly) {
-                    var request = ++catalogRevision;
-                    var url = new URL(remoteEndpoint());
-                    url.searchParams.set("refresh", "true");
-                    return boundedCatalogRequest(url.href, 60000).then(
-                        function () {
-                            return request === catalogRevision
-                                ? list()
-                                : { cancelled: true, items: [] };
-                        }
-                    );
-                }
-                return isTauri()
-                    ? getEndpoint(true).then(function () {
-                          return list();
-                      })
-                    : list();
-            });
-        });
-        row(
-            "play",
-            "Play local videos",
-            playable()
-                ? "Open the local video channel list."
-                : "No playable local videos. Add a folder or grant access to a connected source.",
-            function () {
-                if (playable()) activate();
-            }
-        );
-        ((last && last.sources) || []).forEach(function (source: any) {
-            if (readOnly) {
-                row(
-                    "readonly-source",
-                    source.name,
-                    "Read-only source. Manage folders in the helper configuration.",
-                    function () {}
-                );
-                return;
-            }
-            if (
-                source.kind === "folder" &&
-                !isNative() &&
-                !isTauri() &&
-                !remoteEndpoint() &&
-                typeof browser.reconnectSource === "function"
-            )
-                row(
-                    "reconnect-source",
-                    "Reconnect: " + source.name,
-                    "Choose the same folder again after reconnecting the drive or NAS. The player reloads with renewed access; saved profiles and file references are preserved.",
-                    function () {
-                        run(function () {
-                            return reconnectSource(source.id);
-                        });
-                    }
-                );
-            if (
-                source.kind === "folder" &&
-                !isNative() &&
-                !isTauri() &&
-                !remoteEndpoint() &&
-                typeof browser.bootstrapFile === "function"
-            )
-                row(
-                    "start-with-file",
-                    "Start with file…: " + source.name,
-                    "Enter a known video path inside this folder, for example Movies/video.mp4. Play it without waiting for the full folder scan; no files are copied.",
-                    function () {
-                        startWithFile(source.id);
-                    }
-                );
-            row(
-                "disconnect-source",
-                "Disconnect: " + source.name,
-                (source.available
-                    ? "Connected. "
-                    : source.access === "permission-required"
-                      ? "Read permission is needed again; the source is still saved. "
-                      : "Source unavailable. ") +
-                    "Disconnecting leaves the original files untouched.",
-                function () {
-                    run(function () {
-                        return removeSource(source.id);
-                    });
-                }
-            );
-        });
-        ((last && last.items) || []).forEach(function (item: any) {
-            if (readOnly || item.source === "linked") return;
-            row(
-                "remove-copy",
-                "Remove copy: " + item.name,
-                "Remove this previously imported copy from the library.",
-                function () {
-                    run(function () {
-                        return remove(item.id);
-                    });
-                }
-            );
-        });
-        if (!isNative() && !isTauri())
-            row(
-                "server-library",
-                "Server library…",
-                remoteEndpoint()
-                    ? "A server library is selected. Clear its URL to use files on this device."
-                    : "Optional: connect a library stored on your server. Network access is required.",
-                editServer
-            );
-        row("close", "Close", "Return to player settings.", close);
-        w.listArray = rows;
-        w.listDataArray = rows;
-        w.selIndex = Math.min(selected, rows.length - 1);
-        w.getListItem = function (item: any) {
-            return (
-                '&nbsp;&nbsp;<span data-local-media-action="' +
-                item.id +
-                '">' +
-                text(w._ ? w._(item.name) : item.name) +
-                "</span>"
-            );
-        };
-        w.detailListAction = function () {
-            var item = rows[w.selIndex];
-            w.listDetail.innerHTML = text(
-                message || (item && item.description) || ""
-            );
-            w.listFooter.innerHTML =
-                w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Close") +
-                w.renderButtonHint(w.keys.ENTER, w.strENTER, "Ok");
-        };
-        handler = function (key: number) {
-            if (!current()) return false;
-            if (key === w.keys.RETURN || key === w.keys.EXIT) {
-                close();
-                return true;
-            }
-            if (key !== w.keys.ENTER) return false;
-            if (locked() || settingsLocked()) {
-                close();
-                return true;
-            }
-            var item = rows[w.selIndex];
-            if (item) item.action();
-            return true;
-        };
-        w.listKeyHandler = handler;
-        w.listCaption.innerHTML = text(title());
-        w.$("#listPopUp").hide();
-        w.showPage();
-        owner = w.__ottClassicScreenPort
-            ? w.__ottClassicScreenPort.listOwner()
-            : null;
-        if (owner && owner.model) owner.model.localOnlyInput = true;
-    }
-    function run(action: () => Promise<any>, startPlayback = false): void {
-        var request = ++revision;
-        finishLoading();
-        progressState = null;
-        // Start the picker inside the user gesture, before rendering or awaiting.
-        var pending: Promise<any>;
-        try {
-            pending = action();
-        } catch (error: any) {
-            render(error.message || String(error));
-            return;
-        }
-        // Use the same owned loading dialog as provider/media loading. Its
-        // parent list automatically disposes it when another screen replaces us.
-        var active: any = null;
-        if (current() && w.__ottClassicScreenPort) {
-            active = w.__ottClassicScreenPort.setOwnedCallback(
-                "dialog",
-                function (key: number) {
-                    if (key === w.keys.RETURN || key === w.keys.EXIT) close();
-                }
-            ).owner;
-            loading = active;
-            active.model = active.model || {};
-            active.model.cancelOnPower = close;
-            w.$("#dialogbox")
-                .html(
-                    '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center><br/>' +
-                        text(w._("Loading. Please wait...")) +
-                        '<div id="local-media-progress">' +
-                        text(
-                            formatLocalMediaProgress(
-                                progressState || { items: [] },
-                                w._
-                            )
-                        ) +
-                        "</div><br/><br/>" +
-                        w.renderButtonHint(w.keys.RETURN, w.strRETURN, "Cancel")
+    function open(...args: any[]): any {
+        var result = localUiAction("open", args);
+        if (result?.catch)
+            return result.catch(function (error: any) {
+                if (
+                    error?.message !== "Local media request cancelled" &&
+                    typeof w.showShift === "function"
                 )
-                .show();
-        }
-        pending.then(
-            function (value) {
-                finishLoading(active);
-                if (request === revision) {
-                    if (
-                        startPlayback &&
-                        !(value && value.pickerCancelled) &&
-                        current() &&
-                        playable()
-                    )
-                        activate();
-                    else render();
-                }
-            },
-            function (error) {
-                finishLoading(active);
-                if (request === revision)
-                    render(error.message || String(error));
-            }
-        );
-    }
-    function open(recovery = false, skipScan = false, message = ""): void {
-        if (locked()) return;
-        if (settingsLocked()) {
-            if (typeof w.enterPinAndSetAccess === "function")
-                w.enterPinAndSetAccess(open);
-            return;
-        }
-        finishLoading();
-        resuming = recovery;
-        opened = true;
-        handler = null;
-        owner = null;
-        w.selIndex = 0;
-        if (skipScan) catalogRevision++;
-        render(message || failureMessage(last));
-        if (!skipScan) run(list);
+                    w.showShift(w._("Local source unavailable"));
+            });
+        return result;
     }
     var api = {
         activate: activate,

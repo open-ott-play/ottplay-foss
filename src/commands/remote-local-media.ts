@@ -5,23 +5,12 @@ import {
 import { remotePlayerInfo } from "./remote-restart";
 
 /** Runtime-bound operations on sources already owned by this player. */
-/** Runtime-bound operations on sources already owned by this player. */
 export function executeRemoteLocalMedia(
     w: any,
     params: any,
     done: (value: any) => void,
     expiresAt?: number
 ): (() => void) | void {
-    // Share exact repeated error/protocol text without changing wire values.
-    var localMessage0 = "unsupported" as const,
-        localMessage1 = "catalog_unavailable" as const,
-        localMessage2 = "invalid_request" as const,
-        localMessage3 = "runtime_changed" as const,
-        localMessage4 = "catalog_loading" as const,
-        localMessage5 = "restricted" as const,
-        localMessage6 = "source_ambiguous" as const,
-        localMessage7 = "source_unavailable" as const;
-
     var media = w.__ottLocalMedia;
     var runtime = remotePlayerInfo(w).runtime;
     var operation = params && params.op;
@@ -58,7 +47,7 @@ export function executeRemoteLocalMedia(
                 state: "error",
                 version: 1,
             },
-            status: error === localMessage0 ? localMessage0 : "rejected",
+            status: error === "unsupported" ? "unsupported" : "rejected",
         });
     }
     function restricted(): boolean {
@@ -109,7 +98,7 @@ export function executeRemoteLocalMedia(
             (source.available !== undefined &&
                 typeof source.available !== "boolean")
         )
-            error(localMessage1);
+            error("catalog_unavailable");
         var value: any = {
             available: source.available !== false,
             id: source.id,
@@ -121,7 +110,7 @@ export function executeRemoteLocalMedia(
                 !text(source.path, 4096) ||
                 !/^(\/|[a-z]:[\\/])/i.test(source.path)
             )
-                error(localMessage1);
+                error("catalog_unavailable");
             value.path = source.path;
         }
         return value;
@@ -159,11 +148,11 @@ export function executeRemoteLocalMedia(
               typeof params.include_paths !== "boolean"
             : !text(params.source, 4096))
     ) {
-        fail(localMessage2);
+        fail("invalid_request");
         return;
     }
     if (runtime !== requestRuntime) {
-        fail(localMessage3);
+        fail("runtime_changed");
         return;
     }
     if (
@@ -171,19 +160,19 @@ export function executeRemoteLocalMedia(
         params.path !== undefined &&
         (!text(params.path, 4096) || !/^(\/|[a-z]:[\\/])/i.test(params.path))
     ) {
-        fail(localMessage2);
+        fail("invalid_request");
         return;
     }
     if (deadline <= Date.now()) {
-        fail(localMessage4);
+        fail("catalog_loading");
         return;
     }
     if (!media?.remoteSources || !media?.remoteCapabilities) {
-        fail(localMessage0);
+        fail("unsupported");
         return;
     }
     if (!listing && restricted()) {
-        fail(localMessage5);
+        fail("restricted");
         return;
     }
     if (w.__ottLocalMediaRequestActive) {
@@ -197,7 +186,7 @@ export function executeRemoteLocalMedia(
         !Array.isArray(capability.operations) ||
         capability.operations.indexOf(operation) < 0
     ) {
-        fail(localMessage0);
+        fail("unsupported");
         return;
     }
     var path =
@@ -207,32 +196,32 @@ export function executeRemoteLocalMedia(
         (path || params.path || params.include_paths) &&
         !capability.absolute_paths
     ) {
-        fail(localMessage0);
+        fail("unsupported");
         return;
     }
     if (!listing && !path && /[\\/]/.test(params.source)) {
-        fail(localMessage2);
+        fail("invalid_request");
         return;
     }
     try {
         if (!listing && w.__ottOfflineProfiles?.catalogGuard)
             profileCurrent = w.__ottOfflineProfiles.catalogGuard();
     } catch (_) {
-        fail(localMessage5);
+        fail("restricted");
         return;
     }
     w.__ottLocalMediaRequestActive = true;
     ownsRequest = true;
     timer = setTimeout(
         function () {
-            fail(localMessage4);
+            fail("catalog_loading");
             if (cancelWork) cancelWork();
         },
         Math.max(1, deadline - Date.now())
     );
     Promise.resolve()
         .then(function () {
-            if (!current()) error(localMessage3);
+            if (!current()) error("runtime_changed");
             return observe(
                 path
                     ? media.remoteSources(false, params.source, current)
@@ -246,9 +235,10 @@ export function executeRemoteLocalMedia(
         })
         .then(function (value: any) {
             if (!path) return value;
-            if (!current()) error(localMessage3);
-            if (!value || !Array.isArray(value.sources)) error(localMessage1);
-            if (value.sources.length > 1) error(localMessage6);
+            if (!current()) error("runtime_changed");
+            if (!value || !Array.isArray(value.sources))
+                error("catalog_unavailable");
+            if (value.sources.length > 1) error("source_ambiguous");
             // Canonical lookup is read-only. Re-linking an existing folder
             // starts a new scan, preventing long scans from ever completing
             // when the controller retries a timed-out play request.
@@ -258,10 +248,10 @@ export function executeRemoteLocalMedia(
             );
         })
         .then(function (value: any) {
-            if (!current()) error(localMessage3);
+            if (!current()) error("runtime_changed");
             var sources = path ? [value.source] : value.sources;
             if (!Array.isArray(sources) || sources.length > 32)
-                error(localMessage1);
+                error("catalog_unavailable");
             sources.forEach(function (source) {
                 row(source);
             });
@@ -286,10 +276,10 @@ export function executeRemoteLocalMedia(
                     return source.name === params.source;
                 });
             if (!matches.length) error("source_not_found");
-            if (matches.length !== 1) error(localMessage6);
+            if (matches.length !== 1) error("source_ambiguous");
             var source = matches[0];
             if (source.kind !== "folder" || source.available === false)
-                error(localMessage7);
+                error("source_unavailable");
             function result(count: number, scanning = false): any {
                 return {
                     accepted: true,
@@ -313,7 +303,7 @@ export function executeRemoteLocalMedia(
                     return (
                         item.sourceId === source.id &&
                         item.available !== false &&
-                        item.playback?.mode !== localMessage0 &&
+                        item.playback?.mode !== "unsupported" &&
                         !!item.url
                     );
                 });
@@ -329,9 +319,10 @@ export function executeRemoteLocalMedia(
                         : null
                 )
             ).then(function (catalog: any) {
-                if (!current()) error(localMessage3);
+                if (!current()) error("runtime_changed");
                 var scan = localSourceScan(catalog, source.id);
-                if (scan && scan.state === "error") error(localMessage1);
+                if (scan && scan.state === "error")
+                    error("catalog_unavailable");
                 if (
                     catalog.cancelled ||
                     (scan
@@ -339,10 +330,10 @@ export function executeRemoteLocalMedia(
                           (!progressive && scan.state !== "complete")
                         : catalog.scanning)
                 )
-                    error(localMessage4);
+                    error("catalog_loading");
                 if (catalog.scanError && (!scan || !scan.generation))
-                    error(localMessage1);
-                if (catalog.reconnectRequired) error(localMessage7);
+                    error("catalog_unavailable");
+                if (catalog.reconnectRequired) error("source_unavailable");
                 if (
                     !(catalog.sources || []).some(function (entry: any) {
                         return (
@@ -352,20 +343,18 @@ export function executeRemoteLocalMedia(
                         );
                     })
                 )
-                    error(localMessage7);
+                    error("source_unavailable");
                 var scanning = scan
                     ? scan.state !== "complete"
                     : !!catalog.scanning;
                 var items = playable(catalog);
                 if (!items.length)
-                    error(scanning ? localMessage4 : "empty_source");
+                    error(scanning ? "catalog_loading" : "empty_source");
                 if (items.length > 50000) error("too_many_items");
-                var known: {
-                    [id: string]: boolean;
-                } = Object.create(null);
+                var known: { [id: string]: boolean } = Object.create(null);
                 items.forEach(function (item: any) {
                     if (!text(item.id, 256) || known[item.id])
-                        error(localMessage1);
+                        error("catalog_unavailable");
                     known[item.id] = true;
                 });
                 var seed =
@@ -373,7 +362,7 @@ export function executeRemoteLocalMedia(
                         ? Math.floor(Math.random() * 4294967295) + 1
                         : null;
                 items = orderLocalItems(items, seed);
-                if (!current()) error(localMessage3);
+                if (!current()) error("runtime_changed");
                 media.remoteActivate(
                     source.id,
                     items.map(function (item: any) {

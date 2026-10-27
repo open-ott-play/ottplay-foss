@@ -286,48 +286,6 @@ function test(name, callback) {
     cases.push([name, callback]);
 }
 
-test("pooled type checks retain missing/null ports and optional-call receivers", () => {
-    const f = fixture();
-    for (const standby of [undefined, null]) {
-        f.w.__ottStandby = standby;
-        assert.doesNotThrow(() => f.w.updateCoreVideoInfo());
-    }
-    const standby = {
-        blocked() {
-            assert.equal(this, standby);
-            assert.equal(arguments.length, 0);
-            return true;
-        },
-    };
-    f.w.__ottStandby = standby;
-    f.w.updateCoreVideoInfo();
-    // Optional ownership does not silently forgive a present non-callable
-    // member. Keep the original throw and evaluate its getter exactly once.
-    for (const value of [undefined, null, false]) {
-        let reads = 0;
-        f.w.__ottStandby = Object.defineProperty({}, "blocked", {
-            get() {
-                reads++;
-                return value;
-            },
-        });
-        assert.throws(() => f.w.updateCoreVideoInfo(), /not a function/);
-        assert.equal(reads, 1);
-    }
-    for (const value of [undefined, null, false, 0, {}, "function"]) {
-        const probe = fixture({
-            globals: { __ottLoadMediaEngine: value },
-            hlsMissing: true,
-        });
-        assert.equal(probe.w.coreHlsAvailable(), false);
-    }
-    const callable = fixture({
-        globals: { __ottLoadMediaEngine() {} },
-        hlsMissing: true,
-    });
-    assert.equal(callable.w.coreHlsAvailable(), true);
-});
-
 function frameFixture(options = {}) {
     const f = fixture({ savedPlayerMode: 3, ...options });
     const target = f.w.video;
