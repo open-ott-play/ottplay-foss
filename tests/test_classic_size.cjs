@@ -185,8 +185,7 @@ try {
     assert.throws(
         () => inspectBundleSets(root),
         new RegExp(
-            "legacy complete player bytes .* exceeds budget " +
-                LEGACY_TOTAL_BUDGET.bytes
+            `legacy complete player bytes .* exceeds budget ${LEGACY_TOTAL_BUDGET.bytes}`
         ),
         "legacy payload cannot borrow unused optional-asset headroom"
     );

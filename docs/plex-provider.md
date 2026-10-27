@@ -14,6 +14,15 @@ The player connects under the standard animated loading dialog and reports proce
 
 **OK** opens the ordinary channel list. Search, favorites, order changes and **Actions → Shuffle / Reset order** work on this list. There is no separate folder picker during normal playback or setup. Use **Category selection** to change the visible group; normal channel controls operate on that group.
 
+The Plex list does not show the legacy media-browser **Shuffle / Repeat**
+sidebar buttons or a trailing **Filter:** entry. Use the ordinary channel search,
+**Category selection**, and the **Actions** menu instead. Explicit Plex queues
+sent by `ott` retain their requested order and playback policy and use the same
+numbered channel-list renderer and category selector. These categories contain
+only the accepted queue items, using library/folder metadata supplied by Plex.
+Displaying the queue does not replace the active TV provider or its settings.
+An old media-browser filter cannot hide queue items.
+
 The same categories are available through the CLI:
 
 ```sh

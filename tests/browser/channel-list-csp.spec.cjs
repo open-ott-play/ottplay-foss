@@ -239,6 +239,7 @@ async function fixturePage(
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
         ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
         ["/dist/player.js", read(stage + "dist/player.js")],
+        ["/dist/provider-plex.js", read(stage + "dist/provider-plex.js")],
         [
             "/dist/subtitle-appearance.js",
             read(stage + "dist/subtitle-appearance.js"),
@@ -2522,6 +2523,241 @@ for (const language of ["english", "russian"]) {
     });
 }
 
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(`${profile} Plex libraries use the native numbered channel selector without mutating TV`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile, {
+            showNumber: true,
+        });
+        const page = fixture.page;
+        try {
+            expect(await page.evaluate(() => !!window.__ottPlexList)).toBe(
+                false
+            );
+            await page.evaluate(
+                () =>
+                    new Promise((resolve, reject) => {
+                        window.__ottProviderAssets.classic.ensure(
+                            "plex",
+                            "",
+                            "fixture",
+                            { active: () => true, own: () => () => {} },
+                            resolve,
+                            reject
+                        );
+                    })
+            );
+            expect(
+                await page.evaluate(() => typeof window.__ottPlexList.create)
+            ).toBe("function");
+            await page.evaluate(() => {
+                // Provider startup wires this alias; the offline fixture calls
+                // the private renderer directly during its initial boot.
+                window.channelsList = window._channelsList;
+                window.catIndex = window.primaryIndex = 0;
+                window.curList = window.cList = window.cats.Fixture;
+                const fields = [
+                    "channels",
+                    "chanels",
+                    "cats",
+                    "catsArray",
+                    "cList",
+                    "curList",
+                    "settings",
+                ];
+                window.__plexAmbient = {
+                    fields: Object.fromEntries(
+                        fields.map((key) => [key, window[key]])
+                    ),
+                    values: {
+                        catIndex: window.catIndex,
+                        p_pref: window.p_pref,
+                        primaryIndex: window.primaryIndex,
+                        settings: JSON.stringify(window.settings),
+                    },
+                };
+                window.__plexSelections = [];
+                window.__plexPlays = [];
+                window.__plexTVPlays = 0;
+                window.playChannel = () => window.__plexTVPlays++;
+                window.stbBindKeyHandler();
+                const records = [
+                    {
+                        __ottMediaCategories: [{ id: "films", name: "Films" }],
+                        id: 1,
+                        stream_url: "fixture-1.mp4",
+                        title: "First film",
+                    },
+                    {
+                        __ottMediaCategories: [
+                            { id: "cartoons", name: "Cartoons" },
+                        ],
+                        id: 2,
+                        stream_url: "fixture-2.mp4",
+                        title: "Episode two",
+                    },
+                    {
+                        __ottMediaCategories: [
+                            { id: "cartoons", name: "Cartoons" },
+                        ],
+                        id: 3,
+                        stream_url: "fixture-3.mp4",
+                        title: "Episode three",
+                    },
+                ];
+                window.stbPlay = (url) => {
+                    window.__plexPlays.push(url);
+                    window.__ottClassicPlayback.command({ type: "playing" });
+                };
+                window.__ottMedia.useSource({
+                    catalog: () => records.slice(),
+                    client: {
+                        cancel() {},
+                        load(_target, done) {
+                            window.mediaRecords = records;
+                            window.mediaName = "Plex";
+                            done();
+                        },
+                        resolve(item, done) {
+                            window.__plexSelections.push(item.id);
+                            done(item);
+                        },
+                    },
+                    library: { id: "library-7", title: "Plex library" },
+                    read: () => null,
+                    sourceId: "plex@fixture",
+                    title: "Plex",
+                    write() {},
+                });
+                window.__ottMedia.open(null);
+            });
+            const numbers = () =>
+                page.locator("#listIn .ott-channel-number").allTextContents();
+            const labels = () =>
+                page.locator("#listIn .ott-channel-label").allTextContents();
+            const expectAmbient = async () => {
+                expect(
+                    await page.evaluate(() => {
+                        const saved = window.__plexAmbient;
+                        return (
+                            Object.keys(saved.fields).every(
+                                (key) => window[key] === saved.fields[key]
+                            ) &&
+                            window.catIndex === saved.values.catIndex &&
+                            window.primaryIndex === saved.values.primaryIndex &&
+                            window.p_pref === saved.values.p_pref &&
+                            JSON.stringify(window.settings) ===
+                                saved.values.settings
+                        );
+                    })
+                ).toBe(true);
+            };
+            await expect(page.locator("#list")).toBeVisible();
+            await expect(page.locator("#listCaption")).toContainText(
+                "Channel list"
+            );
+            expect(await numbers()).toEqual(["1", "2", "3"]);
+            expect((await labels()).map((text) => text.trim())).toEqual([
+                "First film",
+                "Episode two",
+                "Episode three",
+            ]);
+            await page.keyboard.press("ArrowDown");
+            await expect(page.locator("#it1")).toHaveClass(/ott-selected/);
+            await page.keyboard.press("ArrowUp");
+            await expect(page.locator("#it0")).toHaveClass(/ott-selected/);
+            await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
+            await expect(page.locator("#listPodval")).not.toContainText(
+                "Filter"
+            );
+            expect(
+                await page.evaluate(() =>
+                    window.listArray.some((row) => row && row.__ottMediaFilter)
+                )
+            ).toBe(false);
+            await expectAmbient();
+            await page
+                .getByRole("button", { exact: true, name: "Category" })
+                .click();
+            await expect(page.locator("#listCaption")).toHaveText(
+                "Category selection"
+            );
+            const cartoons = page
+                .locator("#listIn .item")
+                .filter({ hasText: "Cartoons" });
+            await cartoons.click();
+            await expect(cartoons).toHaveClass(/ott-selected/);
+            await page.keyboard.press("Enter");
+            await expect(page.locator("#listCaption")).toContainText(
+                "Cartoons"
+            );
+            expect(await numbers()).toEqual(["1", "2"]);
+            expect((await labels()).map((text) => text.trim())).toEqual([
+                "Episode two",
+                "Episode three",
+            ]);
+            await expectAmbient();
+            await page.keyboard.press("ArrowDown");
+            await expect(page.locator("#it1")).toHaveClass(/ott-selected/);
+            await page.keyboard.press("Enter");
+            expect(await page.evaluate(() => window.__plexTVPlays)).toBe(0);
+            expect(await page.evaluate(() => window.__plexSelections)).toEqual([
+                3,
+            ]);
+            expect(await page.evaluate(() => window.__plexPlays)).toEqual([
+                "fixture-3.mp4",
+            ]);
+            expect(
+                await page.evaluate(
+                    () => window.__ottMedia.current().payload.id
+                )
+            ).toBe(3);
+            await expectAmbient();
+            await page.evaluate(() => window.__ottMedia.open(null));
+            await expect(page.locator("#it1")).toHaveClass(/ott-selected/);
+            expect((await labels()).map((text) => text.trim())).toEqual([
+                "Episode two",
+                "Episode three",
+            ]);
+            await expectAmbient();
+            await page.evaluate(() => {
+                window.closeList();
+                window.__ottMedia.useSource(null);
+                window.channelsList(window.catIndex, window.primaryIndex);
+            });
+            await expect(page.locator("#it0")).toContainText("News");
+            await expectAmbient();
+
+            // An active Plex provider opens that same TV selector directly.
+            await page.evaluate(() => {
+                window.p_pref = "plex";
+                window.__ottActiveProviderDriver = {
+                    capabilities: { mediaPlaylist: true },
+                    id: "plex",
+                };
+                window.catIndex = 0;
+                window.primaryIndex = 1;
+                window.getMediaArray = () => {
+                    throw Error("Obsolete Plex folder tree requested");
+                };
+                window.__ottChannels.mount(window);
+                window.mediaList(null);
+            });
+            await expect(page.locator("#listCaption")).toContainText(
+                "Channel list"
+            );
+            await expect(page.locator("#it1")).toContainText("Films");
+            await expect(page.locator("#it1")).toHaveClass(/ott-selected/);
+            await expect(page.locator("#mediaPlaybackControls")).toHaveCount(0);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
 for (const profile of ["tauri", "capacitor"]) {
     test(`${profile} media controls dispatch without inline handlers`, async ({
         browser,
@@ -3491,9 +3727,14 @@ test("portrait player settings keep Save visible and persist the selected engine
             .locator("#listIn .btn")
             .filter({ hasText: "Save Settings" });
         await expect(save).toBeVisible();
-        const bounds = await save.boundingBox();
-        expect(bounds.y).toBeGreaterThanOrEqual(0);
-        expect(bounds.y + bounds.height).toBeLessThanOrEqual(1230);
+        // Resizing schedules a list redraw, which can replace the visible Save
+        // node between the locator lookup and boundingBox's layout read.
+        await expect(async () => {
+            const bounds = await save.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds.y).toBeGreaterThanOrEqual(0);
+            expect(bounds.y + bounds.height).toBeLessThanOrEqual(1230);
+        }).toPass();
         expect(
             await page
                 .locator("#list")
