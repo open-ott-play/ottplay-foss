@@ -558,6 +558,9 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    // Existing Local UI only: isolated ES5 production-policy measurement 8276/3232.
+    // Relocated bytes count once in unchanged TOTAL; no new payload allocation.
+    "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
     // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and

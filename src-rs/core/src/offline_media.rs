@@ -33,6 +33,10 @@ pub const NATIVE_SOURCE_LIMIT: &str =
 const MAX_NATIVE_SCAN_ENTRIES: usize = 100_000;
 const SOURCE_PROBE_CONCURRENCY: usize = 4;
 const LIBRARY_PROBE_CONCURRENCY: usize = 8;
+const EARLY_METADATA_ENTRIES: usize = 256;
+const EARLY_DIRECTORY_ENTRIES: usize = 64;
+const EARLY_SOURCE_CANDIDATES: usize = 4;
+const EARLY_INDEX_BYTES: u64 = 64 * 1024;
 const NATIVE_SCAN_LIMIT: &str = "Selected source exceeds the 100,000-entry scan limit";
 
 fn count_native_scan_entry(count: &mut usize) -> anyhow::Result<()> {
@@ -100,6 +104,12 @@ pub struct Library {
     scan_entry_limit: usize,
     #[cfg(test)]
     metadata_read_gate: Option<Arc<Mutex<()>>>,
+    #[cfg(test)]
+    metadata_bootstrap_gate: Option<Arc<Semaphore>>,
+    #[cfg(test)]
+    source_metadata_gate: Option<Arc<Semaphore>>,
+    #[cfg(test)]
+    early_metadata_entries: Arc<std::sync::atomic::AtomicUsize>,
     #[cfg(test)]
     original_read_delay: Option<std::time::Duration>,
     #[cfg(test)]
@@ -373,10 +383,15 @@ impl Drop for ReadCaller {
 struct ReadWork {
     lease: crate::background_work::WorkLease,
     abandoned: watch::Receiver<bool>,
+    deadline: Option<std::time::Instant>,
 }
 impl ReadWork {
     fn check(&self) -> Result<(), Failure> {
-        if *self.abandoned.borrow() {
+        if self
+            .deadline
+            .is_some_and(|deadline| std::time::Instant::now() >= deadline)
+            || *self.abandoned.borrow()
+        {
             return Err(BACKGROUND_CANCELLED);
         }
         self.lease.check().map_err(|_| BACKGROUND_CANCELLED)
@@ -422,18 +437,36 @@ async fn owned_read<
     work: &crate::background_work::WorkLease,
     read: impl FnOnce(ReadWork) -> F + Send + 'static,
 ) -> Result<T, Failure> {
+    owned_read_until(work, None, read).await
+}
+
+// A deadline stops admission between syscalls. Always await the owned task:
+// a slow filesystem operation must drain before its caller starts more work.
+async fn owned_read_until<
+    T: Send + 'static,
+    F: std::future::Future<Output = Result<T, Failure>> + Send + 'static,
+>(
+    work: &crate::background_work::WorkLease,
+    deadline: Option<std::time::Instant>,
+    read: impl FnOnce(ReadWork) -> F + Send + 'static,
+) -> Result<T, Failure> {
     work.check().map_err(|_| BACKGROUND_CANCELLED)?;
     let (abandoned, receiver) = watch::channel(false);
     let _caller = ReadCaller(abandoned);
     let owner = ReadWork {
         lease: work.clone(),
         abandoned: receiver,
+        deadline,
     };
     let task = tokio::spawn(async move { checked(Some(&owner), read(owner.clone())).await? });
-    work.run(task)
-        .await
-        .map_err(|_| BACKGROUND_CANCELLED)?
-        .map_err(storage_error)?
+    if deadline.is_some() {
+        task.await.map_err(storage_error)?
+    } else {
+        work.run(task)
+            .await
+            .map_err(|_| BACKGROUND_CANCELLED)?
+            .map_err(storage_error)?
+    }
 }
 
 // The owned reader must stop between operations, rather than abandon an
@@ -480,6 +513,12 @@ impl Library {
             scan_entry_limit: MAX_NATIVE_SCAN_ENTRIES,
             #[cfg(test)]
             metadata_read_gate: None,
+            #[cfg(test)]
+            metadata_bootstrap_gate: None,
+            #[cfg(test)]
+            source_metadata_gate: None,
+            #[cfg(test)]
+            early_metadata_entries: Arc::default(),
             #[cfg(test)]
             original_read_delay: None,
             #[cfg(test)]
@@ -716,6 +755,11 @@ impl Library {
         work: &ReadWork,
         tolerate_read_errors: bool,
     ) -> Result<Vec<Record>, Failure> {
+        #[cfg(test)]
+        if let Some(gate) = &self.metadata_bootstrap_gate {
+            let permit = work.run(gate.acquire()).await?.map_err(storage_error)?;
+            permit.forget();
+        }
         let queued_at = std::time::Instant::now();
         let permit = work
             .run(self.metadata_reads.clone().acquire_owned())
@@ -1472,17 +1516,25 @@ impl Library {
             // A failed source-list read cannot make skipped originals look
             // like a complete global catalog.
             let sources = library.source_records().await;
-            let metadata = match &sources {
-                Ok(sources) => {
-                    let sources = sources.clone();
-                    let reader = library.clone();
-                    owned_read(&work, |owner| async move {
-                        reader.read_records_except_folders(&owner, &sources).await
-                    })
-                    .await
+            let metadata = async {
+                match &sources {
+                    Ok(sources) => {
+                        let sources = sources.clone();
+                        let reader = library.clone();
+                        owned_read(&work, |owner| async move {
+                            reader.read_records_except_folders(&owner, &sources).await
+                        })
+                        .await
+                    }
+                    Err(error) => Err(*error),
                 }
-                Err(error) => Err(*error),
             };
+            let sweep = async {
+                if let Ok(sources) = &sources {
+                    library.refresh_known_sources(&work, sources, None).await;
+                }
+            };
+            let (metadata, ()) = tokio::join!(metadata, sweep);
             if metadata.is_err() {
                 let mut scan = library.scan.lock().await;
                 if scan.work_epoch == Some(work.epoch()) {
@@ -1490,9 +1542,6 @@ impl Library {
                         scan.error = Some("Local media metadata could not be read".into())
                     });
                 }
-            }
-            if let Ok(sources) = sources {
-                library.refresh_known_sources(&work, &sources, None).await;
             }
             let mut scan = library.scan.lock().await;
             scan.finish_job(&work, None);
@@ -1621,6 +1670,208 @@ impl Library {
         Ok(())
     }
 
+    // Read only a bounded index prefix / metadata window. Cached records are
+    // hints: the authoritative JSON and original are validated independently.
+    // Failure or exhaustion is an optimization miss, never evidence of absence.
+    async fn early_source_record(
+        &self,
+        source: &SourceRecord,
+        work: &crate::background_work::WorkLease,
+    ) -> Option<Record> {
+        let library = self.clone();
+        let source = source.clone();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+        owned_read_until(work, Some(deadline), move |owner| async move {
+            // Share the existing global original-probe budget. Waiting for a
+            // permit has no filesystem syscall to drain and may time out.
+            let _permit = tokio::time::timeout_at(
+                tokio::time::Instant::from_std(deadline),
+                owner.run(library.source_probes.acquire()),
+            )
+            .await
+            .map_err(|_| BACKGROUND_CANCELLED)??
+            .map_err(storage_error)?;
+            let matches_source = |record: &Record| {
+                record.source_id.as_deref() == Some(source.id.as_str())
+                    && record
+                        .linked_path
+                        .as_ref()
+                        .is_some_and(|path| path != &source.path && path.starts_with(&source.path))
+            };
+            let mut candidates = Vec::new();
+            let index = library
+                .root
+                .join("source-index")
+                .join(format!("{}.json", source.id));
+            if checked(Some(&owner), fs::symlink_metadata(&index))
+                .await?
+                .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
+            {
+                if let Ok(file) = checked(Some(&owner), fs::File::open(index)).await? {
+                    let mut bytes = Vec::new();
+                    checked(
+                        Some(&owner),
+                        file.take(EARLY_INDEX_BYTES).read_to_end(&mut bytes),
+                    )
+                    .await?
+                    .map_err(storage_error)?;
+                    // Parse complete objects in the prefix; a truncated next
+                    // object is harmless because no indexed bytes authorize IO.
+                    let mut rest = bytes.as_slice().trim_ascii_start();
+                    if rest.first() == Some(&b'[') {
+                        rest = &rest[1..];
+                        while candidates.len() < EARLY_SOURCE_CANDIDATES {
+                            rest = rest.trim_ascii_start();
+                            if rest.first() == Some(&b',') {
+                                rest = &rest[1..];
+                            }
+                            let mut records =
+                                serde_json::Deserializer::from_slice(rest).into_iter::<Record>();
+                            let Some(Ok(record)) = records.next() else {
+                                break;
+                            };
+                            let offset = records.byte_offset();
+                            rest = &rest[offset..];
+                            candidates.push(record);
+                        }
+                    }
+                }
+            }
+            let mut tried = HashSet::new();
+            let mut attempts = 0;
+            for record in candidates {
+                if !valid_id(&record.id)
+                    || !matches_source(&record)
+                    || !tried.insert(record.id.clone())
+                {
+                    continue;
+                }
+                attempts += 1;
+                if let Ok(actual) = library.read_record(&record.id, Some(&owner)).await {
+                    if matches_source(&actual)
+                        && library.read_path(&actual, Some(&owner)).await.is_ok()
+                    {
+                        return Ok(Some(actual));
+                    }
+                }
+            }
+            // Modern imports have an existing source/path-derived ID. Probe
+            // a small guarded walk without creating any record or assigning an
+            // ID; legacy random IDs are still resolved by metadata below.
+            // Reserve most of the shared entry budget for that legacy fallback.
+            let mut entries_left = EARLY_METADATA_ENTRIES;
+            let mut directories = vec![checked(Some(&owner), fs::read_dir(&source.path))
+                .await?
+                .map_err(storage_error)?];
+            for _ in 0..EARLY_DIRECTORY_ENTRIES {
+                if attempts >= EARLY_SOURCE_CANDIDATES {
+                    break;
+                }
+                let Some(directory) = directories.last_mut() else {
+                    break;
+                };
+                let Some(entry) = checked(Some(&owner), directory.next_entry())
+                    .await?
+                    .map_err(storage_error)?
+                else {
+                    directories.pop();
+                    continue;
+                };
+                entries_left -= 1;
+                let path = entry.path();
+                let kind = checked(Some(&owner), entry.file_type())
+                    .await?
+                    .map_err(storage_error)?;
+                if kind.is_symlink() {
+                    continue;
+                }
+                if kind.is_dir() {
+                    // Never follow a child directory symlink / changed ancestor.
+                    if checked(Some(&owner), fs::canonicalize(&path))
+                        .await?
+                        .ok()
+                        .as_ref()
+                        != Some(&path)
+                    {
+                        continue;
+                    }
+                    if let Ok(directory) = checked(Some(&owner), fs::read_dir(&path)).await? {
+                        directories.push(directory);
+                    }
+                    continue;
+                }
+                if !kind.is_file()
+                    || media_type(
+                        &path
+                            .extension()
+                            .and_then(|value| value.to_str())
+                            .unwrap_or("")
+                            .to_ascii_lowercase(),
+                    )
+                    .is_none()
+                {
+                    continue;
+                }
+                let mut hash = Sha256::new();
+                hash.update(source.id.as_bytes());
+                hash.update([0]);
+                hash.update(path.as_os_str().as_encoded_bytes());
+                let id = format!("{:x}", hash.finalize())[..32].to_string();
+                if !tried.insert(id.clone()) {
+                    continue;
+                }
+                if let Ok(actual) = library.read_record(&id, Some(&owner)).await {
+                    if matches_source(&actual) && actual.linked_path.as_ref() == Some(&path) {
+                        attempts += 1;
+                        if library.read_path(&actual, Some(&owner)).await.is_ok() {
+                            return Ok(Some(actual));
+                        }
+                    }
+                }
+            }
+            let mut entries = checked(Some(&owner), fs::read_dir(&library.root))
+                .await?
+                .map_err(storage_error)?;
+            for _ in 0..entries_left {
+                if attempts >= EARLY_SOURCE_CANDIDATES {
+                    break;
+                }
+                let Some(entry) = checked(Some(&owner), entries.next_entry())
+                    .await?
+                    .map_err(storage_error)?
+                else {
+                    break;
+                };
+                #[cfg(test)]
+                library
+                    .early_metadata_entries
+                    .fetch_add(1, Ordering::SeqCst);
+                let path = entry.path();
+                if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+                    continue;
+                }
+                let Some(id) = path.file_stem().and_then(|id| id.to_str()) else {
+                    continue;
+                };
+                if !valid_id(id) || !tried.insert(id.to_string()) {
+                    continue;
+                }
+                if let Ok(actual) = library.read_record(id, Some(&owner)).await {
+                    if matches_source(&actual) {
+                        attempts += 1;
+                        if library.read_path(&actual, Some(&owner)).await.is_ok() {
+                            return Ok(Some(actual));
+                        }
+                    }
+                }
+            }
+            Ok(None)
+        })
+        .await
+        .ok()
+        .flatten()
+    }
+
     // A rebuildable source-local metadata index avoids checking every other
     // source's original files. Legacy libraries bootstrap from local JSON only.
     async fn source_metadata(
@@ -1629,6 +1880,14 @@ impl Library {
         use_index: bool,
         work: &crate::background_work::WorkLease,
     ) -> anyhow::Result<Vec<Record>> {
+        #[cfg(test)]
+        if let Some(gate) = &self.source_metadata_gate {
+            let permit = work
+                .run(gate.acquire())
+                .await
+                .map_err(anyhow::Error::msg)??;
+            permit.forget();
+        }
         let index = self
             .root
             .join("source-index")
@@ -1948,6 +2207,7 @@ impl Library {
         generation: u64,
         work: &crate::background_work::WorkLease,
     ) -> anyhow::Result<()> {
+        let first_started = std::time::Instant::now();
         let root = if source.kind == "folder" {
             Self::native_folder_path(source.path.clone(), work).await?
         } else {
@@ -1970,6 +2230,14 @@ impl Library {
             })
             .map_err(anyhow::Error::msg)?;
         }
+        if source.kind == "folder" {
+            if let Some(record) = self.early_source_record(source, work).await {
+                self.publish_source_record(source, generation, record, true, work)
+                    .await?;
+                tracing::debug!(target: "ottplay::local_scan", phase = "first-publication", source_id = source.id, published = 1, elapsed_ms = first_started.elapsed().as_millis() as u64);
+            }
+        }
+        work.check().map_err(anyhow::Error::msg)?;
         let mut known = HashMap::<PathBuf, Record>::new();
         let metadata_started = std::time::Instant::now();
         tracing::debug!(target: "ottplay::local_scan", phase = "source-metadata", state = "start", source_id = source.id);
@@ -3584,6 +3852,247 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn first_legacy_item_precedes_full_metadata_with_cold_or_large_index() {
+        for indexed in [false, true] {
+            let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            let mut library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+                .await
+                .unwrap();
+            let (_, unrelated) = seed_legacy_source(&library, &base.join("Other"), 12).await;
+            let (source, expected) = seed_legacy_source(&library, &base.join("Selected"), 40).await;
+            if indexed {
+                let mut records = Vec::new();
+                for id in &expected {
+                    records.push(library.record(id).await.unwrap());
+                }
+                // Preserve every legacy mapping in the full index while
+                // making its JSON larger than the bounded prefix.
+                let expanded: Vec<_> = (0..400)
+                    .map(|index| records[index % records.len()].clone())
+                    .collect();
+                let bytes = serde_json::to_vec(&expanded).unwrap();
+                assert!(bytes.len() > EARLY_INDEX_BYTES as usize);
+                fs::write(
+                    library
+                        .root
+                        .join("source-index")
+                        .join(format!("{}.json", source.id)),
+                    bytes,
+                )
+                .await
+                .unwrap();
+            }
+            let global = Arc::new(Semaphore::new(0));
+            let full = Arc::new(Semaphore::new(0));
+            library.metadata_bootstrap_gate = Some(global.clone());
+            library.source_metadata_gate = Some(full.clone());
+            let started = std::time::Instant::now();
+            library
+                .prioritize_source_tracked(&source.id, library.background.enter().unwrap())
+                .await
+                .unwrap();
+            let snapshot = tokio::time::timeout(std::time::Duration::from_secs(3), async {
+                loop {
+                    let snapshot = library.catalog().await.unwrap();
+                    if snapshot
+                        .items
+                        .iter()
+                        .any(|item| item.source_id == source.id && item.available)
+                    {
+                        break snapshot;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("first validated item must precede blocked full metadata");
+            assert!(snapshot.scanning);
+            let selected: Vec<_> = snapshot
+                .items
+                .iter()
+                .filter(|item| item.source_id == source.id)
+                .collect();
+            assert_eq!(selected.len(), 1);
+            assert!(expected.contains(&selected[0].id));
+            assert!(!unrelated.contains(&selected[0].id));
+            assert!(
+                library.scan_entries.lock().unwrap().is_empty(),
+                "full filesystem walk is still gated"
+            );
+            assert_eq!(global.available_permits(), 0);
+            assert_eq!(full.available_permits(), 0);
+            assert!(library.original_checks.lock().unwrap().len() <= 2 * EARLY_SOURCE_CANDIDATES);
+            tracing::debug!(
+                first_item_ms = started.elapsed().as_millis() as u64,
+                indexed,
+                "first item observed before full metadata release"
+            );
+            global.add_permits(8);
+            full.add_permits(8);
+            wait_for_drain(&library.background).await;
+            let completed = library.catalog().await.unwrap();
+            assert!(!completed.scanning);
+            assert_eq!(
+                completed
+                    .items
+                    .iter()
+                    .filter(|item| item.source_id == source.id)
+                    .map(|item| item.id.clone())
+                    .collect::<HashSet<_>>(),
+                expected
+            );
+            fs::remove_dir_all(base).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn early_modern_id_ignores_unrelated_metadata_window_without_creating_ids() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        // More unrelated metadata than the entire fallback window, created
+        // before the selected source. Success must not depend on read_dir order.
+        let (_, unrelated) = seed_legacy_source(&library, &base.join("Other"), 300).await;
+        let (source, old_ids) = seed_legacy_source(&library, &base.join("Selected"), 1).await;
+        let old_id = old_ids.iter().next().unwrap();
+        let mut record = library.record(old_id).await.unwrap();
+        let path = record.linked_path.as_ref().unwrap();
+        let mut hash = Sha256::new();
+        hash.update(source.id.as_bytes());
+        hash.update([0]);
+        hash.update(path.as_os_str().as_encoded_bytes());
+        record.id = format!("{:x}", hash.finalize())[..32].to_string();
+        fs::remove_file(library.root.join(format!("{old_id}.json")))
+            .await
+            .unwrap();
+        fs::write(
+            library.root.join(format!("{}.json", record.id)),
+            serde_json::to_vec(&record).unwrap(),
+        )
+        .await
+        .unwrap();
+        let work = library.background.enter().unwrap();
+        let found = library.early_source_record(&source, &work).await.unwrap();
+        assert_eq!(found.id, record.id);
+        assert!(!unrelated.contains(&found.id));
+        assert_eq!(
+            library.early_metadata_entries.load(Ordering::SeqCst),
+            0,
+            "directory-derived existing ID must precede global metadata fallback"
+        );
+        assert!(!library.root.join(format!("{old_id}.json")).exists());
+        fs::remove_file(library.root.join(format!("{}.json", record.id)))
+            .await
+            .unwrap();
+        assert!(
+            library.early_source_record(&source, &work).await.is_none(),
+            "a filesystem path without an existing record must not receive an ID"
+        );
+        assert!(!library.root.join(format!("{}.json", record.id)).exists());
+        drop(work);
+        wait_for_drain(&library.background).await;
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn early_probe_rejects_symlink_escape_and_stale_index_identity() {
+        let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
+            .await
+            .unwrap();
+        let (source, ids) = seed_legacy_source(&library, &base.join("Selected"), 1).await;
+        let id = ids.iter().next().unwrap();
+        let original = library.record(id).await.unwrap();
+        let path = original.linked_path.as_ref().unwrap();
+        let outside = base.join("outside.mp4");
+        fs::write(&outside, b"outside").await.unwrap();
+        fs::remove_file(path).await.unwrap();
+        std::os::unix::fs::symlink(&outside, path).unwrap();
+        let index = library
+            .root
+            .join("source-index")
+            .join(format!("{}.json", source.id));
+        fs::write(&index, serde_json::to_vec(&vec![original.clone()]).unwrap())
+            .await
+            .unwrap();
+        let work = library.background.enter().unwrap();
+        assert!(library.early_source_record(&source, &work).await.is_none());
+        fs::remove_file(path).await.unwrap();
+        fs::write(path, b"video").await.unwrap();
+        let mut changed = original.clone();
+        changed.source_id = Some("f".repeat(32));
+        fs::write(
+            library.root.join(format!("{id}.json")),
+            serde_json::to_vec(&changed).unwrap(),
+        )
+        .await
+        .unwrap();
+        assert!(
+            library.early_source_record(&source, &work).await.is_none(),
+            "index identity cannot override authoritative source binding"
+        );
+        changed.source_id = original.source_id;
+        changed.linked_path = Some(outside);
+        fs::write(
+            library.root.join(format!("{id}.json")),
+            serde_json::to_vec(&changed).unwrap(),
+        )
+        .await
+        .unwrap();
+        assert!(
+            library.early_source_record(&source, &work).await.is_none(),
+            "a changed outside path cannot become a source candidate"
+        );
+        drop(work);
+        wait_for_drain(&library.background).await;
+        fs::remove_dir_all(base).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn early_probe_deadline_drains_owned_operation_before_returning() {
+        let background = crate::background_work::BackgroundWork::default();
+        let work = background.enter().unwrap();
+        let (entered, entered_rx) = tokio::sync::oneshot::channel();
+        let (release, release_rx) = tokio::sync::oneshot::channel();
+        let later = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let observed = later.clone();
+        let task = tokio::spawn(async move {
+            owned_read_until(
+                &work,
+                Some(std::time::Instant::now() + std::time::Duration::from_millis(10)),
+                move |owner| async move {
+                    // A syscall analogue: cancellation/deadline cannot drop
+                    // the current operation, but no next operation is admitted.
+                    checked(Some(&owner), async move {
+                        entered.send(()).unwrap();
+                        release_rx.await.unwrap();
+                    })
+                    .await?;
+                    observed.store(true, Ordering::SeqCst);
+                    Ok(())
+                },
+            )
+            .await
+        });
+        entered_rx.await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        background.set_standby(true);
+        assert!(
+            !task.is_finished(),
+            "in-flight operation must remain owned until drained"
+        );
+        release.send(()).unwrap();
+        assert!(task.await.unwrap().is_err());
+        assert!(
+            !later.load(Ordering::SeqCst),
+            "expired probe cannot admit subsequent work"
+        );
+        wait_for_drain(&background).await;
+    }
+
+    #[tokio::test]
     async fn folder_walk_preserves_legacy_and_unavailable_ids_without_per_file_realpath() {
         let base = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         let library = Library::new(base.join("metadata"), "t".repeat(32), "device")
@@ -3622,7 +4131,11 @@ mod tests {
             catalog.items.iter().filter(|item| !item.available).count(),
             3
         );
-        assert!(library.original_checks.lock().unwrap().is_empty());
+        let early_checks = library.original_checks.lock().unwrap().len();
+        assert!(
+            early_checks <= EARLY_SOURCE_CANDIDATES,
+            "only the bounded first-publication probe may canonicalize originals"
+        );
         assert_eq!(
             *library.scan_leaf_metadata.lock().unwrap(),
             vec![source.path.clone()],
@@ -3669,7 +4182,7 @@ mod tests {
         );
         assert_eq!(
             library.original_checks.lock().unwrap().len(),
-            1,
+            early_checks + 1,
             "serving must retain full original-path validation"
         );
         fs::remove_dir_all(base).await.unwrap();
@@ -3705,8 +4218,20 @@ mod tests {
                 })
                 .await
                 .unwrap();
+                let directory = std::fs::File::open(&source.path).unwrap();
+                let modified = directory.metadata().unwrap().modified().unwrap();
                 fs::remove_file(&path).await.unwrap();
                 std::os::unix::fs::symlink(&outside, &path).unwrap();
+                // Filesystem timestamp granularity can coalesce this replacement
+                // with the original directory stamp. Make the mutated namespace
+                // observably different before releasing the cached-type gate.
+                directory
+                    .set_times(
+                        std::fs::FileTimes::new()
+                            .set_modified(modified + std::time::Duration::from_secs(2)),
+                    )
+                    .unwrap();
+                assert_ne!(directory.metadata().unwrap().modified().unwrap(), modified);
                 gate.add_permits(1);
                 assert!(
                     scan_run.await.unwrap().is_err(),
@@ -3951,7 +4476,7 @@ mod tests {
                 "stale index cannot resurrect invalid metadata"
             );
         }
-        assert!(library.original_checks.lock().unwrap().is_empty());
+        assert!(library.original_checks.lock().unwrap().len() <= EARLY_SOURCE_CANDIDATES);
         fs::remove_dir_all(base).await.unwrap();
     }
 
@@ -4096,7 +4621,7 @@ mod tests {
             "cancellation must not admit more original probes"
         );
         assert!(
-            library.original_checks.lock().unwrap().is_empty(),
+            library.original_checks.lock().unwrap().len() <= EARLY_SOURCE_CANDIDATES,
             "folder scan must not canonicalize every original file"
         );
         fs::remove_dir_all(base).await.unwrap();

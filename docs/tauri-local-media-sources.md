@@ -36,13 +36,26 @@ is rejected once 32 sources are registered; reconnecting an existing root remain
 available. Originals are never copied, and the operating system can still deny
 access to the directory.
 
-Folder playback waits for the complete catalog of the selected source, not for
-unrelated folders. For example, `local shuffle Movies` can start after Movies
-has been scanned while a much larger NAS folder is still being indexed. The
-same rule applies when restoring that selected folder after a player restart.
-The library manager and profile snapshots continue to distinguish a partial
-global catalog from a completed one. A partial or failed scan of Movies never
-starts a truncated shuffle queue.
+Folder playback can start with the first playable portion of the selected
+source, while discovery continues in the background. `local shuffle Movies`
+shuffles the available portion and later discoveries extend the channel list;
+an update does not restart the playing file. Starting before discovery finishes
+cannot choose uniformly from files that have not yet been found. A saved file
+still takes priority on restart when it is available.
+
+An accepted response is not proof of decoded video or a completed scan. Its
+count describes the currently accepted portion when discovery is still active.
+The library preserves the selected source and scan generation; it never mixes a
+replacement scan into an active queue or claims a failed scan is complete.
+The updated CLI explicitly negotiates progressive playback. Older callers keep
+the complete-catalog response and must not receive a partial count as a total.
+
+While discovery continues, Repeat All wraps through the currently known files;
+a one-file prefix can therefore repeat until more files arrive. Repeat Off stops
+at the last known file and a later catalog update does not restart playback.
+A scan error or the 50,000-item queue limit stops further queue updates and
+shows the standard channel-list failure notice; the current file is retained.
+This is an incomplete queue, not a successful whole-folder scan.
 
 If a command times out, inspect `local sources` and player status before sending
 another change. An accepted connection and confirmed video playback are
@@ -84,8 +97,8 @@ remote request does not stop another folder's background scan.
 
 Native directory scans have a separate 100,000-entry bound per source, counting
 the selected root, subdirectories and non-media entries as well as videos. A
-scan that exceeds it reports an incomplete-scan error; remote playback must not
-treat its partial catalog as a complete queue. The remote `local play` and
+scan that exceeds it reports an incomplete-scan error; an already started
+partial queue must not be reported as a complete catalog. The remote `local play` and
 `local shuffle` queue limit is 50,000 playable items. Split a larger source into
 smaller, non-overlapping folders. Disconnecting a source while its scan waits
 cannot recreate that source or replace its stable ID.
@@ -105,17 +118,17 @@ not reopen it. Each Tauri instance uses its own metadata and profile selection.
 
 Native catalogs also expose `sourceScans` with a source ID, generation and
 `pending`, `scanning`, `complete` or `error` state for each tracked folder. These
-states and the items belong to the same snapshot. A remote folder queue waits
-for that folder's complete generation, while library-wide operations still use
-the global scan state. Older catalogs without this field retain their existing
-whole-library completion behavior.
+states and the items belong to the same snapshot. Remote playback accepts the
+first permitted playable portion of that folder's generation and continues
+polling it; other library operations can still require complete discovery.
+Older catalogs without this field retain their existing completion behavior.
 
 An explicit native folder selection is scheduled independently of other
 sources. For example, a five-video Movies folder can finish while a large FFFF
 folder is still scanning. `local_media_sources` accepts an exact source ID or
 name through its optional `selection` argument, so resolving Movies does not
 probe unrelated mounted drives. The full catalog remains available throughout;
-the selected queue contains only that folder's fully scanned generation.
+the selected queue contains only that folder and keeps one scan generation.
 An unavailable or unmounted root remains visible with `available: false` and a
 source scan error; other available sources can still play. If a readable root
 cannot be traversed completely, its source error also sets the global
@@ -129,8 +142,16 @@ The original media and its individual metadata record are still validated
 before playback or serving. Index files are internal caches, not an editable configuration.
 
 
-Folder discovery validates saved metadata and then walks the original directory
-once. Known regular files reuse the no-follow file type captured during
+Before the full metadata pass, a folder worker tries a bounded selection of
+saved records and independently checks their original files. A valid record can
+be published immediately with its existing ID. Missing, corrupt or unreadable
+candidates only make this fast path miss; they do not prove the folder is empty
+or authorize a replacement ID. The admission deadline is checked between file
+operations; an already submitted operating-system read still has to drain.
+Source discovery runs alongside the global metadata bootstrap.
+
+Full folder discovery validates saved metadata and then walks the original
+directory once. Known regular files reuse the no-follow file type captured during
 enumeration, avoiding another per-file network metadata request. New files and
 directories retain their metadata/access checks. Each directory must keep its
 canonical identity; modification stamps are checked again after enumeration.
@@ -141,8 +162,8 @@ a later open or decode will succeed. Directory stamps are not an immutable
 filesystem snapshot, especially with network attribute caches. Actual media
 serving and preferred-item lookup still perform the full token, metadata,
 source and original-path validation. Missing or unverified saved entries retain
-their IDs and remain unavailable; no partial scan starts a complete-folder
-shuffle.
+their IDs and remain unavailable. A partial queue remains explicitly incomplete
+until its source scan finishes.
 
 In the [controlled concurrent-Range test](evidence/local-folder-range-performance-20261027.md),
 the final code completed a fresh, unindexed 13,657-record library in 28.831
@@ -206,3 +227,9 @@ main-window boundary. OS-picker UI and actual video decoding need native app
 verification.
 
 Official picker API: https://v2.tauri.app/plugin/dialog/
+
+The existing Local videos screen loads its packaged `dist/local-media-ui.js`
+asset on demand. Source imports, removals, catalog scanning and playback
+activation keep their existing main runtime APIs. File/folder pickers still
+start synchronously from their user action. A late UI download cannot reopen a
+replaced or cancelled screen, and a failed download can be retried.
