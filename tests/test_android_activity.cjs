@@ -483,7 +483,10 @@ try {
     w.window = w;
     vm.createContext(w);
     require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
-    require("./helpers/private-runtime.cjs")(w, "src/playback/live-recovery.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/playback/live-recovery.ts"
+    );
     w.startCoreEngine = () => {
         w._playSession++;
     };

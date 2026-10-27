@@ -1138,7 +1138,10 @@ for (const platform of Object.keys(nativeSources)) {
     vm.createContext(w);
     require("./helpers/screen-runtime.cjs")(w);
     require("./helpers/private-runtime.cjs")(w, "src/device/media-backend.ts");
-    require("./helpers/private-runtime.cjs")(w, "src/playback/live-recovery.ts");
+    require("./helpers/private-runtime.cjs")(
+        w,
+        "src/playback/live-recovery.ts"
+    );
     w.startCoreEngine = () => {
         w._playSession++;
     };
