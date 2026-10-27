@@ -429,6 +429,10 @@ try {
         "stbIsPlaying",
         "stbStop",
         "getCoreMediaBackend",
+        "coreCompat",
+        "cancelCoreCompat",
+        "coreField",
+        "coreCall",
         "sampleCoreLiveRecovery",
         "openCoreEngineLease",
         "stopCoreEngine",
@@ -469,6 +473,8 @@ try {
         coreSourcePreparationCancel: null,
         coreStreamAttempt: null,
         hlsInstance: {
+            config: { startPosition: -1 },
+            hasEnoughToStart: false,
             destroy() {
                 destroyed++;
             },
