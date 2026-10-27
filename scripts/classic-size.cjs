@@ -559,7 +559,7 @@ const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
     // Relocate existing Local UI plus compatibility into fixed lazy assets.
-    // ES5/production-name-policy isolated measurement: 4585/1779 and 12328/4231
+    // ES5/production-name-policy isolated measurement: 3527/1529 and 8553/3331
     // raw/gzip. Complete TOTAL remains unchanged and counts both assets once.
     "local-compatibility": Object.freeze({ bytes: 4800, gzipBytes: 1900 }),
     "local-media-ui": Object.freeze({ bytes: 12600, gzipBytes: 4400 }),
