@@ -123,6 +123,106 @@ test("explicit profile save promotes one-off playback, export stays durable and 
     assert.equal(f.host.ottpStorage.localPlayback.active(), false);
 });
 
+test("profile save samples the real playback model before atomic promotion and preserves durable rollback", async () => {
+    for (const reject of [false, true]) {
+        const f = fixture([["ottplayprov", "m3u"]], true);
+        const h = f.host;
+        Object.assign(h, {
+            catIndex: 0,
+            cats: { all: h.curList },
+            catsArray: ["all"],
+            channels: {},
+            clearTimeout() {},
+            medHistory: [],
+            p_pref: "offline",
+            playTime: 0,
+            playType: 0,
+            prevArr: [],
+            providerGetItem: (key) => h.stbGetItem("offline" + key),
+            providerSetItem: (key, value) =>
+                h.stbSetItem("offline" + key, value),
+            setInterval() {},
+            setTimeout() {},
+            settings: { prevCount: 2 },
+            stbGetLen: () => 600,
+            stbGetPosTime: () => 123,
+        });
+        require("./helpers/shared-core-runtime.cjs")(h);
+        const playback = h.__ottClassicPlayback;
+        playback.importLegacy();
+        playback.command({
+            channelId: "local-PRIVATE-ITEM",
+            position: 123,
+            type: "live",
+        });
+        h.ottpStorage.localPlayback.begin(() => "profile");
+        playback.checkpoint(playback.snapshot(), true);
+        assert.equal(playback.snapshot().position, 123);
+        let samples = 0;
+        h.stbPlay = () => {};
+        h.__ottCoreTransport = { play: h.stbPlay };
+        h.__ottCoreBackend = () => ({
+            current: () => ({
+                active: () => true,
+                sample() {
+                    samples++;
+                    playback.command({
+                        duration: 600,
+                        generation: playback.snapshot().generation,
+                        position: 147,
+                        type: "position",
+                    });
+                },
+            }),
+        });
+        const before = new Map(f.data);
+        if (reject) h.ottpStorage.localPlayback.profile = () => false;
+        const result = await f.call("profile_save", {
+            name: "Fresh position",
+            number: 1,
+        });
+        assert.equal(samples, 1);
+        assert.equal(playback.snapshot().position, 147);
+        assert.equal(result.status, reject ? "rejected" : "ok");
+        if (reject) {
+            assert.deepEqual([...f.data], [...before]);
+            assert.equal(h.ottpStorage.localPlayback.active(), true);
+        } else {
+            const journal = JSON.parse(f.data.get("offlineplaybackJournal"));
+            assert.equal(journal.bookmark.position, 147);
+            assert.equal(h.ottpStorage.localPlayback.active(), false);
+            assert.equal(f.data.get("ottplayprov"), "offline");
+        }
+    }
+});
+
+test("profile save rejects checkpoint reentry that replaces its driver, selection or RAM owner", async () => {
+    for (const mutation of ["driver", "selection", "session"]) {
+        const f = fixture([["ottplayprov", "m3u"]], true);
+        f.host.ottpStorage.localPlayback.begin(() => "profile");
+        const before = new Map(f.data);
+        let checkpoints = 0;
+        f.host.__ottClassicPlayback = {
+            checkpointNow() {
+                checkpoints++;
+                if (mutation === "driver")
+                    f.host.__ottActiveProviderDriver = { id: "offline" };
+                if (mutation === "selection")
+                    f.host.curList = ["local-replacement"];
+                if (mutation === "session")
+                    f.host.ottpStorage.localPlayback.begin(() => "replacement");
+            },
+        };
+        assert.equal(
+            (await f.call("profile_save", { number: 1 })).status,
+            "rejected"
+        );
+        assert.equal(checkpoints, 1);
+        assert.deepEqual([...f.data], [...before]);
+        assert.equal(f.host.ottpStorage.localPlayback.active(), true);
+    }
+});
+
 test("a session profile transaction rejects stable foreign storage aliases without either backing changing", async () => {
     const f = fixture([["ottplayprov", "m3u"]], true);
     await saved(f, 1);

@@ -212,11 +212,17 @@ export function installOfflineProfiles(w: any, media: any): any {
             if (!transaction)
                 throw profileFailure("Local playback storage changed");
             transaction = function (batch: any, admitted: () => boolean) {
-                return w.ottpStorage.localPlayback.profile(
-                    batch,
-                    admitted,
-                    persistPlayback
-                );
+                if (
+                    !w.ottpStorage.localPlayback.profile(
+                        batch,
+                        admitted,
+                        persistPlayback
+                    )
+                )
+                    throw profileFailure(
+                        "Could not save Local playback session"
+                    );
+                return true;
             };
         }
         commitSettingsWrites(
@@ -545,6 +551,32 @@ export function installOfflineProfiles(w: any, media: any): any {
                     var previous: Record<string, string | null> = {};
                     previous[bindingsKey] = bindingBefore;
                     previous[key] = before;
+                    var storage = w.ottpStorage;
+                    var session = storage?.localPlayback;
+                    var sessionCurrent = session?.active()
+                        ? session.capture()
+                        : null;
+                    if (
+                        sessionCurrent &&
+                        (w.stbGetItem !== storage.get ||
+                            w.stbSetItem !== storage.set ||
+                            w.stbDelItem !== storage.del)
+                    )
+                        throw profileFailure("Local playback storage changed");
+                    if (!current() || selectedId() !== selectionBefore)
+                        throw profileFailure(
+                            "Local profile changed before checkpoint"
+                        );
+                    if (w.__ottClassicPlayback?.checkpointNow)
+                        w.__ottClassicPlayback.checkpointNow();
+                    if (
+                        !current() ||
+                        selectedId() !== selectionBefore ||
+                        (sessionCurrent && !sessionCurrent())
+                    )
+                        throw profileFailure(
+                            "Local profile changed while checkpointing"
+                        );
                     writeBatch(
                         values,
                         previous,

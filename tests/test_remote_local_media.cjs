@@ -458,6 +458,42 @@ test("new native absolute folder waits for the complete scan and activates only 
     assert.equal(f.api.playbackOrder(), null);
 });
 
+test("remote Local refuses stable foreign storage aliases before admission and deferred handoff", async () => {
+    for (const deferred of [false, true]) {
+        const f = pluginFixture();
+        await tick();
+        const before = new Map(f.data),
+            foreign = new Map(f.data);
+        let handoff;
+        if (deferred) {
+            f.w.loadProv = (_id, callback) => {
+                f.w.__ottCommandChannelLoad = {};
+                handoff = callback;
+            };
+            f.api.remoteActivate(source.id, ["1"], catalog(), () => true);
+        }
+        f.w.stbGetItem = (key) => foreign.get(key) ?? null;
+        f.w.stbSetItem = (key, value) => foreign.set(key, value);
+        f.w.stbDelItem = (key) => foreign.delete(key);
+        assert.throws(
+            () =>
+                deferred
+                    ? handoff()
+                    : f.api.remoteActivate(
+                          source.id,
+                          ["1"],
+                          catalog(),
+                          () => true
+                      ),
+            (error) =>
+                ["restricted", "runtime_changed"].includes(error.localMediaCode)
+        );
+        assert.deepEqual([...f.data], [...before]);
+        assert.deepEqual([...foreign], [...before]);
+        assert.equal(f.w.ottpStorage.localPlayback.active(), false);
+    }
+});
+
 test("stale Local session finishing cannot promote or cancel a synchronously replacing command", async () => {
     for (const during of ["checkpoint", "dispose"]) {
         const f = pluginFixture();

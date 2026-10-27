@@ -248,6 +248,88 @@ async function flush() {
     for (let index = 0; index < 12; index++) await Promise.resolve();
 }
 (async () => {
+    for (const intent of ["cancel", "invalid", "valid", "replaced"]) {
+        const complete = catalog(1, 1, false);
+        const f = fixture([complete], {
+            mode: "browser",
+            read: () => Promise.resolve(complete),
+        });
+        const saved = new Map([["ottplayprov", "m3u"]]);
+        f.w.localStorage = {
+            getItem: (key) => (saved.has(key) ? saved.get(key) : null),
+            key: (index) => [...saved.keys()][index] || null,
+            get length() {
+                return saved.size;
+            },
+            removeItem: (key) => saved.delete(key),
+            setItem: (key, value) => saved.set(key, String(value)),
+        };
+        const exports = {};
+        vm.runInNewContext(
+            ts.transpileModule(
+                fs.readFileSync(
+                    path.join(__dirname, "../src/storage/index.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.CommonJS,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            ).outputText,
+            { document: { cookie: "" }, exports, window: f.w }
+        );
+        f.w.stbGetItem = exports.stbGetItem;
+        f.w.stbSetItem = exports.stbSetItem;
+        f.w.stbDelItem = exports.stbDelItem;
+        let disposed = 0;
+        f.w.__ottActiveProviderDriver = {
+            dispose() {
+                disposed++;
+            },
+            id: "offline",
+        };
+        f.w.showEditKey = () => {};
+        f.w.ottpStorage.localPlayback.begin(f.api.libraryIdentity);
+        f.w.stbSetItem(
+            "localMediaPlaybackSelection",
+            JSON.stringify({
+                library: "one-off",
+                seed: null,
+                source: "folder",
+                version: 1,
+            })
+        );
+        f.api.open(false, true);
+        f.w.listArray.find((row) => row.id === "server-library").action();
+        if (intent === "cancel") f.w.listKeyHandler(f.w.keys.RETURN);
+        else {
+            f.w.editvar =
+                intent === "invalid" ? "not-a-url" : "https://library.invalid/";
+            if (intent === "replaced")
+                f.w.__ottClassicPlayback = {
+                    checkpointNow() {
+                        f.w.listKeyHandler(f.w.keys.RETURN);
+                    },
+                };
+            f.w.setEdit();
+            await flush();
+        }
+        assert.equal(
+            saved.get("localMediaEndpoint"),
+            intent === "valid" ? "https://library.invalid" : undefined
+        );
+        assert.equal(disposed, intent === "valid" ? 1 : 0);
+        assert.equal(
+            f.w.ottpStorage.localPlayback.active(),
+            intent !== "valid"
+        );
+        if (intent === "valid") {
+            assert.doesNotThrow(() => f.api.playbackFilter(complete));
+            assert.equal(f.w.stbGetItem("ottplayprov"), "m3u");
+        }
+    }
     {
         let nativeEvent,
             nativeFinish,

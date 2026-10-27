@@ -68,15 +68,19 @@ function createLocalMediaUi(w: any, p: any): any {
         p.revision++;
         w.editCaption = w._("Media Library URL");
         w.editvar = p.remoteEndpoint();
-        var originalCatalogue = p.catalogRevision;
+        var originalCatalogue = p.catalogRevision,
+            originalRevision = p.revision;
+        function admitted(): boolean {
+            return (
+                p.current() &&
+                !p.locked() &&
+                !p.settingsLocked() &&
+                originalCatalogue === p.catalogRevision &&
+                originalRevision === p.revision
+            );
+        }
         w.setEdit = function () {
-            if (
-                !p.current() ||
-                p.locked() ||
-                p.settingsLocked() ||
-                originalCatalogue !== p.catalogRevision
-            )
-                return;
+            if (!admitted()) return;
             var value = String(w.editvar || "")
                 .trim()
                 .replace(/\/+$/, "");
@@ -90,6 +94,8 @@ function createLocalMediaUi(w: any, p: any): any {
                     return;
                 }
             }
+            if (!p.finishSession(false, undefined, admitted) || !admitted())
+                return;
             w.stbSetItem("localMediaEndpoint", value);
             p.catalogRevision++;
             run(p.list);

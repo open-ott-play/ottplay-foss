@@ -972,9 +972,11 @@ export function installLocalMedia(w: any): any {
     }
     function finishSession(
         persist: boolean,
-        extra?: { key: string; value: string }
+        extra?: { key: string; value: string },
+        admitted?: () => boolean
     ): boolean {
         var session = w.ottpStorage?.localPlayback;
+        if (admitted && !admitted()) return false;
         if (!session?.active()) return true;
         var current = session.capture();
         var driver = w.__ottActiveProviderDriver;
@@ -982,6 +984,7 @@ export function installLocalMedia(w: any): any {
         if (w.__ottClassicPlayback) w.__ottClassicPlayback.checkpointNow();
         if (
             !current() ||
+            (admitted && !admitted()) ||
             driver !== w.__ottActiveProviderDriver ||
             context !== playbackIntentContext()
         )
@@ -1042,6 +1045,7 @@ export function installLocalMedia(w: any): any {
                     current: current,
                     failureMessage: failureMessage,
                     finishLoading: finishLoading,
+                    finishSession: finishSession,
                     formatLocalMediaProgress: formatLocalMediaProgress,
                     getEndpoint: getEndpoint,
                     get handler() {
@@ -1282,12 +1286,22 @@ export function installLocalMedia(w: any): any {
             admitted: () => boolean,
             seed: number | null = null
         ): void {
+            var storage = w.ottpStorage;
+            function storageCurrent(): boolean {
+                return (
+                    !!storage?.localPlayback &&
+                    storage === w.ottpStorage &&
+                    w.stbGetItem === storage.get &&
+                    w.stbSetItem === storage.set &&
+                    w.stbDelItem === storage.del
+                );
+            }
             if (
                 !admitted() ||
                 locked() ||
                 settingsLocked() ||
                 typeof w.loadProv !== "function" ||
-                !w.ottpStorage?.localPlayback
+                !storageCurrent()
             )
                 throw { localMediaCode: "restricted" };
             var generation = ++remoteGeneration;
@@ -1300,6 +1314,7 @@ export function installLocalMedia(w: any): any {
                 try {
                     return (
                         generation === remoteGeneration &&
+                        storageCurrent() &&
                         admitted() &&
                         !w.__ottStandby?.blocked?.() &&
                         selectionContext === playbackIntentContext() &&
@@ -1338,7 +1353,7 @@ export function installLocalMedia(w: any): any {
                 w.loadProv("offline", function () {
                     if (!ownsActivation())
                         throw { localMediaCode: "runtime_changed" };
-                    var rollback = w.ottpStorage.localPlayback.begin(
+                    var rollback = storage.localPlayback.begin(
                         playbackIntentContext
                     );
                     try {
