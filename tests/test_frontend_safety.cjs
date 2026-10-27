@@ -233,8 +233,10 @@ test("channel list keeps hostile titles as text and preserves intentional row la
     const w = fixture();
     try {
         const a = ast("src/provider/index.ts");
-        let renderer;
+        let renderer, channelRow;
         function visit(n) {
+            if (ts.isFunctionDeclaration(n) && n.name?.text === "channelRow")
+                channelRow = n;
             if (
                 ts.isVariableDeclaration(n) &&
                 n.name.getText(a) === "channelItemFormatter" &&
@@ -246,6 +248,7 @@ test("channel list keeps hostile titles as text and preserves intentional row la
         }
         visit(a);
         assert(renderer);
+        assert(channelRow);
         Object.assign(w, {
             $infoBar: w.$("<div>"),
             archWidth: 0,
@@ -295,8 +298,13 @@ test("channel list keeps hostile titles as text and preserves intentional row la
             )
         );
         w.eval(
-            js("window.getListItemFn=" + renderer.getText(a) + ";") +
-                func("src/ui/index.ts", "showPage")
+            js(
+                "var view;" +
+                    channelRow.getText(a) +
+                    "window.getListItemFn=" +
+                    renderer.getText(a) +
+                    ";"
+            ) + func("src/ui/index.ts", "showPage")
         );
         w.showPage();
         assert.equal(
