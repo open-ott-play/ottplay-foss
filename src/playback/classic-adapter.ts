@@ -824,19 +824,52 @@ function classicPlaybackChannelHint(id: string): any {
         : undefined;
 }
 
+/** Build once per restoration; never retain indexes across catalog changes. */
+function classicPlaybackLocationIndex(w: any): any {
+    var locations: any = Object.create(null);
+    var groups = w.catsArray || [];
+    for (var category = 0; category < groups.length; category++) {
+        var list = (w.cats || {})[groups[category]];
+        if (!Array.isArray(list)) continue;
+        for (var index = 0; index < list.length; index++) {
+            var id = list[index];
+            var key = String(id);
+            var matches = locations[key] || (locations[key] = []);
+            // The first occurrence in a category wins, as in the linear lookup.
+            if (
+                matches.length &&
+                matches[matches.length - 1].category === category
+            )
+                continue;
+            matches.push({
+                category: category,
+                id: id,
+                index: index,
+                list: list,
+            });
+        }
+    }
+    return { locations: locations };
+}
+
 function classicPlaybackLocate(
     id: string,
     groupId?: string,
-    channelHint?: PlaybackJournalEntry["channelHint"]
+    channelHint?: PlaybackJournalEntry["channelHint"],
+    lookup?: { locations: any; references?: any }
 ): any {
     var w = classicPlaybackHost();
     if (id.indexOf("channel-ref:") === 0) {
         try {
             var ref = JSON.parse(id.slice("channel-ref:".length));
-            var codec = w.__ottChannelReferences.create(
-                w.channels || {},
-                w.__ottLegacyChannelAliases
-            );
+            var codec = lookup && lookup.references;
+            if (!codec) {
+                codec = w.__ottChannelReferences.create(
+                    w.channels || {},
+                    w.__ottLegacyChannelAliases
+                );
+                if (lookup) lookup.references = codec;
+            }
             if (!ref.itemId && !ref.ambiguous && ref.legacyId !== undefined)
                 ref = codec.resolve(ref.legacyId, ref.origin);
             if (ref.ambiguous) return null;
@@ -856,21 +889,29 @@ function classicPlaybackLocate(
         w.catIndex < groups.length
     )
         preferred = w.catIndex;
-    var order: number[] = [];
-    if (preferred >= 0) order.push(preferred);
-    for (var g = 0; g < groups.length; g++) if (g !== preferred) order.push(g);
-    for (var at = 0; at < order.length; at++) {
-        var category = order[at];
-        var list = (w.cats || {})[groups[category]];
-        if (!Array.isArray(list)) continue;
-        for (var index = 0; index < list.length; index++) {
-            if (String(list[index]) === id)
-                return {
-                    category: category,
-                    id: list[index],
-                    index: index,
-                    list: list,
-                };
+    if (lookup) {
+        var matches = lookup.locations[id] || [];
+        for (var at = 0; at < matches.length; at++)
+            if (matches[at].category === preferred) return matches[at];
+        if (matches.length) return matches[0];
+    } else {
+        var order: number[] = [];
+        if (preferred >= 0) order.push(preferred);
+        for (var g = 0; g < groups.length; g++)
+            if (g !== preferred) order.push(g);
+        for (var at = 0; at < order.length; at++) {
+            var category = order[at];
+            var list = (w.cats || {})[groups[category]];
+            if (!Array.isArray(list)) continue;
+            for (var index = 0; index < list.length; index++) {
+                if (String(list[index]) === id)
+                    return {
+                        category: category,
+                        id: list[index],
+                        index: index,
+                        list: list,
+                    };
+            }
         }
     }
     if (channelHint && w.p_pref === "m3u") {
@@ -903,7 +944,12 @@ function classicPlaybackLocate(
                 return hint && hint.routeId === channelHint.routeId;
             });
         if (candidates.length === 1)
-            return classicPlaybackLocate(candidates[0], groupId);
+            return classicPlaybackLocate(
+                candidates[0],
+                groupId,
+                undefined,
+                lookup
+            );
     }
     return null;
 }
@@ -921,33 +967,38 @@ function classicPlaybackHydrate(): void {
         return;
     }
     var document = loaded.document;
-    w.prevArr = document.history
-        .filter(function (entry: PlaybackJournalEntry): boolean {
-            return entry.kind !== "vod";
-        })
-        .map(function (entry: PlaybackJournalEntry): any {
-            var found = classicPlaybackLocate(
-                entry.channelId,
-                entry.groupId,
-                entry.channelHint
-            );
-            var result: any = {
-                c: found ? found.category : -1,
-                channelHint: entry.channelHint,
-                ci: found ? found.id : entry.channelId,
-                e: entry.label,
-                groupId: entry.groupId,
-                i: found ? found.index : -1,
-            };
-            if (entry.kind === "archive") result.t = entry.archiveStart;
-            return result;
-        });
+    var history = document.history.filter(function (
+        entry: PlaybackJournalEntry
+    ): boolean {
+        return entry.kind !== "vod";
+    });
+    var locations =
+        history.length > 1 ? classicPlaybackLocationIndex(w) : undefined;
+    w.prevArr = history.map(function (entry: PlaybackJournalEntry): any {
+        var found = classicPlaybackLocate(
+            entry.channelId,
+            entry.groupId,
+            entry.channelHint,
+            locations
+        );
+        var result: any = {
+            c: found ? found.category : -1,
+            channelHint: entry.channelHint,
+            ci: found ? found.id : entry.channelId,
+            e: entry.label,
+            groupId: entry.groupId,
+            i: found ? found.index : -1,
+        };
+        if (entry.kind === "archive") result.t = entry.archiveStart;
+        return result;
+    });
     var bookmark = document.bookmark;
     if (bookmark && bookmark.kind === "live") {
         var selected = classicPlaybackLocate(
             bookmark.channelId,
             bookmark.groupId,
-            bookmark.channelHint
+            bookmark.channelHint,
+            locations
         );
         if (selected) {
             w.catIndex = selected.category;

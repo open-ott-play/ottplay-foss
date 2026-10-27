@@ -403,12 +403,22 @@ function createVPortalProviderDriver(
                                 var added = helpers.emptyCatalog();
                                 added.incremental = true;
                                 added.ids = catalog.ids.slice(count);
+                                // Category discovery can update every existing
+                                // row while a whole new page is appended.
+                                var included: Record<string, boolean> =
+                                    Object.create(null);
+                                added.ids.forEach(function (
+                                    id: string | number
+                                ) {
+                                    included[typeof id + ":" + id] = true;
+                                });
                                 categoryUpdates.forEach(function (index) {
-                                    if (
-                                        added.ids.indexOf(catalog.ids[index]) <
-                                        0
-                                    )
-                                        added.ids.push(catalog.ids[index]);
+                                    var id = catalog.ids[index];
+                                    var key = typeof id + ":" + id;
+                                    if (!included[key]) {
+                                        included[key] = true;
+                                        added.ids.push(id);
+                                    }
                                 });
                                 added.ids.forEach(function (
                                     id: string | number

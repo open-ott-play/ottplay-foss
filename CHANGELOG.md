@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reduce repeated catalogue work while restoring large playback histories,
+  publishing VPortal category updates, and listing local media on the Rust
+  server and Android. Preserve ordering, source availability and profile data;
+  remove an unused remote-dispatch policy helper. Add deterministic regressions
+  for large catalogues and scan-local availability updates.
+
 
 - Avoid rebuilding unchanged video resolution and bitrate text each second or
   while the footer is hidden. Refresh it immediately when the footer opens,

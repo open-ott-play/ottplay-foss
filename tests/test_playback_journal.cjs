@@ -792,3 +792,121 @@ console.log(
     );
     assert.equal(f.journal.read().document.bookmark.channelId, "7");
 }
+
+// Restore a large history with one catalog pass, preserving category preference
+// and duplicate positions. The index must be rebuilt after a catalog replacement.
+{
+    const storage = new Map();
+    let reads = 0;
+    const entries = Array.from({ length: 12000 }, (_, index) => String(index));
+    const all = new Proxy(entries, {
+        get(target, key, receiver) {
+            if (/^\d+$/.test(String(key))) reads++;
+            return Reflect.get(target, key, receiver);
+        },
+    });
+    const w = {
+        catIndex: 0,
+        cats: { All: all, Favorites: ["11999", "11999"] },
+        catsArray: ["All", "Favorites"],
+        channels: Object.fromEntries(
+            entries.map((id) => [id, { channel_name: id }])
+        ),
+        p_pref: "fixture",
+        providerGetItem: (key) => storage.get(key) ?? null,
+        providerSetItem: (key, value) => storage.set(key, value),
+    };
+    w.window = w;
+    vm.createContext(w);
+    sharedCore(w);
+    const api = w.__ottClassicPlayback;
+    storage.set(
+        "playbackJournal",
+        JSON.stringify({
+            bookmark: {
+                channelId: "11999",
+                groupId: "Favorites",
+                kind: "live",
+            },
+            channelReferences: 1,
+            history: Array.from({ length: 1000 }, (_, index) => ({
+                channelId: String(11000 + index),
+                groupId: index === 999 ? "Favorites" : "All",
+                kind: "live",
+            })),
+            sourceId: api.sourceId(),
+            updatedAt: 1,
+            version: 2,
+        })
+    );
+    api.hydrate();
+    assert.equal(w.prevArr.length, 1000);
+    assert.equal(w.prevArr[0].i, 11000);
+    assert.equal(w.prevArr[998].i, 11998);
+    assert.equal(w.prevArr[999].c, 1);
+    assert.equal(
+        w.prevArr[999].i,
+        0,
+        "first duplicate in preferred group wins"
+    );
+    assert.equal(w.catIndex, 1);
+    assert.equal(w.primaryIndex, 0);
+    assert.ok(
+        reads <= 12002,
+        "history must not rescan 12000 rows per entry: " + reads
+    );
+    console.log("Large-history catalog element reads:", reads);
+    const document = JSON.parse(storage.get("playbackJournal"));
+    let codecs = 0;
+    const createReferences = w.__ottChannelReferences.create;
+    w.__ottChannelReferences.create = (...args) => {
+        codecs++;
+        return createReferences(...args);
+    };
+    document.history.forEach((entry) => {
+        entry.channelId =
+            "channel-ref:" +
+            JSON.stringify({ itemId: "channel:" + entry.channelId });
+    });
+    storage.set("playbackJournal", JSON.stringify(document));
+    api.hydrate();
+    assert.equal(
+        codecs,
+        1,
+        "reference decoding shares one catalog index per restoration"
+    );
+    assert.equal(w.prevArr[0].i, 11000);
+    document.bookmark = null;
+    document.history = [{ channelId: "0", groupId: "All", kind: "live" }];
+    storage.set("playbackJournal", JSON.stringify(document));
+    reads = 0;
+    api.hydrate();
+    assert.equal(
+        reads,
+        2,
+        "single-entry restoration keeps the linear fast path"
+    );
+    document.history = [
+        { channelId: "movie", kind: "vod" },
+        { channelId: "other", kind: "vod" },
+    ];
+    storage.set("playbackJournal", JSON.stringify(document));
+    reads = 0;
+    api.hydrate();
+    assert.equal(reads, 0, "media-only history needs no channel index");
+    assert.equal(w.prevArr.length, 0);
+    // Restore the large document before checking a second catalog generation.
+    document.history = Array.from({ length: 1000 }, (_, index) => ({
+        channelId: String(11000 + index),
+        groupId: "All",
+        kind: "live",
+    }));
+    storage.set("playbackJournal", JSON.stringify(document));
+    w.cats = { All: ["11999", "11000"], Favorites: ["11999"] };
+    api.hydrate();
+    assert.equal(w.prevArr[0].i, 1, "replacement catalog gets a fresh index");
+    assert.equal(w.prevArr[1].i, -1, "removed entries are not cached");
+}
+console.log(
+    "PASS playback history: bounded catalog reads and fresh category-aware index"
+);

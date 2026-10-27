@@ -136,6 +136,7 @@ jobs:
           python3 tests/test_android_screenshot.py
           python3 tests/test_android_app_update_recovery.py
           python3 tests/test_android_epg_editions.py
+          python3 tests/test_android_local_media_availability.py
           python3 tests/test_android_network_policy.py
           npm run test:native-dash
           python3 tests/test_native_media_lifecycle.py --platform android

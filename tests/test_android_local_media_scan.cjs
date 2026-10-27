@@ -34,4 +34,17 @@ assert(
 );
 assert.match(scan, /check\(!destroyed\)/);
 assert.match(scan, /require\(\+\+count <= 20000\)/);
+const accept = source.slice(
+    source.indexOf("fun accept(item: JSONObject)"),
+    source.indexOf("if (validId(preferredId))")
+);
+assert.match(
+    accept,
+    /availability\.update\(item\.getString\("id"\), sourceId\(item\),/,
+    "availability uses the non-null source ID used to build the row"
+);
+assert(
+    !accept.includes('value.getString("sourceId")'),
+    "Capacitor JSObject getters return nullable strings"
+);
 console.log("Android local media scan source contract passed");
