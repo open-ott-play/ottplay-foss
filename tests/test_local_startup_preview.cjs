@@ -1,4 +1,6 @@
 "use strict";
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -18,6 +20,7 @@ function setup(options = {}) {
         removeItem: (key) => f.saved.delete(key),
         setItem: (key, value) => f.saved.set(key, String(value)),
     };
+    Object.assign(h, storageImports(h.require));
     h.exports = {};
     vm.runInContext(
         ts.transpileModule(fs.readFileSync("src/storage/index.ts", "utf8"), {

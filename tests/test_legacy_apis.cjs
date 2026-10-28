@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -105,6 +107,7 @@ function storageFixture(
     };
     const c = vm.createContext({ console, document, localStorage: local });
     c.window = c;
+    Object.assign(c, storageImports(c.require));
     require("./helpers/screen-runtime.cjs")(c);
     if (mode === "access")
         Object.defineProperty(c, "localStorage", {

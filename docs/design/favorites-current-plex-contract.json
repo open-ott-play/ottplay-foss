@@ -1,0 +1,128 @@
+{
+  "status": "SOURCE_PREPARATION_ONLY_NOT_ADVERTISED; bindingcatalog projection/capability below are an explicit player-side proposal, not an enabled route",
+  "sourceBase": "099c1a50eae37f4c3d5dc6b6141ed4cc22f3e95c",
+  "scope": "One active verified Plex PMS with explicit current profile/source UUID bindings; no all-configured/inactive/manual-server support",
+  "proposed_capability": {
+    "favorites_transfer": {
+      "version": 1,
+      "persistence": ["persistent"],
+      "codecs": [
+        {
+          "provider": "plex",
+          "codecVersion": 1,
+          "locatorKinds": ["plex-media"],
+          "targetScope": "current-verified-source",
+          "coverage": ["channelLists", "mediaFavorites"]
+        }
+      ],
+      "limits": {
+        "max_document_bytes": 1048576,
+        "max_chunk_bytes": 8192,
+        "max_chunks": 256,
+        "max_envelope_bytes": 16384,
+        "max_snapshot_response_bytes": 2097152,
+        "max_active_stages": 1,
+        "idle_ttl_seconds": 120,
+        "absolute_ttl_seconds": 600,
+        "max_plan_bytes": 65536,
+        "max_metadata_bytes": 131072,
+        "max_json_depth": 20,
+        "max_json_nodes": 32768,
+        "max_channel_lists": 256,
+        "max_entries_per_list": 10000,
+        "max_media_favorites": 1000,
+        "max_receipt_entries": 32,
+        "max_receipt_ledger_bytes": 65536,
+        "max_retained_admissions_per_adapter_instance": 16
+      },
+      "receipt_retention_seconds": 86400,
+      "receipt_retention_origin": "logical-reservation-plan-timestamp",
+      "receipt_retention_policy": "UP TO 86400 seconds, bounded by32 entries/65536 bytes; oldest proved verified/not_applied completions may be evicted earlier only under pressure. Pending/partial/unknown are never evicted. Missing/expired/evicted receipt means unknown, never fresh admission or permission to replay."
+    }
+  },
+  "capability_prerequisites": [
+    "No current runtime advertises this object. All modules, exact storage/key codecs, explicit binding authorization and trusted fresh-operation/budget admission must be integrated and qualified first.",
+    "Persistent means actual adapter persisted readback, not filesystem fsync or cross-store atomicity. Cookie-backed stores are admitted only when every required readback succeeds.",
+    "Limits intersect: byte/node/plan/ledger limits can refuse a collection below its per-list item ceiling; admission never raises caps or evicts uncertain receipts."
+  ],
+  "registry_public_input": {
+    "version": 1,
+    "revision": 2,
+    "entries": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "kind": "profile",
+        "provider": "plex"
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "kind": "source",
+        "provider": "plex",
+        "profile_id": "11111111-1111-4111-8111-111111111111"
+      }
+    ]
+  },
+  "proposed_bindingcatalog_response": {
+    "version": 1,
+    "runtime": "synthetic-runtime-1",
+    "op": "bindingcatalog",
+    "binding_revision": "2",
+    "targets": [
+      {
+        "target_id": "plex-current-target-synthetic-1",
+        "display": "Synthetic current Plex profile / source",
+        "provider": "plex",
+        "codecVersion": 1,
+        "serverId": "server-one"
+      }
+    ],
+    "bindings": [
+      {
+        "scope": {
+          "profileBindingId": "11111111-1111-4111-8111-111111111111",
+          "sourceBindingId": "22222222-2222-4222-8222-222222222222",
+          "provider": "plex"
+        },
+        "target_id": "plex-current-target-synthetic-1",
+        "codecVersion": 1
+      }
+    ]
+  },
+  "projection_rules": [
+    "Join each public source row to its profile_id profile row; require same provider and both actual private registry.resolve owners/selectors to match the current verified target. Do not pass registry.list().entries directly as wire bindings.",
+    "A wire binding is exactly {scope,target_id,codecVersion}; scope carries profile/source UUIDs and provider. Its binding_revision is the outer registry revision encoded as a string. Private selectors/owner data are never returned.",
+    "target_id is an opaque runtime-owned association, not a slot, display name, playlist URL, configuration hash or a persistent identity. Only the active verified target is enumerated in this first scope.",
+    "The bindings/target projection is not yet registered; Control must not infer or implement an alternative projection. Bindingcatalog/bind remain separate from the frozen seven transfer operations."
+  ],
+  "store_plan": [
+    "plex-channel-favorites: exact current TV-source favoritesLibrary document (source identity captured separately from media)",
+    "plex-media-favorites: exact current media-source mediaJournal document; history and unrelated fields preserved during the write",
+    "favorites-operation-receipts: whole physical ledger; pure original-before\u2192pending plan until commit, then exact CAS/readback reservation immediately before TV/media writes, then planned completion CAS/readback"
+  ],
+  "receipt_rule": "Inspect/preview are read-only. The private plan binds physical target keys/order/raw before hashes, original whole-ledger before hash, pending whole-ledger hash, and structured completion after-template. Commit verifies exact original bytes, persists planned pending reservation by CAS/readback, then may write TV/media and complete the receipt. Only the marked plan_digest field is materialized; no marker reaches storage. Real receipts carry counts/outcome/persistence; unknown/partial/pending are never evicted or replayed. Capacity may evict oldest proved completions, so retention is UP TO24h from logical plan timestamp, not a guaranteed replay window.",
+  "restart_status": "Fresh read-only scope/binding/grant authorization and actual favorite-store projection readback may inspect an old-runtime receipt. Its read-only ledger instance denies CAS. This never revives old write tickets; Control must compare a fresh same-scope snapshot and unchanged binding revision. Retention starts at reservation.",
+  "identity_and_missing": "Verified PMS + exact string ratingKey is canonical even if the current catalog row is absent. Keep invisible canonical membership, no fallback, no autoplay and no claim of playability. Unportable/ambiguous numeric legacy references block readiness; arbitrary legacy strings refuse complete export rather than disappear.",
+  "diagnostics": "Only collection/list_index/entry_index/reason are public unresolved diagnostics. For a shuffle baseline, entry_index is entries.length + baseline index; no locator, title, path, URL or token is copied into diagnostics.",
+  "unsupported": [
+    "Non-Plex providers",
+    "Inactive or all-configured sources",
+    "Manual/unverified PMS sources",
+    "Foreign paired PMS without explicit rebinding",
+    "Empty list collections or present defaults other than the retained generated Favorites default (including null)",
+    "Arbitrary unportable legacy strings, negative/unsafe legacy numbers or unsupported reference codecs",
+    "Uninitialized or isolated-context media/favorites runtime; inspection never initializes, migrates or writes legacy claims",
+    "The first document carries canonical Plex locators and optional title snapshots; it does not assert full folder ancestry or physical file paths"
+  ],
+  "sourceSha256": {
+    "src/provider/plex-driver.ts": "305df5fc4b8cb971753ec856513b2310ce04ab7ce9d888406ee9c7f02edf75cc",
+    "src/media/journal.ts": "a8aed2144aba4aba6e912d430803d54d08c642ac110747d0115881dd3cb84537",
+    "src/media/classic-adapter.ts": "937e09241b5b2e3922b10fad025dd172d7292bf306f709cd83baa71599a7ee1d",
+    "src/channels/favorites-lists.ts": "55269f732a323357eea7340e199b4220c71ca230df86de04f0c220aadfe0925f",
+    "src/channels/favorites-plex-references.ts": "002b9fcb76b4ab6b249d5220c493dd18fb6a7e53880a41a312262945dfd99485",
+    "src/media/favorites-plex-document.ts": "86636d6b012c703f1e72b48f47422e52017dd7daf0bec3982ec71ffb6f9bf4f3",
+    "src/media/favorites-transfer-port.ts": "1e11881bd63ddc0ebe2a5c1c54683214ad9d5697c4639c8c0e61e9729e071f84",
+    "tests/test_favorites_transfer_port.cjs": "7b1bc98b0402b160ca32fda157a34fd1bb6440b1bcc4fcdac090158859cc5360",
+    "tests/test_plex_provider.cjs": "a6b530c733599c0537c0d5b58e55aff2aa418012bd9a4f5a960e2de523d1ecb9"
+  },
+  "admission_retention": "One provisional record is owned by the factory admission object, with one bounded current draft pointer; inspect/preview/abort/expiry/rejected begin perform NO durable writes. At most16 started/uncertain commit admissions are retained per adapter instance. Only fully verified completion releases its slot; persisted operation receipt still rejects replay while retained. New operations require independent trusted fresh admission, never receipt absence."
+}

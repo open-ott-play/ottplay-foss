@@ -1,4 +1,6 @@
 "use strict";
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
@@ -23,7 +25,13 @@ function boot(saved = new Map()) {
                 target: ts.ScriptTarget.ES5,
             },
         }).outputText,
-        { console, document: { cookie: "" }, exports, window: host }
+        {
+            ...storageImports(),
+            console,
+            document: { cookie: "" },
+            exports,
+            window: host,
+        }
     );
     return { ...exports, adapter: exports.storage, host, saved };
 }

@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -213,7 +215,12 @@ function realStorage(options = {}) {
                 throw Error("unavailable");
             },
         });
-    const loaded = { document: w.document, exports: {}, window: w };
+    const loaded = {
+        ...storageImports(),
+        document: w.document,
+        exports: {},
+        window: w,
+    };
     vm.runInNewContext(storageCode, loaded);
     w.stbGetNotificationSetting = loaded.exports.stbGetNotificationSetting;
     w.stbSetItem = loaded.exports.stbSetItem;

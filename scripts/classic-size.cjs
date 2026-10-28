@@ -404,19 +404,53 @@ const DESKTOP_FAVORITES_KEY_ALLOWANCE = Object.freeze({
     bytes: 4650,
     gzipBytes: 1100,
 });
+// Persistent current-Plex favorites: hosted CI40630774289 on bcaf8aef,
+// Node22.23.3/zlib1.3.1-e00f703, compared with canonical main5a85 reports.
+// Entry +9243 raw / +2312 maximum gzip; Plex provider +447/+134;
+// new optional family 85304/23899. Preserve prior release headroom once.
+// Reviewed measured feature allocation; see favorites-transfer-size-20261028.json.
+const FAVORITES_TRANSFER_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 9300,
+    gzipBytes: 2400,
+});
+const FAVORITES_TRANSFER_PLEX_ALLOWANCE = Object.freeze({
+    bytes: 500,
+    gzipBytes: 150,
+});
+const FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 86000,
+    gzipBytes: 24400,
+});
+// Guarded global favorites recovery: exact hosted CI40645896589 / 5f9e1b20.
+// Same Node22.23.3/zlib1.3.1-e00f703 combined F+transfer baseline observes
+// entry +4746 raw/+1356 maximum gzip and optional +23193/+4823.
+// Proposed named feature cost preserves all previous allowances once; no
+// generic provider increase. See favorites-recovery-size-20261028.json.
+const FAVORITES_RECOVERY_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 4800,
+    gzipBytes: 1400,
+});
+const FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 23300,
+    gzipBytes: 4900,
+});
 const BUDGET = Object.freeze({
     bytes:
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -602,19 +636,33 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
     "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    "favorites-transfer": Object.freeze({
+        bytes:
+            FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes,
+        gzipBytes:
+            FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
+    }),
     // Compatibility is net-new; Local UI and the admitted command runner move
     // existing code off startup. Every emitted asset remains counted once.
     // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
@@ -665,13 +713,23 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE.bytes +
+        FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes,
     gzipBytes:
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
-        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE.gzipBytes +
+        FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -834,6 +892,13 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
+        favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
+        favoritesRecoveryOptionalAllowance:
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
+        favoritesTransferEntryAllowance: FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+        favoritesTransferOptionalAllowance:
+            FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
+        favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
         legacyTotalBudget: LEGACY_TOTAL_BUDGET,
         localCommandSessionAllowance: LOCAL_COMMAND_SESSION_ALLOWANCE,
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
@@ -980,7 +1045,8 @@ function writeBuildBundleReport(
                 fs.closeSync(fd);
             }
             const item = collectBundleMeasurement(bytes, file);
-            violation(item, budget, "asset");
+            // A missing policy remains an input error; still measure the bytes.
+            if (budget) violation(item, budget, "asset");
             return item;
         } catch (error) {
             inputErrors.push({
@@ -1048,12 +1114,20 @@ function writeBuildBundleReport(
         );
         const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
             (name) => {
-                if (!OPTIONAL_BUDGETS[name])
-                    throw new Error("Missing optional budget: " + name);
-                return read(
-                    path.join(directory, name + ".js"),
-                    OPTIONAL_BUDGETS[name]
-                );
+                const file = path.join(directory, name + ".js");
+                if (
+                    !Object.hasOwn(OPTIONAL_BUDGETS, name) ||
+                    !OPTIONAL_BUDGETS[name]
+                ) {
+                    inputErrors.push({
+                        error:
+                            "Missing optional budget: " +
+                            String(name).slice(0, 128),
+                        path: file,
+                    });
+                    return read(file, null);
+                }
+                return read(file, OPTIONAL_BUDGETS[name]);
             }
         );
         const legacyTotal = directoryValid ? sum([entry, ...providers]) : null,
@@ -1114,6 +1188,13 @@ function writeBuildBundleReport(
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             diagnostic: true,
+            favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
+            favoritesRecoveryOptionalAllowance:
+                FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
+            favoritesTransferEntryAllowance: FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+            favoritesTransferOptionalAllowance:
+                FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
+            favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
             mode: label(context.mode || "standard"),
@@ -1184,6 +1265,11 @@ module.exports = {
     clearBuildSizeReports,
     collectBundleMeasurement,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
+    FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
+    FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
+    FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+    FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
+    FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     inspectBundleSets,
     inspectBundles,
     LEGACY_TOTAL_BUDGET,

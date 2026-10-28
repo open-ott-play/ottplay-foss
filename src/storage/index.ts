@@ -1,3 +1,10 @@
+import {
+    createFavoritesPhysicalStorageGrant,
+    createFavoritesPhysicalStorageRead,
+    type FavoritesPhysicalStorageGrant,
+    type FavoritesPhysicalStorageRead,
+} from "./favorites-physical-storage";
+
 /**
  * Storage abstraction layer.
  *
@@ -38,6 +45,8 @@ const LZ_MARKER = "\x01LZ\x01";
 // ---------------------------------------------------------------------------
 
 export interface StorageAdapter {
+    captureFavoritesPhysicalRead?(): FavoritesPhysicalStorageRead | null;
+    captureFavoritesPhysicalStorage?(): FavoritesPhysicalStorageGrant | null;
     clear(): void;
     del(key: string): void;
     dump(): Record<string, string>;
@@ -670,7 +679,38 @@ function createLocalStorageAdapter(): StorageAdapter {
         }
         return fallback.dump();
     };
+    var originalNative = nativeStorage;
+    function physicalCurrent(): boolean {
+        return (
+            nativeStorage === originalNative &&
+            !incomplete &&
+            Object.keys(overrides).length === 0 &&
+            !settingsRecoveryRequired()
+        );
+    }
+    var favoritesPhysical = originalNative
+        ? createFavoritesPhysicalStorageGrant(
+              window,
+              originalNative,
+              physicalCurrent
+          )
+        : null;
+    var favoritesRead = originalNative
+        ? createFavoritesPhysicalStorageRead(
+              window,
+              originalNative,
+              physicalCurrent
+          )
+        : null;
     var adapter = createStorageAdapter(get, set, del, clear, dump);
+    adapter.captureFavoritesPhysicalStorage = function () {
+        return favoritesPhysical && favoritesPhysical.current()
+            ? favoritesPhysical
+            : null;
+    };
+    adapter.captureFavoritesPhysicalRead = function () {
+        return favoritesRead && favoritesRead.current() ? favoritesRead : null;
+    };
     adapter.transaction = function (writes, current) {
         // Cookie/session fallbacks have no durable transaction contract.
         if (!nativeStorage || incomplete || Object.keys(overrides).length)
@@ -1088,6 +1128,18 @@ export const storage: StorageAdapter = (() => {
  * a global var plus window.ottpStorage must exist before loadChannels →
  * setPlayer (m3u overwrites global providerHasItemValue to use ottpStorage).
  */
+/** Actual physical backend only; cookie/session fallback never qualifies. */
+export function captureFavoritesPhysicalStorage(): FavoritesPhysicalStorageGrant | null {
+    return storage.captureFavoritesPhysicalStorage
+        ? storage.captureFavoritesPhysicalStorage()
+        : null;
+}
+export function captureFavoritesPhysicalRead(): FavoritesPhysicalStorageRead | null {
+    return storage.captureFavoritesPhysicalRead
+        ? storage.captureFavoritesPhysicalRead()
+        : null;
+}
+
 export var ottpStorage: StorageAdapter = storage;
 if (typeof window !== "undefined") {
     (window as any).ottpStorage = storage;

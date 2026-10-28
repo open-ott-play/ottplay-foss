@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const {
     attachSourceAliases,
     sourceNames,
@@ -14,7 +16,18 @@ const root = path.join(__dirname, "..");
 function source(file, names) {
     names = sourceNames(file, names);
     const text = fs.readFileSync(path.join(root, file), "utf8");
-    if (!names) return text.replace(/^export\s+/gm, "");
+    if (!names) {
+        const module = ts.createSourceFile(
+            file,
+            text,
+            ts.ScriptTarget.Latest,
+            true
+        );
+        return module.statements
+            .filter((node) => !ts.isImportDeclaration(node))
+            .map((node) => node.getText(module).replace(/^export\s+/, ""))
+            .join("\n");
+    }
     const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const found = ast.statements.filter(
         (node) =>
@@ -75,6 +88,7 @@ const c = {
     settings: { epgRemindMinutes: 0 },
 };
 c.window = c;
+Object.assign(c, storageImports(c.require));
 vm.createContext(c);
 require("./helpers/shared-core-runtime.cjs")(c);
 vm.runInContext(

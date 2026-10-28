@@ -1,3 +1,4 @@
+const remoteTransferDependency = require("./helpers/remote-transfer-dependency.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -46,6 +47,7 @@ function fixture(provider = "vportal") {
             909: { channel_name: "Два", itemId: "vportal:two" },
         },
         cList: [101, 909, 303],
+        clearTimeout,
         commandChannelsReady: true,
         curList: [101, 909, 303],
         listCatIndex: 0,
@@ -58,6 +60,7 @@ function fixture(provider = "vportal") {
         },
         primaryIndex: 1,
         queue: { ids: ["explicit-a", "explicit-b"], index: 1 },
+        setTimeout,
         stbGetVolume: () => 20,
     };
     const groups = ["system:all", "vportal:series", "vportal:overlap"];
@@ -91,6 +94,10 @@ function fixture(provider = "vportal") {
         Date: { now: () => clock },
         exports: {},
         require(name) {
+            const actual = remoteTransferDependency(name, host, {
+                Date: { now: () => clock },
+            });
+            if (actual) return actual;
             if (name === "../utils/caseless")
                 return { caselessKey: (value) => value.toLowerCase() };
             if (name === "./remote-restart")
@@ -161,7 +168,13 @@ function fixture(provider = "vportal") {
 
 {
     const f = fixture();
-    assert.deepEqual(f.call("capabilities").data.categories, {
+    const capability = f.call("capabilities").data;
+    assert.equal(
+        Object.hasOwn(capability, "favorites_transfer"),
+        false,
+        "real optional admission does not invent an unavailable transfer capability"
+    );
+    assert.deepEqual(capability.categories, {
         maxPageSize: 200,
         operations: ["list", "select"],
         version: 1,

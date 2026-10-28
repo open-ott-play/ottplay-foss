@@ -5,6 +5,7 @@ export function loadRemoteFeature(
     w: any,
     feature:
         | "perf-capture"
+        | "favorites-transfer"
         | "remote-settings-lifecycle"
         | "runtime-debug-details"
         | "local-compatibility"

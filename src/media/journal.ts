@@ -1,5 +1,6 @@
 interface MediaJournalPorts {
     core: any;
+    current?(): boolean;
     enabled?(): boolean;
     importRows(rows: any[]): any[];
     legacyId?: string;
@@ -95,7 +96,87 @@ function createMediaJournal(ports: MediaJournalPorts) {
             writable = false;
         }
     }
+    function peek(reader = ports.read) {
+        if (
+            (ports.current && !ports.current()) ||
+            (ports.enabled && !ports.enabled()) ||
+            !writable
+        )
+            return { document: null, writable: false };
+        try {
+            var raw = reader(key),
+                parsed =
+                    raw === null
+                        ? {
+                              favorites: [],
+                              history: [],
+                              sourceId: ports.sourceId,
+                              version: 1,
+                          }
+                        : JSON.parse(raw);
+            if (raw === null) {
+                var owner = reader(ownerKey);
+                if (!owner || owner === ports.sourceId) {
+                    for (var name of ["medFavorites", "medHistory"]) {
+                        var legacy = reader(name);
+                        if (legacy !== null && legacy !== "[]")
+                            return { document: null, writable: false };
+                    }
+                }
+            }
+            if (
+                !parsed ||
+                parsed.version !== 1 ||
+                parsed.sourceId !== ports.sourceId ||
+                !valid(parsed.history) ||
+                !valid(parsed.favorites) ||
+                (loaded && JSON.stringify(state) !== JSON.stringify(parsed))
+            )
+                return { document: null, writable: false };
+            return { document: detached(parsed), writable: true };
+        } catch (_) {
+            return { document: null, writable: false };
+        }
+    }
     return {
+        // Adopt verified external bytes without writing or replaying a mutation.
+        adopt: function (
+            raw: string,
+            transferRead?: (key: string) => string | null
+        ): boolean {
+            if (
+                (!loaded && !transferRead) ||
+                !writable ||
+                !ports.current ||
+                !ports.current() ||
+                (ports.enabled && !ports.enabled())
+            )
+                return false;
+            try {
+                if (typeof raw !== "string" || raw.length > 2 * 1024 * 1024)
+                    return false;
+                var parsed = JSON.parse(raw);
+                if (
+                    !parsed ||
+                    parsed.version !== 1 ||
+                    parsed.sourceId !== ports.sourceId ||
+                    !valid(parsed.history) ||
+                    !valid(parsed.favorites)
+                )
+                    return false;
+                if (
+                    (transferRead || ports.read)(key) !== raw ||
+                    !ports.current() ||
+                    (ports.enabled && !ports.enabled())
+                )
+                    return false;
+                state = parsed;
+                loaded = true;
+                return true;
+            } catch (_) {
+                return false;
+            }
+        },
         change: function (operation: string, entry: any): boolean {
             if (ports.enabled && !ports.enabled()) return false;
             read();
@@ -123,6 +204,8 @@ function createMediaJournal(ports: MediaJournalPorts) {
                 return false;
             }
         },
+        // Explicit read-only path: never claims legacy rows or initializes the cache.
+        peek: peek,
         read: function () {
             read();
             return { document: detached(state), writable: writable };

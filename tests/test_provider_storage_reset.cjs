@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const {
     attachSourceAliases,
     classicName,
@@ -126,6 +128,7 @@ const context = {
     },
 };
 context.window = context;
+Object.assign(context, storageImports(context.require));
 vm.createContext(context);
 require("./helpers/access-runtime.cjs")(context);
 require("./helpers/private-runtime.cjs")(context, "src/provider/runtime.ts");

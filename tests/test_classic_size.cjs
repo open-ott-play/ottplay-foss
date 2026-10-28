@@ -5,17 +5,23 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
+    FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
+    DESKTOP_FAVORITES_KEY_ALLOWANCE,
+    FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+    FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+    FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
     ARTIFACTS,
     clearBuildSizeReports,
     collectBundleMeasurement,
     writeBuildBundleReport,
     BUDGET,
-    DESKTOP_FAVORITES_KEY_ALLOWANCE,
     BASE_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_COMMAND_SESSION_ALLOWANCE,
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+    OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
@@ -117,7 +123,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1339682, gzipBytes: 426934 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1463582, gzipBytes: 460184 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -130,11 +136,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1344162, gzipBytes: 429238 });
-    assert.deepEqual(BUDGET, { bytes: 1083282, gzipBytes: 334406 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1468062, gzipBytes: 462488 });
+    assert.deepEqual(BUDGET, { bytes: 1097382, gzipBytes: 338206 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1226082,
-        gzipBytes: 386306,
+        bytes: 1240682,
+        gzipBytes: 390256,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -153,6 +159,190 @@ try {
         gzipBytes: 2560,
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    const recoveryEvidence = require("../docs/evidence/favorites-recovery-size-20261028.json");
+    const recoveryDelta = (budget, metric) =>
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE[metric] +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric]
+            : 0);
+    assert.deepEqual(FAVORITES_RECOVERY_ENTRY_ALLOWANCE, {
+        bytes: 4800,
+        gzipBytes: 1400,
+    });
+    assert.deepEqual(FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE, {
+        bytes: 23300,
+        gzipBytes: 4900,
+    });
+    assert(Object.isFrozen(FAVORITES_RECOVERY_ENTRY_ALLOWANCE));
+    assert(Object.isFrozen(FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE));
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] - recoveryEvidence.previousCaps[name][metric],
+                recoveryDelta(budget, metric),
+                "recovery counted exactly once: " + name
+            );
+    assert.deepEqual(
+        PROVIDER_BUDGET,
+        recoveryEvidence.previousCaps.PROVIDER_BUDGET
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGET,
+        recoveryEvidence.previousCaps.OPTIONAL_BUDGET
+    );
+    for (const [file, hash] of Object.entries(
+        recoveryEvidence.historicalEvidenceSha256
+    ))
+        assert.equal(
+            require("node:crypto")
+                .createHash("sha256")
+                .update(
+                    fs.readFileSync(
+                        path.join(__dirname, "../docs/evidence", file)
+                    )
+                )
+                .digest("hex"),
+            hash,
+            "historical evidence byte-immutable: " + file
+        );
+    for (const [name, old] of Object.entries(
+        recoveryEvidence.previousCaps.OPTIONAL_BUDGETS
+    ))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                OPTIONAL_BUDGETS[name][metric] - old[metric],
+                name === "favorites-transfer"
+                    ? FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric]
+                    : 0,
+                "only favorites envelope gains recovery: " + name
+            );
+    assert.deepEqual(
+        recoveryEvidence.baseline.toolchain,
+        recoveryEvidence.candidate.toolchain
+    );
+    for (const [kind, budget, observed] of [
+        ["entries", BUDGET, recoveryEvidence.measurement.measuredEntryDelta],
+        [
+            "legacy",
+            LEGACY_TOTAL_BUDGET,
+            recoveryEvidence.measurement.measuredEntryDelta,
+        ],
+        [
+            "complete",
+            TOTAL_BUDGET,
+            recoveryEvidence.measurement.measuredCompleteDelta,
+        ],
+    ])
+        for (let i = 0; i < 3; i++) {
+            const before = recoveryEvidence.baseline[kind][i],
+                after = recoveryEvidence.candidate[kind][i];
+            assert.equal(after.bytes - before.bytes, observed.bytes);
+            assert.equal(
+                after.gzipBytes - before.gzipBytes,
+                i === 0 ? observed.webGzipBytes : observed.nativeGzipBytes
+            );
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert(
+                    after[metric] <= budget[metric],
+                    "measured final variant fits independent feature allocation"
+                );
+                const old =
+                    recoveryEvidence.previousCaps[
+                        kind === "entries"
+                            ? "BUDGET"
+                            : kind === "legacy"
+                              ? "LEGACY_TOTAL_BUDGET"
+                              : "TOTAL_BUDGET"
+                    ];
+                assert(
+                    budget[metric] - after[metric] >=
+                        old[metric] - before[metric],
+                    "prior release headroom retained: " + kind
+                );
+            }
+        }
+    for (let i = 0; i < 3; i++) {
+        const before = recoveryEvidence.baseline.favoritesOptional[i],
+            after = recoveryEvidence.candidate.favoritesOptional[i];
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                after[metric] - before[metric],
+                recoveryEvidence.measurement.measuredOptionalDelta[metric]
+            );
+            assert(
+                OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+                    after[metric] >=
+                    recoveryEvidence.previousCaps.OPTIONAL_BUDGETS[
+                        "favorites-transfer"
+                    ][metric] -
+                        before[metric],
+                "prior optional headroom retained"
+            );
+        }
+    }
+    const favoritesEvidence = require("../docs/evidence/favorites-transfer-size-20261028.json");
+    const favoritesDelta = (budget, metric) =>
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE[metric] +
+        (budget === BUDGET ? 0 : FAVORITES_TRANSFER_PLEX_ALLOWANCE[metric]) +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE[metric]
+            : 0);
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] -
+                    DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
+                    recoveryDelta(budget, metric) -
+                    favoritesEvidence.previousCaps[name][metric],
+                favoritesDelta(budget, metric),
+                "favorites allocation counted exactly once: " + name
+            );
+    assert.deepEqual(
+        PROVIDER_BUDGET,
+        favoritesEvidence.previousCaps.PROVIDER_BUDGET
+    );
+    for (const [name, budget] of Object.entries(
+        favoritesEvidence.previousCaps.OPTIONAL_BUDGETS
+    ))
+        assert.deepEqual(
+            OPTIONAL_BUDGETS[name],
+            budget,
+            "existing optional cap unchanged: " + name
+        );
+    assert.deepEqual(FAVORITES_TRANSFER_ENTRY_ALLOWANCE, {
+        bytes: 9300,
+        gzipBytes: 2400,
+    });
+    assert.deepEqual(FAVORITES_TRANSFER_PLEX_ALLOWANCE, {
+        bytes: 500,
+        gzipBytes: 150,
+    });
+    assert.deepEqual(FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE, {
+        bytes: 86000,
+        gzipBytes: 24400,
+    });
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+                FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric],
+            FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE[metric]
+        );
+    for (const allowance of [
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+        FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
+    ])
+        assert(Object.isFrozen(allowance));
     assert.deepEqual(DESKTOP_FAVORITES_KEY_ALLOWANCE, {
         bytes: 4650,
         gzipBytes: 1100,
@@ -166,7 +356,10 @@ try {
     ])
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
-                actual[key] - previous[key],
+                actual[key] -
+                    favoritesDelta(actual, key) -
+                    recoveryDelta(actual, key) -
+                    previous[key],
                 DESKTOP_FAVORITES_KEY_ALLOWANCE[key],
                 "desktop favorites counted exactly once"
             );
@@ -211,6 +404,8 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    favoritesDelta(actual, key) -
+                    recoveryDelta(actual, key) -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[key] -
                     previous[key],
                 LOCAL_STARTUP_PREVIEW_ALLOWANCE[key],
@@ -241,6 +436,8 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
+                        favoritesDelta(TOTAL_BUDGET, metric) -
+                        recoveryDelta(TOTAL_BUDGET, metric) -
                         DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
                         item[metric]
                 )
@@ -250,7 +447,10 @@ try {
             startupEvidence.canonical.entries.every(
                 (item) =>
                     item[metric] <=
-                    BUDGET[metric] - DESKTOP_FAVORITES_KEY_ALLOWANCE[metric]
+                    BUDGET[metric] -
+                        favoritesDelta(BUDGET, metric) -
+                        recoveryDelta(BUDGET, metric) -
+                        DESKTOP_FAVORITES_KEY_ALLOWANCE[metric]
             )
         );
     }
@@ -615,6 +815,14 @@ try {
     assert.equal(failed.artifacts.length, 3);
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        failed.favoritesRecoveryEntryAllowance,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        failed.favoritesRecoveryOptionalAllowance,
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE
+    );
     for (const metric of ["bytes", "gzipBytes"])
         assert(
             failed.violations.some(
@@ -1160,14 +1368,18 @@ try {
     const report = writeBundleReport(root, optimizer, ["entry.js"]);
     assert.deepEqual(report.baseTotalBudget, BASE_TOTAL_BUDGET);
     assert.deepEqual(
-        report.desktopFavoritesKeyAllowance,
-        DESKTOP_FAVORITES_KEY_ALLOWANCE
-    );
-    assert.deepEqual(
         report.localCompatibilityAllowance,
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.favoritesRecoveryEntryAllowance,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.favoritesRecoveryOptionalAllowance,
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE
+    );
     assert.deepEqual(
         report.localStallRecoveryAllowance,
         LOCAL_STALL_RECOVERY_ALLOWANCE

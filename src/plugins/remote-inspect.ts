@@ -247,6 +247,7 @@ export function installRemoteInspection(w: any): any {
                 item.action === "player_settings_patch" ||
                 item.action === "plex_folders" ||
                 item.action === "local_media" ||
+                item.action === "favorites_transfer" ||
                 ((item.action === "provider_settings" ||
                     item.action === "settings_compare") &&
                     item.params &&

@@ -125,6 +125,7 @@ const ctx = {
             : name === "./remote-feature" ||
                 name === "./remote-perf" ||
                 name === "./remote-favorites" ||
+                name === "./remote-favorites-transfer" ||
                 name === "./remote-favorites-contract" ||
                 name === "./random-channel"
               ? loadRemoteHelper(name.slice(2))

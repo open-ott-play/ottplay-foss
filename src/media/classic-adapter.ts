@@ -517,6 +517,7 @@ function classicMediaRuntime(): any {
     }
     var journal = w.__ottMediaJournal.create({
         core: w.OttPlayCore,
+        current: persistent,
         enabled: function () {
             return w.sFavorites !== -1;
         },
@@ -1863,6 +1864,48 @@ function classicMediaRuntime(): any {
                 );
             return true;
         },
+        favoritesTransfer: function (expectedSource: string, readonly?: any) {
+            if (
+                context ||
+                expectedSource !== source ||
+                !current() ||
+                !(readonly ? journal.peek(readonly.read) : journal.read())
+                    .writable
+            )
+                return null;
+            function admitted() {
+                return (
+                    !context &&
+                    mediaClassicInstance === api &&
+                    current() &&
+                    expectedSource === source &&
+                    w.sFavorites !== -1
+                );
+            }
+            return {
+                adopt: function (raw: string) {
+                    if (
+                        !admitted() ||
+                        !journal.adopt(raw, readonly && readonly.read) ||
+                        !admitted()
+                    )
+                        return false;
+                    collections();
+                    return admitted();
+                },
+                current: admitted,
+                snapshot: function () {
+                    return admitted()
+                        ? JSON.stringify(
+                              (readonly
+                                  ? journal.peek(readonly.read)
+                                  : journal.read()
+                              ).document
+                          )
+                        : null;
+                },
+            };
+        },
         filter: function () {
             if (plexLibrary()) return;
             var admitted = api.capture();
@@ -2883,6 +2926,25 @@ function classicMediaRuntime(): any {
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
+    },
+    favoritesTransfer: function (source: string, readonly?: any) {
+        if (mediaClassicInstance)
+            return mediaClassicInstance.favoritesTransfer(source, readonly);
+        if (
+            !readonly ||
+            typeof readonly.read !== "function" ||
+            !readonly.document
+        )
+            return null;
+        // No runtime is created by qualification; a later normal mount reads committed bytes.
+        var absent = () => !mediaClassicInstance;
+        return {
+            adopt: (raw: string) =>
+                absent() && readonly.read("mediaJournal.v1:" + source) === raw,
+            current: absent,
+            snapshot: () =>
+                absent() ? JSON.stringify(readonly.document) : null,
+        };
     },
     filter: function () {
         classicMediaRuntime().filter();

@@ -179,6 +179,53 @@ function harness(protocol = "http:", execute, accept) {
         w,
     };
 }
+{
+    const rpc = harness();
+    let disposed = 0;
+    rpc.connect();
+    const cached = {
+        value: {
+            dispose() {
+                disposed++;
+            },
+        },
+    };
+    rpc.w.__ottRemoteFavoritesTransfer = cached;
+    rpc.respond({ error: "temporary_failure" }, 503);
+    assert.equal(disposed, 0);
+    assert.equal(rpc.w.__ottRemoteFavoritesTransfer, cached);
+    rpc.controller.configure({
+        address: "server.local",
+        enabled: false,
+        token,
+    });
+    assert.equal(disposed, 1);
+    assert.equal(rpc.w.__ottRemoteFavoritesTransfer, undefined);
+    rpc.controller.configure({
+        address: "server.local",
+        enabled: false,
+        token,
+    });
+    assert.equal(disposed, 1);
+    rpc.w.__ottRemoteFavoritesTransfer = {
+        value: {
+            dispose() {
+                throw new Error("synthetic");
+            },
+        },
+    };
+    assert.doesNotThrow(() =>
+        rpc.controller.configure({
+            address: "server.local",
+            enabled: false,
+            token,
+        })
+    );
+    assert.equal(rpc.w.__ottRemoteFavoritesTransfer, undefined);
+    console.log(
+        "PASS favorites transfer revocation: configuration disposes once; transient failures retain admission"
+    );
+}
 const bareQuery = harness();
 bareQuery.connect({ address: "server.local?device_id=lounge" });
 assert.equal(
@@ -812,6 +859,8 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
         "plex_library",
         "playback",
         "local_media",
+        "favorites_transfer",
+        "capabilities",
     ])
         for (const skew of [-120, 120])
             for (const lifetime of [30, 90]) {
@@ -819,17 +868,25 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
                 const started = clock;
                 const serverTime = started / 1000 + skew;
                 const params =
-                    action === "plex_queue"
-                        ? { ids: ["1", "2"], op: "play", runtime: "page-1" }
-                        : action === "plex_library"
-                          ? { library_id: "16", op: "play", runtime: "page-1" }
-                          : action === "local_media"
-                            ? {
-                                  op: "shuffle",
-                                  runtime: "page-1",
-                                  source: "Movies",
-                              }
-                            : { operation: "next_channel" };
+                    action === "capabilities"
+                        ? {}
+                        : action === "favorites_transfer"
+                          ? { op: "bindingcatalog", runtime: "page-1" }
+                          : action === "plex_queue"
+                            ? { ids: ["1", "2"], op: "play", runtime: "page-1" }
+                            : action === "plex_library"
+                              ? {
+                                    library_id: "16",
+                                    op: "play",
+                                    runtime: "page-1",
+                                }
+                              : action === "local_media"
+                                ? {
+                                      op: "shuffle",
+                                      runtime: "page-1",
+                                      source: "Movies",
+                                  }
+                                : { operation: "next_channel" };
                 let dispatched;
                 let completeWork;
                 let cancellations = 0;
@@ -877,6 +934,13 @@ assert.equal(batch.requests.at(-1).request.method, "GET");
                         op: "shuffle",
                         runtime: "page-1",
                         state: "error",
+                        version: 1,
+                    });
+                else if (action === "favorites_transfer")
+                    assert.deepEqual(result.data, {
+                        error: "expired",
+                        op: "bindingcatalog",
+                        runtime: "page-1",
                         version: 1,
                     });
                 else assert.match(result.data.error, /timed out/i);
