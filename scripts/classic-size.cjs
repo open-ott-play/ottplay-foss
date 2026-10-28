@@ -962,7 +962,8 @@ function writeBuildBundleReport(
                 fs.closeSync(fd);
             }
             const item = collectBundleMeasurement(bytes, file);
-            violation(item, budget, "asset");
+            // A missing policy remains an input error; still measure the bytes.
+            if (budget) violation(item, budget, "asset");
             return item;
         } catch (error) {
             inputErrors.push({
@@ -1030,12 +1031,20 @@ function writeBuildBundleReport(
         );
         const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
             (name) => {
-                if (!OPTIONAL_BUDGETS[name])
-                    throw new Error("Missing optional budget: " + name);
-                return read(
-                    path.join(directory, name + ".js"),
-                    OPTIONAL_BUDGETS[name]
-                );
+                const file = path.join(directory, name + ".js");
+                if (
+                    !Object.hasOwn(OPTIONAL_BUDGETS, name) ||
+                    !OPTIONAL_BUDGETS[name]
+                ) {
+                    inputErrors.push({
+                        error:
+                            "Missing optional budget: " +
+                            String(name).slice(0, 128),
+                        path: file,
+                    });
+                    return read(file, null);
+                }
+                return read(file, OPTIONAL_BUDGETS[name]);
             }
         );
         const legacyTotal = directoryValid ? sum([entry, ...providers]) : null,
