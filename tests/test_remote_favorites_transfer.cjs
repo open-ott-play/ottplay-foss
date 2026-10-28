@@ -60,6 +60,7 @@ function fixture() {
         },
         crypto: webcrypto,
         host: "https://player.example/base/",
+        p_pref: "plex",
         setTimeout(fn, ms) {
             timers.set(++id, { at: clock + ms, fn });
             return id;
@@ -232,6 +233,76 @@ async function scenario(name, run) {
     console.log("PASS " + name);
 }
 (async () => {
+    await scenario(
+        "non-Plex capability hint preserves exact legacy caps without optional loads or writes",
+        async () => {
+            for (const [prefix, driver] of [
+                ["m3u", "m3u"],
+                ["m3u", "plex"],
+                ["plex", "m3u"],
+            ]) {
+                const f = fixture();
+                f.w.p_pref = prefix;
+                f.w.__ottActiveProviderDriver = { id: driver };
+                const baseline = [];
+                f.load("src/commands/remote-restart.ts").executeRemoteControl(
+                    f.w,
+                    "capabilities",
+                    {},
+                    (value) => baseline.push(plain(value))
+                );
+                assert.equal(baseline.length, 1);
+                const expected = baseline[0];
+                expected.data.notifications = {
+                    operations: ["get", "set"],
+                    version: 1,
+                };
+                expected.data.random = { version: 1 };
+                const result = await ready(
+                    f.start({ action: "capabilities", params: {} })
+                );
+                assert.deepEqual(result, expected);
+                assert.equal(f.scripts.length, 0);
+                assert.equal(f.stats.creates, 0);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "Plex hint still requires authoritative gateway qualification",
+        async () => {
+            const f = fixture();
+            f.setQualified(false);
+            const pending = f.start({ action: "capabilities", params: {} });
+            assert.equal(f.scripts.length, 1);
+            f.finishLoad();
+            const result = await ready(pending);
+            assert.equal(result.status, "ok");
+            assert.equal(result.data.favorites_transfer, undefined);
+            assert.equal(f.stats.creates, 1);
+            assert.equal(f.stats.writes, 0);
+        }
+    );
+    await scenario(
+        "non-Plex recovery status remains reachable despite the capability hint",
+        async () => {
+            const f = fixture();
+            f.w.p_pref = "m3u";
+            f.w.__ottActiveProviderDriver = { id: "m3u" };
+            f.setQualified(false);
+            const pending = f.start(
+                f.request("status", {
+                    operation_id: "33333333-3333-4333-8333-333333333333",
+                })
+            );
+            assert.equal(f.scripts.length, 1);
+            f.finishLoad();
+            const result = await ready(pending);
+            assert.equal(result.status, "ok");
+            assert.equal(result.data.outcome, "unknown");
+            assert.equal(f.stats.writes, 0);
+        }
+    );
     await scenario(
         "actual request route loads only the fixed optional asset and reaches real gateway",
         async () => {

@@ -699,7 +699,9 @@ function moduleOf(file, requireFn, window) {
                           dependencies,
                           host
                       )
-                    : name === "./remote-favorites" ||
+                    : name === "./remote-favorites-transfer" ||
+                        name === "./remote-feature" ||
+                        name === "./remote-favorites" ||
                         name === "./remote-local-media" ||
                         name === "./remote-favorites-contract"
                       ? moduleOf(
@@ -753,9 +755,17 @@ function moduleOf(file, requireFn, window) {
                                           dependencies,
                                           host
                                       )
-                                    : name === "../utils/caseless"
-                                      ? caseless
-                                      : { handleCommand: dispatch };
+                                    : name === "../storage/index" ||
+                                        name === "../utils/lzstring" ||
+                                        name === "../utils/helpers"
+                                      ? moduleOf(
+                                            "src/" + name.slice(3) + ".ts",
+                                            dependencies,
+                                            host
+                                        )
+                                      : name === "../utils/caseless"
+                                        ? caseless
+                                        : { handleCommand: dispatch };
             let execute, inspection;
             let offlineLoaded = [];
             function activateOffline(initialIndex = 0) {

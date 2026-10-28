@@ -82,31 +82,36 @@ export function remoteFavoritesTransferCapability(
         settled = true;
         done(current() && value && value.version === 1 ? value : null);
     }
-    load(w, function (error) {
-        if (cancelled) return;
-        if (error || !current()) return finish(null);
-        try {
-            var api = instance(w, runtime);
-            if (!api) return finish(null);
-            Promise.resolve(api.capability()).then(
-                function (value) {
-                    var cached = w.__ottRemoteFavoritesTransfer;
-                    finish(
-                        cached &&
-                            cached.value === api &&
-                            cached.factory === w.__ottFavoritesTransferRuntime
-                            ? value
-                            : null
-                    );
-                },
-                function () {
-                    finish(null);
-                }
-            );
-        } catch (_) {
-            finish(null);
-        }
-    });
+    // Negative-only hint: other providers retain legacy caps without optional I/O.
+    if (w.p_pref !== "plex" || w.__ottActiveProviderDriver?.id !== "plex")
+        finish(null);
+    else
+        load(w, function (error) {
+            if (cancelled) return;
+            if (error || !current()) return finish(null);
+            try {
+                var api = instance(w, runtime);
+                if (!api) return finish(null);
+                Promise.resolve(api.capability()).then(
+                    function (value) {
+                        var cached = w.__ottRemoteFavoritesTransfer;
+                        finish(
+                            cached &&
+                                cached.value === api &&
+                                cached.factory ===
+                                    w.__ottFavoritesTransferRuntime
+                                ? value
+                                : null
+                        );
+                    },
+                    function () {
+                        finish(null);
+                    }
+                );
+            } catch (_) {
+                finish(null);
+            }
+        });
     return function () {
         cancelled = true;
     };
