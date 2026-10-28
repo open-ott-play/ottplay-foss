@@ -4,9 +4,14 @@ window.installNativeRecovery = async function (runtime) {
     const load = window.nativeFixtureLoad;
     const key = "favorites-receipts.v1";
     const utf8 = (text) => new TextEncoder().encode(text);
-    const sha256 = async (text) =>
+    const sha256 = async (value) =>
         Array.from(
-            new Uint8Array(await crypto.subtle.digest("SHA-256", utf8(text)))
+            new Uint8Array(
+                await crypto.subtle.digest(
+                    "SHA-256",
+                    typeof value === "string" ? utf8(value) : value
+                )
+            )
         )
             .map((byte) => byte.toString(16).padStart(2, "0"))
             .join("");
