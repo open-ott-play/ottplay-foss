@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("../helpers/browser-test.cjs");
+const installShakaLifecycleDiagnostics = require("./shaka-lifecycle-diagnostics.cjs");
 
 const plex = "https://plex.fixture";
 const token = "fixture-plex-secret";
@@ -1257,6 +1258,8 @@ for (const { engine, strict } of [
                 "Native HLS requires WebKit"
             );
             test.setTimeout(60000);
+            if (engine === "shaka")
+                await context.addInitScript(installShakaLifecycleDiagnostics);
             const local = new URL(baseURL).origin;
             const errors = [];
             const films = [
@@ -1443,6 +1446,9 @@ for (const { engine, strict } of [
                             return {
                                 currentRef:
                                     window.__ottMedia?.current()?.ref || null,
+                                shakaLifecycle:
+                                    window.__aspectShakaLifecycle?.snapshot() ||
+                                    null,
                                 hls: hls
                                     ? {
                                           attachedToVideo: hls.media === media,

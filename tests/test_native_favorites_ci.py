@@ -1,5 +1,6 @@
 """Pure driver-entrypoint tests. No subprocess/native/WebKit/workflow runs."""
 import importlib.util
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -41,6 +42,66 @@ class DriverTests(unittest.TestCase):
         root.mkdir()
         return root
 
+    def native_report(self):
+        pins = {}
+        for name in m.MODULE_FILES:
+            path = self.base / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            raw = ((Path(__file__).parent.parent / name).read_bytes()
+                   if name.endswith('favorites-recovery-codec.ts') else name.encode())
+            path.write_bytes(raw)
+            pins[name] = m.hashlib.sha256(raw).hexdigest()
+        self.assertEqual(pins['src/settings/favorites-recovery-codec.ts'], m.BASELINE)
+        return {'status': 'pass', 'physical_only': True, 'own_named_stores_cleaned': True,
+                'visible_windows': False, 'user_profiles_accessed': False,
+                'stage': 'A-actual-native-physical-backend', 'module_pins': pins,
+                'capabilities': {label: {'origin': 'tauri://localhost', 'href': 'tauri://localhost',
+                                       **{key: True for key in ('secureContext', 'storage', 'actualLocks', 'grant', 'current')}}
+                                 for label in m.VIEW_LABELS}}
+
+    def accept_native_report(self, report):
+        def native_fixture(_label, _argv, _timeout):
+            root = self.driver.runtime_root / 'stage-a-runtime'
+            root.mkdir(exist_ok=True)
+            (root / 'result.json').write_text(json.dumps(report))
+        with mock.patch.object(self.driver, 'run', side_effect=native_fixture):
+            return self.driver.runtime('stage-a-runtime', self.base / 'fixture-executable', True)
+
+    def test_actual_runtime_accepts_only_two_canonical_fixture_urls(self):
+        report = self.native_report()
+        for href in ('tauri://localhost', 'tauri://localhost/index.html'):
+            with self.subTest(href=href):
+                for value in report['capabilities'].values():
+                    value['href'] = href
+                self.assertEqual(self.accept_native_report(report)['stage'], report['stage'])
+
+    def test_actual_runtime_rejects_foreign_or_modified_fixture_urls(self):
+        report = self.native_report()
+        for href in ('tauri://localhost/', 'tauri://localhost/other.html',
+                     'tauri://localhost?x=1', 'tauri://localhost/index.html#x',
+                     'tauri://user@localhost', 'tauri://localhost.other/index.html',
+                     'https://localhost/index.html'):
+            with self.subTest(href=href):
+                report['capabilities']['writer']['href'] = href
+                with self.assertRaisesRegex(RuntimeError, 'Actual native URL mismatch'):
+                    self.accept_native_report(report)
+
+    def test_actual_runtime_rejects_changed_fixture_module_identity(self):
+        report = self.native_report()
+        report['module_pins']['src/storage/index.ts'] = '0' * 64
+        with self.assertRaisesRegex(RuntimeError, 'Actual bundled fixture modules differ'):
+            self.accept_native_report(report)
+
+    def test_actual_runtime_rejects_missing_view_or_wrong_origin(self):
+        report = self.native_report()
+        removed = report['capabilities'].pop('slot4')
+        with self.assertRaisesRegex(RuntimeError, 'Actual fixture view set differs'):
+            self.accept_native_report(report)
+        report['capabilities']['slot4'] = removed
+        removed['origin'] = 'https://localhost'
+        with self.assertRaisesRegex(RuntimeError, 'Actual native URL mismatch'):
+            self.accept_native_report(report)
+
     def test_main_clock_precedes_disk_preflight_and_output(self):
         root = self.base / 'preflight'
         root.mkdir()
@@ -68,6 +129,186 @@ class DriverTests(unittest.TestCase):
         with mock.patch.object(Path, 'lstat', slow):
             with self.assertRaises(m.DeadlineError):
                 self.driver.sample()
+
+    def test_sample_accepts_only_disappeared_owned_entries(self):
+        path = self.output / 'compiler-temporary'
+        path.write_text('temporary')
+        original = Path.lstat
+        def disappears(candidate, *args, **kwargs):
+            if candidate == path:
+                candidate.unlink()
+                raise FileNotFoundError(str(candidate))
+            return original(candidate, *args, **kwargs)
+        self.clock.now = 10
+        with mock.patch.object(Path, 'lstat', disappears):
+            self.driver.sample()
+        self.assertFalse(path.exists())
+
+    def test_sample_rejects_other_metadata_errors(self):
+        path = self.output / 'unreadable'
+        path.write_text('temporary')
+        original = Path.lstat
+        def denied(candidate, *args, **kwargs):
+            if candidate == path:
+                raise PermissionError(str(candidate))
+            return original(candidate, *args, **kwargs)
+        self.clock.now = 10
+        with mock.patch.object(Path, 'lstat', denied):
+            with self.assertRaises(PermissionError):
+                self.driver.sample()
+
+    def test_sample_walk_errors_fail_closed_except_disappearance(self):
+        def walk(_root, *, followlinks, onerror):
+            onerror(FileNotFoundError('removed directory'))
+            yield str(self.output), [], []
+        self.clock.now = 10
+        with mock.patch.object(m.os, 'walk', side_effect=walk):
+            self.driver.sample()
+        def denied(_root, *, followlinks, onerror):
+            onerror(PermissionError('unreadable directory'))
+            yield str(self.output), [], []
+        self.clock.now = 20
+        with mock.patch.object(m.os, 'walk', side_effect=denied):
+            with self.assertRaises(PermissionError):
+                self.driver.sample()
+
+    def fake_command(self, *, natural=False, term_exits=True, group_present=False,
+                     identity_error=False, selector_error=False,
+                     cleanup_wait_error=False, expire=False, group_error=False,
+                     selector_close_error=False):
+        read_fd, write_fd = os.pipe()
+        os.close(write_fd)
+        state = {'group_signals': [], 'handle_signals': [], 'reaped': False}
+        class Process:
+            pid = 424242
+            stdout = os.fdopen(read_fd, 'rb')
+            returncode = 0 if natural else None
+            def poll(proc):
+                if proc.returncode is not None:
+                    state['reaped'] = True
+                return proc.returncode
+            def wait(proc, timeout):
+                if cleanup_wait_error:
+                    raise PermissionError('cleanup wait failed')
+                if proc.returncode is None:
+                    raise m.subprocess.TimeoutExpired('fixture', timeout)
+                state['reaped'] = True
+                return proc.returncode
+            def send_signal(proc, sig):
+                self.assertFalse(state['reaped'], 'signal after reap')
+                state['handle_signals'].append(sig)
+                if sig == m.signal.SIGKILL or term_exits:
+                    proc.returncode = 0
+        proc = Process()
+        real_selector = m.selectors.DefaultSelector
+        class FailingCloseSelector:
+            def __init__(self):
+                self.actual = real_selector()
+            def __getattr__(self, name):
+                return getattr(self.actual, name)
+            def close(self):
+                self.actual.close()
+                raise RuntimeError('selector close failed')
+        def killpg(_pgid, sig):
+            if sig == 0:
+                if group_error:
+                    raise PermissionError('unknown group')
+                if not group_present:
+                    raise ProcessLookupError()
+                return
+            self.assertFalse(state['reaped'], 'group signal after reap')
+            state['group_signals'].append(sig)
+            if sig == m.signal.SIGKILL or term_exits:
+                proc.returncode = 0
+        def sample():
+            if not natural:
+                if expire:
+                    self.clock.now = 1801
+                raise RuntimeError('original phase failure')
+        error = None
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(m.subprocess, 'Popen', return_value=proc))
+            stack.enter_context(mock.patch.object(m.os, 'getpgid', side_effect=OSError('identity setup failed') if identity_error else lambda _pid: proc.pid))
+            stack.enter_context(mock.patch.object(m.os, 'getsid', return_value=proc.pid))
+            stack.enter_context(mock.patch.object(m.os, 'killpg', side_effect=killpg))
+            stack.enter_context(mock.patch.object(self.driver, 'sample', side_effect=sample))
+            if selector_error:
+                stack.enter_context(mock.patch.object(m.selectors, 'DefaultSelector', side_effect=RuntimeError('selector setup failed')))
+            elif selector_close_error:
+                stack.enter_context(mock.patch.object(m.selectors, 'DefaultSelector', FailingCloseSelector))
+            try:
+                self.driver.run('owned-process-fixture', ['fixture-command'], 1)
+            except BaseException as caught:
+                error = caught
+        self.assertTrue(proc.stdout.closed)
+        return error, self.driver.commands[-1], state
+
+    def test_reaped_leader_present_group_is_unknown_without_signals(self):
+        error, entry, state = self.fake_command(natural=True, group_present=True)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertEqual(state['group_signals'], [])
+
+    def test_term_wait_reap_never_sends_later_kill(self):
+        error, entry, state = self.fake_command(group_present=True)
+        self.assertEqual(str(error), 'original phase failure')
+        self.assertEqual(state['group_signals'], [m.signal.SIGTERM])
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['cleanup_confirmed'])
+
+    def test_kill_is_allowed_only_while_leader_remains_unreaped(self):
+        error, entry, state = self.fake_command(term_exits=False)
+        self.assertEqual(str(error), 'original phase failure')
+        self.assertEqual(state['group_signals'], [m.signal.SIGTERM, m.signal.SIGKILL])
+        self.assertTrue(entry['cleanup_confirmed'])
+
+    def test_failed_identity_setup_protects_only_returned_handle(self):
+        error, entry, state = self.fake_command(identity_error=True)
+        self.assertEqual(str(error), 'identity setup failed')
+        self.assertEqual(state['group_signals'], [])
+        self.assertEqual(state['handle_signals'], [m.signal.SIGTERM])
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['cleanup_confirmed'])
+
+    def test_failed_selector_setup_still_cleans_owned_child(self):
+        error, entry, state = self.fake_command(selector_error=True)
+        self.assertEqual(str(error), 'selector setup failed')
+        self.assertEqual(state['group_signals'], [m.signal.SIGTERM])
+        self.assertTrue(entry['cleanup_confirmed'])
+
+    def test_failed_selector_close_still_reaps_owned_child(self):
+        error, entry, state = self.fake_command(selector_close_error=True)
+        self.assertEqual(str(error), 'original phase failure')
+        self.assertEqual(state['group_signals'], [m.signal.SIGTERM])
+        self.assertTrue(entry['reaped'])
+        self.assertTrue(entry['group_gone'])
+        self.assertFalse(entry['cleanup_confirmed'])
+
+    def test_cleanup_failure_and_deadline_do_not_replace_primary_error(self):
+        error, entry, _ = self.fake_command(cleanup_wait_error=True)
+        self.assertEqual(str(error), 'original phase failure')
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertIn('PermissionError', entry['cleanup_errors'])
+
+    def test_original_deadline_does_not_reset_for_cleanup(self):
+        error, entry, state = self.fake_command(expire=True)
+        self.assertEqual(str(error), 'original phase failure')
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertEqual(state['group_signals'], [])
+
+    def test_unconfirmed_group_after_reap_is_not_signalled(self):
+        error, entry, state = self.fake_command(natural=True, group_error=True)
+        self.assertIsInstance(error, PermissionError)
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertEqual(state['group_signals'], [])
+
+    def test_natural_exit_requires_confirmed_group_absence(self):
+        error, entry, state = self.fake_command(natural=True)
+        self.assertIsNone(error)
+        self.assertTrue(entry['cleanup_confirmed'])
+        self.assertEqual(state['group_signals'], [])
 
     def test_binary_copy_deadline_is_not_just_command_deadline(self):
         source = self.base / 'binary'

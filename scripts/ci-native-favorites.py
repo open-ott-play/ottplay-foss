@@ -22,6 +22,11 @@ GROWTH_CAP, FLOOR, BLOCK = 4 * 1024**3, 4 * 1024**3, 65536
 RUNTIME_JSON = ('intent.json', 'result.json', 'capabilities-writer.json',
                 'capabilities-observer.json', 'capabilities-slot2.json',
                 'capabilities-slot3.json', 'capabilities-slot4.json')
+MODULE_FILES = ('src/storage/favorites-physical-storage.ts', 'src/storage/index.ts',
+                'src/utils/lzstring.ts', 'src/settings/favorites-operation-receipts.ts',
+                'src/settings/favorites-recovery-codec.ts', 'src/commands/favorites-recovery.ts',
+                'src/commands/favorites-transfer.ts')
+VIEW_LABELS = ('writer', 'observer', 'slot2', 'slot3', 'slot4')
 
 
 def require(value, message):
@@ -153,13 +158,22 @@ class Driver:
         require(shutil.disk_usage(self.output).free >= FLOOR, 'CI disk floor crossed')
         self.budget.tick()
         total, entries = 0, 0
-        for parent, dirs, files in os.walk(self.output, followlinks=False):
+        def scan_error(error):
+            self.budget.tick()
+            if not isinstance(error, FileNotFoundError):
+                raise error
+        for parent, dirs, files in os.walk(self.output, followlinks=False, onerror=scan_error):
             self.budget.tick()
             for name in dirs + files:
                 self.budget.tick()
                 entries += 1
                 require(entries <= 400000, 'Resource scan entry cap exceeded')
-                total += (Path(parent) / name).lstat().st_size
+                try:
+                    total += (Path(parent) / name).lstat().st_size
+                except FileNotFoundError:
+                    # Compiler and WebKit temporary entries may disappear after listing.
+                    # The entry still counts toward the traversal bound.
+                    pass
                 self.budget.tick()
                 require(total <= GROWTH_CAP, 'CI attempt growth cap crossed')
         self.budget.tick()
@@ -169,20 +183,42 @@ class Driver:
         end = min(self.budget.clock() + limit, self.budget.work_deadline)
         proc = subprocess.Popen(argv, cwd=self.root, env=self.env, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, start_new_session=True)
-        pgid = os.getpgid(proc.pid)
-        entry = {'name': name, 'argv': argv, 'pid': proc.pid, 'pgid': pgid,
-                 'sid': os.getsid(proc.pid), 'exit_code': None, 'reaped': False, 'group_gone': False}
+        # Protect the returned handle before identity, selector or logging setup.
+        entry = {'name': name, 'argv': argv, 'pid': proc.pid, 'pgid': None,
+                 'sid': None, 'exit_code': None, 'reaped': False, 'group_gone': False,
+                 'ownership_verified': False, 'cleanup_errors': []}
         self.commands.append(entry)
-        selector = selectors.DefaultSelector()
-        os.set_blocking(proc.stdout.fileno(), False)
-        selector.register(proc.stdout, selectors.EVENT_READ)
+        selector = None
+        primary = None
+        def reaped(code):
+            entry.update(exit_code=code, reaped=True)
+            return code
+        def observe():
+            if entry['reaped']:
+                return entry['exit_code']
+            code = proc.poll()
+            return reaped(code) if code is not None else None
+        def group_gone():
+            if not entry['ownership_verified']:
+                return False
+            try:
+                os.killpg(entry['pgid'], 0)
+            except ProcessLookupError:
+                entry['group_gone'] = True
+            return entry['group_gone']
         log_path = self.evidence / 'logs' / (name + '.log')
         try:
+            entry.update(pgid=os.getpgid(proc.pid), sid=os.getsid(proc.pid))
+            require(entry['pgid'] == entry['sid'] == proc.pid, 'Owned command identity differs')
+            entry['ownership_verified'] = True
+            selector = selectors.DefaultSelector()
+            os.set_blocking(proc.stdout.fileno(), False)
+            selector.register(proc.stdout, selectors.EVENT_READ)
             self.budget.json_evidence(self.evidence / 'commands.json', self.commands)
             with log_path.open('xb') as log:
                 self.budget.evidence_files[str(log_path)] = 0
                 eof = False
-                while not eof or proc.poll() is None:
+                while not eof or observe() is None:
                     self.budget.tick()
                     require(self.budget.clock() < end, 'Owned command phase deadline exceeded')
                     self.sample()
@@ -197,35 +233,64 @@ class Driver:
                         log.write(data)
                         self.budget.evidence_files[str(log_path)] += len(data)
                         self.budget.tick()
-                code = proc.wait(timeout=max(.01, min(1, end - self.budget.clock())))
-                entry.update(exit_code=code, reaped=True)
-                try:
-                    os.killpg(pgid, 0)
-                except ProcessLookupError:
-                    entry['group_gone'] = True
+                code = reaped(proc.wait(timeout=max(.01, min(1, end - self.budget.clock()))))
+                group_gone()
                 self.budget.tick()
                 require(entry['group_gone'] and code == 0, 'Owned command failed or descendants remain: ' + name)
+        except BaseException as error:
+            primary = error
+            entry['primary_error'] = type(error).__name__
+            raise
         finally:
-            selector.close()
-            if not entry['group_gone']:
-                # Cleanup uses only the reserve within the same original deadline.
+            cleanup_error = None
+            try:
+                if selector is not None:
+                    selector.close()
+            except BaseException as error:
+                cleanup_error = error
+                entry['cleanup_errors'].append(type(error).__name__)
+            try:
+                # Reaping is monotone. Never signal a numeric group after any
+                # poll/wait has reaped its leader, even if descendants remain.
                 self.budget.tick(cleanup=True)
                 for sig in (signal.SIGTERM, signal.SIGKILL):
+                    if observe() is not None:
+                        break
+                    self.budget.tick(cleanup=True)
                     try:
-                        os.killpg(pgid, sig)
+                        if entry['ownership_verified']:
+                            os.killpg(entry['pgid'], sig)
+                        else:
+                            # Failed identity setup grants only this unreaped
+                            # Popen handle, never an unverified process group.
+                            proc.send_signal(sig)
                     except ProcessLookupError:
                         pass
                     try:
-                        proc.wait(timeout=max(.01, min(5, self.budget.deadline - self.budget.clock())))
+                        reaped(proc.wait(timeout=max(.01, min(5, self.budget.deadline - self.budget.clock()))))
                     except subprocess.TimeoutExpired:
                         pass
                     self.budget.tick(cleanup=True)
-                entry['reaped'] = proc.poll() is not None
-                try:
-                    os.killpg(pgid, 0)
-                except ProcessLookupError:
-                    entry['group_gone'] = True
-            self.budget.json_evidence(self.evidence / 'commands.json', self.commands, cleanup=True)
+                observe()
+                group_gone()
+                self.budget.tick(cleanup=True)
+            except BaseException as error:
+                cleanup_error = cleanup_error or error
+                entry['cleanup_errors'].append(type(error).__name__)
+            try:
+                proc.stdout.close()
+            except BaseException as error:
+                cleanup_error = cleanup_error or error
+                entry['cleanup_errors'].append(type(error).__name__)
+            entry['cleanup_confirmed'] = entry['reaped'] and entry['group_gone'] and not entry['cleanup_errors']
+            try:
+                self.budget.json_evidence(self.evidence / 'commands.json', self.commands, cleanup=True)
+            except BaseException as error:
+                cleanup_error = cleanup_error or error
+            if primary is None:
+                if cleanup_error is not None:
+                    raise cleanup_error
+                require(entry['cleanup_confirmed'], 'Owned command cleanup is unknown: ' + name)
 
     def copy_binary(self, source, destination):
         self.budget.tick()
@@ -302,9 +367,11 @@ class Driver:
             require(report['own_named_stores_cleaned'] is True, 'Own WK store cleanup unknown')
             require(report['visible_windows'] is False and report['user_profiles_accessed'] is False, 'Runtime isolation failed')
             require(report['module_pins']['src/settings/favorites-recovery-codec.ts'] == (BASELINE if physical else CANDIDATE), 'Actual embedded codec differs')
+            require(report['module_pins'] == {name: self.budget.digest(self.root / name) for name in MODULE_FILES}, 'Actual bundled fixture modules differ')
+            require(set(report['capabilities']) == set(VIEW_LABELS), 'Actual fixture view set differs')
             for value in report['capabilities'].values():
                 self.budget.tick()
-                require(value['origin'] == 'tauri://localhost' and value['href'] == 'tauri://localhost/index.html', 'Actual native URL mismatch')
+                require(value['origin'] == 'tauri://localhost' and value['href'] in ('tauri://localhost', 'tauri://localhost/index.html'), 'Actual native URL mismatch')
                 require(all(value[k] is True for k in ('secureContext', 'storage', 'actualLocks', 'grant', 'current')), 'Actual native grant unavailable')
             self.budget.tick()
             return {'result_sha256': hashlib.sha256(raw).hexdigest(), 'stage': report['stage']}

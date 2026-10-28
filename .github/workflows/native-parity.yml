@@ -260,7 +260,10 @@ jobs:
       - name: Install the existing locked frontend dependencies
         run: npm ci --ignore-scripts
       - name: Test native qualification driver bounds without native execution
-        run: PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_ci.py
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_ci.py
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_harness.py
+          node tests/test_native_favorites_provider_compression.cjs
       - name: Qualify actual hidden WK physical storage with the original codec
         run: python3 scripts/ci-native-favorites.py --mode physical
       - name: Retain bounded allowlisted native qualification metadata

@@ -15,8 +15,27 @@ mod smoke {
     static STARTED: AtomicBool = AtomicBool::new(false);
     static SEQ: AtomicUsize = AtomicUsize::new(0);
     static EXIT: AtomicI32 = AtomicI32::new(1);
+    static CREATED: AtomicUsize = AtomicUsize::new(0);
+    static DESTROYED: AtomicUsize = AtomicUsize::new(0);
+    const OWN_LABELS: [&str; 6] = ["writer", "observer", "slot2", "slot3", "slot4", "reloaded"];
     const LABELS: [&str; 5] = ["writer", "observer", "slot2", "slot3", "slot4"];
 
+    fn own_window_mask(label: &str) -> usize {
+        OWN_LABELS.iter().position(|candidate| *candidate == label)
+            .map_or(0, |index| 1 << index)
+    }
+    fn fixture_href(href: &str) -> bool {
+        matches!(href, "tauri://localhost" | "tauri://localhost/index.html")
+    }
+    async fn main_loop_release(app: &tauri::AppHandle, deadline: Instant) -> Result<(), String> {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        // A queued turn runs after the Destroyed handler and Wry's wrapper removal.
+        app.run_on_main_thread(move || { let _ = sender.send(()); })
+            .map_err(|error| error.to_string())?;
+        tokio::time::timeout_at(tokio::time::Instant::from_std(deadline), receiver).await
+            .map_err(|_| "Own main-loop release timed out".to_string())?
+            .map_err(|_| "Own main-loop release channel closed".to_string())
+    }
     async fn evaluate(window: &tauri::WebviewWindow, expression: &str) -> Result<Value, String> {
         let event = format!("favorites-native-{}", SEQ.fetch_add(1, Ordering::SeqCst));
         let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -195,7 +214,7 @@ mod smoke {
                 "Actual window.location.origin is not exact tauri://localhost",
             )?;
             require(
-                value["href"] == "tauri://localhost/index.html",
+                value["href"].as_str().is_some_and(fixture_href),
                 "Actual committed href differs from bundled fixture",
             )?;
             require(
@@ -206,6 +225,8 @@ mod smoke {
                     && value["current"] == true,
                 "Actual captured Storage/WebLocks grant unavailable; do not qualify native origin",
             )?;
+            require(evaluate(&view, "window.nativeSourcePins").await? == module_pins,
+                "Own bundled fixture module pins differ between native views")?;
             capabilities.insert(label.to_string(), value);
         }
         let writer = app.get_webview_window("writer").ok_or("Writer missing")?;
@@ -321,6 +342,7 @@ mod smoke {
             let reloaded = super::instance::apply_isolation(builder, &output.join("slot1"))
                 .build()
                 .map_err(|error| error.to_string())?;
+            CREATED.fetch_or(own_window_mask("reloaded"), Ordering::SeqCst);
             let end = Instant::now() + Duration::from_secs(10);
             while LOADED.load(Ordering::SeqCst) < 6 {
                 if Instant::now() >= end {
@@ -353,32 +375,61 @@ mod smoke {
             "user_profiles_accessed":false,"visible_windows":false,"output":output});
         Ok(report)
     }
-    async fn cleanup(app: &tauri::AppHandle, output: &std::path::Path) -> Result<(), String> {
-        for label in ["writer", "observer", "slot2", "slot3", "slot4", "reloaded"] {
+    async fn cleanup(app: &tauri::AppHandle, output: &std::path::Path) -> Result<Value, String> {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let expected = CREATED.load(Ordering::SeqCst);
+        let mut attempts = Vec::new();
+        require(expected != 0, "Own created-window mask is empty")?;
+        for label in OWN_LABELS {
             if let Some(view) = app.get_webview_window(label) {
                 view.destroy().map_err(|error| error.to_string())?;
             }
         }
+        // destroy() only enqueues destruction. Observe actual events before deleting
+        // stores; give Wry a later main-loop turn to drop its native webview wrappers.
+        while DESTROYED.load(Ordering::SeqCst) & expected != expected {
+            require(Instant::now() < deadline, &format!("Own windows did not emit Destroyed before cleanup deadline; expected={expected}, destroyed={}", DESTROYED.load(Ordering::SeqCst)))?;
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        main_loop_release(app, deadline).await?;
+        require(OWN_LABELS.iter().all(|label| app.get_webview_window(label).is_none()),
+            "Own window manager still contains a destroyed view")?;
         for slot in ["slot1", "slot2", "slot3", "slot4"] {
             let identifier = super::instance::data_store_identifier(&output.join(slot));
-            let (sender, receiver) = tokio::sync::oneshot::channel();
-            app.run_on_main_thread(move || {
-                let Some(mtm) = objc2::MainThreadMarker::new() else { let _ = sender.send(false); return; };
-                let sender = std::cell::RefCell::new(Some(sender));
-                let callback = block2::RcBlock::new(move |error: *mut objc2_foundation::NSError| {
-                    if let Some(sender) = sender.borrow_mut().take() { let _ = sender.send(error.is_null()); }
-                });
-                let uuid = objc2_foundation::NSUUID::from_bytes(identifier);
-                // Exact fresh IDs derived from this admitted test root only. No enumeration or default-store clearing.
-                unsafe { objc2_web_kit::WKWebsiteDataStore::removeDataStoreForIdentifier_completionHandler(&uuid, &callback, mtm); }
-            }).map_err(|error| error.to_string())?;
-            let removed = tokio::time::timeout(Duration::from_secs(10), receiver)
-                .await
-                .map_err(|_| "Own named-store cleanup timed out".to_string())?
-                .map_err(|_| "Own named-store cleanup channel closed".to_string())?;
-            require(removed, "Own named store still in use; retain metadata and do not claim clean qualification")?;
+            let mut removed = false;
+            // Only these exact intent UUIDs are retried, within one cleanup deadline.
+            for attempt in 1..=40 {
+                require(Instant::now() < deadline, &format!("Own named-store cleanup deadline; attempts={}", json!(attempts)))?;
+                let (sender, receiver) = tokio::sync::oneshot::channel();
+                app.run_on_main_thread(move || {
+                    let Some(mtm) = objc2::MainThreadMarker::new() else { let _ = sender.send(Err("Main thread unavailable".to_string())); return; };
+                    let sender = std::cell::RefCell::new(Some(sender));
+                    let callback = block2::RcBlock::new(move |error: *mut objc2_foundation::NSError| {
+                        let outcome = if let Some(error) = unsafe { error.as_ref() } {
+                            Err(format!("{} (domain={}, code={})", error.localizedDescription(), error.domain(), error.code()))
+                        } else { Ok(()) };
+                        if let Some(sender) = sender.borrow_mut().take() { let _ = sender.send(outcome); }
+                    });
+                    let uuid = objc2_foundation::NSUUID::from_bytes(identifier);
+                    // Public exact-ID removal only. No enumeration, default stores or private APIs.
+                    unsafe { objc2_web_kit::WKWebsiteDataStore::removeDataStoreForIdentifier_completionHandler(&uuid, &callback, mtm); }
+                }).map_err(|error| error.to_string())?;
+                let result = tokio::time::timeout_at(tokio::time::Instant::from_std(deadline), receiver)
+                    .await.map_err(|_| format!("Own named-store cleanup callback timed out; attempts={}", json!(attempts)))?
+                    .map_err(|_| "Own named-store cleanup channel closed".to_string())?;
+                attempts.push(json!({"slot":slot,"identifier":identifier,"attempt":attempt,"error":result.as_ref().err()}));
+                require(Instant::now() < deadline, &format!("Own named-store callback exceeded cleanup deadline; attempts={}", json!(attempts)))?;
+                if result.is_ok() { removed = true; break; }
+                // WebKit may release the store asynchronously after its view is gone.
+                main_loop_release(app, deadline).await.map_err(|error| format!("{error}; attempts={}", json!(attempts)))?;
+                tokio::time::sleep_until(tokio::time::Instant::from_std(
+                    std::cmp::min(deadline, Instant::now() + Duration::from_millis(100)))).await;
+            }
+            require(removed, &format!("Own named store still in use or removal failed; attempts={}", json!(attempts)))?;
         }
-        Ok(())
+        require(Instant::now() < deadline, "Own named-store cleanup exceeded original cleanup deadline")?;
+        Ok(json!({"own_windows_destroyed":true,"destroyed_mask":DESTROYED.load(Ordering::SeqCst),
+            "expected_mask":expected,"own_uuid_removal_attempts":attempts}))
     }
     pub fn run() -> Result<i32, Box<dyn std::error::Error>> {
         let output = PathBuf::from(
@@ -410,10 +461,16 @@ mod smoke {
                         .visible(false).skip_taskbar(true).decorations(false)
                         .on_navigation(|url| url.scheme() == "tauri" && url.host_str() == Some("localhost") && url.port().is_none() && url.username().is_empty() && url.password().is_none());
                     super::instance::apply_isolation(builder, &store_root).build()?;
+                    CREATED.fetch_or(own_window_mask(label), Ordering::SeqCst);
                 }
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move { tokio::time::sleep(Duration::from_secs(90)).await; handle.exit(1); });
                 Ok(())
+            })
+            .on_window_event(|window, event| {
+                if matches!(event, tauri::WindowEvent::Destroyed) {
+                    DESTROYED.fetch_or(own_window_mask(window.label()), Ordering::SeqCst);
+                }
             })
             .on_page_load(move |view, event| {
                 if event.event() != tauri::webview::PageLoadEvent::Finished || (!LABELS.contains(&view.label()) && view.label() != "reloaded") { return; }
@@ -425,7 +482,10 @@ mod smoke {
                     let mut code = if result.is_ok() && cleaned.is_ok() { 0 } else { 1 };
                     let mut report = result.unwrap_or_else(|error| json!({"status":"fail","error":error,"qualified_native_origin":false}));
                     report["own_named_stores_cleaned"] = json!(cleaned.is_ok());
-                    if let Err(error) = cleaned { report["status"] = json!("fail"); report["cleanup_error"] = json!(error); }
+                    match cleaned {
+                        Ok(cleanup) => report["cleanup"] = cleanup,
+                        Err(error) => { report["status"] = json!("fail"); report["cleanup_error"] = json!(error); }
+                    }
                     match serde_json::to_string_pretty(&report) { Ok(text) => if std::fs::write(output.join("result.json"), text).is_err() { code = 1; }, Err(_) => code = 1, }
                     EXIT.store(code, Ordering::SeqCst); app.exit(code);
                 });
