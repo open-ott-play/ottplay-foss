@@ -96,10 +96,13 @@ function load(file, w, cache = {}) {
 async function flush() {
     for (let i = 0; i < 20; i++) await Promise.resolve();
 }
-function hostFixture() {
+function hostFixture(origin = "https://player.example") {
     const file = path.join(root, "tests/test_favorites_current_plex_host.cjs");
     let source = fs.readFileSync(file, "utf8");
     source = source.slice(0, source.indexOf("(async () => {"));
+    const originLiteral = 'origin: "https://player.example"';
+    assert.equal(source.split(originLiteral).length, 2);
+    source = source.replace(originLiteral, "origin: " + JSON.stringify(origin));
     const locks = lockManager(),
         context = vm.createContext({
             __dirname: path.dirname(file),
@@ -574,6 +577,109 @@ function hostFixture() {
     );
     console.log(
         "PASS new admission blocks legacy/unacknowledged globally; only cryptographically validated exact ack bytes clear block, original row retained"
+    );
+    for (const origin of [
+        "tauri://localhost",
+        "app://localhost",
+        "null",
+        "file://local",
+    ]) {
+        const native = hostFixture(origin),
+            local = native.fixture({ locks: native.locks });
+        const codec = local
+            .load("src/settings/favorites-recovery-codec.ts")
+            .createFavoritesRecoveryCodec({
+                sha256: async (text) => native.hash(text),
+            });
+        const before = [...local.saved],
+            beforeWrites = local.writes.length;
+        await assert.rejects(
+            codec.backendProof(local.host.physicalStorage()),
+            /unsupported_persistence/
+        );
+        await assert.rejects(
+            local.host.validateNewAdmission(),
+            /unsupported_persistence/
+        );
+        await assert.rejects(
+            local.host.provisionExclusive({
+                codecVersion: 1,
+                expected_binding_revision: "0",
+                mode: "import",
+                op: "provision",
+                runtime: "origin-runtime",
+                scope: native.scope,
+                target_id: local.host.catalog().targets[0].target_id,
+            }),
+            /unsupported_persistence/
+        );
+        await assert.rejects(
+            local.host.createAdapter(() => null).inspect(native.scope),
+            /unsupported_persistence/
+        );
+        assert.deepEqual(
+            [...local.saved],
+            before,
+            "unsupported original capture must not initialize or mutate v2 stores: " +
+                origin
+        );
+        assert.equal(local.writes.length, beforeWrites);
+        assert(
+            local.host.recoveryStorage(),
+            "readonly physical recovery remains independent origin proof"
+        );
+        assert.equal(
+            local.host.qualified(),
+            true,
+            "legacy read-only Plex/favorites qualification is unchanged"
+        );
+    }
+    for (const origin of ["http://127.0.0.1:4179", "https://player.example"]) {
+        const supported = hostFixture(origin),
+            local = supported.fixture({ locks: supported.locks });
+        const codec = local
+            .load("src/settings/favorites-recovery-codec.ts")
+            .createFavoritesRecoveryCodec({
+                sha256: async (text) => supported.hash(text),
+            });
+        const expectedProof = await codec.backendProof(
+            local.host.physicalStorage()
+        );
+        await local.host.validateNewAdmission();
+        assert.equal(
+            local.writes.length,
+            0,
+            "qualification stays pure for supported origin"
+        );
+        const paired = await local.host.provisionExclusive({
+            codecVersion: 1,
+            expected_binding_revision: "0",
+            mode: "import",
+            op: "provision",
+            runtime: "origin-runtime",
+            scope: supported.scope,
+            target_id: local.host.catalog().targets[0].target_id,
+        });
+        const staged = await supported.staged(local, paired.scope);
+        assert.equal(
+            (
+                await staged.adapter.apply(
+                    staged.preview,
+                    staged.context,
+                    () => true
+                )
+            ).outcome,
+            "verified"
+        );
+        assert.equal(
+            JSON.parse(local.saved.get("favorites-receipts.v1")).entries[0]
+                .fence.backendProof,
+            expectedProof,
+            "actual persistent producer uses the canonical recovery codec proof"
+        );
+    }
+    console.log(
+        "PASS actual capture origin qualification matches canonical recovery proof; unsupported native fails closed without writes, HTTP(S) producer proof exact"
     );
 })().catch((error) => {
     console.error(error);

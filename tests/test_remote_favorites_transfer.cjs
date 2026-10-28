@@ -254,6 +254,55 @@ async function scenario(name, run) {
 }
 (async () => {
     await scenario(
+        "fractional Unix-second envelopes retain bytes and floor only runtime deadlines",
+        async () => {
+            for (const offset of [60000.75, 60000, 1.75, 1, 0.75, 0, -1]) {
+                const f = fixture();
+                f.load("src/plugins/favorites-transfer-runtime.ts");
+                const factory = f.w.__ottFavoritesTransferRuntime;
+                const create = factory.create;
+                let transport;
+                factory.create = (...args) => {
+                    const api = create(...args);
+                    const execute = api.execute;
+                    api.execute = (params, supplied) => {
+                        transport = supplied;
+                        return execute(params, supplied);
+                    };
+                    return api;
+                };
+                const req = f.request("bindingcatalog");
+                req.expires_at = (f.now() + offset) / 1000;
+                const original = JSON.stringify(req);
+                const deadline = Math.floor(req.expires_at * 1000);
+                const result = await ready(f.start(req));
+                if (deadline > f.now()) {
+                    assert.equal(result.status, "ok", "future " + offset);
+                    assert.equal(f.stats.catalogs, 1);
+                } else {
+                    assert.equal(
+                        result.data.error,
+                        "expired",
+                        "expired " + offset
+                    );
+                    assert.equal(f.stats.catalogs, 0);
+                }
+                if (transport) {
+                    assert.equal(transport.deadlineAt, deadline);
+                    assert(Number.isInteger(transport.deadlineAt));
+                    assert(transport.deadlineAt <= req.expires_at * 1000);
+                    assert.equal(JSON.stringify(transport.envelope), original);
+                } else
+                    assert(
+                        offset <= 0,
+                        "valid future envelope reaches runtime"
+                    );
+                assert.equal(JSON.stringify(req), original);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
         "capability crypto resolving after envelope expiry yields null and clears timer",
         async () => {
             const f = fixture();

@@ -176,6 +176,16 @@ export function createPlexFavoritesDocument(ports: PlexFavoritesDocumentPorts) {
             !doc.mediaFavorites.every(reference)
         )
             fail();
+        var mediaLocators: Record<string, boolean> = Object.create(null);
+        doc.mediaFavorites.forEach((ref: any) => {
+            if (ref.state !== "located") return;
+            var key = JSON.stringify([
+                ref.locator.serverId,
+                ref.locator.ratingKey,
+            ]);
+            if (mediaLocators[key]) fail();
+            mediaLocators[key] = true;
+        });
         var names: string[] = [],
             counts = {
                 channelLists: lists.lists.length,

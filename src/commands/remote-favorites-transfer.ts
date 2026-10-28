@@ -311,7 +311,7 @@ export function executeRemoteFavoritesTransfer(
             Promise.resolve(
                 api.execute(envelope.params, {
                     current: current,
-                    deadlineAt: envelope.expires_at * 1000,
+                    deadlineAt: Math.floor(envelope.expires_at * 1000),
                     envelope: envelope,
                     runtime: owner,
                 })

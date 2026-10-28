@@ -1070,6 +1070,7 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                 fail("binding_changed");
             if (latest.persistence !== "persistent")
                 fail("unsupported_persistence");
+            touch(value);
             value.writesStarted = true;
             var applied: any;
             try {

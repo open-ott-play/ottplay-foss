@@ -8,7 +8,19 @@ Original v1 rows keep their original schema. New rows add exactly `fence: {backe
 
 Original-row canonical bytes are compact JSON of all original row properties recursively sorted by ASCII key, excluding ONLY the root `recovery_ack` property. All permitted private keys are ASCII. Nested arrays retain their order. No original values, receipt data, fence or timestamps are omitted. Whole-ledger revision instead hashes its exact original raw UTF-8 serialization, never this canonical projection.
 
-The only added audit is `recovery_ack`, with fields inserted in this exact order: acknowledgement_id, backend_proof, ledger_revision_before, reason, runtime. Values use the public revision-2 contract; runtime is `[a-z0-9-]{1,64}` and reason is `accept-unknown-no-replay`. There is no timestamp, after digest, plan digest, random value or placeholder. The ACK and PLAN domain arrays follow `favorites-recovery-design-20261028/v2/operations.md` exactly. Backend domain binds actual origin, private key, private lock name, kind, private format 2 and implementation version 1.
+The only added audit is `recovery_ack`, with fields inserted in this exact order: acknowledgement_id, backend_proof, ledger_revision_before, reason, runtime. Values use the public revision-2 contract; runtime is `[a-z0-9-]{1,64}` and reason is `accept-unknown-no-replay`. There is no timestamp, after digest, plan digest, random value or placeholder. Backend domain binds actual origin, private key, private lock name, kind, private format 2 and implementation version 1.
+
+The hash inputs are UTF-8 compact JSON arrays, in this exact order. `scopeTuple` is `[profileBindingId, sourceBindingId, provider]`; `original` is SHA256 of the original-row canonical bytes; ledger revisions hash exact raw ledger bytes.
+
+```text
+ACK = ["ottplay-favorites-recovery-ack-v1", runtime, operationId, scopeTuple,
+       original, ledger_revision_before, backend_proof, reason]
+PLAN = ["ottplay-favorites-recovery-plan-v1", runtime, operationId, scopeTuple,
+        original, ledger_revision_before, backend_proof, reason,
+        acknowledgement_id, after_ledger_sha256]
+```
+
+`acknowledgement_id = SHA256(ACK)` and `plan_digest = SHA256(PLAN)`. The after-ledger hash is computed after inserting the deterministic audit; neither the plan digest nor the after-ledger hash is stored in that audit.
 
 Acknowledgement appends only this audit to the selected row in the existing parsed ledger. JSON.stringify then reproduces every other row and original property in the same order. The entire maximum added audit is 377 UTF-8 bytes plus the 16 bytes for `,"recovery_ack":`, totalling 393. Every unacknowledged pending/partial/unknown v2 row reserves 1024 bytes inside 65536, including during pending plans, completion planning/materialization and each actual write. Existing nonconforming ledgers remain readable but cannot authorize acknowledgement or automatic admission/completion repair. Acknowledgement consumes only its selected reserve; it frees no entry slot and changes no original outcome.
 

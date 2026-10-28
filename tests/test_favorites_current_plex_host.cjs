@@ -949,6 +949,156 @@ const replacementScope = {
         );
         assert.equal(fresh.binding(paired.scope).current(), true);
     }
+    {
+        const f = fixture({ populated: true });
+        const paired = provision(f, "import", { scope });
+        const stage = await staged(f, paired.scope);
+        // Another guarded operation reserves a protected row after the final
+        // inspected/previewed before image and before this apply acquires its lock.
+        await retainedOutcome(f, paired.scope);
+        const before = [...f.saved],
+            writes = f.writes.length;
+        await assert.rejects(
+            stage.adapter.apply(stage.preview, stage.context, () => true),
+            (error) => error.code === "ledger_changed"
+        );
+        assert.equal(
+            f.writes.length,
+            writes,
+            "competing ledger prevents all native target/reservation writes"
+        );
+        assert.deepEqual(
+            [...f.saved],
+            before,
+            "complete ledger, TV, media and history bytes remain exact"
+        );
+    }
+    {
+        // Exercise the actual engine/runtime classification too, without replacing
+        // admission, receipt CAS, physical locking, or the actual port apply.
+        const f = fixture({ populated: true });
+        const paired = provision(f, "import", { scope });
+        Object.assign(f.w, {
+            atob: (value) => Buffer.from(value, "base64").toString("binary"),
+            btoa: (value) => Buffer.from(value, "binary").toString("base64"),
+            clearTimeout,
+            crypto: crypto.webcrypto,
+            setTimeout,
+        });
+        const module = f.load("src/settings/favorites-current-plex-host.ts"),
+            original = module.createFavoritesCurrentPlexHost;
+        let injected = false,
+            protectedBefore,
+            writesBefore,
+            boundaryError;
+        module.createFavoritesCurrentPlexHost = (w, ports) => {
+            const host = original(w, ports),
+                create = host.createAdapter;
+            host.createAdapter = (admit) => {
+                const adapter = create(admit),
+                    apply = adapter.apply;
+                adapter.apply = async (...args) => {
+                    assert.equal(injected, false);
+                    injected = true;
+                    await retainedOutcome(f, paired.scope);
+                    protectedBefore = [...f.saved];
+                    writesBefore = f.writes.length;
+                    try {
+                        return await apply(...args);
+                    } catch (error) {
+                        boundaryError = error.code;
+                        throw error;
+                    }
+                };
+                return adapter;
+            };
+            return host;
+        };
+        const runtime = f
+            .load("src/plugins/favorites-transfer-runtime.ts")
+            .createFavoritesTransferRuntime(f.w, {
+                runtime: () => "runtime-1",
+                storage: f.storagePorts,
+            });
+        async function call(input) {
+            const params = { runtime: "runtime-1", ...input };
+            const result = await runtime.execute(params, {
+                current: () => true,
+                deadlineAt: Date.now() + 60000,
+                envelope: { action: "favorites_transfer", params },
+                runtime: "runtime-1",
+            });
+            assert.equal(result.error, undefined, JSON.stringify(result));
+            return result;
+        }
+        try {
+            const snapshot = await call({
+                    op: "snapshot",
+                    scope: paired.scope,
+                }),
+                input = Buffer.from(snapshot.document_base64, "base64");
+            const prepared = await call({
+                binding_revision: snapshot.binding_revision,
+                budget_ms: 300000,
+                document_sha256: hash(input),
+                expected_revision: snapshot.revision,
+                op: "prepare",
+                scope: paired.scope,
+                size_bytes: input.length,
+            });
+            const begun = await call({
+                binding_revision: snapshot.binding_revision,
+                chunk_count: 1,
+                document_sha256: hash(input),
+                expected_revision: snapshot.revision,
+                op: "begin",
+                operation_id: prepared.operation_id,
+                persistence: "persistent",
+                scope: paired.scope,
+                size_bytes: input.length,
+            });
+            await call({
+                chunk_sha256: hash(input),
+                data_base64: input.toString("base64"),
+                offset: 0,
+                op: "append",
+                seq: 0,
+                transaction_id: begun.transaction_id,
+            });
+            const preview = await call({
+                op: "preview",
+                transaction_id: begun.transaction_id,
+            });
+            assert.equal(preview.ready, true);
+            const result = await call({
+                expected_revision: snapshot.revision,
+                op: "commit",
+                operation_id: prepared.operation_id,
+                plan_digest: preview.plan_digest,
+                transaction_id: begun.transaction_id,
+            });
+            assert.equal(injected, true);
+            assert.equal(boundaryError, "ledger_changed");
+            assert.equal(
+                result.outcome,
+                "unknown",
+                "actual engine conservatively reports any apply rejection as unknown"
+            );
+            assert.equal(f.writes.length, writesBefore);
+            assert.deepEqual([...f.saved], protectedBefore);
+            assert.equal(
+                JSON.parse(f.saved.get(receiptKey)).entries.length,
+                1,
+                "only competing pending reservation exists"
+            );
+            assert.notEqual(
+                JSON.parse(f.saved.get(receiptKey)).entries[0].operationId,
+                prepared.operation_id
+            );
+        } finally {
+            runtime.dispose();
+        }
+    }
     console.log(
         "PASS current Plex host: read-only empty qualification, one-write provisioning, strict DTOs, null/LZ preimages, preserved history/cache, ownership and persisted uncertainty"
     );

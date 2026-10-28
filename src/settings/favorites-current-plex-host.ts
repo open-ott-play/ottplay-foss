@@ -102,19 +102,7 @@ export function createFavoritesCurrentPlexHost(
         var value = physicalStorage();
         if (!value) fail("unsupported_persistence");
         if (proofGrant !== value || !backendProof) {
-            var digest = await ports.sha256(
-                ports.utf8(
-                    JSON.stringify([
-                        "ottplay-favorites-recovery-backend-v1",
-                        value.origin,
-                        value.privateLedgerKey,
-                        value.lockName,
-                        value.kind,
-                        2,
-                        value.implementationVersion,
-                    ])
-                )
-            );
+            var digest = await recoveryCodec.backendProof(value);
             if (
                 !value.current() ||
                 physicalStorage() !== value ||

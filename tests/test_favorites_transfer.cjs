@@ -418,6 +418,70 @@ test("invalid activity never refreshes idle TTL; valid activity cannot exceed ab
         "expired"
     );
 });
+test("valid commit refreshes idle lifetime without extending absolute or request deadlines", async () => {
+    const f = fixture();
+    const prepared = await f.ready();
+    f.advance(119000);
+    const apply = f.ports.adapter.apply;
+    f.ports.adapter.apply = async (plan, receipt, current) => {
+        f.advance(2000);
+        assert.equal(
+            current(),
+            true,
+            "commit remains active beyond the previous idle deadline"
+        );
+        return apply(plan, receipt);
+    };
+    assert.equal((await commit(f, prepared)).outcome, "verified");
+    assert.equal(f.applies(), 1);
+
+    const g = fixture();
+    const absolutePlan = await g.ready();
+    for (let i = 0; i < 5; i++) {
+        g.advance(119000);
+        await g.send({
+            op: "status",
+            operation_id: operation,
+            runtime: "test-runtime",
+        });
+    }
+    let absoluteCurrent;
+    g.ports.adapter.apply = async (_plan, _receipt, current) => {
+        g.advance(6000);
+        absoluteCurrent = current();
+        return {
+            outcome: "not_applied",
+            per_store: [],
+            persistence: "persistent",
+        };
+    };
+    assert.equal((await commit(g, absolutePlan)).outcome, "unknown");
+    assert.equal(
+        absoluteCurrent,
+        false,
+        "absolute lifetime still ends the commit"
+    );
+    assert.equal(g.applies(), 0);
+
+    const h = fixture();
+    const requestPlan = await h.ready();
+    h.advance(119000);
+    h.ports.adapter.apply = () => new Promise(() => {});
+    const pending = h.send(
+        {
+            op: "commit",
+            runtime: "test-runtime",
+            ...requestPlan,
+            expected_revision: "favorites-20",
+            operation_id: operation,
+        },
+        { deadlineAt: h.ports.now() + 500 }
+    );
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    h.advance(500);
+    assert.equal((await pending).outcome, "unknown");
+    assert.equal(h.applies(), 0);
+});
 test("runtime restart releases old RAM stage and absent receipt remains unknown", async () => {
     const f = fixture();
     await f.send(f.begin);

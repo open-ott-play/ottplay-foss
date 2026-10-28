@@ -1,5 +1,9 @@
 {
-  "status": "FROZEN_PLAYER_SIDE_PROPOSAL_NOT_REGISTERED; requires Control/player approval before activation",
+  "status": "HISTORICAL_PROPOSAL_SUPERSEDED; bind examples below are not the current provisioning API",
+  "superseded_by": [
+    "favorites-current-plex-protocol-v1.json",
+    "favorites-provisioning-v1.json"
+  ],
   "source_base": "099c1a50eae37f4c3d5dc6b6141ed4cc22f3e95c",
   "seven_transfer_operations": "UNCHANGED",
   "capability": {
@@ -157,6 +161,6 @@
     "Persistent means actual adapter persisted readback, not filesystem fsync or cross-store atomicity. Cookie-backed stores are admitted only when every required readback succeeds.",
     "Limits intersect: byte/node/plan/ledger limits can refuse a collection below its per-list item ceiling; admission never raises caps or evicts uncertain receipts."
   ],
-  "schema_decision_remaining": "Approved current-only idempotent-existing-binding policy; no creation or different-target rebinding in first packet. Runtime registration remains absent.",
+  "schema_decision_remaining": "Historical first-packet decision only. Current create/import/pair/replace-current behavior is specified by favorites-provisioning-v1.json; deployment qualification is separate.",
   "admission_retention": "One provisional record is owned by the factory admission object, with one bounded current draft pointer; inspect/preview/abort/expiry/rejected begin perform NO durable writes. At most16 started/uncertain commit admissions are retained per adapter instance. Only fully verified completion releases its slot; persisted operation receipt still rejects replay while retained. New operations require independent trusted fresh admission, never receipt absence."
 }

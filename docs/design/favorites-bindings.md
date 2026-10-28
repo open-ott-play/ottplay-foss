@@ -1,6 +1,6 @@
 # Favorites binding registry foundation
 
-This module is a preparation artifact, not an enabled favorites-sync capability.
+This registry module does not itself enable a favorites-sync capability.
 It does not access storage, providers, profiles, files, devices or the network.
 The host injects persistence and exact target validation. Existing membership
 remains in the channel favorites library and media journal; this registry stores
@@ -41,7 +41,16 @@ private data through diagnostics.
 `window.__ottFavoritesBindings.create(ports)` constructs an independent instance.
 Ports are `read()`, `compareAndSwap(before, after)`, `uuid()`,
 `validateSelector(kind, selector)` and `current(publicRow, privateBinding)`.
+The implemented persistent Plex provisioning path additionally requires
+`persistedRead()` and `provisionTarget(targetId)`: these verify the actual stored
+bytes and resolve the captured current verified target, respectively.
 
+- `provisionPlex(value, expectedRevision)` implements `create`, `import`, `pair`
+  and `replace-current` for an explicitly verified current Plex target. It changes
+  both profile/source bindings in one registry document, checks exact physical
+  before/after bytes and refuses uncertain persistence. See the
+  [provisioning contract](favorites-provisioning-v1.json) for exact modes and
+  public/private field mapping. It does not change favorites or activate a profile.
 - `list()` returns `{version:1, revision, entries}`.
 - `lookup(id)` returns `{revision, entry}` or a fixed missing/invalid error.
 - `create({kind,provider,profile_id?,binding}, expectedRevision)` creates a new
@@ -97,15 +106,19 @@ backend contract is advertised. Cookies/session-memory require a separately
 honest host adapter; they must not claim confirmed durable CAS just because an
 in-memory read echoes the attempted write.
 
-## Integration and verification still required
+## Integration and deployment qualification
 
 This foundation module does not itself add provider hooks, save/copy/import UI
 behavior, a capability, remote command, profile migration or runtime initializer.
 The optional current-Plex transfer integration supplies the selectors, owner
 checks and shared persistence boundary. Its guarded receipt recovery contract is
-documented in [Favorites ledger recovery](favorites-ledger-recovery.md). Saving an
-existing profile must call bind; copy-as-new must remap both profile/source IDs;
-explicit public restore must call import and require binding where missing.
+documented in [Favorites ledger recovery](favorites-ledger-recovery.md). Explicit
+current-Plex creation, pairing and rebinding are implemented through
+`provisionPlex`; deployment and backend qualification remain separate gates.
+Saving an existing profile retains its bound IDs; copy-as-new must remap both
+profile/source IDs. Public restore keeps foreign rows unbound until explicit
+provisioning supplies a current local target. The historical wire proposal is
+not the active provisioning API.
 
 The fixture suite uses only in-memory callbacks. It covers public/private
 separation, reload, stable IDs, import preservation/conflicts, current parent and

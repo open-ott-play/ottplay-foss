@@ -291,6 +291,15 @@ deadline.unref();
         profilePage = await profileContext.newPage();
         await profilePage.goto(address);
         checkpoint("profile import/load after reopen");
+        const profilePhasePrefix = "[direct-media-profile] ";
+        const profileConsole = (message) => {
+            const text = message.text();
+            if (text.startsWith(profilePhasePrefix))
+                checkpoint(
+                    "profile reopen: " + text.slice(profilePhasePrefix.length)
+                );
+        };
+        profilePage.on("console", profileConsole);
         const restoredProfile = await profilePage.evaluate(async (profile) => {
             window.stbDelItem = (key) => localStorage.removeItem(key);
             window.stbGetItem = (key) => localStorage.getItem(key);
@@ -303,21 +312,29 @@ deadline.unref();
                 libraryIdentity: () => "browser:",
                 list: () => media.list(),
             });
+            console.log("[direct-media-profile] import");
             const imported = await profiles.request({
                 action: "profile_import",
                 params: { number: 2, profile },
             });
+            console.log("[direct-media-profile] load");
             const loaded = await profiles.request({
                 action: "profile",
                 params: { number: 2 },
             });
+            console.log("[direct-media-profile] list");
             const catalog = profiles.filter(await media.list());
             const item = catalog.items.find(
                 (item) => "local-" + item.id === profiles.selection()
             );
-            const body = await (await fetch(item.url)).text();
+            console.log("[direct-media-profile] blob fetch");
+            const response = await fetch(item.url);
+            console.log("[direct-media-profile] blob body");
+            const body = await response.text();
+            console.log("[direct-media-profile] complete");
             return { body, count: catalog.items.length, imported, loaded };
         }, portable);
+        profilePage.off("console", profileConsole);
         assert.equal(restoredProfile.imported.data.binding_required, false);
         assert.equal(restoredProfile.loaded.status, "ok");
         assert.equal(restoredProfile.body, "second.mp4");

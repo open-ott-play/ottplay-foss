@@ -403,13 +403,13 @@ test("exact prepared pending CAS precedes any completion and survives restart as
     assert.equal(reader.status(id(1)).state, "verified");
 });
 test("reservation rejects raw drift, changed descriptors, stale source and uncertain CAS", () => {
-    for (const change of [
-        "pending",
-        "completion",
-        "before",
-        "source",
-        "clock",
-        "CAS",
+    for (const [change, expected] of [
+        ["pending", "invalid_ledger"],
+        ["completion", "invalid_outcome"],
+        ["before", "ledger_changed"],
+        ["source", "context_changed"],
+        ["clock", "expired"],
+        ["CAS", "outcome_unknown"],
     ]) {
         const f = fixture(),
             p = f.api.prepareReservation(
@@ -432,7 +432,11 @@ test("reservation rejects raw drift, changed descriptors, stale source and uncer
                 f.state.raw = after;
                 return "unknown";
             };
-        assert.throws(() => f.api.commitReservation(p), change);
+        assert.throws(
+            () => f.api.commitReservation(p),
+            (error) => error.code === expected,
+            change
+        );
         assert.equal(f.state.writes, change === "CAS" ? 1 : 0);
         if (change === "CAS")
             assert.equal(f.api.status(id(1)).state, "pending");
