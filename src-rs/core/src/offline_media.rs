@@ -4209,7 +4209,7 @@ mod tests {
             .await
             .unwrap();
             if superseded {
-                Library::reserve_source(&mut library.scan.lock().await, &source.id);
+                Library::reserve_source(&mut *library.scan.lock().await, &source.id);
             } else {
                 library.background.set_standby(true);
             }

@@ -660,7 +660,7 @@ const ARTIFACTS = Object.freeze([
     "dist-mobile/dist/player.js",
 ]);
 
-function measureBundle(source, name, budget = BUDGET) {
+function collectBundleMeasurement(source, name) {
     const buffer = Buffer.isBuffer(source)
         ? source
         : Buffer.from(source, "utf8");
@@ -671,6 +671,11 @@ function measureBundle(source, name, budget = BUDGET) {
         sha256: createHash("sha256").update(buffer).digest("hex"),
     };
     if (!result.bytes) throw new Error("Empty classic bundle: " + name);
+    return result;
+}
+
+function measureBundle(source, name, budget = BUDGET) {
+    const result = collectBundleMeasurement(source, name);
     for (const key of ["bytes", "gzipBytes"]) {
         if (result[key] > budget[key])
             throw new Error(
@@ -775,12 +780,22 @@ function writeBundleReport(
     artifacts = ARTIFACTS,
     providerKinds
 ) {
-    const { CLASSIC_PRIVATE_MODULES } = require("./classic-bundle.cjs");
     const measured = inspectBundles(root, artifacts);
     if (measured[0].sha256 !== optimizer.outputSha256)
         throw new Error(
             "Classic optimizer report does not match the server bundle"
         );
+    return saveBundleReport(
+        root,
+        optimizer,
+        modules,
+        measured,
+        inspectBundleSets(root, artifacts, providerKinds)
+    );
+}
+
+function saveBundleReport(root, optimizer, modules, measured, sets) {
+    const { CLASSIC_PRIVATE_MODULES } = require("./classic-bundle.cjs");
     const report = {
         artifacts: measured,
         baseTotalBudget: BASE_TOTAL_BUDGET,
@@ -798,7 +813,7 @@ function writeBundleReport(
                 modules.includes(file)
             )
         ),
-        providerBundles: inspectBundleSets(root, artifacts, providerKinds),
+        providerBundles: sets,
         schema: 1,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
@@ -807,6 +822,308 @@ function writeBundleReport(
     fs.mkdirSync(path.dirname(output), { recursive: true });
     fs.writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
     return report;
+}
+
+// Production-only collection boundary: measurements never authorize an oversized
+// build. Strict public inspectors above retain their original eager behavior.
+function clearBuildSizeReports(root) {
+    for (const name of ["classic-size-diagnostics.json", "classic-bundle.json"])
+        fs.rmSync(path.join(root, "build/reports", name), { force: true });
+}
+function writeBuildBundleReport(
+    root,
+    optimizer,
+    modules,
+    artifacts = ARTIFACTS,
+    providerKinds,
+    context = {}
+) {
+    const {
+        CLASSIC_PROVIDER_BUNDLES,
+        CLASSIC_OPTIONAL_BUNDLES,
+    } = require("./classic-bundle.cjs");
+    const kinds = providerKinds || Object.keys(CLASSIC_PROVIDER_BUNDLES);
+    if (
+        !artifacts.length ||
+        artifacts.length > 3 ||
+        new Set(artifacts).size !== artifacts.length ||
+        new Set(kinds).size !== kinds.length ||
+        kinds.some((kind) => !Object.hasOwn(CLASSIC_PROVIDER_BUNDLES, kind))
+    )
+        throw new Error("Invalid expected classic bundle inventory");
+    if (
+        artifacts.some(
+            (file) =>
+                typeof file !== "string" ||
+                file.length > 512 ||
+                path.isAbsolute(file) ||
+                file
+                    .split(/[\\/]/)
+                    .some((part) => !part || part === "." || part === "..")
+        )
+    )
+        throw new Error("Unsafe declared classic artifact path");
+    const violations = [],
+        inputErrors = [],
+        measured = [],
+        sets = [];
+    fs.rmSync(path.join(root, "build/reports/classic-bundle.json"), {
+        force: true,
+    });
+    const base = fs.realpathSync(root);
+    function violation(item, budget, scope) {
+        for (const metric of ["bytes", "gzipBytes"])
+            if (item[metric] > budget[metric])
+                violations.push({
+                    actual: item[metric],
+                    budget: budget[metric],
+                    metric,
+                    path: item.path,
+                    scope,
+                });
+    }
+    function read(file, budget) {
+        try {
+            if (
+                path.isAbsolute(file) ||
+                file
+                    .split(/[\\/]/)
+                    .some((part) => !part || part === "." || part === "..")
+            )
+                throw new Error("Unsafe declared path");
+            let target = base;
+            for (const part of file.split(/[\\/]/)) {
+                target = path.join(target, part);
+                if (fs.lstatSync(target).isSymbolicLink())
+                    throw new Error("Symlink input");
+            }
+            const namedBefore = fs.lstatSync(target);
+            if (
+                !namedBefore.isFile() ||
+                !namedBefore.size ||
+                namedBefore.size > 16 * 1024 * 1024
+            )
+                throw new Error("Empty, nonregular or excessive input");
+            const fd = fs.openSync(
+                target,
+                fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0)
+            );
+            let bytes;
+            try {
+                const before = fs.fstatSync(fd);
+                if (
+                    !before.isFile() ||
+                    !before.size ||
+                    before.size > 16 * 1024 * 1024
+                )
+                    throw new Error("Empty, nonregular or excessive input");
+                if (
+                    before.ino !== namedBefore.ino ||
+                    before.dev !== namedBefore.dev ||
+                    fs.realpathSync(target) !== target
+                )
+                    throw new Error("Changed input path");
+                bytes = Buffer.alloc(before.size);
+                if (fs.readSync(fd, bytes, 0, bytes.length, 0) !== bytes.length)
+                    throw new Error("Incomplete input read");
+                const after = fs.fstatSync(fd),
+                    named = fs.lstatSync(target);
+                if (
+                    before.size !== after.size ||
+                    before.mtimeMs !== after.mtimeMs ||
+                    before.ctimeMs !== after.ctimeMs ||
+                    before.ino !== named.ino ||
+                    before.dev !== named.dev ||
+                    before.size !== named.size ||
+                    before.mtimeMs !== named.mtimeMs ||
+                    before.ctimeMs !== named.ctimeMs ||
+                    fs.realpathSync(target) !== target ||
+                    named.isSymbolicLink()
+                )
+                    throw new Error("Unstable input");
+            } finally {
+                fs.closeSync(fd);
+            }
+            const item = collectBundleMeasurement(bytes, file);
+            violation(item, budget, "asset");
+            return item;
+        } catch (error) {
+            inputErrors.push({
+                error: String(error.message).slice(0, 512),
+                path: String(file).slice(0, 256),
+            });
+            return null;
+        }
+    }
+    function sum(items) {
+        return items.some((item) => !item)
+            ? null
+            : items.reduce(
+                  (total, item) => ({
+                      bytes: total.bytes + item.bytes,
+                      gzipBytes: total.gzipBytes + item.gzipBytes,
+                  }),
+                  { bytes: 0, gzipBytes: 0 }
+              );
+    }
+    for (const file of artifacts) {
+        const entry = read(file, BUDGET),
+            directory = path.dirname(file);
+        measured.push(entry);
+        const expected = kinds.map((kind) => "provider-" + kind + ".js");
+        // Bound inventory enumeration and reject symlink directories too.
+        let directoryValid = true;
+        try {
+            let target = base;
+            if (directory !== ".")
+                for (const part of directory.split(/[\\/]/)) {
+                    target = path.join(target, part);
+                    const info = fs.lstatSync(target);
+                    if (info.isSymbolicLink() || !info.isDirectory())
+                        throw new Error("Unsafe input directory");
+                }
+            const dir = fs.opendirSync(target);
+            try {
+                let item,
+                    count = 0;
+                while ((item = dir.readSync())) {
+                    if (++count > 4096)
+                        throw new Error("Excessive directory inventory");
+                    if (
+                        /^provider-.*\.js$/.test(item.name) &&
+                        !expected.includes(item.name)
+                    )
+                        throw new Error(
+                            "Unexpected provider bundle: " +
+                                item.name.slice(0, 128)
+                        );
+                }
+            } finally {
+                dir.closeSync();
+            }
+        } catch (error) {
+            directoryValid = false;
+            inputErrors.push({
+                error: String(error.message).slice(0, 512),
+                path: directory,
+            });
+        }
+        const providers = expected.map((name) =>
+            read(path.join(directory, name), PROVIDER_BUDGET)
+        );
+        const optionalAssets = Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+            (name) => {
+                if (!OPTIONAL_BUDGETS[name])
+                    throw new Error("Missing optional budget: " + name);
+                return read(
+                    path.join(directory, name + ".js"),
+                    OPTIONAL_BUDGETS[name]
+                );
+            }
+        );
+        const legacyTotal = directoryValid ? sum([entry, ...providers]) : null,
+            total = directoryValid
+                ? sum([entry, ...providers, ...optionalAssets])
+                : null;
+        if (legacyTotal)
+            violation(
+                { path: file, ...legacyTotal },
+                LEGACY_TOTAL_BUDGET,
+                "legacyTotal"
+            );
+        if (total) violation({ path: file, ...total }, TOTAL_BUDGET, "total");
+        sets.push({
+            entry: file,
+            legacyTotal,
+            optionalAssets,
+            providers,
+            total,
+        });
+    }
+    let expectedSha256 = optimizer.outputSha256;
+    if (context.nativeEntrySource !== undefined) {
+        const source = collectBundleMeasurement(
+            context.nativeEntrySource,
+            "optimizer-output"
+        );
+        violation(source, BUDGET, "optimizer");
+        if (source.sha256 !== optimizer.outputSha256)
+            inputErrors.push({
+                error: "Native transform source does not match optimizer output",
+                path: artifacts[0],
+            });
+        const { transformPlaySystemIcons } = require("./play-system-icons.cjs");
+        expectedSha256 = collectBundleMeasurement(
+            transformPlaySystemIcons(context.nativeEntrySource),
+            "native-optimizer-output"
+        ).sha256;
+    }
+    if (measured[0] && measured[0].sha256 !== expectedSha256)
+        inputErrors.push({
+            error: "Classic optimizer report does not match the server bundle",
+            path: artifacts[0],
+        });
+    function label(value) {
+        return value == null ? null : String(value).slice(0, 256);
+    }
+    const diagnosticPath = path.join(
+        root,
+        "build/reports/classic-size-diagnostics.json"
+    );
+    if (violations.length || inputErrors.length) {
+        const diagnostic = {
+            artifacts: measured,
+            attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
+            budget: BUDGET,
+            collectedAt: new Date().toISOString(),
+            complete: !inputErrors.length,
+            diagnostic: true,
+            inputErrors,
+            legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+            mode: label(context.mode || "standard"),
+            optimizerBinding: {
+                outputSha256: optimizer.outputSha256,
+                stagedExpectedSha256: expectedSha256,
+            },
+            optionalBudgets: OPTIONAL_BUDGETS,
+            providerBudget: PROVIDER_BUDGET,
+            providerBundles: sets,
+            run: label(process.env.GITHUB_RUN_ID),
+            runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
+            schema: 1,
+            source: label(context.source || process.env.GITHUB_SHA),
+            toolchain: {
+                node: process.versions.node,
+                zlib: process.versions.zlib,
+            },
+            totalBudget: TOTAL_BUDGET,
+            violations,
+        };
+        const error = new Error(
+            "Classic bundle validation failed: " +
+                violations.length +
+                " size violations; " +
+                inputErrors.length +
+                " input errors; " +
+                (violations.length
+                    ? `${violations[0].path}: ${violations[0].scope} ${violations[0].metric} ${violations[0].actual} exceeds budget ${violations[0].budget}`
+                    : inputErrors[0].error)
+        );
+        try {
+            fs.rmSync(diagnosticPath, { force: true });
+            fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
+            fs.writeFileSync(
+                diagnosticPath,
+                JSON.stringify(diagnostic, null, 2) + "\n"
+            );
+        } catch (writeError) {
+            error.message +=
+                "; diagnostics write failed: " + writeError.message;
+        }
+        throw error;
+    }
+    fs.rmSync(diagnosticPath, { force: true });
+    return saveBundleReport(root, optimizer, modules, measured, sets);
 }
 
 if (require.main === module) {
@@ -828,6 +1145,8 @@ module.exports = {
     ARTIFACTS,
     BASE_TOTAL_BUDGET,
     BUDGET,
+    clearBuildSizeReports,
+    collectBundleMeasurement,
     inspectBundleSets,
     inspectBundles,
     LEGACY_TOTAL_BUDGET,
@@ -839,5 +1158,6 @@ module.exports = {
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
+    writeBuildBundleReport,
     writeBundleReport,
 };

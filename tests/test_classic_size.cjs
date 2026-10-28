@@ -6,6 +6,9 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const {
     ARTIFACTS,
+    clearBuildSizeReports,
+    collectBundleMeasurement,
+    writeBuildBundleReport,
     BUDGET,
     BASE_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
@@ -268,6 +271,30 @@ try {
         );
         fs.appendFileSync(spare, "x");
         assert.throws(
+            () =>
+                writeBuildBundleReport(
+                    root,
+                    {
+                        outputSha256: collectBundleMeasurement(
+                            fs.readFileSync(path.join(root, "dist/player.js")),
+                            "entry"
+                        ).sha256,
+                    },
+                    []
+                ),
+            /validation failed/
+        );
+        const aggregateFailure = JSON.parse(
+            fs.readFileSync(
+                path.join(root, "build/reports/classic-size-diagnostics.json")
+            )
+        );
+        assert(
+            aggregateFailure.violations.some(
+                (item) => item.scope === "total" && item.metric === "bytes"
+            )
+        );
+        assert.throws(
             () => inspectBundleSets(root),
             new RegExp(
                 "complete player bytes .* exceeds budget " + TOTAL_BUDGET.bytes
@@ -322,6 +349,35 @@ try {
                 TOTAL_BUDGET.gzipBytes
         );
         assert.throws(
+            () =>
+                writeBuildBundleReport(
+                    root,
+                    {
+                        outputSha256: collectBundleMeasurement(
+                            fs.readFileSync(path.join(root, "dist/player.js")),
+                            "entry"
+                        ).sha256,
+                    },
+                    []
+                ),
+            /validation failed/
+        );
+        const gzipFailure = JSON.parse(
+            fs.readFileSync(
+                path.join(root, "build/reports/classic-size-diagnostics.json")
+            )
+        );
+        assert(
+            gzipFailure.violations.some(
+                (item) => item.scope === "total" && item.metric === "gzipBytes"
+            )
+        );
+        assert(
+            !gzipFailure.violations.some(
+                (item) => item.scope === "asset" || item.scope === "legacyTotal"
+            )
+        );
+        assert.throws(
             () => inspectBundleSets(root),
             new RegExp(
                 "complete player gzipBytes .* exceeds budget " +
@@ -364,6 +420,25 @@ try {
         "y".repeat(LEGACY_TOTAL_BUDGET.bytes - 800000)
     );
     assert.throws(
+        () =>
+            writeBuildBundleReport(
+                root,
+                { outputSha256: measurement.sha256 },
+                []
+            ),
+        /validation failed/
+    );
+    const legacyFailure = JSON.parse(
+        fs.readFileSync(
+            path.join(root, "build/reports/classic-size-diagnostics.json")
+        )
+    );
+    assert(
+        legacyFailure.violations.some(
+            (item) => item.scope === "legacyTotal" && item.metric === "bytes"
+        )
+    );
+    assert.throws(
         () => inspectBundleSets(root),
         new RegExp(
             `legacy complete player bytes .* exceeds budget ${LEGACY_TOTAL_BUDGET.bytes}`
@@ -373,6 +448,248 @@ try {
     fs.writeFileSync(oversizedSet, source);
     fs.writeFileSync(additional, source);
     const optimizer = { outputSha256: measurement.sha256 };
+    const diagnosticFile = path.join(
+        root,
+        "build/reports/classic-size-diagnostics.json"
+    );
+    function diagnose(artifacts = ARTIFACTS, kinds) {
+        const first = fs.existsSync(path.join(root, artifacts[0]))
+            ? collectBundleMeasurement(
+                  fs.readFileSync(path.join(root, artifacts[0])),
+                  artifacts[0]
+              )
+            : measurement;
+        assert.throws(
+            () =>
+                writeBuildBundleReport(
+                    root,
+                    { outputSha256: first.sha256 },
+                    [],
+                    artifacts,
+                    kinds,
+                    {
+                        attempt: "fresh-attempt",
+                        mode: "fixture",
+                        source: "exact-source",
+                    }
+                ),
+            /Classic bundle validation failed/
+        );
+        assert(
+            !fs.existsSync(path.join(root, "build/reports/classic-bundle.json"))
+        );
+        return JSON.parse(fs.readFileSync(diagnosticFile));
+    }
+    // Valid collection is byte/schema identical to the original strict report.
+    const strictReport = writeBundleReport(root, optimizer, []);
+    assert.deepEqual(writeBuildBundleReport(root, optimizer, []), strictReport);
+    assert(!fs.existsSync(diagnosticFile));
+    // Entry overflow cannot stop collection of later variants or either metric.
+    const denseEntry = crypto.randomBytes(BUDGET.bytes + 1);
+    fs.writeFileSync(path.join(root, ARTIFACTS[0]), denseEntry);
+    fs.writeFileSync(
+        path.join(root, ARTIFACTS[2]),
+        "x".repeat(BUDGET.bytes + 1)
+    );
+    fs.writeFileSync(
+        path.join(root, "dist/provider-m3u.js"),
+        "x".repeat(PROVIDER_BUDGET.bytes + 1)
+    );
+    fs.writeFileSync(
+        path.join(root, "dist/local-media-ui.js"),
+        "x".repeat(OPTIONAL_BUDGETS["local-media-ui"].bytes + 1)
+    );
+    const failed = diagnose();
+    assert.equal(failed.diagnostic, true);
+    assert.equal(failed.complete, true);
+    assert.equal(failed.source, "exact-source");
+    assert.equal(failed.attempt, "fresh-attempt");
+    assert.equal(failed.artifacts.length, 3);
+    assert.deepEqual(failed.budget, BUDGET);
+    assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    for (const metric of ["bytes", "gzipBytes"])
+        assert(
+            failed.violations.some(
+                (item) => item.path === ARTIFACTS[0] && item.metric === metric
+            )
+        );
+    for (const file of [
+        ARTIFACTS[2],
+        "dist/provider-m3u.js",
+        "dist/local-media-ui.js",
+    ])
+        assert(failed.violations.some((item) => item.path === file));
+    for (const set of failed.providerBundles) {
+        assert.equal(
+            set.providers.length,
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+        );
+        assert.equal(set.optionalAssets.length, optionalCount);
+        const entry = failed.artifacts.find((item) => item.path === set.entry);
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                set.legacyTotal[metric],
+                [entry, ...set.providers].reduce(
+                    (sum, item) => sum + item[metric],
+                    0
+                )
+            );
+            assert.equal(
+                set.total[metric],
+                [entry, ...set.providers, ...set.optionalAssets].reduce(
+                    (sum, item) => sum + item[metric],
+                    0
+                )
+            );
+        }
+    }
+    restoreDistribution();
+    fs.writeFileSync(path.join(root, ARTIFACTS[2]), source);
+    // Missing data produces null totals, never zeros or a stale complete report.
+    const missing = path.join(root, "dist-mobile/dist/local-media-ui.js");
+    fs.unlinkSync(missing);
+    let incomplete = diagnose();
+    assert.equal(incomplete.complete, false);
+    assert.equal(incomplete.providerBundles[2].total, null);
+    assert(incomplete.providerBundles[2].legacyTotal);
+    assert(
+        incomplete.inputErrors.some(
+            (item) => item.path === "dist-mobile/dist/local-media-ui.js"
+        )
+    );
+    fs.writeFileSync(missing, source);
+    // Bounded input errors do not prevent independent variant collection.
+    const unsafe = path.join(root, "dist/provider-m3u.js");
+    for (const kind of ["empty", "directory", "symlink", "excessive"]) {
+        fs.unlinkSync(unsafe);
+        if (kind === "directory") fs.mkdirSync(unsafe);
+        else if (kind === "symlink")
+            fs.symlinkSync(path.join(root, ARTIFACTS[2]), unsafe);
+        else if (kind === "excessive") {
+            const fd = fs.openSync(unsafe, "w");
+            fs.ftruncateSync(fd, 16 * 1024 * 1024 + 1);
+            fs.closeSync(fd);
+        } else fs.writeFileSync(unsafe, "");
+        incomplete = diagnose();
+        assert.equal(incomplete.complete, false, kind);
+        assert.equal(incomplete.providerBundles[0].legacyTotal, null, kind);
+        assert(incomplete.providerBundles[2].total, kind);
+        fs.rmSync(unsafe, { force: true, recursive: true });
+        fs.writeFileSync(unsafe, source);
+    }
+    const originalRead = fs.readSync;
+    let destabilized = false;
+    fs.readSync = function (fd, buffer, ...args) {
+        const count = originalRead.call(this, fd, buffer, ...args);
+        if (!destabilized) {
+            destabilized = true;
+            fs.appendFileSync(path.join(root, ARTIFACTS[0]), "changed");
+        }
+        return count;
+    };
+    try {
+        assert.throws(
+            () => writeBuildBundleReport(root, optimizer, []),
+            /validation failed/
+        );
+        incomplete = JSON.parse(fs.readFileSync(diagnosticFile));
+        assert(
+            incomplete.inputErrors.some((item) => /Unstable/.test(item.error))
+        );
+        assert.equal(incomplete.providerBundles[0].total, null);
+    } finally {
+        fs.readSync = originalRead;
+        fs.writeFileSync(path.join(root, ARTIFACTS[0]), source);
+    }
+    fs.writeFileSync(path.join(root, "dist/provider-unexpected.js"), source);
+    incomplete = diagnose();
+    assert.equal(incomplete.providerBundles[0].total, null);
+    assert(
+        incomplete.inputErrors.some((item) =>
+            /Unexpected provider/.test(item.error)
+        )
+    );
+    fs.unlinkSync(path.join(root, "dist/provider-unexpected.js"));
+    assert.throws(
+        () => writeBuildBundleReport(root, { outputSha256: "wrong" }, []),
+        /validation failed/
+    );
+    assert(
+        JSON.parse(fs.readFileSync(diagnosticFile)).inputErrors.some((item) =>
+            /optimizer/.test(item.error)
+        )
+    );
+    const originalWrite = fs.writeFileSync;
+    fs.writeFileSync = function (file, ...args) {
+        if (file === diagnosticFile) throw new Error("fixture write failure");
+        return originalWrite.call(this, file, ...args);
+    };
+    try {
+        assert.throws(
+            () => writeBuildBundleReport(root, { outputSha256: "wrong" }, []),
+            /validation failed.*diagnostics write failed: fixture write failure/
+        );
+    } finally {
+        fs.writeFileSync = originalWrite;
+    }
+    writeBuildBundleReport(root, optimizer, []);
+    fs.writeFileSync(diagnosticFile, "stale");
+    clearBuildSizeReports(root);
+    assert(!fs.existsSync(diagnosticFile));
+    assert(
+        !fs.existsSync(path.join(root, "build/reports/classic-bundle.json"))
+    );
+    const serverReport = writeBuildBundleReport(
+        root,
+        optimizer,
+        [],
+        [ARTIFACTS[0]],
+        undefined,
+        { mode: "server" }
+    );
+    assert.equal(serverReport.artifacts.length, 1);
+    assert.equal(serverReport.providerBundles.length, 1);
+    const serverOnly = path.join(root, "server-only");
+    fs.mkdirSync(serverOnly);
+    fs.cpSync(path.join(root, "dist"), path.join(serverOnly, "dist"), {
+        recursive: true,
+    });
+    assert.equal(
+        writeBuildBundleReport(serverOnly, optimizer, [], ["dist/player.js"])
+            .artifacts.length,
+        1
+    );
+    fs.writeFileSync(
+        path.join(serverOnly, "dist/player.js"),
+        "x".repeat(BUDGET.bytes + 1)
+    );
+    assert.throws(
+        () =>
+            writeBuildBundleReport(
+                serverOnly,
+                {
+                    outputSha256: collectBundleMeasurement(
+                        fs.readFileSync(
+                            path.join(serverOnly, "dist/player.js")
+                        ),
+                        "entry"
+                    ).sha256,
+                },
+                [],
+                ["dist/player.js"],
+                undefined,
+                { mode: "server" }
+            ),
+        /validation failed/
+    );
+    const serverFailure = JSON.parse(
+        fs.readFileSync(
+            path.join(serverOnly, "build/reports/classic-size-diagnostics.json")
+        )
+    );
+    assert.equal(serverFailure.mode, "server");
+    assert.equal(serverFailure.complete, true);
+    assert.equal(serverFailure.artifacts.length, 1);
     // Android Play ships exactly the four permitted provider families.
     // Check both its retained flat export and the nested Capacitor entry point.
     const playArtifacts = ["play/player.js", "play/dist/player.js"];
@@ -514,12 +831,23 @@ try {
     assert(
         fs.existsSync(path.join(mobileStage, "dist/subtitle-appearance.js"))
     );
+    const pipelineSource = fs.readFileSync(
+        path.join(__dirname, "../vite.config.ts"),
+        "utf8"
+    );
+    assert(pipelineSource.includes("const size = collectBundleMeasurement("));
+    assert(!/\bmeasureBundle\(/.test(pipelineSource));
+    assert(
+        pipelineSource.indexOf('stageNativeRuntime(mobileDir, "capacitor")') <
+            pipelineSource.lastIndexOf("writeBuildBundleReport(")
+    );
     const androidGates = [];
     function findAndroidGate(node) {
         if (
             ts.isCallExpression(node) &&
             ts.isIdentifier(node.expression) &&
-            node.expression.text === "inspectBundleSets"
+            node.expression.text === "writeBuildBundleReport" &&
+            node.arguments[0]?.getText(config) === "outDir"
         )
             androidGates.push(node.getText(config));
         ts.forEachChild(node, findAndroidGate);
@@ -529,11 +857,15 @@ try {
     const inspectAndroid = () =>
         vm.runInNewContext(androidGates[0], {
             __dirname: root,
-            inspectBundleSets,
+            androidFlavor: "play",
+            CLASSIC_MAIN_MODULES: [],
             outDir: androidOutput,
             providerKinds: playKinds,
+            result: { code: source, report: optimizer },
+            sizeContext: { attempt: "fixture", source: "fixture" },
+            writeBuildBundleReport,
         });
-    const androidSets = inspectAndroid();
+    const androidSets = inspectAndroid().providerBundles;
     assert.deepEqual(
         Array.from(androidSets, (set) => set.entry),
         androidArtifacts
@@ -542,12 +874,143 @@ try {
         androidSets[1].total.bytes,
         measurement.bytes * (5 + optionalCount)
     );
+    const {
+        transformPlaySystemIcons,
+    } = require("../scripts/play-system-icons.cjs");
+    const iconSource = 'var icon="\\ue810";';
+    const transformed = transformPlaySystemIcons(iconSource);
+    assert.notEqual(transformed, iconSource);
+    const iconOptimizer = {
+        outputSha256: collectBundleMeasurement(iconSource, "entry").sha256,
+    };
+    for (const file of androidArtifacts)
+        fs.writeFileSync(path.join(androidOutput, file), transformed);
+    assert.equal(
+        writeBuildBundleReport(
+            androidOutput,
+            iconOptimizer,
+            [],
+            androidArtifacts,
+            playKinds,
+            { mode: "android-play", nativeEntrySource: iconSource }
+        ).artifacts[0].sha256,
+        collectBundleMeasurement(transformed, "entry").sha256
+    );
+    assert.throws(
+        () =>
+            writeBuildBundleReport(
+                androidOutput,
+                { outputSha256: "wrong" },
+                [],
+                androidArtifacts,
+                playKinds,
+                { mode: "android-play", nativeEntrySource: iconSource }
+            ),
+        /validation failed/
+    );
+    // Native icon rewriting cannot grant headroom to oversized optimizer output.
+    const rawBoundary =
+        iconSource +
+        "x".repeat(BUDGET.bytes + 1 - Buffer.byteLength(iconSource));
+    const iconPrefix = iconSource.repeat(4096);
+    const densePayload = Buffer.concat(
+        Array.from({ length: 12000 }, (_, index) =>
+            crypto.createHash("sha256").update(String(index)).digest()
+        )
+    ).toString("base64");
+    const gzipCandidate = (length) =>
+        iconPrefix + 'var payload="' + densePayload.slice(0, length) + '";';
+    let low = 0,
+        high = densePayload.length;
+    while (low < high) {
+        const middle = (low + high) >> 1;
+        if (
+            collectBundleMeasurement(gzipCandidate(middle), "optimizer-output")
+                .gzipBytes > BUDGET.gzipBytes
+        )
+            high = middle;
+        else low = middle + 1;
+    }
+    for (const [metric, original] of [
+        ["bytes", rawBoundary],
+        ["gzipBytes", gzipCandidate(low)],
+    ]) {
+        const originalSize = collectBundleMeasurement(
+            original,
+            "optimizer-output"
+        );
+        assert(originalSize[metric] > BUDGET[metric]);
+        assert.throws(
+            () => measureBundle(original, "entry"),
+            new RegExp(metric + ".*exceeds budget")
+        );
+        const staged = transformPlaySystemIcons(original);
+        assert.doesNotThrow(() => measureBundle(staged, "native-entry"));
+        for (const file of androidArtifacts)
+            fs.writeFileSync(path.join(androidOutput, file), staged);
+        assert.throws(
+            () =>
+                writeBuildBundleReport(
+                    androidOutput,
+                    { outputSha256: originalSize.sha256 },
+                    [],
+                    androidArtifacts,
+                    playKinds,
+                    { mode: "android-play", nativeEntrySource: original }
+                ),
+            /validation failed/
+        );
+        const boundaryFailure = JSON.parse(
+            fs.readFileSync(
+                path.join(
+                    androidOutput,
+                    "build/reports/classic-size-diagnostics.json"
+                )
+            )
+        );
+        assert.equal(boundaryFailure.complete, true);
+        assert.equal(boundaryFailure.inputErrors.length, 0);
+        assert(
+            boundaryFailure.violations.some(
+                (item) =>
+                    item.scope === "optimizer" &&
+                    item.metric === metric &&
+                    item.actual === originalSize[metric] &&
+                    item.budget === BUDGET[metric]
+            )
+        );
+        assert(
+            !boundaryFailure.violations.some((item) => item.scope === "asset")
+        );
+        assert.equal(boundaryFailure.providerBundles.length, 2);
+        assert(
+            !fs.existsSync(
+                path.join(androidOutput, "build/reports/classic-bundle.json")
+            )
+        );
+    }
+    for (const file of androidArtifacts)
+        fs.writeFileSync(path.join(androidOutput, file), source);
     const externalChunk = path.join(androidOutput, "dist/provider-m3u.js");
     fs.unlinkSync(externalChunk);
-    assert.throws(
-        inspectAndroid,
-        (error) => error.code === "ENOENT" && error.path === externalChunk
+    assert.throws(inspectAndroid, /Classic bundle validation failed/);
+    const androidFailure = JSON.parse(
+        fs.readFileSync(
+            path.join(
+                androidOutput,
+                "build/reports/classic-size-diagnostics.json"
+            )
+        )
     );
+    assert.equal(androidFailure.complete, false);
+    assert(
+        androidFailure.inputErrors.some(
+            (item) =>
+                item.path === "dist/provider-m3u.js" &&
+                /ENOENT/.test(item.error)
+        )
+    );
+    assert.equal(androidFailure.providerBundles[1].total, null);
     assert.equal(
         writeBundleReport(root, optimizer, [], playArtifacts, playKinds)
             .providerBundles[0].providers.length,
