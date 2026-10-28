@@ -300,6 +300,10 @@ deadline.unref();
                 );
         };
         profilePage.on("console", profileConsole);
+        const profilePageError = () => checkpoint("profile reopen: pageerror");
+        const profilePageCrash = () => checkpoint("profile reopen: pagecrash");
+        profilePage.once("pageerror", profilePageError);
+        profilePage.once("crash", profilePageCrash);
         const restoredProfile = await profilePage.evaluate(async (profile) => {
             window.stbDelItem = (key) => localStorage.removeItem(key);
             window.stbGetItem = (key) => localStorage.getItem(key);
@@ -323,7 +327,65 @@ deadline.unref();
                 params: { number: 2 },
             });
             console.log("[direct-media-profile] list");
-            const catalog = profiles.filter(await media.list());
+            let lastProgress = "",
+                progressLines = 0,
+                progressBytes = 0,
+                progressCapped = false;
+            const rawCatalog = await media.list((value) => {
+                // Diagnostics must never cancel or alter the catalog operation.
+                try {
+                    const phases = [
+                        "sources",
+                        "permission",
+                        "files",
+                        "enumerating",
+                        "metadata",
+                        "complete",
+                    ];
+                    const count = (number) =>
+                        typeof number === "number" &&
+                        Number.isFinite(number) &&
+                        number >= 0
+                            ? Math.floor(Math.min(number, 1000000000))
+                            : 0;
+                    const phase = value.phase;
+                    const summary = JSON.stringify({
+                        discovered: count(value.discovered),
+                        items: count(
+                            Array.isArray(value.items) ? value.items.length : 0
+                        ),
+                        phase: phases.includes(phase) ? phase : "unknown",
+                        scanned: count(value.scanned),
+                        sources: count(
+                            Array.isArray(value.sources)
+                                ? value.sources.length
+                                : 0
+                        ),
+                    });
+                    if (summary === lastProgress || progressCapped) return;
+                    lastProgress = summary;
+                    const line = "[direct-media-profile] list " + summary;
+                    if (
+                        progressLines >= 24 ||
+                        progressBytes + line.length > 3840
+                    ) {
+                        progressCapped = true;
+                        console.log(
+                            '[direct-media-profile] list {"phase":"diagnostic-cap","omitted":1}'
+                        );
+                        return;
+                    }
+                    progressLines++;
+                    progressBytes += line.length;
+                    console.log(line);
+                } catch (_) {
+                    // A malformed diagnostic field cannot reject the real scan.
+                }
+            });
+            console.log("[direct-media-profile] list-resolved");
+            if (rawCatalog.scanning !== false || rawCatalog.cancelled !== false)
+                throw new Error("Profile catalog did not complete");
+            const catalog = profiles.filter(rawCatalog);
             const item = catalog.items.find(
                 (item) => "local-" + item.id === profiles.selection()
             );
@@ -335,6 +397,8 @@ deadline.unref();
             return { body, count: catalog.items.length, imported, loaded };
         }, portable);
         profilePage.off("console", profileConsole);
+        profilePage.off("pageerror", profilePageError);
+        profilePage.off("crash", profilePageCrash);
         assert.equal(restoredProfile.imported.data.binding_required, false);
         assert.equal(restoredProfile.loaded.status, "ok");
         assert.equal(restoredProfile.body, "second.mp4");
