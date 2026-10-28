@@ -383,15 +383,27 @@ const LOCAL_COMMAND_SESSION_ALLOWANCE = Object.freeze({
     bytes: 5632,
     gzipBytes: 1792,
 });
+// First selected-source preview plus one-shot stable saved-item restoration.
+// Canonical PR919 artifacts observe +7711 raw / +2409 web, +2412 native gzip.
+// Node patch versions differ; this is observed payload cost, not a controlled
+// optimizer experiment or device-runtime proof. Count this feature once per
+// entry/legacy/base total; providers and optional assets retain their own caps.
+// See docs/evidence/local-startup-preview-size-20261027.json.
+const LOCAL_STARTUP_PREVIEW_ALLOWANCE = Object.freeze({
+    bytes: 8192,
+    gzipBytes: 2560,
+});
 const BUDGET = Object.freeze({
     bytes:
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
     gzipBytes:
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -575,11 +587,13 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     bytes:
         1205560 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
     gzipBytes:
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -634,11 +648,13 @@ const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
         1319160 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
     gzipBytes:
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
-        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes,
+        LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -804,6 +820,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localCommandSessionAllowance: LOCAL_COMMAND_SESSION_ALLOWANCE,
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
+        localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -1153,6 +1170,7 @@ module.exports = {
     LOCAL_COMMAND_SESSION_ALLOWANCE,
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
+    LOCAL_STARTUP_PREVIEW_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

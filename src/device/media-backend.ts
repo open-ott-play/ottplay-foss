@@ -331,7 +331,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             if (current()) announce(type || "position");
         }
         function seek(value: number, rebind: boolean) {
-            if (!current() || !engine || !isFinite(value) || value < 0) return;
+            if (!current() || !isFinite(value) || value < 0) return;
             if (
                 !handle.active() &&
                 (!rebind ||
@@ -341,6 +341,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             )
                 return;
             if (previewEvent) {
+                if (!engine) return;
                 engine.seek(value);
                 if (current()) observe("position");
                 return;
@@ -351,7 +352,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 (!next || !context || next.kind !== context.kind)
             )
                 return;
-            if (!beforeIntent()) return;
+            if (!beforeIntent() || !engine) return;
             if (lane === "main" && ports.beforeSeek) ports.beforeSeek(value);
             var afterSeekGuard = ports.context();
             if (
@@ -521,7 +522,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             id: ++sequence,
             lane: lane,
             pause: function () {
-                if (!handle.active() || !engine || !beforeIntent()) return;
+                if (!handle.active() || !beforeIntent() || !engine) return;
                 phase = "paused";
                 updateTimer();
                 command("pause");
@@ -558,12 +559,11 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     lane !== "main" ||
                     !context ||
                     ["live", "archive", "vod"].indexOf(context.kind) < 0 ||
-                    !engine ||
                     !handle.active() ||
                     phase === "stopped"
                 )
                     return null;
-                if (manual && !beforeIntent()) return null;
+                if ((manual && !beforeIntent()) || !engine) return null;
                 observe();
                 if (!handle.active() || !engine) return null;
                 var sample = engine.sample();

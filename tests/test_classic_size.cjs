@@ -14,6 +14,7 @@ const {
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_COMMAND_SESSION_ALLOWANCE,
+    LOCAL_STARTUP_PREVIEW_ALLOWANCE,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
@@ -115,7 +116,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1326840, gzipBytes: 423274 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1335032, gzipBytes: 425834 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -128,11 +129,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1331320, gzipBytes: 425578 });
-    assert.deepEqual(BUDGET, { bytes: 1070440, gzipBytes: 330746 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1339512, gzipBytes: 428138 });
+    assert.deepEqual(BUDGET, { bytes: 1078632, gzipBytes: 333306 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1213240,
-        gzipBytes: 382646,
+        bytes: 1221432,
+        gzipBytes: 385206,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -146,6 +147,56 @@ try {
         bytes: 2700,
         gzipBytes: 1300,
     });
+    assert.deepEqual(LOCAL_STARTUP_PREVIEW_ALLOWANCE, {
+        bytes: 8192,
+        gzipBytes: 2560,
+    });
+    assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    for (const [actual, previous] of [
+        [BUDGET, { bytes: 1070440, gzipBytes: 330746 }],
+        [LEGACY_TOTAL_BUDGET, { bytes: 1213240, gzipBytes: 382646 }],
+        [BASE_TOTAL_BUDGET, { bytes: 1326840, gzipBytes: 423274 }],
+        [TOTAL_BUDGET, { bytes: 1331320, gzipBytes: 425578 }],
+    ])
+        for (const key of ["bytes", "gzipBytes"])
+            assert.equal(
+                actual[key] - previous[key],
+                LOCAL_STARTUP_PREVIEW_ALLOWANCE[key],
+                "startup preview counted exactly once"
+            );
+    const startupEvidence = require("../docs/evidence/local-startup-preview-size-20261027.json");
+    assert.deepEqual(
+        startupEvidence.allocation,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE
+    );
+    assert.equal(
+        startupEvidence.featureHeadroom.bytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes -
+            startupEvidence.observedDelta.bytes
+    );
+    assert.equal(
+        startupEvidence.featureHeadroom.minimumGzipBytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes -
+            Math.max(
+                startupEvidence.observedDelta.webGzipBytes,
+                startupEvidence.observedDelta.nativeAndMobileGzipBytes
+            )
+    );
+    for (const metric of ["bytes", "gzipBytes"]) {
+        assert.equal(
+            startupEvidence.minimumCompleteHeadroom[metric],
+            Math.min(
+                ...startupEvidence.canonical.complete.map(
+                    (item) => TOTAL_BUDGET[metric] - item[metric]
+                )
+            )
+        );
+        assert(
+            startupEvidence.canonical.entries.every(
+                (item) => item[metric] <= BUDGET[metric]
+            )
+        );
+    }
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -1059,6 +1110,10 @@ try {
     assert.deepEqual(
         report.localStallRecoveryAllowance,
         LOCAL_STALL_RECOVERY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.localStartupPreviewAllowance,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE
     );
     assert.deepEqual(
         report.localCommandSessionAllowance,

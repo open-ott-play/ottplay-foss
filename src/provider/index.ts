@@ -938,7 +938,13 @@ export function loadProv(
     // the latest selection. Session disposal is immediate, before that wait.
     providerRuntime.replace(function (providerSession: any) {
         if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
-        var rollback = localSession && localSession();
+        var rollback: (() => void) | void;
+        try {
+            rollback = localSession && localSession();
+        } catch (_) {
+            onError();
+            return;
+        }
         providerSession.own(function () {
             rollback = undefined;
         });
@@ -998,10 +1004,15 @@ export function loadProv(
             var cancel = rollback;
             rollback = undefined;
             if (cancel) cancel();
+            if (!providerSession.active()) return;
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             (window as any)._pendingProvId = "";
-            if (s !== "no") {
-                alert(_("Failed to load!") + " (" + s + ")");
+            var failedProvider = typeof s === "undefined" ? "" : s;
+            if (failedProvider !== "no") {
+                alert(
+                    _("Failed to load!") +
+                        (failedProvider ? " (" + failedProvider + ")" : "")
+                );
             }
             $(launch_id)
                 .append("<br/><b>" + _("Failed to load!") + "</b>")

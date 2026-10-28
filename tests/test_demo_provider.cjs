@@ -456,6 +456,93 @@ test("late session asset failure rolls RAM back once and cannot undo a later exp
     }
 });
 
+test("throwing Local handoff recovers its current owner synchronously and after a deferred script", () => {
+    for (const deferred of [false, true])
+        for (const superseded of ["none", "command", "session"]) {
+            const f = sessionFixture(storage());
+            f.w.loadProv();
+            const previous = f.w.__ottActiveProviderDriver;
+            const dispose = previous.dispose;
+            let disposals = 0,
+                recoveries = 0,
+                release,
+                calls = 0;
+            previous.dispose = () => {
+                disposals++;
+                dispose();
+            };
+            f.w.firstRun = () => recoveries++;
+            const alerts = [];
+            f.w.alert = (message) => alerts.push(message);
+            const runtime = f.w.__ottProviderRuntime.classic;
+            if (deferred) {
+                let legacy;
+                runtime.replace((session) => {
+                    legacy = session;
+                }, true);
+                runtime.loadScript(
+                    legacy,
+                    (_url, ready) => {
+                        release = ready;
+                    },
+                    "fixture",
+                    () => {},
+                    () => {}
+                );
+            }
+            let replacement;
+            assert.doesNotThrow(() =>
+                f.w.loadProv("offline", () => {
+                    calls++;
+                    f.w.s = undefined;
+                    if (superseded !== "none") {
+                        replacement = {
+                            dispose() {
+                                throw Error("must retain replacement");
+                            },
+                            id: "new-owner",
+                        };
+                        f.w.__ottActiveProviderDriver = replacement;
+                        f.w._pendingProvId = "new-owner";
+                        f.adapter.localPlayback.begin(() => "new-session");
+                        f.adapter.set(
+                            "localMediaPlaybackSelection",
+                            "new-selection"
+                        );
+                        if (superseded === "command")
+                            f.w.__ottCommandChannelLoad = {};
+                        else runtime.replace(() => {}, true);
+                    }
+                    throw new Error("runtime_changed");
+                })
+            );
+            assert.equal(calls, deferred ? 0 : 1);
+            if (deferred) assert.doesNotThrow(() => release());
+            assert.equal(calls, 1);
+            assert.equal(disposals, 1);
+            assert.equal(recoveries, superseded === "none" ? 1 : 0);
+            assert.deepEqual(
+                alerts,
+                superseded === "none" ? ["Failed to load!"] : []
+            );
+            assert.equal(f.w.__ottActiveProviderDriver, replacement || null);
+            assert.equal(f.w.commandChannelsReady, false);
+            if (superseded !== "none") {
+                assert.equal(f.w._pendingProvId, "new-owner");
+                assert.equal(f.adapter.localPlayback.active(), true);
+                assert.equal(
+                    f.adapter.get("localMediaPlaybackSelection"),
+                    "new-selection"
+                );
+            } else {
+                assert.equal(f.w._pendingProvId, "");
+                assert.equal(f.adapter.localPlayback.active(), false);
+            }
+            assert.equal(f.saved.get("ottplayprov"), "m3u");
+            assert.equal(f.saved.get("localMediaPlaybackSelection"), undefined);
+        }
+});
+
 test("first-run action explicitly selects demo without rewriting saved profiles", () => {
     const { w, saved, loaded } = uiFixture();
     const original = new Map(saved);

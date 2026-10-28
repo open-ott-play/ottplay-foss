@@ -105,6 +105,111 @@ function test(name, run) {
     }
 }
 for (const operation of ["pause", "seek", "device seek", "restart"]) {
+    for (const result of ["commit", "refuse", "replace"]) {
+        test(
+            "pending resolver " +
+                operation +
+                " admits intent once and fences " +
+                result,
+            (f) => {
+                const resolvers = [];
+                f.ports.resolve = (_url, done) => {
+                    resolvers.push(done);
+                    return () => {};
+                };
+                const handle = f.backend.open({ url: "pending-original" });
+                let calls = 0,
+                    waiting = true,
+                    seekHooks = 0;
+                f.ports.beforeSeek = () => {
+                    seekHooks++;
+                };
+                f.ports.beforeIntent = () => {
+                    calls++;
+                    if (result === "commit") waiting = false;
+                    if (result === "replace") {
+                        f.domain({ generation: 2, kind: "vod", position: 0 });
+                        f.backend.open({ url: "replacement" });
+                    }
+                    return result !== "refuse";
+                };
+                if (operation === "device seek") f.backend.seek(120);
+                else handle[operation](operation === "seek" ? 120 : undefined);
+                assert.equal(calls, 1);
+                assert.equal(waiting, result !== "commit");
+                assert.equal(
+                    f.leases.length,
+                    0,
+                    "manual intent never starts a pending decoder"
+                );
+                assert.equal(
+                    seekHooks,
+                    0,
+                    "pending seek keeps its existing no-transport behavior"
+                );
+                if (result === "replace") {
+                    const next = f.backend.current();
+                    assert.notEqual(next, handle);
+                    resolvers[0]("stale-original");
+                    assert.equal(
+                        f.leases.length,
+                        0,
+                        "old resolver cannot attach after intent reentry"
+                    );
+                    handle.pause();
+                    handle.seek(80);
+                    handle.restart();
+                    assert.equal(
+                        calls,
+                        1,
+                        "stale handles cannot commit the replacement preview"
+                    );
+                    resolvers[1]("replacement-resolved");
+                    assert.equal(f.leases.length, 1);
+                    assert.equal(
+                        f.leases[0].request.url,
+                        "replacement-resolved"
+                    );
+                    assert.equal(f.leases[0].disposed, 0);
+                } else {
+                    resolvers[0]("original-resolved");
+                    assert.equal(f.leases.length, 1);
+                    assert.equal(f.leases[0].request.position, undefined);
+                    assert.equal(
+                        f.leases[0].request.paused,
+                        undefined,
+                        "no new queued pause/seek/restart semantics"
+                    );
+                    assert.equal(f.leases[0].sample.position, 0);
+                    f.playing(0, 5);
+                    assert.equal(f.leases[0].sample.paused, false);
+                }
+            }
+        );
+    }
+}
+test("pending automatic restart and invalid seek never admit manual intent", (f) => {
+    let done,
+        calls = 0;
+    f.ports.resolve = (_url, callback) => {
+        done = callback;
+        return () => {};
+    };
+    const handle = f.backend.open({ url: "pending" });
+    f.ports.beforeIntent = () => {
+        calls++;
+    };
+    assert.equal(f.backend.restart(false), null);
+    for (const value of [-1, NaN, Infinity]) {
+        handle.seek(value);
+        f.backend.seek(value);
+    }
+    assert.equal(calls, 0);
+    assert.equal(f.leases.length, 0);
+    done("resolved");
+    assert.equal(f.leases.length, 1);
+});
+for (const operation of ["pause", "seek", "device seek", "restart"]) {
     test(
         "public " + operation + " commits startup preview before transport",
         (f) => {
