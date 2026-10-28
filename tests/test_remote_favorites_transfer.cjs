@@ -18,6 +18,8 @@ const real = new Set([
     "src/commands/remote-feature.ts",
     "src/plugins/favorites-transfer-runtime.ts",
     "src/commands/favorites-transfer.ts",
+    "src/commands/favorites-recovery.ts",
+    "src/settings/favorites-recovery-codec.ts",
     "src/commands/favorites-document-json.ts",
     "src/plugins/remote-inspect.ts",
     "src/plugins/command-server.ts",
@@ -79,6 +81,16 @@ function fixture() {
         },
         status: async () => null,
     };
+    const physical = {
+        current: () => true,
+        exclusive: async (work) => work(physical),
+        implementationVersion: 1,
+        kind: "synchronous-localstorage",
+        lockName: "ottplay:favorites-ledger",
+        origin: "https://synthetic.invalid",
+        privateLedgerKey: "favorites-receipts.v1",
+        read: () => null,
+    };
     const host = {
         captureContext: () => ({ current: () => true }),
         catalog() {
@@ -99,17 +111,25 @@ function fixture() {
             },
         }),
         document: { validate: () => {} },
-        provision() {
+        physicalStorage: () => (qualified ? physical : null),
+        async provisionExclusive() {
             stats.writes++;
             throw new Error("fixture does not write");
         },
         qualified: () => qualified,
+        recoveryStorage: () => physical,
+        validateNewAdmission: async () => {},
     };
     function load(file) {
         file = path.normalize(file);
         if (modules[file]) return modules[file];
         if (file === "src/storage/index.ts")
-            return { settingsRecoveryRequired: recoveryRequired };
+            return {
+                captureFavoritesPhysicalRead: () => physical,
+                captureFavoritesPhysicalStorage: () =>
+                    qualified ? physical : null,
+                settingsRecoveryRequired: recoveryRequired,
+            };
         if (file === "src/plugins/remote-notifications.ts")
             return {
                 createRemoteNotifications: () => ({
@@ -246,6 +266,8 @@ async function scenario(name, run) {
                         }),
                     dispose() {},
                     execute() {},
+                    recoveryCapability: async () => ({ version: 1 }),
+                    validateRecoveryResponse: () => false,
                 }),
             };
             const values = [];
@@ -305,6 +327,8 @@ async function scenario(name, run) {
                     capability: () => pending,
                     dispose() {},
                     execute() {},
+                    recoveryCapability: async () => ({ version: 1 }),
+                    validateRecoveryResponse: () => false,
                 }),
             };
             const values = [];
@@ -389,6 +413,8 @@ async function scenario(name, run) {
                                 }),
                             dispose() {},
                             execute() {},
+                            recoveryCapability: async () => ({ version: 1 }),
+                            validateRecoveryResponse: () => false,
                         }),
                     };
                 const values = [],
@@ -436,7 +462,7 @@ async function scenario(name, run) {
         }
     );
     await scenario(
-        "non-Plex capability hint preserves exact legacy caps without optional loads or writes",
+        "non-Plex discovery preserves legacy caps and exposes global recovery",
         async () => {
             for (const [prefix, driver] of [
                 ["m3u", "m3u"],
@@ -460,12 +486,14 @@ async function scenario(name, run) {
                     version: 1,
                 };
                 expected.data.random = { version: 1 };
-                const result = await ready(
-                    f.start({ action: "capabilities", params: {} })
-                );
+                f.setQualified(false);
+                expected.data.favorites_transfer_recovery = { version: 1 };
+                const pending = f.start({ action: "capabilities", params: {} });
+                f.finishLoad();
+                const result = await ready(pending);
                 assert.deepEqual(result, expected);
-                assert.equal(f.scripts.length, 0);
-                assert.equal(f.stats.creates, 0);
+                assert.equal(f.scripts.length, 1);
+                assert.equal(f.stats.creates, 1);
                 assert.equal(f.stats.writes, 0);
             }
         }
@@ -530,6 +558,8 @@ async function scenario(name, run) {
             assert.equal(f.stats.storage.decompress, compression.decompress);
             assert.equal(f.stats.storage.recoveryRequired, f.recoveryRequired);
             assert.deepEqual(Object.keys(f.stats.storage).sort(), [
+                "captureFavoritesPhysicalRead",
+                "captureFavoritesPhysicalStorage",
                 "compress",
                 "decompress",
                 "recoveryRequired",
@@ -804,6 +834,8 @@ async function scenario(name, run) {
                         version: 1,
                         ...result,
                     }),
+                    recoveryCapability: async () => ({ version: 1 }),
+                    validateRecoveryResponse: () => false,
                 }),
             };
             const first = await ready(f.start(f.request("bindingcatalog")));
@@ -890,6 +922,257 @@ async function scenario(name, run) {
             assert.equal(inspect.accept(req), true);
             req.params.runtime = "another-runtime";
             assert.equal(inspect.accept(req), false);
+        }
+    );
+    await scenario(
+        "global recovery route reads absent ledger without Plex and validates correlation",
+        async () => {
+            const f = fixture();
+            f.w.p_pref = "m3u";
+            f.w.__ottActiveProviderDriver = { id: "m3u" };
+            f.setQualified(false);
+            const pending = f.start(f.request("recovery", { mode: "list" }));
+            f.finishLoad();
+            const result = await ready(pending);
+            assert.equal(result.status, "ok");
+            assert.equal(result.data.ledger_format, 2);
+            assert.deepEqual(result.data.records, []);
+            assert.equal(result.data.backend_proof, null);
+            assert.equal(f.stats.writes, 0);
+            const missing = await ready(
+                f.start(
+                    f.request("recovery", {
+                        mode: "inspect",
+                        operation_id: "33333333-3333-4333-8333-333333333333",
+                    })
+                )
+            );
+            assert.equal(missing.data.record, null);
+            assert.equal(missing.data.acknowledge_allowed, false);
+            assert.equal(missing.data.plan_sha256, null);
+            const api = f.w.__ottRemoteFavoritesTransfer.value,
+                original = api.execute;
+            api.execute = async (params, transport) => ({
+                ...(await original(params, transport)),
+                runtime: "foreign",
+            });
+            const bad = await ready(
+                f.start(f.request("recovery", { mode: "list" }))
+            );
+            assert.equal(bad.data.error, "storage_unavailable");
+            assert.equal(f.stats.writes, 0);
+        }
+    );
+    await scenario(
+        "capability deadline retains each ready sibling independently and fences late work",
+        async () => {
+            for (const readyIndex of [0, 1]) {
+                const f = fixture(),
+                    values = [];
+                let resolve;
+                const pending = new Promise((done) => {
+                    resolve = done;
+                });
+                const full = { codecs: [{ provider: "plex" }], version: 1 },
+                    recovery = { version: 1 };
+                f.w.__ottFavoritesTransferRuntime = {
+                    create: () => ({
+                        capability: () =>
+                            readyIndex === 0 ? Promise.resolve(full) : pending,
+                        dispose() {},
+                        execute() {},
+                        recoveryCapability: () =>
+                            readyIndex === 1
+                                ? Promise.resolve(recovery)
+                                : pending,
+                        validateRecoveryResponse: () => false,
+                    }),
+                };
+                f.load(
+                    "src/commands/remote-favorites-transfer.ts"
+                ).remoteFavoritesTransferCapability(
+                    f.w,
+                    () => "runtime-1",
+                    (a, b) => values.push(plain([a, b]))
+                );
+                await flush();
+                assert.equal(values.length, 0);
+                const timer = [...f.timers.values()][0];
+                f.advance(1000);
+                timer.fn();
+                assert.deepEqual(values, [
+                    [
+                        readyIndex === 0 ? full : null,
+                        readyIndex === 1 ? recovery : null,
+                    ],
+                ]);
+                let reads = 0;
+                Object.defineProperty(f.w, "__ottRemoteFavoritesTransfer", {
+                    get() {
+                        reads++;
+                        throw Error("late cache");
+                    },
+                });
+                resolve({ version: 1 });
+                await flush();
+                assert.equal(reads, 0);
+                assert.equal(values.length, 1);
+                assert.equal(f.timers.size, 0);
+            }
+        }
+    );
+    await scenario(
+        "ready sibling cannot survive cancellation, stale runtime, or replaced factory",
+        async () => {
+            for (const change of ["cancel", "runtime", "factory"]) {
+                const f = fixture(),
+                    values = [];
+                let owner = "runtime-1",
+                    resolve;
+                const pending = new Promise((done) => {
+                    resolve = done;
+                });
+                f.w.__ottFavoritesTransferRuntime = {
+                    create: () => ({
+                        capability: () => pending,
+                        dispose() {},
+                        execute() {},
+                        recoveryCapability: async () => ({ version: 1 }),
+                        validateRecoveryResponse: () => false,
+                    }),
+                };
+                const cancel = f
+                    .load("src/commands/remote-favorites-transfer.ts")
+                    .remoteFavoritesTransferCapability(
+                        f.w,
+                        () => owner,
+                        (a, b) => values.push(plain([a, b]))
+                    );
+                await flush();
+                const timer = [...f.timers.values()][0];
+                if (change === "cancel") cancel();
+                else if (change === "runtime") owner = "runtime-2";
+                else
+                    f.w.__ottFavoritesTransferRuntime = {
+                        create() {
+                            throw Error("not called");
+                        },
+                    };
+                f.advance(1000);
+                timer.fn();
+                resolve({ version: 1 });
+                await flush();
+                assert.deepEqual(
+                    values,
+                    change === "cancel" ? [] : [[null, null]]
+                );
+                assert.equal(f.timers.size, 0);
+            }
+        }
+    );
+    await scenario(
+        "recovery errors are restricted to the accepted ten-code wire union at runtime and bridge",
+        async () => {
+            const allowed = [
+                "invalid_request",
+                "envelope_too_large",
+                "runtime_changed",
+                "expired",
+                "busy",
+                "unsupported_persistence",
+                "revision_conflict",
+                "policy_denied",
+                "storage_unavailable",
+                "limits_exceeded",
+            ];
+            const legacy = [
+                "binding_changed",
+                "reconciliation_required",
+                "operation_conflict",
+                "not_ready",
+                "codec_error",
+                "transaction_not_found",
+            ];
+            for (const layer of ["runtime", "bridge"])
+                for (const error of allowed.concat(legacy)) {
+                    const f = fixture();
+                    let pending;
+                    if (layer === "runtime") {
+                        f.host.physicalStorage = () => {
+                            throw Error(error);
+                        };
+                        pending = f.start(
+                            f.request("recovery", { mode: "list" })
+                        );
+                        f.finishLoad();
+                    } else {
+                        f.w.__ottFavoritesTransferRuntime = {
+                            create: () => ({
+                                capability: async () => null,
+                                dispose() {},
+                                execute: async (params) => ({
+                                    error,
+                                    op: params.op,
+                                    runtime: params.runtime,
+                                    version: 1,
+                                }),
+                                recoveryCapability: async () => null,
+                                validateRecoveryResponse() {
+                                    throw Error(
+                                        "error must not validate success"
+                                    );
+                                },
+                            }),
+                        };
+                        pending = f.start(
+                            f.request("recovery", { mode: "list" })
+                        );
+                    }
+                    const result = await ready(pending);
+                    assert.equal(
+                        result.data.error,
+                        allowed.includes(error) ? error : "storage_unavailable"
+                    );
+                    assert.deepEqual(Object.keys(result.data).sort(), [
+                        "error",
+                        "op",
+                        "runtime",
+                        "version",
+                    ]);
+                    assert.equal(f.stats.writes, 0);
+                }
+        }
+    );
+    await scenario(
+        "recovery restriction does not change legacy seven-operation error forwarding",
+        async () => {
+            for (const error of [
+                "binding_changed",
+                "reconciliation_required",
+                "operation_conflict",
+                "not_ready",
+                "codec_error",
+                "transaction_not_found",
+            ]) {
+                const f = fixture();
+                f.w.__ottFavoritesTransferRuntime = {
+                    create: () => ({
+                        capability: async () => null,
+                        dispose() {},
+                        execute: async (params) => ({
+                            error,
+                            op: params.op,
+                            runtime: params.runtime,
+                            version: 1,
+                        }),
+                        recoveryCapability: async () => null,
+                        validateRecoveryResponse: () => false,
+                    }),
+                };
+                const result = await ready(f.start(f.request("snapshot")));
+                assert.equal(result.data.error, error);
+                assert.equal(f.stats.writes, 0);
+            }
         }
     );
     console.log(passed + " reachable favorites transfer groups passed");

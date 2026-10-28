@@ -693,79 +693,85 @@ function moduleOf(file, requireFn, window) {
             };
             let restartModule;
             const dependencies = (name) =>
-                name === "../offline/playback-selection"
+                name === "./favorites-physical-storage"
                     ? moduleOf(
-                          "src/offline/playback-selection.ts",
+                          "src/storage/favorites-physical-storage.ts",
                           dependencies,
                           host
                       )
-                    : name === "./remote-favorites-transfer" ||
-                        name === "./remote-feature" ||
-                        name === "./remote-favorites" ||
-                        name === "./remote-local-media" ||
-                        name === "./remote-favorites-contract"
+                    : name === "../offline/playback-selection"
                       ? moduleOf(
-                            "src/commands/" + name.slice(2) + ".ts",
+                            "src/offline/playback-selection.ts",
                             dependencies,
                             host
                         )
-                      : name === "../provider"
-                        ? {
-                              checkProviderUrl: () => true,
-                              isProviderAllowed: () => true,
-                              providerIds: ["demo", "m3u"],
-                              providerLabels: null,
-                              selectProviderByIndex: () => true,
-                          }
-                        : name === "./remote-profiles"
-                          ? moduleOf(
-                                "src/commands/remote-profiles.ts",
-                                dependencies,
-                                host
-                            )
-                          : name === "../plugins/vportal"
+                      : name === "./remote-favorites-transfer" ||
+                          name === "./remote-feature" ||
+                          name === "./remote-favorites" ||
+                          name === "./remote-local-media" ||
+                          name === "./remote-favorites-contract"
+                        ? moduleOf(
+                              "src/commands/" + name.slice(2) + ".ts",
+                              dependencies,
+                              host
+                          )
+                        : name === "../provider"
+                          ? {
+                                checkProviderUrl: () => true,
+                                isProviderAllowed: () => true,
+                                providerIds: ["demo", "m3u"],
+                                providerLabels: null,
+                                selectProviderByIndex: () => true,
+                            }
+                          : name === "./remote-profiles"
                             ? moduleOf(
-                                  "src/plugins/vportal.ts",
+                                  "src/commands/remote-profiles.ts",
                                   dependencies,
                                   host
                               )
-                            : name === "./remote-plex"
+                            : name === "../plugins/vportal"
                               ? moduleOf(
-                                    "src/commands/remote-plex.ts",
+                                    "src/plugins/vportal.ts",
                                     dependencies,
                                     host
                                 )
-                              : name === "./remote-restart" ||
-                                  name === "../commands/remote-restart"
-                                ? restartModule ||
-                                  (restartModule = moduleOf(
-                                      "src/commands/remote-restart.ts",
+                              : name === "./remote-plex"
+                                ? moduleOf(
+                                      "src/commands/remote-plex.ts",
                                       dependencies,
                                       host
-                                  ))
-                                : name === "./remote-app-update"
-                                  ? moduleOf(
-                                        "src/commands/remote-app-update.ts",
+                                  )
+                                : name === "./remote-restart" ||
+                                    name === "../commands/remote-restart"
+                                  ? restartModule ||
+                                    (restartModule = moduleOf(
+                                        "src/commands/remote-restart.ts",
                                         dependencies,
                                         host
-                                    )
-                                  : name === "./remote-doctor"
+                                    ))
+                                  : name === "./remote-app-update"
                                     ? moduleOf(
-                                          "src/plugins/remote-doctor.ts",
+                                          "src/commands/remote-app-update.ts",
                                           dependencies,
                                           host
                                       )
-                                    : name === "../storage/index" ||
-                                        name === "../utils/lzstring" ||
-                                        name === "../utils/helpers"
+                                    : name === "./remote-doctor"
                                       ? moduleOf(
-                                            "src/" + name.slice(3) + ".ts",
+                                            "src/plugins/remote-doctor.ts",
                                             dependencies,
                                             host
                                         )
-                                      : name === "../utils/caseless"
-                                        ? caseless
-                                        : { handleCommand: dispatch };
+                                      : name === "../storage/index" ||
+                                          name === "../utils/lzstring" ||
+                                          name === "../utils/helpers"
+                                        ? moduleOf(
+                                              "src/" + name.slice(3) + ".ts",
+                                              dependencies,
+                                              host
+                                          )
+                                        : name === "../utils/caseless"
+                                          ? caseless
+                                          : { handleCommand: dispatch };
             let execute, inspection;
             let offlineLoaded = [];
             function activateOffline(initialIndex = 0) {

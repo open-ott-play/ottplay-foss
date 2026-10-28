@@ -1,5 +1,10 @@
 import { utf8Encode } from "../commands/favorites-document-json";
 import {
+    createFavoritesRecoveryDispatcher,
+    FAVORITES_RECOVERY_ERRORS,
+    validFavoritesRecoveryResponse,
+} from "../commands/favorites-recovery";
+import {
     createFavoritesTransfer,
     FAVORITES_TRANSFER_ERRORS,
 } from "../commands/favorites-transfer";
@@ -14,6 +19,8 @@ export function createFavoritesTransferRuntime(
             compress(value: string): string;
             decompress(value: string): string | null;
             recoveryRequired(): boolean;
+            captureFavoritesPhysicalStorage?: () => any;
+            captureFavoritesPhysicalRead?: () => any;
         };
     }
 ) {
@@ -22,7 +29,7 @@ export function createFavoritesTransferRuntime(
         grant: any = null,
         grantTimer: any = null;
     var waits: { cancel(): void }[] = [];
-    var uncertainOperation: string | null = null;
+    var uncertainOperation: any = null;
     var crypto = w.crypto,
         subtle = crypto && crypto.subtle;
     var instanceRuntime = options.runtime();
@@ -157,6 +164,33 @@ export function createFavoritesTransferRuntime(
         utf8,
         uuid,
     });
+    var recovery = createFavoritesRecoveryDispatcher({
+        current,
+        host,
+        now,
+        runtime: () => instanceRuntime,
+        sha256,
+        utf8,
+    });
+    async function newAdmission(params: any, transport: any): Promise<void> {
+        if (
+            uncertainOperation &&
+            (await bounded(
+                recovery.acknowledged(
+                    uncertainOperation,
+                    () => authorized(params, transport),
+                    transport.deadlineAt
+                ),
+                transport.deadlineAt
+            ))
+        ) {
+            uncertainOperation = null;
+            releaseGrant();
+        }
+        if (uncertainOperation) fail("reconciliation_required");
+        await bounded(host.validateNewAdmission(), transport.deadlineAt);
+        if (!authorized(params, transport)) fail("expired");
+    }
     function releaseGrant(): void {
         if (grantTimer !== null) w.clearTimeout(grantTimer);
         grantTimer = null;
@@ -280,6 +314,15 @@ export function createFavoritesTransferRuntime(
         if (!busy) running = true;
         try {
             if (!authorized(params, transport)) fail("expired");
+            if (op === "recovery")
+                return await bounded(
+                    recovery.execute(
+                        params,
+                        () => authorized(params, transport),
+                        transport.deadlineAt
+                    ),
+                    transport.deadlineAt
+                );
             if (busy) fail("busy");
             cleanGrant();
             if (grant && grant.consumed && !engine.busy()) releaseGrant();
@@ -328,8 +371,16 @@ export function createFavoritesTransferRuntime(
             }
             if (op === "provision") {
                 if (grant || engine.busy()) fail("busy");
-                if (uncertainOperation) fail("reconciliation_required");
-                return response(op, host.provision(params));
+                await newAdmission(params, transport);
+                return response(
+                    op,
+                    await bounded(
+                        host.provisionExclusive(params, () =>
+                            authorized(params, transport)
+                        ),
+                        transport.deadlineAt
+                    )
+                );
             }
             if (op === "prepare") {
                 if (
@@ -353,7 +404,7 @@ export function createFavoritesTransferRuntime(
                 )
                     fail("invalid_request");
                 if (grant || engine.busy()) fail("busy");
-                if (uncertainOperation) fail("reconciliation_required");
+                await newAdmission(params, transport);
                 var start = now(),
                     deadline = start + params.budget_ms,
                     context = host.captureContext();
@@ -444,10 +495,15 @@ export function createFavoritesTransferRuntime(
                 op === "commit" &&
                 (result.outcome === "unknown" || result.outcome === "partial")
             )
-                uncertainOperation = params.operation_id;
+                uncertainOperation = {
+                    operationId: params.operation_id,
+                    payloadHash: stageGrant && stageGrant.args.document_sha256,
+                    scope: stageGrant && stageGrant.args.scope,
+                };
             if (
                 op === "status" &&
-                params.operation_id === uncertainOperation &&
+                uncertainOperation &&
+                params.operation_id === uncertainOperation.operationId &&
                 (result.outcome === "verified" ||
                     result.outcome === "not_applied")
             )
@@ -458,7 +514,10 @@ export function createFavoritesTransferRuntime(
         } catch (error) {
             var code = error && ((error as any).code || (error as any).message);
             if (
-                FAVORITES_TRANSFER_ERRORS.indexOf(code) < 0 &&
+                (op === "recovery"
+                    ? FAVORITES_RECOVERY_ERRORS
+                    : FAVORITES_TRANSFER_ERRORS
+                ).indexOf(code) < 0 &&
                 !(op === "provision" && code === "outcome_unknown")
             )
                 code = "storage_unavailable";
@@ -489,7 +548,9 @@ export function createFavoritesTransferRuntime(
                     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                 )
                     return null;
-                return current() && host.qualified()
+                return current() &&
+                    host.qualified() &&
+                    (await recovery.qualified(current, now() + 15000))
                     ? JSON.parse(JSON.stringify(CAPABILITY))
                     : null;
             } catch (_) {
@@ -503,6 +564,18 @@ export function createFavoritesTransferRuntime(
             engine.dispose();
         },
         execute,
+        recoveryCapability: async function () {
+            try {
+                return current() &&
+                    (await sha256("")) ===
+                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    ? { version: 1 }
+                    : null;
+            } catch (_) {
+                return null;
+            }
+        },
+        validateRecoveryResponse: validFavoritesRecoveryResponse,
     };
 }
 const CAPABILITY = {

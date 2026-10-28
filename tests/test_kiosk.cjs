@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -12,7 +14,13 @@ function load(file, globals = {}) {
         },
     }).outputText;
     acorn.parse(code, { ecmaVersion: 5 });
-    const context = { exports: {}, ...globals };
+    const context = {
+        exports: {},
+        ...(file === "src/storage/index.ts"
+            ? storageImports(globals.require)
+            : {}),
+        ...globals,
+    };
     vm.runInNewContext(code, context);
     return context.exports;
 }

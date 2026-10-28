@@ -99,10 +99,11 @@ in-memory read echoes the attempted write.
 
 ## Integration and verification still required
 
-This preparation adds no provider hooks, save/copy/import UI behavior, capability,
-remote command, persistence key, profile migration or runtime initializer. The
-player owner must wire the exact selectors/current-owner checks, cryptographic
-UUID generation and shared persistence boundary before using it. Saving an
+This foundation module does not itself add provider hooks, save/copy/import UI
+behavior, a capability, remote command, profile migration or runtime initializer.
+The optional current-Plex transfer integration supplies the selectors, owner
+checks and shared persistence boundary. Its guarded receipt recovery contract is
+documented in [Favorites ledger recovery](favorites-ledger-recovery.md). Saving an
 existing profile must call bind; copy-as-new must remap both profile/source IDs;
 explicit public restore must call import and require binding where missing.
 

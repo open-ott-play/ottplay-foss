@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -278,7 +280,12 @@ async function flush() {
                     },
                 }
             ).outputText,
-            { document: { cookie: "" }, exports, window: f.w }
+            {
+                ...storageImports(),
+                document: { cookie: "" },
+                exports,
+                window: f.w,
+            }
         );
         f.w.stbGetItem = exports.stbGetItem;
         f.w.stbSetItem = exports.stbSetItem;

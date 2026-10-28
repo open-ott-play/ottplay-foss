@@ -12,7 +12,24 @@ const output = ts.transpileModule(source, {
     reportDiagnostics: true,
 });
 assert.equal(output.diagnostics.length, 0);
-const host = { exports: {} };
+const codecHost = { exports: {} };
+vm.runInNewContext(
+    ts.transpileModule(
+        fs.readFileSync(
+            path.join(__dirname, "../src/settings/favorites-recovery-codec.ts"),
+            "utf8"
+        ),
+        { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+    ).outputText,
+    codecHost
+);
+const host = {
+    exports: {},
+    require: (name) => {
+        assert.equal(name, "./favorites-recovery-codec");
+        return codecHost.exports;
+    },
+};
 vm.runInNewContext(output.outputText, host);
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const id = (n) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
@@ -52,9 +69,15 @@ function fixture() {
             return "confirmed";
         },
         current: () => state.current,
+        fence: () => ({
+            backendProof: "f".repeat(64),
+            guardImplementationVersion: 1,
+            version: 2,
+        }),
         now: () => state.time,
         persistedRead: () => state.raw,
         read: () => state.raw,
+        writeGuard: () => true,
     };
     return { api: host.createFavoritesOperationReceipts(ports), ports, state };
 }
@@ -201,15 +224,43 @@ test("CAS-time competing writer is preserved", () => {
 test("pending unknown and partial entries cannot be evicted to admit new work", () => {
     for (const state of ["pending", "unknown", "partial"]) {
         const f = fixture();
-        for (let n = 1; n <= 32; n++) {
-            const t = reserve(f, n);
+        let admitted = 0;
+        for (let n = 1; n <= 33; n++) {
+            let plan;
+            try {
+                plan = f.api.prepareReservation(
+                    input(n),
+                    { freshAdmission: true },
+                    state === "pending" ? undefined : outcome(state)
+                );
+            } catch (error) {
+                assert.equal(error.code, "capacity");
+                break;
+            }
+            f.api.commitReservation(plan);
             if (state !== "pending")
-                f.api.commitCompletion(completion(f, t, outcome(state)));
+                f.api.commitCompletion(
+                    f.api.materializeCompletion(plan.completion, "b".repeat(64))
+                );
+            admitted++;
         }
+        assert(admitted > 0 && admitted <= 32);
+        assert.equal(JSON.parse(f.state.raw).entries.length, admitted);
+        assert(
+            JSON.parse(f.state.raw).entries.every(
+                (entry) => entry.state === state
+            )
+        );
         f.state.time += 86400001;
         assert.equal(f.api.status(id(1)).state, "unknown");
         const raw = f.state.raw;
-        reject("capacity", () => reserve(f, 33));
+        reject("capacity", () =>
+            f.api.prepareReservation(
+                input(34),
+                { freshAdmission: true },
+                state === "pending" ? undefined : outcome(state)
+            )
+        );
         assert.equal(f.state.raw, raw);
     }
 });
@@ -451,3 +502,66 @@ test("pressure preserves mixed pending partial unknown rows while evicting compl
         );
 });
 console.log("NEW TOTAL " + passed);
+
+test("v2 provenance and actual held write grant are mandatory; pure missing reads never initialize", () => {
+    const f = fixture();
+    assert.equal(f.api.status(id(1)).state, "unknown");
+    assert.equal(f.state.raw, null);
+    assert.equal(f.state.writes, 0);
+    delete f.ports.fence;
+    reject("unsupported_persistence", () =>
+        f.api.prepareReservation(input(), { freshAdmission: true })
+    );
+    assert.equal(f.state.writes, 0);
+    const g = fixture();
+    const plan = g.api.prepareReservation(
+        input(),
+        { freshAdmission: true },
+        outcome()
+    );
+    g.ports.writeGuard = () => false;
+    reject("unsupported_persistence", () => g.api.commitReservation(plan));
+    assert.equal(g.state.writes, 0);
+    g.ports.writeGuard = () => true;
+    g.ports.fence = () => ({
+        backendProof: "c".repeat(64),
+        guardImplementationVersion: 1,
+        version: 2,
+    });
+    reject("invalid_plan", () => g.api.commitReservation(plan));
+    assert.equal(g.state.writes, 0);
+});
+test("legacy rows remain readonly and acknowledged rows reject all late mutation paths", () => {
+    const f = fixture();
+    const proof = reserve(f);
+    const descriptor = completion(f, proof);
+    const legacy = JSON.parse(f.state.raw);
+    delete legacy.entries[0].fence;
+    legacy.version = 1;
+    f.state.raw = JSON.stringify(legacy);
+    assert.equal(f.api.status(id(1)).state, "pending");
+    reject("invalid_ticket", () => f.api.verifyPending(proof));
+    rejectCompletion("invalid_plan", () =>
+        f.api.commitCompletion({ ...descriptor, beforeRaw: f.state.raw })
+    );
+    const current = fixture();
+    const t = reserve(current);
+    const d = completion(current, t);
+    const value = JSON.parse(current.state.raw);
+    value.entries[0].recovery_ack = {
+        acknowledgement_id: "a".repeat(64),
+        backend_proof: "f".repeat(64),
+        ledger_revision_before: "b".repeat(64),
+        reason: "accept-unknown-no-replay",
+        runtime: "observer",
+    };
+    current.state.raw = JSON.stringify(value);
+    const raw = current.state.raw;
+    reject("invalid_ticket", () => current.api.verifyPending(t));
+    rejectCompletion("invalid_plan", () =>
+        current.api.commitCompletion({ ...d, beforeRaw: raw })
+    );
+    assert.equal(current.state.raw, raw);
+    assert.equal(current.state.writes, 1);
+    assert.equal(current.api.status(id(1)).replayAllowed, false);
+});

@@ -53,11 +53,13 @@ function host(count = 1002) {
         catsArray: ["All"],
         channels,
         cList: ids,
+        clearTimeout,
         commandChannelsReady: true,
         curList: ids,
         parental: /взрослые|custom-adult/i,
         parentalArray: [],
         played: [],
+        setTimeout,
         stbGetVolume: () => 10,
     };
     w.playChannel = (category, index, fullscreen, admit) => {

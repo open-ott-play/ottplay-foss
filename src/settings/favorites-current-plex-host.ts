@@ -6,8 +6,13 @@ import {
 import { createFavoritesPlexCodec } from "../media/favorites-plex-codec";
 import { createPlexFavoritesDocument } from "../media/favorites-plex-document";
 import { createCurrentPlexFavoritesTransferPort } from "../media/favorites-transfer-port";
+import type {
+    FavoritesPhysicalStorageGrant,
+    FavoritesPhysicalStorageRead,
+} from "../storage/favorites-physical-storage";
 import { createFavoritesBindings } from "./favorites-bindings";
 import { createFavoritesOperationReceipts } from "./favorites-operation-receipts";
+import { createFavoritesRecoveryCodec } from "./favorites-recovery-codec";
 
 /** Current, verified Plex only. Reads never initialize stores, claim legacy data or connect a provider. */
 export function createFavoritesCurrentPlexHost(
@@ -22,6 +27,8 @@ export function createFavoritesCurrentPlexHost(
                   compress(value: string): string;
                   decompress(value: string): string | null;
                   recoveryRequired(): boolean;
+                  captureFavoritesPhysicalStorage?(): FavoritesPhysicalStorageGrant | null;
+                  captureFavoritesPhysicalRead?(): FavoritesPhysicalStorageRead | null;
               }
             | undefined;
     }
@@ -50,6 +57,139 @@ export function createFavoritesCurrentPlexHost(
         } catch (_) {
             return false;
         }
+    }
+    var physicalCapture =
+        storagePorts && storagePorts.captureFavoritesPhysicalStorage;
+    var readCapture = storagePorts && storagePorts.captureFavoritesPhysicalRead;
+    function physicalStorage(): FavoritesPhysicalStorageGrant | null {
+        try {
+            if (
+                !storageCurrent() ||
+                typeof physicalCapture !== "function" ||
+                storagePorts!.captureFavoritesPhysicalStorage !==
+                    physicalCapture
+            )
+                return null;
+            var value = physicalCapture();
+            return value && value.current() ? value : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    function recoveryStorage(): FavoritesPhysicalStorageRead | null {
+        try {
+            if (
+                !storageCurrent() ||
+                typeof readCapture !== "function" ||
+                storagePorts!.captureFavoritesPhysicalRead !== readCapture
+            )
+                return null;
+            var value = readCapture();
+            return value && value.current() ? value : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    var activePhysical: FavoritesPhysicalStorageGrant | null = null;
+    var activeAdmission: (() => boolean) | null = null;
+    var proofGrant: FavoritesPhysicalStorageGrant | null = null;
+    var backendProof: string | null = null;
+    var validatedLedger: string | null | undefined;
+    var recoveryCodec = createFavoritesRecoveryCodec({
+        sha256: async (text) => ports.sha256(ports.utf8(text)),
+    });
+    async function qualifyPhysical(): Promise<FavoritesPhysicalStorageGrant> {
+        var value = physicalStorage();
+        if (!value) fail("unsupported_persistence");
+        if (proofGrant !== value || !backendProof) {
+            var digest = await ports.sha256(
+                ports.utf8(
+                    JSON.stringify([
+                        "ottplay-favorites-recovery-backend-v1",
+                        value.origin,
+                        value.privateLedgerKey,
+                        value.lockName,
+                        value.kind,
+                        2,
+                        value.implementationVersion,
+                    ])
+                )
+            );
+            if (
+                !value.current() ||
+                physicalStorage() !== value ||
+                !/^[a-f0-9]{64}(?![\s\S])/.test(digest)
+            )
+                fail("unsupported_persistence");
+            proofGrant = value;
+            backendProof = digest;
+        }
+        return value;
+    }
+    async function validateNewAdmission(): Promise<void> {
+        var value = await qualifyPhysical(),
+            before = value.read(receiptKey);
+        var state = await recoveryCodec.snapshot(before);
+        if (
+            physicalStorage() !== value ||
+            !value.current() ||
+            value.read(receiptKey) !== before
+        )
+            fail("reconciliation_required");
+        if (state.records.some((record: any) => !record.acknowledgement))
+            fail("reconciliation_required");
+        validatedLedger = before;
+    }
+    function fence() {
+        return proofGrant && proofGrant === physicalStorage() && backendProof
+            ? {
+                  backendProof: backendProof,
+                  guardImplementationVersion: 1 as const,
+                  version: 2 as const,
+              }
+            : null;
+    }
+    function writeGuard(value: any): boolean {
+        var expected = fence();
+        return (
+            !!expected &&
+            activePhysical === proofGrant &&
+            !!activePhysical &&
+            activePhysical.current() &&
+            same(value, expected) &&
+            !!activeAdmission &&
+            activeAdmission()
+        );
+    }
+    function exclusive<T>(
+        value: FavoritesPhysicalStorageGrant,
+        work: () => T | Promise<T>,
+        current: () => boolean
+    ): Promise<T> {
+        return value.exclusive(function () {
+            if (!current() || physicalStorage() !== value || activePhysical)
+                fail("busy");
+            activePhysical = value;
+            activeAdmission = current;
+            return Promise.resolve()
+                .then(function () {
+                    if (!current() || !value!.current())
+                        fail("binding_changed");
+                    return work();
+                })
+                .then(
+                    function (result) {
+                        activePhysical = null;
+                        activeAdmission = null;
+                        return result;
+                    },
+                    function (error) {
+                        activePhysical = null;
+                        activeAdmission = null;
+                        throw error;
+                    }
+                );
+        });
     }
     var target: any = null;
     var provisioning: { blocked: string | null } | null = null;
@@ -402,7 +542,21 @@ export function createFavoritesCurrentPlexHost(
             if (beforeWrite) beforeWrite();
             if (!owner.current() || owner.raw(key) !== before)
                 return "conflict" as const;
-            owner.set(key, after);
+            if (activePhysical) {
+                var outcome = activePhysical.compareAndSwap(
+                    key,
+                    before,
+                    after,
+                    function () {
+                        return (
+                            owner.current() &&
+                            !!activeAdmission &&
+                            activeAdmission()
+                        );
+                    }
+                );
+                if (outcome !== "confirmed") return outcome;
+            } else owner.set(key, after);
         } catch (_) {
             return "unknown" as const;
         }
@@ -511,9 +665,11 @@ export function createFavoritesCurrentPlexHost(
             var b = binding(scope);
             return !!b && b.current();
         },
+        fence: fence,
         now: ports.now,
         persistedRead: () => authority().owner.raw(receiptKey, 65536),
         read: () => authority().owner.raw(receiptKey, 65536),
+        writeGuard: writeGuard,
     });
     function unprotectedOutcomes(owner: any): void {
         var raw = owner.raw(receiptKey, 65536);
@@ -530,7 +686,9 @@ export function createFavoritesCurrentPlexHost(
             raw !== null &&
             JSON.parse(raw).entries.some(
                 (entry: any) =>
-                    entry.state !== "verified" && entry.state !== "not_applied"
+                    entry.state !== "verified" &&
+                    entry.state !== "not_applied" &&
+                    (!entry.recovery_ack || raw !== validatedLedger)
             )
         )
             fail("reconciliation_required");
@@ -740,6 +898,22 @@ export function createFavoritesCurrentPlexHost(
             provisioning = null;
         }
     }
+    function provisionExclusive(
+        params: any,
+        current: () => boolean = () => true
+    ): Promise<any> {
+        var value = physicalStorage();
+        if (!value) return Promise.reject(new Error("unsupported_persistence"));
+        return exclusive(
+            value,
+            async function () {
+                await validateNewAdmission();
+                if (!current() || !value!.current()) fail("binding_changed");
+                return provision(params);
+            },
+            current
+        );
+    }
     return {
         binding,
         captureContext: function () {
@@ -762,7 +936,7 @@ export function createFavoritesCurrentPlexHost(
         },
         catalog,
         createAdapter: function (admitOperation: any) {
-            return createCurrentPlexFavoritesTransferPort(w, {
+            var port = createCurrentPlexFavoritesTransferPort(w, {
                 admitOperation,
                 binding,
                 capture,
@@ -783,10 +957,41 @@ export function createFavoritesCurrentPlexHost(
                 sha256: ports.sha256,
                 utf8: ports.utf8,
             });
+            var inspect = port.inspect,
+                apply = port.apply;
+            port.inspect = async function (
+                expected: any,
+                operationId?: string,
+                context?: any
+            ) {
+                await validateNewAdmission();
+                return inspect(expected, operationId, context);
+            };
+            port.apply = async function (
+                plan: any,
+                context: any,
+                current: () => boolean
+            ) {
+                var value = await qualifyPhysical();
+                return exclusive(
+                    value,
+                    function () {
+                        return apply(plan, context, function () {
+                            return current() && value.current();
+                        });
+                    },
+                    current
+                );
+            };
+            return port;
         },
         document,
+        physicalStorage,
         provision,
+        provisionExclusive,
         qualified,
+        recoveryStorage,
+        validateNewAdmission,
     };
 }
 (window as any).__ottFavoritesCurrentPlexHost = {

@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const vm = require("node:vm");
@@ -44,6 +46,7 @@ function fixture(initial, realStorage = false) {
             removeItem: (key) => data.delete(key),
             setItem: (key, value) => data.set(key, String(value)),
         };
+        Object.assign(host, storageImports(host.require));
         host.exports = {};
         vm.runInContext(
             require("typescript").transpileModule(

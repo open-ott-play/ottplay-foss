@@ -10,6 +10,7 @@ const files = {
     "../storage/index": "src/storage/index.ts",
     "../utils/helpers": "src/utils/helpers.ts",
     "../utils/lzstring": "src/utils/lzstring.ts",
+    "./favorites-physical-storage": "src/storage/favorites-physical-storage.ts",
     "./remote-favorites-transfer": "src/commands/remote-favorites-transfer.ts",
     "./remote-feature": "src/commands/remote-feature.ts",
 };
@@ -37,4 +38,18 @@ module.exports = function dependency(name, host, environment = {}) {
         window: host,
     });
     return exports;
+};
+
+// Real factories for full-module CJS imports and legacy AST/global fixtures.
+module.exports.storage = function storageImports(fallback) {
+    const physical = module.exports("./favorites-physical-storage", {});
+    return {
+        ...physical,
+        exports: {},
+        require(name) {
+            if (name === "./favorites-physical-storage") return physical;
+            if (fallback) return fallback(name);
+            throw new Error("Unexpected storage fixture dependency: " + name);
+        },
+    };
 };

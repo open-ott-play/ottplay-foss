@@ -1,4 +1,8 @@
-import { settingsRecoveryRequired } from "../storage/index";
+import {
+    captureFavoritesPhysicalRead,
+    captureFavoritesPhysicalStorage,
+    settingsRecoveryRequired,
+} from "../storage/index";
 import { compress, decompress } from "../utils/lzstring";
 import { loadRemoteFeature } from "./remote-feature";
 
@@ -7,7 +11,14 @@ interface TransferRuntime {
     capability(): Promise<any | null>;
     dispose(): void;
     execute(params: any, transport: any): Promise<any>;
+    recoveryCapability(): Promise<any | null>;
+    validateRecoveryResponse(value: any, params: any): boolean;
 }
+
+var recoveryErrors =
+    "invalid_request envelope_too_large runtime_changed expired busy unsupported_persistence revision_conflict policy_denied storage_unavailable limits_exceeded".split(
+        " "
+    );
 
 var protocolErrors = (
     "invalid_request envelope_too_large runtime_changed busy expired " +
@@ -35,6 +46,8 @@ function instance(w: any, runtime: () => string): TransferRuntime | null {
     var value = factory.create(w, {
         runtime: runtime,
         storage: {
+            captureFavoritesPhysicalRead,
+            captureFavoritesPhysicalStorage,
             compress: compress,
             decompress: decompress,
             recoveryRequired: settingsRecoveryRequired,
@@ -43,6 +56,8 @@ function instance(w: any, runtime: () => string): TransferRuntime | null {
     if (
         !value ||
         typeof value.capability !== "function" ||
+        typeof value.recoveryCapability !== "function" ||
+        typeof value.validateRecoveryResponse !== "function" ||
         typeof value.execute !== "function" ||
         typeof value.dispose !== "function"
     )
@@ -64,13 +79,16 @@ function load(w: any, done: (error?: string) => void): void {
 export function remoteFavoritesTransferCapability(
     w: any,
     runtime: () => string,
-    done: (capability: any | null) => void,
+    done: (capability: any | null, recoveryCapability?: any | null) => void,
     expiresAt?: number
 ): () => void {
     var cancelled = false;
     var settled = false;
     var owner = runtime();
     var timer: any = null;
+    var ready: any[] = [null, null],
+        completed = 0,
+        acceptedApi: any = null;
     function current(): boolean {
         return (
             !cancelled &&
@@ -78,27 +96,37 @@ export function remoteFavoritesTransferCapability(
             (expiresAt === undefined || Date.now() < expiresAt * 1000)
         );
     }
-    function finish(value: any): void {
+    function finish(value: any, recoveryValue: any = null): void {
         if (cancelled || settled) return;
         settled = true;
         if (timer !== null) w.clearTimeout(timer);
         timer = null;
-        done(current() && value && value.version === 1 ? value : null);
+        var cached = acceptedApi && w.__ottRemoteFavoritesTransfer;
+        var owned =
+            current() &&
+            (!acceptedApi ||
+                (!!cached &&
+                    cached.value === acceptedApi &&
+                    cached.factory === w.__ottFavoritesTransferRuntime));
+        done(
+            owned && value && value.version === 1 ? value : null,
+            owned &&
+                recoveryValue &&
+                Object.keys(recoveryValue).join(",") === "version" &&
+                recoveryValue.version === 1
+                ? recoveryValue
+                : null
+        );
     }
     var budget = Math.min(
         1000,
         expiresAt === undefined ? 1000 : expiresAt * 1000 - Date.now() - 250
     );
-    // Negative-only hint: other providers retain legacy caps without optional I/O.
-    if (
-        !(budget > 0) ||
-        w.p_pref !== "plex" ||
-        w.__ottActiveProviderDriver?.id !== "plex"
-    )
-        finish(null);
+    // Recovery is global: provider selection cannot suppress its read-only route.
+    if (!(budget > 0)) finish(null);
     else {
         timer = w.setTimeout(function () {
-            finish(null);
+            finish(ready[0], ready[1]);
         }, budget);
         load(w, function (error) {
             if (cancelled || settled) return;
@@ -106,23 +134,50 @@ export function remoteFavoritesTransferCapability(
             try {
                 var api = instance(w, runtime);
                 if (!api) return finish(null);
-                Promise.resolve(api.capability()).then(
-                    function (value) {
-                        if (cancelled || settled) return;
-                        var cached = w.__ottRemoteFavoritesTransfer;
-                        finish(
-                            cached &&
-                                cached.value === api &&
-                                cached.factory ===
-                                    w.__ottFavoritesTransferRuntime
-                                ? value
-                                : null
-                        );
-                    },
-                    function () {
-                        finish(null);
+                acceptedApi = api;
+                var resolved = function (index: number, value: any): void {
+                    if (cancelled || settled) return;
+                    var cached = w.__ottRemoteFavoritesTransfer;
+                    if (
+                        current() &&
+                        cached &&
+                        cached.value === api &&
+                        cached.factory === w.__ottFavoritesTransferRuntime
+                    ) {
+                        try {
+                            if (
+                                value &&
+                                value.version === 1 &&
+                                (index === 0 ||
+                                    Object.keys(value).join(",") === "version")
+                            )
+                                ready[index] = value;
+                        } catch (_) {}
                     }
-                );
+                    completed++;
+                    if (completed === 2) finish(ready[0], ready[1]);
+                };
+                [0, 1].forEach(function (index) {
+                    if (cancelled || settled || !current()) return;
+                    var pending: any;
+                    try {
+                        pending =
+                            index === 0
+                                ? api!.capability()
+                                : api!.recoveryCapability();
+                    } catch (_) {
+                        resolved(index, null);
+                        return;
+                    }
+                    Promise.resolve(pending).then(
+                        function (value) {
+                            resolved(index, value);
+                        },
+                        function () {
+                            resolved(index, null);
+                        }
+                    );
+                });
             } catch (_) {
                 finish(null);
             }
@@ -184,7 +239,7 @@ export function executeRemoteFavoritesTransfer(
                     cached.factory === w.__ottFavoritesTransferRuntime))
         );
     }
-    function finish(value: any): void {
+    function finish(value: any, recoveryValue: any = null): void {
         if (cancelled || settled) return;
         settled = true;
         done(value);
@@ -272,7 +327,10 @@ export function executeRemoteFavoritesTransfer(
                         value.runtime !== owner ||
                         value.op !== op ||
                         (value.error !== undefined &&
-                            protocolErrors.indexOf(value.error) < 0 &&
+                            (op === "recovery"
+                                ? recoveryErrors
+                                : protocolErrors
+                            ).indexOf(value.error) < 0 &&
                             !(
                                 op === "provision" &&
                                 value.error === "outcome_unknown"
@@ -280,6 +338,15 @@ export function executeRemoteFavoritesTransfer(
                     )
                         return fail("storage_unavailable");
                     if (value.error) return fail(value.error);
+                    if (
+                        op === "recovery" &&
+                        (!executing ||
+                            !executing.validateRecoveryResponse(
+                                value,
+                                envelope.params
+                            ))
+                    )
+                        return fail("storage_unavailable");
                     finish({
                         data: value,
                         status: "ok",

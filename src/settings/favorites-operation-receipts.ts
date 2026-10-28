@@ -1,3 +1,11 @@
+import {
+    favoritesReceiptValidators,
+    favoritesRecoveryCapacity,
+    parseFavoritesRecoveryLedger,
+    validateFavoritesReceiptFence,
+    validateFavoritesReceiptRow,
+} from "./favorites-recovery-codec";
+
 /** Pure, whole-physical-ledger service. Ports do not imply cross-tab/fsync atomicity. */
 interface FavoritesOperationReceiptPorts {
     compareAndSwap(
@@ -5,9 +13,11 @@ interface FavoritesOperationReceiptPorts {
         after: string
     ): "confirmed" | "conflict" | "unknown";
     current(scope: any, refs: any): boolean;
+    fence?(): any;
     now(): number;
     persistedRead(): string | null;
     read(): string | null;
+    writeGuard?(fence: any): boolean;
 }
 
 export function createFavoritesOperationReceipts(
@@ -23,164 +33,40 @@ export function createFavoritesOperationReceipts(
     function copy(value: any): any {
         return JSON.parse(JSON.stringify(value));
     }
-    function exact(
-        value: any,
-        required: string[],
-        optional: string[] = []
-    ): boolean {
-        if (!value || typeof value !== "object" || Array.isArray(value))
-            return false;
-        var keys = Object.getOwnPropertyNames(value);
-        return (
-            required.every(function (key) {
-                return keys.indexOf(key) >= 0;
-            }) &&
-            keys.every(function (key) {
-                var d = Object.getOwnPropertyDescriptor(value, key);
-                return (
-                    !!d &&
-                    d.enumerable &&
-                    "value" in d &&
-                    (required.indexOf(key) >= 0 || optional.indexOf(key) >= 0)
-                );
-            })
-        );
-    }
-    function integer(value: any): boolean {
-        return (
-            typeof value === "number" &&
-            isFinite(value) &&
-            value >= 0 &&
-            value <= 9007199254740991 &&
-            Math.floor(value) === value
-        );
-    }
-    function uuid(value: any): boolean {
-        return (
-            typeof value === "string" &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/.test(
-                value
-            )
-        );
-    }
-    function hash(value: any): boolean {
-        return (
-            typeof value === "string" && /^[0-9a-f]{64}(?![\s\S])/.test(value)
-        );
-    }
-    function scope(value: any): boolean {
-        return (
-            exact(value, ["profileBindingId", "sourceBindingId", "provider"]) &&
-            uuid(value.profileBindingId) &&
-            uuid(value.sourceBindingId) &&
-            typeof value.provider === "string" &&
-            /^[a-z0-9][a-z0-9_.\/-]{0,63}(?![\s\S])/.test(value.provider)
-        );
-    }
-    function refs(value: any): boolean {
-        return (
-            exact(value, ["stageId", "runtimeId"]) &&
-            [value.stageId, value.runtimeId].every(function (v) {
-                return (
-                    typeof v === "string" &&
-                    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?![\s\S])/.test(v)
-                );
-            })
-        );
-    }
-    function meta(value: any): boolean {
-        return (
-            exact(value, ["code", "appliedStores", "totalStores"]) &&
-            [
-                "none",
-                "cancelled",
-                "source_changed",
-                "storage_unavailable",
-                "conflict",
-                "interrupted",
-                "target_failed",
-            ].indexOf(value.code) >= 0 &&
-            integer(value.appliedStores) &&
-            integer(value.totalStores) &&
-            value.totalStores <= 64 &&
-            value.appliedStores <= value.totalStores
-        );
-    }
-    function counts(value: any): boolean {
-        return (
-            exact(value, [
-                "channelLists",
-                "channelMemberships",
-                "mediaFavorites",
-                "unresolved",
-            ]) &&
-            Object.keys(value).every(function (key) {
-                return integer(value[key]) && value[key] <= 1000000;
-            })
-        );
-    }
-    function receipt(value: any, entry: any): boolean {
-        return (
-            exact(value, [
-                "operation_id",
-                "scope",
-                "document_sha256",
-                "plan_digest",
-                "new_revision",
-                "counts",
-                "outcome",
-                "persistence",
-            ]) &&
-            value.operation_id === entry.operationId &&
-            JSON.stringify(value.scope) === JSON.stringify(entry.scope) &&
-            value.document_sha256 === entry.payloadHash &&
-            hash(value.plan_digest) &&
-            typeof value.new_revision === "string" &&
-            /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?![\s\S])/.test(
-                value.new_revision
-            ) &&
-            counts(value.counts) &&
-            value.outcome === entry.state &&
-            value.persistence === "persistent"
-        );
-    }
+    var exact = favoritesReceiptValidators.exact,
+        integer = favoritesReceiptValidators.integer,
+        uuid = favoritesReceiptValidators.uuid,
+        hash = favoritesReceiptValidators.hash,
+        scope = favoritesReceiptValidators.scope,
+        refs = favoritesReceiptValidators.refs,
+        meta = favoritesReceiptValidators.meta,
+        counts = favoritesReceiptValidators.counts;
     function row(value: any): boolean {
-        return (
-            exact(
-                value,
-                [
-                    "operationId",
-                    "payloadHash",
-                    "scope",
-                    "refs",
-                    "createdAt",
-                    "expiresAt",
-                    "state",
-                ],
-                ["meta", "receipt"]
-            ) &&
-            uuid(value.operationId) &&
-            hash(value.payloadHash) &&
-            scope(value.scope) &&
-            refs(value.refs) &&
-            integer(value.createdAt) &&
-            integer(value.expiresAt) &&
-            value.expiresAt === value.createdAt + retention &&
-            [
-                "pending",
-                "verified",
-                "not_applied",
-                "partial",
-                "unknown",
-            ].indexOf(value.state) >= 0 &&
-            (value.state === "pending"
-                ? !Object.prototype.hasOwnProperty.call(value, "meta") &&
-                  !Object.prototype.hasOwnProperty.call(value, "receipt")
-                : meta(value.meta) && receipt(value.receipt, value)) &&
-            (value.state !== "verified" ||
-                value.meta.appliedStores === value.meta.totalStores) &&
-            (value.state !== "not_applied" || value.meta.appliedStores === 0)
-        );
+        return validateFavoritesReceiptRow(value);
+    }
+    function fence(): any {
+        var value: any;
+        try {
+            value = ports.fence && ports.fence();
+        } catch (_) {}
+        if (!validateFavoritesReceiptFence(value))
+            fail("unsupported_persistence");
+        return copy(value);
+    }
+    function writeAdmission(entry: any): void {
+        if (
+            !entry.fence ||
+            entry.recovery_ack ||
+            JSON.stringify(fence()) !== JSON.stringify(entry.fence)
+        )
+            fail("unsupported_persistence");
+        var allowed = false;
+        try {
+            allowed =
+                !!ports.writeGuard &&
+                ports.writeGuard(copy(entry.fence)) === true;
+        } catch (_) {}
+        if (!allowed) fail("unsupported_persistence");
     }
     function bounded(raw: any): boolean {
         if (typeof raw !== "string" || raw.length > 65536) return false;
@@ -194,29 +80,7 @@ export function createFavoritesOperationReceipts(
         }
     }
     function parse(raw: string | null): any {
-        if (raw === null) return { entries: [], version: 1 };
-        if (!bounded(raw)) fail("invalid_ledger");
-        var value: any;
-        try {
-            value = JSON.parse(raw as string);
-        } catch (_) {
-            fail("invalid_ledger");
-        }
-        if (
-            !exact(value, ["version", "entries"]) ||
-            value.version !== 1 ||
-            !Array.isArray(value.entries) ||
-            value.entries.length > 32 ||
-            Object.keys(value.entries).length !== value.entries.length
-        )
-            fail("invalid_ledger");
-        var ids: any = Object.create(null);
-        value.entries.forEach(function (entry: any) {
-            if (!row(entry) || ids[entry.operationId]) fail("invalid_ledger");
-            ids[entry.operationId] = true;
-        });
-        if (JSON.stringify(value) !== raw) fail("invalid_ledger");
-        return value;
+        return parseFavoritesRecoveryLedger(raw);
     }
     function now(): number {
         var time: any;
@@ -255,6 +119,7 @@ export function createFavoritesOperationReceipts(
     function ticket(entry: any): any {
         return {
             createdAt: entry.createdAt,
+            fence: copy(entry.fence),
             operationId: entry.operationId,
             payloadHash: entry.payloadHash,
             refs: copy(entry.refs),
@@ -269,6 +134,7 @@ export function createFavoritesOperationReceipts(
                 "scope",
                 "refs",
                 "createdAt",
+                "fence",
             ]) ||
             !uuid(proof.operationId)
         )
@@ -277,6 +143,8 @@ export function createFavoritesOperationReceipts(
         if (
             !entry ||
             entry.state !== "pending" ||
+            !entry.fence ||
+            entry.recovery_ack ||
             JSON.stringify(ticket(entry)) !== JSON.stringify(proof)
         )
             fail("invalid_ticket");
@@ -311,11 +179,17 @@ export function createFavoritesOperationReceipts(
         }
     }
     function write(before: string | null, after: string, entry: any): void {
-        if (!bounded(after)) fail("capacity");
+        if (
+            !favoritesRecoveryCapacity(after) ||
+            (before !== null && !favoritesRecoveryCapacity(before))
+        )
+            fail("capacity");
+        writeAdmission(entry);
         current(entry);
         if (read(false) !== before || read(true) !== before)
             fail("ledger_changed");
         current(entry);
+        writeAdmission(entry);
         var result: string;
         try {
             result = ports.compareAndSwap(before, after);
@@ -327,6 +201,7 @@ export function createFavoritesOperationReceipts(
         try {
             if (read(true) !== after || read(false) !== after)
                 fail("outcome_unknown");
+            writeAdmission(entry);
             current(entry);
             if (read(true) !== after || read(false) !== after)
                 fail("outcome_unknown");
@@ -360,6 +235,8 @@ export function createFavoritesOperationReceipts(
             outcome.persistence !== "persistent"
         )
             fail("invalid_outcome");
+        if (before !== null && !favoritesRecoveryCapacity(before))
+            fail("capacity");
         var value = parse(before),
             entry = pending(value, proof);
         entry.state = outcome.state;
@@ -376,7 +253,7 @@ export function createFavoritesOperationReceipts(
         };
         if (!row(entry)) fail("invalid_outcome");
         var after = JSON.stringify(value);
-        if (!bounded(after)) fail("capacity");
+        if (!favoritesRecoveryCapacity(after)) fail("capacity");
         entry.receipt.plan_digest = { computed: "plan_digest", width: 64 };
         return {
             afterTemplate: copy(value),
@@ -411,11 +288,16 @@ export function createFavoritesOperationReceipts(
             capturedBefore === undefined ? read(false) : capturedBefore;
         if (read(false) !== before || read(true) !== before)
             fail("ledger_changed");
+        if (before !== null && !favoritesRecoveryCapacity(before))
+            fail("capacity");
         var value = parse(before);
+        value.version = 2;
+        var provenance = fence();
         if (find(value, input.operationId)) fail("operation_exists");
         var entry = {
             createdAt: time,
             expiresAt: time + retention,
+            fence: provenance,
             operationId: input.operationId,
             payloadHash: input.payloadHash,
             refs: copy(input.refs),
@@ -427,7 +309,10 @@ export function createFavoritesOperationReceipts(
         // when necessary for this exact pending/completion plan to fit.
         var candidates = value.entries
             .filter(function (old: any) {
-                return old.state === "verified" || old.state === "not_applied";
+                return (
+                    (old.state === "verified" || old.state === "not_applied") &&
+                    !old.recovery_ack
+                );
             })
             .sort(function (a: any, b: any) {
                 return (
@@ -440,7 +325,9 @@ export function createFavoritesOperationReceipts(
             pendingRaw: string;
         while (true) {
             pendingRaw = JSON.stringify(value);
-            var fits = value.entries.length <= 32 && bounded(pendingRaw);
+            var fits =
+                value.entries.length <= 32 &&
+                favoritesRecoveryCapacity(pendingRaw);
             if (fits && completionOutcome !== undefined) {
                 try {
                     completion = completionPlan(
@@ -541,6 +428,8 @@ export function createFavoritesOperationReceipts(
                 if (
                     !original ||
                     original.state !== "pending" ||
+                    !original.fence ||
+                    original.recovery_ack ||
                     !final ||
                     final.state === "pending" ||
                     JSON.stringify(ticket(original)) !==
@@ -598,6 +487,7 @@ export function createFavoritesOperationReceipts(
                 entry.receipt.plan_digest = digest;
                 var after = JSON.stringify(value);
                 parse(after);
+                if (!favoritesRecoveryCapacity(after)) fail("capacity");
                 return {
                     afterRaw: after,
                     beforeRaw: template.beforeRaw,

@@ -1036,11 +1036,14 @@ export function executeRemoteRequest(
                               function () {
                                   return remotePlayerInfo(w).runtime;
                               },
-                              function (capability) {
+                              function (capability, recoveryCapability) {
                                   if (controlCancelled) return;
                                   if (capability)
                                       result.data.favorites_transfer =
                                           capability;
+                                  if (recoveryCapability)
+                                      result.data.favorites_transfer_recovery =
+                                          recoveryCapability;
                                   done(result);
                               },
                               request.expires_at

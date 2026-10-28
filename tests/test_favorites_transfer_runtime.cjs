@@ -64,6 +64,7 @@ function fixture(options = {}) {
         inspectHook: null,
         inspections: 0,
         lastApply: null,
+        ledgerRaw: null,
         owned: true,
         previewHook: null,
         qualified: true,
@@ -132,6 +133,21 @@ function fixture(options = {}) {
             receipt_verified: true,
         };
     }
+    const physical = {
+        compareAndSwap: (_key, before, after) => {
+            assert.equal(state.ledgerRaw, before);
+            state.ledgerRaw = after;
+            return "confirmed";
+        },
+        current: () => state.qualified,
+        exclusive: async (work) => work(physical),
+        implementationVersion: 1,
+        kind: "synchronous-localstorage",
+        lockName: "ottplay:favorites-ledger",
+        origin: "https://synthetic.invalid",
+        privateLedgerKey: "favorites-receipts.v1",
+        read: () => state.ledgerRaw,
+    };
     const host = {
         captureContext: () => {
             if (state.captureHook) state.captureHook();
@@ -221,10 +237,13 @@ function fixture(options = {}) {
                 assert.deepEqual(parsed.scope, clone(expected));
             },
         },
-        provision: () => {
+        physicalStorage: () => (state.qualified ? physical : null),
+        provisionExclusive: async () => {
             throw new Error("policy_denied");
         },
         qualified: () => state.qualified,
+        recoveryStorage: () => physical,
+        validateNewAdmission: async () => {},
     };
     class FakeDate extends Date {
         static now() {
@@ -847,5 +866,90 @@ test("dispose cancels foundation waits and fences a still-settling commit withou
         }
         await flush();
         assert.equal(f.timers.size, 0);
+    }
+});
+test("RAM unknown advisory requires exact stored ACK before independently admitted prepare", async () => {
+    for (const variant of ["valid", "foreign", "malformed"]) {
+        const f = fixture(),
+            pending = deferred(),
+            stage = await f.ready();
+        f.state.applyHook = () => pending.promise;
+        const commit = f.commit(stage);
+        await flush();
+        f.advance(120000);
+        assert.equal((await commit).outcome, "unknown");
+        pending.resolve({ outcome: "unknown" });
+        await flush();
+        const codec = f
+            .load("src/settings/favorites-recovery-codec.ts")
+            .createFavoritesRecoveryCodec({
+                sha256: async (value) => hash(value),
+            });
+        const proof = await codec.backendProof({
+            implementationVersion: 1,
+            kind: "synchronous-localstorage",
+            lockName: "ottplay:favorites-ledger",
+            origin: "https://synthetic.invalid",
+            privateLedgerKey: "favorites-receipts.v1",
+        });
+        f.state.ledgerRaw = JSON.stringify({
+            entries: [
+                {
+                    createdAt: 1,
+                    expiresAt: 86400001,
+                    fence: {
+                        backendProof: proof,
+                        guardImplementationVersion: 1,
+                        version: 2,
+                    },
+                    operationId: stage.operation_id,
+                    payloadHash: hash(f.bytes),
+                    refs: { runtimeId: "original-runtime", stageId: "stage-1" },
+                    scope,
+                    state: "pending",
+                },
+            ],
+            version: 2,
+        });
+        assert.equal(
+            (await f.send(f.prepareParams())).error,
+            "reconciliation_required"
+        );
+        const view = await f.send({
+            mode: "inspect",
+            op: "recovery",
+            operation_id: stage.operation_id,
+        });
+        assert.equal(view.acknowledge_allowed, true);
+        const ack = await f.send({
+            accept_unknown: true,
+            acknowledgement_id: view.acknowledgement_id,
+            after_ledger_sha256: view.after_ledger_sha256,
+            backend_proof: view.backend_proof,
+            expected_ledger_revision: view.ledger_revision,
+            mode: "acknowledge",
+            op: "recovery",
+            operation_id: stage.operation_id,
+            original_entry_sha256: view.record.original_entry_sha256,
+            plan_sha256: view.plan_sha256,
+            reason: "accept-unknown-no-replay",
+            scope,
+        });
+        assert.equal(ack.acknowledged, true);
+        if (variant !== "valid") {
+            const raw = JSON.parse(f.state.ledgerRaw);
+            if (variant === "foreign")
+                raw.entries[0].payloadHash = "b".repeat(64);
+            else
+                raw.entries[0].recovery_ack.acknowledgement_id = "c".repeat(64);
+            f.state.ledgerRaw = JSON.stringify(raw);
+        }
+        const result = await f.send(f.prepareParams());
+        assert.equal(
+            result.error,
+            variant === "valid" ? undefined : "storage_unavailable"
+        );
+        assert.equal(f.state.applies, 1);
+        f.runtime.dispose();
     }
 });

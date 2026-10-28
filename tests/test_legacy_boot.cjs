@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -1162,6 +1164,7 @@ function chunkedBootCookies(rejected) {
     });
     context.window = context;
     const ts = require("typescript");
+    Object.assign(context, storageImports(context.require));
     vm.runInContext(
         ts.transpileModule(
             fs

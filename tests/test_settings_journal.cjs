@@ -1,3 +1,5 @@
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -40,6 +42,7 @@ function backing(initial) {
 }
 function load(port, document = { cookie: "" }) {
     const context = {
+        ...storageImports(),
         document,
         exports: {},
         window: { localStorage: port },

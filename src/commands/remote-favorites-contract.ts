@@ -3,3 +3,5 @@ export const remoteFavoritesCapability = {
     operations: ["list", "add", "play", "remove"],
     version: 1,
 };
+
+export const remoteFavoritesRecoveryCapability = { version: 1 };

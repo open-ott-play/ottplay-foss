@@ -1,4 +1,6 @@
 "use strict";
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict"),
     fs = require("node:fs"),
     path = require("node:path"),
@@ -14,6 +16,17 @@ function load(file, host, document = { cookie: "" }) {
         Error,
         exports: {},
         Promise,
+        require(name) {
+            if (name === "./favorites-physical-storage")
+                return storageImports().require(name);
+            if (name === "./favorites-recovery-codec")
+                return load(
+                    "src/settings/favorites-recovery-codec.ts",
+                    host,
+                    document
+                ).exports;
+            throw new Error("Unexpected favorites fixture import: " + name);
+        },
         Uint8Array,
         window: host,
     });
@@ -78,6 +91,20 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
             [tvKey, JSON.stringify(originalTV)],
             [mediaKey, JSON.stringify(originalMedia)],
         ]);
+    let writeInterceptor = null;
+    const rawWrite = (key, value) => saved.set(key, String(value));
+    let locked = false;
+    const locks = {
+        request(_name, _options, callback) {
+            if (locked) return Promise.resolve().then(() => callback(null));
+            locked = true;
+            return Promise.resolve()
+                .then(() => callback({}))
+                .finally(() => {
+                    locked = false;
+                });
+        },
+    };
     const localStorage = {
         clear() {
             saved.clear();
@@ -88,7 +115,10 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
             return saved.size;
         },
         removeItem: (k) => saved.delete(k),
-        setItem: (k, v) => saved.set(k, String(v)),
+        setItem: (k, v) =>
+            writeInterceptor
+                ? writeInterceptor(k, v, rawWrite)
+                : rawWrite(k, v),
     };
     const host = {
         _: (value) => value,
@@ -101,6 +131,8 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
             },
         },
         localStorage,
+        location: { origin: "https://player.example" },
+        navigator: { locks },
         p_pref: "plex",
         sFavorites: 1,
     };
@@ -344,6 +376,36 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
         "src/settings/favorites-operation-receipts.ts",
         host
     ).createFavoritesOperationReceipts;
+    const physical = s.captureFavoritesPhysicalStorage();
+    const fence = physical
+        ? {
+              backendProof: hash(
+                  JSON.stringify([
+                      "ottplay-favorites-recovery-backend-v1",
+                      physical.origin,
+                      physical.privateLedgerKey,
+                      physical.lockName,
+                      physical.kind,
+                      2,
+                      physical.implementationVersion,
+                  ])
+              ),
+              guardImplementationVersion: 1,
+              version: 2,
+          }
+        : null;
+    let writing = false;
+    function exclusive(work) {
+        if (!physical) return Promise.reject(Error("unsupported_persistence"));
+        return physical.exclusive(async () => {
+            writing = true;
+            try {
+                return await work();
+            } finally {
+                writing = false;
+            }
+        });
+    }
     const ledger = receiptFactory({
         compareAndSwap(before, after) {
             if (
@@ -351,18 +413,23 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
                 s.stbGetPersistedItem(receiptKey) !== before
             )
                 return "conflict";
-            storage.set(receiptKey, after);
-            return s.stbGetPersistedItem(receiptKey) === after
-                ? "confirmed"
-                : "unknown";
+            return physical
+                ? physical.compareAndSwap(receiptKey, before, after)
+                : "conflict";
         },
         current: (expected, refs) =>
             active &&
             expected.provider === "plex" &&
             refs.runtimeId === runtime,
+        fence: () => fence,
         now: () => time,
         persistedRead: () => s.stbGetPersistedItem(receiptKey),
         read: () => storage.get(receiptKey),
+        writeGuard: (value) =>
+            writing &&
+            physical &&
+            physical.current() &&
+            JSON.stringify(value) === JSON.stringify(fence),
     });
     const ports = {
         admitOperation: () => ({ budgetAccepted: true, operationFresh: true }),
@@ -382,6 +449,9 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
         "src/media/favorites-transfer-port.ts",
         host
     ).exports.createCurrentPlexFavoritesTransferPort(host, ports);
+    const apply = adapter.apply;
+    adapter.apply = (plan, context, current) =>
+        exclusive(() => apply(plan, context, current));
     return {
         adapter,
         binding: () =>
@@ -400,8 +470,12 @@ function fixture(saved, runtime = "runtime-1", backend = "local") {
             time = value;
         },
         codec,
+        exclusive,
         favorites,
         host,
+        interceptWrites: (callback) => {
+            writeInterceptor = callback;
+        },
         journal,
         json,
         ledger,
@@ -751,11 +825,12 @@ async function main() {
     }
     {
         const f = fixture(undefined, "cookie-runtime", "cookie"),
-            p = await prepare(f);
-        assert.equal(
-            (await f.adapter.apply(p.plan, p.context, () => true)).outcome,
-            "verified",
-            "cookie persistence is verified without claiming a transaction"
+            before = [...f.saved];
+        await assert.rejects(prepare(f), /unsupported_persistence/);
+        assert.deepEqual(
+            [...f.saved],
+            before,
+            "v2 refuses cookie-backed mutation without physical guard; no favorites or receipt writes"
         );
     }
     for (const target of [tvKey, mediaKey, receiptKey]) {
@@ -770,11 +845,10 @@ async function main() {
                     state: "located",
                 })
             );
-        const write = f.host.localStorage.setItem;
-        f.host.localStorage.setItem = (key, value) => {
+        f.interceptWrites((key, value, write) => {
             if (key === target) throw Error("synthetic quota");
             write(key, value);
-        };
+        });
         const applied = await f.adapter.apply(p.plan, p.context, () => true);
         assert.notEqual(applied.outcome, "verified", target);
         if (target === tvKey) {
@@ -797,21 +871,25 @@ async function main() {
         }
         await assert.rejects(
             f.adapter.apply(p.plan, p.context, () => true),
-            /reconciliation_required/
+            target === receiptKey
+                ? /reconciliation_required/
+                : /unsupported_persistence/
         );
     }
     {
         const f = fixture(),
             p = await prepare(f),
             before = f.saved.get(tvKey);
-        f.ledger.reserve(
-            {
-                operationId: "55555555-5555-4555-8555-555555555555",
-                payloadHash: "c".repeat(64),
-                refs: { runtimeId: f.runtime, stageId: "other-stage" },
-                scope,
-            },
-            { freshAdmission: true }
+        await f.exclusive(() =>
+            f.ledger.reserve(
+                {
+                    operationId: "55555555-5555-4555-8555-555555555555",
+                    payloadHash: "c".repeat(64),
+                    refs: { runtimeId: f.runtime, stageId: "other-stage" },
+                    scope,
+                },
+                { freshAdmission: true }
+            )
         );
         await assert.rejects(
             f.adapter.apply(p.plan, p.context, () => true),
@@ -1019,12 +1097,11 @@ async function main() {
             client = transferClient(f);
         let writes = 0;
         const writtenKeys = [];
-        const write = f.host.localStorage.setItem;
-        f.host.localStorage.setItem = (key, value) => {
+        f.interceptWrites((key, value, write) => {
             writes++;
             writtenKeys.push(key);
             write(key, value);
-        };
+        });
         let tick = 1000;
         for (const cycle of ["abort", "rejected", "expired"]) {
             for (let index = 1; index <= 40; index++) {

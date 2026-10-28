@@ -14,8 +14,10 @@ const {
 const modules = [
     "commands/favorites-document-json",
     "commands/favorites-transfer",
+    "commands/favorites-recovery",
     "settings/favorites-bindings",
     "settings/favorites-operation-receipts",
+    "settings/favorites-recovery-codec",
     "media/favorites-plex-codec",
     "media/favorites-plex-document",
     "channels/favorites-plex-references",
@@ -28,7 +30,7 @@ test("production registration keeps exact optional graph and main-owned dispatch
         CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"],
         modules.map((name) => "build/" + name + ".js")
     );
-    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 10);
+    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 12);
     assert(
         CLASSIC_MAIN_MODULES.includes(
             "build/commands/remote-favorites-transfer.js"
@@ -36,7 +38,11 @@ test("production registration keeps exact optional graph and main-owned dispatch
     );
     for (const name of modules)
         assert(!CLASSIC_MAIN_MODULES.includes("build/" + name + ".js"));
-    for (const name of ["build/storage/index.js", "build/utils/lzstring.js"])
+    for (const name of [
+        "build/storage/index.js",
+        "build/storage/favorites-physical-storage.js",
+        "build/utils/lzstring.js",
+    ])
         assert(CLASSIC_MAIN_MODULES.includes(name));
 });
 test("optional favorites asset links without entry storage and loads without touching player state", () => {

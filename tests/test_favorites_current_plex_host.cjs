@@ -19,7 +19,26 @@ const tvKey = "plexfavoritesLibrary:" + tvSource,
     mediaKey = "plexmediaJournal.v1:" + mediaSource;
 const bindingKey = "favorites-bindings.v1",
     receiptKey = "favorites-receipts.v1";
-function fixture({ populated = false, packed = false, instance = false } = {}) {
+function testLocks() {
+    let held = false;
+    return {
+        request(_name, _options, callback) {
+            if (held) return Promise.resolve().then(() => callback(null));
+            held = true;
+            return Promise.resolve()
+                .then(() => callback({}))
+                .finally(() => {
+                    held = false;
+                });
+        },
+    };
+}
+function fixture({
+    populated = false,
+    packed = false,
+    instance = false,
+    locks = testLocks(),
+} = {}) {
     const saved = new Map(),
         writes = [];
     let active = true,
@@ -50,6 +69,8 @@ function fixture({ populated = false, packed = false, instance = false } = {}) {
             },
         },
         localStorage,
+        location: { origin: "https://player.example" },
+        navigator: { locks },
         p_pref: "plex",
         sFavorites: 1,
     };
@@ -233,6 +254,10 @@ function fixture({ populated = false, packed = false, instance = false } = {}) {
         "src/settings/favorites-current-plex-host.ts"
     ).createFavoritesCurrentPlexHost;
     const storagePorts = {
+        captureFavoritesPhysicalRead:
+            storageModule.captureFavoritesPhysicalRead,
+        captureFavoritesPhysicalStorage:
+            storageModule.captureFavoritesPhysicalStorage,
         compress: lz.compress,
         decompress: lz.decompress,
         recoveryRequired: storageModule.settingsRecoveryRequired,
@@ -314,52 +339,78 @@ async function staged(f, s, document) {
     });
     return { adapter, context, input, preview, snapshot };
 }
-function retainedOutcome(f, pairedScope, state = "pending") {
+async function retainedOutcome(f, pairedScope, state = "pending") {
+    const grant = f.host.physicalStorage();
+    const fence = {
+        backendProof: hash(
+            JSON.stringify([
+                "ottplay-favorites-recovery-backend-v1",
+                grant.origin,
+                grant.privateLedgerKey,
+                grant.lockName,
+                grant.kind,
+                2,
+                grant.implementationVersion,
+            ])
+        ),
+        guardImplementationVersion: 1,
+        version: 2,
+    };
+    let held = false;
     const ledger = f
         .load("src/settings/favorites-operation-receipts.ts")
         .createFavoritesOperationReceipts({
-            compareAndSwap: (before, after) => {
-                if ((f.saved.get(receiptKey) || null) !== before)
-                    return "conflict";
-                f.saved.set(receiptKey, after);
-                return "confirmed";
-            },
+            compareAndSwap: (before, after) =>
+                grant.compareAndSwap(receiptKey, before, after),
             current: () => true,
+            fence: () => fence,
             now: () => 1000,
             persistedRead: () => f.saved.get(receiptKey) || null,
             read: () => f.saved.get(receiptKey) || null,
+            writeGuard: (value) =>
+                held &&
+                grant.current() &&
+                JSON.stringify(value) === JSON.stringify(fence),
         });
-    const ticket = ledger.reserve(
-        {
-            operationId: "33333333-3333-4333-8333-333333333333",
-            payloadHash: "a".repeat(64),
-            refs: {
-                runtimeId: "old-runtime",
-                stageId: "44444444-4444-4444-8444-444444444444",
+    return grant.exclusive(() => {
+        held = true;
+        const ticket = ledger.reserve(
+            {
+                operationId: "33333333-3333-4333-8333-333333333333",
+                payloadHash: "a".repeat(64),
+                refs: {
+                    runtimeId: "old-runtime",
+                    stageId: "44444444-4444-4444-8444-444444444444",
+                },
+                scope: pairedScope,
             },
-            scope: pairedScope,
-        },
-        { freshAdmission: true }
-    );
-    if (state !== "pending")
-        ledger.commitCompletion(
-            ledger.materializeCompletion(
-                ledger.prepareCompletion(ticket, {
-                    counts: {
-                        channelLists: 0,
-                        channelMemberships: 0,
-                        mediaFavorites: 0,
-                        unresolved: 0,
-                    },
-                    meta: { appliedStores: 1, code: "none", totalStores: 2 },
-                    newRevision: "favorites-retained",
-                    persistence: "persistent",
-                    state,
-                }),
-                "b".repeat(64)
-            )
+            { freshAdmission: true }
         );
-    return ledger;
+        if (state !== "pending")
+            ledger.commitCompletion(
+                ledger.materializeCompletion(
+                    ledger.prepareCompletion(ticket, {
+                        counts: {
+                            channelLists: 0,
+                            channelMemberships: 0,
+                            mediaFavorites: 0,
+                            unresolved: 0,
+                        },
+                        meta: {
+                            appliedStores: 1,
+                            code: "none",
+                            totalStores: 2,
+                        },
+                        newRevision: "favorites-retained",
+                        persistence: "persistent",
+                        state,
+                    }),
+                    "b".repeat(64)
+                )
+            );
+        held = false;
+        return ledger;
+    });
 }
 const replacementScope = {
     profileBindingId: "55555555-5555-4555-8555-555555555555",
@@ -640,32 +691,7 @@ const replacementScope = {
     {
         const f = fixture();
         const paired = provision(f, "import", { scope });
-        const ledger = f
-            .load("src/settings/favorites-operation-receipts.ts")
-            .createFavoritesOperationReceipts({
-                compareAndSwap: (before, after) => {
-                    if ((f.saved.get(receiptKey) || null) !== before)
-                        return "conflict";
-                    f.saved.set(receiptKey, after);
-                    return "confirmed";
-                },
-                current: () => true,
-                now: () => 1000,
-                persistedRead: () => f.saved.get(receiptKey) || null,
-                read: () => f.saved.get(receiptKey) || null,
-            });
-        ledger.reserve(
-            {
-                operationId: "33333333-3333-4333-8333-333333333333",
-                payloadHash: "a".repeat(64),
-                refs: {
-                    runtimeId: "old-runtime",
-                    stageId: "44444444-4444-4444-8444-444444444444",
-                },
-                scope: paired.scope,
-            },
-            { freshAdmission: true }
-        );
+        const ledger = await retainedOutcome(f, paired.scope);
         const before = f.saved.get(receiptKey);
         assert.throws(() => f.host.captureContext(), /reconciliation_required/);
         assert.equal(
@@ -819,7 +845,7 @@ const replacementScope = {
         for (const mode of ["create", "import", "pair", "replace-current"]) {
             const f = fixture(),
                 paired = provision(f, "import", { scope });
-            const ledger = retainedOutcome(f, paired.scope, state);
+            const ledger = await retainedOutcome(f, paired.scope, state);
             const fresh = f.createHost(f.storagePorts),
                 cat = fresh.catalog();
             const before = [...f.saved],
@@ -882,7 +908,7 @@ const replacementScope = {
     {
         const f = fixture(),
             paired = provision(f, "import", { scope });
-        retainedOutcome(f, paired.scope);
+        await retainedOutcome(f, paired.scope);
         const pending = f.saved.get(receiptKey);
         f.saved.delete(receiptKey);
         const fresh = f.createHost(f.storagePorts),

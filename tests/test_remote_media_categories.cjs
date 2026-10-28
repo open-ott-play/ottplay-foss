@@ -47,6 +47,7 @@ function fixture(provider = "vportal") {
             909: { channel_name: "Два", itemId: "vportal:two" },
         },
         cList: [101, 909, 303],
+        clearTimeout,
         commandChannelsReady: true,
         curList: [101, 909, 303],
         listCatIndex: 0,
@@ -59,6 +60,7 @@ function fixture(provider = "vportal") {
         },
         primaryIndex: 1,
         queue: { ids: ["explicit-a", "explicit-b"], index: 1 },
+        setTimeout,
         stbGetVolume: () => 20,
     };
     const groups = ["system:all", "vportal:series", "vportal:overlap"];
@@ -170,7 +172,7 @@ function fixture(provider = "vportal") {
     assert.equal(
         Object.hasOwn(capability, "favorites_transfer"),
         false,
-        "real transfer qualification leaves unsupported provider capabilities unchanged"
+        "real optional admission does not invent an unavailable transfer capability"
     );
     assert.deepEqual(capability.categories, {
         maxPageSize: 200,

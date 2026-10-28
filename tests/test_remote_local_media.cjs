@@ -1,4 +1,6 @@
 "use strict";
+const storageImports =
+    require("./helpers/remote-transfer-dependency.cjs").storage;
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -23,6 +25,8 @@ function load(file, requires = {}, extra = {}) {
         Date,
         exports,
         require(name) {
+            if (name === "./favorites-physical-storage")
+                return storageImports().require(name);
             assert.ok(name in requires, name);
             return requires[name];
         },
