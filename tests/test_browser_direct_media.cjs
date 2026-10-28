@@ -24,16 +24,38 @@ require("acorn").parse(source, { ecmaVersion: 5 });
 const profileSource = require("./helpers/offline-profile-source.cjs")();
 require("acorn").parse(profileSource, { ecmaVersion: 5 });
 
+// Keep the deadline active through teardown: an evaluate or close promise may
+// otherwise hide its original failure until the CI step's ten-minute limit.
+let phase = "initializing";
+function checkpoint(value) {
+    phase = value;
+    console.log("[direct-media] " + phase);
+}
+const deadline = setTimeout(
+    () => {
+        console.error(
+            "[direct-media] whole-test deadline exceeded during " + phase
+        );
+        process.exit(1);
+    },
+    process.argv.includes("--large-folder") ? 540000 : 120000
+);
+deadline.unref();
+
 (async () => {
     const server = http.createServer((req, res) =>
         res.end("<script>" + source + profileSource + "</script>")
     );
+    checkpoint("listen");
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    checkpoint("launch browser");
     const browser = await chromium.launch({ headless: true });
     try {
+        checkpoint("initial context");
         const context = await browser.newContext();
         const page = await context.newPage();
         await page.goto("http://127.0.0.1:" + server.address().port);
+        checkpoint("read/import/refresh/permission fixture");
         const result = await page.evaluate(async () => {
             const root = await navigator.storage.getDirectory();
             const dir = await root.getDirectoryHandle("fixture", {
@@ -59,9 +81,14 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
                 r.onsuccess = () => resolve(r.result);
                 r.onerror = () => reject(r.error);
             });
-            const stored = await new Promise((resolve) => {
-                const r = db.transaction("files").objectStore("files").getAll();
+            const stored = await new Promise((resolve, reject) => {
+                const tx = db.transaction("files");
+                const r = tx.objectStore("files").getAll();
                 r.onsuccess = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () =>
+                    reject(tx.error || new Error("Fixture read aborted"));
             });
             await put(nested, "movie.mp4", "replacement-is-longer");
             const updated = await api.list();
@@ -79,7 +106,7 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
             const preserved = await (
                 await nested.getFileHandle("movie.mp4")
             ).getFile();
-            await new Promise((resolve) => {
+            await new Promise((resolve, reject) => {
                 const tx = db.transaction("files", "readwrite");
                 tx.objectStore("files").put({
                     blob: new Blob(["legacy"], { type: "video/mp4" }),
@@ -88,6 +115,9 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
                     name: "legacy.mp4",
                 });
                 tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () =>
+                    reject(tx.error || new Error("Fixture write aborted"));
             });
             const legacy = await api.list();
             window.showDirectoryPicker = undefined;
@@ -124,6 +154,7 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         assert.equal(result.legacy.items[0].source, "imported");
         assert.match(result.unsupported, /Direct folder access is unavailable/);
         await page.reload();
+        checkpoint("legacy reload");
         const legacy = await page.evaluate(async () => {
             const list = await installBrowserLocalMedia(window).list();
             return (await fetch(list.items[0].url)).text();
@@ -136,6 +167,7 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
             await window.__ottBrowserLocalMedia.importFolder();
         });
         await page.reload();
+        checkpoint("linked-source reload");
         const restored = await page.evaluate(async () => {
             const list = await installBrowserLocalMedia(window).list();
             return {
@@ -148,9 +180,11 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         // Closing the page (rather than merely reloading it) destroys all
         // in-memory handles and object URLs. Only IndexedDB may restore them.
         const origin = "http://127.0.0.1:" + server.address().port;
+        checkpoint("close original page");
         await page.close();
         const reopened = await context.newPage();
         await reopened.goto(origin);
+        checkpoint("closed-page restoration and permission recovery");
         const resume = await reopened.evaluate(async () => {
             const api = installBrowserLocalMedia(window);
             const available = await api.list();
@@ -203,10 +237,12 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
             "one click restores all shared grants without parallel prompts"
         );
         assert.deepEqual(resume.recovered, ["granted", "granted"]);
+        checkpoint("profile context");
         const profileContext = await browser.newContext();
         let profilePage = await profileContext.newPage();
         const address = "http://127.0.0.1:" + server.address().port;
         await profilePage.goto(address);
+        checkpoint("profile save/export");
         const portable = await profilePage.evaluate(async () => {
             const root = await navigator.storage.getDirectory();
             const folder = await root.getDirectoryHandle("Profile cartoons", {
@@ -250,9 +286,11 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         });
         assert.equal(portable.selected.name, "second.mp4");
         assert(!JSON.stringify(portable).includes("blob:"));
+        checkpoint("close saved-profile page");
         await profilePage.close();
         profilePage = await profileContext.newPage();
         await profilePage.goto(address);
+        checkpoint("profile import/load after reopen");
         const restoredProfile = await profilePage.evaluate(async (profile) => {
             window.stbDelItem = (key) => localStorage.removeItem(key);
             window.stbGetItem = (key) => localStorage.getItem(key);
@@ -284,9 +322,11 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         assert.equal(restoredProfile.loaded.status, "ok");
         assert.equal(restoredProfile.body, "second.mp4");
         assert.equal(restoredProfile.count, 2);
+        checkpoint("foreign profile context");
         const foreignContext = await browser.newContext();
         const foreignPage = await foreignContext.newPage();
         await foreignPage.goto(address);
+        checkpoint("foreign profile binding");
         const foreign = await foreignPage.evaluate(async (profile) => {
             window.stbDelItem = (key) => localStorage.removeItem(key);
             window.stbGetItem = (key) => localStorage.getItem(key);
@@ -316,24 +356,40 @@ require("acorn").parse(profileSource, { ecmaVersion: 5 });
         assert.equal(foreign.imported.data.binding_required, true);
         assert.equal(foreign.count, 0);
         assert.equal(foreign.selected, "");
+        checkpoint("close foreign context");
         await foreignContext.close();
+        checkpoint("close profile context");
         await profileContext.close();
-        if (process.argv.includes("--large-folder"))
+        if (process.argv.includes("--large-folder")) {
+            checkpoint("optional large-folder stress");
             await require("./helpers/browser-large-folder.cjs")(
                 browser,
                 "http://127.0.0.1:" + server.address().port
             );
+        }
         console.log(
             "PASS offline profiles: real IndexedDB handles survive closed-page save/export/import/load; exact selected original read; foreign context requires binding"
         );
         console.log(
             "PASS direct browser sources: recursive read, handle-only storage, fresh file reads, refresh, permission status/reconnect, disconnect preserves originals, legacy blobs, unsupported browser, closed-page restoration, single read-only restore prompt"
         );
+    } catch (error) {
+        // Report before cleanup so a hung close cannot conceal the assertion.
+        console.error("[direct-media] failed during " + phase, error);
+        throw error;
     } finally {
+        checkpoint("close browser");
         await browser.close();
+        checkpoint("close HTTP server");
         await new Promise((r) => server.close(r));
     }
-})().catch((e) => {
-    console.error(e);
-    process.exitCode = 1;
-});
+})().then(
+    () => {
+        clearTimeout(deadline);
+    },
+    (error) => {
+        clearTimeout(deadline);
+        console.error("[direct-media] failed during " + phase, error);
+        process.exit(1);
+    }
+);
