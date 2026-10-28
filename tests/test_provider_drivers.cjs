@@ -994,7 +994,7 @@ test("guide credential reads retire completion on source, account and catalog re
     }
 });
 
-test("shared loader deduplicates translated headings and keeps provider counts", () => {
+test("shared loader keeps one current translated phase and independent provider counts", () => {
     for (const id of [
         "vportal",
         "plex",
@@ -1022,8 +1022,7 @@ test("shared loader deduplicates translated headings and keeps provider counts",
             children: [spinner, heading],
             querySelector(selector) {
                 if (selector === ".ott-spinner") return spinner;
-                if (selector === "[data-provider-loading-heading]")
-                    return heading;
+                if (selector === "[data-load-phase]") return heading;
                 const attribute = selector.slice(1, -1);
                 return (
                     this.children.find(
@@ -1065,44 +1064,38 @@ test("shared loader deduplicates translated headings and keeps provider counts",
             id + " has only its original spinner and heading"
         );
         ports.progress("Connecting to Plex…");
-        assert.equal(
-            panel.querySelector("[data-provider-loading-detail]").textContent,
-            "Connecting to Plex…"
-        );
+        assert.equal(heading.textContent, "Connecting to Plex…");
         ports.progress("Loading M3U...");
-        assert.equal(
-            panel.querySelector("[data-provider-loading-detail]").textContent,
-            "Loading M3U..."
-        );
+        assert.equal(heading.textContent, "Loading M3U...");
         ports.progress(
             "Server unavailable. Retrying automatically; check its address and network access."
         );
-        assert.match(
-            panel.querySelector("[data-provider-loading-detail]").textContent,
-            /^Server unavailable/
-        );
+        assert.match(heading.textContent, /^Server unavailable/);
         assert.equal(
             panel.children.length,
-            3,
+            2,
             "one current useful phase, not appended history"
         );
-        ports.progress(
-            translated["Loading. Please wait..."] +
-                " " +
-                translated["Loading channels..."] +
-                " 2800 · " +
-                id +
-                ": 1835"
-        );
         assert.equal(
-            panel.querySelector("[data-provider-loading-detail]").textContent,
-            "2800 · " + id + ": 1835"
+            heading.textContent,
+            "Server unavailable. Retrying automatically; check its address and network access."
+        );
+        ports.progress("");
+        assert.match(
+            heading.textContent,
+            /^Server unavailable/,
+            "empty progress cannot erase a useful error phase"
         );
         ports.catalogProgress(2800, 1835, 4000);
         const counter = panel.querySelector("[data-catalog-progress]");
         assert.match(counter.textContent, /^2800 \/ 4000 · /);
         assert(counter.textContent.endsWith(": 1835"));
         assert(!counter.textContent.includes("Cargando"));
+        assert.match(
+            heading.textContent,
+            /^Server unavailable/,
+            "counter updates do not clear current phase or error"
+        );
         assert.equal(
             panel.querySelector("[data-provider-loading-detail]"),
             null
@@ -1122,10 +1115,7 @@ test("shared loader deduplicates translated headings and keeps provider counts",
             panel.children.includes(spinner) && panel.children.includes(heading)
         );
         ports.progress("<provider detail>");
-        assert.equal(
-            panel.querySelector("[data-provider-loading-detail]").textContent,
-            "<provider detail>"
-        );
+        assert.equal(heading.textContent, "<provider detail>");
     }
 });
 

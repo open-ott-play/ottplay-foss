@@ -2061,7 +2061,10 @@ require("./test_vportal_search.cjs");
         JSON.stringify(result.items[0].request),
         JSON.stringify(request)
     );
-    assert(Buffer.byteLength(result.items[0].description, "utf8") <= 128);
+    assert(
+        result.items[0].description.includes("😀long description ".repeat(1000))
+    );
+    assert.equal(result.items[0].__ottMediaDescription, undefined);
     assert(!/[\uD800-\uDBFF]$/.test(result.items[0].description));
     const diagnostic = f.client.scanDiagnostics();
     assert(diagnostic.retainedBytes > 0);
@@ -2305,14 +2308,20 @@ console.log(
         });
         assert.equal(result.error, undefined);
         assert.equal(result.complete, true);
-        const preview = result.items[0].description;
-        assert(Buffer.byteLength(preview, "utf8") <= 128);
-        assert(!/[<>]/.test(preview), "preview must never expose an HTML tag");
-        assert(
-            !/[\uD800-\uDFFF]/u.test(preview),
-            "preview must not retain unpaired surrogates"
+        const full = result.items[0].description;
+        const escaped = description.replace(
+            /[&<>"']/g,
+            (c) =>
+                ({
+                    "'": "&#39;",
+                    '"': "&quot;",
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                })[c]
         );
-        assert(!/&[^;]*$/.test(preview), "preview must not cut an entity");
+        assert.equal(full, "<b>Film</b><br>" + escaped);
+        assert.equal(result.items[0].__ottMediaDescription, undefined);
         assert.equal(result.items[0].title, "Film");
         assert.deepEqual(
             JSON.parse(JSON.stringify(result.items[0].request)),
@@ -2321,7 +2330,7 @@ console.log(
     }
 }
 console.log(
-    "PASS VPortal safe UTF8 description previews preserve request identity"
+    "PASS VPortal full escaped Unicode descriptions preserve request identity and bounds"
 );
 
 {

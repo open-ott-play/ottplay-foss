@@ -50,8 +50,8 @@ const record = collect({
     description: synopsis,
     img: "../posters/episode.jpg",
 });
-assert(Buffer.byteLength(record.description, "utf8") <= 128);
-assert(record.__ottMediaDescription.endsWith("КОНЕЦ ОПИСАНИЯ"));
+assert(record.description.endsWith("КОНЕЦ ОПИСАНИЯ"));
+assert.equal(record.__ottMediaDescription, undefined);
 assert.equal(
     record.logo_30x30,
     "http://portal.example/api/posters/episode.jpg"
@@ -130,14 +130,13 @@ const compile = (text) =>
             target: ts.ScriptTarget.ES5,
         },
     }).outputText;
-// Actual retained-budget function deletes BOTH optional description copies.
+// Actual retained-budget function drops the one optional description.
 const ctx = {
     descriptionsOmitted: false,
     known: {},
     retainedBytes: 0,
     sizes: {},
-    utf8Size: (r) =>
-        r.__ottMediaDescription ? 67108865 : JSON.stringify(r).length,
+    utf8Size: (r) => (r.description ? 67108865 : JSON.stringify(r).length),
     whole: true,
 };
 vm.createContext(ctx);
@@ -151,8 +150,7 @@ vm.runInContext(
     ctx
 );
 const bounded = {
-    __ottMediaDescription: "full",
-    description: "preview",
+    description: "full",
     request: { id: "stable" },
 };
 ctx.known.key = bounded;
@@ -215,6 +213,12 @@ const getDescr = declaration(
         ),
         context
     );
+    let iconCalls = 0;
+    const originalIcon = context.metadataCssUrl;
+    context.metadataCssUrl = (value) => {
+        iconCalls++;
+        return originalIcon(value);
+    };
     for (const provider of ["vportal", "plex", "local"]) {
         const item =
             provider === "vportal"
@@ -224,6 +228,7 @@ const getDescr = declaration(
                       logo_30x30: "https://images.example/movie.png",
                       title: "Movie",
                   };
+        iconCalls = 0;
         context.detailProg({
             __ottMediaItem: item,
             __ottMediaProvider: provider,
@@ -235,6 +240,7 @@ const getDescr = declaration(
                 .textContent.endsWith("КОНЕЦ ОПИСАНИЯ"),
             "shared source/" + provider
         );
+        assert.equal(iconCalls, 1, "selected artwork is sanitized once");
         const image = w.document.querySelector(".ott-channel-thumbnail");
         assert.equal(image.tagName, "IMG");
         assert.equal(image.getAttribute("src"), item.logo_30x30);
@@ -246,6 +252,7 @@ const getDescr = declaration(
         );
         assert(context.getMediaDescr(item).includes("КОНЕЦ ОПИСАНИЯ"));
     }
+    iconCalls = 0;
     context.detailProg({
         descr: "TV programme",
         icon: "https://images.example/tv.png",
@@ -258,6 +265,7 @@ const getDescr = declaration(
         w.document.querySelector(".ott-channel-thumbnail").tagName,
         "DIV"
     );
+    assert.equal(iconCalls, 1, "live artwork is sanitized once");
     assert(w.document.querySelector(".ott-channel-detail-time"));
     assert(
         w.document

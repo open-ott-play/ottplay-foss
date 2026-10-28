@@ -2450,51 +2450,17 @@ function mountProviderDriver(
         var doc = host.document;
         var panel =
             doc && doc.querySelector && doc.querySelector(host.launch_id);
-        if (
-            !panel ||
-            !panel.querySelector ||
-            !doc.createElement ||
-            !panel.querySelector("[data-provider-loading-heading]")
-        ) {
+        var heading =
+            panel &&
+            panel.querySelector &&
+            panel.querySelector("[data-load-phase]");
+        if (heading) {
+            if (translated) heading.textContent = translated;
+        } else {
             host.$(host.launch_id).append(translated);
-            return;
         }
-        var originalText = String(translated).trim();
-        var text = originalText.replace(/…/g, "...");
-        var normalizedText = text;
-        var generic = [
-            "Loading. Please wait...",
-            "Loading channels...",
-            "Loading channel list...",
-            "Loading...",
-        ].map(function (label) {
-            return String(host._(label)).replace(/…/g, "...").trim();
-        });
-        for (var pass = 0; pass < 8 && text; pass++) {
-            var before = text;
-            generic.forEach(function (label) {
-                if (!label) return;
-                if (text.replace(/\.+$/, "") === label.replace(/\.+$/, ""))
-                    text = "";
-                else if (text.indexOf(label + " ") === 0)
-                    text = text.slice(label.length).trim();
-            });
-            if (text === before) break;
-        }
-        if (text === normalizedText) text = originalText;
-        var detail = panel.querySelector("[data-provider-loading-detail]");
-        if (!text) {
-            if (detail && detail.parentNode)
-                detail.parentNode.removeChild(detail);
-            return;
-        }
-        if (!detail) {
-            detail = doc.createElement("div");
-            detail.setAttribute("data-provider-loading-detail", "");
-            panel.appendChild(detail);
-        }
-        detail.textContent = text;
     }
+
     var driver = providerDriverRegistry.create(
         id,
         {
@@ -2510,10 +2476,7 @@ function mountProviderDriver(
                     counter.setAttribute("data-catalog-progress", "");
                     panel.appendChild(counter);
                 }
-                var hasHeading = panel.querySelector(
-                    "[data-provider-loading-heading]"
-                );
-                if (hasHeading) loadingProgress("");
+                var hasHeading = panel.querySelector("[data-load-phase]");
                 counter.textContent =
                     (hasHeading
                         ? ""

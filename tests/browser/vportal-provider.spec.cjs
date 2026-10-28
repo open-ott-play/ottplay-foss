@@ -538,21 +538,17 @@ test("VPortal full selected metadata, real artwork errors and single shared load
     });
     try {
         await page.goto("/f/pc/");
-        await expect(
-            page.locator("[data-provider-loading-heading]")
-        ).toHaveCount(1);
+        await expect(page.locator("[data-load-phase]")).toHaveCount(1);
         await expect(
             page.locator("[data-provider-loading-detail]")
         ).toHaveCount(0);
         await expect(page.locator("[data-catalog-progress]")).toContainText(
             /1/
         );
-        const heading = await page
-            .locator("[data-provider-loading-heading]")
-            .textContent();
+        const heading = await page.locator("[data-load-phase]").textContent();
         expect(
             await page
-                .locator("[data-provider-loading-heading]")
+                .locator("[data-load-phase]")
                 .evaluate(
                     (node, text) =>
                         node.parentElement.textContent.split(text).length - 1,

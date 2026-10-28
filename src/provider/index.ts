@@ -292,12 +292,13 @@ function detailProg(sourceRow?: any): void {
     var media = e.__ottMediaItem;
     if (media)
         e = {
-            descr: media.__ottMediaDescription || media.description,
+            descr: media.description,
             icon: media.logo_30x30,
             name: media.title || e.channel_name,
         };
     if (media || (e.time_to && e.time_to >= Date.now() / 1e3)) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
+        var icon = wdet.sThumbnail && metadataCssUrl(e.icon);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
             '<div id="_name"><div class="ott-channel-detail-accent">' +
@@ -317,10 +318,10 @@ function detailProg(sourceRow?: any): void {
                   ")</div>") +
             "</div>" +
             '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
-            (wdet.sThumbnail && metadataCssUrl(e.icon)
+            (icon
                 ? media
                     ? '<img class="img ott-channel-thumbnail" alt="" src="' +
-                      metadataText(metadataCssUrl(e.icon)) +
+                      metadataText(icon) +
                       '">'
                     : '<div class="img ott-channel-thumbnail"></div>'
                 : "") +
@@ -362,9 +363,7 @@ function detailProg(sourceRow?: any): void {
                 (thumbnail as HTMLImageElement).onerror = function () {
                     thumbnail!.style.display = "none";
                 };
-            } else
-                thumbnail.style.backgroundImage =
-                    'url("' + metadataCssUrl(e.icon) + '")';
+            } else thumbnail.style.backgroundImage = 'url("' + icon + '")';
         }
         $("#_nextpr").css({
             "max-height":
@@ -1447,7 +1446,7 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append(
-        '<br/><span data-provider-loading-heading="">' +
+        '<br/><span data-load-phase="">' +
             (libraryLoading
                 ? _("Loading. Please wait...")
                 : "Loading channel list...") +
