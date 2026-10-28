@@ -1819,12 +1819,13 @@ function classicMediaRuntime(): any {
                     classicMediaTitle(item.payload) + w._(" added to favorites")
                 );
         },
-        favoritesTransfer: function (expectedSource: string) {
+        favoritesTransfer: function (expectedSource: string, readonly?: any) {
             if (
                 context ||
                 expectedSource !== source ||
                 !current() ||
-                !journal.read().writable
+                !(readonly ? journal.peek(readonly.read) : journal.read())
+                    .writable
             )
                 return null;
             function admitted() {
@@ -1838,7 +1839,11 @@ function classicMediaRuntime(): any {
             }
             return {
                 adopt: function (raw: string) {
-                    if (!admitted() || !journal.adopt(raw) || !admitted())
+                    if (
+                        !admitted() ||
+                        !journal.adopt(raw, readonly && readonly.read) ||
+                        !admitted()
+                    )
                         return false;
                     collections();
                     return admitted();
@@ -1846,7 +1851,12 @@ function classicMediaRuntime(): any {
                 current: admitted,
                 snapshot: function () {
                     return admitted()
-                        ? JSON.stringify(journal.read().document)
+                        ? JSON.stringify(
+                              (readonly
+                                  ? journal.peek(readonly.read)
+                                  : journal.read()
+                              ).document
+                          )
                         : null;
                 },
             };
@@ -2872,10 +2882,24 @@ function classicMediaRuntime(): any {
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
     },
-    favoritesTransfer: function (source: string) {
-        return mediaClassicInstance
-            ? mediaClassicInstance.favoritesTransfer(source)
-            : null;
+    favoritesTransfer: function (source: string, readonly?: any) {
+        if (mediaClassicInstance)
+            return mediaClassicInstance.favoritesTransfer(source, readonly);
+        if (
+            !readonly ||
+            typeof readonly.read !== "function" ||
+            !readonly.document
+        )
+            return null;
+        // No runtime is created by qualification; a later normal mount reads committed bytes.
+        var absent = () => !mediaClassicInstance;
+        return {
+            adopt: (raw: string) =>
+                absent() && readonly.read("mediaJournal.v1:" + source) === raw,
+            current: absent,
+            snapshot: () =>
+                absent() ? JSON.stringify(readonly.document) : null,
+        };
     },
     filter: function () {
         classicMediaRuntime().filter();

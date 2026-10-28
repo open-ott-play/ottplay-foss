@@ -10,7 +10,7 @@ interface FavoritesOperationReceiptPorts {
     read(): string | null;
 }
 
-function createFavoritesOperationReceipts(
+export function createFavoritesOperationReceipts(
     ports: FavoritesOperationReceiptPorts
 ) {
     var active = false;

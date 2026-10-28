@@ -100,6 +100,8 @@ export interface FavoritesTransferPorts {
     uuid(): string;
 }
 export interface FavoritesTransferTransport {
+    /** Trusted dispatch cancellation; not a wire parameter. */
+    current?(): boolean;
     deadlineAt: number;
     /** Trusted transport's actual parsed envelope including id/action/params/expires_at. Not user params. */
     envelope: { params: any; [key: string]: any };
@@ -141,6 +143,9 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
     var executing = false;
     var inflight: any = null;
     var operationDeadline = 0;
+    var disposed = false;
+    var waits: { cancel(): void }[] = [];
+    var operationCurrent = () => true;
     function fail(code: string): never {
         throw new Error(code);
     }
@@ -281,6 +286,8 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
     }
     function active(value: any, runtime: string): boolean {
         return (
+            !disposed &&
+            operationCurrent() &&
             stage === value &&
             value.runtime === runtime &&
             ports.runtime() === runtime &&
@@ -315,29 +322,33 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
     ): Promise<T> {
         return new Promise(function (resolve, reject) {
             var settled = false;
-            var timer = ports.setTimer(
-                function () {
-                    if (!settled) {
-                        settled = true;
-                        reject(new Error("expired"));
-                    }
+            var timer: any = null;
+            function finishWait(): boolean {
+                if (settled) return false;
+                settled = true;
+                if (timer !== null) ports.clearTimer(timer);
+                var at = waits.indexOf(waiter);
+                if (at >= 0) waits.splice(at, 1);
+                return true;
+            }
+            var waiter = {
+                cancel: function () {
+                    if (finishWait()) reject(new Error("expired"));
                 },
-                Math.max(0, deadline - ports.now())
-            );
+            };
+            waits.push(waiter);
+            if (disposed) waiter.cancel();
+            else
+                timer = ports.setTimer(
+                    waiter.cancel,
+                    Math.max(0, deadline - ports.now())
+                );
             Promise.resolve(promise).then(
                 function (value) {
-                    if (!settled) {
-                        settled = true;
-                        ports.clearTimer(timer);
-                        resolve(value);
-                    }
+                    if (finishWait()) resolve(value);
                 },
                 function (error) {
-                    if (!settled) {
-                        settled = true;
-                        ports.clearTimer(timer);
-                        reject(error);
-                    }
+                    if (finishWait()) reject(error);
                 }
             );
         });
@@ -561,6 +572,7 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
         if (!busy) executing = true;
         try {
             if (
+                disposed ||
                 !object(params) ||
                 !text(runtime) ||
                 params.runtime !== runtime ||
@@ -599,6 +611,9 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                 fail("busy");
             }
             if (busy) fail("busy");
+            operationCurrent = () =>
+                !disposed && (!transport.current || transport.current());
+            if (!operationCurrent()) fail("expired");
             operationDeadline = transport.deadlineAt;
             expire();
             var common = ["op", "runtime"];
@@ -614,6 +629,7 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                 if (admitted.persistence !== "persistent")
                     fail("unsupported_persistence");
                 var current = () =>
+                    operationCurrent() &&
                     ports.runtime() === runtime &&
                     ports.now() < transport.deadlineAt &&
                     admitted.current();
@@ -731,7 +747,8 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                     fail("revision_conflict");
                 if (admission.binding_revision !== params.binding_revision)
                     fail("binding_changed");
-                if (ports.now() >= transport.deadlineAt) fail("expired");
+                if (!operationCurrent() || ports.now() >= transport.deadlineAt)
+                    fail("expired");
                 stage = {
                     absolute: Math.min(
                         transport.deadlineAt,
@@ -800,11 +817,13 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                     ports.adapter.status(
                         params.operation_id,
                         () =>
+                            operationCurrent() &&
                             ports.runtime() === runtime &&
                             ports.now() < transport.deadlineAt
                     )
                 );
                 if (
+                    !operationCurrent() ||
                     ports.runtime() !== runtime ||
                     ports.now() >= transport.deadlineAt
                 )
@@ -1119,7 +1138,7 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
                     publicApplied
                 )
             );
-            finish("committed", publicApplied);
+            if (stage === value) finish("committed", publicApplied);
             return result;
         } catch (error) {
             var code =
@@ -1134,5 +1153,23 @@ export function createFavoritesTransfer(ports: FavoritesTransferPorts) {
             if (!busy) executing = false;
         }
     }
-    return { execute: run };
+    return {
+        /** Private lifecycle hooks; the seven public operation shapes are unchanged. */
+        busy: function () {
+            expire();
+            return !!(executing || stage || (inflight && inflight.pending));
+        },
+        dispose: function () {
+            disposed = true;
+            waits.slice().forEach((waiter) => waiter.cancel());
+            if (stage)
+                finish(stage.writesStarted ? "committed" : "expired", {
+                    outcome: stage.writesStarted ? "unknown" : "not_applied",
+                    per_store: [],
+                    persistence: "persistent",
+                });
+            // An apply still settling retains its bytes and write fence until settled().
+        },
+        execute: run,
+    };
 }

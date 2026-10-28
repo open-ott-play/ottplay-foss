@@ -12,7 +12,7 @@ const output = ts.transpileModule(source, {
     reportDiagnostics: true,
 });
 assert.equal(output.diagnostics.length, 0);
-const host = {};
+const host = { exports: {} };
 vm.runInNewContext(output.outputText, host);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 function fixture() {

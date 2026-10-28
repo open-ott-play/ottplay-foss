@@ -14,7 +14,7 @@ interface PlexFavoritesDocumentPorts {
         resolve(value: any, origin: any): any;
     };
 }
-function createPlexFavoritesDocument(ports: PlexFavoritesDocumentPorts) {
+export function createPlexFavoritesDocument(ports: PlexFavoritesDocumentPorts) {
     function fail(): never {
         throw new Error("codec_error");
     }

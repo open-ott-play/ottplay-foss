@@ -4,7 +4,7 @@ interface FavoritesPlexCodecPorts {
     request(path: string): any;
 }
 
-function createFavoritesPlexCodec(ports: FavoritesPlexCodecPorts) {
+export function createFavoritesPlexCodec(ports: FavoritesPlexCodecPorts) {
     function fail(code: string): never {
         var error = new Error("Favorites Plex: " + code);
         (error as any).code = code;
@@ -72,22 +72,6 @@ function createFavoritesPlexCodec(ports: FavoritesPlexCodecPorts) {
         );
     }
     return {
-        encode: function (item: any) {
-            if (!exact(item, ["sourceId", "request"])) fail("invalid_item");
-            var path = item.request;
-            if (typeof path !== "string") fail("invalid_item");
-            var match =
-                /^\/library\/metadata\/([1-9][0-9]{0,19})(?![\s\S])/.exec(path);
-            if (!match) fail("invalid_item");
-            var owner = current();
-            if (item.sourceId !== owner.sourceId) fail("item_unavailable");
-            unchanged(owner);
-            return {
-                kind: "plex-media",
-                serverId: owner.serverId,
-                ratingKey: match[1],
-            };
-        },
         decode: function (locator: any) {
             if (
                 !exact(locator, ["kind", "serverId", "ratingKey"]) ||
@@ -101,7 +85,7 @@ function createFavoritesPlexCodec(ports: FavoritesPlexCodecPorts) {
             var request: any;
             try {
                 request = ports.request(
-                    "/library/metadata/" + locator.ratingKey,
+                    "/library/metadata/" + locator.ratingKey
                 );
             } catch (_) {
                 fail("request_unavailable");
@@ -110,7 +94,23 @@ function createFavoritesPlexCodec(ports: FavoritesPlexCodecPorts) {
                 fail("request_unavailable");
             unchanged(owner);
             // This result is receiver-private. Only encode's locator is transferable.
-            return { sourceId: owner.sourceId, request: request };
+            return { request: request, sourceId: owner.sourceId };
+        },
+        encode: function (item: any) {
+            if (!exact(item, ["sourceId", "request"])) fail("invalid_item");
+            var path = item.request;
+            if (typeof path !== "string") fail("invalid_item");
+            var match =
+                /^\/library\/metadata\/([1-9][0-9]{0,19})(?![\s\S])/.exec(path);
+            if (!match) fail("invalid_item");
+            var owner = current();
+            if (item.sourceId !== owner.sourceId) fail("item_unavailable");
+            unchanged(owner);
+            return {
+                kind: "plex-media",
+                ratingKey: match[1],
+                serverId: owner.serverId,
+            };
         },
     };
 }

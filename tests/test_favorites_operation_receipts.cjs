@@ -12,7 +12,7 @@ const output = ts.transpileModule(source, {
     reportDiagnostics: true,
 });
 assert.equal(output.diagnostics.length, 0);
-const host = {};
+const host = { exports: {} };
 vm.runInNewContext(output.outputText, host);
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const id = (n) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;

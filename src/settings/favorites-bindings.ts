@@ -1,20 +1,20 @@
 /** Private target bindings; public identities are random, never credential-derived. */
 interface FavoritesBindingPorts {
-    read(): string | null;
     compareAndSwap(
         before: string | null,
-        after: string,
+        after: string
     ): "confirmed" | "conflict" | "unknown";
+    current(entry: any, binding: any): boolean;
     /** Required only for explicit Plex provisioning; actual physical-store readback. */
     persistedRead?(): string | null;
     /** Private host lookup: one current verified PMS and its parent/source grants. */
     provisionTarget?(targetId: string): any;
+    read(): string | null;
     uuid(): string;
     validateSelector(kind: string, selector: any): boolean;
-    current(entry: any, binding: any): boolean;
 }
 
-function createFavoritesBindings(ports: FavoritesBindingPorts) {
+export function createFavoritesBindings(ports: FavoritesBindingPorts) {
     var active = false;
     var maxBytes = 524288;
     var maxEntries = 256;
@@ -29,7 +29,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
     function keys(
         value: any,
         required: string[],
-        optional: string[] = [],
+        optional: string[] = []
     ): boolean {
         return (
             object(value) &&
@@ -60,7 +60,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
         return (
             typeof value === "string" &&
             /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/.test(
-                value,
+                value
             )
         );
     }
@@ -80,7 +80,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
     }
     function selectorBytes(
         value: string,
-        budget: { nodes: number; bytes: number },
+        budget: { nodes: number; bytes: number }
     ): void {
         // Charge encoded keys/strings and separators before retaining more data.
         budget.bytes +=
@@ -90,7 +90,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
     function canonical(
         value: any,
         depth = 0,
-        budget = { nodes: 0, bytes: 0 },
+        budget = { bytes: 0, nodes: 0 }
     ): any {
         budget.nodes++;
         if (depth > 8 || budget.nodes > 512) fail("invalid_selector");
@@ -161,7 +161,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
             !keys(
                 value,
                 ["id", "kind", "provider"],
-                privateValue ? ["profile_id", "binding"] : ["profile_id"],
+                privateValue ? ["profile_id", "binding"] : ["profile_id"]
             ) ||
             !uuid(value.id) ||
             (value.kind !== "profile" && value.kind !== "source") ||
@@ -180,7 +180,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
     function entries(
         values: any,
         privateValue: boolean,
-        requireParents = true,
+        requireParents = true
     ): any[] {
         if (
             !Array.isArray(values) ||
@@ -231,7 +231,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
         if (raw === null)
             return {
                 raw: null,
-                value: { version: 1, revision: 0, entries: [] },
+                value: { entries: [], revision: 0, version: 1 },
             };
         if (typeof raw !== "string" || !bounded(raw, maxBytes))
             fail("invalid_registry");
@@ -253,9 +253,9 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
         return {
             raw: raw,
             value: {
-                version: 1,
-                revision: value.revision,
                 entries: entries(value.entries, true),
+                revision: value.revision,
+                version: 1,
             },
         };
     }
@@ -298,7 +298,7 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
         expectedRevision: number,
         operation: (rows: any[]) => any,
         guard?: (written?: boolean) => void,
-        persistent = false,
+        persistent = false
     ): any {
         if (active) fail("busy");
         active = true;
@@ -344,16 +344,16 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
             }
             if (JSON.stringify(rows) === JSON.stringify(before.value.entries))
                 return {
-                    revision: before.value.revision,
                     changed: false,
                     result: result,
+                    revision: before.value.revision,
                 };
             if (before.value.revision === 9007199254740991)
                 fail("revision_exhausted");
             var next = {
-                version: 1,
-                revision: before.value.revision + 1,
                 entries: rows,
+                revision: before.value.revision + 1,
+                version: 1,
             };
             var raw = JSON.stringify(next);
             if (!bounded(raw, maxBytes)) fail("limit_exceeded");
@@ -377,25 +377,135 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
                 fail("outcome_unknown");
             }
             if (actual !== raw) fail("outcome_unknown");
-            return { revision: next.revision, changed: true, result: result };
+            return { changed: true, result: result, revision: next.revision };
         } finally {
             active = false;
         }
     }
     return {
+        bind: function (id: string, value: any, expectedRevision: number) {
+            return mutate(expectedRevision, function (rows) {
+                var entry = find(rows, id);
+                entry.binding = binding(entry.kind, value);
+                requireParent(rows, entry);
+                requireCurrent(entry);
+                return publicEntry(entry);
+            });
+        },
+        copyProfile: function (
+            id: string,
+            targets: any,
+            expectedRevision: number
+        ) {
+            return mutate(expectedRevision, function (rows) {
+                var original = find(rows, id);
+                if (
+                    original.kind !== "profile" ||
+                    !keys(targets, ["profile", "sources"]) ||
+                    !Array.isArray(targets.sources)
+                )
+                    fail("invalid_binding");
+                var sources = rows.filter(function (entry) {
+                    return entry.kind === "source" && entry.profile_id === id;
+                });
+                if (
+                    targets.sources.length !== sources.length ||
+                    targets.sources.length > maxEntries
+                )
+                    fail("invalid_binding");
+                var targetMap: any = Object.create(null);
+                targets.sources.forEach(function (target: any) {
+                    if (
+                        !keys(target, ["id", "binding"]) ||
+                        !uuid(target.id) ||
+                        targetMap[target.id] ||
+                        !sources.some(function (source) {
+                            return source.id === target.id;
+                        })
+                    )
+                        fail("invalid_binding");
+                    targetMap[target.id] = target.binding;
+                });
+                var profile = {
+                    binding: binding("profile", targets.profile),
+                    id: freshId(rows),
+                    kind: "profile",
+                    provider: original.provider,
+                };
+                requireCurrent(profile);
+                rows.push(profile);
+                var copied = [publicEntry(profile)];
+                sources.forEach(function (source) {
+                    var next = {
+                        binding: binding("source", targetMap[source.id]),
+                        id: freshId(rows),
+                        kind: "source",
+                        profile_id: profile.id,
+                        provider: source.provider,
+                    };
+                    requireCurrent(next);
+                    rows.push(next);
+                    copied.push(publicEntry(next));
+                });
+                return copied;
+            });
+        },
+        create: function (value: any, expectedRevision: number) {
+            return mutate(expectedRevision, function (rows) {
+                if (
+                    !keys(
+                        value,
+                        ["kind", "provider", "binding"],
+                        ["profile_id"]
+                    )
+                )
+                    fail("invalid_binding");
+                var candidate = {
+                    binding: value.binding,
+                    id: freshId(rows),
+                    kind: value.kind,
+                    provider: value.provider,
+                } as any;
+                if (Object.prototype.hasOwnProperty.call(value, "profile_id"))
+                    candidate.profile_id = value.profile_id;
+                var entry = row(candidate, true);
+                requireParent(rows, entry);
+                requireCurrent(entry);
+                rows.push(entry);
+                return publicEntry(entry);
+            });
+        },
+        importPublic: function (values: any, expectedRevision: number) {
+            var incoming = entries(values, false, false);
+            return mutate(expectedRevision, function (rows) {
+                incoming.forEach(function (entry) {
+                    var existing = rows.filter(function (value) {
+                        return value.id === entry.id;
+                    })[0];
+                    if (existing) {
+                        if (
+                            JSON.stringify(publicEntry(existing)) !==
+                            JSON.stringify(entry)
+                        )
+                            fail("conflict");
+                    } else rows.push(entry);
+                });
+                return null;
+            });
+        },
         list: function () {
             var state = read().value;
             return {
-                version: 1,
-                revision: state.revision,
                 entries: state.entries.map(publicEntry),
+                revision: state.revision,
+                version: 1,
             };
         },
         lookup: function (id: string) {
             var state = read().value;
             return {
-                revision: state.revision,
                 entry: publicEntry(find(state.entries, id)),
+                revision: state.revision,
             };
         },
         /** Separate bootstrap packet, not a favorites-transfer operation. */
@@ -462,14 +572,14 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
                                         "prior_profile_id",
                                         "prior_source_id",
                                     ]
-                                  : ["profile_id", "source_id"],
+                                  : ["profile_id", "source_id"]
                         ) ||
                         ["create", "import", "pair", "replace-current"].indexOf(
-                            value.mode,
+                            value.mode
                         ) < 0 ||
                         typeof value.target_id !== "string" ||
                         !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?![\s\S])/.test(
-                            value.target_id,
+                            value.target_id
                         )
                     )
                         fail("invalid_provision");
@@ -495,13 +605,13 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
                                         id === value.prior_profile_id ||
                                         id === value.prior_source_id
                                     );
-                                },
+                                }
                             )
                         )
                             fail("conflict");
                         var previousProfile = find(
                                 rows,
-                                value.prior_profile_id,
+                                value.prior_profile_id
                             ),
                             previousSource = find(rows, value.prior_source_id);
                         if (
@@ -572,8 +682,8 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
                         source = {
                             id: sourceId,
                             kind: "source",
-                            provider: "plex",
                             profile_id: profile.id,
+                            provider: "plex",
                         };
                         rows.push(source);
                     }
@@ -615,42 +725,8 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
                     };
                 },
                 guard,
-                true,
+                true
             );
-        },
-        create: function (value: any, expectedRevision: number) {
-            return mutate(expectedRevision, function (rows) {
-                if (
-                    !keys(
-                        value,
-                        ["kind", "provider", "binding"],
-                        ["profile_id"],
-                    )
-                )
-                    fail("invalid_binding");
-                var candidate = {
-                    id: freshId(rows),
-                    kind: value.kind,
-                    provider: value.provider,
-                    binding: value.binding,
-                } as any;
-                if (Object.prototype.hasOwnProperty.call(value, "profile_id"))
-                    candidate.profile_id = value.profile_id;
-                var entry = row(candidate, true);
-                requireParent(rows, entry);
-                requireCurrent(entry);
-                rows.push(entry);
-                return publicEntry(entry);
-            });
-        },
-        bind: function (id: string, value: any, expectedRevision: number) {
-            return mutate(expectedRevision, function (rows) {
-                var entry = find(rows, id);
-                entry.binding = binding(entry.kind, value);
-                requireParent(rows, entry);
-                requireCurrent(entry);
-                return publicEntry(entry);
-            });
         },
         resolve: function (id: string) {
             var before = read();
@@ -665,86 +741,10 @@ function createFavoritesBindings(ports: FavoritesBindingPorts) {
             }
             if (current !== before.raw) fail("registry_changed");
             return {
-                revision: before.value.revision,
-                entry: publicEntry(entry),
                 binding: copy(entry.binding),
+                entry: publicEntry(entry),
+                revision: before.value.revision,
             };
-        },
-        importPublic: function (values: any, expectedRevision: number) {
-            var incoming = entries(values, false, false);
-            return mutate(expectedRevision, function (rows) {
-                incoming.forEach(function (entry) {
-                    var existing = rows.filter(function (value) {
-                        return value.id === entry.id;
-                    })[0];
-                    if (existing) {
-                        if (
-                            JSON.stringify(publicEntry(existing)) !==
-                            JSON.stringify(entry)
-                        )
-                            fail("conflict");
-                    } else rows.push(entry);
-                });
-                return null;
-            });
-        },
-        copyProfile: function (
-            id: string,
-            targets: any,
-            expectedRevision: number,
-        ) {
-            return mutate(expectedRevision, function (rows) {
-                var original = find(rows, id);
-                if (
-                    original.kind !== "profile" ||
-                    !keys(targets, ["profile", "sources"]) ||
-                    !Array.isArray(targets.sources)
-                )
-                    fail("invalid_binding");
-                var sources = rows.filter(function (entry) {
-                    return entry.kind === "source" && entry.profile_id === id;
-                });
-                if (
-                    targets.sources.length !== sources.length ||
-                    targets.sources.length > maxEntries
-                )
-                    fail("invalid_binding");
-                var targetMap: any = Object.create(null);
-                targets.sources.forEach(function (target: any) {
-                    if (
-                        !keys(target, ["id", "binding"]) ||
-                        !uuid(target.id) ||
-                        targetMap[target.id] ||
-                        !sources.some(function (source) {
-                            return source.id === target.id;
-                        })
-                    )
-                        fail("invalid_binding");
-                    targetMap[target.id] = target.binding;
-                });
-                var profile = {
-                    id: freshId(rows),
-                    kind: "profile",
-                    provider: original.provider,
-                    binding: binding("profile", targets.profile),
-                };
-                requireCurrent(profile);
-                rows.push(profile);
-                var copied = [publicEntry(profile)];
-                sources.forEach(function (source) {
-                    var next = {
-                        id: freshId(rows),
-                        kind: "source",
-                        provider: source.provider,
-                        profile_id: profile.id,
-                        binding: binding("source", targetMap[source.id]),
-                    };
-                    requireCurrent(next);
-                    rows.push(next);
-                    copied.push(publicEntry(next));
-                });
-                return copied;
-            });
         },
     };
 }

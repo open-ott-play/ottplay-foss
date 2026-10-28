@@ -1,5 +1,5 @@
 /** Source-owned Plex projection. Rating keys stay strings; generic references are unchanged. */
-function createPlexFavoriteReferences(channels: any, proof: any) {
+export function createPlexFavoriteReferences(channels: any, proof: any) {
     function rating(value: any): string | null {
         var match =
             typeof value === "string" &&

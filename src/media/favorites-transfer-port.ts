@@ -6,6 +6,7 @@ interface CurrentPlexFavoritesPorts {
         context: any
     ): { operationFresh: boolean; budgetAccepted: boolean };
     binding(scope: any): { revision: string; current(): boolean } | null;
+    capture?(scope: any): any;
     document: {
         snapshot(scope: any, tv: any, media: any): Uint8Array;
         decode(bytes: Uint8Array, scope: any): any;
@@ -65,6 +66,7 @@ export function createCurrentPlexFavoritesTransferPort(
     }
     function capture(expected: any) {
         if (!scope(expected)) fail("policy_denied");
+        if (ports.capture) return ports.capture(expected);
         var binding = ports.binding(expected),
             driver = host.__ottActiveProviderDriver,
             storage = host.ottpStorage;
@@ -306,7 +308,7 @@ export function createCurrentPlexFavoritesTransferPort(
                     id,
                     outcome: states[at],
                 })),
-                persistence: "persistent",
+                persistence: "persistent" as const,
             },
             extra
         );
@@ -406,10 +408,12 @@ export function createCurrentPlexFavoritesTransferPort(
             if (
                 !owner.current() ||
                 !current() ||
-                !owner.tv.adopt(prepared.tvAfter) ||
+                !owner.tv.adopt(prepared.tvLogical || prepared.tvAfter) ||
                 !owner.current() ||
                 !current() ||
-                !owner.journal.adopt(prepared.mediaAfter) ||
+                !owner.journal.adopt(
+                    prepared.mediaLogical || prepared.mediaAfter
+                ) ||
                 !owner.current() ||
                 !current()
             )
@@ -528,10 +532,10 @@ export function createCurrentPlexFavoritesTransferPort(
             return {
                 binding_revision: owner.binding!.revision,
                 budgetAccepted: !!admitted,
-                current: owner.current,
+                current: owner.admissionCurrent || owner.current,
                 operation_id: operationId,
                 operationFresh: !!admitted,
-                persistence: "persistent",
+                persistence: "persistent" as const,
                 provisional: admitted,
                 revision: base,
             };
@@ -575,9 +579,20 @@ export function createCurrentPlexFavoritesTransferPort(
                 JSON.stringify({ value: receiptBefore })
             );
             var stores = [
-                { expected_revision: await digest(owner.tvRaw), id: tvId },
                 {
-                    expected_revision: await digest(owner.mediaRaw),
+                    expected_revision: await digest(
+                        owner.physicalHash
+                            ? owner.physicalHash(owner.tvRaw)
+                            : owner.tvRaw
+                    ),
+                    id: tvId,
+                },
+                {
+                    expected_revision: await digest(
+                        owner.physicalHash
+                            ? owner.physicalHash(owner.mediaRaw)
+                            : owner.mediaRaw
+                    ),
                     id: mediaId,
                 },
                 { expected_revision: receiptRevision, id: receiptId },
@@ -589,15 +604,21 @@ export function createCurrentPlexFavoritesTransferPort(
                     binding_revision: admission.binding_revision,
                     counts: prepared.counts,
                     coverage: parsed.document.coverage,
-                    persistence: "persistent",
+                    persistence: "persistent" as const,
                     ready: false,
                     stores,
                     unresolved: prepared.unresolved,
                     writePlan: {},
                 };
-            var tvAfter = JSON.stringify(prepared.tv),
-                mediaAfter = JSON.stringify(prepared.media),
-                nextRevision = await revision(owner, tvAfter, mediaAfter);
+            var tvLogical = JSON.stringify(prepared.tv),
+                mediaLogical = JSON.stringify(prepared.media),
+                nextRevision = await revision(owner, tvLogical, mediaLogical),
+                tvAfter = owner.encodePhysical
+                    ? owner.encodePhysical(tvLogical)
+                    : tvLogical,
+                mediaAfter = owner.encodePhysical
+                    ? owner.encodePhysical(mediaLogical)
+                    : mediaLogical;
             var reservation = owner.ledger.prepareReservation(
                 {
                     operationId: admitted.context.operation_id,
@@ -613,7 +634,7 @@ export function createCurrentPlexFavoritesTransferPort(
                     counts: prepared.counts,
                     meta: { appliedStores: 3, code: "none", totalStores: 3 },
                     newRevision: nextRevision,
-                    persistence: "persistent",
+                    persistence: "persistent" as const,
                     state: "verified",
                 }
             );
@@ -626,13 +647,21 @@ export function createCurrentPlexFavoritesTransferPort(
                 fail("revision_conflict");
             var targets = [
                 {
-                    after_sha256: await digest(tvAfter),
+                    after_sha256: await digest(
+                        owner.physicalHash
+                            ? owner.physicalHash(tvAfter)
+                            : tvAfter
+                    ),
                     before_sha256: stores[0].expected_revision,
                     id: tvId,
                     physical_key: owner.tvKey,
                 },
                 {
-                    after_sha256: await digest(mediaAfter),
+                    after_sha256: await digest(
+                        owner.physicalHash
+                            ? owner.physicalHash(mediaAfter)
+                            : mediaAfter
+                    ),
                     before_sha256: stores[1].expected_revision,
                     id: mediaId,
                     physical_key: owner.mediaKey,
@@ -654,11 +683,13 @@ export function createCurrentPlexFavoritesTransferPort(
                 completion,
                 counts: copy(prepared.counts),
                 mediaAfter,
+                mediaLogical,
                 nextRevision,
                 owner,
                 reservation,
                 stores: copy(stores),
                 tvAfter,
+                tvLogical,
                 writePlan: copy(writePlan),
             };
             return {
@@ -666,7 +697,7 @@ export function createCurrentPlexFavoritesTransferPort(
                 binding_revision: admission.binding_revision,
                 counts: prepared.counts,
                 coverage: parsed.document.coverage,
-                persistence: "persistent",
+                persistence: "persistent" as const,
                 ready: true,
                 stores,
                 unresolved: [],

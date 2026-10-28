@@ -47,8 +47,15 @@ function utf8Decode(bytes: Uint8Array): string {
     }
     return result.join("");
 }
-function checkString(text: string): void {
-    if (text.length > MAX_BYTES) invalid();
+function checkString(text: string, maxBytes = MAX_BYTES): void {
+    if (
+        typeof maxBytes !== "number" ||
+        maxBytes < 1 ||
+        maxBytes > 2097152 ||
+        Math.floor(maxBytes) !== maxBytes
+    )
+        invalid();
+    if (text.length > maxBytes) invalid();
     for (var i = 0; i < text.length; i++) {
         var c = text.charCodeAt(i);
         if (c >= 55296 && c <= 56319) {
@@ -57,8 +64,8 @@ function checkString(text: string): void {
         } else if (c >= 56320 && c <= 57343) invalid();
     }
 }
-function utf8Encode(text: string): Uint8Array {
-    checkString(text);
+export function utf8Encode(text: string, maxBytes = MAX_BYTES): Uint8Array {
+    checkString(text, maxBytes);
     // Calculate before allocation; serialized JSON can expand escaped control characters.
     var length = 0,
         i: number,
@@ -71,7 +78,7 @@ function utf8Encode(text: string): Uint8Array {
             length += 4;
             i++;
         } else length += 3;
-        if (length > MAX_BYTES) invalid();
+        if (length > maxBytes) invalid();
     }
     var bytes = new Uint8Array(length),
         at = 0;

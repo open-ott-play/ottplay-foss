@@ -229,6 +229,18 @@ export function createCommandServer(
         active = false;
         var abortWork = cancelExecution;
         cancelExecution = null;
+        // Configuration revokes admission even between completed transfer RPCs.
+        // Poll/network failures do not call stop and must preserve the session.
+        var favoritesTransfer = w.__ottRemoteFavoritesTransfer;
+        delete w.__ottRemoteFavoritesTransfer;
+        try {
+            if (
+                favoritesTransfer &&
+                favoritesTransfer.value &&
+                typeof favoritesTransfer.value.dispose === "function"
+            )
+                favoritesTransfer.value.dispose();
+        } catch (_) {}
         if (abortWork) {
             try {
                 abortWork();
@@ -489,31 +501,41 @@ export function createCommandServer(
                                 libraryError: string,
                                 localError = "native_error"
                             ): any {
-                                return item.action === "local_media"
+                                return item.action === "favorites_transfer"
                                     ? {
-                                          error: localError,
+                                          error:
+                                              localError === "catalog_loading"
+                                                  ? "expired"
+                                                  : "storage_unavailable",
                                           op: item.params.op,
                                           runtime: item.params.runtime,
-                                          state: "error",
                                           version: 1,
                                       }
-                                    : item.action === "favorites"
+                                    : item.action === "local_media"
                                       ? {
-                                            error: "timeout",
+                                            error: localError,
                                             op: item.params.op,
                                             runtime: item.params.runtime,
                                             state: "error",
                                             version: 1,
                                         }
-                                      : item.action === "plex_library"
+                                      : item.action === "favorites"
                                         ? {
-                                              error: libraryError,
+                                              error: "timeout",
                                               op: item.params.op,
                                               runtime: item.params.runtime,
                                               state: "error",
                                               version: 1,
                                           }
-                                        : { error: message };
+                                        : item.action === "plex_library"
+                                          ? {
+                                                error: libraryError,
+                                                op: item.params.op,
+                                                runtime: item.params.runtime,
+                                                state: "error",
+                                                version: 1,
+                                            }
+                                          : { error: message };
                             };
                             var executionTimer = w.setTimeout(function () {
                                 var abortWork = cancelExecution;
@@ -651,9 +673,11 @@ export function createCommandServer(
                             try {
                                 var executionItem = item;
                                 if (
+                                    item.action === "capabilities" ||
                                     item.action === "plex_queue" ||
                                     item.action === "plex_library" ||
                                     item.action === "favorites" ||
+                                    item.action === "favorites_transfer" ||
                                     item.action === "playback" ||
                                     item.action === "player_settings" ||
                                     item.action === "player_settings_patch" ||

@@ -330,11 +330,11 @@ function favoriteLibraryDocument(): any {
 }
 
 /** Read-only adoption: no legacy claim, save, reload or provider activation. */
-function captureFavoriteTransfer(): any {
+function captureFavoriteTransfer(readonly?: any): any {
     var w = window as any,
         generation = favoritesGeneration,
         owner = favoritesOwner;
-    var source = favoritesSource,
+    var source = owner ? favoritesSource : currentFavoritesSource(),
         get = w.providerGetItem,
         persisted = w.providerGetPersistedItem;
     var driver = w.__ottActiveProviderDriver,
@@ -350,11 +350,10 @@ function captureFavoriteTransfer(): any {
             proof.current() &&
             driver === w.__ottActiveProviderDriver &&
             driver.favoritesSource === provenance &&
-            !!owner &&
+            (!!owner || !!readonly) &&
             favoritesOwner === owner &&
             favoritesGeneration === generation &&
-            favoritesWritable &&
-            owner() &&
+            (owner ? favoritesWritable && owner() : true) &&
             currentFavoritesSource() === source &&
             get === w.providerGetItem &&
             persisted === w.providerGetPersistedItem &&
@@ -467,12 +466,25 @@ function captureFavoriteTransfer(): any {
                 var key = "favoritesLibrary:" + source;
                 if (
                     !current() ||
-                    get.call(w, key) !== raw ||
+                    (readonly ? readonly.read(key) : get.call(w, key)) !==
+                        raw ||
                     !current() ||
-                    persisted.call(w, key) !== raw ||
+                    (readonly ? readonly.read(key) : persisted.call(w, key)) !==
+                        raw ||
                     !current()
                 )
                     return false;
+                if (!owner) {
+                    owner = function () {
+                        return (
+                            generation === favoritesGeneration &&
+                            currentFavoritesSource() === source
+                        );
+                    };
+                    favoritesOwner = owner;
+                    favoritesSource = source;
+                    favoritesWritable = true;
+                }
                 favoritesLists = next;
                 favoritesReferences = records;
                 favoritesDefaultList = parsed.defaultList;
@@ -484,7 +496,11 @@ function captureFavoriteTransfer(): any {
         },
         current: current,
         snapshot: function () {
-            return current() ? favoriteLibraryDocument() : null;
+            return current()
+                ? owner
+                    ? favoriteLibraryDocument()
+                    : JSON.parse(JSON.stringify(readonly.document))
+                : null;
         },
         sourceId: source,
     };

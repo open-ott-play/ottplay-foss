@@ -11,7 +11,7 @@ const output = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES5 },
 }).outputText;
 const host = {};
-vm.runInNewContext(output, { window: host });
+vm.runInNewContext(output, { window: host, exports: {} });
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const id = (n) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 const bind = (slot, owner = "current") => ({ owner, selector: { slot } });

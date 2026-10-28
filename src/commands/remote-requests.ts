@@ -10,6 +10,10 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
+import {
+    executeRemoteFavoritesTransfer,
+    remoteFavoritesTransferCapability,
+} from "./remote-favorites-transfer";
 import { executeRemoteLocalMedia } from "./remote-local-media";
 import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
@@ -361,6 +365,15 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    if (request.action === "favorites_transfer")
+        return executeRemoteFavoritesTransfer(
+            w,
+            function () {
+                return remotePlayerInfo(w).runtime;
+            },
+            request,
+            done
+        );
     if (request.action === "perf_capture")
         return executeRemotePerformance(w, request, done);
     if (request.action === "local_media")
@@ -986,12 +999,15 @@ export function executeRemoteRequest(
             request.action
         ) >= 0
     ) {
-        return executeRemoteControl(
+        var controlCancelled = false;
+        var cancelCapability: (() => void) | undefined;
+        var cancelControl = executeRemoteControl(
             w,
             request.action,
             params,
             request.action === "capabilities"
                 ? function (result: any) {
+                      if (controlCancelled) return;
                       if (result.status === "ok" && result.data)
                           result.data.notifications = {
                               operations: ["get", "set"],
@@ -1014,12 +1030,33 @@ export function executeRemoteRequest(
                               version: 1,
                           };
                       }
-                      done(result);
+                      if (result.status === "ok" && result.data)
+                          cancelCapability = remoteFavoritesTransferCapability(
+                              w,
+                              function () {
+                                  return remotePlayerInfo(w).runtime;
+                              },
+                              function (capability) {
+                                  if (controlCancelled) return;
+                                  if (capability)
+                                      result.data.favorites_transfer =
+                                          capability;
+                                  done(result);
+                              },
+                              request.expires_at
+                          );
+                      else done(result);
                   }
                 : done,
             afterReply,
             request.expires_at
         );
+        if (request.action !== "capabilities") return cancelControl;
+        return function () {
+            controlCancelled = true;
+            if (cancelControl) cancelControl();
+            if (cancelCapability) cancelCapability();
+        };
     }
     if (request.action === "status") {
         reply({
