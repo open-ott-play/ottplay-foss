@@ -396,9 +396,18 @@ function fixture(platform = "android") {
             },
             audioTracks: [{ enabled: true }, { enabled: false }],
             canPlayType: () => "probably",
+            currentSrc: "",
             currentTime: 0,
             duration: 600,
+            getAttribute(name) {
+                return name === "src" ? this.src || null : null;
+            },
+            load() {
+                this.currentSrc = "";
+                this.networkState = 0;
+            },
             muted: id === "videopip",
+            networkState: 0,
             pause() {
                 this.paused = true;
                 for (const callback of events.get("pause") || []) callback();
@@ -461,9 +470,16 @@ function fixture(platform = "android") {
             this.video.currentTime = position || 0;
         });
     };
+    Shaka.prototype.getMediaElement = function () {
+        return this.video;
+    };
     Shaka.prototype.destroy = function () {
         this.destroyed = true;
-        return Promise.resolve();
+        return Promise.resolve().then(() => {
+            this.video.removeAttribute("src");
+            this.video.load();
+            this.video = null;
+        });
     };
     const w = {
         _: (key) =>
@@ -603,6 +619,7 @@ async function run() {
         assert.equal(streams[0].destroyed, true);
         assert.equal(streams.length, 1, "new engine waits for Shaka detach");
         await settle();
+        assert.equal(streams[0].getMediaElement(), null);
         const hls = streams.at(-1);
         hls.events.manifest();
         assert.equal(
