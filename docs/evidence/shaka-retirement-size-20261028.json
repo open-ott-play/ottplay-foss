@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "status": "RECORDED_PRE_BUDGET_CHANGE_MEASUREMENTS",
+  "feature": "Shaka retirement owner barrier and checked media release",
+  "allocation": {
+    "bytes": 1152,
+    "gzipBytes": 0
+  },
+  "rounding": "Measured +1145 raw bytes rounded to +1152. The extra 7 preserves prior raw headroom plus 7: UI entry 51 to 58 bytes. No gzip allocation.",
+  "baseline": {
+    "toolchain": {
+      "node": "22.23.4",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entries": [
+      {
+        "bytes": 1097331,
+        "gzipBytes": 337660,
+        "path": "dist/player.js"
+      },
+      {
+        "bytes": 1097289,
+        "gzipBytes": 337732,
+        "path": "src-tauri/frontend/dist/player.js"
+      },
+      {
+        "bytes": 1097289,
+        "gzipBytes": 337732,
+        "path": "dist-mobile/dist/player.js"
+      }
+    ],
+    "legacy": [
+      {
+        "bytes": 1239923,
+        "gzipBytes": 389716
+      },
+      {
+        "bytes": 1239881,
+        "gzipBytes": 389788
+      },
+      {
+        "bytes": 1239881,
+        "gzipBytes": 389788
+      }
+    ],
+    "complete": [
+      {
+        "bytes": 1467589,
+        "gzipBytes": 461777
+      },
+      {
+        "bytes": 1467547,
+        "gzipBytes": 461849
+      },
+      {
+        "bytes": 1467547,
+        "gzipBytes": 461849
+      }
+    ],
+    "source": "31349baaeb1198874503c18237489c9b72a5707c"
+  },
+  "candidates": {
+    "pr925": {
+      "toolchain": {
+        "node": "22.23.4",
+        "zlib": "1.3.1-e00f703"
+      },
+      "entries": [
+        {
+          "bytes": 1098159,
+          "gzipBytes": 337941,
+          "path": "dist/player.js"
+        },
+        {
+          "bytes": 1098117,
+          "gzipBytes": 338012,
+          "path": "src-tauri/frontend/dist/player.js"
+        },
+        {
+          "bytes": 1098117,
+          "gzipBytes": 338012,
+          "path": "dist-mobile/dist/player.js"
+        }
+      ],
+      "legacy": [
+        {
+          "bytes": 1240751,
+          "gzipBytes": 389997
+        },
+        {
+          "bytes": 1240709,
+          "gzipBytes": 390068
+        },
+        {
+          "bytes": 1240709,
+          "gzipBytes": 390068
+        }
+      ],
+      "complete": [
+        {
+          "bytes": 1468417,
+          "gzipBytes": 462058
+        },
+        {
+          "bytes": 1468375,
+          "gzipBytes": 462129
+        },
+        {
+          "bytes": 1468375,
+          "gzipBytes": 462129
+        }
+      ],
+      "source": "9eb3d16b2d073aaa1ac83e2d0fb3635702918b6d",
+      "tree": "9b49d05c1ba50a937e6e0c2fe77c73368d3dbcb6"
+    },
+    "ui": {
+      "toolchain": {
+        "node": "22.23.4",
+        "zlib": "1.3.1-e00f703"
+      },
+      "entries": [
+        {
+          "bytes": 1098476,
+          "gzipBytes": 338059,
+          "path": "dist/player.js"
+        },
+        {
+          "bytes": 1098434,
+          "gzipBytes": 338131,
+          "path": "src-tauri/frontend/dist/player.js"
+        },
+        {
+          "bytes": 1098434,
+          "gzipBytes": 338131,
+          "path": "dist-mobile/dist/player.js"
+        }
+      ],
+      "legacy": [
+        {
+          "bytes": 1241068,
+          "gzipBytes": 390115
+        },
+        {
+          "bytes": 1241026,
+          "gzipBytes": 390187
+        },
+        {
+          "bytes": 1241026,
+          "gzipBytes": 390187
+        }
+      ],
+      "complete": [
+        {
+          "bytes": 1468734,
+          "gzipBytes": 462176
+        },
+        {
+          "bytes": 1468692,
+          "gzipBytes": 462248
+        },
+        {
+          "bytes": 1468692,
+          "gzipBytes": 462248
+        }
+      ],
+      "source": "a480afae24086cb1c1e0cce80de59d9c381a03e0",
+      "tree": "cdf318043a111f1f42622877edb3ee99c3aad491"
+    }
+  },
+  "previousCaps": {
+    "BUDGET": {
+      "bytes": 1097382,
+      "gzipBytes": 338206
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1240682,
+      "gzipBytes": 390256
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1463582,
+      "gzipBytes": 460184
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1468062,
+      "gzipBytes": 462488
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6000,
+        "gzipBytes": 2000
+      },
+      "favorites-transfer": {
+        "bytes": 109300,
+        "gzipBytes": 29300
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "all_provider_and_optional_assets_unchanged_for_ui": true,
+  "final_head_ci_required": true,
+  "pr925Baseline": {
+    "source": "c17e7df275fdc555e5f29fd10f420cf9ec7f8eef",
+    "evidenceUrl": "https://github.com/open-ott-play/ottplay-foss/actions/runs/40741506241/job/123004802287",
+    "toolchain": {
+      "node": "22.23.4",
+      "evidence": "Node version and exact sizes from completed Build log"
+    },
+    "entries": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1097014,
+        "gzipBytes": 337542
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1096972,
+        "gzipBytes": 337611
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1096972,
+        "gzipBytes": 337611
+      }
+    ]
+  }
+}
