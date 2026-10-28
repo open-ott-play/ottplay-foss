@@ -994,6 +994,161 @@ test("guide credential reads retire completion on source, account and catalog re
     }
 });
 
+test("shared loader deduplicates translated headings and keeps provider counts", () => {
+    for (const id of [
+        "vportal",
+        "plex",
+        "m3u",
+        "xtream",
+        "stalker",
+        "only4",
+        "offline",
+    ]) {
+        const f = fixture();
+        const translated = {
+            "Loading channel list...": "Cargando lista…",
+            "Loading channels...": "Cargando canales…",
+            "Loading. Please wait...": "Cargando. Espere…",
+            "Loading...": "Cargando…",
+        };
+        f.host._ = (value) => translated[value] || value;
+        const spinner = { spinner: true };
+        const heading = { heading: true };
+        const panel = {
+            appendChild(node) {
+                node.parentNode = this;
+                this.children.push(node);
+            },
+            children: [spinner, heading],
+            querySelector(selector) {
+                if (selector === ".ott-spinner") return spinner;
+                if (selector === "[data-provider-loading-heading]")
+                    return heading;
+                const attribute = selector.slice(1, -1);
+                return (
+                    this.children.find(
+                        (node) =>
+                            node.attributes && attribute in node.attributes
+                    ) || null
+                );
+            },
+            removeChild(node) {
+                this.children.splice(this.children.indexOf(node), 1);
+                node.parentNode = null;
+            },
+        };
+        f.host.document = {
+            createElement: () => ({
+                attributes: {},
+                setAttribute(key, value) {
+                    this.attributes[key] = value;
+                },
+            }),
+            getElementById: () => panel,
+            querySelector: () => panel,
+        };
+        f.host.launch_id = "#dialogbox";
+        let ports;
+        const registry = f.host.__ottProviderDrivers.registry;
+        const create = registry.create;
+        registry.create = function (name, supplied, ...rest) {
+            ports = supplied;
+            return create.call(this, name, supplied, ...rest);
+        };
+        f.mount(id);
+        assert(ports, id);
+        ports.progress("Loading channels...");
+        ports.progress(translated["Loading. Please wait..."]);
+        assert.equal(
+            panel.children.length,
+            2,
+            id + " has only its original spinner and heading"
+        );
+        ports.progress("Connecting to Plex…");
+        assert.equal(
+            panel.querySelector("[data-provider-loading-detail]").textContent,
+            "Connecting to Plex…"
+        );
+        ports.progress("Loading M3U...");
+        assert.equal(
+            panel.querySelector("[data-provider-loading-detail]").textContent,
+            "Loading M3U..."
+        );
+        ports.progress(
+            "Server unavailable. Retrying automatically; check its address and network access."
+        );
+        assert.match(
+            panel.querySelector("[data-provider-loading-detail]").textContent,
+            /^Server unavailable/
+        );
+        assert.equal(
+            panel.children.length,
+            3,
+            "one current useful phase, not appended history"
+        );
+        ports.progress(
+            translated["Loading. Please wait..."] +
+                " " +
+                translated["Loading channels..."] +
+                " 2800 · " +
+                id +
+                ": 1835"
+        );
+        assert.equal(
+            panel.querySelector("[data-provider-loading-detail]").textContent,
+            "2800 · " + id + ": 1835"
+        );
+        ports.catalogProgress(2800, 1835, 4000);
+        const counter = panel.querySelector("[data-catalog-progress]");
+        assert.match(counter.textContent, /^2800 \/ 4000 · /);
+        assert(counter.textContent.endsWith(": 1835"));
+        assert(!counter.textContent.includes("Cargando"));
+        assert.equal(
+            panel.querySelector("[data-provider-loading-detail]"),
+            null
+        );
+        assert.equal(counter.attributes["data-catalog-scanned"], "2800");
+        assert.equal(counter.attributes["data-catalog-items"], "1835");
+        ports.catalogProgress(3000, 2000, 4000);
+        assert.equal(
+            panel.children.filter(
+                (node) =>
+                    node.attributes &&
+                    "data-catalog-progress" in node.attributes
+            ).length,
+            1
+        );
+        assert(
+            panel.children.includes(spinner) && panel.children.includes(heading)
+        );
+        ports.progress("<provider detail>");
+        assert.equal(
+            panel.querySelector("[data-provider-loading-detail]").textContent,
+            "<provider detail>"
+        );
+    }
+});
+
+test("legacy loading output without the shared heading keeps its original messages", () => {
+    const f = fixture();
+    const messages = [];
+    f.host.$ = () => ({ append: (value) => messages.push(value) });
+    f.host.document = {
+        createElement() {},
+        querySelector: () => ({ querySelector: () => null }),
+    };
+    let ports;
+    const registry = f.host.__ottProviderDrivers.registry;
+    const create = registry.create;
+    registry.create = function (id, supplied, ...rest) {
+        ports = supplied;
+        return create.call(this, id, supplied, ...rest);
+    };
+    f.mount("vportal");
+    ports.progress("Loading channels...");
+    assert.deepEqual(messages, ["Loading channels..."]);
+});
+
 console.log(
     "PASS typed provider instances: " +
         assertions +

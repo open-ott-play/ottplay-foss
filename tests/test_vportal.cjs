@@ -103,6 +103,7 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
             stopped++;
             client.cancel();
         },
+        URL,
         ...overrides,
     };
     w.$ = (selector) => {
@@ -155,7 +156,7 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
         ? compiled.replace(/\b67108864\b/g, String(hooks.catalogMetadataBudget))
         : compiled;
     vm.runInNewContext(fixtureCode, context);
-    client = context.exports.createVPortalClient(link, {
+    client = context.exports.createVPortalClient(hooks.link || link, {
         isCurrent: () => active,
         title: "Fixture Library",
         ...options,
@@ -2544,6 +2545,7 @@ console.log(
     for (let i = 0; i < 3; i++) {
         const expected = { ...baseline.result.items[i] };
         delete expected.description;
+        delete expected.__ottMediaDescription;
         assert.equal(
             JSON.stringify(fallback.result.items[i]),
             JSON.stringify(expected)
@@ -2602,6 +2604,7 @@ console.log(
     assert.equal(fallback.result.items.length, 1);
     assert.strictEqual(fallback.result.items[0], fallback.first);
     assert.equal(fallback.first.description, undefined);
+    assert.equal(fallback.first.__ottMediaDescription, undefined);
     assert.equal(fallback.first.adult, 1);
     assert.equal(fallback.first.__ottMediaCategories.length, 3);
     assert.equal(
@@ -2656,6 +2659,7 @@ console.log(
     assert.equal(result.items.length, 1);
     assert.strictEqual(result.items[0], first);
     assert.equal(first.description, undefined);
+    assert.equal(first.__ottMediaDescription, undefined);
     assert.equal(first.title, "First");
     assert.equal(
         f.client.scanDiagnostics().retainedBytes,

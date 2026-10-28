@@ -2392,7 +2392,12 @@ export function showMediaList(): void {
 
 /** Descriptions may be lazy functions in legacy provider records. */
 export function getMediaDescr(item?: MediaHistoryEntry): string {
-    var text = (item && (item.description || item.descr)) || "";
+    var text =
+        (item &&
+            ((item as any).__ottMediaDescription ||
+                item.description ||
+                item.descr)) ||
+        "";
     if (typeof text === "function") text = text();
     var media = (window as any).__ottMedia;
     if (media && media.description) text = media.description(item, text);

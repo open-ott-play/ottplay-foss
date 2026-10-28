@@ -292,7 +292,7 @@ function detailProg(sourceRow?: any): void {
     var media = e.__ottMediaItem;
     if (media)
         e = {
-            descr: media.description,
+            descr: media.__ottMediaDescription || media.description,
             icon: media.logo_30x30,
             name: media.title || e.channel_name,
         };
@@ -318,7 +318,11 @@ function detailProg(sourceRow?: any): void {
             "</div>" +
             '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
             (wdet.sThumbnail && metadataCssUrl(e.icon)
-                ? '<div class="img ott-channel-thumbnail"></div>'
+                ? media
+                    ? '<img class="img ott-channel-thumbnail" alt="" src="' +
+                      metadataText(metadataCssUrl(e.icon)) +
+                      '">'
+                    : '<div class="img ott-channel-thumbnail"></div>'
                 : "") +
             metadataHtml(e.descr) +
             "</div></div>";
@@ -353,8 +357,14 @@ function detailProg(sourceRow?: any): void {
             thumbnail.style.height =
                 Math.floor(200 * getViewportHeightScale()) + "px";
             thumbnail.style.margin = Math.floor(thumbnailWidth / 15) + "px";
-            thumbnail.style.backgroundImage =
-                'url("' + metadataCssUrl(e.icon) + '")';
+            if (media) {
+                thumbnail.style.objectFit = "cover";
+                (thumbnail as HTMLImageElement).onerror = function () {
+                    thumbnail!.style.display = "none";
+                };
+            } else
+                thumbnail.style.backgroundImage =
+                    'url("' + metadataCssUrl(e.icon) + '")';
         }
         $("#_nextpr").css({
             "max-height":
@@ -1437,9 +1447,12 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append(
-        libraryLoading
-            ? "<br/>" + _("Loading. Please wait...") + "<br/>"
-            : "<br/>Loading channel list..."
+        '<br/><span data-provider-loading-heading="">' +
+            (libraryLoading
+                ? _("Loading. Please wait...")
+                : "Loading channel list...") +
+            "</span>" +
+            (libraryLoading ? "<br/>" : "")
     );
     var loadTimer: ReturnType<typeof setTimeout> | number = -1;
     function dismissLoading(): void {

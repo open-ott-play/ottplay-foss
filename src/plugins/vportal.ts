@@ -475,6 +475,46 @@ export function createVPortalClient(
         return parts.join("<br>");
     }
 
+    function artwork(item: any, parent: any): string {
+        var values = [
+            item.imglr,
+            item.img,
+            parent && parent.imglr,
+            parent && parent.img,
+        ];
+        for (var i = 0; i < values.length; i++) {
+            if (typeof values[i] !== "string") continue;
+            var value = metadataImageUrl(values[i]);
+            if (!value || /\\/.test(value)) continue;
+            if (/^data:/i.test(value)) return value;
+            try {
+                var Resolver = w.URL || (typeof URL === "function" && URL);
+                if (!Resolver) {
+                    // Old clients may display already-absolute artwork without URL resolution.
+                    if (
+                        /^https?:\/\//i.test(value) &&
+                        !/^https?:\/\/[^/?#]*@/i.test(value)
+                    )
+                        return value;
+                    continue;
+                }
+                var base = new Resolver(
+                    portal.url,
+                    nasOrigin ? nasOrigin + "/" : w.location && w.location.href
+                );
+                var resolved = new Resolver(value, base.href);
+                if (
+                    !/^https?:$/.test(resolved.protocol) ||
+                    resolved.username ||
+                    resolved.password
+                )
+                    continue;
+                return resolved.href;
+            } catch (_) {}
+        }
+        return "";
+    }
+
     function media(item: any, parent: any): any {
         if (!item || typeof item !== "object") return null;
         if (
@@ -488,11 +528,7 @@ export function createVPortalClient(
             title = String(parent.title) + " - " + title;
         var record: any = {
             description: description(item, parent),
-            logo_30x30: metadataImageUrl(
-                item.imglr ||
-                    item.img ||
-                    (parent && (parent.imglr || parent.img))
-            ),
+            logo_30x30: artwork(item, parent),
             title: title,
         };
         if (item.type === "multistream") record.__ottMediaFilterable = true;
@@ -1252,7 +1288,10 @@ export function createVPortalClient(
         }
         function retain(key: string, record: any): void {
             if (!whole) return;
-            if (descriptionsOmitted) delete record.description;
+            if (descriptionsOmitted) {
+                delete record.description;
+                delete record.__ottMediaDescription;
+            }
             var size = utf8Size(record);
             var nextSize = retainedBytes - (sizes[key] || 0) + size;
             if (nextSize > 67108864 && !descriptionsOmitted) {
@@ -1261,10 +1300,12 @@ export function createVPortalClient(
                 Object.keys(sizes).forEach(function (retainedKey) {
                     var retained = known[retainedKey];
                     delete retained.description;
+                    delete retained.__ottMediaDescription;
                     sizes[retainedKey] = utf8Size(retained);
                     retainedBytes += sizes[retainedKey];
                 });
                 delete record.description;
+                delete record.__ottMediaDescription;
                 size = utf8Size(record);
                 nextSize = retainedBytes - (sizes[key] || 0) + size;
             }
@@ -1587,6 +1628,8 @@ export function createVPortalClient(
                                     whole &&
                                     typeof record.description === "string"
                                 ) {
+                                    record.__ottMediaDescription =
+                                        record.description;
                                     record.description = descriptionPreview(
                                         record.description
                                     );

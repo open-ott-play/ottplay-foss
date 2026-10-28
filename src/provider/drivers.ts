@@ -2445,6 +2445,56 @@ function mountProviderDriver(
         };
     }
     var store = storageFor(profile.prefix);
+    function loadingProgress(message: string): void {
+        var translated = host._(message);
+        var doc = host.document;
+        var panel =
+            doc && doc.querySelector && doc.querySelector(host.launch_id);
+        if (
+            !panel ||
+            !panel.querySelector ||
+            !doc.createElement ||
+            !panel.querySelector("[data-provider-loading-heading]")
+        ) {
+            host.$(host.launch_id).append(translated);
+            return;
+        }
+        var originalText = String(translated).trim();
+        var text = originalText.replace(/…/g, "...");
+        var normalizedText = text;
+        var generic = [
+            "Loading. Please wait...",
+            "Loading channels...",
+            "Loading channel list...",
+            "Loading...",
+        ].map(function (label) {
+            return String(host._(label)).replace(/…/g, "...").trim();
+        });
+        for (var pass = 0; pass < 8 && text; pass++) {
+            var before = text;
+            generic.forEach(function (label) {
+                if (!label) return;
+                if (text.replace(/\.+$/, "") === label.replace(/\.+$/, ""))
+                    text = "";
+                else if (text.indexOf(label + " ") === 0)
+                    text = text.slice(label.length).trim();
+            });
+            if (text === before) break;
+        }
+        if (text === normalizedText) text = originalText;
+        var detail = panel.querySelector("[data-provider-loading-detail]");
+        if (!text) {
+            if (detail && detail.parentNode)
+                detail.parentNode.removeChild(detail);
+            return;
+        }
+        if (!detail) {
+            detail = doc.createElement("div");
+            detail.setAttribute("data-provider-loading-detail", "");
+            panel.appendChild(detail);
+        }
+        detail.textContent = text;
+    }
     var driver = providerDriverRegistry.create(
         id,
         {
@@ -2460,9 +2510,14 @@ function mountProviderDriver(
                     counter.setAttribute("data-catalog-progress", "");
                     panel.appendChild(counter);
                 }
+                var hasHeading = panel.querySelector(
+                    "[data-provider-loading-heading]"
+                );
+                if (hasHeading) loadingProgress("");
                 counter.textContent =
-                    host._("Loading. Please wait...") +
-                    " " +
+                    (hasHeading
+                        ? ""
+                        : host._("Loading. Please wait...") + " ") +
                     scanned +
                     (total !== undefined && total >= scanned
                         ? " / " + total
@@ -2619,9 +2674,7 @@ function mountProviderDriver(
             now: function () {
                 return Date.now() / 1000;
             },
-            progress: function (message) {
-                host.$(host.launch_id).append(host._(message));
-            },
+            progress: loadingProgress,
             relay: host.host || "",
             replaceLocation: function (value) {
                 host.location.href = value;
@@ -2896,9 +2949,7 @@ function mountProviderDriver(
     ) {
         if (!owner.active()) return;
         if (id === "xtream")
-            host.$(host.launch_id).append(
-                host._("Loading channels from Xtream API...")
-            );
+            loadingProgress("Loading channels from Xtream API...");
         driver.load(function (catalog, error, pending) {
             if (owner.active() && catalog && catalog.incremental) {
                 var added: any[] = [];
