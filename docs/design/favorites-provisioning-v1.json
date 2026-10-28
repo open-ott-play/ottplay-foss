@@ -21,7 +21,11 @@
       "runtime": {
         "type": "string",
         "minLength": 1,
-        "maxLength": 128
+        "maxLength": 64,
+        "pattern": "^[a-z0-9-]{1,64}$",
+        "not": {
+          "pattern": "[^a-z0-9-]"
+        }
       },
       "mode": {
         "enum": [
@@ -305,9 +309,7 @@
     "version": 1,
     "runtime": "synthetic-runtime-1",
     "op": "provision",
-    "error": {
-      "code": "outcome_unknown"
-    }
+    "error": "outcome_unknown"
   },
   "semantics": [
     "Additive provisioning packet separate from frozen snapshot/begin/append/preview/commit/status/abort. No route/capability activation is included.",
@@ -323,7 +325,8 @@
     "Before CAS compare the exact full actual registry beforeRaw with both normal and persisted reads. Repeat captured target and both current-owner checks; prior private proof is required pre-CAS. After CAS require exact whole persisted afterRaw readback plus current target/new-pair checks. Prior rows are intentionally unbound after replacement.",
     "Single-document optimistic CAS/readback is not a cross-tab, fsync or cross-store atomicity claim. Host must provide the actual physical registry read/CAS/persistedRead ports. No RAM-only verified persistent response.",
     "Emit the exact success response ONLY after actual persisted readback/current proof. changed:false means binding_revision equals expected_binding_revision; changed:true requires a different verified revision. paired:true/outcome:verified/persistence:persistent are absent on errors.",
-    "Unknown CAS, failed readback or postwrite context change returns a minimal sanitized error, never a verified claim. Missing response/unknown is not proof of no write. Do not blindly replay; reconcile a fresh bindingcatalog/current registry revision and explicit requested scope before any new request."
+    "Unknown CAS, failed readback or postwrite context change returns a minimal sanitized error, never a verified claim. Missing response/unknown is not proof of no write. Do not blindly replay; reconcile a fresh bindingcatalog/current registry revision and explicit requested scope before any new request.",
+    "All errors use exactly {version,runtime,op,error:string}. outcome_unknown is additive for provision only and does not expand the frozen seven-operation error set."
   ],
   "private_factory_mapping": {
     "method": "registry.provisionPlex(value,expectedRevision)",
