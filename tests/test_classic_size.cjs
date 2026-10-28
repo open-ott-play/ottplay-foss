@@ -8,6 +8,7 @@ const {
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
+    SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -123,7 +124,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1463582, gzipBytes: 460184 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1464734, gzipBytes: 460184 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -136,10 +137,10 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1468062, gzipBytes: 462488 });
-    assert.deepEqual(BUDGET, { bytes: 1097382, gzipBytes: 338206 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1469214, gzipBytes: 462488 });
+    assert.deepEqual(BUDGET, { bytes: 1098534, gzipBytes: 338206 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1240682,
+        bytes: 1241834,
         gzipBytes: 390256,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
@@ -159,6 +160,77 @@ try {
         gzipBytes: 2560,
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    const retirementEvidence = require("../docs/evidence/shaka-retirement-size-20261028.json");
+    assert.deepEqual(SHAKA_RETIREMENT_ENTRY_ALLOWANCE, {
+        bytes: 1152,
+        gzipBytes: 0,
+    });
+    assert(Object.isFrozen(SHAKA_RETIREMENT_ENTRY_ALLOWANCE));
+    assert.deepEqual(
+        retirementEvidence.allocation,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        retirementEvidence.baseline.toolchain,
+        retirementEvidence.candidates.ui.toolchain
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.equal(
+            budget.bytes - retirementEvidence.previousCaps[name].bytes,
+            1152,
+            name + " counts retirement once"
+        );
+        assert.equal(
+            budget.gzipBytes,
+            retirementEvidence.previousCaps[name].gzipBytes,
+            name + " gzip unchanged"
+        );
+    }
+    assert.deepEqual(
+        PROVIDER_BUDGET,
+        retirementEvidence.previousCaps.PROVIDER_BUDGET
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        retirementEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    for (const candidate of Object.values(retirementEvidence.candidates)) {
+        for (const [kind, budget] of [
+            ["entries", BUDGET],
+            ["legacy", LEGACY_TOTAL_BUDGET],
+            ["complete", TOTAL_BUDGET],
+        ])
+            for (const item of candidate[kind]) {
+                assert(
+                    item.bytes <= budget.bytes,
+                    kind + " raw measured output fits"
+                );
+                assert(
+                    item.gzipBytes <= budget.gzipBytes,
+                    kind + " unchanged gzip fits"
+                );
+            }
+    }
+    for (let index = 0; index < 3; index++)
+        for (const kind of ["entries", "legacy", "complete"])
+            assert.equal(
+                retirementEvidence.candidates.ui[kind][index].bytes -
+                    retirementEvidence.baseline[kind][index].bytes,
+                1145
+            );
+    for (let index = 0; index < 3; index++)
+        assert.equal(
+            retirementEvidence.candidates.pr925.entries[index].bytes -
+                retirementEvidence.pr925Baseline.entries[index].bytes,
+            1145
+        );
+    assert.equal(retirementEvidence.allocation.bytes - 1145, 7);
+
     const recoveryEvidence = require("../docs/evidence/favorites-recovery-size-20261028.json");
     const recoveryDelta = (budget, metric) =>
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE[metric] +
@@ -183,7 +255,9 @@ try {
     }))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                budget[metric] - recoveryEvidence.previousCaps[name][metric],
+                budget[metric] -
+                    SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
+                    recoveryEvidence.previousCaps[name][metric],
                 recoveryDelta(budget, metric),
                 "recovery counted exactly once: " + name
             );
@@ -301,6 +375,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
                     recoveryDelta(budget, metric) -
                     favoritesEvidence.previousCaps[name][metric],
@@ -357,6 +432,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
                     previous[key],
@@ -404,6 +480,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[key] -
@@ -436,6 +513,7 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
+                        SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(TOTAL_BUDGET, metric) -
                         recoveryDelta(TOTAL_BUDGET, metric) -
                         DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
@@ -448,6 +526,7 @@ try {
                 (item) =>
                     item[metric] <=
                     BUDGET[metric] -
+                        SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(BUDGET, metric) -
                         recoveryDelta(BUDGET, metric) -
                         DESKTOP_FAVORITES_KEY_ALLOWANCE[metric]
@@ -815,6 +894,10 @@ try {
     assert.equal(failed.artifacts.length, 3);
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        failed.shakaRetirementEntryAllowance,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE
+    );
     assert.deepEqual(
         failed.favoritesRecoveryEntryAllowance,
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE
@@ -1372,6 +1455,10 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.shakaRetirementEntryAllowance,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE
+    );
     assert.deepEqual(
         report.favoritesRecoveryEntryAllowance,
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE
