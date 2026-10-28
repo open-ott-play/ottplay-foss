@@ -171,7 +171,13 @@ function fixture() {
     };
     Shaka.prototype.destroy = function () {
         this.destroyCalls++;
-        return this.destroyed.promise;
+        return this.destroyed.promise.then(() => {
+            if (this.media) {
+                this.media.removeAttribute("src");
+                this.media.load();
+                this.media = null;
+            }
+        });
     };
     const w = {
         _: (s) => s,
@@ -296,7 +302,7 @@ for (const mode of [0, 1, 2]) {
                 "",
                 "native resource is unloaded"
             );
-            assert.equal(w.video.loadCalls, before + 1);
+            assert.equal(w.video.loadCalls, before + (mode === 2 ? 0 : 1));
             assert.equal(handle.snapshot().phase, "paused");
             if (mode === 1) assert.equal(players[0].destroyCalls, 1);
             if (mode === 2) assert.equal(shakas[0].destroyCalls, 1);
@@ -310,12 +316,17 @@ for (const mode of [0, 1, 2]) {
             handle.suspend();
             assert.equal(
                 w.video.loadCalls,
-                before + 1,
-                "repeated sleep does not unload twice"
+                before + (mode === 2 ? 0 : 1),
+                "repeated sleep does not reset an owned Shaka resource or unload twice"
             );
             if (mode === 2) {
                 shakas[0].destroyed.resolve();
                 await tick();
+                assert.equal(
+                    w.video.loadCalls,
+                    before + 1,
+                    "Shaka owns its settled release reset"
+                );
             }
         }
     );
@@ -2574,6 +2585,93 @@ test("constructor buffer policy is captured before source loading and isolated p
     assert(
         replacement.initialHlsBufferPolicy.max_max_buffer_length_seconds > 5.005
     );
+});
+
+test("pending Shaka sourceopen retains its media resource until owned teardown settles", async () => {
+    for (const modern of [false, true]) {
+        const { w, shakas } = fixture();
+        w.playerMode = 2;
+        if (modern) w.__ottNativeRuntime = true;
+        w.shaka.Player.prototype.load = function (url, position) {
+            this.sourceOpened = deferred();
+            this.url = url;
+            this.position = position;
+            this.resource = "blob:owned-" + shakas.length;
+            this.media.src = this.resource;
+            return this.sourceOpened.promise;
+        };
+        w.shaka.Player.prototype.destroy = function () {
+            this.destroyCalls++;
+            return this.sourceOpened.promise.then(() => {
+                this.media.removeAttribute("src");
+                this.media.load();
+                this.media = null;
+            });
+        };
+        w.stbPlay("https://synthetic.invalid/first.mpd");
+        if (modern) {
+            shakas[0].attached.resolve();
+            await tick();
+        }
+        const old = shakas[0],
+            resource = old.resource,
+            loads = w.video.loadCalls;
+        w.stbStop();
+        assert.equal(w.video.paused, true);
+        assert.equal(old.destroyCalls, 1);
+        assert.equal(
+            w.video.src,
+            resource,
+            "Stop must not detach pending Shaka MediaSource before sourceopen"
+        );
+        assert.equal(
+            w.video.loadCalls,
+            loads,
+            "Stop must not invoke HTML reset while Shaka owns pending resource"
+        );
+        w.stbPlay("https://synthetic.invalid/superseded.mpd", 5);
+        w.stbPlay("https://synthetic.invalid/latest.mpd", 17);
+        assert.equal(
+            shakas.length,
+            1,
+            "no new engine may attach before old release"
+        );
+        old.sourceOpened.resolve();
+        await tick();
+        await tick();
+        assert.equal(
+            shakas.length,
+            2,
+            "only latest queued source starts after old destroy settles"
+        );
+        const current = shakas[1];
+        if (modern) {
+            current.attached.resolve();
+            await tick();
+        }
+        assert.equal(current.url, "https://synthetic.invalid/latest.mpd");
+        assert.equal(current.position, 17);
+        assert.equal(w.player, current);
+        assert.equal(
+            w.video.playCalls,
+            0,
+            "obsolete load resolution cannot play"
+        );
+        assert.equal(
+            w.video.loadCalls,
+            loads + 1,
+            "old Shaka owns exactly one release reset"
+        );
+        current.sourceOpened.resolve();
+        await tick();
+        assert.equal(w.video.playCalls, 1);
+        w.stbStop();
+        await tick();
+        console.log(
+            "PASS pending Shaka sourceopen ownership/stop/latest generation/position/stale-load fence modern=" +
+                modern
+        );
+    }
 });
 
 (async () => {

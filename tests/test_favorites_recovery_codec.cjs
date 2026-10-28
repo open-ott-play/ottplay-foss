@@ -351,6 +351,62 @@ async function test(name, run) {
             (e) => e.code === "hash_unavailable"
         );
     });
+    await test("only the qualified exact Tauri origin shares unchanged backend commitment rules", async () => {
+        const base = {
+            implementationVersion: 1,
+            kind: "synchronous-localstorage",
+            lockName: "ottplay:favorites-ledger",
+            privateLedgerKey: "favorites-receipts.v1",
+        };
+        for (const origin of [
+            "tauri://localhost",
+            "http://127.0.0.1:4180",
+            "https://player.example",
+        ]) {
+            const grant = { ...base, origin };
+            assert.equal(
+                await codec.backendProof(grant),
+                sha(
+                    JSON.stringify([
+                        "ottplay-favorites-recovery-backend-v1",
+                        origin,
+                        base.privateLedgerKey,
+                        base.lockName,
+                        base.kind,
+                        2,
+                        base.implementationVersion,
+                    ])
+                )
+            );
+            for (const change of [
+                { kind: "emulated" },
+                { implementationVersion: 2 },
+                { privateLedgerKey: "other" },
+                { lockName: "other" },
+            ])
+                await assert.rejects(
+                    codec.backendProof({ ...grant, ...change }),
+                    (e) => e.code === "unsupported_persistence"
+                );
+        }
+        for (const origin of [
+            "tauri://localhost/",
+            "tauri://localhost:80",
+            "tauri://user@localhost",
+            "tauri://other",
+            "tauri://LOCALHOST",
+            "tauri://localhost?x",
+            "tauri://localhost#x",
+            "tauri://localhost\n",
+            "app://localhost",
+            "file://local",
+            "null",
+        ])
+            await assert.rejects(
+                codec.backendProof({ ...base, origin }),
+                (e) => e.code === "unsupported_persistence"
+            );
+    });
     console.log(`Favorites recovery codec: ${groups} groups passed`);
 })().catch((error) => {
     console.error(error);

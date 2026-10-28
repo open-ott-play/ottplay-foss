@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { performance } = require("node:perf_hooks");
 const vm = require("node:vm");
 const { webcrypto, createHash } = require("node:crypto");
 const ts = require("typescript");
@@ -240,9 +241,17 @@ function fixture() {
 async function flush() {
     for (let i = 0; i < 20; i++) await Promise.resolve();
 }
-async function ready(work) {
-    for (let i = 0; i < 100 && !work.values.length; i++)
-        await new Promise((resolve) => setImmediate(resolve));
+async function ready(work, timeoutMs = 5000) {
+    // WebCrypto completes on the host; never advance the fake protocol clock
+    // or mistake an arbitrary number of event-loop turns for elapsed time.
+    const deadline = performance.now() + timeoutMs;
+    while (!work.values.length) {
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) break;
+        await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(5, remaining))
+        );
+    }
     assert.equal(work.values.length, 1, "one bounded result");
     return work.values[0];
 }
@@ -253,6 +262,68 @@ async function scenario(name, run) {
     console.log("PASS " + name);
 }
 (async () => {
+    await scenario(
+        "host callback wait survives delayed WebCrypto beyond the old turn budget",
+        async () => {
+            const f = fixture(),
+                protocolTime = f.now();
+            let releaseDigest;
+            const gate = new Promise((resolve) => {
+                releaseDigest = resolve;
+            });
+            f.w.crypto = {
+                getRandomValues: webcrypto.getRandomValues.bind(webcrypto),
+                subtle: {
+                    async digest(...args) {
+                        await gate;
+                        return webcrypto.subtle.digest(...args);
+                    },
+                },
+            };
+            const work = f.start({ action: "capabilities", params: {} });
+            f.finishLoad();
+            const waiting = ready(work).then(
+                (value) => ({ value }),
+                (error) => ({ error })
+            );
+            // The old helper exhausted these turns before the digest could
+            // finish. The barrier makes that failure deterministic.
+            for (let i = 0; i < 100; i++)
+                await new Promise((resolve) => setImmediate(resolve));
+            assert.equal(work.values.length, 0);
+            releaseDigest();
+            const completed = await waiting;
+            assert.equal(completed.error, undefined);
+            assert.equal(completed.value.status, "ok");
+            assert.equal(completed.value.data.favorites_transfer.version, 1);
+            assert.deepEqual(completed.value.data.favorites_transfer_recovery, {
+                version: 1,
+            });
+            assert.equal(work.values.length, 1);
+            assert.equal(f.now(), protocolTime);
+            assert.equal(f.timers.size, 0);
+        }
+    );
+    await scenario(
+        "host callback wait remains bounded and rejects duplicate results",
+        async () => {
+            const f = fixture(),
+                protocolTime = f.now(),
+                missing = { values: [] };
+            await assert.rejects(ready(missing, 10), {
+                actual: 0,
+                code: "ERR_ASSERTION",
+                expected: 1,
+            });
+            await assert.rejects(ready({ values: [{}, {}] }), {
+                actual: 2,
+                code: "ERR_ASSERTION",
+                expected: 1,
+            });
+            assert.equal(f.now(), protocolTime);
+            assert.equal(f.timers.size, 0);
+        }
+    );
     await scenario(
         "fractional Unix-second envelopes retain bytes and floor only runtime deadlines",
         async () => {

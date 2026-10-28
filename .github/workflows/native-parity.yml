@@ -236,7 +236,7 @@ jobs:
         run: python3 tests/macos-drag-regression/run.py
 
   favorites-native:
-    name: Hidden WK Favorites physical storage
+    name: Hidden WK Favorites Stage A and Stage B
     runs-on: macos-latest
     timeout-minutes: 40
     concurrency:
@@ -264,8 +264,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_ci.py
           PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_harness.py
           node tests/test_native_favorites_provider_compression.cjs
-      - name: Qualify actual hidden WK physical storage with the original codec
-        run: python3 scripts/ci-native-favorites.py --mode physical
+      - name: Qualify original storage then exact-origin guarded recovery
+        run: python3 scripts/ci-native-favorites.py --mode full
       - name: Retain bounded allowlisted native qualification metadata
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

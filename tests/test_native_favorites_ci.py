@@ -17,6 +17,15 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
+def stage_a_codec(raw):
+    digest = m.hashlib.sha256(raw).hexdigest()
+    if digest == m.CANDIDATE:
+        raw = raw.decode().replace(m.NEW, m.OLD).encode()
+    if m.hashlib.sha256(raw).hexdigest() != m.BASELINE:
+        raise ValueError('Stage A fixture codec is not the exact reviewed baseline')
+    return raw
+
+
 class Clock:
     def __init__(self):
         self.now = 0
@@ -49,6 +58,8 @@ class DriverTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             raw = ((Path(__file__).parent.parent / name).read_bytes()
                    if name.endswith('favorites-recovery-codec.ts') else name.encode())
+            if name.endswith('favorites-recovery-codec.ts'):
+                raw = stage_a_codec(raw)
             path.write_bytes(raw)
             pins[name] = m.hashlib.sha256(raw).hexdigest()
         self.assertEqual(pins['src/settings/favorites-recovery-codec.ts'], m.BASELINE)
@@ -66,6 +77,16 @@ class DriverTests(unittest.TestCase):
             (root / 'result.json').write_text(json.dumps(report))
         with mock.patch.object(self.driver, 'run', side_effect=native_fixture):
             return self.driver.runtime('stage-a-runtime', self.base / 'fixture-executable', True)
+
+    def test_stage_a_fixture_reconstructs_only_exact_baseline(self):
+        raw = (Path(__file__).parent.parent / 'src/settings/favorites-recovery-codec.ts').read_bytes()
+        baseline = stage_a_codec(raw)
+        candidate = baseline.decode().replace(m.OLD, m.NEW).encode()
+        self.assertEqual(m.hashlib.sha256(candidate).hexdigest(), m.CANDIDATE)
+        self.assertEqual(stage_a_codec(candidate), baseline)
+        self.assertEqual(stage_a_codec(baseline), baseline)
+        with self.assertRaises(ValueError):
+            stage_a_codec(candidate + b'\n')
 
     def test_actual_runtime_accepts_only_two_canonical_fixture_urls(self):
         report = self.native_report()

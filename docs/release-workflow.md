@@ -96,6 +96,41 @@ Missing replacement evidence or API failures remain errors. Manual releases keep
 their existing checks. A race after the final check can still fail publication;
 inspect the error and dispatch a fresh run at current HEAD, never reset the ledger.
 
+## Recovering from hosted-runner allocation failures
+
+First distinguish an infrastructure failure from an executed test failure. For a
+cancelled browser job, retain its run ID, attempt, source SHA, job metadata and
+annotations. A missing runner (`runner_id: 0`) and empty steps, together with a
+runner-allocation or capacity annotation, show that the test never started.
+Downstream browser-qualification failures do not turn that into a product test
+failure. If steps did execute, diagnose their logs before choosing a retry.
+
+Browser qualification requires the complete configured matrix from the current
+run attempt. **Re-run failed jobs** is insufficient when successful browser jobs
+remain in the previous attempt: their receipts cannot fill gaps in the new one.
+Do not relabel old receipts or weaken the qualification gate.
+
+For a confirmed allocation failure before publication:
+
+1. Retain the failed attempt's evidence and confirm that it has finished. Verify
+   the exact run, source, frozen version plan and absence of a completed release.
+   If publication was attempted or its outcome is unclear, inspect its draft,
+   tags and immutable evidence before any retry.
+2. Use **Re-run all jobs** on that same Actions run, with one operator responsible
+   for the retry. The version ledger is keyed by run ID: unchanged reservation
+   inputs reuse the existing version and native build number. Do not reset the
+   ledger or create a second dispatch merely to repeat the same release.
+3. Require fresh successful receipts for every required browser and platform in
+   the new attempt. Check that artifact retrieval selects the new files; never
+   substitute earlier-attempt receipts to make qualification pass.
+4. Confirm the new attempt's release gate, manifest and published assets before
+   deploying or reloading a player. A retry request being accepted is not a
+   successful release. If runner allocation fails again, diagnose capacity and
+   retain the new evidence before deciding on another attempt.
+
+A changed source, policy or promotion parent must follow the normal new-run
+workflow; do not force it into an existing reservation.
+
 ## Stable promotion
 
 After testing the RC on the intended target/environment:

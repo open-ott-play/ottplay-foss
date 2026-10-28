@@ -1627,7 +1627,8 @@ function startCoreEngine(
                                   ? resumePosition
                                   : position;
                       video.pause();
-                      video.removeAttribute("src");
+                      // Shaka must finish its own pending MediaSource transition.
+                      if (!_coreShakaTeardown) video.removeAttribute("src");
                   }
                   url = next;
                   _coreAutoHlsUsed = false;
@@ -2265,9 +2266,10 @@ function stopCoreEngine(): void {
     resetCoreNativeBitrate();
     (window as any).forcePlay = false;
     video!.pause();
-    video!.removeAttribute("src");
     setCoreDemoMute(false);
     destroyCoreShaka();
+    // Removing Shaka's blob before sourceopen can strand destroy() forever.
+    if (!_coreShakaTeardown) video!.removeAttribute("src");
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -2276,7 +2278,8 @@ function stopCoreEngine(): void {
     // Removing src alone can leave the selected native resource buffering.
     // Reset it after detaching engines so Stop also aborts its network fetch.
     try {
-        if (typeof video!.load === "function") video!.load();
+        if (!_coreShakaTeardown && typeof video!.load === "function")
+            video!.load();
     } catch (_) {
         console.warn("[Stop] Could not reset the main media resource.");
     }

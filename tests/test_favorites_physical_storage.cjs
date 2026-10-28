@@ -579,7 +579,9 @@ function hostFixture(origin = "https://player.example") {
         "PASS new admission blocks legacy/unacknowledged globally; only cryptographically validated exact ack bytes clear block, original row retained"
     );
     for (const origin of [
-        "tauri://localhost",
+        "tauri://localhost:80",
+        "tauri://localhost/",
+        "tauri://other",
         "app://localhost",
         "null",
         "file://local",
@@ -634,7 +636,11 @@ function hostFixture(origin = "https://player.example") {
             "legacy read-only Plex/favorites qualification is unchanged"
         );
     }
-    for (const origin of ["http://127.0.0.1:4179", "https://player.example"]) {
+    for (const origin of [
+        "http://127.0.0.1:4179",
+        "https://player.example",
+        "tauri://localhost",
+    ]) {
         const supported = hostFixture(origin),
             local = supported.fixture({ locks: supported.locks });
         const codec = local
