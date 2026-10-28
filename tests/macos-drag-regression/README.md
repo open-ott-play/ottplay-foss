@@ -35,6 +35,11 @@ mixed valid/invalid elements, and a real NSString with an unpaired UTF-16
 surrogate (`UTF8String` returns null). Only the malformed object shapes use a
 small pasteboard test double; missing/URL conversion use AppKit itself.
 
-The 100 ms completion timer lets Tao deliver queued WindowEvents. The runner
-has a 15-second deadline per subprocess and fails on missing callback/path
-output, abnormal process exits, or unexpected paths.
+The synthetic drag event is scheduled during the first real `MainEventsCleared`
+cycle, once the event loop is ready. After the actual selector returns, a
+subsequent `MainEventsCleared` cycle confirms that Tao's queued WindowEvents have
+been delivered; only then does the fixture finalize and emit `DRAINED`, including
+cases with no expected events. Completion does not depend on elapsed time. The
+unchanged 15-second subprocess deadline fails missing progress without retrying.
+All 32 planned cases retain strict callback return, event and path-order
+assertions; missing output, abnormal exits and unexpected paths still fail.

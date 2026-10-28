@@ -11,6 +11,8 @@ use wry::{DragDropEvent, WebViewBuilder, WebViewExtMacOS};
 extern "C" {
     fn make_fixture(name: *const i8) -> *mut c_void;
     fn schedule_fixture(target: *mut c_void, info: *mut c_void, is_drop: i32, is_tao: i32);
+    fn fixture_selector_completed() -> i32;
+    fn finish_fixture();
 }
 
 fn main() {
@@ -54,7 +56,7 @@ fn main() {
         })
         .build(&window)
         .unwrap();
-    unsafe {
+    let (target, info) = unsafe {
         let target = if surface == "wry" {
             Retained::as_ptr(&webview.webview()) as *mut c_void
         } else {
@@ -64,15 +66,31 @@ fn main() {
         };
         let name = CString::new(fixture.as_str()).unwrap();
         let info = make_fixture(name.as_ptr());
-        schedule_fixture(
-            target,
-            info,
-            i32::from(action == "drop"),
-            i32::from(surface == "tao"),
-        );
-    }
+        (target, info)
+    };
+    let is_drop = i32::from(action == "drop");
+    let is_tao = i32::from(surface == "tao");
+    let mut scheduled = false;
+    let mut completed = false;
     event_loop.run(move |event, _, control| {
         let _keepalive = (&window, &webview);
+        if completed {
+            *control = ControlFlow::Exit;
+            return;
+        }
+        *control = ControlFlow::Wait;
+        if matches!(&event, Event::MainEventsCleared) {
+            if !scheduled {
+                // First dispatch only after the real event loop has become ready.
+                scheduled = true;
+                unsafe { schedule_fixture(target, info, is_drop, is_tao) };
+            } else if unsafe { fixture_selector_completed() } != 0 {
+                // Tao has drained queued WindowEvents before MainEventsCleared.
+                completed = true;
+                unsafe { finish_fixture() };
+                *control = ControlFlow::Exit;
+            }
+        }
         if let Event::WindowEvent { event, .. } = event {
             match event {
                 WindowEvent::HoveredFile(path) => {
@@ -86,6 +104,5 @@ fn main() {
                 _ => {}
             }
         }
-        *control = ControlFlow::Wait;
     });
 }
