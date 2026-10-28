@@ -70,6 +70,7 @@ export function remoteFavoritesTransferCapability(
     var cancelled = false;
     var settled = false;
     var owner = runtime();
+    var timer: any = null;
     function current(): boolean {
         return (
             !cancelled &&
@@ -80,20 +81,34 @@ export function remoteFavoritesTransferCapability(
     function finish(value: any): void {
         if (cancelled || settled) return;
         settled = true;
+        if (timer !== null) w.clearTimeout(timer);
+        timer = null;
         done(current() && value && value.version === 1 ? value : null);
     }
+    var budget = Math.min(
+        1000,
+        expiresAt === undefined ? 1000 : expiresAt * 1000 - Date.now() - 250
+    );
     // Negative-only hint: other providers retain legacy caps without optional I/O.
-    if (w.p_pref !== "plex" || w.__ottActiveProviderDriver?.id !== "plex")
+    if (
+        !(budget > 0) ||
+        w.p_pref !== "plex" ||
+        w.__ottActiveProviderDriver?.id !== "plex"
+    )
         finish(null);
-    else
+    else {
+        timer = w.setTimeout(function () {
+            finish(null);
+        }, budget);
         load(w, function (error) {
-            if (cancelled) return;
+            if (cancelled || settled) return;
             if (error || !current()) return finish(null);
             try {
                 var api = instance(w, runtime);
                 if (!api) return finish(null);
                 Promise.resolve(api.capability()).then(
                     function (value) {
+                        if (cancelled || settled) return;
                         var cached = w.__ottRemoteFavoritesTransfer;
                         finish(
                             cached &&
@@ -112,8 +127,11 @@ export function remoteFavoritesTransferCapability(
                 finish(null);
             }
         });
+    }
     return function () {
         cancelled = true;
+        if (timer !== null) w.clearTimeout(timer);
+        timer = null;
     };
 }
 

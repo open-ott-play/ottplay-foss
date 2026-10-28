@@ -234,6 +234,208 @@ async function scenario(name, run) {
 }
 (async () => {
     await scenario(
+        "capability crypto resolving after envelope expiry yields null and clears timer",
+        async () => {
+            const f = fixture();
+            let resolve;
+            f.w.__ottFavoritesTransferRuntime = {
+                create: () => ({
+                    capability: () =>
+                        new Promise((done) => {
+                            resolve = done;
+                        }),
+                    dispose() {},
+                    execute() {},
+                }),
+            };
+            const values = [];
+            f.load(
+                "src/commands/remote-favorites-transfer.ts"
+            ).remoteFavoritesTransferCapability(
+                f.w,
+                f.runtime,
+                (v) => values.push(v),
+                (f.now() + 800) / 1000
+            );
+            f.advance(801);
+            resolve({ version: 1 });
+            await flush();
+            assert.deepEqual(values, [null]);
+            assert.equal(f.timers.size, 0);
+            assert.equal(f.stats.writes, 0);
+        }
+    );
+    await scenario(
+        "Plex capability stalled load returns base caps within one second and ignores late load",
+        async () => {
+            const f = fixture();
+            const work = f.start({
+                action: "capabilities",
+                expires_at: (f.now() + 8000) / 1000,
+                params: {},
+            });
+            const timer = [...f.timers.values()].find(
+                (t) => t.at === f.now() + 1000
+            );
+            assert(timer);
+            f.advance(1000);
+            timer.fn();
+            assert.equal(work.values.length, 1);
+            assert.equal(work.values[0].status, "ok");
+            assert.equal(work.values[0].data.favorites_transfer, undefined);
+            f.finishLoad();
+            await flush();
+            assert.equal(f.stats.creates, 0);
+            assert.equal(f.stats.writes, 0);
+            assert.equal(work.values.length, 1);
+            assert.equal(f.timers.size, 0);
+        }
+    );
+    await scenario(
+        "capability shared qualification promise is bounded and late success cannot read cache",
+        async () => {
+            const f = fixture();
+            let resolve,
+                reads = 0;
+            const pending = new Promise((done) => {
+                resolve = done;
+            });
+            f.w.__ottFavoritesTransferRuntime = {
+                create: () => ({
+                    capability: () => pending,
+                    dispose() {},
+                    execute() {},
+                }),
+            };
+            const values = [];
+            f.load(
+                "src/commands/remote-favorites-transfer.ts"
+            ).remoteFavoritesTransferCapability(f.w, f.runtime, (v) =>
+                values.push(v)
+            );
+            const timer = [...f.timers.values()][0];
+            f.advance(1000);
+            timer.fn();
+            assert.deepEqual(values, [null]);
+            Object.defineProperty(f.w, "__ottRemoteFavoritesTransfer", {
+                configurable: true,
+                get() {
+                    reads++;
+                    throw Error("late cache read");
+                },
+            });
+            resolve({ version: 1 });
+            await flush();
+            assert.equal(reads, 0);
+            assert.equal(values.length, 1);
+            assert.equal(f.stats.writes, 0);
+            // A fired fake timer remains in the map unless manually removed by finish.
+            assert.equal(f.timers.size, 0);
+        }
+    );
+    await scenario(
+        "capability deadline reserves250ms and no headroom performs no load",
+        async () => {
+            for (const left of [0, 249, 250]) {
+                const f = fixture(),
+                    values = [];
+                f.load(
+                    "src/commands/remote-favorites-transfer.ts"
+                ).remoteFavoritesTransferCapability(
+                    f.w,
+                    f.runtime,
+                    (v) => values.push(v),
+                    (f.now() + left) / 1000
+                );
+                assert.deepEqual(values, [null]);
+                assert.equal(f.scripts.length, 0);
+                assert.equal(f.timers.size, 0);
+            }
+            const f = fixture(),
+                values = [];
+            f.load(
+                "src/commands/remote-favorites-transfer.ts"
+            ).remoteFavoritesTransferCapability(
+                f.w,
+                f.runtime,
+                (v) => values.push(v),
+                (f.now() + 800) / 1000
+            );
+            const timer = [...f.timers.values()].find(
+                (t) => t.at === f.now() + 550
+            );
+            assert(timer);
+            f.advance(550);
+            timer.fn();
+            assert.deepEqual(values, [null]);
+            f.finishLoad();
+            await flush();
+            assert.equal(f.stats.creates, 0);
+            assert.equal(values.length, 1);
+        }
+    );
+    await scenario(
+        "capability cancellation clears own timer and suppresses late load and crypto",
+        async () => {
+            for (const duringPromise of [false, true]) {
+                const f = fixture();
+                let resolve;
+                if (duringPromise)
+                    f.w.__ottFavoritesTransferRuntime = {
+                        create: () => ({
+                            capability: () =>
+                                new Promise((done) => {
+                                    resolve = done;
+                                }),
+                            dispose() {},
+                            execute() {},
+                        }),
+                    };
+                const values = [],
+                    cancel = f
+                        .load("src/commands/remote-favorites-transfer.ts")
+                        .remoteFavoritesTransferCapability(
+                            f.w,
+                            f.runtime,
+                            (v) => values.push(v)
+                        );
+                cancel();
+                assert.equal(
+                    [...f.timers.values()].some((t) => t.at === f.now() + 1000),
+                    false
+                );
+                if (duringPromise) resolve({ version: 1 });
+                else f.finishLoad();
+                await flush();
+                assert.equal(values.length, 0);
+                assert.equal(f.stats.creates, 0);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "capability early authoritative success clears budget and callback fires once",
+        async () => {
+            const f = fixture(),
+                work = f.start({
+                    action: "capabilities",
+                    expires_at: (f.now() + 8000) / 1000,
+                    params: {},
+                });
+            const lateTimer = [...f.timers.values()].find(
+                (t) => t.at === f.now() + 1000
+            );
+            f.finishLoad();
+            const result = await ready(work);
+            assert.equal(result.data.favorites_transfer.version, 1);
+            assert.equal(f.timers.size, 0);
+            lateTimer.fn();
+            await flush();
+            assert.equal(work.values.length, 1);
+            assert.equal(f.stats.writes, 0);
+        }
+    );
+    await scenario(
         "non-Plex capability hint preserves exact legacy caps without optional loads or writes",
         async () => {
             for (const [prefix, driver] of [
