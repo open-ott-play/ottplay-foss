@@ -1,0 +1,346 @@
+{
+  "status": "PROPOSED_NAMED_FEATURE_ALLOCATION_PENDING_SOURCE_PEER_AND_ROOT_APPLY",
+  "measurement": {
+    "head": "5f9e1b20f58deb5322e1ef0940f640070c0e606c",
+    "headTree": "1ab8a058e15a80a10e893129a11e11701ff1ad8b",
+    "run": 40645896589,
+    "job": 122674820036,
+    "testedMerge": {
+      "parents": [
+        "e76668fb34401a9048514e74fa08bdc257616fef",
+        "5f9e1b20f58deb5322e1ef0940f640070c0e606c"
+      ],
+      "sha": "aef5268bc535e5f2b77ffeabe8055d3960a8ccdb",
+      "tree": "1ab8a058e15a80a10e893129a11e11701ff1ad8b"
+    },
+    "artifact": {
+      "id": 12797950706,
+      "zipBytes": 2813,
+      "zipSha256": "8bfa064c1694b2ac31b374b1ccc5782258cc9708b8c7960df28ac6e7bb7996b9",
+      "jsonSha256": "6c798cf3244f0995567708918dcb7602f9db22090a3d48eb9761a7338e8eedb6"
+    },
+    "baseline": {
+      "head": "cefb2c61a3198838e696fb53b2a1322fd563696a",
+      "testedMerge": {
+        "parents": [
+          "e76668fb34401a9048514e74fa08bdc257616fef",
+          "cefb2c61a3198838e696fb53b2a1322fd563696a"
+        ],
+        "sha": "712bb3ffc3788db6921531a958fe08394d3a977d",
+        "tree": "d1829c440aff8fa08d32184187950f1558aa7194"
+      },
+      "run": 40634859347,
+      "artifactId": 12793610773,
+      "zipBytes": 25760,
+      "zipSha256": "0f41e2892bf290db671fd196bbc0911b9fc28b7f635140fd06b69fcb4d1c8309",
+      "jsonSha256": "4713b79a49ec7856530d7d938f2e5cf2d55e3d1e801ccdab7e058bd567b500bc",
+      "equivalentProductionSourceTo": "104cb88cbe02fc0a5935967897c029803d8bf981; only later diagnostic object property order changed outside emitted player"
+    },
+    "toolchain": {
+      "node": "22.23.3",
+      "zlib": "1.3.1-e00f703"
+    },
+    "dependencies": {
+      "typescript": "5.9.3",
+      "terser": "5.51.2",
+      "acorn": "8.19.0",
+      "vite": "8.3.5"
+    },
+    "runtimePackageVersion": "1.1.61",
+    "measuredEntryDelta": {
+      "bytes": 4746,
+      "webGzipBytes": 1355,
+      "nativeGzipBytes": 1356
+    },
+    "measuredOptionalDelta": {
+      "bytes": 23193,
+      "gzipBytes": 4823
+    },
+    "measuredCompleteDelta": {
+      "bytes": 27939,
+      "webGzipBytes": 6178,
+      "nativeGzipBytes": 6179
+    },
+    "allProvidersAndOther11OptionalsHashIdentical": true,
+    "graph": {
+      "main": {
+        "added": ["build/storage/favorites-physical-storage.js"],
+        "removed": []
+      },
+      "optionalFamilies": {
+        "added": [],
+        "removed": []
+      },
+      "transfer": {
+        "added": [
+          "build/commands/favorites-recovery.js",
+          "build/settings/favorites-recovery-codec.js"
+        ],
+        "removed": []
+      }
+    },
+    "componentLimitation": "No new minified per-module composition exists: failed Build stops before measure:composition. Entry+optional are actual final asset deltas, not independent single-module ablations.",
+    "capsChanged": false,
+    "diagnosticComplete": true,
+    "inputErrors": [],
+    "violations": 24,
+    "localBuildExecuted": false,
+    "localFallback": "Shelved: remote complete diagnostics available; ordinaryVitehardcodedSoutputs unsafe under readonly donor constraints."
+  },
+  "baseline": {
+    "toolchain": {
+      "node": "22.23.3",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entries": [
+      {
+        "bytes": 1091430,
+        "gzipBytes": 335929,
+        "path": "dist/player.js",
+        "sha256": "582e73c9a6d6207bcca25aa74fb025858f70fb4f586b17798a3887853fafcd54"
+      },
+      {
+        "bytes": 1091388,
+        "gzipBytes": 335998,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "867f6bb831158b66a3011993166f137ef4f3c2eba85d2ca7c9d50c448b6bee16"
+      },
+      {
+        "bytes": 1091388,
+        "gzipBytes": 335998,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "867f6bb831158b66a3011993166f137ef4f3c2eba85d2ca7c9d50c448b6bee16"
+      }
+    ],
+    "legacy": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1234022,
+        "gzipBytes": 387985
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1233980,
+        "gzipBytes": 388054
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1233980,
+        "gzipBytes": 388054
+      }
+    ],
+    "complete": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1438412,
+        "gzipBytes": 455165
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1438370,
+        "gzipBytes": 455234
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1438370,
+        "gzipBytes": 455234
+      }
+    ],
+    "favoritesOptional": [
+      {
+        "bytes": 85318,
+        "gzipBytes": 23898,
+        "path": "dist/favorites-transfer.js",
+        "sha256": "cdd564833c1c1b77583910806e06cbdf00fade339f7c5811a24a2d78e39429c0"
+      },
+      {
+        "bytes": 85318,
+        "gzipBytes": 23898,
+        "path": "src-tauri/frontend/dist/favorites-transfer.js",
+        "sha256": "cdd564833c1c1b77583910806e06cbdf00fade339f7c5811a24a2d78e39429c0"
+      },
+      {
+        "bytes": 85318,
+        "gzipBytes": 23898,
+        "path": "dist-mobile/dist/favorites-transfer.js",
+        "sha256": "cdd564833c1c1b77583910806e06cbdf00fade339f7c5811a24a2d78e39429c0"
+      }
+    ]
+  },
+  "candidate": {
+    "toolchain": {
+      "node": "22.23.3",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entries": [
+      {
+        "bytes": 1096176,
+        "gzipBytes": 337284,
+        "path": "dist/player.js",
+        "sha256": "ac3fe00c7d74bd663bc6f975df034fbf83a9b6e96d3ebb04d223b98064ce9947"
+      },
+      {
+        "bytes": 1096134,
+        "gzipBytes": 337354,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "799a8375ab57940d52943dded831c4d4e133a968190f8db6a5cdbf5d1626c371"
+      },
+      {
+        "bytes": 1096134,
+        "gzipBytes": 337354,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "799a8375ab57940d52943dded831c4d4e133a968190f8db6a5cdbf5d1626c371"
+      }
+    ],
+    "legacy": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1238768,
+        "gzipBytes": 389340
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1238726,
+        "gzipBytes": 389410
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1238726,
+        "gzipBytes": 389410
+      }
+    ],
+    "complete": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1466351,
+        "gzipBytes": 461343
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1466309,
+        "gzipBytes": 461413
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1466309,
+        "gzipBytes": 461413
+      }
+    ],
+    "favoritesOptional": [
+      {
+        "bytes": 108511,
+        "gzipBytes": 28721,
+        "path": "dist/favorites-transfer.js",
+        "sha256": "a0aa3fba26392e45ffc491e0edde3884c4c707c690d01aa987676576b6c0f1c9"
+      },
+      {
+        "bytes": 108511,
+        "gzipBytes": 28721,
+        "path": "src-tauri/frontend/dist/favorites-transfer.js",
+        "sha256": "a0aa3fba26392e45ffc491e0edde3884c4c707c690d01aa987676576b6c0f1c9"
+      },
+      {
+        "bytes": 108511,
+        "gzipBytes": 28721,
+        "path": "dist-mobile/dist/favorites-transfer.js",
+        "sha256": "a0aa3fba26392e45ffc491e0edde3884c4c707c690d01aa987676576b6c0f1c9"
+      }
+    ]
+  },
+  "allocation": {
+    "entry": {
+      "bytes": 4800,
+      "gzipBytes": 1400
+    },
+    "optional": {
+      "bytes": 23300,
+      "gzipBytes": 4900
+    },
+    "complete": {
+      "bytes": 28100,
+      "gzipBytes": 6300
+    }
+  },
+  "previousCaps": {
+    "BUDGET": {
+      "bytes": 1092582,
+      "gzipBytes": 336806
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1235882,
+      "gzipBytes": 388856
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1435482,
+      "gzipBytes": 453884
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1439962,
+      "gzipBytes": 456188
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6000,
+        "gzipBytes": 2000
+      },
+      "favorites-transfer": {
+        "bytes": 86000,
+        "gzipBytes": 24400
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "historicalEvidenceSha256": {
+    "local-startup-preview-size-20261027.json": "f3312a6fc307287e511cffc4866e5d91f4270cbeef8b353060b4585e77050bf0",
+    "favorites-transfer-size-20261028.json": "4b28710e4f42f660d7c21263e33170e45a13f8ec021d9f258c7a18cce741929b",
+    "desktop-favorites-key-size-20261028.json": "a8f60ffd77983cecfd59a7f8787c907cdb142c9dc5a4ded30a870e3b60efa664"
+  },
+  "preservation": "All historical JSON, prior F/transfer/Plex/local allowances and generic provider/other optional caps remain unchanged; only this independent recovery cost is added once."
+}
