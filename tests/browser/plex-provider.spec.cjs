@@ -3,6 +3,62 @@ const path = require("node:path");
 const { test, expect } = require("../helpers/browser-test.cjs");
 const installShakaLifecycleDiagnostics = require("./shaka-lifecycle-diagnostics.cjs");
 
+// Serialized by Playwright: keep this predicate self-contained.
+function aspectMediaReady({ engine, previous, target }) {
+    const media = window.video;
+    if (media?.error)
+        throw new Error(
+            "Decoder error " + media.error.code + ": " + media.error.message
+        );
+    if (window.__ottMedia?.current()?.ref.itemId !== target || !media)
+        return false;
+    let source;
+    if (engine === "html5") source = media.currentSrc;
+    else if (engine === "hls.js") {
+        if (window.hlsInstance?.media !== media) return false;
+        source = window.hlsInstance.url;
+    } else if (engine === "shaka") {
+        if (window.player?.getMediaElement() !== media) return false;
+        source = window.player.getAssetUri();
+    } else {
+        const player = window.videojs?.getPlayer("video");
+        if (player?.tech({ IWillNotUseThisInPlugins: true }).el() !== media)
+            return false;
+        source = player.currentSource()?.src;
+    }
+    const expectedPath = JSON.parse(target.slice("request:".length)).path;
+    let requested;
+    let attached;
+    try {
+        requested = new URL(source, window.location.href);
+        attached = new URL(media.currentSrc, window.location.href);
+    } catch (_) {
+        return false;
+    }
+    const session = requested.searchParams.get("session");
+    if (requested.searchParams.get("path") !== expectedPath || !session)
+        return false;
+    if (attached.protocol === "blob:") {
+        // New MediaSource engines must not borrow the previous film's decoder.
+        if (
+            previous &&
+            previous.target !== target &&
+            previous.currentSrc === media.currentSrc
+        )
+            return false;
+    } else if (
+        attached.searchParams.get("path") !== expectedPath ||
+        attached.searchParams.get("session") !== session
+    )
+        return false;
+    return (
+        media.videoWidth === 640 &&
+        media.videoHeight === 360 &&
+        media.readyState >= 2 &&
+        media.currentTime > 0.1
+    );
+}
+
 const plex = "https://plex.fixture";
 const token = "fixture-plex-secret";
 const mediaRoot = path.resolve(__dirname, "../fixtures/media-runtime");
@@ -1389,32 +1445,23 @@ for (const { engine, strict } of [
             await page.keyboard.press("Shift");
             await openPlexChannels(page);
             await selectPlexChannel(page, films[0].title);
+            let previousReadySource = null;
             async function ready(id) {
                 const target =
                     "request:" +
                     JSON.stringify({ path: "/library/metadata/" + id });
                 try {
                     await page.waitForFunction(
-                        (target) => {
-                            const media = window.video;
-                            if (media?.error)
-                                throw new Error(
-                                    "Decoder error " +
-                                        media.error.code +
-                                        ": " +
-                                        media.error.message
-                                );
-                            return (
-                                window.__ottMedia?.current()?.ref.itemId ===
-                                    target &&
-                                media?.videoWidth === 640 &&
-                                media?.videoHeight === 360 &&
-                                media?.readyState >= 2 &&
-                                media.currentTime > 0.1
-                            );
-                        },
-                        target,
+                        aspectMediaReady,
+                        { engine, previous: previousReadySource, target },
                         { timeout: 15000 }
+                    );
+                    previousReadySource = await page.evaluate(
+                        (target) => ({
+                            currentSrc: window.video.currentSrc,
+                            target,
+                        }),
+                        target
                     );
                     expect(
                         await page.evaluate(() => ({
