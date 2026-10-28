@@ -1,4 +1,5 @@
 "use strict";
+const remoteTransferDependency = require("./helpers/remote-transfer-dependency.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -222,6 +223,8 @@ const remoteCode = ts.transpileModule(
 function remote(f) {
     f.host.exports = {};
     f.host.require = (name) => {
+        const actual = remoteTransferDependency(name, f.host);
+        if (actual) return actual;
         if (name === "./remote-settings") {
             for (const part of [
                 "remote-settings",

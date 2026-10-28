@@ -1,3 +1,4 @@
+const remoteTransferDependency = require("./helpers/remote-transfer-dependency.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -16,7 +17,10 @@ function load(file, host, imports = {}) {
         Date,
         exports: {},
         Math,
-        require: (name) => imports[name] || {},
+        require: (name) =>
+            imports[name] ||
+            remoteTransferDependency(name, host, { Date, Math }) ||
+            {},
         window: host,
     };
     vm.runInNewContext(code, context);

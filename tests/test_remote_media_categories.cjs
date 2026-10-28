@@ -1,3 +1,4 @@
+const remoteTransferDependency = require("./helpers/remote-transfer-dependency.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -91,6 +92,10 @@ function fixture(provider = "vportal") {
         Date: { now: () => clock },
         exports: {},
         require(name) {
+            const actual = remoteTransferDependency(name, host, {
+                Date: { now: () => clock },
+            });
+            if (actual) return actual;
             if (name === "../utils/caseless")
                 return { caselessKey: (value) => value.toLowerCase() };
             if (name === "./remote-restart")
@@ -161,7 +166,13 @@ function fixture(provider = "vportal") {
 
 {
     const f = fixture();
-    assert.deepEqual(f.call("capabilities").data.categories, {
+    const capability = f.call("capabilities").data;
+    assert.equal(
+        Object.hasOwn(capability, "favorites_transfer"),
+        false,
+        "real transfer qualification leaves unsupported provider capabilities unchanged"
+    );
+    assert.deepEqual(capability.categories, {
         maxPageSize: 200,
         operations: ["list", "select"],
         version: 1,
