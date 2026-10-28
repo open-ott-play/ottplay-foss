@@ -314,6 +314,58 @@ async function staged(f, s, document) {
     });
     return { adapter, context, input, preview, snapshot };
 }
+function retainedOutcome(f, pairedScope, state = "pending") {
+    const ledger = f
+        .load("src/settings/favorites-operation-receipts.ts")
+        .createFavoritesOperationReceipts({
+            compareAndSwap: (before, after) => {
+                if ((f.saved.get(receiptKey) || null) !== before)
+                    return "conflict";
+                f.saved.set(receiptKey, after);
+                return "confirmed";
+            },
+            current: () => true,
+            now: () => 1000,
+            persistedRead: () => f.saved.get(receiptKey) || null,
+            read: () => f.saved.get(receiptKey) || null,
+        });
+    const ticket = ledger.reserve(
+        {
+            operationId: "33333333-3333-4333-8333-333333333333",
+            payloadHash: "a".repeat(64),
+            refs: {
+                runtimeId: "old-runtime",
+                stageId: "44444444-4444-4444-8444-444444444444",
+            },
+            scope: pairedScope,
+        },
+        { freshAdmission: true }
+    );
+    if (state !== "pending")
+        ledger.commitCompletion(
+            ledger.materializeCompletion(
+                ledger.prepareCompletion(ticket, {
+                    counts: {
+                        channelLists: 0,
+                        channelMemberships: 0,
+                        mediaFavorites: 0,
+                        unresolved: 0,
+                    },
+                    meta: { appliedStores: 1, code: "none", totalStores: 2 },
+                    newRevision: "favorites-retained",
+                    persistence: "persistent",
+                    state,
+                }),
+                "b".repeat(64)
+            )
+        );
+    return ledger;
+}
+const replacementScope = {
+    profileBindingId: "55555555-5555-4555-8555-555555555555",
+    provider: "plex",
+    sourceBindingId: "66666666-6666-4666-8666-666666666666",
+};
 (async () => {
     {
         const f = fixture();
@@ -692,6 +744,114 @@ async function staged(f, s, document) {
         } finally {
             gateway.dispose();
         }
+    }
+    for (const state of ["pending", "partial", "unknown"]) {
+        for (const mode of ["create", "import", "pair", "replace-current"]) {
+            const f = fixture(),
+                paired = provision(f, "import", { scope });
+            const ledger = retainedOutcome(f, paired.scope, state);
+            const fresh = f.createHost(f.storagePorts),
+                cat = fresh.catalog();
+            const before = [...f.saved],
+                writes = f.writes.length;
+            const args = {
+                codecVersion: 1,
+                expected_binding_revision: cat.binding_revision,
+                mode,
+                op: "provision",
+                runtime: "fresh-runtime",
+                target_id: cat.targets[0].target_id,
+            };
+            if (mode !== "create")
+                args.scope = mode === "pair" ? paired.scope : replacementScope;
+            if (mode === "replace-current") args.prior_scope = paired.scope;
+            assert.throws(
+                () => fresh.provision(args),
+                /reconciliation_required/,
+                state + ":" + mode
+            );
+            assert.throws(
+                () => fresh.captureContext(),
+                /reconciliation_required/
+            );
+            assert.deepEqual(
+                [...f.saved],
+                before,
+                "protected authority and registry bytes unchanged"
+            );
+            assert.equal(
+                f.writes.length,
+                writes,
+                "no attempted storage writes"
+            );
+            assert.equal(
+                fresh.binding(paired.scope).current(),
+                true,
+                "old scope remains bound for reconciliation"
+            );
+            assert.equal(
+                fresh.qualified(),
+                true,
+                "read-only qualification remains available"
+            );
+            assert.equal(fresh.catalog().bindings.length, 1);
+            assert.equal(
+                ledger.status("33333333-3333-4333-8333-333333333333").state,
+                state
+            );
+            await fresh
+                .createAdapter(() => null)
+                .status("33333333-3333-4333-8333-333333333333", () => true);
+            assert.deepEqual(
+                [...f.saved],
+                before,
+                "read-only status never clears protected receipt"
+            );
+        }
+    }
+    {
+        const f = fixture(),
+            paired = provision(f, "import", { scope });
+        retainedOutcome(f, paired.scope);
+        const pending = f.saved.get(receiptKey);
+        f.saved.delete(receiptKey);
+        const fresh = f.createHost(f.storagePorts),
+            cat = fresh.catalog();
+        const prior = f.saved.get(bindingKey),
+            writes = f.writes.length;
+        const get = f.w.localStorage.getItem;
+        let armed = true;
+        f.w.localStorage.getItem = (key) => {
+            // Registry read follows the initial ledger check, before actual CAS.
+            if (armed && key === bindingKey) {
+                armed = false;
+                f.saved.set(receiptKey, pending);
+            }
+            return get(key);
+        };
+        assert.throws(
+            () =>
+                fresh.provision({
+                    codecVersion: 1,
+                    expected_binding_revision: cat.binding_revision,
+                    mode: "replace-current",
+                    op: "provision",
+                    prior_scope: paired.scope,
+                    runtime: "fresh-runtime",
+                    scope: replacementScope,
+                    target_id: cat.targets[0].target_id,
+                }),
+            /reconciliation_required/
+        );
+        assert.equal(armed, false, "pending appeared after initial preflight");
+        assert.equal(f.saved.get(bindingKey), prior);
+        assert.equal(f.saved.get(receiptKey), pending);
+        assert.equal(
+            f.writes.length,
+            writes,
+            "CAS boundary fence prevents target write"
+        );
+        assert.equal(fresh.binding(paired.scope).current(), true);
     }
     console.log(
         "PASS current Plex host: read-only empty qualification, one-write provisioning, strict DTOs, null/LZ preimages, preserved history/cache, ownership and persisted uncertainty"

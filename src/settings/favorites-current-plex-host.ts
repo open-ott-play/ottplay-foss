@@ -52,6 +52,7 @@ export function createFavoritesCurrentPlexHost(
         }
     }
     var target: any = null;
+    var provisioning: { blocked: string | null } | null = null;
     var uuidPattern =
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
     var validationScope = {
@@ -392,11 +393,14 @@ export function createFavoritesCurrentPlexHost(
         owner: any,
         key: string,
         before: string | null,
-        after: string
+        after: string,
+        beforeWrite?: () => void
     ) {
         if (!owner.current() || owner.raw(key) !== before)
             return "conflict" as const;
         try {
+            if (beforeWrite) beforeWrite();
+            if (!owner.current()) return "conflict" as const;
             owner.set(key, after);
         } catch (_) {
             return "unknown" as const;
@@ -410,8 +414,25 @@ export function createFavoritesCurrentPlexHost(
         }
     }
     var registry = createFavoritesBindings({
-        compareAndSwap: (before, after) =>
-            cas(authority().owner, registryKey, before, after),
+        compareAndSwap: (before, after) => {
+            var attempt = provisioning,
+                owner = authority().owner;
+            if (!attempt) return "conflict" as const;
+            return cas(owner, registryKey, before, after, () => {
+                try {
+                    unprotectedOutcomes(owner);
+                } catch (error) {
+                    // This guard is before target writes. Preserve the fixed wire
+                    // rejection through the registry's conservative CAS wrapper.
+                    attempt!.blocked =
+                        error &&
+                        (error as any).message === "reconciliation_required"
+                            ? "reconciliation_required"
+                            : "unsupported_persistence";
+                    throw error;
+                }
+            });
+        },
         current: (entry, value) => {
             try {
                 return (
@@ -493,6 +514,26 @@ export function createFavoritesCurrentPlexHost(
         persistedRead: () => authority().owner.raw(receiptKey, 65536),
         read: () => authority().owner.raw(receiptKey, 65536),
     });
+    function unprotectedOutcomes(owner: any): void {
+        var raw = owner.raw(receiptKey, 65536);
+        try {
+            receiptService.status("00000000-0000-4000-8000-000000000003");
+        } catch (_) {
+            fail("unsupported_persistence");
+        }
+        // Validation and the protected-outcome decision use the same persisted
+        // physical bytes; drift never authorizes a binding mutation.
+        if (owner.raw(receiptKey, 65536) !== raw)
+            fail("reconciliation_required");
+        if (
+            raw !== null &&
+            JSON.parse(raw).entries.some(
+                (entry: any) =>
+                    entry.state !== "verified" && entry.state !== "not_applied"
+            )
+        )
+            fail("reconciliation_required");
+    }
     function documentFor(owner: any) {
         var plex = createFavoritesPlexCodec({
             current: () =>
@@ -603,6 +644,7 @@ export function createFavoritesCurrentPlexHost(
         };
     }
     function provision(params: any) {
+        if (provisioning) fail("busy");
         var fields = [
             "op",
             "runtime",
@@ -654,6 +696,9 @@ export function createFavoritesCurrentPlexHost(
             value.prior_profile_id = params.prior_scope.profileBindingId;
             value.prior_source_id = params.prior_scope.sourceBindingId;
         }
+        unprotectedOutcomes(authority().owner);
+        var attempt = { blocked: null as string | null };
+        provisioning = attempt;
         try {
             var result = registry.provisionPlex(
                 value,
@@ -674,6 +719,7 @@ export function createFavoritesCurrentPlexHost(
                 target_id: params.target_id,
             };
         } catch (error) {
+            if (attempt.blocked) fail(attempt.blocked);
             var code = error && (error as any).code;
             if (code === "outcome_unknown") fail("outcome_unknown");
             if (
@@ -689,26 +735,17 @@ export function createFavoritesCurrentPlexHost(
             if (["storage_unavailable", "invalid_registry"].indexOf(code) >= 0)
                 fail("unsupported_persistence");
             fail("policy_denied");
+        } finally {
+            provisioning = null;
         }
     }
     return {
         binding,
         captureContext: function () {
             var owner = base(),
-                before = owner.raw(registryKey, 262144),
-                ledgerRaw = owner.raw(receiptKey, 65536);
+                before = owner.raw(registryKey, 262144);
             registry.list();
-            receiptService.status("00000000-0000-4000-8000-000000000003");
-            // A protected persisted outcome survives page restarts; never admit another write over it.
-            if (
-                ledgerRaw !== null &&
-                JSON.parse(ledgerRaw).entries.some(
-                    (entry: any) =>
-                        entry.state !== "verified" &&
-                        entry.state !== "not_applied"
-                )
-            )
-                fail("reconciliation_required");
+            unprotectedOutcomes(owner);
             return {
                 current: () => {
                     try {
