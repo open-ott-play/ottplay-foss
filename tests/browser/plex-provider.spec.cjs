@@ -1446,9 +1446,6 @@ for (const { engine, strict } of [
                             return {
                                 currentRef:
                                     window.__ottMedia?.current()?.ref || null,
-                                shakaLifecycle:
-                                    window.__aspectShakaLifecycle?.snapshot() ||
-                                    null,
                                 hls: hls
                                     ? {
                                           attachedToVideo: hls.media === media,
@@ -1509,6 +1506,9 @@ for (const { engine, strict } of [
                                               : null,
                                       }
                                     : null,
+                                shakaLifecycle:
+                                    window.__aspectShakaLifecycle?.snapshot() ||
+                                    null,
                             };
                         });
                         await test.info().attach("aspect-readiness-failure", {

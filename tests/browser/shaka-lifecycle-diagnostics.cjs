@@ -33,32 +33,32 @@ module.exports = function installShakaLifecycleDiagnostics() {
             return w.player;
         });
         return {
-            playerId: id(player),
-            currentPlayerId: id(current),
-            isCurrentPlayer: !!player && current === player,
-            session: number(
-                safe(function () {
-                    return w._playSession;
-                })
-            ),
-            nativeAttempt: number(
-                safe(function () {
-                    return w._coreNativeAttempt;
-                })
-            ),
             coreMode: number(
                 safe(function () {
                     return w._corePlaybackMode;
                 })
             ),
+            currentPlayerId: id(current),
+            forcePlay: safe(function () {
+                return typeof w.forcePlay === "boolean" ? w.forcePlay : null;
+            }),
+            isCurrentPlayer: !!player && current === player,
+            nativeAttempt: number(
+                safe(function () {
+                    return w._coreNativeAttempt;
+                })
+            ),
+            playerId: id(player),
             playerMode: number(
                 safe(function () {
                     return w.playerMode;
                 })
             ),
-            forcePlay: safe(function () {
-                return typeof w.forcePlay === "boolean" ? w.forcePlay : null;
-            }),
+            session: number(
+                safe(function () {
+                    return w._playSession;
+                })
+            ),
             teardownPending: safe(function () {
                 return typeof w._coreShakaTeardown === "undefined"
                     ? null

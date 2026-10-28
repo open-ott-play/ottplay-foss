@@ -17,6 +17,7 @@ mod smoke {
     static EXIT: AtomicI32 = AtomicI32::new(1);
     static CREATED: AtomicUsize = AtomicUsize::new(0);
     static DESTROYED: AtomicUsize = AtomicUsize::new(0);
+    static SHARED_STORAGE: std::sync::Mutex<Option<Value>> = std::sync::Mutex::new(None);
     const OWN_LABELS: [&str; 6] = ["writer", "observer", "slot2", "slot3", "slot4", "reloaded"];
     const LABELS: [&str; 5] = ["writer", "observer", "slot2", "slot3", "slot4"];
 
@@ -35,6 +36,10 @@ mod smoke {
         tokio::time::timeout_at(tokio::time::Instant::from_std(deadline), receiver).await
             .map_err(|_| "Own main-loop release timed out".to_string())?
             .map_err(|_| "Own main-loop release channel closed".to_string())
+    }
+    fn shared_storage_observation(value: Value) -> Result<(), String> {
+        *SHARED_STORAGE.lock().map_err(|_| "Own storage observation lock poisoned".to_string())? = Some(value);
+        Ok(())
     }
     async fn evaluate(window: &tauri::WebviewWindow, expression: &str) -> Result<Value, String> {
         let event = format!("favorites-native-{}", SEQ.fetch_add(1, Ordering::SeqCst));
@@ -242,10 +247,53 @@ mod smoke {
                 == "own-shared-value",
             "Own native set/read failed",
         )?;
-        require(
-            evaluate(&observer, "window.nativeFavoritesSmoke.get()").await? == "own-shared-value",
-            "Same WK store did not share actual localStorage",
-        )?;
+        let shared_started = Instant::now();
+        let shared_deadline = shared_started + Duration::from_secs(10);
+        // These are the intended production isolation IDs, not a claim that
+        // physical storage sharing has already been observed.
+        let writer_identifier = super::instance::data_store_identifier(&output.join("slot1"));
+        let observer_identifier = super::instance::data_store_identifier(&output.join("slot1"));
+        let mut observation = json!({"expected":"own-shared-value", "writer_view":"writer", "observer_view":"observer",
+            "writer_intended_store_identifier":writer_identifier,
+            "observer_intended_store_identifier":observer_identifier,
+            "same_intended_store_identifier":writer_identifier == observer_identifier});
+        shared_storage_observation(observation.clone())?;
+        // The existing 10-second/25-ms observation convention uses ONE absolute
+        // deadline for every IPC read, poll and final comparison. No late read
+        // after timeout can turn a failed observation into success.
+        let observed = tokio::time::timeout_at(tokio::time::Instant::from_std(shared_deadline), async {
+            let mut polls = 0usize;
+            loop {
+                let sample = evaluate(&observer, "window.nativeFavoritesSmoke.get()").await;
+                if polls == 0 {
+                    observation["before"] = json!(sample.as_ref().ok());
+                    observation["before_read_error"] = json!(sample.as_ref().err());
+                    observation["before_elapsed_ms"] = json!(shared_started.elapsed().as_millis());
+                }
+                polls += 1;
+                observation["polls"] = json!(polls);
+                observation["last_observed"] = json!(sample.as_ref().ok());
+                observation["last_read_error"] = json!(sample.as_ref().err());
+                shared_storage_observation(observation.clone())?;
+                if sample? == "own-shared-value" {
+                    let after = evaluate(&observer, "window.nativeFavoritesSmoke.get()").await;
+                    observation["after"] = json!(after.as_ref().ok());
+                    observation["after_read_error"] = json!(after.as_ref().err());
+                    shared_storage_observation(observation.clone())?;
+                    require(after? == "own-shared-value", "Same WK store did not share exact writer localStorage after bounded wait")?;
+                    return Ok::<(), String>(());
+                }
+                tokio::time::sleep_until(tokio::time::Instant::from_std(std::cmp::min(
+                    shared_deadline, Instant::now() + Duration::from_millis(25)))).await;
+            }
+        }).await.unwrap_or_else(|_| Err("Same WK store did not share exact writer localStorage within original 10-second observation deadline".to_string()));
+        let observed = observed.and_then(|_| require(Instant::now() < shared_deadline,
+            "Same-store observation completed after its original deadline"));
+        observation["elapsed_ms"] = json!(shared_started.elapsed().as_millis());
+        observation["wait_succeeded"] = json!(observed.is_ok());
+        observation["wait_error"] = json!(observed.as_ref().err());
+        shared_storage_observation(observation)?;
+        observed?;
         for label in ["slot2", "slot3", "slot4"] {
             let view = app
                 .get_webview_window(label)
@@ -481,6 +529,10 @@ mod smoke {
                     let cleaned = cleanup(&app, &output).await;
                     let mut code = if result.is_ok() && cleaned.is_ok() { 0 } else { 1 };
                     let mut report = result.unwrap_or_else(|error| json!({"status":"fail","error":error,"qualified_native_origin":false}));
+                    match SHARED_STORAGE.lock() {
+                        Ok(observation) => if let Some(value) = observation.as_ref() { report["shared_storage_observation"] = value.clone(); },
+                        Err(_) => { code = 1; report["status"] = json!("fail"); report["observation_error"] = json!("Own storage observation lock poisoned"); }
+                    }
                     report["own_named_stores_cleaned"] = json!(cleaned.is_ok());
                     match cleaned {
                         Ok(cleanup) => report["cleanup"] = cleanup,
