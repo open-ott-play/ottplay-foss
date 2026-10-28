@@ -97,8 +97,8 @@ function storage() {
         ["stalkertoken", "saved-private-token"],
     ]);
 }
-function uiFixture() {
-    const saved = storage();
+function uiFixture(backing = storage()) {
+    const saved = backing;
     const loaded = [];
     const scriptCallbacks = [];
     const media = [{ loop: true }, { loop: true }];
@@ -229,6 +229,319 @@ function test(name, action) {
     cases++;
     console.log("PASS demo: " + name);
 }
+
+function sessionFixture(backing) {
+    const f = uiFixture(backing);
+    vm.runInContext(
+        declarations("src/storage/index.ts", [
+            "createStorageAdapter",
+            "installLocalPlaybackSession",
+        ]),
+        f.w
+    );
+    const raw = {
+        clear: () => f.saved.clear(),
+        del: (key) => f.saved.delete(key),
+        dump: () => Object.fromEntries(f.saved),
+        get: (key) => (f.saved.has(key) ? f.saved.get(key) : null),
+        reset() {},
+        set: (key, value) => f.saved.set(key, String(value)),
+        transaction(writes, current) {
+            if (
+                !current() ||
+                writes.some(
+                    (x) =>
+                        (f.saved.has(x.key) ? f.saved.get(x.key) : null) !==
+                        x.before
+                )
+            )
+                return false;
+            const before = new Map(f.saved);
+            for (const entry of writes) {
+                if (entry.after === null) f.saved.delete(entry.key);
+                else f.saved.set(entry.key, entry.after);
+            }
+            if (!current()) {
+                f.saved.clear();
+                before.forEach((v, k) => f.saved.set(k, v));
+                return false;
+            }
+            return true;
+        },
+    };
+    const adapter = f.w.installLocalPlaybackSession(raw);
+    f.w.ottpStorage = adapter;
+    f.w.stbGetItem = adapter.get;
+    f.w.stbSetItem = adapter.set;
+    f.w.stbDelItem = adapter.del;
+    f.w.__ottLocalMedia = { bindPlaybackOwner() {} };
+    vm.runInContext(providerLoad, f.w);
+    return { ...f, adapter };
+}
+test("one-off Local never replaces the startup provider, saved Local profile or playback intent", () => {
+    for (const provider of ["m3u", "offline", "demo"]) {
+        const backing = storage();
+        backing.set("ottplayprov", provider);
+        backing.set(
+            "offlineProfiles",
+            '{"active":2,"profiles":[null,null,{"name":"saved"}]}'
+        );
+        backing.set("localMediaPlaybackSelection", "saved-folder");
+        backing.set("offlineplaybackJournal", "saved-bookmark");
+        backing.set("offlineprimaryIndex", "9");
+        const f = sessionFixture(backing);
+        f.w.loadProv();
+        assert.equal(f.w.__ottActiveProviderDriver.id, provider);
+        const order = [];
+        f.w.__ottClassicPlayback = {
+            cancel() {
+                order.push("cancel");
+            },
+            checkpointNow() {
+                order.push("checkpoint");
+            },
+        };
+        const prior = f.w.__ottActiveProviderDriver;
+        const dispose = prior.dispose;
+        prior.dispose = () => {
+            order.push("dispose");
+            dispose();
+        };
+        f.w.loadProv("offline", () => {
+            assert.deepEqual(order.slice(0, 3), [
+                "checkpoint",
+                "cancel",
+                "dispose",
+            ]);
+            f.adapter.localPlayback.begin(() => "profile2");
+            f.w.stbSetItem("localMediaPlaybackSelection", "command-folder");
+        });
+        assert.equal(
+            f.w.__ottActiveProviderDriver.id,
+            "offline",
+            "Demo cannot override explicit session entry"
+        );
+        f.w.stbSetItem("ottplayprov", "offline");
+        f.w.stbSetItem("ottplayprovs", '["offline"]');
+        f.w.providerSetItem("playbackJournal", "command-bookmark");
+        f.w.providerSetItem("primaryIndex", "12");
+        assert.equal(f.adapter.dump().ottplayprov, provider);
+        assert.equal(
+            f.adapter.dump().localMediaPlaybackSelection,
+            "saved-folder"
+        );
+        const restart = sessionFixture(backing);
+        restart.w.loadProv();
+        assert.equal(restart.w.__ottActiveProviderDriver.id, provider);
+        assert.equal(
+            restart.w.stbGetItem("offlineProfiles"),
+            backing.get("offlineProfiles")
+        );
+        assert.equal(
+            restart.w.stbGetItem("localMediaPlaybackSelection"),
+            "saved-folder"
+        );
+        assert.equal(
+            restart.w.stbGetItem("offlineplaybackJournal"),
+            "saved-bookmark"
+        );
+        assert.equal(restart.w.stbGetItem("offlineprimaryIndex"), "9");
+        assert.equal(
+            restart.adapter.localPlayback.active(),
+            false,
+            "command intent is not replayed on fresh runtime"
+        );
+    }
+});
+
+test("explicit provider choices discard a one-off or promote the same Local selection", () => {
+    for (const target of ["m3u", "offline"])
+        for (const entry of ["index", "menu"]) {
+            const f = sessionFixture(storage());
+            f.w.loadProv("offline", () =>
+                f.adapter.localPlayback.begin(() => "profile")
+            );
+            f.w.stbSetItem("localMediaPlaybackSelection", "chosen-folder");
+            const tree = ts.createSourceFile(
+                "local-media.ts",
+                read("src/plugins/local-media.ts"),
+                ts.ScriptTarget.Latest,
+                true
+            );
+            let actual;
+            function visit(node) {
+                if (
+                    ts.isFunctionDeclaration(node) &&
+                    node.name?.text === "finishSession"
+                )
+                    actual = node.getText(tree);
+                ts.forEachChild(node, visit);
+            }
+            visit(tree);
+            assert(actual, "real Local session finish function");
+            const factory = ts.transpileModule(
+                "(function(w, retireRemotePlayback, playbackIntentContext) { " +
+                    actual +
+                    "; return finishSession; })",
+                { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+            ).outputText;
+            f.w.__ottLocalMedia.finishSession = vm.runInNewContext(factory)(
+                f.w,
+                () => {},
+                () => "profile"
+            );
+            f.w.__ottLocalMedia.open = () => {};
+            f.w.__ottClassicPlayback = { cancel() {}, checkpointNow() {} };
+            if (entry === "index")
+                assert.equal(
+                    f.w.selectProviderByIndex(f.w.providerIds.indexOf(target)),
+                    true
+                );
+            else {
+                f.w.selectProvaider();
+                f.w.selIndex = f.w.arrayProvaiders.indexOf(target);
+                f.w.listKeyHandlerFn(f.w.keys.ENTER);
+            }
+            assert.equal(
+                f.w.__ottActiveProviderDriver.id,
+                target,
+                "same restored storage value must not skip remount"
+            );
+            assert.equal(f.saved.get("ottplayprov"), target);
+            assert.equal(
+                f.saved.get("localMediaPlaybackSelection"),
+                target === "offline" ? "chosen-folder" : undefined
+            );
+            assert.equal(f.adapter.localPlayback.active(), false);
+        }
+});
+
+test("late session asset failure rolls RAM back once and cannot undo a later explicit provider choice", () => {
+    for (const superseded of [false, true]) {
+        const f = sessionFixture(storage());
+        const requests = [];
+        let failed = 0;
+        f.w.alert = () => {};
+        f.w.firstRun = () => failed++;
+        f.w.__ottProviderAssets = {
+            classic: {
+                ensure(_kind, _host, _version, _owner, ready, error) {
+                    requests.push({ error, ready });
+                },
+            },
+        };
+        f.w.loadProv("offline", () => {
+            const rollback = f.adapter.localPlayback.begin(() => "profile");
+            f.adapter.set("localMediaPlaybackSelection", "one-off");
+            return rollback;
+        });
+        assert.equal(f.adapter.get("ottplayprov"), "offline");
+        assert.equal(requests.length, 1);
+        if (superseded) {
+            f.adapter.localPlayback.end(false);
+            f.w.stbSetItem("ottplayprov", "demo");
+            f.w.loadProv("demo");
+            assert.equal(requests.length, 2);
+            requests[1].ready();
+            assert.equal(f.w.__ottActiveProviderDriver.id, "demo");
+        }
+        requests[0].error(new Error("delayed fixture asset failure"));
+        assert.equal(f.adapter.localPlayback.active(), false);
+        assert.equal(f.adapter.get("ottplayprov"), superseded ? "demo" : "m3u");
+        assert.equal(f.adapter.get("localMediaPlaybackSelection"), null);
+        assert.equal(failed, superseded ? 0 : 1);
+        requests[0].error(new Error("duplicate stale failure"));
+        assert.equal(f.adapter.get("ottplayprov"), superseded ? "demo" : "m3u");
+        if (superseded) assert.equal(f.w.__ottActiveProviderDriver.id, "demo");
+    }
+});
+
+test("throwing Local handoff recovers its current owner synchronously and after a deferred script", () => {
+    for (const deferred of [false, true])
+        for (const superseded of ["none", "command", "session"]) {
+            const f = sessionFixture(storage());
+            f.w.loadProv();
+            const previous = f.w.__ottActiveProviderDriver;
+            const dispose = previous.dispose;
+            let disposals = 0,
+                recoveries = 0,
+                release,
+                calls = 0;
+            previous.dispose = () => {
+                disposals++;
+                dispose();
+            };
+            f.w.firstRun = () => recoveries++;
+            const alerts = [];
+            f.w.alert = (message) => alerts.push(message);
+            const runtime = f.w.__ottProviderRuntime.classic;
+            if (deferred) {
+                let legacy;
+                runtime.replace((session) => {
+                    legacy = session;
+                }, true);
+                runtime.loadScript(
+                    legacy,
+                    (_url, ready) => {
+                        release = ready;
+                    },
+                    "fixture",
+                    () => {},
+                    () => {}
+                );
+            }
+            let replacement;
+            assert.doesNotThrow(() =>
+                f.w.loadProv("offline", () => {
+                    calls++;
+                    f.w.s = undefined;
+                    if (superseded !== "none") {
+                        replacement = {
+                            dispose() {
+                                throw Error("must retain replacement");
+                            },
+                            id: "new-owner",
+                        };
+                        f.w.__ottActiveProviderDriver = replacement;
+                        f.w._pendingProvId = "new-owner";
+                        f.adapter.localPlayback.begin(() => "new-session");
+                        f.adapter.set(
+                            "localMediaPlaybackSelection",
+                            "new-selection"
+                        );
+                        if (superseded === "command")
+                            f.w.__ottCommandChannelLoad = {};
+                        else runtime.replace(() => {}, true);
+                    }
+                    throw new Error("runtime_changed");
+                })
+            );
+            assert.equal(calls, deferred ? 0 : 1);
+            if (deferred) assert.doesNotThrow(() => release());
+            assert.equal(calls, 1);
+            assert.equal(disposals, 1);
+            assert.equal(recoveries, superseded === "none" ? 1 : 0);
+            assert.deepEqual(
+                alerts,
+                superseded === "none" ? ["Failed to load!"] : []
+            );
+            assert.equal(f.w.__ottActiveProviderDriver, replacement || null);
+            assert.equal(f.w.commandChannelsReady, false);
+            if (superseded !== "none") {
+                assert.equal(f.w._pendingProvId, "new-owner");
+                assert.equal(f.adapter.localPlayback.active(), true);
+                assert.equal(
+                    f.adapter.get("localMediaPlaybackSelection"),
+                    "new-selection"
+                );
+            } else {
+                assert.equal(f.w._pendingProvId, "");
+                assert.equal(f.adapter.localPlayback.active(), false);
+            }
+            assert.equal(f.saved.get("ottplayprov"), "m3u");
+            assert.equal(f.saved.get("localMediaPlaybackSelection"), undefined);
+        }
+});
 
 test("first-run action explicitly selects demo without rewriting saved profiles", () => {
     const { w, saved, loaded } = uiFixture();

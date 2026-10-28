@@ -143,6 +143,160 @@ function fixture(managed = false) {
     return c;
 }
 
+// Explicit replacement commits startup preview; observations never do.
+for (const type of ["live", "archive", "vod"]) {
+    for (const result of [
+        "commit",
+        "refuse",
+        "driver replacement",
+        "playback replacement",
+        "session change",
+    ]) {
+        const c = fixture(true);
+        c.__ottActiveProviderDriver = { id: "offline" };
+        c.api.command({ channelId: 101, type: "live" });
+        const before = c.api.snapshot();
+        let calls = 0;
+        c.__ottActiveProviderDriver.commitStartupPreview = () => {
+            calls++;
+            if (result === "driver replacement")
+                c.__ottActiveProviderDriver = { id: "other" };
+            if (result === "session change") c._playSession++;
+            if (result === "playback replacement") {
+                c.__ottActiveProviderDriver = { id: "other" };
+                c.api.command({ channelId: 202, type: "live" });
+            }
+            return result !== "refuse";
+        };
+        c.api.command({ position: 25, type: "position" });
+        assert.equal(calls, 0);
+        c.api.command({
+            archiveStart: 100,
+            channelId: type === "vod" ? "provider:file" : 202,
+            item: { stream_url: "file.mp4", title: "Chosen" },
+            sourceId: "local-fixture",
+            type,
+        });
+        assert.equal(calls, 1);
+        const after = c.api.snapshot();
+        if (result === "commit") {
+            assert.notEqual(after.generation, before.generation);
+            assert.equal(
+                after.target.kind,
+                type === "archive" ? "archive" : "vod"
+            );
+        } else if (result === "playback replacement") {
+            assert.equal(after.target.kind, "live");
+            assert.equal(after.target.channelId, "202");
+        } else assert.equal(after.generation, before.generation);
+    }
+}
+console.log(
+    "PASS startup preview explicit replacement intent and reentry fences"
+);
+
+// Natural EOF continuation transfers the ticket to its new playback generation.
+for (const type of ["live", "vod"]) {
+    const c = fixture(true);
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.api.command({ channelId: 101, type: "live" });
+    let commits = 0;
+    const continued = [];
+    c.__ottActiveProviderDriver.commitStartupPreview = () => {
+        commits++;
+        return true;
+    };
+    c.__ottActiveProviderDriver.continueStartupPreview = (generation) => {
+        assert.equal(generation, c.api.snapshot().generation);
+        continued.push(generation);
+    };
+    c.api.command({ type: "stop" });
+    const ended = c.api.snapshot().generation;
+    c.api.command({
+        automatic: true,
+        channelId: type === "vod" ? "provider:next" : 202,
+        channelSelection: type === "vod" ? 202 : undefined,
+        item: { stream_url: "next.mp4", title: "Next" },
+        sourceId: "local-fixture",
+        type,
+    });
+    assert.equal(commits, 0);
+    assert.equal(continued.length, 1);
+    assert.notEqual(continued[0], ended);
+    c.api.command({ channelId: 101, type: "live" });
+    assert.equal(
+        commits,
+        1,
+        "manual selection still commits after natural continuation"
+    );
+    assert.equal(continued.length, 1);
+}
+console.log(
+    "PASS natural continuation transfers preview generation without manual commit"
+);
+
+// Actual core backend wiring invokes only the captured Offline preview owner.
+for (const operation of ["pause", "seek", "restart"]) {
+    const c = fixture(true);
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.api.command({ channelId: 101, type: "live" });
+    const handle = c.openBackend();
+    Object.assign(c.video, {
+        currentTime: 120,
+        duration: 600,
+        paused: false,
+        readyState: 4,
+    });
+    c.emit("playing");
+    let calls = 0;
+    c.__ottActiveProviderDriver.commitStartupPreview = () => {
+        calls++;
+        return false;
+    };
+    if (operation === "seek") c.getCoreMediaBackend().seek(500);
+    else handle[operation]();
+    assert.equal(calls, 1);
+    assert.equal(c.video.currentTime, 120);
+    assert.equal(c.video.paused, false);
+    assert.equal(c.getCoreMediaBackend().current(), handle);
+}
+console.log("PASS actual core backend startup preview commit wiring");
+
+// Session entry/promotion checkpoints sample the current backend into the real model first.
+{
+    const c = fixture(true);
+    c.__ottActiveProviderDriver = { id: "offline" };
+    c.api.command({ channelId: 101, position: 120, type: "live" });
+    c.openBackend();
+    c.video.duration = 600;
+    c.video.readyState = 4;
+    c.video.paused = false;
+    c.video.currentTime = 123;
+    c.emit("playing");
+    const previous = c.api.snapshot().position;
+    c.video.currentTime = 139;
+    assert.equal(
+        c.api.snapshot().position,
+        previous,
+        "model has not observed the latest decoder position yet"
+    );
+    c.__ottCoreBackend = () => c.getCoreMediaBackend();
+    c.api.checkpointNow();
+    assert.equal(c.api.snapshot().position, 139);
+    assert.equal(
+        c.api.bookmark().playTime,
+        139,
+        "forced checkpoint persists the freshly sampled real model position"
+    );
+    c.video.currentTime = 147;
+    c.api.checkpointNow();
+    assert.equal(
+        c.api.bookmark().playTime,
+        147,
+        "explicit promotion takes another fresh sample"
+    );
+}
+
 // Quitting during a pending local startup seek must keep the requested offset.
 {
     const c = fixture(true);

@@ -19,6 +19,10 @@ function remoteSettingsLocked(w: any): boolean {
 }
 export function remoteCheckpoint(w: any): void {
     var playback = w.__ottClassicPlayback;
+    if (playback?.checkpointNow) {
+        playback.checkpointNow();
+        return;
+    }
     if (!playback || !playback.snapshot || !playback.checkpoint) return;
     if (
         w.__ottCoreTransport &&
@@ -702,13 +706,18 @@ export function executeRemoteControl(
                 ? [localMessage0, "position", "offset"]
                 : action === "aspect"
                   ? [localMessage0, "runtime", "mode"]
-                  : [];
+                  : action === localMessage2
+                    ? ["local_media_progressive", "local_media_session"]
+                    : [];
     if (
         !params ||
         typeof params !== "object" ||
         Array.isArray(params) ||
         Object.keys(params).some(function (key) {
-            return fields.indexOf(key) < 0;
+            return (
+                fields.indexOf(key) < 0 ||
+                (action === localMessage2 && params[key] !== true)
+            );
         })
     ) {
         fail("rejected", "Invalid control parameters.");
@@ -849,6 +858,7 @@ export function executeRemoteControl(
             ].filter(lifecycleAvailable),
             local_media: localMedia,
             local_media_progressive: localMedia ? { version: 1 } : undefined,
+            local_media_session: localMedia ? { version: 1 } : undefined,
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.capabilities()
                 : null,

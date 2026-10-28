@@ -356,6 +356,10 @@ test("real local media editor rejects its stale draft after catalogue invalidati
         w: f.w,
     };
     vm.runInNewContext(
+        functionSource("src/plugins/local-media.ts", ["captureSettings"]),
+        context
+    );
+    vm.runInNewContext(
         functionSource("src/plugins/local-media-ui.ts", ["editServer"]).replace(
             /p\s*\.\s*/g,
             ""
@@ -368,6 +372,41 @@ test("real local media editor rejects its stale draft after catalogue invalidati
     f.w.editvar = "https://stale.test";
     f.w.setEdit();
     assert.equal(f.data.get("localMediaEndpoint"), "https://newer.test");
+});
+test("real Local settings capture retains both revisions and foreground/kiosk/PIN admission", () => {
+    for (const changed of [
+        "catalogRevision",
+        "revision",
+        "foreground",
+        "kiosk",
+        "pin",
+    ]) {
+        const context = {
+            catalogRevision: 7,
+            foreground: true,
+            kiosk: false,
+            pin: false,
+            revision: 11,
+        };
+        context.current = () => context.foreground;
+        context.locked = () => context.kiosk;
+        context.settingsLocked = () => context.pin;
+        vm.runInNewContext(
+            functionSource("src/plugins/local-media.ts", ["captureSettings"]),
+            context
+        );
+        const admitted = context.captureSettings();
+        assert.equal(admitted(), true);
+        if (changed === "foreground") context.foreground = false;
+        else if (changed === "catalogRevision" || changed === "revision")
+            context[changed]++;
+        else context[changed] = true;
+        assert.equal(
+            admitted(),
+            false,
+            changed + " retires the captured editor"
+        );
+    }
 });
 test("real debug enable can preserve HUD preferences while ordinary local toggles still reveal it", () => {
     const calls = [],

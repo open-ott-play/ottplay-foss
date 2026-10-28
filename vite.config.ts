@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { execFileSync, execSync } from "child_process";
 import {
@@ -28,9 +28,11 @@ const { optimizeClassic } = classicRequire(
 const { CLASSIC_PLAYER_NAME_POLICY } = classicRequire(
     resolve(__dirname, "scripts/classic-function-names.cjs")
 );
-const { inspectBundleSets, measureBundle, writeBundleReport } = classicRequire(
-    resolve(__dirname, "scripts/classic-size.cjs")
-);
+const {
+    clearBuildSizeReports,
+    collectBundleMeasurement,
+    writeBuildBundleReport,
+} = classicRequire(resolve(__dirname, "scripts/classic-size.cjs"));
 const { stageNativeRuntime } = classicRequire(
     resolve(__dirname, "scripts/native-runtime.cjs")
 );
@@ -350,6 +352,18 @@ export default defineConfig(({ mode }) => ({
             apply: "build",
             enforce: "post",
             async generateBundle() {
+                clearBuildSizeReports(__dirname);
+                let source: string | null = process.env.GITHUB_SHA || null;
+                try {
+                    source = execFileSync("git", ["rev-parse", "HEAD"], {
+                        cwd: __dirname,
+                        encoding: "utf8",
+                        stdio: ["ignore", "pipe", "ignore"],
+                    }).trim();
+                } catch {
+                    // Exported Docker contexts may have no Git metadata.
+                }
+                const sizeContext = { attempt: randomUUID(), source };
                 const media = await ensureMediaRuntime(__dirname);
                 console.log(
                     media.rebuilt
@@ -400,6 +414,7 @@ export default defineConfig(({ mode }) => ({
                     ? resolve(androidOutput!)
                     : resolve(__dirname, "dist");
                 mkdirSync(outDir, { recursive: true });
+                if (androidFlavor) clearBuildSizeReports(outDir);
                 // Retire old public paths even when rebuilding an existing dist.
                 for (const retired of [
                     "stbPlayer",
@@ -438,7 +453,10 @@ export default defineConfig(({ mode }) => ({
                     bundle,
                     CLASSIC_PLAYER_NAME_POLICY
                 );
-                const size = measureBundle(result.code, "dist/player.js");
+                const size = collectBundleMeasurement(
+                    result.code,
+                    "dist/player.js"
+                );
                 writeFileSync(outPath, result.code);
                 // Emit each implementation once; the selected provider loader
                 // fetches its family without downloading every other factory.
@@ -618,25 +636,29 @@ export default defineConfig(({ mode }) => ({
                     stageNativeRuntime(outDir, "capacitor");
                     // The retained legacy Android export also applies native
                     // transformations before its final size gate.
-                    measureBundle(readFileSync(outPath), "android/player.js");
-                    measureBundle(
-                        readFileSync(join(outDir, "dist/player.js")),
-                        "android/dist/player.js"
-                    );
-                    inspectBundleSets(
+                    writeBuildBundleReport(
                         outDir,
+                        result.report,
+                        CLASSIC_MAIN_MODULES,
                         ["player.js", "dist/player.js"],
-                        providerKinds
+                        providerKinds,
+                        {
+                            ...sizeContext,
+                            mode: "android-" + androidFlavor,
+                            nativeEntrySource: result.code,
+                        }
                     );
                     return;
                 }
                 stageOfflineShell(outDir);
                 if (mode === "server") {
-                    writeBundleReport(
+                    writeBuildBundleReport(
                         __dirname,
                         result.report,
                         CLASSIC_MAIN_MODULES,
-                        ["dist/player.js"]
+                        ["dist/player.js"],
+                        undefined,
+                        { ...sizeContext, mode: "server" }
                     );
                     execFileSync(
                         process.execPath,
@@ -656,10 +678,13 @@ export default defineConfig(({ mode }) => ({
                 copyRuntimeAssets(outDir, mobileDir);
                 removeDuplicatePlayerAssets(mobileDir);
                 stageNativeRuntime(mobileDir, "capacitor");
-                writeBundleReport(
+                writeBuildBundleReport(
                     __dirname,
                     result.report,
-                    CLASSIC_MAIN_MODULES
+                    CLASSIC_MAIN_MODULES,
+                    undefined,
+                    undefined,
+                    sizeContext
                 );
                 // Only the server/legacy assets are constrained to ES5. Native
                 // vendor files are checked against their pinned npm bytes.

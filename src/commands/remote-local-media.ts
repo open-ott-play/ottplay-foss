@@ -147,7 +147,7 @@ export function executeRemoteLocalMedia(
                 (listing
                     ? ["op", "runtime", "include_paths", "path"]
                     : playableOperation
-                      ? ["op", "runtime", "source", "progressive"]
+                      ? ["op", "runtime", "source", "progressive", "session"]
                       : ["op", "runtime", "source"]
                 ).indexOf(key) < 0
             );
@@ -155,6 +155,8 @@ export function executeRemoteLocalMedia(
         (playableOperation &&
             params.progressive !== undefined &&
             params.progressive !== true) ||
+        (Object.prototype.hasOwnProperty.call(params, "session") &&
+            params.session !== true) ||
         (listing
             ? params.include_paths !== undefined &&
               typeof params.include_paths !== "boolean"

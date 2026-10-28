@@ -899,7 +899,10 @@ declare var confirmBox: (
  * Edge case: The stored "noSelProv" flag hides the provider-selection action.
  * The stored "noProvParam" flag hides provider settings in popup arrays.
  */
-export function loadProv(providerId?: string): void {
+export function loadProv(
+    providerId?: string,
+    localSession?: () => (() => void) | void
+): void {
     if ((window as any).__ottStandby?.blocked()) return;
     var kiosk = (window as any).__ottKiosk;
     if (kiosk && kiosk.enabled()) {
@@ -912,6 +915,9 @@ export function loadProv(providerId?: string): void {
     (window as any).__ottMissingCatalogSelection = false;
     (window as any).__ottCatalogSelectedId = undefined;
     (window as any).__ottParental.revoke();
+    if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+    if (localSession && (window as any).__ottClassicPlayback)
+        (window as any).__ottClassicPlayback.checkpointNow();
     if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
@@ -931,6 +937,17 @@ export function loadProv(providerId?: string): void {
     // any previously requested script has finished evaluating, then run only
     // the latest selection. Session disposal is immediate, before that wait.
     providerRuntime.replace(function (providerSession: any) {
+        if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+        var rollback: (() => void) | void;
+        try {
+            rollback = localSession && localSession();
+        } catch (_) {
+            onError();
+            return;
+        }
+        providerSession.own(function () {
+            rollback = undefined;
+        });
         if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
         if (!isProviderAllowed((window as any)._pendingProvId || ""))
             (window as any)._pendingProvId = "";
@@ -984,9 +1001,18 @@ export function loadProv(providerId?: string): void {
         function onError(): void {
             if (!providerSession.active()) return;
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            var cancel = rollback;
+            rollback = undefined;
+            if (cancel) cancel();
+            if (!providerSession.active()) return;
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             (window as any)._pendingProvId = "";
-            if (s !== "no") {
-                alert(_("Failed to load!") + " (" + s + ")");
+            var failedProvider = typeof s === "undefined" ? "" : s;
+            if (failedProvider !== "no") {
+                alert(
+                    _("Failed to load!") +
+                        (failedProvider ? " (" + failedProvider + ")" : "")
+                );
             }
             $(launch_id)
                 .append("<br/><b>" + _("Failed to load!") + "</b>")
@@ -1059,7 +1085,7 @@ export function loadProv(providerId?: string): void {
         }
 
         var matchResult =
-            kiosk && kiosk.enabled()
+            localSession || (kiosk && kiosk.enabled())
                 ? null
                 : window.location.search.match(/\?([^&]+)/);
         // Keep an explicitly selected demo after restarting a URL-pinned player.
@@ -1093,6 +1119,7 @@ export function loadProv(providerId?: string): void {
         else
             s =
                 (kiosk && kiosk.enabled() ? kiosk.snapshot().provider : "") ||
+                (localSession ? providerId : "") ||
                 demoProviderSelection ||
                 (providerId === "demo"
                     ? "demo"
@@ -1470,7 +1497,14 @@ export function selectProviderByIndex(index: number): boolean {
         });
         return false;
     }
-    if (stbGetItem("ottplayprov") === id) return true;
+    var localMedia = (window as any).__ottLocalMedia;
+    var ephemeral = !!(window as any).ottpStorage?.localPlayback?.active();
+    if (
+        localMedia?.finishSession &&
+        !localMedia.finishSession(id === "offline")
+    )
+        return false;
+    if (!ephemeral && stbGetItem("ottplayprov") === id) return true;
     var recent: string[] = [];
     try {
         recent = JSON.parse(stbGetItem("ottplayprovs") || "[]");
@@ -1633,6 +1667,8 @@ export function showProviderSelection(): void {
         if (!id || !isProviderAllowed(id)) return;
         var localMedia = (window as any).__ottLocalMedia;
         if (id === "offline" && localMedia) {
+            if (localMedia.finishSession && !localMedia.finishSession(true))
+                return;
             localMedia.open();
             return;
         }
@@ -1648,6 +1684,11 @@ export function showProviderSelection(): void {
             optionsList(showProviderSelection);
             return;
         }
+        if (
+            localMedia?.finishSession &&
+            !localMedia.finishSession(id === "offline")
+        )
+            return;
         stbSetItem("ottplayprov", id);
         if (providerIds.indexOf(id) > recentCount) {
             var recent = recentProviders.slice();

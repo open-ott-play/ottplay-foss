@@ -2889,13 +2889,17 @@ function _playChannel(
     if (
         w.__ottClassicPlayback &&
         typeof w.__ottClassicPlayback.command === "function"
-    )
-        w.__ottClassicPlayback.command({
-            channelId: channelId,
-            position: resume && resume.position,
-            type: "live",
-        });
-    else w.playType = 0;
+    ) {
+        if (
+            w.__ottClassicPlayback.command({
+                automatic: background,
+                channelId: channelId,
+                position: resume && resume.position,
+                type: "live",
+            }) === false
+        )
+            return false;
+    } else w.playType = 0;
     updateChannelInfo(channelId);
     if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
     if (typeof setPlayer === "function") setPlayer();
@@ -2976,15 +2980,20 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
-    )
-        (window as any).__ottClassicPlayback.command({
-            channelId: media.ref.itemId,
-            channelSelection: media.channel && media.channel.id,
-            item: item,
-            position: startupPosition,
-            sourceId: media.ref.sourceId,
-            type: "vod",
-        });
+    ) {
+        if (
+            (window as any).__ottClassicPlayback.command({
+                automatic: media.automatic === true,
+                channelId: media.ref.itemId,
+                channelSelection: media.channel && media.channel.id,
+                item: item,
+                position: startupPosition,
+                sourceId: media.ref.sourceId,
+                type: "vod",
+            }) === false
+        )
+            return;
+    }
     stbPlay(streamUrl, startupPosition);
     if (typeof (window as any).__ottClassicPlayback?.programme === "function")
         updateMediaInfo();

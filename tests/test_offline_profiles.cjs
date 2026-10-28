@@ -5,7 +5,7 @@ const { webcrypto } = require("node:crypto");
 const code = require("./helpers/offline-profile-source.cjs")();
 require("acorn").parse(code, { ecmaVersion: 5 });
 const clone = (v) => JSON.parse(JSON.stringify(v));
-function fixture(initial) {
+function fixture(initial, realStorage = false) {
     const data = new Map(initial);
     let catalog = {
         items: [
@@ -32,6 +32,35 @@ function fixture(initial) {
         Uint8Array,
     };
     vm.createContext(host);
+    if (realStorage) {
+        host.window = host;
+        host.document = { cookie: "" };
+        host.localStorage = {
+            getItem: (key) => (data.has(key) ? data.get(key) : null),
+            key: (index) => [...data.keys()][index] || null,
+            get length() {
+                return data.size;
+            },
+            removeItem: (key) => data.delete(key),
+            setItem: (key, value) => data.set(key, String(value)),
+        };
+        host.exports = {};
+        vm.runInContext(
+            require("typescript").transpileModule(
+                require("node:fs").readFileSync("src/storage/index.ts", "utf8"),
+                {
+                    compilerOptions: {
+                        module: require("typescript").ModuleKind.CommonJS,
+                        target: require("typescript").ScriptTarget.ES5,
+                    },
+                }
+            ).outputText,
+            host
+        );
+        host.stbGetItem = host.exports.stbGetItem;
+        host.stbSetItem = host.exports.stbSetItem;
+        host.stbDelItem = host.exports.stbDelItem;
+    }
     vm.runInContext(code, host);
     const media = {
         libraryIdentity: () => "browser:",
@@ -60,6 +89,158 @@ async function saved(f, number = 1) {
     );
     return (await f.call("profile_export", { number })).data.profile;
 }
+test("explicit profile save promotes one-off playback, export stays durable and profile load discards one-off bookmarks", async () => {
+    const f = fixture(
+        [
+            ["ottplayprov", "m3u"],
+            ["offlineplaybackJournal", "previous-bookmark"],
+        ],
+        true
+    );
+    const old = await saved(f, 1);
+    f.host.ottpStorage.localPlayback.begin(() => "stable-profile");
+    f.host.stbSetItem("localMediaPlaybackSelection", "temporary-folder");
+    f.host.stbSetItem("offlineplaybackJournal", "temporary-bookmark");
+    assert.deepEqual(
+        (await f.call("profile_export", { number: 1 })).data.profile,
+        old
+    );
+    assert.equal(f.data.get("ottplayprov"), "m3u");
+    assert.equal(
+        (await f.call("profile_save", { name: "Explicit save", number: 2 }))
+            .status,
+        "ok"
+    );
+    assert.equal(f.data.get("ottplayprov"), "offline");
+    assert.equal(f.data.get("localMediaPlaybackSelection"), "temporary-folder");
+    assert.equal(f.data.get("offlineplaybackJournal"), "temporary-bookmark");
+    assert.equal(f.host.ottpStorage.localPlayback.active(), false);
+    f.host.ottpStorage.localPlayback.begin(() => "stable-profile");
+    f.host.stbSetItem("offlineplaybackJournal", "second-one-off-bookmark");
+    assert.equal((await f.call("profile", { number: 1 })).status, "ok");
+    assert.equal(f.data.get("offlineplaybackJournal"), "temporary-bookmark");
+    assert.equal(f.data.get("ottplayprov"), "offline");
+    assert.equal(f.host.ottpStorage.localPlayback.active(), false);
+});
+
+test("profile save samples the real playback model before atomic promotion and preserves durable rollback", async () => {
+    for (const reject of [false, true]) {
+        const f = fixture([["ottplayprov", "m3u"]], true);
+        const h = f.host;
+        Object.assign(h, {
+            catIndex: 0,
+            cats: { all: h.curList },
+            catsArray: ["all"],
+            channels: {},
+            clearTimeout() {},
+            medHistory: [],
+            p_pref: "offline",
+            playTime: 0,
+            playType: 0,
+            prevArr: [],
+            providerGetItem: (key) => h.stbGetItem("offline" + key),
+            providerSetItem: (key, value) =>
+                h.stbSetItem("offline" + key, value),
+            setInterval() {},
+            setTimeout() {},
+            settings: { prevCount: 2 },
+            stbGetLen: () => 600,
+            stbGetPosTime: () => 123,
+        });
+        require("./helpers/shared-core-runtime.cjs")(h);
+        const playback = h.__ottClassicPlayback;
+        playback.importLegacy();
+        playback.command({
+            channelId: "local-PRIVATE-ITEM",
+            position: 123,
+            type: "live",
+        });
+        h.ottpStorage.localPlayback.begin(() => "profile");
+        playback.checkpoint(playback.snapshot(), true);
+        assert.equal(playback.snapshot().position, 123);
+        let samples = 0;
+        h.stbPlay = () => {};
+        h.__ottCoreTransport = { play: h.stbPlay };
+        h.__ottCoreBackend = () => ({
+            current: () => ({
+                active: () => true,
+                sample() {
+                    samples++;
+                    playback.command({
+                        duration: 600,
+                        generation: playback.snapshot().generation,
+                        position: 147,
+                        type: "position",
+                    });
+                },
+            }),
+        });
+        const before = new Map(f.data);
+        if (reject) h.ottpStorage.localPlayback.profile = () => false;
+        const result = await f.call("profile_save", {
+            name: "Fresh position",
+            number: 1,
+        });
+        assert.equal(samples, 1);
+        assert.equal(playback.snapshot().position, 147);
+        assert.equal(result.status, reject ? "rejected" : "ok");
+        if (reject) {
+            assert.deepEqual([...f.data], [...before]);
+            assert.equal(h.ottpStorage.localPlayback.active(), true);
+        } else {
+            const journal = JSON.parse(f.data.get("offlineplaybackJournal"));
+            assert.equal(journal.bookmark.position, 147);
+            assert.equal(h.ottpStorage.localPlayback.active(), false);
+            assert.equal(f.data.get("ottplayprov"), "offline");
+        }
+    }
+});
+
+test("profile save rejects checkpoint reentry that replaces its driver, selection or RAM owner", async () => {
+    for (const mutation of ["driver", "selection", "session"]) {
+        const f = fixture([["ottplayprov", "m3u"]], true);
+        f.host.ottpStorage.localPlayback.begin(() => "profile");
+        const before = new Map(f.data);
+        let checkpoints = 0;
+        f.host.__ottClassicPlayback = {
+            checkpointNow() {
+                checkpoints++;
+                if (mutation === "driver")
+                    f.host.__ottActiveProviderDriver = { id: "offline" };
+                if (mutation === "selection")
+                    f.host.curList = ["local-replacement"];
+                if (mutation === "session")
+                    f.host.ottpStorage.localPlayback.begin(() => "replacement");
+            },
+        };
+        assert.equal(
+            (await f.call("profile_save", { number: 1 })).status,
+            "rejected"
+        );
+        assert.equal(checkpoints, 1);
+        assert.deepEqual([...f.data], [...before]);
+        assert.equal(f.host.ottpStorage.localPlayback.active(), true);
+    }
+});
+
+test("a session profile transaction rejects stable foreign storage aliases without either backing changing", async () => {
+    const f = fixture([["ottplayprov", "m3u"]], true);
+    await saved(f, 1);
+    f.host.ottpStorage.localPlayback.begin(() => "profile");
+    const before = new Map(f.data);
+    const foreign = new Map(f.data);
+    f.host.stbGetItem = (key) => foreign.get(key) ?? null;
+    f.host.stbSetItem = (key, value) => foreign.set(key, value);
+    f.host.stbDelItem = (key) => foreign.delete(key);
+    assert.equal(
+        (await f.call("profile_save", { number: 2 })).status,
+        "rejected"
+    );
+    assert.deepEqual([...f.data], [...before]);
+    assert.deepEqual([...foreign], [...before]);
+    assert.equal(f.host.ottpStorage.localPlayback.active(), true);
+});
+
 test("save/export/load and same-device reimport retain sources and exact selected file without media or grants", async () => {
     const f = fixture(),
         profile = await saved(f);
