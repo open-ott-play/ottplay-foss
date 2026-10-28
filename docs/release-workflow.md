@@ -120,9 +120,10 @@ For a confirmed allocation failure before publication:
    for the retry. The version ledger is keyed by run ID: unchanged reservation
    inputs reuse the existing version and native build number. Do not reset the
    ledger or create a second dispatch merely to repeat the same release.
-3. Require fresh successful receipts for every required browser and platform in
-   the new attempt. Check that artifact retrieval selects the new files; never
-   substitute earlier-attempt receipts to make qualification pass.
+3. Require fresh successful browser receipts and successful platform builders
+   and uploads in the new attempt. Check that artifact retrieval selects the new
+   files; never substitute earlier-attempt packages or receipts to make
+   qualification pass.
 4. Confirm the new attempt's release gate, manifest and published assets before
    deploying or reloading a player. A retry request being accepted is not a
    successful release. If runner allocation fails again, diagnose capacity and
@@ -130,6 +131,15 @@ For a confirmed allocation failure before publication:
 
 A changed source, policy or promotion parent must follow the normal new-run
 workflow; do not force it into an existing reservation.
+
+The current protection is the complete rerun above plus latest-per-name artifact
+selection by the pinned downloader. Successful required builders must upload
+fresh artifacts; browser qualification also binds the exact web artifact ID.
+Package receipts validate source, plan, versions and payload hashes, but do not
+independently record each package's producer run attempt. The final manifest's
+attempt identifies publication, not verified production of every payload. Do
+not treat those checks as automatic per-package attempt isolation, or use them
+to justify partial/manual substitution from an earlier attempt.
 
 ## Stable promotion
 
