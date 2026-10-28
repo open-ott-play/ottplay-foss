@@ -11,7 +11,8 @@ export function loadRemoteFeature(
         | "local-compatibility"
         | "local-media-ui"
         | "remote-local-runner",
-    done: (error?: string) => void
+    done: (error?: string) => void,
+    readOnly?: "favorites-recovery"
 ): void {
     var loads = w.__ottRemoteFeatureLoads || (w.__ottRemoteFeatureLoads = {});
     if (loads[feature]) {
@@ -48,7 +49,8 @@ export function loadRemoteFeature(
             },
             function () {
                 settle("unsupported");
-            }
+            },
+            feature === "favorites-transfer" ? readOnly : undefined
         );
     } catch (_) {
         settle("unsupported");

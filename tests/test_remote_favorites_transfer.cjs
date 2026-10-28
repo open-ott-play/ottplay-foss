@@ -140,8 +140,8 @@ function fixture() {
             };
         if (file === "src/utils/helpers.ts")
             return {
-                getScriptDOM(url, success, failure) {
-                    scripts.push({ failure, success, url });
+                getScriptDOM(url, success, failure, readOnly) {
+                    scripts.push({ failure, readOnly, success, url });
                 },
             };
         if (file === "src/settings/favorites-current-plex-host.ts")
@@ -1222,6 +1222,222 @@ async function scenario(name, run) {
                 assert.equal(result.data.error, error);
                 assert.equal(f.stats.writes, 0);
             }
+        }
+    );
+    await scenario(
+        "standby permits only preloaded recovery list/inspect and preserves policy",
+        async () => {
+            const operationId = "33333333-3333-4333-8333-333333333333";
+            for (const mode of ["list", "inspect"]) {
+                const f = fixture();
+                f.load("src/plugins/favorites-transfer-runtime.ts");
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const req = f.request("recovery", {
+                    mode,
+                    ...(mode === "inspect"
+                        ? { operation_id: operationId }
+                        : {}),
+                });
+                const result = await ready(f.start(req));
+                assert.equal(result.status, "ok");
+                assert.equal(result.data.mode, mode);
+                assert.equal(f.scripts.length, 0);
+                assert.equal(f.stats.writes, 0);
+                for (const deny of ["kiosk", "parental"]) {
+                    const blocked = fixture();
+                    blocked.load("src/plugins/favorites-transfer-runtime.ts");
+                    blocked.w.__ottStandby = {
+                        blocked: () => true,
+                        snapshot: () => ({ standby: true }),
+                    };
+                    if (deny === "kiosk")
+                        blocked.w.__ottKiosk.enabled = () => true;
+                    else blocked.w.__ottParental.needs = () => true;
+                    const denied = await ready(
+                        blocked.start(
+                            blocked.request("recovery", {
+                                mode,
+                                ...(mode === "inspect"
+                                    ? { operation_id: operationId }
+                                    : {}),
+                            })
+                        )
+                    );
+                    assert.equal(denied.data.error, "policy_denied");
+                    assert.equal(blocked.stats.creates, 0);
+                    assert.equal(blocked.stats.writes, 0);
+                }
+            }
+        }
+    );
+    await scenario(
+        "standby keeps ACK and all transfer mutations denied without loading",
+        async () => {
+            for (const [op, extra] of [
+                ["recovery", { mode: "acknowledge" }],
+                ["prepare", {}],
+                ["commit", {}],
+                ["provision", {}],
+                ["bind", {}],
+                ["status", {}],
+                ["recovery", { mode: "LIST" }],
+            ]) {
+                const f = fixture();
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const result = await ready(f.start(f.request(op, extra)));
+                assert.equal(result.data.error, "policy_denied");
+                assert.equal(f.scripts.length, 0);
+                assert.equal(f.stats.creates, 0);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "standby readonly exception retains exact schema/runtime/deadline validation",
+        async () => {
+            for (const shape of ["extra", "runtime", "expired"]) {
+                const f = fixture();
+                f.load("src/plugins/favorites-transfer-runtime.ts");
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const req = f.request("recovery", { mode: "list" });
+                if (shape === "extra") req.params.extra = true;
+                if (shape === "runtime") req.params.runtime = "other-runtime";
+                if (shape === "expired") req.expires_at = f.now() / 1000;
+                const result = await ready(f.start(req));
+                assert.equal(
+                    result.data.error,
+                    shape === "extra"
+                        ? "policy_denied"
+                        : shape === "runtime"
+                          ? "runtime_changed"
+                          : "expired"
+                );
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "cold standby recovery read uses fixed readonly asset and cloned intent",
+        async () => {
+            for (const mode of ["list", "inspect"]) {
+                const f = fixture();
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const req = f.request("recovery", {
+                    mode,
+                    ...(mode === "inspect"
+                        ? {
+                              operation_id:
+                                  "33333333-3333-4333-8333-333333333333",
+                          }
+                        : {}),
+                });
+                const work = f.start(req);
+                assert.equal(f.scripts.length, 1);
+                assert.equal(f.scripts[0].readOnly, "favorites-recovery");
+                assert.equal(
+                    f.scripts[0].url,
+                    "https://player.example/base/dist/favorites-transfer.js?review%201"
+                );
+                req.params.mode = "acknowledge";
+                f.finishLoad();
+                const result = await ready(work);
+                assert.equal(result.status, "ok");
+                assert.equal(result.data.mode, mode);
+                assert.equal(f.stats.writes, 0);
+            }
+            for (const invalid of [
+                { extra: true, mode: "list" },
+                { mode: "inspect", operation_id: "invalid" },
+                {
+                    mode: "inspect",
+                    operation_id: "33333333-3333-1333-8333-333333333333",
+                },
+            ]) {
+                const f = fixture();
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const result = await ready(
+                    f.start(f.request("recovery", invalid))
+                );
+                assert.equal(result.data.error, "policy_denied");
+                assert.equal(f.scripts.length, 0);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "cold standby readonly recovery rechecks late policy and cancellation",
+        async () => {
+            for (const kind of [
+                "parental",
+                "kiosk",
+                "runtime",
+                "expiry",
+                "cancel",
+            ]) {
+                const f = fixture();
+                f.w.__ottStandby = {
+                    blocked: () => true,
+                    snapshot: () => ({ standby: true }),
+                };
+                const work = f.start(f.request("recovery", { mode: "list" }));
+                assert.equal(f.scripts.length, 1);
+                if (kind === "parental") f.w.__ottParental.needs = () => true;
+                if (kind === "kiosk") f.w.__ottKiosk.enabled = () => true;
+                if (kind === "runtime")
+                    f.load("src/commands/remote-restart.ts").remotePlayerInfo =
+                        () => ({ runtime: "changed-runtime" });
+                if (kind === "expiry") f.advance(60001);
+                if (kind === "cancel") work.cancel();
+                f.finishLoad();
+                await flush();
+                if (kind === "cancel") assert.equal(work.values.length, 0);
+                else {
+                    const result = await ready(work);
+                    assert.equal(result.status, "rejected");
+                    if (kind === "runtime")
+                        assert.equal(result.data.error, "runtime_changed");
+                }
+                assert.equal(f.stats.creates, 0);
+                assert.equal(f.stats.writes, 0);
+            }
+        }
+    );
+    await scenario(
+        "cold standby capabilities load read-only graph without Plex and retain recovery marker",
+        async () => {
+            const f = fixture();
+            f.w.__ottStandby = {
+                blocked: () => true,
+                snapshot: () => ({ standby: true }),
+            };
+            f.w.p_pref = "m3u";
+            f.w.__ottActiveProviderDriver = { id: "m3u" };
+            f.setQualified(false);
+            const work = f.start({ action: "capabilities", params: {} });
+            assert.equal(f.scripts.length, 1);
+            assert.equal(f.scripts[0].readOnly, "favorites-recovery");
+            f.finishLoad();
+            const result = await ready(work);
+            assert.deepEqual(result.data.favorites_transfer_recovery, {
+                version: 1,
+            });
+            assert.equal(result.data.favorites_transfer, undefined);
+            assert.equal(f.stats.writes, 0);
         }
     );
     console.log(passed + " reachable favorites transfer groups passed");

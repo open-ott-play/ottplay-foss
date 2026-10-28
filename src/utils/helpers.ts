@@ -373,14 +373,22 @@ export function loadScript(
     url: string,
     successCb: (() => void) | null,
     errorCb: ((e: Error) => void) | null,
-    location: HTMLElement
+    location: HTMLElement,
+    readOnly?: "favorites-recovery"
 ): void {
+    // Fixed recovery graph evaluation is read-only and never wakes playback.
+    var recoveryRead =
+        readOnly === "favorites-recovery" &&
+        /\/dist\/favorites-transfer\.js(?:\?[^#]*)?$/.test(url);
     var standby = (window as any).__ottStandby;
-    if (standby && standby.blocked()) {
+    if (standby && standby.blocked() && !recoveryRead) {
         if (errorCb) errorCb(standby.error());
         return;
     }
-    var release = standby ? standby.track(function () {}) : function () {};
+    var release =
+        standby && !recoveryRead
+            ? standby.track(function () {})
+            : function () {};
     var script = document.createElement("script");
     script.src = url;
     script.type = "text/javascript";
@@ -439,9 +447,10 @@ export function loadJS(
 export function getScriptDOM(
     url: string,
     successCb: (() => void) | null,
-    errorCb: ((e: Error) => void) | null
+    errorCb: ((e: Error) => void) | null,
+    readOnly?: "favorites-recovery"
 ): void {
-    loadScript(url, successCb, errorCb, document.body);
+    loadScript(url, successCb, errorCb, document.body, readOnly);
 }
 
 /**
