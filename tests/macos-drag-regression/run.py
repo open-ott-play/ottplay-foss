@@ -8,6 +8,22 @@ import subprocess
 import sys
 from pathlib import Path
 
+def completion_observed(lines):
+    """Require the selector result before an event-loop drain acknowledgement."""
+    callbacks = [i for i, line in enumerate(lines) if line.startswith("CALLBACK ")]
+    drained = [i for i, line in enumerate(lines) if line == "DRAINED"]
+    return (
+        len(callbacks) == 1
+        and len(drained) == 1
+        and callbacks[0] < drained[0]
+        and all(
+            i < drained[0]
+            for i, line in enumerate(lines)
+            if line.startswith(("EVENT ", "PATH "))
+        )
+    )
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--offline", action="store_true", help="Use only cached Cargo dependencies")
 parser.add_argument("--output", type=Path, help="Write detailed synthetic results as JSON")
@@ -84,6 +100,7 @@ for surface, action, fixture in itertools.product(["wry", "tao"], ["enter", "dro
         and actual == expected
         and events == expected_events
         and lines.count(f"CALLBACK {operation}") == 1
+        and completion_observed(lines)
     )
     results.append(
         {

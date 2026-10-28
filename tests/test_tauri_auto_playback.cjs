@@ -37,6 +37,9 @@ function media(nativeHls) {
         canPlayType() {
             return nativeHls ? "probably" : "";
         },
+        get currentSrc() {
+            return source;
+        },
         get currentTime() {
             return position;
         },
@@ -48,7 +51,13 @@ function media(nativeHls) {
             for (const callback of [...(listeners[event] || [])]) callback();
         },
         error: null,
+        getAttribute(name) {
+            return name === "src" ? source || null : null;
+        },
         listeners,
+        load() {
+            this.readyState = 0;
+        },
         muted: false,
         pause() {
             this.pauseCalls++;
@@ -164,9 +173,16 @@ function fixture(options = {}) {
         this.position = position;
         this.media.src = "blob:shaka-" + shakaPlayers.indexOf(this);
     };
+    Shaka.prototype.getMediaElement = function () {
+        return this.media;
+    };
     Shaka.prototype.destroy = function () {
         this.destroyCalls++;
-        this.media.src = "";
+        return Promise.resolve().then(() => {
+            this.media.removeAttribute("src");
+            this.media.load();
+            this.media = null;
+        });
     };
     const w = {
         _: (text) => text,
@@ -1312,7 +1328,7 @@ test("marked Android defaults to Auto without replacing saved manual engine choi
     }
 });
 
-test("marked Android Auto uses HLS despite native claims, Shaka for DASH and native MP4", () => {
+test("marked Android Auto uses HLS despite native claims, Shaka for DASH and native MP4", async () => {
     const f = fixture(testHost);
     assert.equal(
         f.w.video.canPlayType("application/vnd.apple.mpegurl"),
@@ -1338,6 +1354,13 @@ test("marked Android Auto uses HLS despite native claims, Shaka for DASH and nat
     assert.equal(f.shakaPlayers[0].position, 33);
     f.w.stbPlay("android-vod.mp4?quality=high");
     assert.equal(f.shakaPlayers[0].destroyCalls, 1);
+    assert.notEqual(
+        f.w.video.src,
+        "android-vod.mp4?quality=high",
+        "next decoder waits for Shaka release"
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(f.shakaPlayers[0].getMediaElement(), null);
     assert.equal(f.w.video.src, "android-vod.mp4?quality=high");
     assert.equal(f.players.length, 1);
     assert.equal(f.w.playerMode, 3);
@@ -2096,7 +2119,7 @@ test("native files never request an engine and native HLS loads only for an actu
     );
 });
 
-test("Shaka is requested alone and DASH never reaches native after a failed download", () => {
+test("Shaka is requested alone and DASH never reaches native after a failed download", async () => {
     const f = fixture({ savedPlayerMode: 2 });
     const runtime = f.w.shaka;
     delete f.w.shaka;
@@ -2112,6 +2135,9 @@ test("Shaka is requested alone and DASH never reaches native after a failed down
     assert.equal(f.shakaPlayers[0].url, "delayed.mpd");
     delete f.w.shaka;
     f.w.stbPlay("failed.mpd");
+    assert.equal(requests.length, 1, "next load waits for old Shaka release");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(f.shakaPlayers[0].getMediaElement(), null);
     requests[1].ready(false);
     assert.notEqual(f.w.video.src, "failed.mpd");
     assert(f.messages.includes("Reconnecting…"));
@@ -2596,14 +2622,20 @@ test("shared local guards preserve optional receiver and missing-method behavior
     );
 });
 
-let failures = 0;
-for (const [name, callback] of cases) {
-    try {
-        callback();
-        console.log("PASS " + name);
-    } catch (error) {
-        failures++;
-        console.error("FAIL " + name + "\n" + error.stack);
+async function run() {
+    let failures = 0;
+    for (const [name, callback] of cases) {
+        try {
+            await callback();
+            console.log("PASS " + name);
+        } catch (error) {
+            failures++;
+            console.error("FAIL " + name + "\n" + error.stack);
+        }
     }
+    if (failures) process.exitCode = 1;
 }
-if (failures) process.exitCode = 1;
+run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

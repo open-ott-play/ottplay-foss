@@ -841,6 +841,198 @@ const replacementScope = {
             gateway.dispose();
         }
     }
+    {
+        // Transfer the unchanged export between independent physical stores and runtimes.
+        const source = fixture({
+                instance: true,
+                packed: true,
+                populated: true,
+            }),
+            destination = fixture();
+        function client(f, runtime) {
+            Object.assign(f.w, {
+                atob: (value) =>
+                    Buffer.from(value, "base64").toString("binary"),
+                btoa: (value) =>
+                    Buffer.from(value, "binary").toString("base64"),
+                clearTimeout,
+                crypto: crypto.webcrypto,
+                setTimeout,
+            });
+            const gateway = f
+                .load("src/plugins/favorites-transfer-runtime.ts")
+                .createFavoritesTransferRuntime(f.w, {
+                    runtime: () => runtime,
+                    storage: f.storagePorts,
+                });
+            return {
+                async call(input) {
+                    const params = { runtime, ...input };
+                    const result = await gateway.execute(params, {
+                        current: () => true,
+                        deadlineAt: Date.now() + 60000,
+                        envelope: { action: "favorites_transfer", params },
+                        runtime,
+                    });
+                    assert.equal(
+                        result.error,
+                        undefined,
+                        JSON.stringify(result)
+                    );
+                    return result;
+                },
+                dispose: () => gateway.dispose(),
+            };
+        }
+        const sender = client(source, "roundtrip-source"),
+            receiver = client(destination, "roundtrip-destination");
+        try {
+            assert.notEqual(source.saved, destination.saved);
+            assert(source.saved.get(tvKey).startsWith("\x01LZ\x01"));
+            assert(source.saved.get(mediaKey).startsWith("\x01LZ\x01"));
+            const catalog = await sender.call({ op: "bindingcatalog" });
+            const paired = await sender.call({
+                codecVersion: 1,
+                expected_binding_revision: catalog.binding_revision,
+                mode: "create",
+                op: "provision",
+                target_id: catalog.targets[0].target_id,
+            });
+            const sourceBefore = [...source.saved];
+            source.writes.length = 0;
+            const exported = await sender.call({
+                op: "snapshot",
+                scope: paired.scope,
+            });
+            const input = Buffer.from(exported.document_base64, "base64");
+            assert.equal(hash(input), exported.document_sha256);
+            assert.equal(input.length, exported.size_bytes);
+            assert.deepEqual(clone(exported.scope), clone(paired.scope));
+
+            const targetCatalog = await receiver.call({ op: "bindingcatalog" });
+            assert.equal(destination.saved.size, 0);
+            assert.deepEqual(destination.writes, []);
+            const imported = await receiver.call({
+                codecVersion: 1,
+                expected_binding_revision: targetCatalog.binding_revision,
+                mode: "import",
+                op: "provision",
+                scope: paired.scope,
+                target_id: targetCatalog.targets[0].target_id,
+            });
+            assert.deepEqual(clone(imported.scope), clone(paired.scope));
+            const targetBefore = [...destination.saved];
+            destination.writes.length = 0;
+            const empty = await receiver.call({
+                op: "snapshot",
+                scope: imported.scope,
+            });
+            assert.equal(
+                JSON.parse(Buffer.from(empty.document_base64, "base64"))
+                    .mediaFavorites.length,
+                0
+            );
+            const prepared = await receiver.call({
+                binding_revision: empty.binding_revision,
+                budget_ms: 300000,
+                document_sha256: exported.document_sha256,
+                expected_revision: empty.revision,
+                op: "prepare",
+                scope: imported.scope,
+                size_bytes: input.length,
+            });
+            const started = await receiver.call({
+                binding_revision: empty.binding_revision,
+                chunk_count: 1,
+                document_sha256: exported.document_sha256,
+                expected_revision: empty.revision,
+                op: "begin",
+                operation_id: prepared.operation_id,
+                persistence: "persistent",
+                scope: imported.scope,
+                size_bytes: input.length,
+            });
+            await receiver.call({
+                chunk_sha256: exported.document_sha256,
+                data_base64: exported.document_base64,
+                offset: 0,
+                op: "append",
+                seq: 0,
+                transaction_id: started.transaction_id,
+            });
+            const preview = await receiver.call({
+                op: "preview",
+                transaction_id: started.transaction_id,
+            });
+            assert.equal(preview.ready, true);
+            assert.deepEqual(clone(preview.counts), {
+                channelLists: 1,
+                channelMemberships: 1,
+                mediaFavorites: 1,
+                unresolved: 0,
+            });
+            assert.deepEqual([...destination.saved], targetBefore);
+            assert.deepEqual(
+                destination.writes,
+                [],
+                "staging must not write the destination"
+            );
+            const committed = await receiver.call({
+                expected_revision: empty.revision,
+                op: "commit",
+                operation_id: prepared.operation_id,
+                plan_digest: preview.plan_digest,
+                transaction_id: started.transaction_id,
+            });
+            assert.equal(committed.outcome, "verified");
+            assert.equal(
+                committed.receipt.document_sha256,
+                exported.document_sha256
+            );
+            assert.deepEqual(
+                clone(committed.receipt.scope),
+                clone(paired.scope)
+            );
+            const status = await receiver.call({
+                op: "status",
+                operation_id: prepared.operation_id,
+            });
+            assert.equal(status.outcome, "verified");
+            assert.deepEqual(clone(status.receipt), clone(committed.receipt));
+            const restored = await receiver.call({
+                op: "snapshot",
+                scope: imported.scope,
+            });
+            assert.deepEqual(clone(restored.scope), clone(paired.scope));
+            assert.deepEqual(
+                JSON.parse(Buffer.from(restored.document_base64, "base64")),
+                JSON.parse(input),
+                "re-export must preserve the portable document without rewriting the input"
+            );
+            assert.deepEqual(
+                JSON.parse(destination.read("favoritesLibrary:" + tvSource)),
+                source.tv
+            );
+            const restoredMedia = JSON.parse(
+                destination.read("mediaJournal.v1:" + mediaSource)
+            );
+            assert.equal(restoredMedia.favorites.length, 1);
+            assert.deepEqual(
+                restoredMedia.history,
+                [],
+                "favorites transfer must not import source viewing history"
+            );
+            assert.deepEqual([...source.saved], sourceBefore);
+            assert.deepEqual(
+                source.writes,
+                [],
+                "export and destination restore must leave the source unchanged"
+            );
+        } finally {
+            sender.dispose();
+            receiver.dispose();
+        }
+    }
     for (const state of ["pending", "partial", "unknown"]) {
         for (const mode of ["create", "import", "pair", "replace-current"]) {
             const f = fixture(),
@@ -1100,7 +1292,7 @@ const replacementScope = {
         }
     }
     console.log(
-        "PASS current Plex host: read-only empty qualification, one-write provisioning, strict DTOs, null/LZ preimages, preserved history/cache, ownership and persisted uncertainty"
+        "PASS current Plex host: read-only empty qualification, one-write provisioning, strict DTOs, null/LZ preimages, two-fixture snapshot roundtrip, preserved history/cache, ownership and persisted uncertainty"
     );
 })().catch((error) => {
     console.error(error);

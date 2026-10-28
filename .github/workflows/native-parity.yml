@@ -234,3 +234,82 @@ jobs:
           cargo run --locked -p ottplay-tauri --example screenshot_smoke -- "$screenshot_smoke_dir/allowed"
       - name: Exercise macOS drag callbacks with missing and malformed pasteboards
         run: python3 tests/macos-drag-regression/run.py
+
+  favorites-native:
+    name: Hidden WK Favorites Stage A and Stage B
+    runs-on: macos-latest
+    timeout-minutes: 40
+    concurrency:
+      group: favorites-native-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Install the existing locked frontend dependencies
+        run: npm ci --ignore-scripts
+      - name: Test native qualification driver bounds without native execution
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_ci.py
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/test_native_favorites_harness.py
+          node tests/test_native_favorites_provider_compression.cjs
+      - name: Qualify original storage then exact-origin guarded recovery
+        run: python3 scripts/ci-native-favorites.py --mode full
+      - name: Retain bounded allowlisted native qualification metadata
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: favorites-native-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/terminal.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/commands.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/tauri-build-override.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-binary.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-binary.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/os-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/kernel.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/rust-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/cargo-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/node-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/sdk-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/webkit-version.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/compression-regression.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/dependency-fetch.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/cargo-metadata.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-a-generate.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-a-build.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-a-arch.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-a-runtime.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/codec-regression.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/physical-regression.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-b-generate.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-b-build.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-b-arch.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/logs/stage-b-runtime.log
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/intent.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/result.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/capabilities-writer.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/capabilities-observer.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/capabilities-slot2.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/capabilities-slot3.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-a-runtime/capabilities-slot4.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/intent.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/result.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/capabilities-writer.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/capabilities-observer.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/capabilities-slot2.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/capabilities-slot3.json
+            ${{ runner.temp }}/ottplay-favorites-${{ github.run_id }}-${{ github.run_attempt }}/evidence/stage-b-runtime/capabilities-slot4.json
+          if-no-files-found: error
+          retention-days: 7

@@ -434,6 +434,15 @@ const FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE = Object.freeze({
     bytes: 23300,
     gzipBytes: 4900,
 });
+// Asynchronous Shaka retirement keeps an unresolved owner barrier and validates
+// media/source release before another engine attaches. Paired Node22.23.4 builds
+// measure +1145 raw bytes in all three entries and complete payloads, with gzip
+// inside existing caps. Round raw cost to1152 (+7); do not increase gzip or
+// provider/optional limits. See shaka-retirement-size-20261028.json.
+const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 1152,
+    gzipBytes: 0,
+});
 const BUDGET = Object.freeze({
     bytes:
         1062760 +
@@ -442,7 +451,8 @@ const BUDGET = Object.freeze({
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
@@ -639,7 +649,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
@@ -718,7 +729,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
-        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes,
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
@@ -915,6 +927,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         ),
         providerBundles: sets,
         schema: 1,
+        shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1208,6 +1221,7 @@ function writeBuildBundleReport(
             run: label(process.env.GITHUB_RUN_ID),
             runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
             schema: 1,
+            shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
             source: label(context.source || process.env.GITHUB_SHA),
             toolchain: {
                 node: process.versions.node,
@@ -1281,6 +1295,7 @@ module.exports = {
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
+    SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,

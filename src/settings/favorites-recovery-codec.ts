@@ -471,7 +471,8 @@ export function createFavoritesRecoveryCodec(ports: RecoveryHashPorts) {
                 grant.privateLedgerKey !== "favorites-receipts.v1" ||
                 grant.lockName !== "ottplay:favorites-ledger" ||
                 typeof grant.origin !== "string" ||
-                !/^https?:\/\/[^\s/?#]+(?![\s\S])/.test(grant.origin)
+                (grant.origin !== "tauri://localhost" &&
+                    !/^https?:\/\/[^\s/?#]+(?![\s\S])/.test(grant.origin))
             )
                 fail("unsupported_persistence");
             return digest(

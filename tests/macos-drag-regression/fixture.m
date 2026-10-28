@@ -57,6 +57,7 @@ static FixtureDragInfo *eventInfo;
 static int eventIsDrop;
 static int eventIsTao;
 static IMP originalSendEvent;
+static int selectorCompleted;
 
 static void fixtureSendEvent(id self, SEL cmd, NSEvent *event) {
     if (event.type != NSEventTypeApplicationDefined || event.subtype != 16384) {
@@ -78,16 +79,26 @@ static void fixtureSendEvent(id self, SEL cmd, NSEvent *event) {
     }
     printf("CALLBACK %lu\n", result);
     fflush(stdout);
-    // Tao queues WindowEvents; let the loop deliver them before checking output.
-    [NSTimer scheduledTimerWithTimeInterval:0.1 repeats:NO block:^(NSTimer *timer) {
-        if ([eventInfo.board isKindOfClass:NSPasteboard.class])
-            [eventInfo.board releaseGlobally];
-        fflush(stdout);
-        exit(0);
-    }];
+    selectorCompleted = 1;
+}
+
+int fixture_selector_completed(void) {
+    return selectorCompleted;
+}
+
+void finish_fixture(void) {
+    if ([eventInfo.board isKindOfClass:NSPasteboard.class])
+        [eventInfo.board releaseGlobally];
+    Method method = class_getInstanceMethod([NSApp class], @selector(sendEvent:));
+    method_setImplementation(method, originalSendEvent);
+    eventTarget = nil;
+    eventInfo = nil;
+    printf("DRAINED\n");
+    fflush(stdout);
 }
 
 void schedule_fixture(void *targetRaw, void *infoRaw, int isDrop, int isTao) {
+    selectorCompleted = 0;
     eventTarget = (__bridge id)targetRaw;
     eventInfo = (__bridge_transfer FixtureDragInfo *)infoRaw;
     eventIsDrop = isDrop;
@@ -95,10 +106,8 @@ void schedule_fixture(void *targetRaw, void *infoRaw, int isDrop, int isTao) {
     // This replacement exists only in this isolated test process.
     Method method = class_getInstanceMethod([NSApp class], @selector(sendEvent:));
     originalSendEvent = method_setImplementation(method, (IMP)fixtureSendEvent);
-    [NSTimer scheduledTimerWithTimeInterval:0.01 repeats:NO block:^(NSTimer *timer) {
-        NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
-            location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0
-            context:nil subtype:16384 data1:0 data2:0];
-        [NSApp postEvent:event atStart:NO];
-    }];
+    NSEvent *event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
+        location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0
+        context:nil subtype:16384 data1:0 data2:0];
+    [NSApp postEvent:event atStart:NO];
 }
