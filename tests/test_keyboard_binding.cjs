@@ -431,6 +431,8 @@ for (const testCase of shortcutCases) {
                 [
                     "tryKeyboardSeek",
                     "tryKeyboardRandom",
+                    "tryKeyboardFavorites",
+                    "toggleKeyboardFavorite",
                     "installKeyboardSeek",
                     "cancelNativeListInertia",
                     "keyHandler",
