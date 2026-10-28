@@ -43,7 +43,7 @@ async function installPortal(context, baseURL, attemptStart = 0) {
         if (url.pathname === "/fixture/poster.png")
             return route.fulfill({
                 body: Buffer.from(
-                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uoAAAAASUVORK5CYII=",
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
                     "base64"
                 ),
                 contentType: "image/png",
@@ -521,7 +521,7 @@ test("VPortal full selected metadata, real artwork errors and single shared load
         )
             return route.fulfill({
                 body: Buffer.from(
-                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uoAAAAASUVORK5CYII=",
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
                     "base64"
                 ),
                 contentType: "image/png",
