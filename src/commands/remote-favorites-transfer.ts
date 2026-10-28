@@ -70,9 +70,19 @@ function instance(w: any, runtime: () => string): TransferRuntime | null {
     return value;
 }
 
-function load(w: any, done: (error?: string) => void): void {
+function load(
+    w: any,
+    done: (error?: string) => void,
+    readOnly?: boolean
+): void {
     if (w.__ottFavoritesTransferRuntime) done();
-    else loadRemoteFeature(w, "favorites-transfer", done);
+    else
+        loadRemoteFeature(
+            w,
+            "favorites-transfer",
+            done,
+            readOnly ? "favorites-recovery" : undefined
+        );
 }
 
 /** Qualification is read-only; an unavailable optional asset preserves legacy caps. */
@@ -128,60 +138,67 @@ export function remoteFavoritesTransferCapability(
         timer = w.setTimeout(function () {
             finish(ready[0], ready[1]);
         }, budget);
-        load(w, function (error) {
-            if (cancelled || settled) return;
-            if (error || !current()) return finish(null);
-            try {
-                var api = instance(w, runtime);
-                if (!api) return finish(null);
-                acceptedApi = api;
-                var resolved = function (index: number, value: any): void {
-                    if (cancelled || settled) return;
-                    var cached = w.__ottRemoteFavoritesTransfer;
-                    if (
-                        current() &&
-                        cached &&
-                        cached.value === api &&
-                        cached.factory === w.__ottFavoritesTransferRuntime
-                    ) {
-                        try {
-                            if (
-                                value &&
-                                value.version === 1 &&
-                                (index === 0 ||
-                                    Object.keys(value).join(",") === "version")
-                            )
-                                ready[index] = value;
-                        } catch (_) {}
-                    }
-                    completed++;
-                    if (completed === 2) finish(ready[0], ready[1]);
-                };
-                [0, 1].forEach(function (index) {
-                    if (cancelled || settled || !current()) return;
-                    var pending: any;
-                    try {
-                        pending =
-                            index === 0
-                                ? api!.capability()
-                                : api!.recoveryCapability();
-                    } catch (_) {
-                        resolved(index, null);
-                        return;
-                    }
-                    Promise.resolve(pending).then(
-                        function (value) {
-                            resolved(index, value);
-                        },
-                        function () {
-                            resolved(index, null);
+        load(
+            w,
+            function (error) {
+                if (cancelled || settled) return;
+                if (error || !current()) return finish(null);
+                try {
+                    var api = instance(w, runtime);
+                    if (!api) return finish(null);
+                    acceptedApi = api;
+                    var resolved = function (index: number, value: any): void {
+                        if (cancelled || settled) return;
+                        var cached = w.__ottRemoteFavoritesTransfer;
+                        if (
+                            current() &&
+                            cached &&
+                            cached.value === api &&
+                            cached.factory === w.__ottFavoritesTransferRuntime
+                        ) {
+                            try {
+                                if (
+                                    value &&
+                                    value.version === 1 &&
+                                    (index === 0 ||
+                                        Object.keys(value).join(",") ===
+                                            "version")
+                                )
+                                    ready[index] = value;
+                            } catch (_) {}
                         }
-                    );
-                });
-            } catch (_) {
-                finish(null);
-            }
-        });
+                        completed++;
+                        if (completed === 2) finish(ready[0], ready[1]);
+                    };
+                    [0, 1].forEach(function (index) {
+                        if (cancelled || settled || !current()) return;
+                        var pending: any;
+                        try {
+                            pending =
+                                index === 0
+                                    ? w.__ottStandby?.blocked?.()
+                                        ? null
+                                        : api!.capability()
+                                    : api!.recoveryCapability();
+                        } catch (_) {
+                            resolved(index, null);
+                            return;
+                        }
+                        Promise.resolve(pending).then(
+                            function (value) {
+                                resolved(index, value);
+                            },
+                            function () {
+                                resolved(index, null);
+                            }
+                        );
+                    });
+                } catch (_) {
+                    finish(null);
+                }
+            },
+            true
+        );
     }
     return function () {
         cancelled = true;
@@ -190,10 +207,26 @@ export function remoteFavoritesTransferCapability(
     };
 }
 
-function permitted(w: any): boolean {
+function recoveryRead(params: any): boolean {
+    if (!params || params.op !== "recovery") return false;
+    var keys = Object.keys(params).sort().join(",");
+    return (
+        typeof params.runtime === "string" &&
+        /^[a-z0-9-]{1,64}(?![\s\S])/.test(params.runtime) &&
+        ((params.mode === "list" && keys === "mode,op,runtime") ||
+            (params.mode === "inspect" &&
+                keys === "mode,op,operation_id,runtime" &&
+                typeof params.operation_id === "string" &&
+                /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/.test(
+                    params.operation_id
+                )))
+    );
+}
+
+function permitted(w: any, params?: any): boolean {
     try {
         return !(
-            w.__ottStandby?.blocked?.() ||
+            (!recoveryRead(params) && w.__ottStandby?.blocked?.()) ||
             w.__ottKiosk?.enabled?.() ||
             (w.__ottParental
                 ? w.__ottParental.needs("providers") ||
@@ -232,7 +265,7 @@ export function executeRemoteFavoritesTransfer(
         return (
             !cancelled &&
             owner === runtime() &&
-            permitted(w) &&
+            permitted(w, envelope && envelope.params) &&
             (!executing ||
                 (cached &&
                     cached.value === executing &&
@@ -302,7 +335,7 @@ export function executeRemoteFavoritesTransfer(
         if (owner !== runtime() || envelope.params.runtime !== owner)
             return fail("runtime_changed");
         if (Date.now() >= envelope.expires_at * 1000) return fail("expired");
-        if (!permitted(w)) return fail("policy_denied");
+        if (!permitted(w, envelope.params)) return fail("policy_denied");
         if (error) return fail("storage_unavailable", true);
         try {
             var api = instance(w, runtime);
@@ -362,7 +395,7 @@ export function executeRemoteFavoritesTransfer(
     }
     if (envelope.params.runtime !== owner) fail("runtime_changed");
     else if (Date.now() >= envelope.expires_at * 1000) fail("expired");
-    else if (!permitted(w)) fail("policy_denied");
-    else load(w, dispatch);
+    else if (!permitted(w, envelope.params)) fail("policy_denied");
+    else load(w, dispatch, recoveryRead(envelope.params));
     return cancel;
 }
