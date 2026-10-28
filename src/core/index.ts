@@ -3788,6 +3788,22 @@ export function getCoreMediaBackend(): any {
         admitted: function () {
             return !stbIsStandby();
         },
+        beforeIntent: function (): boolean {
+            var driver = (window as any).__ottActiveProviderDriver;
+            if (
+                !driver ||
+                driver.id !== "offline" ||
+                typeof driver.commitStartupPreview !== "function"
+            )
+                return true;
+            var session = _playSession;
+            var committed = driver.commitStartupPreview();
+            return (
+                committed !== false &&
+                session === _playSession &&
+                driver === (window as any).__ottActiveProviderDriver
+            );
+        },
         beforeSeek: function (position: number): void {
             var playback = (window as any).__ottClassicPlayback;
             if (playback && playback.beforeSeek) playback.beforeSeek(position);
@@ -3860,7 +3876,7 @@ export function getCoreMediaBackend(): any {
             if (osd) osd.render(status);
         },
         restart: function () {
-            return coreMediaBackend.restart();
+            return coreMediaBackend.restart(false);
         },
         sample: sampleCoreLiveRecovery,
         setInterval: function (callback: () => void, delay: number) {

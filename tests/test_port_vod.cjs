@@ -330,6 +330,53 @@ function fixture() {
 module.exports = { fixture, sourceFunctions };
 
 if (require.main === module) {
+    // Actual UI callers must honor preview admission before starting a decoder.
+    for (const kind of ["channel", "media"]) {
+        for (const admission of ["allow", "refuse", "replace"]) {
+            const c = fixture();
+            c.p_pref = "offline";
+            c.channels = {
+                1: { channel_name: "Chosen", rec: 0 },
+                2: { channel_name: "Replacement", rec: 0 },
+            };
+            c.cats.All = [1, 2];
+            c.getChannelUrl = (id) => "channel-" + id + ".mp4";
+            c.ifParentalAccessChId = () => false;
+            c.checkMedia = () => {};
+            let commits = 0;
+            c.__ottActiveProviderDriver = {
+                commitStartupPreview() {
+                    commits++;
+                    if (admission === "replace") {
+                        c.__ottActiveProviderDriver = { id: "offline" };
+                        c._playChannel(0, 1);
+                    }
+                    return admission !== "refuse";
+                },
+                id: "offline",
+            };
+            if (kind === "channel") c._playChannel(0, 0);
+            else
+                c._playMedia({
+                    id: "chosen",
+                    stream_url: "chosen.mp4",
+                    title: "Chosen",
+                });
+            assert.equal(
+                commits,
+                1,
+                "initial preview dispatch is admitted only once"
+            );
+            const plays = c.calls.filter((row) => row[0] === "play");
+            if (admission === "refuse") assert.equal(plays.length, 0);
+            else if (admission === "replace")
+                assert.deepEqual(plays, [["play", "channel-2.mp4"]]);
+            else assert.equal(plays.length, 1);
+        }
+    }
+    console.log(
+        "PASS actual UI replacement admission rejects failed promotion and synchronous replacement"
+    );
     // Generated labels retain provenance across cached frames and serialized journals.
     // Provider/user titles that happen to equal a translation remain literal.
     {

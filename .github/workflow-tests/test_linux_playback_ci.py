@@ -17,6 +17,26 @@ def workflow(name):
 
 
 class NativePlaybackCI(unittest.TestCase):
+    def test_size_diagnostics_do_not_bypass_required_builds(self):
+        job = workflow("ci.yml")["jobs"]["build"]
+        steps = job["steps"]
+        host = next(i for i, step in enumerate(steps) if step.get("name") == "Build bundle")
+        container = next(i for i, step in enumerate(steps) if step.get("name") == "Build container frontend from declared inputs")
+        self.assertLess(host, container)
+        for index in (host, container):
+            self.assertNotIn("continue-on-error", steps[index])
+            self.assertNotIn("if", steps[index])
+        diagnostic = next(step for step in steps if step.get("name") == "Upload failed classic size diagnostics")
+        self.assertEqual(diagnostic["if"], "failure() && hashFiles('build/reports/classic-size-diagnostics.json') != ''")
+        self.assertEqual(diagnostic["with"]["path"], "build/reports/classic-size-diagnostics.json")
+        self.assertEqual(diagnostic["with"]["name"], "classic-size-failure-${{ github.sha }}-${{ github.run_attempt }}")
+        canonical = next(step for step in steps if step.get("name") == "Upload classic build report")
+        self.assertNotIn("if", canonical)
+        ignored = (ROOT / ".dockerignore").read_text().splitlines()
+        for directory in ("build/", "dist/", "dist-mobile/"):
+            self.assertIn(directory, ignored)
+        self.assertNotRegex((ROOT / "Dockerfile").read_text(), r"(?m)^COPY\s+\.\s")
+
     def test_both_real_builds_are_unconditional_and_fail_closed(self):
         job = workflow("ci.yml")["jobs"]["linux-playback-compat"]
         self.assertEqual(job["strategy"]["matrix"]["platform"], ["ubuntu-24.04", "ubuntu-24.04-arm"])

@@ -109,7 +109,9 @@ interface ProviderDriver {
         mediaPlaylist?: boolean;
         libraryOnly?: boolean;
     };
+    commitStartupPreview?(): boolean;
     configuration?(): any;
+    continueStartupPreview?(generation: number): void;
     credentials(): ProviderCredentials;
     dispose(): void;
     guide(id: string | number, callback: (value: any) => void): void;
@@ -251,6 +253,27 @@ function createOfflineDriver(
     var loadTimer: any = null;
     var loadingOwner: any = null;
     var playbackCancels: Array<() => void> = [];
+    var preview: any = null;
+    function discardPreview(): void {
+        var previous = preview;
+        preview = null;
+        if (previous) previous.scope.discard();
+    }
+    function commitStartupPreview(): boolean {
+        var ticket = preview;
+        if (!ticket) return true;
+        if (ticket.dispatching) {
+            ticket.dispatching = false;
+            return true;
+        }
+        if (!ticket.current()) return false;
+        var playback = (window as any).__ottClassicPlayback;
+        if (playback?.checkpointNow) playback.checkpointNow();
+        if (preview !== ticket || !ticket.current() || !ticket.scope.commit())
+            return false;
+        preview = null;
+        return true;
+    }
     function closeLoading(): void {
         var current = loadingOwner;
         loadingOwner = null;
@@ -277,10 +300,26 @@ function createOfflineDriver(
             media: false,
             settings: false,
         },
+        commitStartupPreview: commitStartupPreview,
+        continueStartupPreview: function (generation) {
+            var ticket = preview;
+            var state = (window as any).__ottClassicPlayback?.snapshot?.();
+            var id =
+                state?.historyTarget?.channelId ||
+                String(state?.target?.channelId || "").replace(/^channel:/, "");
+            if (
+                ticket?.waiting &&
+                ticket.current() &&
+                state?.generation === generation &&
+                catalog.channels[id]?.__ottLocalSource === ticket.source
+            )
+                ticket.playbackGeneration = generation;
+        },
         credentials: function () {
             return { password: "", server: "", username: "" };
         },
         dispose: function () {
+            discardPreview();
             disposed = true;
             revision++;
             playbackCancels.slice().forEach(function (cancel) {
@@ -297,6 +336,7 @@ function createOfflineDriver(
         },
         id: "offline",
         load: function (done) {
+            discardPreview();
             var request = ++revision;
             clearLoadTimer();
             closeLoading();
@@ -329,6 +369,8 @@ function createOfflineDriver(
             var waitForFinal = false;
             var missingPreferred = false;
             var legacyIndex = 0;
+            var savedPosition = 0;
+            var restoreSource = "";
             try {
                 var imported = media.takeImportSelection
                     ? media.takeImportSelection()
@@ -340,6 +382,18 @@ function createOfflineDriver(
                 var saved = JSON.parse(
                     ports.storage.get("channelLibrary:" + source) || "null"
                 );
+                restoreSource = source || "";
+                var journal = JSON.parse(
+                    ports.storage.get("playbackJournal:" + source) ||
+                        ports.storage.get("playbackJournal") ||
+                        "null"
+                );
+                var bookmark =
+                    journal?.sourceId === source ? journal.bookmark : null;
+                if (!bookmark && (!journal || journal.sourceId === source))
+                    bookmark = JSON.parse(
+                        ports.storage.get("continueWatch") || "null"
+                    );
                 var profileSelection =
                     profiles && profiles.selection
                         ? profiles.selection()
@@ -367,12 +421,193 @@ function createOfflineDriver(
                         legacyIndex < 0 ||
                         Math.floor(legacyIndex) !== legacyIndex;
                 }
+                if (
+                    bookmark &&
+                    String(bookmark.channelId).replace(/^channel:/, "") ===
+                        wanted
+                ) {
+                    var offset =
+                        bookmark.position === undefined
+                            ? bookmark.playTime
+                            : bookmark.position;
+                    if (
+                        typeof offset === "number" &&
+                        isFinite(offset) &&
+                        offset >= 0
+                    )
+                        savedPosition = offset;
+                }
             } catch (_) {
                 waitForFinal = true;
             }
             catalog = emptyDriverCatalog();
             function current(): boolean {
                 return active() && request === revision;
+            }
+            function beginPreview(value: any): string {
+                var host = window as any;
+                var storage = host.ottpStorage;
+                if (
+                    imported ||
+                    host.__ottKiosk?.enabled?.() ||
+                    host.__ottParental?.needs?.("channels") ||
+                    !storage?.localPlayback?.preview ||
+                    storage.localPlayback.active() ||
+                    host.stbGetItem !== storage.get ||
+                    host.stbSetItem !== storage.set ||
+                    host.stbDelItem !== storage.del
+                )
+                    return "";
+                var selected =
+                    media.startupSource?.() || profiles?.selectedSource?.();
+                if (!selected) {
+                    var sources = value.sources || [];
+                    if (sources.length === 1 && sources[0].available !== false)
+                        selected = sources[0].id;
+                }
+                if (!selected) return "";
+                var first = (value.items || []).filter(function (item: any) {
+                    return (
+                        item.sourceId === selected &&
+                        item.available !== false &&
+                        !!item.url
+                    );
+                })[0];
+                if (!first) return "";
+                var scan = (value.sourceScans || []).filter(function (
+                    entry: any
+                ) {
+                    return entry.sourceId === selected;
+                })[0];
+                if (
+                    value.sourceScans &&
+                    (!scan ||
+                        typeof scan.generation !== "number" ||
+                        !isFinite(scan.generation) ||
+                        Math.floor(scan.generation) !== scan.generation ||
+                        scan.generation < 1 ||
+                        scan.state === "error")
+                )
+                    return "";
+                function identity(): string {
+                    return JSON.stringify([
+                        host.__ottSourceIdentity?.current(host),
+                        media.libraryIdentity?.(),
+                        profiles?.read?.(),
+                    ]);
+                }
+                var scope = storage.localPlayback.preview(identity);
+                if (!scope) return "";
+                preview = {
+                    current: function () {
+                        try {
+                            return (
+                                active() &&
+                                host.__ottActiveProviderDriver === driver &&
+                                scope.current() &&
+                                (!profileCurrent || profileCurrent()) &&
+                                storage === host.ottpStorage &&
+                                host.stbGetItem === storage.get &&
+                                host.stbSetItem === storage.set &&
+                                host.stbDelItem === storage.del
+                            );
+                        } catch (_) {
+                            return false;
+                        }
+                    },
+                    dispatching: true,
+                    generation: scan?.generation,
+                    playbackGeneration: null,
+                    scope: scope,
+                    source: selected,
+                    waiting: true,
+                };
+                return "local-" + first.id;
+            }
+            function settlePreview(value: any, final: boolean): void {
+                var ticket = preview;
+                if (!ticket || !ticket.waiting || !ticket.current()) return;
+                var host = window as any;
+                var scan = (value.sourceScans || []).filter(function (
+                    entry: any
+                ) {
+                    return entry.sourceId === ticket.source;
+                })[0];
+                if (
+                    ticket.generation !== undefined &&
+                    scan?.generation !== ticket.generation
+                ) {
+                    ticket.waiting = false;
+                    return;
+                }
+                var state = host.__ottClassicPlayback?.snapshot?.();
+                if (
+                    ticket.playbackGeneration !== null &&
+                    (!state ||
+                        state.generation !== ticket.playbackGeneration ||
+                        state.phase === "stopped" ||
+                        state.phase === "idle" ||
+                        state.phase === "paused" ||
+                        host.forcePlay === false)
+                ) {
+                    ticket.waiting = false;
+                    return;
+                }
+                if (
+                    wanted &&
+                    catalog.channels[wanted] &&
+                    catalog.channels[wanted].__ottLocalSource === ticket.source
+                ) {
+                    var backend =
+                        host.__ottCoreBackendPeek?.() ||
+                        host.__ottCoreBackend?.();
+                    var handle = backend?.current?.();
+                    if (
+                        backend &&
+                        (!handle ||
+                            !handle.active() ||
+                            handle.snapshot().phase === "stopped")
+                    ) {
+                        ticket.waiting = false;
+                        return;
+                    }
+                    for (
+                        var group = 0;
+                        group < (host.catsArray || []).length;
+                        group++
+                    ) {
+                        var at = (
+                            host.cats[host.catsArray[group]] || []
+                        ).indexOf(wanted);
+                        if (at < 0) continue;
+                        ticket.waiting = false;
+                        ticket.dispatching = true;
+                        var accepted = host.playChannel(
+                            group,
+                            at,
+                            false,
+                            undefined,
+                            {
+                                channelId: wanted,
+                                position: savedPosition,
+                                sourceId: restoreSource,
+                            }
+                        );
+                        ticket.dispatching = false;
+                        if (
+                            accepted !== false &&
+                            preview === ticket &&
+                            ticket.current()
+                        )
+                            discardPreview();
+                        return;
+                    }
+                } else if (
+                    scan ? scan.state === "complete" : final || !value.scanning
+                ) {
+                    ticket.waiting = false;
+                    if (wanted.indexOf("local-") === 0) commitStartupPreview();
+                }
             }
             function recover(
                 error: string,
@@ -381,6 +616,7 @@ function createOfflineDriver(
             ): void {
                 if (!current()) return;
                 clearLoadTimer();
+                if (preview) preview.waiting = false;
                 revision++;
                 closeLoading();
                 if (!started) {
@@ -553,9 +789,20 @@ function createOfflineDriver(
                     value.preferred.state === "missing"
                 )
                     missingPreferred = true;
+                var firstPreview = "";
                 if (
                     !started &&
                     !final &&
+                    catalog.ids.length &&
+                    (waitForFinal ||
+                        catalog.ids.length <= legacyIndex ||
+                        (wanted && !catalog.channels[wanted]))
+                )
+                    firstPreview = beginPreview(value);
+                if (
+                    !started &&
+                    !final &&
+                    !firstPreview &&
                     (!catalog.ids.length ||
                         waitForFinal ||
                         catalog.ids.length <= legacyIndex ||
@@ -569,12 +816,35 @@ function createOfflineDriver(
                 closeLoading();
                 var snapshot = driverCatalogSnapshot(catalog);
                 snapshot.incremental = incremental;
-                if (!incremental && imported && catalog.channels[wanted])
+                if (preview) {
+                    snapshot.ids = snapshot.ids.filter(function (id) {
+                        return (
+                            snapshot.channels[id].__ottLocalSource ===
+                            preview.source
+                        );
+                    });
+                    Object.keys(snapshot.channels).forEach(function (id) {
+                        if (
+                            snapshot.channels[id].__ottLocalSource !==
+                            preview.source
+                        )
+                            delete snapshot.channels[id];
+                    });
+                }
+                if (firstPreview) snapshot.selectedId = firstPreview;
+                else if (!incremental && imported && catalog.channels[wanted])
                     snapshot.selectedId = wanted;
                 else if (missingPreferred && !catalog.channels[wanted])
                     snapshot.selectedId = catalog.ids[0];
                 done(snapshot, undefined, incremental);
                 if (!current()) return false;
+                if (preview && !incremental) {
+                    preview.dispatching = false;
+                    preview.playbackGeneration =
+                        (window as any).__ottClassicPlayback?.snapshot?.()
+                            .generation ?? null;
+                }
+                settlePreview(value, final);
                 try {
                     if (profileCurrent && !profileCurrent()) {
                         recover(localMessage2, false);

@@ -194,7 +194,9 @@ export function installOfflineProfiles(w: any, media: any): any {
         values: Record<string, string>,
         previous: Record<string, string | null>,
         admitted: () => boolean,
-        rollback: () => boolean
+        rollback: () => boolean,
+        persistentSelection = false,
+        persistPlayback = false
     ): void {
         var readPort = w.stbGetItem,
             writePort = w.stbSetItem,
@@ -206,6 +208,23 @@ export function installOfflineProfiles(w: any, media: any): any {
             removePort === w.ottpStorage.del
                 ? w.ottpStorage.transaction
                 : undefined;
+        if (persistentSelection && w.ottpStorage?.localPlayback?.active()) {
+            if (!transaction)
+                throw profileFailure("Local playback storage changed");
+            transaction = function (batch: any, admitted: () => boolean) {
+                if (
+                    !w.ottpStorage.localPlayback.profile(
+                        batch,
+                        admitted,
+                        persistPlayback
+                    )
+                )
+                    throw profileFailure(
+                        "Could not save Local playback session"
+                    );
+                return true;
+            };
+        }
         commitSettingsWrites(
             Object.keys(values).map(function (key) {
                 return {
@@ -532,6 +551,32 @@ export function installOfflineProfiles(w: any, media: any): any {
                     var previous: Record<string, string | null> = {};
                     previous[bindingsKey] = bindingBefore;
                     previous[key] = before;
+                    var storage = w.ottpStorage;
+                    var session = storage?.localPlayback;
+                    var sessionCurrent = session?.active()
+                        ? session.capture()
+                        : null;
+                    if (
+                        sessionCurrent &&
+                        (w.stbGetItem !== storage.get ||
+                            w.stbSetItem !== storage.set ||
+                            w.stbDelItem !== storage.del)
+                    )
+                        throw profileFailure("Local playback storage changed");
+                    if (!current() || selectedId() !== selectionBefore)
+                        throw profileFailure(
+                            "Local profile changed before checkpoint"
+                        );
+                    if (w.__ottClassicPlayback?.checkpointNow)
+                        w.__ottClassicPlayback.checkpointNow();
+                    if (
+                        !current() ||
+                        selectedId() !== selectionBefore ||
+                        (sessionCurrent && !sessionCurrent())
+                    )
+                        throw profileFailure(
+                            "Local profile changed while checkpointing"
+                        );
                     writeBatch(
                         values,
                         previous,
@@ -542,7 +587,9 @@ export function installOfflineProfiles(w: any, media: any): any {
                                 selectedId() === selectionBefore
                             );
                         },
-                        owner
+                        owner,
+                        true,
+                        true
                     );
                     bindingBefore = values[bindingsKey];
                     before = values[key];
@@ -613,7 +660,8 @@ export function installOfflineProfiles(w: any, media: any): any {
                             media.libraryIdentity() === targetLibrary)
                     );
                 },
-                owner
+                owner,
+                action === "profile"
             );
             before = writes[key];
             library = targetLibrary;
@@ -858,6 +906,13 @@ export function installOfflineProfiles(w: any, media: any): any {
         },
         read: read,
         request: request,
+        selectedSource: function () {
+            var profile = currentProfile();
+            var local = binding(profile);
+            return profile?.selected && local
+                ? local.sources[profile.selected.source_key] || null
+                : null;
+        },
         selection: selection,
         validateProfile: validateProfile,
         validateStore: validateStore,
