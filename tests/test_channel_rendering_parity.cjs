@@ -183,7 +183,7 @@ async function checkRendering(profile) {
         `
         listDetail = document.getElementById('listDetail'); listPodval = document.getElementById('listPodval');
         catsArray = ['Test']; cats = { Test: ['one', 'two'] };
-        channels = { one: {channel_name: 'News', name: 'Current bulletin', rec: 1,
+        channels = { one: {channel_name: 'News', name: 'Current bulletin', rec: 1, icon: 'https://images.example/live-poster.png',
             time: Date.now()/1000 - 60, time_to: Date.now()/1000 + 60},
             two: {channel_name: 'Films', name: 'Current film', rec: 0,
             time: Date.now()/1000 - 60, time_to: Date.now()/1000 + 60} };
@@ -201,7 +201,14 @@ async function checkRendering(profile) {
         dom.getInternalVMContext(),
         { timeout: 10000 }
     );
+    w.sThumbnail = 1;
     renderWithoutSettingsWrites(0, 0);
+    const liveThumbnail = w.document.querySelector(
+        "#listDetail .ott-channel-thumbnail"
+    );
+    assert.equal(liveThumbnail.tagName, "DIV");
+    assert.match(liveThumbnail.style.backgroundImage, /live-poster\.png/);
+    assert(w.document.querySelector("#listDetail .ott-channel-detail-time"));
     const row = w.document.getElementById("it0");
     assert.ok(row, profile + ": provider populated visible channel row");
     assert.match(row.textContent, /News.*Current bulletin/);
@@ -404,11 +411,14 @@ async function checkRendering(profile) {
         assert.match(detail.textContent, /A selected movie description/);
         assert.equal(detail.querySelector(".ott-channel-detail-time"), null);
         assert.equal(detail.querySelector("script"), null);
-        assert.match(
-            detail.querySelector(".ott-channel-thumbnail").style
-                .backgroundImage,
-            /poster\.png/
+        const thumbnail = detail.querySelector(".ott-channel-thumbnail");
+        assert.equal(thumbnail.tagName, "IMG");
+        assert.equal(
+            thumbnail.getAttribute("src"),
+            "https://images.example/poster.png"
         );
+        thumbnail.dispatchEvent(new w.Event("error"));
+        assert.equal(thumbnail.style.display, "none");
         assert.doesNotMatch(
             w.document.getElementById("listIn").textContent,
             /no epg at current time/i
