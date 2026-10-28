@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    DESKTOP_FAVORITES_KEY_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -119,7 +120,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1430832, gzipBytes: 452784 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1435482, gzipBytes: 453884 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -132,11 +133,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1435312, gzipBytes: 455088 });
-    assert.deepEqual(BUDGET, { bytes: 1087932, gzipBytes: 335706 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1439962, gzipBytes: 456188 });
+    assert.deepEqual(BUDGET, { bytes: 1092582, gzipBytes: 336806 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1231232,
-        gzipBytes: 387756,
+        bytes: 1235882,
+        gzipBytes: 388856,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -170,7 +171,9 @@ try {
     }))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                budget[metric] - favoritesEvidence.previousCaps[name][metric],
+                budget[metric] -
+                    DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
+                    favoritesEvidence.previousCaps[name][metric],
                 favoritesDelta(budget, metric),
                 "favorites allocation counted exactly once: " + name
             );
@@ -208,6 +211,55 @@ try {
         FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
     ])
         assert(Object.isFrozen(allowance));
+    assert.deepEqual(DESKTOP_FAVORITES_KEY_ALLOWANCE, {
+        bytes: 4650,
+        gzipBytes: 1100,
+    });
+    assert(Object.isFrozen(DESKTOP_FAVORITES_KEY_ALLOWANCE));
+    for (const [actual, previous] of [
+        [BUDGET, { bytes: 1078632, gzipBytes: 333306 }],
+        [LEGACY_TOTAL_BUDGET, { bytes: 1221432, gzipBytes: 385206 }],
+        [BASE_TOTAL_BUDGET, { bytes: 1335032, gzipBytes: 425834 }],
+        [TOTAL_BUDGET, { bytes: 1339512, gzipBytes: 428138 }],
+    ])
+        for (const key of ["bytes", "gzipBytes"])
+            assert.equal(
+                actual[key] - favoritesDelta(actual, key) - previous[key],
+                DESKTOP_FAVORITES_KEY_ALLOWANCE[key],
+                "desktop favorites counted exactly once"
+            );
+    const favoriteEvidence = require("../docs/evidence/desktop-favorites-key-size-20261028.json");
+    assert.deepEqual(
+        favoriteEvidence.allocation,
+        DESKTOP_FAVORITES_KEY_ALLOWANCE
+    );
+    assert.deepEqual(
+        favoriteEvidence.baseline.toolchain,
+        favoriteEvidence.candidate.toolchain
+    );
+    for (let i = 0; i < favoriteEvidence.candidate.entries.length; i++) {
+        const after = favoriteEvidence.candidate.entries[i],
+            before = favoriteEvidence.baseline.entries[i];
+        assert.equal(
+            after.bytes - before.bytes,
+            favoriteEvidence.observedDelta.bytes
+        );
+        assert.equal(
+            after.gzipBytes - before.gzipBytes,
+            i === 0
+                ? favoriteEvidence.observedDelta.webGzipBytes
+                : favoriteEvidence.observedDelta.nativeAndMobileGzipBytes
+        );
+        assert(
+            after.bytes <= BUDGET.bytes && after.gzipBytes <= BUDGET.gzipBytes
+        );
+        const total = favoriteEvidence.candidate.complete[i];
+        assert(
+            total.bytes <= TOTAL_BUDGET.bytes &&
+                total.gzipBytes <= TOTAL_BUDGET.gzipBytes
+        );
+    }
+
     for (const [actual, previous] of [
         [BUDGET, { bytes: 1070440, gzipBytes: 330746 }],
         [LEGACY_TOTAL_BUDGET, { bytes: 1213240, gzipBytes: 382646 }],
@@ -216,7 +268,10 @@ try {
     ])
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
-                actual[key] - favoritesDelta(actual, key) - previous[key],
+                actual[key] -
+                    favoritesDelta(actual, key) -
+                    DESKTOP_FAVORITES_KEY_ALLOWANCE[key] -
+                    previous[key],
                 LOCAL_STARTUP_PREVIEW_ALLOWANCE[key],
                 "startup preview counted exactly once"
             );
@@ -246,13 +301,18 @@ try {
                     (item) =>
                         TOTAL_BUDGET[metric] -
                         favoritesDelta(TOTAL_BUDGET, metric) -
+                        DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
                         item[metric]
                 )
             )
         );
         assert(
             startupEvidence.canonical.entries.every(
-                (item) => item[metric] <= BUDGET[metric]
+                (item) =>
+                    item[metric] <=
+                    BUDGET[metric] -
+                        favoritesDelta(BUDGET, metric) -
+                        DESKTOP_FAVORITES_KEY_ALLOWANCE[metric]
             )
         );
     }

@@ -87,6 +87,197 @@ export var keys: Record<string, number> = {
  * Main key dispatch
  * --------------------------------------------------------------------------- */
 
+/** Desktop favorite intent reuses the active provider's TV list/media journal. */
+export function toggleKeyboardFavorite(w: any): boolean {
+    var port = w.__ottClassicScreenPort,
+        kiosk = w.__ottKiosk;
+    if (
+        !port ||
+        !port.screens ||
+        !/^pc(?:2)?$/.test(w.ott_device || "") ||
+        w.sFavorites === -1 ||
+        (kiosk &&
+            ((kiosk.enabled && kiosk.enabled()) ||
+                (kiosk.strict && kiosk.strict()) ||
+                (kiosk.locked && kiosk.locked()))) ||
+        (w.__ottStandby && w.__ottStandby.blocked())
+    )
+        return false;
+    var owner = port && port.screens.current();
+    if (owner && owner.kind !== "list") return false;
+    var media = w.__ottMedia;
+    var mediaList =
+        typeof w.mediaKeyHandler === "function" &&
+        (w.listKeyHandlerFn === w.mediaKeyHandler ||
+            w.listKeyHandler === w.mediaKeyHandler);
+    var channelsList =
+        typeof w.channelsKeyHandler === "function" &&
+        (w.listKeyHandlerFn === w.channelsKeyHandler ||
+            w.listKeyHandler === w.channelsKeyHandler);
+    if (owner && mediaList) {
+        var payload = w.listArray && w.listArray[w.selIndex];
+        return !!(
+            payload &&
+            media &&
+            typeof media.toggleFavorite === "function" &&
+            media.toggleFavorite(payload)
+        );
+    }
+    if (owner && !channelsList) return false;
+    if (!owner && media && media.current && media.current())
+        return !!(media.toggleFavoriteCurrent && media.toggleFavoriteCurrent());
+    var identity = w.__ottSourceIdentity,
+        driver = w.__ottActiveProviderDriver;
+    if (!identity || typeof identity.current !== "function") return false;
+    var source = identity.current(w),
+        channels = w.channels,
+        id: any;
+    if (owner) id = w.listArray && w.listArray[w.selIndex];
+    else {
+        var state = w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+        if (
+            !state ||
+            !state.target ||
+            !/^(live|archive)$/.test(state.target.kind) ||
+            state.target.sourceId !== source ||
+            /^(idle|stopped)$/.test(state.phase)
+        )
+            return false;
+        id = state.target.channelId;
+    }
+    // Numeric JS inputs have already lost precision beyond this boundary.
+    if (
+        typeof id === "number" &&
+        (!isFinite(id) ||
+            Math.floor(id) !== id ||
+            Math.abs(id) > 9007199254740991)
+    )
+        return false;
+    var channel = channels && channels[id];
+    // TV PIN membership uses numeric catalog IDs; validate before converting.
+    // Provider-media keys stay opaque and are never cast for TV policy.
+    if (channel && !channel.__ottMediaItem) {
+        // Opaque provider-media keys were looked up above without conversion.
+        // Ordinary TV imports accept only lossless canonical safe integer keys.
+        if (typeof id === "string") {
+            var numeric = Number(id);
+            if (
+                String(numeric) !== id ||
+                !isFinite(numeric) ||
+                Math.floor(numeric) !== numeric ||
+                Math.abs(numeric) > 9007199254740991
+            )
+                return false;
+            id = numeric;
+        }
+        if (
+            typeof id !== "number" ||
+            !isFinite(id) ||
+            Math.floor(id) !== id ||
+            Math.abs(id) > 9007199254740991
+        )
+            return false;
+    }
+    function current(): boolean {
+        return (
+            identity === w.__ottSourceIdentity &&
+            source === identity.current(w) &&
+            driver === w.__ottActiveProviderDriver &&
+            channels === w.channels &&
+            channel === channels[id] &&
+            owner === port.screens.current() &&
+            w.sFavorites !== -1
+        );
+    }
+    if (!channel || !current()) return false;
+    if (
+        w.hasParentalLock &&
+        w.hasParentalLock(id) &&
+        (!w.__ottParental || w.__ottParental.needs("channels"))
+    )
+        return false;
+    if (!current()) return false;
+    // Provider-native video rows carry a stable provider payload, not a TV slot.
+    if (channel.__ottMediaItem)
+        return !!(
+            media &&
+            media.toggleFavorite &&
+            media.toggleFavorite(channel.__ottMediaItem)
+        );
+    var favorites = w.favoritesArray;
+    if (!Array.isArray(favorites) || typeof w.saveChannelsCats !== "function")
+        return false;
+    var removing = favorites.some(function (item: any) {
+        return String(item) === String(id);
+    });
+    var action = removing ? w.removeFromFavorites : w.addToFavorites;
+    if (typeof action !== "function" || !current()) return false;
+    action(id);
+    if (!current()) return false;
+    return w.saveChannelsCats() === true;
+}
+
+/** Plain desktop F owns one favorite toggle; browser find/text/IME remain native. */
+export function tryKeyboardFavorites(event: KeyboardEvent): boolean {
+    var w = window as any;
+    if (
+        !event ||
+        !/^pc(?:2)?$/.test(w.ott_device || "") ||
+        !(
+            event.code === "KeyF" ||
+            event.keyCode === 70 ||
+            event.which === 70 ||
+            event.key === "f" ||
+            event.key === "F"
+        )
+    )
+        return false;
+    if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.keyCode === 229 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+    )
+        return true;
+    function editable(element: any): boolean {
+        while (element) {
+            if (
+                /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName || "") ||
+                element.isContentEditable ||
+                (element.hasAttribute &&
+                    element.hasAttribute("contenteditable") &&
+                    /^(|true|plaintext-only)$/i.test(
+                        element.getAttribute("contenteditable")
+                    ))
+            )
+                return true;
+            element = element.parentElement;
+        }
+        return false;
+    }
+    if (editable(event.target) || editable(document.activeElement)) return true;
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    if (event.repeat) return true;
+    var kiosk = w.__ottKiosk;
+    if (
+        (kiosk &&
+            ((kiosk.enabled && kiosk.enabled()) ||
+                (kiosk.strict && kiosk.strict()) ||
+                (kiosk.locked && kiosk.locked()))) ||
+        w.__ottStandby?.blocked()
+    )
+        return true;
+    var port = w.__ottClassicScreenPort;
+    if (port && typeof port.dispatch === "function")
+        port.dispatch(w.keys.FAVORITES, event, function () {});
+    return true;
+}
+
 /** Choose one item from the visible collection without changing its order. */
 export function tryKeyboardRandom(event: KeyboardEvent): boolean {
     var w = window as any;
@@ -329,11 +520,16 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
 /** Capture video-focused keys too; the regular bubble handler remains intact. */
 export function installKeyboardSeek(): void {
     var w = window as any;
+    w.__ottTryKeyboardFavorites = tryKeyboardFavorites;
+    w.__ottToggleKeyboardFavorite = function () {
+        return toggleKeyboardFavorite(w);
+    };
     w.__ottTryKeyboardSeek = tryKeyboardSeek;
     w.__ottTryKeyboardRandom = tryKeyboardRandom;
     if (w.__ottKeyboardSeekCapture || !document.addEventListener) return;
     w.__ottKeyboardSeekCapture = function (event: KeyboardEvent): void {
-        if (!tryKeyboardRandom(event)) tryKeyboardSeek(event);
+        if (!tryKeyboardFavorites(event) && !tryKeyboardRandom(event))
+            tryKeyboardSeek(event);
     };
     document.addEventListener("keydown", w.__ottKeyboardSeekCapture, true);
 }
@@ -355,6 +551,11 @@ export function keyHandler(event: KeyboardEvent): void {
         kiosk.strictKey(event);
         return;
     }
+    if (
+        typeof (window as any).__ottTryKeyboardFavorites === "function" &&
+        (window as any).__ottTryKeyboardFavorites(event)
+    )
+        return;
     if (
         typeof (window as any).__ottTryKeyboardSeek === "function" &&
         (window as any).__ottTryKeyboardSeek(event)

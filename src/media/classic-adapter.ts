@@ -1476,7 +1476,7 @@ function classicMediaRuntime(): any {
                 return current() && automaticGeneration === revision;
             };
         },
-        captureFavorite: function () {
+        captureFavorite: function (toggle = false) {
             var playing = mediaClassicPlayback;
             var state = w.__ottClassicPlayback.snapshot();
             if (
@@ -1495,6 +1495,12 @@ function classicMediaRuntime(): any {
                 return null;
             var payload = copy(playing.payload);
             if (!payload.request && !payload.__ottMediaOrigin) return null;
+            if (
+                toggle &&
+                Number(payload.adult) === 1 &&
+                w.__ottParental?.needs("channels")
+            )
+                return null;
             // A favorite is a provider identity, never a retained access URL.
             delete payload.stream_url;
             delete payload.__ottPlexPlayback;
@@ -1506,8 +1512,18 @@ function classicMediaRuntime(): any {
             };
             var record = entry(item);
             delete record.payload.stream_url;
+            var removing =
+                toggle &&
+                journal.read().document.favorites.some(function (row: any) {
+                    return (
+                        row.sourceId === record.sourceId &&
+                        row.itemId === record.itemId
+                    );
+                });
             if (
-                !journal.change("favorite", record) ||
+                !persistent() ||
+                mediaClassicPlayback !== playing ||
+                !journal.change(removing ? "unfavorite" : "favorite", record) ||
                 !persistent() ||
                 mediaClassicPlayback !== playing
             )
@@ -1791,33 +1807,62 @@ function classicMediaRuntime(): any {
             }
             authorize(item, proceed);
         },
-        favorite: function (payload: any) {
+        favorite: function (payload: any, toggle = false) {
             if (payload.__ottMediaFilter || payload.__ottMediaNext) return;
             var admitted = api.capture();
+            if (
+                !admitted() ||
+                (toggle &&
+                    payload.__ottMediaRef &&
+                    payload.__ottMediaRef.sourceId !== source)
+            )
+                return false;
+            if (
+                toggle &&
+                Number(payload.adult) === 1 &&
+                w.__ottParental?.needs("channels")
+            )
+                return false;
             var frame = library.snapshot("none").frame;
             var item = describe(
                 [payload],
                 frame ? frame.route : { kind: "catalog", target: "", title: "" }
             )[0];
             if (!item || w.sFavorites === -1) return;
-            var removing = frame && frame.route.kind === "favorites";
+            if (toggle && /^catalog:/.test(item.ref.itemId)) return false;
+            var record = entry(item);
+            if (toggle) {
+                delete record.payload.stream_url;
+                delete record.payload.__ottPlexPlayback;
+                delete record.payload.__ottNativeFile;
+            }
+            var removing = toggle
+                ? journal.read().document.favorites.some(function (row: any) {
+                      return (
+                          row.sourceId === record.sourceId &&
+                          row.itemId === record.itemId
+                      );
+                  })
+                : frame && frame.route.kind === "favorites";
             if (
-                !journal.change(
-                    removing ? "unfavorite" : "favorite",
-                    entry(item)
-                ) ||
+                !admitted() ||
+                !journal.change(removing ? "unfavorite" : "favorite", record) ||
                 !admitted()
             )
                 return;
             collections();
             if (!admitted()) return;
-            if (removing) {
+            if (removing && frame && frame.route.kind === "favorites") {
                 var items = collectionItems("favorites");
                 if (admitted()) library.replaceItems(items);
             } else if (w.showShift)
                 w.showShift(
-                    classicMediaTitle(item.payload) + w._(" added to favorites")
+                    removing
+                        ? w._("Favorites")
+                        : classicMediaTitle(item.payload) +
+                              w._(" added to favorites")
                 );
+            return true;
         },
         favoritesTransfer: function (expectedSource: string, readonly?: any) {
             if (
@@ -3103,6 +3148,15 @@ function classicMediaRuntime(): any {
     },
     sourceId: classicMediaSourceId,
     title: classicMediaTitle,
+    toggleFavorite: function (item: any) {
+        return classicMediaRuntime().favorite(item, true);
+    },
+    toggleFavoriteCurrent: function () {
+        var playing = mediaClassicPlayback;
+        return playing && playing.runtime
+            ? playing.runtime.captureFavorite(true)
+            : null;
+    },
     toggleShuffle: function () {
         classicMediaRuntime().toggleShuffle();
     },

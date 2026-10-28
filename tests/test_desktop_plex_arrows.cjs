@@ -16,6 +16,8 @@ const source = ts.createSourceFile(
 const names = new Set([
     "tryKeyboardSeek",
     "tryKeyboardRandom",
+    "tryKeyboardFavorites",
+    "toggleKeyboardFavorite",
     "installKeyboardSeek",
     "cancelNativeListInertia",
     "keyHandler",

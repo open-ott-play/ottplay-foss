@@ -1,0 +1,121 @@
+{
+  "status": "MEASURED_REVIEWED_FEATURE_ALLOCATION_REQUIRES_FRESH_REQUIRED_CI",
+  "feature": "Unified desktop F Favorites key, native TV and provider media toggle guards",
+  "allocation": {
+    "bytes": 4650,
+    "gzipBytes": 1100
+  },
+  "observedDelta": {
+    "bytes": 4609,
+    "webGzipBytes": 1027,
+    "nativeAndMobileGzipBytes": 1026
+  },
+  "baseline": {
+    "source": "5a85aab3962332a34ad3a659e083fa42a1031d50",
+    "run": 40611693619,
+    "artifact": 12783407386,
+    "artifactZipSha256": "697db5cc427b2102c6b53f2568880c0094e7caaff44b41bdfb85b71a37022a8d",
+    "reportSha256": "c89ae614028ecb7c05a2e7bee6d76ccf88a38093126dbe31df626a30f827b887",
+    "toolchain": {
+      "node": "22.23.3",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entries": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1077278,
+        "gzipBytes": 332549,
+        "sha256": "c95c8375decf9bcafbaf48f64216afddf277a7295e9b64237429a102e70944c6"
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1077236,
+        "gzipBytes": 332609,
+        "sha256": "7511d9239effe4539a75d6a7f9f5fc332d2f792feacdc5d5f327173c83df1287"
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1077236,
+        "gzipBytes": 332609,
+        "sha256": "7511d9239effe4539a75d6a7f9f5fc332d2f792feacdc5d5f327173c83df1287"
+      }
+    ],
+    "complete": [
+      {
+        "entry": "dist/player.js",
+        "bytes": 1338495,
+        "gzipBytes": 427753
+      },
+      {
+        "entry": "src-tauri/frontend/dist/player.js",
+        "bytes": 1338453,
+        "gzipBytes": 427813
+      },
+      {
+        "entry": "dist-mobile/dist/player.js",
+        "bytes": 1338453,
+        "gzipBytes": 427813
+      }
+    ]
+  },
+  "candidate": {
+    "sourceHead": "fe9078f60ee2e6199d7e8434b6516cef5751f5f1",
+    "testedMerge": "4cd97d1cfdb4bd137e80610039b9a3631a2de7a8",
+    "run": 40627949923,
+    "runAttempt": 1,
+    "artifact": 12789983281,
+    "artifactZipSha256": "8acca7c5b446c542e302e530c81eb0a9e55e96a9198dde4ead0a38f73c29fed8",
+    "reportSha256": "c0875995cc648d26836d827d474252b66d1cb855ddaec9ddebb93a02e76774d6",
+    "completeReport": true,
+    "toolchain": {
+      "node": "22.23.3",
+      "zlib": "1.3.1-e00f703"
+    },
+    "entries": [
+      {
+        "path": "dist/player.js",
+        "bytes": 1081887,
+        "gzipBytes": 333576,
+        "sha256": "ce68e3ee8e733dd295e9ab4348316c6f08d58066db1d9809fe4c682d869aa7b4"
+      },
+      {
+        "path": "src-tauri/frontend/dist/player.js",
+        "bytes": 1081845,
+        "gzipBytes": 333635,
+        "sha256": "e26f10d3f2cc8fc85cffff765b6f6236c800d2704f2e8bc62170c22d9fa68cff"
+      },
+      {
+        "path": "dist-mobile/dist/player.js",
+        "bytes": 1081845,
+        "gzipBytes": 333635,
+        "sha256": "e26f10d3f2cc8fc85cffff765b6f6236c800d2704f2e8bc62170c22d9fa68cff"
+      }
+    ],
+    "complete": [
+      {
+        "entry": "dist/player.js",
+        "bytes": 1343104,
+        "gzipBytes": 428780
+      },
+      {
+        "entry": "src-tauri/frontend/dist/player.js",
+        "bytes": 1343062,
+        "gzipBytes": 428839
+      },
+      {
+        "entry": "dist-mobile/dist/player.js",
+        "bytes": 1343062,
+        "gzipBytes": 428839
+      }
+    ]
+  },
+  "providerAndOptionalAssetsByteIdentical": true,
+  "constraints": [
+    "All existing provider/optional caps and prior feature allowances unchanged",
+    "Add this feature exactly once to entry/legacy/base total; TOTAL remains base plus compatibility",
+    "Historical startup evidence stays immutable; its old gate excludes this new feature allowance",
+    "Observed same-toolchain payload delta; no local Vite/build or device runtime proof",
+    "Future hosted CI must validate the eventual committed source and all runtime tests"
+  ],
+  "approval": "Explicit root acceptance after actual source patch and independent peer bc47fd; no unrelated cap changes"
+}
