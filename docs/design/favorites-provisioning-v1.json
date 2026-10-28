@@ -28,12 +28,7 @@
         }
       },
       "mode": {
-        "enum": [
-          "create",
-          "import",
-          "pair",
-          "replace-current"
-        ]
+        "enum": ["create", "import", "pair", "replace-current"]
       },
       "target_id": {
         "type": "string",
@@ -59,11 +54,7 @@
       "scope": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "profileBindingId",
-          "sourceBindingId",
-          "provider"
-        ],
+        "required": ["profileBindingId", "sourceBindingId", "provider"],
         "properties": {
           "profileBindingId": {
             "type": "string",
@@ -85,11 +76,7 @@
       "prior_scope": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "profileBindingId",
-          "sourceBindingId",
-          "provider"
-        ],
+        "required": ["profileBindingId", "sourceBindingId", "provider"],
         "properties": {
           "profileBindingId": {
             "type": "string",
@@ -119,14 +106,10 @@
         "not": {
           "anyOf": [
             {
-              "required": [
-                "scope"
-              ]
+              "required": ["scope"]
             },
             {
-              "required": [
-                "prior_scope"
-              ]
+              "required": ["prior_scope"]
             }
           ]
         }
@@ -134,19 +117,12 @@
       {
         "properties": {
           "mode": {
-            "enum": [
-              "import",
-              "pair"
-            ]
+            "enum": ["import", "pair"]
           }
         },
-        "required": [
-          "scope"
-        ],
+        "required": ["scope"],
         "not": {
-          "required": [
-            "prior_scope"
-          ]
+          "required": ["prior_scope"]
         }
       },
       {
@@ -155,10 +131,7 @@
             "const": "replace-current"
           }
         },
-        "required": [
-          "scope",
-          "prior_scope"
-        ]
+        "required": ["scope", "prior_scope"]
       }
     ]
   },

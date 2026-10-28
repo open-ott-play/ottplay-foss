@@ -8,21 +8,14 @@
   "capability": {
     "favorites_transfer": {
       "version": 1,
-      "persistence": [
-        "persistent"
-      ],
+      "persistence": ["persistent"],
       "codecs": [
         {
           "provider": "plex",
           "codecVersion": 1,
-          "locatorKinds": [
-            "plex-media"
-          ],
+          "locatorKinds": ["plex-media"],
           "targetScope": "current-verified-source",
-          "coverage": [
-            "channelLists",
-            "mediaFavorites"
-          ]
+          "coverage": ["channelLists", "mediaFavorites"]
         }
       ],
       "limits": {
@@ -66,12 +59,7 @@
     "no_other_characters": true
   },
   "common_error": {
-    "exact_fields": [
-      "version",
-      "runtime",
-      "op",
-      "error"
-    ],
+    "exact_fields": ["version", "runtime", "op", "error"],
     "error_type": "string",
     "provision_only_additional_code": "outcome_unknown"
   },
@@ -129,12 +117,7 @@
   "provision": {
     "file": "favorites-provisioning-v1.json",
     "sha256": "bb3cd3ac0b6533af342ce27e4754d5e0dfa5322ebccfe478b4d30193b45d1af1",
-    "modes": [
-      "create",
-      "import",
-      "pair",
-      "replace-current"
-    ]
+    "modes": ["create", "import", "pair", "replace-current"]
   },
   "prepare": {
     "exact_request_fields": [

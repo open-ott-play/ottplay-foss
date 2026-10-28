@@ -5,54 +5,54 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const source = fs.readFileSync(
     path.join(__dirname, "../src/settings/favorites-bindings.ts"),
-    "utf8",
+    "utf8"
 );
 const output = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES5 },
 }).outputText;
 const host = {};
-vm.runInNewContext(output, { window: host, exports: {} });
+vm.runInNewContext(output, { exports: {}, window: host });
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const id = (n) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 const bind = (slot, owner = "current") => ({ owner, selector: { slot } });
 function fixture() {
-    const state = { raw: null, writes: 0, next: 1, stale: new Set() };
+    const state = { next: 1, raw: null, stale: new Set(), writes: 0 };
     const ports = {
-        read: () => state.raw,
         compareAndSwap: (before, after) => {
             state.writes++;
             if (state.raw !== before) return "conflict";
             state.raw = after;
             return "confirmed";
         },
-        uuid: () => id(state.next++),
-        validateSelector: (_kind, value) => Number.isInteger(value.slot),
         current: (entry, value) =>
             value.owner === "current" && !state.stale.has(entry.id),
+        read: () => state.raw,
+        uuid: () => id(state.next++),
+        validateSelector: (_kind, value) => Number.isInteger(value.slot),
     };
     const api = host.__ottFavoritesBindings.create(ports);
     const profile = (slot = 1) =>
         api.create(
-            { kind: "profile", provider: "m3u", binding: bind(slot) },
-            api.list().revision,
+            { binding: bind(slot), kind: "profile", provider: "m3u" },
+            api.list().revision
         ).result;
     const media = (profileId, slot = 1) =>
         api.create(
             {
-                kind: "source",
-                provider: "m3u",
-                profile_id: profileId,
                 binding: bind(slot),
+                kind: "source",
+                profile_id: profileId,
+                provider: "m3u",
             },
-            api.list().revision,
+            api.list().revision
         ).result;
-    return { state, ports, api, profile, media };
+    return { api, media, ports, profile, state };
 }
 function rejected(code, operation) {
     assert.throws(
         operation,
         (error) =>
-            error.code === code && !error.message.includes("fixture-secret"),
+            error.code === code && !error.message.includes("fixture-secret")
     );
 }
 let passed = 0;
@@ -64,9 +64,9 @@ function test(name, operation) {
 test("create/resolve/reload/public projection keeps private bindings out", () => {
     const f = fixture();
     assert.deepEqual(plain(f.api.list()), {
-        version: 1,
-        revision: 0,
         entries: [],
+        revision: 0,
+        version: 1,
     });
     const p = f.profile(),
         s = f.media(p.id);
@@ -76,11 +76,11 @@ test("create/resolve/reload/public projection keeps private bindings out", () =>
         {
             owner: "current",
             selector: {
-                path: "/private/fixture-secret",
                 grant: "fixture-secret",
+                path: "/private/fixture-secret",
             },
         },
-        2,
+        2
     );
     const publicText = JSON.stringify(f.api.list());
     assert(!publicText.includes("fixture-secret"));
@@ -89,7 +89,7 @@ test("create/resolve/reload/public projection keeps private bindings out", () =>
     const reload = host.__ottFavoritesBindings.create(f.ports);
     assert.equal(
         reload.resolve(s.id).binding.selector.path,
-        "/private/fixture-secret",
+        "/private/fixture-secret"
     );
     assert.equal(reload.resolve(s.id).revision, 3);
     rejected("missing_binding", () => reload.lookup(id(99)));
@@ -124,7 +124,7 @@ test("public import preserves IDs, imports no grants and requires explicit bindi
     assert.equal(g.api.importPublic(rows, 3).changed, false);
     assert.equal(g.state.writes, writes);
     rejected("invalid_registry", () =>
-        g.api.importPublic([{ ...rows[0], binding: bind(1) }], 3),
+        g.api.importPublic([{ ...rows[0], binding: bind(1) }], 3)
     );
 });
 test("conflicting import is all-or-nothing and exact parent is required", () => {
@@ -137,25 +137,25 @@ test("conflicting import is all-or-nothing and exact parent is required", () => 
                 { id: id(9), kind: "profile", provider: "plex" },
                 { ...p, provider: "plex" },
             ],
-            1,
-        ),
+            1
+        )
     );
     assert.equal(f.state.raw, before);
     rejected("missing_profile", () =>
         f.api.importPublic(
-            [{ id: id(9), kind: "source", provider: "m3u", profile_id: id(8) }],
-            1,
-        ),
+            [{ id: id(9), kind: "source", profile_id: id(8), provider: "m3u" }],
+            1
+        )
     );
     rejected("missing_profile", () =>
         f.api.importPublic(
-            [{ id: id(9), kind: "source", provider: "plex", profile_id: p.id }],
-            1,
-        ),
+            [{ id: id(9), kind: "source", profile_id: p.id, provider: "plex" }],
+            1
+        )
     );
     f.api.importPublic(
-        [{ id: id(9), kind: "source", provider: "m3u", profile_id: p.id }],
-        1,
+        [{ id: id(9), kind: "source", profile_id: p.id, provider: "m3u" }],
+        1
     );
     assert.equal(f.api.lookup(id(9)).entry.profile_id, p.id);
 });
@@ -166,21 +166,21 @@ test("duplicate exact targets refuse ambiguity; same name is never a lookup", ()
     f.ports.validateSelector = () => true;
     f.api.bind(
         p.id,
-        { owner: "current", selector: { slot: 1, label: "Home" } },
-        1,
+        { owner: "current", selector: { label: "Home", slot: 1 } },
+        1
     );
     rejected("ambiguous_binding", () =>
         f.api.create(
             {
-                kind: "profile",
-                provider: "m3u",
                 binding: {
                     owner: "current",
                     selector: { label: "Home", slot: 1 },
                 },
+                kind: "profile",
+                provider: "m3u",
             },
-            2,
-        ),
+            2
+        )
     );
     rejected("invalid_id", () => f.api.resolve("Home"));
 });
@@ -208,22 +208,22 @@ test("copy-as-new remaps profile and every source without retaining private gran
         {
             profile: bind(9),
             sources: [
-                { id: s.id, binding: bind(5) },
-                { id: s2.id, binding: bind(6) },
+                { binding: bind(5), id: s.id },
+                { binding: bind(6), id: s2.id },
             ],
         },
-        3,
+        3
     ).result;
     assert.equal(copied.length, 3);
     assert.equal(
         new Set([...copied.map((r) => r.id), p.id, s.id, s2.id]).size,
-        6,
+        6
     );
     assert(copied.slice(1).every((r) => r.profile_id === copied[0].id));
     assert.equal(f.api.resolve(copied[1].id).binding.selector.slot, 5);
     assert.equal(f.api.resolve(p.id).binding.selector.slot, 1);
     rejected("invalid_binding", () =>
-        f.api.copyProfile(p.id, { profile: bind(10), sources: [] }, 4),
+        f.api.copyProfile(p.id, { profile: bind(10), sources: [] }, 4)
     );
 });
 test("UUID format and collision errors never mutate", () => {
@@ -260,7 +260,7 @@ test("conflict and uncertain persistence are distinct and never retried", () => 
         };
         rejected(
             mode === "conflict" ? "registry_changed" : "outcome_unknown",
-            () => f.profile(),
+            () => f.profile()
         );
         assert.equal(calls, 1);
         if (mode === "after_throw")
@@ -287,8 +287,8 @@ test("bounded strict documents and selectors reject malformed state", () => {
     for (const raw of [
         "{",
         "[]",
-        JSON.stringify({ version: true, revision: 0, entries: [] }),
-        JSON.stringify({ version: 1, revision: 0.5, entries: [] }),
+        JSON.stringify({ entries: [], revision: 0, version: true }),
+        JSON.stringify({ entries: [], revision: 0.5, version: 1 }),
         " ".repeat(524289),
     ]) {
         f.state.raw = raw;
@@ -305,12 +305,12 @@ test("bounded strict documents and selectors reject malformed state", () => {
         rejected("invalid_selector", () =>
             f.api.create(
                 {
+                    binding: { owner: "current", selector },
                     kind: "profile",
                     provider: "m3u",
-                    binding: { owner: "current", selector },
                 },
-                0,
-            ),
+                0
+            )
         );
     }
     f.ports.validateSelector = () => {
@@ -330,8 +330,8 @@ test("entry capacity is bounded without partial import", () => {
     rejected("invalid_registry", () =>
         f.api.importPublic(
             [{ id: id(500), kind: "profile", provider: "m3u" }],
-            1,
-        ),
+            1
+        )
     );
     assert.equal(f.state.raw, before);
 });
@@ -353,12 +353,12 @@ test("selector depth, collection and byte limits are checked before CAS", () => 
         rejected("invalid_selector", () =>
             f.api.create(
                 {
+                    binding: { owner: "current", selector },
                     kind: "profile",
                     provider: "m3u",
-                    binding: { owner: "current", selector },
                 },
-                0,
-            ),
+                0
+            )
         );
     }
     assert.equal(f.state.writes, 0);
@@ -406,47 +406,47 @@ test("shared traversal budget stops before later selector fields", () => {
         rejected("invalid_selector", () =>
             f.api.create(
                 {
+                    binding: { owner: "current", selector },
                     kind: "profile",
                     provider: "m3u",
-                    binding: { owner: "current", selector },
                 },
-                0,
-            ),
+                0
+            )
         );
     }
     assert.equal(
         laterReads,
         0,
-        "reject before expanding the tail, not after constructing the whole selector",
+        "reject before expanding the tail, not after constructing the whole selector"
     );
     assert.equal(validated, 0);
     assert.equal(f.state.writes, 0);
     const ordinary = {
-        slot: 1,
         folders: ["Films", "répertoire"],
         options: { enabled: true, position: null },
+        slot: 1,
     };
     const created = f.api.create(
         {
+            binding: { owner: "current", selector: ordinary },
             kind: "profile",
             provider: "m3u",
-            binding: { owner: "current", selector: ordinary },
         },
-        0,
+        0
     );
     assert.deepEqual(
         plain(f.api.resolve(created.result.id).binding.selector),
-        ordinary,
+        ordinary
     );
 });
 function provisioningFixture() {
     const f = fixture();
     f.grant = {
-        verified: true,
-        provider: "plex",
-        target_id: "plex-current-target",
         profile: bind(10),
+        provider: "plex",
         source: bind(11),
+        target_id: "plex-current-target",
+        verified: true,
     };
     f.ports.persistedRead = () => f.state.raw;
     f.ports.provisionTarget = (targetId) =>
@@ -489,11 +489,11 @@ test("second player explicitly imports portable UUIDs and pairs only local targe
     const result = second.api.provisionPlex(
         {
             mode: "import",
-            target_id: second.grant.target_id,
             profile_id: ids.profile.id,
             source_id: ids.source.id,
+            target_id: second.grant.target_id,
         },
-        0,
+        0
     );
     assert.equal(result.result.profile.id, ids.profile.id);
     assert.equal(result.result.source.id, ids.source.id);
@@ -506,13 +506,13 @@ test("second player explicitly imports portable UUIDs and pairs only local targe
         imported.api.provisionPlex(
             {
                 mode: "pair",
-                target_id: imported.grant.target_id,
                 profile_id: ids.profile.id,
                 source_id: ids.source.id,
+                target_id: imported.grant.target_id,
             },
-            1,
+            1
         ).revision,
-        2,
+        2
     );
 });
 test("explicit identical pair is idempotent and cannot silently rebind", () => {
@@ -520,9 +520,9 @@ test("explicit identical pair is idempotent and cannot silently rebind", () => {
         result = f.api.provisionPlex(bootstrap, 0).result;
     const request = {
         mode: "pair",
-        target_id: f.grant.target_id,
         profile_id: result.profile.id,
         source_id: result.source.id,
+        target_id: f.grant.target_id,
     };
     assert.equal(f.api.provisionPlex(request, 1).changed, false);
     assert.equal(f.state.writes, 1);
@@ -538,12 +538,12 @@ test("provisioning refuses foreign provider parent relation and owner mismatches
         f.api.provisionPlex(
             {
                 mode: "import",
-                target_id: f.grant.target_id,
                 profile_id: p.id,
                 source_id: id(99),
+                target_id: f.grant.target_id,
             },
-            1,
-        ),
+            1
+        )
     );
     assert.equal(f.state.writes, 1);
     const g = provisioningFixture();
@@ -562,22 +562,22 @@ test("provisioning refuses foreign provider parent relation and owner mismatches
             {
                 id: id(12),
                 kind: "source",
-                provider: "plex",
                 profile_id: id(11),
+                provider: "plex",
             },
         ],
-        0,
+        0
     );
     rejected("conflict", () =>
         i.api.provisionPlex(
             {
                 mode: "pair",
-                target_id: i.grant.target_id,
                 profile_id: id(10),
                 source_id: id(12),
+                target_id: i.grant.target_id,
             },
-            1,
-        ),
+            1
+        )
     );
 });
 test("provisioning storage unavailable conflict and uncertain reserve remain honest", () => {
@@ -596,7 +596,7 @@ test("provisioning storage unavailable conflict and uncertain reserve remain hon
         h.ports.compareAndSwap = () => result;
         rejected(
             result === "conflict" ? "registry_changed" : "outcome_unknown",
-            () => h.api.provisionPlex(bootstrap, 0),
+            () => h.api.provisionPlex(bootstrap, 0)
         );
     }
     const i = provisioningFixture();
@@ -648,7 +648,7 @@ test("wire selectors unknown targets and unverified manual server grants are ref
             value.target_id === "other-target"
                 ? "target_unavailable"
                 : "invalid_provision",
-            () => f.api.provisionPlex(value, 0),
+            () => f.api.provisionPlex(value, 0)
         );
     for (const verified of [false, "true", 1]) {
         f.grant.verified = verified;
@@ -661,8 +661,8 @@ test("UUID final newline is rejected in existing import creation and new pairing
     rejected("invalid_registry", () =>
         f.api.importPublic(
             [{ id: id(1) + "\n", kind: "profile", provider: "plex" }],
-            0,
-        ),
+            0
+        )
     );
     rejected("invalid_id", () => f.api.lookup(id(1) + "\n"));
     f.ports.uuid = () => id(1) + "\n";
@@ -671,12 +671,12 @@ test("UUID final newline is rejected in existing import creation and new pairing
         f.api.provisionPlex(
             {
                 mode: "import",
-                target_id: f.grant.target_id,
                 profile_id: id(1) + "\n",
                 source_id: id(2),
+                target_id: f.grant.target_id,
             },
-            0,
-        ),
+            0
+        )
     );
     const g = provisioningFixture(),
         ids = g.api.provisionPlex(bootstrap, 0).result;
@@ -684,22 +684,22 @@ test("UUID final newline is rejected in existing import creation and new pairing
         g.api.provisionPlex(
             {
                 mode: "pair",
-                target_id: g.grant.target_id,
                 profile_id: ids.profile.id,
                 source_id: ids.source.id + "\n",
+                target_id: g.grant.target_id,
             },
-            1,
-        ),
+            1
+        )
     );
 });
 function replacementRequest(previous, profile_id = id(50), source_id = id(51)) {
     return {
         mode: "replace-current",
-        target_id: "plex-current-target",
-        profile_id,
-        source_id,
         prior_profile_id: previous.profile.id,
         prior_source_id: previous.source.id,
+        profile_id,
+        source_id,
+        target_id: "plex-current-target",
     };
 }
 test("explicit replacement moves ONLY pair grants in one CAS and retains old public IDs", () => {
@@ -720,26 +720,26 @@ test("explicit replacement moves ONLY pair grants in one CAS and retains old pub
     assert.equal(f.api.list().entries.length, 4);
     assert.deepEqual(
         plain(f.api.lookup(prior.profile.id).entry),
-        plain(prior.profile),
+        plain(prior.profile)
     );
     assert.deepEqual(
         plain(f.api.lookup(prior.source.id).entry),
-        plain(prior.source),
+        plain(prior.source)
     );
     const raw = JSON.parse(f.state.raw);
     assert.equal(
         Object.hasOwn(
             raw.entries.find((row) => row.id === prior.profile.id),
-            "binding",
+            "binding"
         ),
-        false,
+        false
     );
     assert.equal(
         Object.hasOwn(
             raw.entries.find((row) => row.id === prior.source.id),
-            "binding",
+            "binding"
         ),
-        false,
+        false
     );
     rejected("unbound", () => f.api.resolve(prior.source.id));
     assert.equal(f.api.resolve(id(51)).binding.selector.slot, 11);
@@ -757,11 +757,11 @@ test("replacement requires distinct complete scopes; same scope uses idempotent 
     const same = f.api.provisionPlex(
         {
             mode: "pair",
-            target_id: f.grant.target_id,
             profile_id: prior.profile.id,
             source_id: prior.source.id,
+            target_id: f.grant.target_id,
         },
-        1,
+        1
     );
     assert.equal(same.changed, false);
     assert.equal(same.revision, 1);
@@ -773,31 +773,31 @@ test("stale or foreign prior and additional bound children block replacement", (
     rejected("missing_binding", () =>
         f.api.provisionPlex(
             { ...replacementRequest(prior), prior_source_id: id(99) },
-            1,
-        ),
+            1
+        )
     );
     const foreign = JSON.parse(f.state.raw);
     foreign.entries.find((row) => row.kind === "source").binding.selector.slot =
         99;
     f.state.raw = JSON.stringify(foreign);
     rejected("prior_scope_mismatch", () =>
-        f.api.provisionPlex(replacementRequest(prior), 1),
+        f.api.provisionPlex(replacementRequest(prior), 1)
     );
     assert.equal(f.state.writes, 1);
     const g = provisioningFixture(),
         gp = g.api.provisionPlex(bootstrap, 0).result;
     const value = JSON.parse(g.state.raw);
     value.entries.push({
+        binding: bind(99),
         id: id(99),
         kind: "source",
-        provider: "plex",
         profile_id: gp.profile.id,
-        binding: bind(99),
+        provider: "plex",
     });
     g.state.raw = JSON.stringify(value);
     const before = g.state.raw;
     rejected("bound_children", () =>
-        g.api.provisionPlex(replacementRequest(gp), 1),
+        g.api.provisionPlex(replacementRequest(gp), 1)
     );
     assert.equal(g.state.raw, before);
 });
@@ -810,11 +810,11 @@ test("new provider parent and existing private binding conflicts never withdraw 
             {
                 id: id(51),
                 kind: "source",
-                provider: "plex",
                 profile_id: id(52),
+                provider: "plex",
             },
         ],
-        [{ id: id(50), kind: "profile", provider: "plex", binding: bind(90) }],
+        [{ binding: bind(90), id: id(50), kind: "profile", provider: "plex" }],
     ]) {
         const f = provisioningFixture(),
             prior = f.api.provisionPlex(bootstrap, 0).result;
@@ -823,7 +823,7 @@ test("new provider parent and existing private binding conflicts never withdraw 
         f.state.raw = JSON.stringify(value);
         const before = f.state.raw;
         rejected(incoming[0].binding ? "already_bound" : "conflict", () =>
-            f.api.provisionPlex(replacementRequest(prior), 1),
+            f.api.provisionPlex(replacementRequest(prior), 1)
         );
         assert.equal(f.state.raw, before);
         assert.equal(f.state.writes, 1);
@@ -838,13 +838,13 @@ test("replacement uncertainty and current drift never claim verified or retry CA
         return "unknown";
     };
     rejected("outcome_unknown", () =>
-        f.api.provisionPlex(replacementRequest(prior), 1),
+        f.api.provisionPlex(replacementRequest(prior), 1)
     );
     assert.equal(f.state.writes, 2);
     const value = JSON.parse(f.state.raw);
     assert.equal(
         value.entries.find((row) => row.id === prior.profile.id).binding,
-        undefined,
+        undefined
     );
     const g = provisioningFixture(),
         gp = g.api.provisionPlex(bootstrap, 0).result;
@@ -854,7 +854,7 @@ test("replacement uncertainty and current drift never claim verified or retry CA
         return plain(g.grant);
     };
     rejected("target_changed", () =>
-        g.api.provisionPlex(replacementRequest(gp), 1),
+        g.api.provisionPlex(replacementRequest(gp), 1)
     );
     assert.equal(g.state.writes, 1);
     const h = provisioningFixture(),
@@ -866,7 +866,7 @@ test("replacement uncertainty and current drift never claim verified or retry CA
         return "confirmed";
     };
     rejected("outcome_unknown", () =>
-        h.api.provisionPlex(replacementRequest(hp), 1),
+        h.api.provisionPlex(replacementRequest(hp), 1)
     );
 });
 test("frozen additive provisioning DTO fixtures map exactly to registry results", () => {
@@ -874,10 +874,10 @@ test("frozen additive provisioning DTO fixtures map exactly to registry results"
         fs.readFileSync(
             path.join(
                 __dirname,
-                "../docs/design/favorites-provisioning-v1.json",
+                "../docs/design/favorites-provisioning-v1.json"
             ),
-            "utf8",
-        ),
+            "utf8"
+        )
     );
     assert.equal(document.seven_transfer_operations, "UNCHANGED");
     for (const [mode, example] of Object.entries(document.examples)) {
@@ -908,44 +908,44 @@ test("frozen additive provisioning DTO fixtures map exactly to registry results"
             f.api.provisionPlex(
                 {
                     mode: "import",
-                    target_id: request.target_id,
                     profile_id: scope.profileBindingId,
                     source_id: scope.sourceBindingId,
+                    target_id: request.target_id,
                 },
-                0,
+                0
             );
         }
         const result = f.api.provisionPlex(
             flat(request),
-            Number(request.expected_binding_revision),
+            Number(request.expected_binding_revision)
         );
         const wire = {
-            version: 1,
-            runtime: request.runtime,
-            op: "provision",
-            mode,
-            paired: true,
-            changed: result.changed,
             binding_revision: String(result.revision),
-            target_id: result.result.target_id,
+            changed: result.changed,
+            mode,
+            op: "provision",
+            outcome: "verified",
+            paired: true,
+            persistence: "persistent",
+            runtime: request.runtime,
             scope: {
                 profileBindingId: result.result.profile.id,
-                sourceBindingId: result.result.source.id,
                 provider: "plex",
+                sourceBindingId: result.result.source.id,
             },
-            persistence: "persistent",
-            outcome: "verified",
+            target_id: result.result.target_id,
+            version: 1,
         };
         assert.deepEqual(wire, example.response);
         assert.deepEqual(
             Object.keys(wire).sort(),
-            document.response_fields_exact.slice().sort(),
+            document.response_fields_exact.slice().sort()
         );
         assert.equal(
             result.changed
                 ? String(result.revision) !== request.expected_binding_revision
                 : String(result.revision) === request.expected_binding_revision,
-            true,
+            true
         );
     }
 });

@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const source = fs.readFileSync(
     path.join(__dirname, "../src/media/favorites-plex-codec.ts"),
-    "utf8",
+    "utf8"
 );
 const output = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES5 },
@@ -17,31 +17,31 @@ vm.runInNewContext(output.outputText, host);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 function fixture() {
     const state = {
+        calls: [],
         owner: {
-            verified: true,
             serverId: "verified-pms-123",
             sourceId: "private-fixture-secret",
+            verified: true,
         },
-        calls: [],
     };
     const ports = {
         current: () => state.owner,
         request: (route) => {
             state.calls.push(route);
             return {
+                address: "https://private.invalid",
                 route,
                 token: "fixture-secret",
-                address: "https://private.invalid",
             };
         },
     };
-    return { state, ports, api: host.createFavoritesPlexCodec(ports) };
+    return { api: host.createFavoritesPlexCodec(ports), ports, state };
 }
 function rejected(code, run) {
     assert.throws(
         run,
         (error) =>
-            error.code === code && !error.message.includes("fixture-secret"),
+            error.code === code && !error.message.includes("fixture-secret")
     );
 }
 let passed = 0;
@@ -52,14 +52,14 @@ function test(name, run) {
 }
 const locator = (ratingKey = "12345") => ({
     kind: "plex-media",
-    serverId: "verified-pms-123",
     ratingKey,
+    serverId: "verified-pms-123",
 });
 test("exact wire projection and receiver-private request reconstruction", () => {
     const f = fixture();
     const value = f.api.encode({
-        sourceId: f.state.owner.sourceId,
         request: "/library/metadata/12345",
+        sourceId: f.state.owner.sourceId,
     });
     assert.deepEqual(plain(value), locator());
     assert.equal(JSON.stringify(value).includes("fixture-secret"), false);
@@ -67,9 +67,9 @@ test("exact wire projection and receiver-private request reconstruction", () => 
     const decoded = f.api.decode(value);
     assert.equal(decoded.sourceId, "private-fixture-secret");
     assert.deepEqual(plain(decoded.request), {
+        address: "https://private.invalid",
         route: "/library/metadata/12345",
         token: "fixture-secret",
-        address: "https://private.invalid",
     });
     assert.deepEqual(f.state.calls, ["/library/metadata/12345"]);
 });
@@ -78,14 +78,14 @@ test("rating keys remain exact decimal strings without numeric precision loss", 
     for (const key of ["1", "99999999999999999999"]) {
         assert.equal(
             f.api.encode({
-                sourceId: f.state.owner.sourceId,
                 request: "/library/metadata/" + key,
+                sourceId: f.state.owner.sourceId,
             }).ratingKey,
-            key,
+            key
         );
         assert.equal(
             f.api.decode(locator(key)).request.route,
-            "/library/metadata/" + key,
+            "/library/metadata/" + key
         );
     }
 });
@@ -111,9 +111,9 @@ test("unsafe rating keys and nonexact private paths are rejected", () => {
         if (typeof key === "string")
             rejected("invalid_item", () =>
                 f.api.encode({
-                    sourceId: f.state.owner.sourceId,
                     request: "/library/metadata/" + key,
-                }),
+                    sourceId: f.state.owner.sourceId,
+                })
             );
     }
     for (const route of [
@@ -124,7 +124,7 @@ test("unsafe rating keys and nonexact private paths are rejected", () => {
         "/library/metadata/%31",
     ]) {
         rejected("invalid_item", () =>
-            f.api.encode({ sourceId: f.state.owner.sourceId, request: route }),
+            f.api.encode({ request: route, sourceId: f.state.owner.sourceId })
         );
     }
     assert.equal(f.state.calls.length, 0);
@@ -140,8 +140,8 @@ test("wire fields, kind and machine identifier are strict and bounded", () => {
         { ...locator(), kind: "plex" },
         {
             kind: "plex-media",
-            serverMachineId: "verified-pms-123",
             ratingKey: "1",
+            serverMachineId: "verified-pms-123",
         },
     ])
         rejected("invalid_locator", () => f.api.decode(value));
@@ -155,14 +155,14 @@ test("wire fields, kind and machine identifier are strict and bounded", () => {
         3,
     ])
         rejected("invalid_locator", () =>
-            f.api.decode({ ...locator(), serverId }),
+            f.api.decode({ ...locator(), serverId })
         );
     rejected("invalid_item", () =>
         f.api.encode({
-            sourceId: "private",
             request: "/library/metadata/1",
+            sourceId: "private",
             token: "fixture-secret",
-        }),
+        })
     );
     assert.equal(f.state.calls.length, 0);
 });
@@ -173,21 +173,21 @@ test("unverified manual and foreign PMS/source are never resolved", () => {
         rejected("source_unavailable", () => f.api.decode(locator()));
         rejected("source_unavailable", () =>
             f.api.encode({
-                sourceId: f.state.owner.sourceId,
                 request: "/library/metadata/1",
-            }),
+                sourceId: f.state.owner.sourceId,
+            })
         );
         assert.equal(f.state.calls.length, 0);
     }
     const f = fixture();
     rejected("item_unavailable", () =>
-        f.api.decode({ ...locator(), serverId: "foreign-pms" }),
+        f.api.decode({ ...locator(), serverId: "foreign-pms" })
     );
     rejected("item_unavailable", () =>
         f.api.encode({
-            sourceId: "foreign-source",
             request: "/library/metadata/1",
-        }),
+            sourceId: "foreign-source",
+        })
     );
     assert.equal(f.state.calls.length, 0);
 });
@@ -221,9 +221,9 @@ test("context rechecked after receiver request construction and before encode re
     });
     rejected("context_changed", () =>
         g.api.encode({
-            sourceId: g.state.owner.sourceId,
             request: "/library/metadata/1",
-        }),
+            sourceId: g.state.owner.sourceId,
+        })
     );
 });
 test("accessors and hidden unsafe fields cannot cross codec boundary", () => {

@@ -5,21 +5,14 @@
   "capability": {
     "favorites_transfer": {
       "version": 1,
-      "persistence": [
-        "persistent"
-      ],
+      "persistence": ["persistent"],
       "codecs": [
         {
           "provider": "plex",
           "codecVersion": 1,
-          "locatorKinds": [
-            "plex-media"
-          ],
+          "locatorKinds": ["plex-media"],
           "targetScope": "current-verified-source",
-          "coverage": [
-            "channelLists",
-            "mediaFavorites"
-          ]
+          "coverage": ["channelLists", "mediaFavorites"]
         }
       ],
       "limits": {
