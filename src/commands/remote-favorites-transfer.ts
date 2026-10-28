@@ -176,7 +176,9 @@ export function remoteFavoritesTransferCapability(
                         try {
                             pending =
                                 index === 0
-                                    ? api!.capability()
+                                    ? w.__ottStandby?.blocked?.()
+                                        ? null
+                                        : api!.capability()
                                     : api!.recoveryCapability();
                         } catch (_) {
                             resolved(index, null);

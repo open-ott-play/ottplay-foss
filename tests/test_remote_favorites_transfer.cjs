@@ -1418,6 +1418,38 @@ async function scenario(name, run) {
         }
     );
     await scenario(
+        "qualified Plex standby exposes only recovery and restores transfer capability when awake",
+        async () => {
+            const f = fixture();
+            let asleep = true;
+            f.w.__ottStandby = {
+                blocked: () => asleep,
+                snapshot: () => ({ standby: asleep }),
+            };
+            const work = f.start({ action: "capabilities", params: {} });
+            assert.equal(f.scripts.length, 1);
+            assert.equal(f.scripts[0].readOnly, "favorites-recovery");
+            f.finishLoad();
+            const result = await ready(work);
+            assert.equal(result.status, "ok");
+            assert.equal(result.data.favorites_transfer, undefined);
+            assert.deepEqual(result.data.favorites_transfer_recovery, {
+                version: 1,
+            });
+            asleep = false;
+            const awake = await ready(
+                f.start({ action: "capabilities", params: {} })
+            );
+            assert.equal(awake.status, "ok");
+            assert.equal(awake.data.favorites_transfer.version, 1);
+            assert.deepEqual(awake.data.favorites_transfer_recovery, {
+                version: 1,
+            });
+            assert.equal(f.scripts.length, 1);
+            assert.equal(f.stats.writes, 0);
+        }
+    );
+    await scenario(
         "cold standby capabilities load read-only graph without Plex and retain recovery marker",
         async () => {
             const f = fixture();
