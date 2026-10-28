@@ -1153,9 +1153,9 @@ function writeBuildBundleReport(
             artifacts: measured,
             attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
             budget: BUDGET,
-            desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             collectedAt: new Date().toISOString(),
             complete: !inputErrors.length,
+            desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             diagnostic: true,
             favoritesTransferEntryAllowance: FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
             favoritesTransferOptionalAllowance:
