@@ -400,7 +400,8 @@ export function createFavoritesCurrentPlexHost(
             return "conflict" as const;
         try {
             if (beforeWrite) beforeWrite();
-            if (!owner.current()) return "conflict" as const;
+            if (!owner.current() || owner.raw(key) !== before)
+                return "conflict" as const;
             owner.set(key, after);
         } catch (_) {
             return "unknown" as const;

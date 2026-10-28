@@ -369,6 +369,76 @@ const replacementScope = {
 (async () => {
     {
         const f = fixture();
+        const initial = provision(f, "import", { scope });
+        const competing = f.createHost(f.storagePorts);
+        const otherCat = competing.catalog(),
+            cat = f.host.catalog();
+        const thirdScope = {
+            profileBindingId: "77777777-7777-4777-8777-777777777777",
+            provider: "plex",
+            sourceBindingId: "88888888-8888-4888-8888-888888888888",
+        };
+        const driver = f.w.__ottActiveProviderDriver;
+        const get = f.w.localStorage.getItem;
+        let injected = false,
+            concurrentResult,
+            concurrentBytes;
+        f.w.localStorage.getItem = (key) => {
+            // Reenter through the real durable guard AFTER the first CAS byte check.
+            if (
+                !injected &&
+                key === receiptKey &&
+                /at cas \(/.test(new Error().stack)
+            ) {
+                injected = true;
+                concurrentResult = competing.provision({
+                    codecVersion: 1,
+                    expected_binding_revision: otherCat.binding_revision,
+                    mode: "replace-current",
+                    op: "provision",
+                    prior_scope: scope,
+                    runtime: "concurrent-runtime",
+                    scope: thirdScope,
+                    target_id: otherCat.targets[0].target_id,
+                });
+                concurrentBytes = f.saved.get(bindingKey);
+            }
+            return get(key);
+        };
+        assert.throws(
+            () =>
+                f.host.provision({
+                    codecVersion: 1,
+                    expected_binding_revision: cat.binding_revision,
+                    mode: "replace-current",
+                    op: "provision",
+                    prior_scope: scope,
+                    runtime: "first-runtime",
+                    scope: replacementScope,
+                    target_id: cat.targets[0].target_id,
+                }),
+            /binding_changed/
+        );
+        assert.equal(injected, true);
+        assert.equal(initial.binding_revision, "1");
+        assert.equal(concurrentResult.outcome, "verified");
+        assert.equal(concurrentResult.binding_revision, "2");
+        assert.equal(f.w.__ottActiveProviderDriver, driver);
+        assert.equal(
+            f.saved.get(bindingKey),
+            concurrentBytes,
+            "outer stale CAS preserves the second real host's exact binding bytes"
+        );
+        assert.equal(
+            f.writes.filter((key) => key === bindingKey).length,
+            2,
+            "only initial provisioning and the competing host wrote registry"
+        );
+        assert.equal(f.host.binding(thirdScope).current(), true);
+        assert.equal(f.saved.has(receiptKey), false);
+    }
+    {
+        const f = fixture();
         for (const storage of [
             undefined,
             null,
