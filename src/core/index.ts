@@ -201,7 +201,11 @@ var corePipNativeAttached = false;
 /** Identifies the current user-requested playback session. */
 var _playSession = 0;
 /** The previous Shaka must release this video before another engine attaches. */
-var _coreShakaTeardown: PromiseLike<unknown> | null = null;
+type CoreShakaRetirement = {
+    error?: unknown;
+    resume: (() => void) | null;
+};
+var _coreShakaTeardown: CoreShakaRetirement | null = null;
 var _corePendingSeek: (() => void) | null = null;
 var _corePendingSeekPosition: number | null = null;
 var _coreSeekRevision = 0;
@@ -429,25 +433,98 @@ function seekCoreMedia(
 }
 
 function destroyCoreShaka(): void {
+    // Retain a failed retirement: another destroy() cannot repair a player that
+    // already entered DESTROYED, and rejection is not proof of media release.
+    if (_coreShakaTeardown) return;
     var player = window.player;
     window.player = null;
     if (!player || typeof player.destroy !== "function") return;
+    var retirement: CoreShakaRetirement = { resume: null };
+    _coreShakaTeardown = retirement;
+    var media: HTMLVideoElement | null = null;
+    var source: string | null = null;
+    var selected = "";
+    function failed(error: unknown): void {
+        if (retirement.error === undefined) retirement.error = error;
+        if (window.__ottStandby) window.__ottStandby.failed();
+        console.error("[Shaka] destroy failed:", error);
+    }
+    function released(): void {
+        if (_coreShakaTeardown !== retirement) return;
+        try {
+            if (
+                typeof player.getMediaElement !== "function" ||
+                player.getMediaElement() !== null
+            ) {
+                failed(
+                    new Error("Shaka retained media ownership after destroy")
+                );
+                return;
+            }
+            if (window.player) throw new Error("Shaka retired player changed");
+            if (media) {
+                // A later owner or changed source is never ours to reset.
+                if (video !== media)
+                    throw new Error("Shaka retired media owner changed");
+                var current = media.getAttribute("src");
+                var currentSelected = media.currentSrc;
+                if (
+                    currentSelected &&
+                    currentSelected !== selected &&
+                    currentSelected !== source
+                )
+                    throw new Error("Shaka retired selected resource changed");
+                if (current !== source && current !== null && current !== "")
+                    throw new Error("Shaka retired media source changed");
+                // NETWORK_EMPTY can retain the last reported URL in WebKit.
+                if (current || (currentSelected && media.networkState !== 0)) {
+                    if (current) media.removeAttribute("src");
+                    if (media.getAttribute("src"))
+                        throw new Error(
+                            "Shaka retired media reset was refused"
+                        );
+                    media.load();
+                }
+                if (
+                    video !== media ||
+                    window.player ||
+                    media.getAttribute("src") ||
+                    (media.currentSrc &&
+                        media.currentSrc !== selected &&
+                        media.currentSrc !== source) ||
+                    player.getMediaElement() !== null
+                )
+                    throw new Error("Shaka retired media changed during reset");
+            }
+            var resume = retirement.resume;
+            _coreShakaTeardown = null;
+        } catch (error) {
+            failed(error);
+            return;
+        }
+        if (resume) resume();
+    }
+    try {
+        media = player.getMediaElement();
+        source = media && media.getAttribute("src");
+        selected = media ? media.currentSrc : "";
+    } catch (error) {
+        failed(error);
+        return;
+    }
     try {
         var pending = player.destroy();
         if (isCoreThenable(pending)) {
             if (window.__ottStandby) window.__ottStandby.observe(pending, true);
-            _coreShakaTeardown = pending;
-            var clear = function (): void {
-                if (_coreShakaTeardown === pending) _coreShakaTeardown = null;
-            };
-            pending.then(clear, function (error) {
-                clear();
-                console.error("[Shaka] destroy failed:", error);
+            pending.then(released, function (error) {
+                failed(error);
+                released();
             });
-        }
+        } else
+            failed(new Error("Shaka destroy returned no completion promise"));
     } catch (error) {
-        if (window.__ottStandby) window.__ottStandby.failed();
-        console.error("[Shaka] destroy failed:", error);
+        // No asynchronous completion proved release; retain the failure barrier.
+        failed(error);
     }
 }
 
@@ -1632,14 +1709,17 @@ function startCoreEngine(
                   }
                   url = next;
                   _coreAutoHlsUsed = false;
-                  if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
-                  else start();
+                  if (_coreShakaTeardown) {
+                      if (session === _playSession)
+                          _coreShakaTeardown.resume = start;
+                  } else start();
               },
               retryCurrent,
               captureLocalRetryIntent
           );
-    if (_coreShakaTeardown) _coreShakaTeardown.then(start, start);
-    else start();
+    if (_coreShakaTeardown) {
+        if (session === _playSession) _coreShakaTeardown.resume = start;
+    } else start();
     window.playType = window.playType ?? 0;
     window.playTime = window.playTime ?? 0;
 }

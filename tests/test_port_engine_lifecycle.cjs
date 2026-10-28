@@ -45,6 +45,9 @@ function media() {
         canPlayType() {
             return "probably";
         },
+        get currentSrc() {
+            return this.selectedResource;
+        },
         get currentTime() {
             return time;
         },
@@ -54,16 +57,21 @@ function media() {
                 throw new Error("InvalidStateError");
             time = value;
         },
+        getAttribute(name) {
+            return name === "src" ? src || null : null;
+        },
         listeners,
         load() {
             this.loadCalls++;
             this.selectedResource = src;
+            this.networkState = src ? 2 : 0;
         },
         loadCalls: 0,
         metadata() {
             this.readyState = 1;
             for (const cb of [...(listeners.loadedmetadata || [])]) cb();
         },
+        networkState: 0,
         pause() {
             this.paused = true;
         },
@@ -88,6 +96,7 @@ function media() {
         set src(value) {
             src = value;
             this.selectedResource = value;
+            this.networkState = value ? 2 : 0;
             time = 0;
             this.readyState = 0;
         },
@@ -2672,6 +2681,329 @@ test("pending Shaka sourceopen retains its media resource until owned teardown s
                 modern
         );
     }
+});
+
+for (const modern of [false, true]) {
+    for (const release of [false, true]) {
+        test(
+            "rejected Shaka retirement gates replacement until proven release modern=" +
+                modern +
+                " release=" +
+                release,
+            async () => {
+                const { w, shakas, errors } = fixture();
+                w.playerMode = 2;
+                if (modern) w.__ottNativeRuntime = true;
+                w.shaka.Player.prototype.load = function (url) {
+                    this.url = url;
+                    this.media.src = "blob:owned-" + shakas.length;
+                    return this.loaded.promise;
+                };
+                w.stbPlay("https://synthetic.invalid/old.mpd");
+                const old = shakas[0],
+                    media = w.video;
+                if (modern) {
+                    old.attached.resolve();
+                    await tick();
+                }
+                old.loaded.resolve();
+                await tick();
+                const resource = media.src,
+                    loads = media.loadCalls;
+                w.stbStop();
+                w.stbPlay("https://synthetic.invalid/superseded.mpd", 5);
+                w.stbPlay("https://synthetic.invalid/latest.mpd", 17);
+                assert.equal(shakas.length, 1);
+                assert.equal(media.src, resource);
+                assert.equal(media.loadCalls, loads);
+                if (release) old.media = null;
+                const failure = new Error("Actual rejected teardown");
+                old.destroyed.reject(failure);
+                await tick();
+                await tick();
+                assert.equal(
+                    old.destroyCalls,
+                    1,
+                    "DESTROYED player is never retried"
+                );
+                assert(
+                    errors.some((row) => row.includes(failure)),
+                    "original error retained"
+                );
+                if (!release) {
+                    assert.equal(
+                        shakas.length,
+                        1,
+                        "owned media blocks queued replacement"
+                    );
+                    assert.equal(media.src, resource);
+                    assert.equal(media.loadCalls, loads);
+                    assert.equal(w._coreShakaTeardown.error, failure);
+                    w.stbPlay("https://synthetic.invalid/another.mpd");
+                    w.stbStop();
+                    assert.equal(shakas.length, 1);
+                    assert.equal(old.destroyCalls, 1);
+                    assert.equal(media.src, resource);
+                } else {
+                    assert.equal(
+                        shakas.length,
+                        2,
+                        "only latest queued source starts"
+                    );
+                    assert.equal(
+                        media.loadCalls,
+                        loads + 1,
+                        "released residual resource reset once"
+                    );
+                    const next = shakas[1];
+                    if (modern) {
+                        next.attached.resolve();
+                        await tick();
+                    }
+                    assert.equal(
+                        next.url,
+                        "https://synthetic.invalid/latest.mpd"
+                    );
+                    assert.equal(w.player, next);
+                    assert.equal(media.src, "blob:owned-2");
+                    assert.equal(w._coreShakaTeardown, null);
+                    assert.equal(
+                        media.playCalls,
+                        1,
+                        "new load does not play early"
+                    );
+                    next.loaded.resolve();
+                    await tick();
+                    assert.equal(media.playCalls, 2);
+                    assert.equal(
+                        media.src,
+                        "blob:owned-2",
+                        "late old callback cannot clear replacement"
+                    );
+                }
+            }
+        );
+    }
+}
+for (const problem of [
+    "unknown-owner",
+    "foreign-source",
+    "reset-failure",
+    "attribute-cleared",
+]) {
+    test("rejected Shaka retirement preserves " + problem, async () => {
+        const { w, shakas } = fixture();
+        w.playerMode = 2;
+        w.shaka.Player.prototype.load = function () {
+            this.media.src = "blob:retired";
+            return this.loaded.promise;
+        };
+        w.stbPlay("https://synthetic.invalid/old.mpd");
+        const old = shakas[0],
+            media = w.video;
+        old.loaded.resolve();
+        await tick();
+        w.stbStop();
+        w.stbPlay("https://synthetic.invalid/new.mpd");
+        if (problem === "unknown-owner")
+            old.getMediaElement = () => {
+                throw new Error("owner unknown");
+            };
+        else old.media = null;
+        if (problem === "foreign-source") media.src = "blob:foreign";
+        if (problem === "reset-failure")
+            media.load = () => {
+                throw new Error("reset failed");
+            };
+        if (problem === "attribute-cleared") media.removeAttribute("src");
+        const before = media.src;
+        old.destroyed.reject(new Error("destroy failed"));
+        await tick();
+        await tick();
+        assert.equal(shakas.length, problem === "attribute-cleared" ? 2 : 1);
+        assert.equal(!!w._coreShakaTeardown, problem !== "attribute-cleared");
+        assert.equal(old.destroyCalls, 1);
+        if (problem === "attribute-cleared") assert.equal(media.loadCalls, 1);
+        else if (problem !== "reset-failure") assert.equal(media.src, before);
+    });
+}
+test("synchronous destroy reentry cannot attach before retirement admission", async () => {
+    const { w, shakas } = fixture();
+    w.playerMode = 2;
+    w.shaka.Player.prototype.load = function (url) {
+        this.url = url;
+        this.media.src = "blob:sync-" + shakas.length;
+        return this.loaded.promise;
+    };
+    w.stbPlay("https://synthetic.invalid/old.mpd");
+    const old = shakas[0];
+    old.loaded.resolve();
+    await tick();
+    old.destroy = function () {
+        this.destroyCalls++;
+        w.stbPlay("https://synthetic.invalid/reentrant.mpd");
+        assert.equal(shakas.length, 1);
+        return this.destroyed.promise;
+    };
+    w.stbStop();
+    assert.equal(shakas.length, 1);
+    old.media = null;
+    old.destroyed.reject(new Error("released after reentry"));
+    await tick();
+    await tick();
+    assert.equal(shakas.length, 2);
+    assert.equal(shakas[1].url, "https://synthetic.invalid/reentrant.mpd");
+    assert.equal(old.destroyCalls, 1);
+});
+
+test("synchronous replacement during destroy retains the newer queued generation", async () => {
+    const { w, shakas } = fixture();
+    w.playerMode = 2;
+    w.shaka.Player.prototype.load = function (url) {
+        this.url = url;
+        this.media.src = "blob:generation-" + shakas.length;
+        return this.loaded.promise;
+    };
+    w.stbPlay("https://synthetic.invalid/old.mpd");
+    const old = shakas[0];
+    old.loaded.resolve();
+    await tick();
+    old.destroy = function () {
+        this.destroyCalls++;
+        w.stbPlay("https://synthetic.invalid/newer.mpd");
+        return this.destroyed.promise;
+    };
+    w.stbPlay("https://synthetic.invalid/obsolete.mpd");
+    assert.equal(shakas.length, 1);
+    old.media = null;
+    old.destroyed.reject(new Error("release"));
+    await tick();
+    await tick();
+    assert.equal(shakas.length, 2);
+    assert.equal(shakas[1].url, "https://synthetic.invalid/newer.mpd");
+});
+
+test("synchronous destroy failure remains blocked even with a detached getter", async () => {
+    const { w, shakas } = fixture();
+    w.playerMode = 2;
+    w.shaka.Player.prototype.load = function () {
+        this.media.src = "blob:sync-failure";
+        return this.loaded.promise;
+    };
+    w.stbPlay("https://synthetic.invalid/old.mpd");
+    const old = shakas[0],
+        media = w.video;
+    old.loaded.resolve();
+    await tick();
+    const failure = new Error("synchronous failure");
+    old.destroy = function () {
+        this.destroyCalls++;
+        this.media = null;
+        throw failure;
+    };
+    w.stbStop();
+    w.stbPlay("https://synthetic.invalid/new.mpd");
+    assert.equal(old.destroyCalls, 1);
+    assert.equal(shakas.length, 1);
+    assert.equal(media.src, "blob:sync-failure");
+    assert.equal(media.loadCalls, 0);
+    assert.equal(w._coreShakaTeardown.error, failure);
+});
+
+for (const outcome of ["fulfilled", "rejected"]) {
+    for (const timing of ["delayed", "persistent"]) {
+        test(
+            "released Shaka tolerates " +
+                timing +
+                " reported old URL after " +
+                outcome +
+                " reset",
+            async () => {
+                const { w, shakas } = fixture();
+                w.playerMode = 2;
+                w.shaka.Player.prototype.load = function (url) {
+                    this.url = url;
+                    this.media.src = "blob:resource-" + shakas.length;
+                    return this.loaded.promise;
+                };
+                w.stbPlay("https://synthetic.invalid/old.mpd");
+                const old = shakas[0],
+                    media = w.video;
+                old.loaded.resolve();
+                await tick();
+                const resource = media.currentSrc;
+                let clearReported;
+                media.load = function () {
+                    this.loadCalls++;
+                    this.networkState = 0;
+                    assert.equal(this.getAttribute("src"), null);
+                    // WebKit may report this URL even though there is no resource.
+                    this.selectedResource = resource;
+                    if (timing === "delayed")
+                        clearReported = () => {
+                            if (this.selectedResource === resource)
+                                this.selectedResource = "";
+                        };
+                };
+                w.stbStop();
+                if (outcome === "fulfilled") old.destroyed.resolve();
+                else {
+                    old.media = null;
+                    old.destroyed.reject(new Error("released before failure"));
+                }
+                await tick();
+                await tick();
+                assert.equal(media.getAttribute("src"), null);
+                assert.equal(media.networkState, 0);
+                assert.equal(media.currentSrc, resource);
+                assert.equal(
+                    w._coreShakaTeardown,
+                    null,
+                    "reported URL is not ownership"
+                );
+                assert.equal(
+                    media.loadCalls,
+                    1,
+                    "completed reset is not repeated"
+                );
+                w.stbPlay("https://synthetic.invalid/next.mpd");
+                assert.equal(shakas.length, 2);
+                assert.equal(
+                    shakas[1].url,
+                    "https://synthetic.invalid/next.mpd"
+                );
+                if (clearReported) clearReported();
+                assert.equal(media.currentSrc, "blob:resource-2");
+            }
+        );
+    }
+}
+test("released Shaka rejects a foreign reported URL after reset", async () => {
+    const { w, shakas } = fixture();
+    w.playerMode = 2;
+    w.shaka.Player.prototype.load = function () {
+        this.media.src = "blob:original";
+        return this.loaded.promise;
+    };
+    w.stbPlay("https://synthetic.invalid/old.mpd");
+    const old = shakas[0],
+        media = w.video;
+    old.loaded.resolve();
+    await tick();
+    w.stbStop();
+    old.media = null;
+    media.load = function () {
+        this.loadCalls++;
+        this.networkState = 0;
+        this.selectedResource = "blob:foreign";
+    };
+    w.stbPlay("https://synthetic.invalid/new.mpd");
+    old.destroyed.reject(new Error("released"));
+    await tick();
+    await tick();
+    assert.equal(shakas.length, 1);
+    assert(w._coreShakaTeardown);
+    assert.equal(media.currentSrc, "blob:foreign");
 });
 
 (async () => {
