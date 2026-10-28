@@ -1,0 +1,459 @@
+//! Stage A: actual hidden Tauri/Wry/WKWebView physical-backend qualification.
+//! This source proposal has not been compiled or executed. No installed player is used.
+#[cfg(target_os = "macos")]
+#[path = "../src/instance.rs"]
+mod instance;
+
+#[cfg(target_os = "macos")]
+mod smoke {
+    use serde_json::{json, Value};
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicBool, AtomicI32, AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+    use tauri::{Listener, Manager};
+    static LOADED: AtomicUsize = AtomicUsize::new(0);
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    static SEQ: AtomicUsize = AtomicUsize::new(0);
+    static EXIT: AtomicI32 = AtomicI32::new(1);
+    const LABELS: [&str; 5] = ["writer", "observer", "slot2", "slot3", "slot4"];
+
+    async fn evaluate(window: &tauri::WebviewWindow, expression: &str) -> Result<Value, String> {
+        let event = format!("favorites-native-{}", SEQ.fetch_add(1, Ordering::SeqCst));
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let listener = window.once(event.clone(), move |reply| {
+            let _ = sender.send(serde_json::from_str::<Value>(reply.payload()));
+        });
+        let script = format!(
+            r#"(async function() {{try {{const value=await ({});await window.__TAURI__.event.emit({},{{ok:true,value}});}}catch(error){{await window.__TAURI__.event.emit({},{{ok:false,error:String(error.message)}});}}}})();"#,
+            expression,
+            json!(event),
+            json!(event)
+        );
+        if let Err(error) = window.eval(script) {
+            window.unlisten(listener);
+            return Err(error.to_string());
+        }
+        let received = tokio::time::timeout(Duration::from_secs(10), receiver).await;
+        window.unlisten(listener);
+        let reply = received
+            .map_err(|_| "Own hidden view evaluation timed out".to_string())?
+            .map_err(|_| "Own hidden view reply closed".to_string())?
+            .map_err(|error| error.to_string())?;
+        if reply["ok"] == true {
+            Ok(reply["value"].clone())
+        } else {
+            Err(reply["error"]
+                .as_str()
+                .unwrap_or("Fixture evaluation failed")
+                .to_string())
+        }
+    }
+    async fn wait(window: &tauri::WebviewWindow, expression: &str) -> Result<(), String> {
+        let end = Instant::now() + Duration::from_secs(10);
+        loop {
+            if evaluate(window, expression).await? == true {
+                return Ok(());
+            }
+            if Instant::now() >= end {
+                return Err("Native phase condition timed out".into());
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    }
+    fn require(ok: bool, message: &str) -> Result<(), String> {
+        if ok {
+            Ok(())
+        } else {
+            Err(message.to_string())
+        }
+    }
+    fn acknowledged(value: &Value) -> Result<(), String> {
+        require(
+            value["result"]["acknowledged"] == true
+                && value["result"]["persistence"] == "persistent",
+            "One fresh native ACK did not persist",
+        )?;
+        require(
+            value["result"]["record"]["original_state"] == "pending"
+                && value["result"]["record"]["original_outcome"] == "unknown",
+            "ACK changed original uncertain outcome",
+        )?;
+        require(
+            value["result"]["record"]["original_entry_sha256"]
+                == value["inspected"]["record"]["original_entry_sha256"],
+            "ACK changed original entry digest",
+        )?;
+        require(
+            value["result"]["ledger_revision"] == value["inspected"]["after_ledger_sha256"]
+                && value["observed"]["acknowledge_allowed"] == false,
+            "Native ACK readback mismatch or replay allowed",
+        )
+    }
+    async fn recovery(
+        writer: &tauri::WebviewWindow,
+        observer: &tauri::WebviewWindow,
+    ) -> Result<Value, String> {
+        evaluate(writer, "window.installNativeRecovery('native-writer')").await?;
+        evaluate(observer, "window.installNativeRecovery('native-observer')").await?;
+        evaluate(
+            writer,
+            "window.nativeRecovery.start('00000000-0000-4000-8000-000000000001')",
+        )
+        .await?;
+        wait(
+            writer,
+            "window.nativeRecovery.state.entered === true && !!window.nativeRecovery.state.heldAck",
+        )
+        .await?;
+        wait(writer, "window.nativeRecovery.state.rpcResult !== null").await?;
+        require(
+            evaluate(writer, "window.nativeRecovery.state.rpcResult.outcome").await? == "unknown",
+            "Actual engine RPC did not reach its deadline while native work remained pending",
+        )?;
+        require(
+            evaluate(writer, "window.nativeRecovery.bytesPreserved()").await? == true,
+            "Actual engine overwrote bytes still used by unresolved native apply",
+        )?;
+        let before = evaluate(observer, "window.nativeRecovery.raw()").await?;
+        require(evaluate(observer, "window.nativeRecovery.execute({mode:'inspect',operation_id:'00000000-0000-4000-8000-000000000001'})").await?["error"] == "busy", "Actual inspector acquired a lock held after engine RPC deadline")?;
+        let held_ack = evaluate(writer, "window.nativeRecovery.state.heldAck").await?;
+        let busy = evaluate(
+            observer,
+            &format!("window.nativeRecovery.execute({})", held_ack),
+        )
+        .await?;
+        require(
+            busy["error"] == "busy"
+                && evaluate(observer, "window.nativeRecovery.raw()").await? == before,
+            "Busy ACK changed native ledger or acquired pending physical work",
+        )?;
+        evaluate(writer, "window.nativeRecovery.release()").await?;
+        wait(writer, "window.nativeRecovery.state.settled === true").await?;
+        wait(observer, "window.nativeRecovery.execute({mode:'inspect',operation_id:'00000000-0000-4000-8000-000000000001'}).then(value=>value.acknowledge_allowed===true)").await?;
+        let first = evaluate(
+            observer,
+            "window.nativeRecovery.freshAck('00000000-0000-4000-8000-000000000001')",
+        )
+        .await?;
+        acknowledged(&first)?;
+        let original_first = evaluate(
+            observer,
+            "JSON.stringify(JSON.parse(window.nativeRecovery.raw()).entries[0])",
+        )
+        .await?;
+        // A second independent pending receipt uses the actual service and native grant.
+        // Its writer realm is destroyed; no fake lock or callback settles it.
+        evaluate(
+            writer,
+            "window.nativeRecovery.reserveOnly('00000000-0000-4000-8000-000000000002')",
+        )
+        .await?;
+        wait(writer, "window.nativeRecovery.state.entered === true").await?;
+        require(evaluate(observer, "window.nativeRecovery.execute({mode:'inspect',operation_id:'00000000-0000-4000-8000-000000000002'})").await?["error"] == "busy", "Closed-writer prerequisite was not physically held")?;
+        writer.destroy().map_err(|error| error.to_string())?;
+        wait(observer, "window.nativeRecovery.execute({mode:'inspect',operation_id:'00000000-0000-4000-8000-000000000002'}).then(value=>value.acknowledge_allowed===true)").await?;
+        let second = evaluate(
+            observer,
+            "window.nativeRecovery.freshAck('00000000-0000-4000-8000-000000000002')",
+        )
+        .await?;
+        acknowledged(&second)?;
+        require(
+            evaluate(
+                observer,
+                "JSON.stringify(JSON.parse(window.nativeRecovery.raw()).entries[0])",
+            )
+            .await?
+                == original_first,
+            "Closed-writer ACK changed previous original/audit bytes",
+        )?;
+        Ok(
+            json!({"actual_engine_rpc_timeout_unknown":true,"native_lock_retained_until_actual_apply_settlement":true,"busy_ack_zero_ledger_change":true,"closed_writer_native_lock_release":true,"single_fresh_ack_each":true,"originals_and_previous_audit_preserved":true,"first":first,"second":second}),
+        )
+    }
+    async fn exercise(app: tauri::AppHandle, output: PathBuf) -> Result<Value, String> {
+        let mut capabilities = serde_json::Map::new();
+        let module_pins = evaluate(
+            &app.get_webview_window("writer").ok_or("Writer missing")?,
+            "window.nativeSourcePins",
+        )
+        .await?;
+        for label in LABELS {
+            let view = app
+                .get_webview_window(label)
+                .ok_or("Missing own test view")?;
+            require(
+                !view.is_visible().map_err(|error| error.to_string())?,
+                "A fixture view became visible",
+            )?;
+            let value = evaluate(&view, "window.nativeFavoritesSmoke.capabilities()").await?;
+            let bytes = serde_json::to_vec_pretty(&value).map_err(|error| error.to_string())?;
+            std::fs::write(output.join(format!("capabilities-{label}.json")), bytes)
+                .map_err(|error| error.to_string())?;
+            require(
+                value["origin"] == "tauri://localhost",
+                "Actual window.location.origin is not exact tauri://localhost",
+            )?;
+            require(
+                value["href"] == "tauri://localhost/index.html",
+                "Actual committed href differs from bundled fixture",
+            )?;
+            require(
+                value["secureContext"] == true
+                    && value["storage"] == true
+                    && value["actualLocks"] == true
+                    && value["grant"] == true
+                    && value["current"] == true,
+                "Actual captured Storage/WebLocks grant unavailable; do not qualify native origin",
+            )?;
+            capabilities.insert(label.to_string(), value);
+        }
+        let writer = app.get_webview_window("writer").ok_or("Writer missing")?;
+        let observer = app
+            .get_webview_window("observer")
+            .ok_or("Observer missing")?;
+        require(
+            evaluate(
+                &writer,
+                "window.nativeFavoritesSmoke.set('own-shared-value')",
+            )
+            .await?
+                == "own-shared-value",
+            "Own native set/read failed",
+        )?;
+        require(
+            evaluate(&observer, "window.nativeFavoritesSmoke.get()").await? == "own-shared-value",
+            "Same WK store did not share actual localStorage",
+        )?;
+        for label in ["slot2", "slot3", "slot4"] {
+            let view = app
+                .get_webview_window(label)
+                .ok_or("Isolated view missing")?;
+            require(
+                evaluate(&view, "window.nativeFavoritesSmoke.get()")
+                    .await?
+                    .is_null(),
+                "Distinct instance store leaked Favorites data",
+            )?;
+        }
+        evaluate(&writer, "window.nativeFavoritesSmoke.beginHold()").await?;
+        wait(
+            &writer,
+            "window.nativeFavoritesSmoke.state.entered === true",
+        )
+        .await?;
+        // An external deadline must not settle/cancel the actual Web Locks promise.
+        tokio::time::sleep(Duration::from_millis(120)).await;
+        require(
+            evaluate(&observer, "window.nativeFavoritesSmoke.acquired()").await? == false,
+            "Same-store second view acquired a held native WebLock",
+        )?;
+        for label in ["slot2", "slot3", "slot4"] {
+            let view = app
+                .get_webview_window(label)
+                .ok_or("Isolated view missing")?;
+            require(
+                evaluate(&view, "window.nativeFavoritesSmoke.acquired()").await? == true,
+                "Distinct instance store incorrectly shared native lock",
+            )?;
+        }
+        evaluate(&writer, "window.nativeFavoritesSmoke.release()").await?;
+        wait(
+            &writer,
+            "window.nativeFavoritesSmoke.state.settled === true",
+        )
+        .await?;
+        require(
+            evaluate(&observer, "window.nativeFavoritesSmoke.acquired()").await? == true,
+            "Actual settled promise did not release lock",
+        )?;
+        let targets = evaluate(&writer, "window.nativeStorageFacade.writeTargets()").await?;
+        let observed_targets =
+            evaluate(&observer, "window.nativeStorageFacade.readTargets()").await?;
+        require(targets == observed_targets && observed_targets["aliasesMatch"] == true, "Production provider aliases/persisted/physical readback disagree across actual WK views")?;
+        let cas = evaluate(&observer, "window.nativeFavoritesSmoke.finalCompare()").await?;
+        require(
+            cas["outcome"] == "conflict"
+                && cas["value"] == "competing"
+                && cas["admissionCalls"] == 2,
+            "Final physical CAS overwrote competing actual localStorage bytes",
+        )?;
+        let physical_only = std::env::args().any(|value| value == "--physical-only");
+        let recovery_result = if physical_only {
+            evaluate(&observer, "window.nativeFavoritesSmoke.beginHold()").await?;
+            wait(
+                &observer,
+                "window.nativeFavoritesSmoke.state.entered === true",
+            )
+            .await?;
+            require(
+                evaluate(&writer, "window.nativeFavoritesSmoke.acquired()").await? == false,
+                "Closed-writer prerequisite lock was not held",
+            )?;
+            observer.destroy().map_err(|error| error.to_string())?;
+            wait(&writer, "window.nativeFavoritesSmoke.acquired()").await?;
+            json!({"not_run":"Stage A only; no engine/ACK qualification"})
+        } else {
+            recovery(&writer, &observer).await?
+        };
+        if !physical_only {
+            let ledger_before_reload = evaluate(
+                &observer,
+                "window.nativeStorageFacade.raw('favorites-receipts.v1')",
+            )
+            .await?;
+            observer.destroy().map_err(|error| error.to_string())?;
+            let builder = tauri::WebviewWindowBuilder::new(
+                &app,
+                "reloaded",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .visible(false)
+            .skip_taskbar(true)
+            .decorations(false)
+            .on_navigation(|url| {
+                url.scheme() == "tauri"
+                    && url.host_str() == Some("localhost")
+                    && url.port().is_none()
+                    && url.username().is_empty()
+                    && url.password().is_none()
+            });
+            let reloaded = super::instance::apply_isolation(builder, &output.join("slot1"))
+                .build()
+                .map_err(|error| error.to_string())?;
+            let end = Instant::now() + Duration::from_secs(10);
+            while LOADED.load(Ordering::SeqCst) < 6 {
+                if Instant::now() >= end {
+                    return Err("Own reload view did not finish native bootstrap".into());
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            require(
+                !reloaded.is_visible().map_err(|error| error.to_string())?,
+                "Reload fixture became visible",
+            )?;
+            let after_reload =
+                evaluate(&reloaded, "window.nativeStorageFacade.readTargets()").await?;
+            for field in ["tv", "media", "tvRawUnits", "mediaRawUnits", "aliasesMatch"] {
+                require(
+                    after_reload[field] == targets[field],
+                    "Production TV/media native persisted data changed after realm recreation",
+                )?;
+            }
+            require(
+                after_reload["ledgerRaw"] == ledger_before_reload,
+                "Actual private receipt ledger did not survive production storage bootstrap reload",
+            )?;
+        }
+        let report = json!({"status":"pass", "stage":if physical_only {"A-actual-native-physical-backend"} else {"A+B-native-physical-engine-recovery"}, "module_pins":module_pins, "capabilities": capabilities,
+            "same_store_two_views":true,"four_test_instance_stores_isolated":true,"native_lock_full_promise_lifetime":true,
+            "final_compare_conflict_preserved":true,"destroyed_writer_releases_native_lock":true,
+            "recovery":recovery_result,"physical_only":physical_only,
+            "not_claimed":["full verified Plex host admission", "production origin qualification", "installed t1-t4 runtime proof"],
+            "user_profiles_accessed":false,"visible_windows":false,"output":output});
+        Ok(report)
+    }
+    async fn cleanup(app: &tauri::AppHandle, output: &std::path::Path) -> Result<(), String> {
+        for label in ["writer", "observer", "slot2", "slot3", "slot4", "reloaded"] {
+            if let Some(view) = app.get_webview_window(label) {
+                view.destroy().map_err(|error| error.to_string())?;
+            }
+        }
+        for slot in ["slot1", "slot2", "slot3", "slot4"] {
+            let identifier = super::instance::data_store_identifier(&output.join(slot));
+            let (sender, receiver) = tokio::sync::oneshot::channel();
+            app.run_on_main_thread(move || {
+                let Some(mtm) = objc2::MainThreadMarker::new() else { let _ = sender.send(false); return; };
+                let sender = std::cell::RefCell::new(Some(sender));
+                let callback = block2::RcBlock::new(move |error: *mut objc2_foundation::NSError| {
+                    if let Some(sender) = sender.borrow_mut().take() { let _ = sender.send(error.is_null()); }
+                });
+                let uuid = objc2_foundation::NSUUID::from_bytes(identifier);
+                // Exact fresh IDs derived from this admitted test root only. No enumeration or default-store clearing.
+                unsafe { objc2_web_kit::WKWebsiteDataStore::removeDataStoreForIdentifier_completionHandler(&uuid, &callback, mtm); }
+            }).map_err(|error| error.to_string())?;
+            let removed = tokio::time::timeout(Duration::from_secs(10), receiver)
+                .await
+                .map_err(|_| "Own named-store cleanup timed out".to_string())?
+                .map_err(|_| "Own named-store cleanup channel closed".to_string())?;
+            require(removed, "Own named store still in use; retain metadata and do not claim clean qualification")?;
+        }
+        Ok(())
+    }
+    pub fn run() -> Result<i32, Box<dyn std::error::Error>> {
+        let output = PathBuf::from(
+            std::env::args()
+                .nth(1)
+                .ok_or("Explicit owned output root required")?,
+        );
+        if !output.is_absolute() || output.exists() {
+            return Err("Fresh absolute owned output root required".into());
+        }
+        std::fs::create_dir_all(&output)?;
+        let store_ids: Vec<_> = ["slot1", "slot2", "slot3", "slot4"].iter().map(|slot| json!({"slot":slot,"identifier":super::instance::data_store_identifier(&output.join(slot))})).collect();
+        std::fs::write(
+            output.join("intent.json"),
+            serde_json::to_vec_pretty(
+                &json!({"fresh_output":output.display().to_string(),"own_test_store_ids":store_ids,"user_profiles":false,"native_qualified":false}),
+            )?,
+        )?;
+        let fixture_root = output.clone();
+        let report_root = output.clone();
+        let app = tauri::Builder::default()
+            .setup(move |app| {
+                app.set_activation_policy(tauri::ActivationPolicy::Prohibited);
+                for label in LABELS {
+                    let slot = match label { "writer" | "observer" => "slot1", value => value };
+                    let store_root = fixture_root.join(slot);
+                    // Production isolation mapping, but only fresh TEMP fixture paths.
+                    let builder = tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App("index.html".into()))
+                        .visible(false).skip_taskbar(true).decorations(false)
+                        .on_navigation(|url| url.scheme() == "tauri" && url.host_str() == Some("localhost") && url.port().is_none() && url.username().is_empty() && url.password().is_none());
+                    super::instance::apply_isolation(builder, &store_root).build()?;
+                }
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move { tokio::time::sleep(Duration::from_secs(90)).await; handle.exit(1); });
+                Ok(())
+            })
+            .on_page_load(move |view, event| {
+                if event.event() != tauri::webview::PageLoadEvent::Finished || (!LABELS.contains(&view.label()) && view.label() != "reloaded") { return; }
+                if LOADED.fetch_add(1, Ordering::SeqCst) + 1 != LABELS.len() || STARTED.swap(true, Ordering::SeqCst) { return; }
+                let app = view.app_handle().clone(); let output = report_root.clone();
+                tauri::async_runtime::spawn(async move {
+                    let result = exercise(app.clone(), output.clone()).await;
+                    let cleaned = cleanup(&app, &output).await;
+                    let mut code = if result.is_ok() && cleaned.is_ok() { 0 } else { 1 };
+                    let mut report = result.unwrap_or_else(|error| json!({"status":"fail","error":error,"qualified_native_origin":false}));
+                    report["own_named_stores_cleaned"] = json!(cleaned.is_ok());
+                    if let Err(error) = cleaned { report["status"] = json!("fail"); report["cleanup_error"] = json!(error); }
+                    match serde_json::to_string_pretty(&report) { Ok(text) => if std::fs::write(output.join("result.json"), text).is_err() { code = 1; }, Err(_) => code = 1, }
+                    EXIT.store(code, Ordering::SeqCst); app.exit(code);
+                });
+            })
+            .build(tauri::generate_context!("examples/favorites-storage-smoke/tauri.conf.json"))?;
+        app.run_return(|_, event| {
+            if let tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } = event
+            {
+                api.prevent_exit();
+            }
+        });
+        Ok(EXIT.load(Ordering::SeqCst))
+    }
+}
+#[cfg(target_os = "macos")]
+fn main() {
+    match smoke::run() {
+        Ok(code) => std::process::exit(code),
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    }
+}
+#[cfg(not(target_os = "macos"))]
+fn main() {
+    eprintln!("Requires actual macOS WKWebView");
+    std::process::exit(1);
+}
