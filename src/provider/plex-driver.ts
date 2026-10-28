@@ -3,6 +3,7 @@ interface PlexProviderDriver extends ProviderDriver {
     cancelConnection(): void;
     catalogError(): boolean;
     catalogLoading(): boolean;
+    favoritesSource(): any;
     libraryReady(): boolean;
     mediaClient(): any;
     rememberPlayback(payload: any): void;
@@ -26,6 +27,7 @@ function createPlexProviderDriver(
     var catalogFailed = false;
     var selectionKey = "lastMediaSelection.v1";
     var client: any = null;
+    var verifiedFavoritesSource: any = null;
     var catalog = helpers.emptyCatalog();
     var cancelConnection: (() => void) | null = null;
     var plex = (window as any).__ottPlex;
@@ -62,6 +64,7 @@ function createPlexProviderDriver(
         }
     }
     function retire(): void {
+        verifiedFavoritesSource = null;
         cancelConnecting();
         revision++;
         ready = false;
@@ -149,6 +152,40 @@ function createPlexProviderDriver(
             if (disposed) return;
             disposed = true;
             retire();
+        },
+        favoritesSource: function () {
+            var captured = verifiedFavoritesSource;
+            var expectedClient = client;
+            function current(): boolean {
+                try {
+                    return (
+                        !!captured &&
+                        verifiedFavoritesSource === captured &&
+                        active() &&
+                        ready &&
+                        !!client &&
+                        client === expectedClient &&
+                        revision === captured.revision &&
+                        ports.sourceIdentity!() === captured.sourceId &&
+                        ports.storage.get("cfg") === captured.configuration &&
+                        verifiedFavoritesSource === captured &&
+                        active() &&
+                        ready &&
+                        client === expectedClient &&
+                        revision === captured.revision
+                    );
+                } catch (_) {
+                    return false;
+                }
+            }
+            return current()
+                ? {
+                      current: current,
+                      serverId: captured.serverId,
+                      sourceId: captured.sourceId,
+                      verified: true,
+                  }
+                : null;
         },
         guide: function (_, done) {
             if (active()) done([]);
@@ -439,6 +476,15 @@ function createPlexProviderDriver(
                             if (!isCurrent()) return;
                             finished = true;
                             cancelConnection = null;
+                            // Only the existing identity-verified account connection
+                            // grants this runtime proof. Saved account metadata alone does not.
+                            if (result.serverId === account.id)
+                                verifiedFavoritesSource = {
+                                    configuration: ports.storage.get("cfg"),
+                                    revision: request,
+                                    serverId: account.id,
+                                    sourceId: ports.sourceIdentity!(),
+                                };
                             connect(result.url);
                         },
                         onError: function () {

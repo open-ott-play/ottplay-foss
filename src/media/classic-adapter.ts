@@ -517,6 +517,7 @@ function classicMediaRuntime(): any {
     }
     var journal = w.__ottMediaJournal.create({
         core: w.OttPlayCore,
+        current: persistent,
         enabled: function () {
             return w.sFavorites !== -1;
         },
@@ -1818,6 +1819,38 @@ function classicMediaRuntime(): any {
                     classicMediaTitle(item.payload) + w._(" added to favorites")
                 );
         },
+        favoritesTransfer: function (expectedSource: string) {
+            if (
+                context ||
+                expectedSource !== source ||
+                !current() ||
+                !journal.read().writable
+            )
+                return null;
+            function admitted() {
+                return (
+                    !context &&
+                    mediaClassicInstance === api &&
+                    current() &&
+                    expectedSource === source &&
+                    w.sFavorites !== -1
+                );
+            }
+            return {
+                adopt: function (raw: string) {
+                    if (!admitted() || !journal.adopt(raw) || !admitted())
+                        return false;
+                    collections();
+                    return admitted();
+                },
+                current: admitted,
+                snapshot: function () {
+                    return admitted()
+                        ? JSON.stringify(journal.read().document)
+                        : null;
+                },
+            };
+        },
         filter: function () {
             if (plexLibrary()) return;
             var admitted = api.capture();
@@ -2833,6 +2866,11 @@ function classicMediaRuntime(): any {
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
+    },
+    favoritesTransfer: function (source: string) {
+        return mediaClassicInstance
+            ? mediaClassicInstance.favoritesTransfer(source)
+            : null;
     },
     filter: function () {
         classicMediaRuntime().filter();

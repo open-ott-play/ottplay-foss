@@ -1,5 +1,6 @@
 interface MediaJournalPorts {
     core: any;
+    current?(): boolean;
     enabled?(): boolean;
     importRows(rows: any[]): any[];
     legacyId?: string;
@@ -96,6 +97,40 @@ function createMediaJournal(ports: MediaJournalPorts) {
         }
     }
     return {
+        // Adopt verified external bytes without writing or replaying a mutation.
+        adopt: function (raw: string): boolean {
+            if (
+                !loaded ||
+                !writable ||
+                !ports.current ||
+                !ports.current() ||
+                (ports.enabled && !ports.enabled())
+            )
+                return false;
+            try {
+                if (typeof raw !== "string" || raw.length > 2 * 1024 * 1024)
+                    return false;
+                var parsed = JSON.parse(raw);
+                if (
+                    !parsed ||
+                    parsed.version !== 1 ||
+                    parsed.sourceId !== ports.sourceId ||
+                    !valid(parsed.history) ||
+                    !valid(parsed.favorites)
+                )
+                    return false;
+                if (
+                    ports.read(key) !== raw ||
+                    !ports.current() ||
+                    (ports.enabled && !ports.enabled())
+                )
+                    return false;
+                state = parsed;
+                return true;
+            } catch (_) {
+                return false;
+            }
+        },
         change: function (operation: string, entry: any): boolean {
             if (ports.enabled && !ports.enabled()) return false;
             read();

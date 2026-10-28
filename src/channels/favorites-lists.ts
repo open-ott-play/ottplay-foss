@@ -119,6 +119,14 @@ var favoritesReferences: FavoriteReferenceList[] = [];
 
 function favoritesReferenceIndex(): any {
     var w = window as any;
+    var driver = w.__ottActiveProviderDriver;
+    var proof =
+        driver &&
+        driver.id === "plex" &&
+        typeof driver.favoritesSource === "function" &&
+        driver.favoritesSource();
+    if (proof && proof.current() && w.__ottFavoritesPlexReferences)
+        return w.__ottFavoritesPlexReferences.create(w.channels, proof);
     return w.__ottChannelReferences.create(
         w.channels,
         w.__ottLegacyChannelAliases
@@ -321,6 +329,167 @@ function favoriteLibraryDocument(): any {
     return JSON.parse(JSON.stringify(snapshot.document));
 }
 
+/** Read-only adoption: no legacy claim, save, reload or provider activation. */
+function captureFavoriteTransfer(): any {
+    var w = window as any,
+        generation = favoritesGeneration,
+        owner = favoritesOwner;
+    var source = favoritesSource,
+        get = w.providerGetItem,
+        persisted = w.providerGetPersistedItem;
+    var driver = w.__ottActiveProviderDriver,
+        provenance = driver && driver.favoritesSource;
+    var proof =
+        driver &&
+        driver.id === "plex" &&
+        typeof provenance === "function" &&
+        provenance.call(driver);
+    function current(): boolean {
+        return (
+            !!proof &&
+            proof.current() &&
+            driver === w.__ottActiveProviderDriver &&
+            driver.favoritesSource === provenance &&
+            !!owner &&
+            favoritesOwner === owner &&
+            favoritesGeneration === generation &&
+            favoritesWritable &&
+            owner() &&
+            currentFavoritesSource() === source &&
+            get === w.providerGetItem &&
+            persisted === w.providerGetPersistedItem &&
+            proof.current() &&
+            driver === w.__ottActiveProviderDriver
+        );
+    }
+    if (!current() || typeof persisted !== "function") return null;
+    return {
+        adopt: function (raw: string): boolean {
+            try {
+                if (
+                    !current() ||
+                    typeof raw !== "string" ||
+                    raw.length > 1048576
+                )
+                    return false;
+                var parsed = JSON.parse(raw),
+                    lists = parsed && parsed.lists;
+                if (
+                    !parsed ||
+                    parsed.version !== 2 ||
+                    parsed.sourceId !== source ||
+                    Object.keys(parsed).some(
+                        (key) =>
+                            [
+                                "version",
+                                "sourceId",
+                                "lists",
+                                "defaultList",
+                                "shuffleBefore",
+                            ].indexOf(key) < 0
+                    ) ||
+                    !lists ||
+                    lists.v !== 1 ||
+                    !isFavoriteReferenceBlob(lists) ||
+                    Object.keys(lists).sort().join(",") !==
+                        "active,lists,order,v" ||
+                    !Array.isArray(lists.order) ||
+                    typeof lists.active !== "string" ||
+                    !Object.prototype.hasOwnProperty.call(
+                        lists.lists,
+                        lists.active
+                    )
+                )
+                    return false;
+                var names = Object.keys(lists.lists);
+                if (
+                    lists.order.length !== names.length ||
+                    lists.order.some(
+                        (name: any, at: number) =>
+                            typeof name !== "string" ||
+                            names.indexOf(name) < 0 ||
+                            lists.order.indexOf(name) !== at
+                    )
+                )
+                    return false;
+                if (
+                    parsed.defaultList !== undefined &&
+                    (parsed.defaultList !== "Favorites" ||
+                        !Object.prototype.hasOwnProperty.call(
+                            lists.lists,
+                            "Favorites"
+                        ))
+                )
+                    return false;
+                var shuffle = parsed.shuffleBefore;
+                if (
+                    shuffle !== undefined &&
+                    (!shuffle ||
+                        typeof shuffle !== "object" ||
+                        Array.isArray(shuffle) ||
+                        Object.keys(shuffle).some(
+                            (name) =>
+                                names.indexOf(name) < 0 ||
+                                !isFavoriteReferenceBlob({
+                                    lists: { baseline: shuffle[name] },
+                                })
+                        ))
+                )
+                    return false;
+                var index = favoritesReferenceIndex();
+                var next: FavoritesListsBlob = {
+                    active: lists.active,
+                    lists: Object.create(null),
+                    order: lists.order.slice(),
+                    v: 1,
+                };
+                var records: FavoriteReferenceList[] = [];
+                names.forEach((name) => {
+                    var refs = lists.lists[name].map((ref: any) =>
+                        JSON.parse(JSON.stringify(ref))
+                    );
+                    var view: any[] = [];
+                    refs.forEach((ref: any) => {
+                        var id = index.project(ref);
+                        if (id !== null) view.push(id);
+                    });
+                    next.lists[name] = view;
+                    var record = favoriteReferenceRecord(view, refs, index);
+                    if (
+                        shuffle &&
+                        Object.prototype.hasOwnProperty.call(shuffle, name)
+                    )
+                        record.shuffleBefore = JSON.parse(
+                            JSON.stringify(shuffle[name])
+                        );
+                    records.push(record);
+                });
+                var key = "favoritesLibrary:" + source;
+                if (
+                    !current() ||
+                    get.call(w, key) !== raw ||
+                    !current() ||
+                    persisted.call(w, key) !== raw ||
+                    !current()
+                )
+                    return false;
+                favoritesLists = next;
+                favoritesReferences = records;
+                favoritesDefaultList = parsed.defaultList;
+                syncFavoritesArrayFromActive();
+                return current();
+            } catch (_) {
+                return false;
+            }
+        },
+        current: current,
+        snapshot: function () {
+            return current() ? favoriteLibraryDocument() : null;
+        },
+        sourceId: source,
+    };
+}
+
 if (typeof window !== "undefined")
     (window as any).__ottFavoritesLibrary = {
         document: favoriteLibraryDocument,
@@ -330,6 +499,7 @@ if (typeof window !== "undefined")
             favoritesWritable = false;
             favoritesReferences = [];
         },
+        transfer: captureFavoriteTransfer,
     };
 
 export function saveFavoritesLists(): boolean {

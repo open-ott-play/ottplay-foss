@@ -727,6 +727,82 @@ test("Account startup resolves a reachable endpoint without changing server/acco
     assert.notEqual(f.host.__ottSourceIdentity.media(f.host), identity);
 });
 
+test("Favorites provenance requires a completed verified account connection, never saved metadata", () => {
+    const f = create({ plexcfg: JSON.stringify(accountConfig) });
+    assert.equal(f.driver.favoritesSource(), null);
+    f.host.getChannelsArray(() => {});
+    assert.equal(f.driver.favoritesSource(), null);
+    f.probes[0].callbacks.onConnected({
+        serverId: "server-one",
+        url: config.address,
+    });
+    assert.equal(
+        f.driver.favoritesSource(),
+        null,
+        "PMS catalogue must finish connecting"
+    );
+    f.clients[0].ready();
+    const proof = f.driver.favoritesSource();
+    assert.equal(proof.verified, true);
+    assert.equal(proof.serverId, "server-one");
+    assert.equal(proof.sourceId, f.host.__ottSourceIdentity.media(f.host));
+    assert.equal(proof.current(), true);
+    f.saved.set(
+        "plexcfg",
+        JSON.stringify({ ...accountConfig, token: "changed-token" })
+    );
+    assert.equal(proof.current(), false);
+    assert.equal(f.driver.favoritesSource(), null);
+    f.saved.set("plexcfg", JSON.stringify(accountConfig));
+    f.host.getChannelsArray(() => {});
+    assert.equal(
+        proof.current(),
+        false,
+        "retired proof never revives after reload"
+    );
+    f.probes[1].callbacks.onConnected({
+        serverId: "server-one",
+        url: config.address,
+    });
+    f.clients[1].ready();
+    const next = f.driver.favoritesSource();
+    assert.equal(next.current(), true);
+    const readSaved = f.saved.get;
+    let reentered = false;
+    f.saved.get = function (key) {
+        if (!reentered && key === "plexcfg") {
+            reentered = true;
+            f.driver.dispose();
+        }
+        return readSaved.call(this, key);
+    };
+    assert.equal(
+        next.current(),
+        false,
+        "retirement during configuration read cannot certify stale proof"
+    );
+    f.saved.get = readSaved;
+    f.driver.dispose();
+    assert.equal(next.current(), false);
+    assert.equal(f.driver.favoritesSource(), null);
+});
+
+test("Manual or mismatched Plex server connections have no portable favorites provenance", () => {
+    for (const account of [false, true]) {
+        const f = create({
+            plexcfg: JSON.stringify(account ? accountConfig : config),
+        });
+        f.host.getChannelsArray(() => {});
+        if (account)
+            f.probes[0].callbacks.onConnected({
+                serverId: "different-server",
+                url: config.address,
+            });
+        f.clients[0].ready();
+        assert.equal(f.driver.favoritesSource(), null);
+    }
+});
+
 test("Editing and provider retirement cancel endpoint discovery and reject late callbacks", () => {
     const f = create({ plexcfg: JSON.stringify(accountConfig) });
     f.host.getChannelsArray(() => {});
