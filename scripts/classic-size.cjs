@@ -393,17 +393,30 @@ const LOCAL_STARTUP_PREVIEW_ALLOWANCE = Object.freeze({
     bytes: 8192,
     gzipBytes: 2560,
 });
+// Unified desktop F favorites: guarded key routing and provider-owned toggles.
+// Hosted CI40627949923, fe9078f6 (tested merge4cd97d1c), Node22.23.3/zlib1.3.1-e00f703
+// observes +4609 raw / +1027 web, +1026 native gzip versus canonical5a85 bytes.
+// Reviewed bounded +4650/+1100; count once per entry/legacy/complete payload.
+// Preserve existing release/version room; provider and optional caps stay fixed.
+// Reviewed feature allocation; fresh required CI must validate the final source.
+// See docs/evidence/desktop-favorites-key-size-20261028.json.
+const DESKTOP_FAVORITES_KEY_ALLOWANCE = Object.freeze({
+    bytes: 4650,
+    gzipBytes: 1100,
+});
 const BUDGET = Object.freeze({
     bytes:
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
     gzipBytes:
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -588,12 +601,14 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         1205560 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
     gzipBytes:
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -649,12 +664,14 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         1319160 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.bytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes,
     gzipBytes:
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
-        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes,
+        LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
+        DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -816,6 +833,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         artifacts: measured,
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
+        desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
         legacyTotalBudget: LEGACY_TOTAL_BUDGET,
         localCommandSessionAllowance: LOCAL_COMMAND_SESSION_ALLOWANCE,
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
@@ -1094,6 +1112,7 @@ function writeBuildBundleReport(
             budget: BUDGET,
             collectedAt: new Date().toISOString(),
             complete: !inputErrors.length,
+            desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             diagnostic: true,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
@@ -1164,6 +1183,7 @@ module.exports = {
     BUDGET,
     clearBuildSizeReports,
     collectBundleMeasurement,
+    DESKTOP_FAVORITES_KEY_ALLOWANCE,
     inspectBundleSets,
     inspectBundles,
     LEGACY_TOTAL_BUDGET,

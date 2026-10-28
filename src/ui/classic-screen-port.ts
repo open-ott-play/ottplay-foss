@@ -577,6 +577,11 @@ function createClassicScreenPort(host: any) {
     };
     var router = host.__ottInputRouter.create({
         global: function (command: ScreenCommand) {
+            if (
+                command.id === "favorites" &&
+                typeof host.__ottToggleKeyboardFavorite === "function"
+            )
+                return host.__ottToggleKeyboardFavorite();
             if (command.id === "power") {
                 if (mainInput) mainInput(command);
                 return true;

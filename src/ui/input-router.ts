@@ -14,6 +14,7 @@ function createInputRouter(ports: any) {
         ["RIGHT", "right"],
         ["RW", "rewind"],
         ["FF", "forward"],
+        ["FAVORITES", "favorites"],
         ["CH_UP", "channel-up"],
         ["CH_DOWN", "channel-down"],
         ["PREV", "previous"],

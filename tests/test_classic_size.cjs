@@ -10,6 +10,7 @@ const {
     collectBundleMeasurement,
     writeBuildBundleReport,
     BUDGET,
+    DESKTOP_FAVORITES_KEY_ALLOWANCE,
     BASE_TOTAL_BUDGET,
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
@@ -116,7 +117,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1335032, gzipBytes: 425834 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1339682, gzipBytes: 426934 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -129,11 +130,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1339512, gzipBytes: 428138 });
-    assert.deepEqual(BUDGET, { bytes: 1078632, gzipBytes: 333306 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1344162, gzipBytes: 429238 });
+    assert.deepEqual(BUDGET, { bytes: 1083282, gzipBytes: 334406 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1221432,
-        gzipBytes: 385206,
+        bytes: 1226082,
+        gzipBytes: 386306,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -152,6 +153,55 @@ try {
         gzipBytes: 2560,
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    assert.deepEqual(DESKTOP_FAVORITES_KEY_ALLOWANCE, {
+        bytes: 4650,
+        gzipBytes: 1100,
+    });
+    assert(Object.isFrozen(DESKTOP_FAVORITES_KEY_ALLOWANCE));
+    for (const [actual, previous] of [
+        [BUDGET, { bytes: 1078632, gzipBytes: 333306 }],
+        [LEGACY_TOTAL_BUDGET, { bytes: 1221432, gzipBytes: 385206 }],
+        [BASE_TOTAL_BUDGET, { bytes: 1335032, gzipBytes: 425834 }],
+        [TOTAL_BUDGET, { bytes: 1339512, gzipBytes: 428138 }],
+    ])
+        for (const key of ["bytes", "gzipBytes"])
+            assert.equal(
+                actual[key] - previous[key],
+                DESKTOP_FAVORITES_KEY_ALLOWANCE[key],
+                "desktop favorites counted exactly once"
+            );
+    const favoriteEvidence = require("../docs/evidence/desktop-favorites-key-size-20261028.json");
+    assert.deepEqual(
+        favoriteEvidence.allocation,
+        DESKTOP_FAVORITES_KEY_ALLOWANCE
+    );
+    assert.deepEqual(
+        favoriteEvidence.baseline.toolchain,
+        favoriteEvidence.candidate.toolchain
+    );
+    for (let i = 0; i < favoriteEvidence.candidate.entries.length; i++) {
+        const after = favoriteEvidence.candidate.entries[i],
+            before = favoriteEvidence.baseline.entries[i];
+        assert.equal(
+            after.bytes - before.bytes,
+            favoriteEvidence.observedDelta.bytes
+        );
+        assert.equal(
+            after.gzipBytes - before.gzipBytes,
+            i === 0
+                ? favoriteEvidence.observedDelta.webGzipBytes
+                : favoriteEvidence.observedDelta.nativeAndMobileGzipBytes
+        );
+        assert(
+            after.bytes <= BUDGET.bytes && after.gzipBytes <= BUDGET.gzipBytes
+        );
+        const total = favoriteEvidence.candidate.complete[i];
+        assert(
+            total.bytes <= TOTAL_BUDGET.bytes &&
+                total.gzipBytes <= TOTAL_BUDGET.gzipBytes
+        );
+    }
+
     for (const [actual, previous] of [
         [BUDGET, { bytes: 1070440, gzipBytes: 330746 }],
         [LEGACY_TOTAL_BUDGET, { bytes: 1213240, gzipBytes: 382646 }],
@@ -160,7 +210,9 @@ try {
     ])
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
-                actual[key] - previous[key],
+                actual[key] -
+                    DESKTOP_FAVORITES_KEY_ALLOWANCE[key] -
+                    previous[key],
                 LOCAL_STARTUP_PREVIEW_ALLOWANCE[key],
                 "startup preview counted exactly once"
             );
@@ -187,13 +239,18 @@ try {
             startupEvidence.minimumCompleteHeadroom[metric],
             Math.min(
                 ...startupEvidence.canonical.complete.map(
-                    (item) => TOTAL_BUDGET[metric] - item[metric]
+                    (item) =>
+                        TOTAL_BUDGET[metric] -
+                        DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
+                        item[metric]
                 )
             )
         );
         assert(
             startupEvidence.canonical.entries.every(
-                (item) => item[metric] <= BUDGET[metric]
+                (item) =>
+                    item[metric] <=
+                    BUDGET[metric] - DESKTOP_FAVORITES_KEY_ALLOWANCE[metric]
             )
         );
     }
@@ -1102,6 +1159,10 @@ try {
     );
     const report = writeBundleReport(root, optimizer, ["entry.js"]);
     assert.deepEqual(report.baseTotalBudget, BASE_TOTAL_BUDGET);
+    assert.deepEqual(
+        report.desktopFavoritesKeyAllowance,
+        DESKTOP_FAVORITES_KEY_ALLOWANCE
+    );
     assert.deepEqual(
         report.localCompatibilityAllowance,
         LOCAL_COMPATIBILITY_ALLOWANCE

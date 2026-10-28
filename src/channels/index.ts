@@ -1068,13 +1068,13 @@ export function popFavLists(): void {
  *
  * Side effects: Writes favorites storage and republishes the current library view.
  */
-export function saveChannelsCats(): void {
-    if (typeof providerSetItem === "function") {
-        // `favoritesArray` mirrors the active list (back-compat alias).
-        syncFavoritesArrayFromActive();
-        saveFavoritesLists();
-        (window as any).__ottChannels.refresh();
-    }
+export function saveChannelsCats(): boolean {
+    if (typeof providerSetItem !== "function") return false;
+    // `favoritesArray` mirrors the active list (back-compat alias).
+    syncFavoritesArrayFromActive();
+    if (saveFavoritesLists() !== true) return false;
+    (window as any).__ottChannels.refresh();
+    return true;
 }
 
 /**
