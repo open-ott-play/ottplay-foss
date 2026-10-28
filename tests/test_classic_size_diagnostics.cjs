@@ -11,7 +11,7 @@ const realRequire = createRequire(filename);
 const catalog = Object.freeze({
     CLASSIC_OPTIONAL_BUNDLES: Object.freeze({
         "control-transport": [],
-        "favorites-transfer": [],
+        "test-unbudgeted-optional": [],
     }),
     CLASSIC_PROVIDER_BUNDLES: Object.freeze({ m3u: [] }),
 });
@@ -69,7 +69,7 @@ try {
             "var transport = 1;"
         );
         fs.writeFileSync(
-            path.join(directory, "favorites-transfer.js"),
+            path.join(directory, "test-unbudgeted-optional.js"),
             unknown
         );
     }
@@ -79,11 +79,11 @@ try {
     // Strict APIs remain unchanged and still refuse the absent policy.
     assert.throws(
         () => api.inspectBundleSets(root, api.ARTIFACTS, ["m3u"]),
-        /Missing optional budget: favorites-transfer/
+        /Missing optional budget: test-unbudgeted-optional/
     );
     assert.throws(
         () => api.writeBundleReport(root, optimizer, []),
-        /Missing optional budget: favorites-transfer/
+        /Missing optional budget: test-unbudgeted-optional/
     );
     function collect() {
         fs.mkdirSync(path.dirname(success), { recursive: true });
@@ -109,7 +109,7 @@ try {
         );
         assert.equal(caps(), beforeCaps);
         assert.equal(
-            Object.hasOwn(api.OPTIONAL_BUDGETS, "favorites-transfer"),
+            Object.hasOwn(api.OPTIONAL_BUDGETS, "test-unbudgeted-optional"),
             false
         );
         return result;
@@ -117,7 +117,9 @@ try {
     const report = collect();
     assert.equal(
         report.inputErrors.filter(
-            (row) => row.error === "Missing optional budget: favorites-transfer"
+            (row) =>
+                row.error ===
+                "Missing optional budget: test-unbudgeted-optional"
         ).length,
         3
     );
@@ -128,7 +130,7 @@ try {
     );
     for (const set of report.providerBundles) {
         const asset = set.optionalAssets.find(
-            (row) => row && row.path.endsWith("/favorites-transfer.js")
+            (row) => row && row.path.endsWith("/test-unbudgeted-optional.js")
         );
         assert(
             asset,
@@ -163,20 +165,24 @@ try {
         "known optional caps remain enforced"
     );
     // Missing or unsafe new files never turn into guessed zero measurements.
-    const missing = path.join(root, "dist-mobile/dist/favorites-transfer.js");
+    const missing = path.join(
+        root,
+        "dist-mobile/dist/test-unbudgeted-optional.js"
+    );
     fs.unlinkSync(missing);
     const incomplete = collect();
     assert.equal(incomplete.providerBundles[2].total, null);
     assert(
         incomplete.inputErrors.some(
             (row) =>
-                row.path === "dist-mobile/dist/favorites-transfer.js" &&
-                row.error !== "Missing optional budget: favorites-transfer"
+                row.path === "dist-mobile/dist/test-unbudgeted-optional.js" &&
+                row.error !==
+                    "Missing optional budget: test-unbudgeted-optional"
         )
     );
     assert(
         incomplete.providerBundles[0].optionalAssets.some(
-            (row) => row && row.path.endsWith("favorites-transfer.js")
+            (row) => row && row.path.endsWith("test-unbudgeted-optional.js")
         ),
         "later input failure does not discard earlier measurements"
     );
@@ -184,7 +190,7 @@ try {
     assert(
         collect().inputErrors.some(
             (row) =>
-                row.path === "dist-mobile/dist/favorites-transfer.js" &&
+                row.path === "dist-mobile/dist/test-unbudgeted-optional.js" &&
                 /Symlink/.test(row.error)
         )
     );

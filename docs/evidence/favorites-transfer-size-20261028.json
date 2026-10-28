@@ -1,0 +1,183 @@
+{
+  "head": "bcaf8aef57e032a282f1230ae174b2f11ec82d18",
+  "testedMerge": "c7670c750629d5f710a53baa225278b84da38759",
+  "testedMergeParents": [
+    {
+      "sha": "5a85aab3962332a34ad3a659e083fa42a1031d50",
+      "url": "https://api.github.com/repos/open-ott-play/ottplay-foss/commits/5a85aab3962332a34ad3a659e083fa42a1031d50",
+      "html_url": "https://github.com/open-ott-play/ottplay-foss/commit/5a85aab3962332a34ad3a659e083fa42a1031d50"
+    },
+    {
+      "sha": "bcaf8aef57e032a282f1230ae174b2f11ec82d18",
+      "url": "https://api.github.com/repos/open-ott-play/ottplay-foss/commits/bcaf8aef57e032a282f1230ae174b2f11ec82d18",
+      "html_url": "https://github.com/open-ott-play/ottplay-foss/commit/bcaf8aef57e032a282f1230ae174b2f11ec82d18"
+    }
+  ],
+  "run": 40630774289,
+  "artifact": 12790904400,
+  "zipSha256": "b3cee9fec0a44c207abcb851ecee966a81acae35ebc8af5993ac78b9508093a1",
+  "diagnosticSha256": "0cd66c3f400eae7b907fb5831dbf6b79694ac5e200aeb0bf5c7b6c225ed26c3f",
+  "toolchain": {
+    "node": "22.23.3",
+    "zlib": "1.3.1-e00f703"
+  },
+  "baselineArtifact": 12783407386,
+  "baselineSha256": "c89ae614028ecb7c05a2e7bee6d76ccf88a38093126dbe31df626a30f827b887",
+  "entryDelta": {
+    "bytes": 9243,
+    "webGzip": 2301,
+    "nativeGzip": 2312
+  },
+  "totalDelta": {
+    "bytes": 94994,
+    "webGzip": 26334,
+    "nativeGzip": 26345
+  },
+  "changedAssets": [
+    {
+      "path": "dist/provider-plex.js",
+      "bytes": 60854,
+      "gzipBytes": 20877,
+      "deltaBytes": 447,
+      "deltaGzipBytes": 134
+    },
+    {
+      "path": "dist/favorites-transfer.js",
+      "bytes": 85304,
+      "gzipBytes": 23899,
+      "deltaBytes": null,
+      "deltaGzipBytes": null
+    },
+    {
+      "path": "src-tauri/frontend/dist/provider-plex.js",
+      "bytes": 60854,
+      "gzipBytes": 20877,
+      "deltaBytes": 447,
+      "deltaGzipBytes": 134
+    },
+    {
+      "path": "src-tauri/frontend/dist/favorites-transfer.js",
+      "bytes": 85304,
+      "gzipBytes": 23899,
+      "deltaBytes": null,
+      "deltaGzipBytes": null
+    },
+    {
+      "path": "dist-mobile/dist/provider-plex.js",
+      "bytes": 60854,
+      "gzipBytes": 20877,
+      "deltaBytes": 447,
+      "deltaGzipBytes": 134
+    },
+    {
+      "path": "dist-mobile/dist/favorites-transfer.js",
+      "bytes": 85304,
+      "gzipBytes": 23899,
+      "deltaBytes": null,
+      "deltaGzipBytes": null
+    }
+  ],
+  "complete": false,
+  "inputErrors": [
+    {
+      "error": "Missing optional budget: favorites-transfer",
+      "path": "dist/favorites-transfer.js"
+    },
+    {
+      "error": "Missing optional budget: favorites-transfer",
+      "path": "src-tauri/frontend/dist/favorites-transfer.js"
+    },
+    {
+      "error": "Missing optional budget: favorites-transfer",
+      "path": "dist-mobile/dist/favorites-transfer.js"
+    }
+  ],
+  "status": "Reviewed measured feature allocation; enforced by classic-size.cjs",
+  "allocation": {
+    "entry": {
+      "bytes": 9300,
+      "gzipBytes": 2400
+    },
+    "plexReferenceHook": {
+      "bytes": 500,
+      "gzipBytes": 150
+    },
+    "optional": {
+      "bytes": 86000,
+      "gzipBytes": 24400
+    },
+    "completeTotalIncrement": {
+      "bytes": 95800,
+      "gzipBytes": 26950
+    }
+  },
+  "previousCaps": {
+    "BUDGET": {
+      "bytes": 1078632,
+      "gzipBytes": 333306
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1221432,
+      "gzipBytes": 385206
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1335032,
+      "gzipBytes": 425834
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1339512,
+      "gzipBytes": 428138
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6000,
+        "gzipBytes": 2000
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "scope": "Persistent current-Plex favorites transfer; excludes the separate unmerged desktop F shortcut feature."
+}

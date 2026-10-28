@@ -5,6 +5,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+    FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+    FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
     ARTIFACTS,
     clearBuildSizeReports,
     collectBundleMeasurement,
@@ -116,7 +119,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1335032, gzipBytes: 425834 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1430832, gzipBytes: 452784 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -129,11 +132,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1339512, gzipBytes: 428138 });
-    assert.deepEqual(BUDGET, { bytes: 1078632, gzipBytes: 333306 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1435312, gzipBytes: 455088 });
+    assert.deepEqual(BUDGET, { bytes: 1087932, gzipBytes: 335706 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1221432,
-        gzipBytes: 385206,
+        bytes: 1231232,
+        gzipBytes: 387756,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -152,6 +155,59 @@ try {
         gzipBytes: 2560,
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    const favoritesEvidence = require("../docs/evidence/favorites-transfer-size-20261028.json");
+    const favoritesDelta = (budget, metric) =>
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE[metric] +
+        (budget === BUDGET ? 0 : FAVORITES_TRANSFER_PLEX_ALLOWANCE[metric]) +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE[metric]
+            : 0);
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] - favoritesEvidence.previousCaps[name][metric],
+                favoritesDelta(budget, metric),
+                "favorites allocation counted exactly once: " + name
+            );
+    assert.deepEqual(
+        PROVIDER_BUDGET,
+        favoritesEvidence.previousCaps.PROVIDER_BUDGET
+    );
+    for (const [name, budget] of Object.entries(
+        favoritesEvidence.previousCaps.OPTIONAL_BUDGETS
+    ))
+        assert.deepEqual(
+            OPTIONAL_BUDGETS[name],
+            budget,
+            "existing optional cap unchanged: " + name
+        );
+    assert.deepEqual(FAVORITES_TRANSFER_ENTRY_ALLOWANCE, {
+        bytes: 9300,
+        gzipBytes: 2400,
+    });
+    assert.deepEqual(FAVORITES_TRANSFER_PLEX_ALLOWANCE, {
+        bytes: 500,
+        gzipBytes: 150,
+    });
+    assert.deepEqual(FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE, {
+        bytes: 86000,
+        gzipBytes: 24400,
+    });
+    assert.equal(
+        OPTIONAL_BUDGETS["favorites-transfer"],
+        FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE
+    );
+    for (const allowance of [
+        FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
+        FAVORITES_TRANSFER_PLEX_ALLOWANCE,
+        FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
+    ])
+        assert(Object.isFrozen(allowance));
     for (const [actual, previous] of [
         [BUDGET, { bytes: 1070440, gzipBytes: 330746 }],
         [LEGACY_TOTAL_BUDGET, { bytes: 1213240, gzipBytes: 382646 }],
@@ -160,7 +216,7 @@ try {
     ])
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
-                actual[key] - previous[key],
+                actual[key] - favoritesDelta(actual, key) - previous[key],
                 LOCAL_STARTUP_PREVIEW_ALLOWANCE[key],
                 "startup preview counted exactly once"
             );
@@ -187,7 +243,10 @@ try {
             startupEvidence.minimumCompleteHeadroom[metric],
             Math.min(
                 ...startupEvidence.canonical.complete.map(
-                    (item) => TOTAL_BUDGET[metric] - item[metric]
+                    (item) =>
+                        TOTAL_BUDGET[metric] -
+                        favoritesDelta(TOTAL_BUDGET, metric) -
+                        item[metric]
                 )
             )
         );
