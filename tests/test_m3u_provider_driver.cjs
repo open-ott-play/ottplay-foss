@@ -32,6 +32,19 @@ function key(f, index, value, slot = 0) {
     f.host.setEdit();
 }
 
+function embeddedPortal(f, driver) {
+    const embedded = f.host.__ottEmbeddedVPortal;
+    assert(embedded);
+    assert.equal(embedded.client, f.host.providerMediaClient);
+    assert.equal(typeof embedded.client.load, "function");
+    assert.equal(f.host.getMediaArray, embedded.client.load);
+    assert.equal(embedded.current(), true);
+    assert.equal(driver.libraryReady(), true);
+    assert.equal(driver.capabilities.libraryOnly, false);
+    assert.equal(f.host.playMedia, f.host._playMedia);
+    return embedded;
+}
+
 test("14 captured M3U catalogs and matching request bodies retain legacy channel identity", () => {
     for (const row of require("./fixtures/playlist/legacy.json").cases) {
         const f = fixture(),
@@ -48,6 +61,12 @@ test("14 captured M3U catalogs and matching request bodies retain legacy channel
         delete expected.epgConfig;
         delete expected.epgBody;
         delete expected.logoBody;
+        // These captures store explicit tvg-id (or empty) in epg before matching.
+        // Add the driver-only identity to the oracle, retaining every legacy field.
+        for (const channel of Object.values(expected.channels)) {
+            assert.equal(typeof channel.epg, "string", row.input);
+            channel.__ottFavoriteTvgId = channel.epg;
+        }
         assert.deepEqual(actual, expected, row.input);
         for (const [suffix, body] of [
             ["channels", contract.epgBody],
@@ -837,7 +856,7 @@ test("settings editors mask portal keys, guard stale handlers, import files and 
     assert.equal(f.edits.length, count);
 });
 
-test("legacy portal slots stay inert through startup, refresh and slot changes without affecting TV", () => {
+test("embedded portal slots stay lazy through startup, refresh and slot changes without affecting TV", () => {
     for (const dune of [false, true]) {
         const f = fixture({
             config: {
@@ -854,20 +873,24 @@ test("legacy portal slots stay inert through startup, refresh and slot changes w
             },
             dune,
         });
-        const before = f.saved.get("m3um3uArr");
+        const before = [...f.saved];
         const driver = f.start();
+        const first = embeddedPortal(f, driver);
         f.host.duneAddSettings(0);
         f.host.m3uUpdateMedia();
-        assert.equal(f.saved.get("m3um3uArr"), before);
-        assert.equal(f.host.providerMediaClient, null);
-        assert.equal(f.host.getMediaArray, null);
-        assert.equal(f.host.playMedia, f.host._playMedia);
+        assert.deepEqual([...f.saved], before);
+        assert.equal(embeddedPortal(f, driver), first);
         assert.equal(f.requests.length, 0);
         f.host.providerSetItem("medHistory", "saved-history");
         f.host.selectAndRestart(1);
         assert.equal(f.saved.get("m3umedHistory"), "saved-history");
-        assert.equal(f.host.providerMediaClient, null);
-        assert.equal(f.host.getMediaArray, null);
+        assert.equal(driver.storageKey("medHistory"), "m3umedHistory1");
+        assert.notEqual(embeddedPortal(f, driver), first);
+        assert.equal(first.current(), false);
+        let staleCompleted = 0;
+        first.client.load("", () => staleCompleted++);
+        assert.equal(staleCompleted, 0);
+        assert.equal(f.requests.length, 0);
         let completed = 0;
         let catalog;
         driver.load((value) => {
@@ -1217,6 +1240,7 @@ test("M3U settings hide legacy portal configuration and preserve it during ordin
         },
     });
     const driver = f.start();
+    const embedded = embeddedPortal(f, driver);
     f.host.providerSetItem("medHistory", "saved-history");
     f.host.doEditListData(0);
     assert.equal(f.host.listArray.length, 5);
@@ -1235,7 +1259,7 @@ test("M3U settings hide legacy portal configuration and preserve it during ordin
     assert.equal(slot.medUrl, portal);
     assert.equal(slot.medSourceId, "keep-source");
     assert.equal(f.saved.get("m3umedHistory"), "saved-history");
-    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(embeddedPortal(f, driver), embedded);
     assert.equal(f.requests.length, 0);
 });
 
@@ -1308,7 +1332,7 @@ test("guide projection stops refreshing the old view when a row callback replace
     }
 });
 
-test("programmatic and raw legacy portal changes stay inactive and preserve source identity", () => {
+test("programmatic and raw embedded portal changes stay lazy and preserve source identity", () => {
     for (const raw of [false, true]) {
         const f = fixture({
             config: {
@@ -1323,6 +1347,7 @@ test("programmatic and raw legacy portal changes stay inactive and preserve sour
             },
         });
         const driver = f.start();
+        const first = embeddedPortal(f, driver);
         const cfg = driver.configuration();
         cfg.M3Us[0].medUrl = secondPortal;
         if (raw) {
@@ -1331,13 +1356,18 @@ test("programmatic and raw legacy portal changes stay inactive and preserve sour
         } else driver.saveConfiguration(cfg);
         assert.equal(driver.configuration().M3Us[0].medSourceId, "keep-source");
         assert.equal(driver.configuration().M3Us[0].medUrl, secondPortal);
-        assert.equal(f.host.providerMediaClient, null);
-        assert.equal(f.host.getMediaArray, null);
+        const second = embeddedPortal(f, driver);
+        assert.notEqual(second, first);
+        assert.equal(first.current(), false);
+        const saved = [...f.saved];
+        f.host.m3uUpdateMedia();
+        assert.equal(embeddedPortal(f, driver), second);
+        assert.deepEqual([...f.saved], saved);
         assert.equal(f.requests.length, 0);
     }
 });
 
-test("switching a Dune catalog to a legacy portal cancels pending loading and keeps its stored value", () => {
+test("switching a Dune catalog to an embedded portal cancels pending loading and keeps its stored value", () => {
     const f = fixture({
         config: {
             active: 0,
@@ -1358,8 +1388,7 @@ test("switching a Dune catalog to a legacy portal cancels pending loading and ke
     cfg.M3Us[0].medUrl = portal;
     driver.saveConfiguration(cfg);
     assert.equal(pending.aborts, 1);
-    assert.equal(f.host.getMediaArray, null);
-    assert.equal(f.host.providerMediaClient, null);
+    embeddedPortal(f, driver);
     assert.equal(f.panels["#dialogbox"].visible, false);
     pending.resolve(
         '{"channels":[{"title":"Late","stream_url":"https://old.test/movie"}]}'
