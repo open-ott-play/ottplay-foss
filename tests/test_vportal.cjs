@@ -1197,6 +1197,102 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
     assert.equal(JSON.parse(native.requests[0].options.data).params, undefined);
 }
 
+// Foreground and quiet pagination preserve inherited folder metadata without
+// changing whole-catalog collection or its retained metadata budget.
+for (const mode of ["load", "page"]) {
+    const f = fixture({}, { sourceId: "paged-source" });
+    const synopsis = "Inherited full synopsis ".repeat(20) + "END-PARENT";
+    f.client.load("", () => {});
+    f.requests.at(-1).receive({
+        type: "videoportal",
+        items: [
+            {
+                type: "multistream",
+                title: "Series",
+                description: synopsis,
+                img: "../posters/series.jpg",
+                year: "2026",
+                adult: 1,
+                request: { cmd: "episodes", id: 7 },
+            },
+        ],
+    });
+    const folder = f.w.mediaRecords[0].playlist_url;
+    const originalFolder = JSON.stringify(folder);
+    f.client.load(folder, () => {});
+    f.requests.at(-1).receive({
+        type: "category",
+        items: [
+            { type: "stream", title: "First", request: { cmd: "play", id: 1 } },
+            { type: "next", request: { offset: 300 } },
+        ],
+    });
+    const first = f.w.mediaRecords[0];
+    assert.equal(first.title, "Series - First");
+    assert(first.description.endsWith("END-PARENT"));
+    assert(first.description.includes("2026"));
+    assert.equal(first.adult, 1);
+    assert.equal(
+        first.logo_30x30,
+        "http://portal.example/api/posters/series.jpg"
+    );
+    const cursor = f.w.mediaRecords[1].playlist_url;
+    assert.equal(cursor.request.cmd, "episodes");
+    assert.equal(cursor.request.id, 7);
+    assert.equal(cursor.request.offset, 300);
+    assert.equal(cursor.vportalSource, "paged-source");
+    const visibleBefore = JSON.stringify(f.w.mediaRecords);
+    let next;
+    if (mode === "page")
+        f.client.page(cursor, (value) => {
+            next = value.items;
+        });
+    else
+        f.client.load(cursor, () => {
+            next = f.w.mediaRecords;
+        });
+    const request = f.requests.at(-1);
+    assert.equal(JSON.parse(request.options.data).params.offset, 300);
+    request.receive({
+        type: "category",
+        items: [
+            {
+                type: "stream",
+                title: "Second",
+                request: { cmd: "play", id: 2 },
+            },
+            {
+                type: "stream",
+                title: "Own",
+                description: "Own synopsis",
+                img: "/own.jpg",
+                request: { cmd: "play", id: 3 },
+            },
+        ],
+    });
+    assert.equal(next[0].title, "Series - Second");
+    assert(next[0].description.endsWith("END-PARENT"));
+    assert.equal(next[0].adult, 1);
+    assert.equal(next[0].logo_30x30, first.logo_30x30);
+    assert(next[1].description.endsWith("Own synopsis"));
+    assert(!next[1].description.includes("END-PARENT"));
+    assert.equal(next[1].logo_30x30, "http://portal.example/own.jpg");
+    assert.equal(
+        JSON.stringify(folder),
+        originalFolder,
+        "inherited input is immutable"
+    );
+    if (mode === "page")
+        assert.equal(
+            JSON.stringify(f.w.mediaRecords),
+            visibleBefore,
+            "quiet paging does not replace the foreground"
+        );
+}
+console.log(
+    "PASS VPortal folder metadata survives foreground and quiet pagination"
+);
+
 // Incremental pages own a quiet transport lane, including while complete
 // search collection and automatic playback are active.
 {

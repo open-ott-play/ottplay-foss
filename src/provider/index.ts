@@ -250,6 +250,11 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Side effects: DOM mutations to #pn{chId}, #pr{chId}.
  * Called as the EPG callback from observeCurrentProgramme.
  */
+function stopSourcePlayback(): void {
+    var stop = (window as any).__ottCoreTransport?.stopForSource;
+    if (typeof stop === "function") stop();
+    else stbStop();
+}
 function updateChannelListRow(chId: string): void {
     var ch = channels[chId as any];
     if (!ch && (window as any).channels) ch = (window as any).channels[chId];
@@ -1030,7 +1035,7 @@ export function loadProv(
         }
 
         if (!$("#launch").is(":visible")) {
-            if (stbIsPlaying()) stbStop();
+            if (stbIsPlaying()) stopSourcePlayback();
             $("#dialogbox")
                 .html(
                     '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
@@ -1402,7 +1407,7 @@ export function loadChannels(): void {
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
     if (libraryLoading || !$("#launch").is(":visible")) {
-        if (stbIsPlaying()) stbStop();
+        if (stbIsPlaying()) stopSourcePlayback();
         $("#dialogbox")
             .html(
                 '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center>'
@@ -1463,6 +1468,14 @@ export function loadChannels(): void {
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
     }
+    (window as any).__ottCommandChannelCancel = {
+        owner: commandLoad,
+        cancel: function () {
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            catalogSession.dispose();
+            dismissLoading();
+        },
+    };
     // Managed drivers settle explicitly, including credential editors. Only
     // dealer scripts that may omit their callback need the compatibility timer.
     if (!driverOwned) loadTimer = setTimeout(dismissLoading, 3000);
@@ -1516,6 +1529,8 @@ export function selectProviderByIndex(index: number): boolean {
         !localMedia.finishSession(id === "offline")
     )
         return false;
+    if (!(window as any).__ottGlobalFavoritesHandoff?.current())
+        (window as any).__ottGlobalFavorites?.navigation?.retire();
     if (!ephemeral && stbGetItem("ottplayprov") === id) return true;
     var recent: string[] = [];
     try {
@@ -2115,6 +2130,13 @@ export function getChannelsArray(
  * - If stbPlayPip exists, a PiP button is added to the footer.
  */
 function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
+    if (
+        !view &&
+        (window as any).__ottChannels?.group(catIdx) === "system:favorites" &&
+        typeof (window as any).openGlobalFavorites === "function" &&
+        (window as any).openGlobalFavorites() !== false
+    )
+        return;
     if (!view && catsArray[catIdx] === undefined) {
         infoBox(
             _(
@@ -2136,6 +2158,11 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
     listCatIndex = catIdx;
     listArray = view ? view.rows : cats[catsArray[listCatIndex]] || [];
     var wglob = window as any;
+    if (
+        (!view || view.id !== "system:global-favorites") &&
+        !wglob.__ottGlobalFavoritesHandoff?.current()
+    )
+        wglob.__ottGlobalFavorites?.navigation?.retire();
     function channelRow(id: string): any {
         return view ? view.channel(id) : channels[id];
     }

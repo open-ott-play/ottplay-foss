@@ -449,6 +449,7 @@ function createOfflineDriver(
                 var storage = host.ottpStorage;
                 if (
                     imported ||
+                    host.__ottGlobalFavoritesHandoff?.blocks() ||
                     host.__ottKiosk?.enabled?.() ||
                     host.__ottParental?.needs?.("channels") ||
                     !storage?.localPlayback?.preview ||

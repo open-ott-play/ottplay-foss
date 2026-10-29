@@ -509,6 +509,45 @@ function captureFavoriteTransfer(readonly?: any): any {
 if (typeof window !== "undefined")
     (window as any).__ottFavoritesLibrary = {
         document: favoriteLibraryDocument,
+        captureGlobal: function () {
+            var w = window as any,
+                owner = favoritesOwner,
+                generation = favoritesGeneration,
+                source = favoritesSource;
+            var get = w.providerGetItem;
+            if (!owner || !owner() || typeof get !== "function") return null;
+            var capturedOwner: () => boolean = owner;
+            try {
+                var key = "favoritesLibrary:" + source,
+                    raw = get.call(w, key);
+                if (typeof raw !== "string" || raw.length > 1048576)
+                    return null;
+                var document = JSON.parse(raw);
+                if (
+                    document.version !== 2 ||
+                    document.sourceId !== source ||
+                    JSON.stringify(document) !==
+                        JSON.stringify(favoriteLibraryDocument())
+                )
+                    return null;
+                var current = function () {
+                    return (
+                        capturedOwner === favoritesOwner &&
+                        generation === favoritesGeneration &&
+                        source === favoritesSource &&
+                        get === w.providerGetItem &&
+                        capturedOwner() &&
+                        get.call(w, key) === raw &&
+                        capturedOwner()
+                    );
+                };
+                return current()
+                    ? { document: document, raw: raw, current: current }
+                    : null;
+            } catch (_) {
+                return null;
+            }
+        },
         reset: function () {
             favoritesGeneration++;
             favoritesOwner = null;

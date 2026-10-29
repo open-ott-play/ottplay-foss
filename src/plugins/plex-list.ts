@@ -311,6 +311,24 @@ function createPlexList(ports: any): any {
         ];
         var byGroup: any = Object.create(null);
         byGroup["system:all"] = groups[0];
+        var favoriteIds: any = Object.create(null);
+        {
+            // Global Favorites is a cross-source view, including when local edits are disabled.
+            var saved = ports.journal.peek();
+            if (!active()) return true;
+            if (saved.document)
+                saved.document.favorites.forEach(function (row: any) {
+                    if (row.sourceId === ports.source)
+                        favoriteIds[row.itemId] = true;
+                });
+            groups.push(
+                (byGroup["system:favorites"] = {
+                    id: "system:favorites",
+                    name: w._("Favorites"),
+                    members: [],
+                })
+            );
+        }
         frame.items.forEach(function (item: MediaLibraryItem, index: number) {
             if (!ports.playable(item)) return;
             var id = "plex-row-" + index;
@@ -323,6 +341,12 @@ function createPlexList(ports: any): any {
                 rec: 0,
             };
             entries[id] = { index: index, item: item };
+            if (
+                byGroup["system:favorites"] &&
+                item.ref.sourceId === ports.source &&
+                favoriteIds[item.ref.itemId]
+            )
+                byGroup["system:favorites"].members.push(id);
             var memberships = Array.isArray(payload.__ottMediaCategories)
                 ? payload.__ottMediaCategories
                 : [];
@@ -408,6 +432,12 @@ function createPlexList(ports: any): any {
             );
         }
         function showChannels(): void {
+            if (
+                groups[groupIndex].id === "system:favorites" &&
+                w.openGlobalFavorites &&
+                w.openGlobalFavorites() !== false
+            )
+                return;
             var token = ++screenToken;
             var members = groups[groupIndex].members;
             var index = members.indexOf("plex-row-" + selectedFrameIndex);
@@ -527,6 +557,12 @@ function createPlexList(ports: any): any {
                                   ? key - keys.N1
                                   : -1;
                         if (index >= 0 && index < groups.length) {
+                            if (
+                                groups[index].id === "system:favorites" &&
+                                w.openGlobalFavorites &&
+                                w.openGlobalFavorites() !== false
+                            )
+                                return true;
                             groupIndex = index;
                             plexCategoryId = groups[index].id;
                             showChannels();

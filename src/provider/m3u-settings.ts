@@ -73,6 +73,10 @@ function mountM3uProviderSettings(
         if (typeof host.cancelMediaLoad === "function") host.cancelMediaLoad();
         if (!active() || revision !== mediaRevision) return;
         resetMediaView();
+        driver.capabilities.libraryOnly = false;
+        driver.libraryReady = function () {
+            return false;
+        };
         mediaKey = key;
         function current(): boolean {
             return (
@@ -83,8 +87,31 @@ function mountM3uProviderSettings(
                 host.getMediaArray === client.load
             );
         }
-        // Legacy portal links are inert; VPortal has its own provider profile.
-        if (!source || /^portal:/i.test(source.trim())) return;
+        if (!source) return;
+        if (/^portal:/i.test(source.trim())) {
+            if (!host.__ottVPortal?.parse(source)) return;
+            client = host.__ottVPortal.create(source, {
+                sourceId: host.__ottSourceIdentity.media(host),
+                title: slot.name || "VPortal",
+                isCurrent: current,
+            });
+            if (!client) return;
+            host.providerMediaClient = client;
+            host.getMediaArray = client.load;
+            var embedded = {
+                client: client,
+                current: current,
+                label: "VPortal",
+            };
+            host.__ottEmbeddedVPortal = embedded;
+            driver.capabilities.libraryOnly = !slot.www.trim();
+            driver.libraryReady = current;
+            owner.own(function () {
+                if (host.__ottEmbeddedVPortal === embedded)
+                    host.__ottEmbeddedVPortal = null;
+            });
+            return;
+        }
         if (host.browserName() === "dune") {
             var loadRevision = 0;
             var busyView: any = null;
@@ -562,6 +589,12 @@ function mountM3uProviderSettings(
 }
 
 function reportM3uProviderLoad(host: any, driver: any, error: string): boolean {
+    if (
+        error === "m3u-empty" &&
+        host.__ottEmbeddedVPortal?.current() &&
+        driver.capabilities.libraryOnly
+    )
+        return true;
     if (error === "m3u-empty") {
         host.$(host.launch_id).hide();
         if (typeof host.clearBootHide === "function") host.clearBootHide();

@@ -1547,6 +1547,28 @@ export function installLocalMedia(w: any): any {
         settingsRevision: function () {
             return catalogRevision;
         },
+        favoriteSnapshot: function () {
+            var captured = last,
+                revision = catalogRevision,
+                library = libraryIdentity();
+            if (
+                !captured ||
+                captured.cancelled ||
+                captured.scanError ||
+                captured.reconnectRequired
+            )
+                return null;
+            return {
+                catalog: JSON.parse(JSON.stringify(captured)),
+                current: function () {
+                    return (
+                        last === captured &&
+                        catalogRevision === revision &&
+                        libraryIdentity() === library
+                    );
+                },
+            };
+        },
         snapshot: function () {
             // Profile operations must never replace the provider's active scan.
             // Only a completed catalog describes every connected source.

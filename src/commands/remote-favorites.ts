@@ -1,4 +1,8 @@
 import {
+    executeLegacySharedFavorites,
+    ensureGlobalFavorites,
+} from "./remote-favorites-global";
+import {
     checkProviderUrl,
     isProviderAllowed,
     providerIds,
@@ -113,15 +117,8 @@ function favoriteRead(w: any): any[] {
     });
     return parsed.entries;
 }
-function favoriteWrite(w: any, entries: any[]): void {
-    var text = JSON.stringify({ entries: entries, version: 1 });
-    if (typeof w.stbGetPersistedItem !== "function") throw new Error();
-    w.stbSetItem(favoriteStorageKey, text);
-    if (
-        w.stbGetPersistedItem(favoriteStorageKey) !== text ||
-        w.stbGetItem(favoriteStorageKey) !== text
-    )
-        throw new Error();
+function favoriteWrite(_w: any, _entries: any[]): never {
+    throw new Error("Legacy writes require the shared held storage facade");
 }
 function favoriteLocked(w: any): boolean {
     return !!(
@@ -140,7 +137,8 @@ export function executeRemoteFavorites(
     w: any,
     runtime: string,
     request: any,
-    done: (result: any) => void
+    done: (result: any) => void,
+    selectedOverride?: any
 ): (() => void) | void {
     var params = request.params || {};
     var op = params.op;
@@ -202,6 +200,52 @@ export function executeRemoteFavorites(
         finish("invalid_request");
         return;
     }
+    if (selectedOverride && op !== "play") {
+        finish("invalid_request");
+        return;
+    }
+    var storedGlobal = false;
+    try {
+        storedGlobal =
+            JSON.parse(w.stbGetPersistedItem(favoriteStorageKey) || "null")
+                ?.version === 2;
+    } catch (_) {}
+    if (
+        !selectedOverride &&
+        !w.__ottGlobalFavoritesFacade &&
+        (storedGlobal || op === "add" || op === "remove")
+    ) {
+        var loading = ensureGlobalFavorites(
+            w,
+            runtime,
+            request.expires_at,
+            function (error) {
+                if (complete) return;
+                if (error || !w.__ottGlobalFavoritesFacade) {
+                    finish("unsupported");
+                    return;
+                }
+                complete = true;
+                inner = executeRemoteFavorites(w, runtime, request, done);
+            }
+        );
+        return function () {
+            loading();
+            if (inner) inner();
+            else stop();
+        };
+    }
+    // Installed atomically with the v2 store: never rewrite a limited legacy projection.
+    if (w.__ottGlobalFavoritesFacade && !selectedOverride)
+        return executeLegacySharedFavorites(
+            w,
+            runtime,
+            request,
+            done,
+            function () {
+                return !favoriteLocked(w) && w.sFavorites !== -1;
+            }
+        );
     if (favoriteRequestActive) {
         finish("busy");
         return;
@@ -209,7 +253,7 @@ export function executeRemoteFavorites(
     favoriteRequestActive = owns = true;
     var entries: any[];
     try {
-        entries = favoriteRead(w);
+        entries = selectedOverride ? [selectedOverride] : favoriteRead(w);
     } catch (_) {
         finish("storage_unavailable");
         return;
@@ -808,4 +852,144 @@ export function executeRemoteFavorites(
     }
     advance();
     return stop;
+}
+
+/** Legacy capture without any favorites writes. */
+export function captureLegacyCurrentFavorite(w: any): any {
+    var profile = favoriteProfile(w),
+        source = w.__ottSourceIdentity.current(w),
+        load = w.__ottCommandChannelLoad;
+    if (!profile || w.commandChannelsReady !== true)
+        throw new Error("profile_unavailable");
+    var state = w.__ottClassicPlayback && w.__ottClassicPlayback.snapshot();
+    if (
+        !state ||
+        !state.target ||
+        state.phase === "idle" ||
+        state.phase === "stopped"
+    ) {
+        throw new Error("no_current_item");
+    }
+    var target = state.target;
+    var entry: any = Object.assign({}, profile, { source: source });
+    if (target.kind === "live") {
+        if (target.sourceId !== source) {
+            throw new Error("context_changed");
+        }
+        var codec = w.__ottChannelReferences.create(
+            w.channels,
+            w.__ottLegacyChannelAliases
+        );
+        var ref = /^-?\d+$/.test(String(target.channelId))
+            ? codec.resolve(target.channelId, "canonical")
+            : { itemId: target.channelId };
+        var id = codec.project(ref);
+        if (id === null) {
+            throw new Error("item_unavailable");
+        }
+        if (!favoriteText(w.channels[id].itemId, 8192)) {
+            throw new Error("unsupported_item");
+        }
+        if (
+            typeof w.hasParentalLock === "function" &&
+            w.hasParentalLock(id) &&
+            (w.__ottParental
+                ? w.__ottParental.needs("channels")
+                : w.sPSchannels && w.parentPIN !== "*" && !w.parentAccess)
+        ) {
+            throw new Error("policy_denied");
+        }
+        entry.kind = "live";
+        entry.ref = ref;
+        entry.title = favoriteLabel(
+            w.channels[id].channel_name || "Channel",
+            512
+        );
+    } else if (target.kind === "vod") {
+        var playing = w.__ottMedia && w.__ottMedia.current();
+        if (
+            !playing ||
+            playing.ref.sourceId !== target.sourceId ||
+            playing.ref.itemId !== target.channelId
+        ) {
+            throw new Error("no_current_item");
+        }
+        if (
+            Number(playing.payload.adult) === 1 &&
+            (w.__ottParental
+                ? w.__ottParental.needs("channels")
+                : w.sPSchannels && w.parentPIN !== "*" && !w.parentAccess)
+        ) {
+            throw new Error("policy_denied");
+        }
+        if (
+            /^catalog:/.test(playing.ref.itemId) ||
+            (!playing.payload.request && !playing.payload.__ottMediaOrigin)
+        ) {
+            throw new Error("unsupported_item");
+        }
+        if (typeof w.__ottMedia.captureFavorite !== "function") {
+            throw new Error("unsupported");
+        }
+        var plex = playing.payload.plexSource;
+        if (plex) {
+            var match =
+                playing.payload.request &&
+                /^\/library\/metadata\/([1-9][0-9]{0,19})$/.exec(
+                    playing.payload.request.path
+                );
+            if (
+                !match ||
+                !w.__ottPlex ||
+                w.__ottPlex.configuredSource(w, w.stbGetItem("plexcfg")) !==
+                    target.sourceId
+            ) {
+                throw new Error("profile_changed");
+            }
+            entry.plex_id = match[1];
+        } else if (
+            playing.context ||
+            target.sourceId !== w.__ottSourceIdentity.media(w)
+        ) {
+            throw new Error("unsupported_item");
+        }
+        var media = {
+            ref: playing.ref,
+            title: playing.payload.title || playing.payload.name || "Media",
+        };
+        entry.kind = "vod";
+        entry.ref = media.ref;
+        entry.title = favoriteLabel(media.title, 512) || "Media";
+    } else {
+        throw new Error("unsupported_item");
+    }
+
+    function current() {
+        var next = favoriteProfile(w);
+        return (
+            !favoriteLocked(w) &&
+            w.sFavorites !== -1 &&
+            w.commandChannelsReady === true &&
+            load === w.__ottCommandChannelLoad &&
+            source === w.__ottSourceIdentity.current(w) &&
+            next &&
+            next.provider === profile.provider &&
+            next.profile_number === profile.profile_number &&
+            w.__ottClassicPlayback.snapshot().generation === state.generation
+        );
+    }
+    if (!current()) throw new Error("context_changed");
+    entry.name = favoriteLabel(entry.title, 160) || "Favorite";
+    return { entry: entry, current: current };
+}
+export function executeLegacyFavoriteTarget(
+    w: any,
+    runtime: string,
+    request: any,
+    done: (result: any) => void,
+    entry: any
+): (() => void) | void {
+    if (request.params.op !== "play" || !favoriteValid(entry))
+        throw new Error("invalid_request");
+    return executeRemoteFavorites(w, runtime, request, done, entry);
 }

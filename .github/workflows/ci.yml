@@ -282,7 +282,40 @@ jobs:
         run: npm run test:hosted:browser
 
       - name: Test device boot and remote navigation in Chromium
-        run: npm run test:devices:browser
+        id: device-browser
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: build/global-favorites-browser-ci/playwright.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: build/device-browser-report
+          PLAYWRIGHT_HTML_OPEN: never
+        run: |
+          mkdir -p build/global-favorites-browser-ci
+          rm -f build/global-favorites-browser-ci/playwright.json build/global-favorites-browser-ci/verdict.json
+          npm run test:devices:browser -- --reporter=list,html,json
+
+      - name: Verify mixed Favorites browser evidence
+        if: always()
+        timeout-minutes: 1
+        env:
+          BROWSER_STEP_OUTCOME: ${{ steps.device-browser.outcome }}
+        run: >-
+          python3 scripts/verify-global-favorites-browser.py
+          --report build/global-favorites-browser-ci/playwright.json
+          --output build/global-favorites-browser-ci/verdict.json
+          --browser-outcome "$BROWSER_STEP_OUTCOME"
+
+      # Later WebKit tests reuse the report/results directories. Preserve this
+      # Chromium run, including a negative verdict, before those steps run.
+      - name: Upload mixed Favorites browser evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: global-favorites-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/global-favorites-browser-ci/
+            build/device-browser-report/
+            build/device-browser-results/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Check out the pinned Home Assistant controller fixture
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

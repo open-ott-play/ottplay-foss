@@ -6,8 +6,8 @@ interface VPortalProviderDriver extends ProviderDriver {
     configurationChanged(): void;
     mediaClient(): any;
     mediaItem(id: string | number): any;
-    remoteProfiles?(request: any): any;
-    saveConfiguration(value: any): boolean;
+    remoteProfiles?(request: any, admission?: () => boolean): any;
+    saveConfiguration(value: any, admission?: () => boolean): boolean;
 }
 
 function normalizeVPortalSections(value: any): any[] | null {
@@ -153,8 +153,11 @@ function createVPortalProviderDriver(
             return false;
         }
     }
-    function saveConfiguration(value: any): boolean {
-        return operations.run(function (current: () => boolean) {
+    function saveConfiguration(value: any, admission?: () => boolean): boolean {
+        return operations.run(function (sourceCurrent: () => boolean) {
+            function current(): boolean {
+                return sourceCurrent() && (!admission || admission());
+            }
             if (
                 !value ||
                 !Array.isArray(value.portals) ||
@@ -519,7 +522,7 @@ function mountVPortalProvider(
             )
         );
     }
-    driver.remoteProfiles = function (request: any) {
+    driver.remoteProfiles = function (request: any, admission?: () => boolean) {
         function fail(message: string): any {
             return { data: { error: message }, status: "rejected" };
         }
@@ -549,7 +552,7 @@ function mountVPortalProvider(
                 status: "ok",
             };
         }
-        if (locked())
+        if (locked() || (admission && !admission()))
             return fail(
                 "Unlock provider settings and kiosk on the player first."
             );
@@ -612,15 +615,22 @@ function mountVPortalProvider(
         if (reload && typeof host.loadChannels !== "function")
             return fail("The provider reload lifecycle is unavailable.");
         if (
-            !driver.saveConfiguration(config) ||
+            !driver.saveConfiguration(config, admission) ||
             !active() ||
             JSON.stringify(driver.configuration!()) !== JSON.stringify(config)
         )
             return fail("Could not complete the profile save.");
         revision++;
         closeEditorClient();
-        if (reload) host.loadChannels();
+        if (reload) {
+            if (admission && !admission())
+                return fail(
+                    "The profile operation was cancelled before reload."
+                );
+            host.loadChannels();
+        }
         if (
+            (admission && !admission()) ||
             !active() ||
             JSON.stringify(driver.configuration!()) !== JSON.stringify(config)
         )

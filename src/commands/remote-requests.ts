@@ -1,4 +1,17 @@
 import {
+    executeGlobalFavoritesItems,
+    globalFavoritesItemsCapability,
+} from "./remote-favorites-global-items";
+import {
+    executeGlobalFavoritesRecovery,
+    globalFavoritesRecoveryCapability,
+} from "./remote-favorites-global-recovery";
+import {
+    executeGlobalFavorites,
+    globalFavoritesCapability,
+    legacyFavoritesCapability,
+} from "./remote-favorites-global";
+import {
     isProviderAllowed,
     providerIds,
     providerLabels,
@@ -393,6 +406,27 @@ export function executeRemoteRequest(
         return executeRemoteSettings(w, request, done, afterReply);
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
+    if (request.action === "favorites_global_items")
+        return executeGlobalFavoritesItems(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
+    if (request.action === "favorites_global_recovery")
+        return executeGlobalFavoritesRecovery(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
+    if (request.action === "favorites_global")
+        return executeGlobalFavorites(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
     if (request.action === "favorites")
         return executeRemoteFavorites(
             w,
@@ -1000,6 +1034,18 @@ export function executeRemoteRequest(
         ) >= 0
     ) {
         var controlCancelled = false;
+        var controlRuntime = remotePlayerInfo(w).runtime;
+        var controlDeadline =
+            request.expires_at === undefined
+                ? Infinity
+                : Math.floor(request.expires_at * 1000);
+        var controlCurrent = function (): boolean {
+            return (
+                !controlCancelled &&
+                remotePlayerInfo(w).runtime === controlRuntime &&
+                Date.now() < controlDeadline
+            );
+        };
         var cancelCapability: (() => void) | undefined;
         var cancelControl = executeRemoteControl(
             w,
@@ -1008,6 +1054,10 @@ export function executeRemoteRequest(
             request.action === "capabilities"
                 ? function (result: any) {
                       if (controlCancelled) return;
+                      if (!controlCurrent()) {
+                          done(result);
+                          return;
+                      }
                       if (result.status === "ok" && result.data)
                           result.data.notifications = {
                               operations: ["get", "set"],
@@ -1038,6 +1088,27 @@ export function executeRemoteRequest(
                               },
                               function (capability, recoveryCapability) {
                                   if (controlCancelled) return;
+                                  if (!controlCurrent()) {
+                                      done(result);
+                                      return;
+                                  }
+                                  var globalFavorites =
+                                      globalFavoritesCapability(w);
+                                  if (globalFavorites)
+                                      result.data.favorites_global =
+                                          globalFavorites;
+                                  var globalItems =
+                                      globalFavoritesItemsCapability(w);
+                                  if (globalItems)
+                                      result.data.favorites_global_items =
+                                          globalItems;
+                                  var globalRecovery =
+                                      globalFavoritesRecoveryCapability(w);
+                                  if (globalRecovery)
+                                      result.data.favorites_global_recovery =
+                                          globalRecovery;
+                                  result.data.favorites =
+                                      legacyFavoritesCapability(w);
                                   if (capability)
                                       result.data.favorites_transfer =
                                           capability;

@@ -14,6 +14,9 @@ const scope = {
 };
 const real = new Set([
     "src/commands/remote-requests.ts",
+    "src/commands/remote-favorites-global.ts",
+    "src/commands/remote-favorites-global-items.ts",
+    "src/commands/remote-favorites-global-recovery.ts",
     "src/commands/remote-restart.ts",
     "src/commands/remote-favorites-transfer.ts",
     "src/commands/remote-feature.ts",
@@ -69,6 +72,7 @@ function fixture() {
             return id;
         },
         stbGetItem: () => "",
+        stbGetPersistedItem: () => null,
     };
     const adapter = {
         inspect: async () => {
@@ -601,6 +605,8 @@ async function scenario(name, run) {
                 );
                 assert.equal(baseline.length, 1);
                 const expected = baseline[0];
+                // This fixture has no global writer; legacy reads/play remain available.
+                expected.data.favorites.operations = ["list", "play"];
                 expected.data.notifications = {
                     operations: ["get", "set"],
                     version: 1,
@@ -711,6 +717,20 @@ async function scenario(name, run) {
             assert.equal(f.stats.inspections, 0);
             assert.equal(f.stats.writes, 0);
             assert.equal(f.stats.catalogs, 0);
+            for (const key of [
+                "favorites_global",
+                "favorites_global_items",
+                "favorites_global_recovery",
+            ])
+                assert.equal(
+                    result.data[key],
+                    undefined,
+                    "legacy transfer fixture has no global host"
+                );
+            assert.deepEqual(result.data.favorites.operations, [
+                "list",
+                "play",
+            ]);
         }
     );
     await scenario(

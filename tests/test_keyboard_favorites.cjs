@@ -108,6 +108,11 @@ for (const provider of ["m3u", "offline"]) {
         0,
         "playing identity survives reorder"
     );
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + One", "Favorites: − One"],
+        provider + " emits exactly one named success per TV toggle"
+    );
 }
 for (const provider of ["m3u", "offline", "plex", "vportal"]) {
     const c = fixture();
@@ -187,6 +192,28 @@ for (const provider of ["m3u", "offline", "plex", "vportal"]) {
         c.documentState().favorites.length,
         0,
         provider + " fullscreen remove"
+    );
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        [
+            "Favorites: + Same title",
+            "Favorites: − Same title",
+            "Favorites: + Same title",
+            "Favorites: − Same title",
+        ],
+        provider +
+            " focused/fullscreen media feedback is named and never doubled"
+    );
+    const captured = c.__ottMedia.captureFavorite();
+    assert(
+        captured,
+        provider + " non-toggle capture still returns the reference"
+    );
+    assert.equal(c.documentState().favorites.length, 1);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        4,
+        provider + " internal non-toggle capture stays silent"
     );
 }
 {
@@ -485,6 +512,118 @@ for (const mode of [
         Array.from(c.favoritesArray),
         [101],
         "no blind RAM rollback after potentially uncertain writes"
+    );
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        0,
+        "failed or uncertain TV persistence never shows success: " + mode
+    );
+}
+// Removing in the favorites view still acknowledges the persisted item,
+// before its row is removed from the active selection.
+{
+    const c = fixture();
+    c.mediaList(null);
+    c.selectMedia(1);
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.mediaKeyHandler(c.keys.RETURN);
+    c.selectMedia(
+        c.listArray.findIndex((item) => item.__ottMediaRoute === "favorites")
+    );
+    c.mediaKeyHandler(c.keys.GREEN);
+    assert.equal(c.documentState().favorites.length, 0);
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + Nested movie", "Favorites: − Nested movie"]
+    );
+}
+// Feedback uses the current display name and the existing localized label.
+{
+    const c = television(),
+        press = keyboard(c);
+    c._ = (text) => (text === "Favorites" ? "Избранное" : text);
+    press();
+    c.channels[101].channel_name = "Renamed channel";
+    press();
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Избранное: + One", "Избранное: − Renamed channel"]
+    );
+}
+// showShift accepts safe HTML: inserted names must be escaped exactly once.
+{
+    const title = "<b>A & B</b> &amp;",
+        escaped = "&lt;b&gt;A &amp; B&lt;/b&gt; &amp;amp;";
+    const c = television(),
+        press = keyboard(c);
+    c.channels[101].channel_name = title;
+    press();
+    press();
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + " + escaped, "Favorites: − " + escaped],
+        "TV name is literal text, including literal entity syntax"
+    );
+    const media = fixture();
+    media.mediaList(-1);
+    const item = {
+        __ottMediaRef: {
+            itemId: "provider:literal-title",
+            sourceId: media.__ottMedia.sourceId(),
+        },
+        request: { path: "/library/metadata/42" },
+        title,
+    };
+    media.__ottMedia.toggleFavorite(item);
+    media.__ottMedia.toggleFavorite(item);
+    assert.deepEqual(
+        media.calls
+            .filter((call) => call[0] === "shift")
+            .map((call) => call[1]),
+        ["Favorites: + " + escaped, "Favorites: − " + escaped],
+        "media name is escaped once before the shared HTML notification renderer"
+    );
+}
+// A source replaced after a successful write cannot receive the old toast.
+{
+    const c = television(),
+        save = c.saveChannelsCats;
+    keyboard(c);
+    c.saveChannelsCats = () => {
+        const saved = save();
+        c.__ottActiveProviderDriver = { id: "new-owner" };
+        return saved;
+    };
+    assert.equal(c.__ottToggleKeyboardFavorite(), false);
+    assert.equal(c.calls.filter((call) => call[0] === "shift").length, 0);
+}
+// The media journal must confirm persistence before any success indication.
+for (const failure of ["refuse", "throw", "write-then-throw"]) {
+    const c = fixture();
+    let enabled = false;
+    const write = c.providerSetItem;
+    c.providerSetItem = (key, value) => {
+        if (!enabled || !key.startsWith("mediaJournal.v1:"))
+            return write(key, value);
+        if (failure === "refuse") return;
+        if (failure === "write-then-throw") write(key, value);
+        throw Error("synthetic media persistence failure");
+    };
+    c.mediaList(-1);
+    const item = {
+        __ottMediaRef: {
+            itemId: "provider:failure",
+            sourceId: c.__ottMedia.sourceId(),
+        },
+        request: { path: "/library/metadata/42" },
+        title: "Failed item",
+    };
+    enabled = true;
+    assert.equal(c.__ottMedia.toggleFavorite(item), undefined);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        0,
+        failure
     );
 }
 for (const device of ["pc", "pc2"])

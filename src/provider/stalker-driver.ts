@@ -610,15 +610,19 @@ function createStalkerProviderDriver(
             callback(url.indexOf("ottplay-stalker:") === 0 ? null : url);
             return function () {};
         },
-        saveConfiguration: function (value) {
-            if (!active()) return false;
+        saveConfiguration: function (value, admission?: () => boolean) {
+            if (!active() || (admission && !admission())) return false;
             var next = normalizeStalkerConfiguration(value);
             var before = configuration();
             var operation = ++revision;
             var previous = before.portals[before.active];
             var selected = next.portals[next.active];
             function current() {
-                return active() && operation === revision;
+                return (
+                    active() &&
+                    operation === revision &&
+                    (!admission || admission())
+                );
             }
             if (
                 !ports.commit(
@@ -641,7 +645,11 @@ function createStalkerProviderDriver(
                 loaded = null;
                 catalog = helpers.emptyCatalog();
             }
-            return active() && operation === revision;
+            return (
+                active() &&
+                operation === revision &&
+                (!admission || admission())
+            );
         },
         saveCredentials: function (value) {
             var config = configuration();

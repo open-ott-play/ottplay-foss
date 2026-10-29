@@ -1,0 +1,1005 @@
+import { createGlobalFavoritesNavigation } from "./global-favorites-navigation";
+import { captureGlobalFavoriteMigration } from "./global-favorites-migration";
+import { createGlobalFavoritesItems } from "../commands/global-favorites-items";
+import { createGlobalFavoritesRecovery } from "../settings/global-favorites-recovery";
+import { createGlobalFavoritesProtocol } from "../commands/global-favorites-protocol";
+import { createGlobalFavoritesCommitter } from "../settings/global-favorites-receipts";
+import { globalFavoriteCanonical } from "./global-favorites-identities";
+import { createGlobalFavoritesFacade } from "../settings/global-favorites-facade";
+import { createGlobalFavoritesStore } from "../settings/global-favorites";
+import { createGlobalFavoritesPortableCodec } from "../settings/global-favorites-portable";
+import { createFavoritesBindings } from "../settings/favorites-bindings";
+import { isGlobalFavoriteSelector } from "../settings/global-favorites-bindings";
+import { createFavoritesRecoveryCodec } from "../settings/favorites-recovery-codec";
+import { createGlobalFavoritesRouter } from "./global-favorites-router";
+import { createGlobalFavoritesPlayer } from "./global-favorites-player";
+import { createGlobalFavoritesView } from "./global-favorites-view";
+import { captureGlobalFavorite } from "./global-favorites-capture";
+
+/** One lazy UI host; MAIN passes its existing physical adapter, never a new storage instance. */
+export function createGlobalFavoritesHost(w: any, ports: any): any {
+    var mainNames = [
+        "caselessKey",
+        "remoteCheckpoint",
+        "handleRemoteProfiles",
+        "isProviderAllowed",
+        "providerIds",
+        "selectProviderByIndex",
+        "selectMediaProfile",
+    ];
+    if (!ports || typeof ports.current !== "function")
+        throw new Error("unsupported");
+    var mainCurrent = ports.current,
+        main: any = {};
+    mainNames.forEach(function (name) {
+        if (typeof ports[name] !== "function") throw new Error("unsupported");
+        main[name] = ports[name];
+    });
+    if (!mainCurrent()) throw new Error("context_changed");
+    var codec = createGlobalFavoritesPortableCodec(),
+        disposed = false;
+    var protocol: any = null,
+        committer: any = null,
+        navigation: any = null;
+    var prepared: any = Object.create(null),
+        writing: any = null,
+        mappings: any = Object.create(null);
+    var toggleCurrent: (() => boolean) | null = null;
+    var migrationGuards: any = Object.create(null),
+        migrationPending: any[] = [];
+    var registryKey = "favorites-bindings.v1",
+        grant = ports.capture();
+    function current(): boolean {
+        return (
+            !disposed &&
+            ports.current === mainCurrent &&
+            mainCurrent() &&
+            mainNames.every(function (name) {
+                return ports[name] === main[name];
+            }) &&
+            (!toggleCurrent || toggleCurrent()) &&
+            !!grant &&
+            grant.current()
+        );
+    }
+    function mainCall(name: string, args: any[], fallback?: any): any {
+        if (!current()) return fallback;
+        return main[name].apply(undefined, args);
+    }
+    function mainAdmission(admission?: () => boolean): () => boolean {
+        return function () {
+            return current() && (!admission || admission());
+        };
+    }
+    function readRegistry(): string | null {
+        if (!current()) throw new Error("storage_unavailable");
+        var raw = grant.read(registryKey);
+        if (raw !== null && (typeof raw !== "string" || raw.length > 524288))
+            throw new Error("storage_unavailable");
+        return raw;
+    }
+    function permitted(): boolean {
+        return (
+            current() &&
+            !w.__ottStandby?.blocked() &&
+            !w.__ottKiosk?.enabled() &&
+            !w.__ottParental?.needs("providers") &&
+            !w.__ottParental?.needs("settings")
+        );
+    }
+    function isPrepared(selector: any): boolean {
+        var value = prepared[globalFavoriteCanonical(selector)];
+        return permitted() && !!value && value.current();
+    }
+    function legacySelector(kind: string, value: any): boolean {
+        return (
+            !!value &&
+            value.kind === kind &&
+            Object.keys(value).sort().join(",") ===
+                "channelSourceId,kind,mediaKey,mediaSourceId,serverId,tvKey"
+        );
+    }
+    var registry = createFavoritesBindings({
+        read: readRegistry,
+        persistedRead: readRegistry,
+        uuid: ports.uuid,
+        validateSelector: function (kind, selector) {
+            return (
+                isGlobalFavoriteSelector(selector) ||
+                legacySelector(kind, selector)
+            );
+        },
+        current: function (_entry, value) {
+            return (
+                isGlobalFavoriteSelector(value.selector) &&
+                isPrepared(value.selector)
+            );
+        },
+        compareAndSwap: function (before, after) {
+            if (!writing || !writing.current()) return "conflict";
+            return grant.compareAndSwap(
+                registryKey,
+                before,
+                after,
+                writing.current
+            );
+        },
+    });
+    var player: any;
+    async function prepareSelector(selector: any): Promise<void> {
+        var row = player.selected(selector.provider, selector.slot),
+            text = row && globalFavoriteCanonical(row);
+        if (
+            !text ||
+            (await ports.sha256(text)) !== selector.configurationDigest
+        )
+            return;
+        if (
+            !current() ||
+            globalFavoriteCanonical(
+                player.selected(selector.provider, selector.slot)
+            ) !== text
+        )
+            return;
+        prepared[globalFavoriteCanonical(selector)] = {
+            current: function () {
+                return (
+                    current() &&
+                    globalFavoriteCanonical(
+                        player.selected(selector.provider, selector.slot)
+                    ) === text
+                );
+            },
+        };
+    }
+    var bindings = {
+        list: async function () {
+            var before = readRegistry(),
+                list = registry.list();
+            var raw = before === null ? { entries: [] } : JSON.parse(before);
+            for (var index = 0; index < raw.entries.length; index++) {
+                var selector = raw.entries[index].binding?.selector;
+                if (isGlobalFavoriteSelector(selector))
+                    await prepareSelector(selector);
+            }
+            if (!current() || readRegistry() !== before)
+                throw new Error("changed");
+            return list;
+        },
+        resolve: function (id: string) {
+            return registry.resolve(id);
+        },
+    };
+    player = createGlobalFavoritesPlayer(w, {
+        selectMediaProfile: function (
+            driver: any,
+            value: string,
+            index: number,
+            done: any,
+            admission?: () => boolean
+        ) {
+            return mainCall(
+                "selectMediaProfile",
+                [driver, value, index, done, mainAdmission(admission)],
+                false
+            );
+        },
+        bindings: bindings,
+        current: current,
+        sha256: ports.sha256,
+        remoteCheckpoint: function (target: any) {
+            return mainCall("remoteCheckpoint", [target]);
+        },
+        handleRemoteProfiles: function (
+            request: any,
+            done: any,
+            admission?: () => boolean
+        ) {
+            return mainCall(
+                "handleRemoteProfiles",
+                [request, done, mainAdmission(admission)],
+                false
+            );
+        },
+        isProviderAllowed: function (id: string) {
+            return mainCall("isProviderAllowed", [id], false);
+        },
+        providerIds: function () {
+            return mainCall("providerIds", [], []);
+        },
+        selectProviderByIndex: function (index: number) {
+            return mainCall("selectProviderByIndex", [index], false);
+        },
+    });
+    var store = createGlobalFavoritesStore({
+        capture: ports.capture,
+        current: current,
+        canWrite: function () {
+            return !!committer && committer.canWrite();
+        },
+        migrationCurrent: function (id: string) {
+            return !!migrationGuards[id] && migrationGuards[id]();
+        },
+        sha256: ports.sha256,
+        uuid: ports.uuid,
+        codec: codec,
+    });
+    var router = createGlobalFavoritesRouter({
+        snapshot: store.snapshot,
+        codec: codec,
+        current: current,
+        allowed: player.allowed,
+        targets: function (origin: any, guard: () => boolean, locator: any) {
+            var mapped = mappings[globalFavoriteCanonical(origin)];
+            return mapped && mapped.current()
+                ? [mapped]
+                : player.targets(origin, guard, locator);
+        },
+        activate: async function (target: any, guard: () => boolean) {
+            var session = await player.activate(target, guard);
+            if (target.ephemeral) {
+                var resolve = session.resolve;
+                session.resolve = async function (
+                    locator: any,
+                    current: () => boolean
+                ) {
+                    var result = await resolve(locator, current);
+                    if (!result || !current()) return result;
+                    await pair(
+                        target.origin,
+                        target.selector.slot,
+                        target.selector.root,
+                        current
+                    );
+                    var bound = await bindings.list(),
+                        matches = bound.entries.filter(function (row: any) {
+                            if (row.kind !== "source") return false;
+                            try {
+                                return (
+                                    globalFavoriteCanonical(
+                                        bindings.resolve(row.id).binding
+                                            .selector
+                                    ) ===
+                                    globalFavoriteCanonical(target.selector)
+                                );
+                            } catch (_) {
+                                return false;
+                            }
+                        });
+                    if (matches.length !== 1 || !current()) return null;
+                    var raw = readRegistry(),
+                        prior = target.current;
+                    target.current = function () {
+                        try {
+                            return prior() && readRegistry() === raw;
+                        } catch (_) {
+                            return false;
+                        }
+                    };
+                    return current() ? result : null;
+                };
+            }
+            return session;
+        },
+        now: ports.now,
+        setTimer: w.setTimeout.bind(w),
+        clearTimer: w.clearTimeout.bind(w),
+        changed: function (state: any) {
+            if (navigation) navigation.routeState(state);
+            ports.changed?.(state);
+        },
+    });
+    navigation = createGlobalFavoritesNavigation({
+        capture: function () {
+            return router.captureCurrent();
+        },
+        captureEnding: function (generation: number) {
+            return router.captureEnding(generation);
+        },
+        snapshot: store.snapshot,
+        current: current,
+        allowed: permitted,
+        select: router.select,
+        cancel: router.cancel,
+        identity: function (entry: any) {
+            return codec.identity({
+                title: entry.title,
+                origin: entry.origin,
+                locator: entry.locator,
+            });
+        },
+        failed: function () {
+            if (current()) w.showShift(w._("Unavailable"));
+        },
+    });
+    var view = createGlobalFavoritesView({
+        store: store,
+        router: router,
+        navigation: navigation,
+        current: current,
+        translate: w._,
+        selected: function () {
+            return w.selIndex;
+        },
+        canFavorite: function () {
+            return permitted() && w.sFavorites !== -1;
+        },
+        remove: async function (id: string, admitted: () => boolean) {
+            if (!(await committer.qualify()) || !admitted())
+                throw new Error("reconciliation_required");
+            var raw = grant.read("favorites-receipts.v1");
+            var receipt = await createFavoritesRecoveryCodec({
+                sha256: ports.sha256,
+            }).snapshot(raw);
+            if (
+                !admitted() ||
+                receipt.records.some(function (row: any) {
+                    return !row.acknowledgement;
+                })
+            )
+                throw new Error("reconciliation_required");
+            return facade.remove(id, function () {
+                return (
+                    admitted() && grant.read("favorites-receipts.v1") === raw
+                );
+            });
+        },
+        removed: ports.favoriteRemoved,
+        pendingMigration: function () {
+            return migrationPending;
+        },
+        playLegacy: function (id: string) {
+            var active = true,
+                child: any = null;
+            var result = Promise.resolve()
+                .then(function () {
+                    return facade.legacy({ op: "play", id: id }, function () {
+                        return active && permitted();
+                    });
+                })
+                .then(function (value: any) {
+                    child = value;
+                    if (!active) {
+                        child.cancel();
+                        return { status: "cancelled" };
+                    }
+                    return child.result;
+                });
+            return {
+                result: result,
+                cancel: function () {
+                    active = false;
+                    if (child) child.cancel();
+                },
+            };
+        },
+        captureScreen: function () {
+            var handler = w.listKeyHandlerFn,
+                screen = w.__ottClassicScreenPort?.screens.current();
+            return function () {
+                return (
+                    handler === w.listKeyHandlerFn &&
+                    screen === w.__ottClassicScreenPort?.screens.current()
+                );
+            };
+        },
+        describe: function (origin: any) {
+            return [
+                origin.provider,
+                origin.profile,
+                origin.subprofile,
+                origin.sourceAlias,
+            ]
+                .filter(Boolean)
+                .join(" / ");
+        },
+        error: function (reason: string, id?: string) {
+            w.showShift(
+                w._("Favorites") +
+                    ": " +
+                    w._(
+                        reason === "ambiguous"
+                            ? "Choose a profile"
+                            : "Unavailable"
+                    )
+            );
+            if (id && (reason === "missing" || reason === "ambiguous"))
+                void chooseMapping(id).catch(function () {
+                    if (current()) w.showShift(w._("Unavailable"));
+                });
+        },
+        show: function (list: any) {
+            var rows: any = Object.create(null);
+            list.rows.forEach(function (row: any) {
+                rows[row.id] = {
+                    channel_name: row.label + " — " + row.detail,
+                    logo: "",
+                };
+            });
+            w.__ottChannelListView.show({
+                id: list.id,
+                rows: list.rows.map(function (row: any) {
+                    return row.id;
+                }),
+                categoryName: list.title,
+                selected: Math.max(
+                    0,
+                    list.rows
+                        .map(function (row: any) {
+                            return row.id;
+                        })
+                        .indexOf(list.selected)
+                ),
+                channel: function (id: string) {
+                    return rows[id];
+                },
+                picon: function () {
+                    return "";
+                },
+                playing: list.playing,
+                locked: function () {
+                    return false;
+                },
+                detail: function () {},
+                key: function (key: number) {
+                    if (key === w.keys.ENTER || key === w.keys.PLAY) {
+                        var row = list.rows[w.selIndex];
+                        if (row) list.select(row.id);
+                        return true;
+                    }
+                    if (key === w.keys.RETURN || key === w.keys.EXIT) {
+                        list.close();
+                        w.closeList(false);
+                        return true;
+                    }
+                    return false;
+                },
+            });
+            var handler = w.listKeyHandlerFn,
+                screen = w.__ottClassicScreenPort?.screens.current();
+            return function () {
+                return (
+                    handler === w.listKeyHandlerFn &&
+                    screen === w.__ottClassicScreenPort?.screens.current()
+                );
+            };
+        },
+    });
+    async function chooseMapping(id: string): Promise<void> {
+        var snapshot = await store.snapshot();
+        var entries = snapshot.entries.filter(function (row: any) {
+            return row.id === id;
+        });
+        if (entries.length !== 1 || !snapshot.current() || !permitted()) return;
+        var entry = entries[0],
+            choices = await player.choices(entry.origin.provider);
+        if (!choices.length) return;
+        w.__ottCategoryListView.show({
+            labels: choices.map(function (row: any) {
+                return row.label;
+            }),
+            selected: 0,
+            key: function (key: number) {
+                if (!snapshot.current() || !permitted()) return true;
+                if (key === w.keys.RETURN || key === w.keys.EXIT) {
+                    void view.open();
+                    return true;
+                }
+                if (key !== w.keys.ENTER || !choices[w.selIndex]) return false;
+                var choice = choices[w.selIndex];
+                void player
+                    .choiceTarget(entry.origin, choice, entry.locator)
+                    .then(function (target: any) {
+                        if (!target || !snapshot.current() || !permitted())
+                            return;
+                        mappings[globalFavoriteCanonical(entry.origin)] =
+                            target;
+                        router.select(id);
+                    });
+                return true;
+            },
+        });
+    }
+    async function pair(
+        origin: any,
+        slot: number | null,
+        root?: any,
+        admission?: () => boolean
+    ): Promise<any> {
+        if (!committer || !committer.canWrite())
+            throw new Error("reconciliation_required");
+        var selector = await player.captureSelector(origin, slot, root);
+        if (!selector || !permitted() || (admission && !admission()))
+            throw new Error("unavailable");
+        await prepareSelector(selector);
+        var before = readRegistry(),
+            revision = registry.list().revision;
+        return grant.exclusive(async function (locked: any) {
+            function admitted(): boolean {
+                return (
+                    locked === grant &&
+                    permitted() &&
+                    committer.canWrite() &&
+                    (!admission || admission()) &&
+                    isPrepared(selector)
+                );
+            }
+            var ledger = grant.read("favorites-receipts.v1"),
+                parsed = await createFavoritesRecoveryCodec({
+                    sha256: ports.sha256,
+                }).snapshot(ledger);
+            if (
+                !admitted() ||
+                readRegistry() !== before ||
+                grant.read("favorites-receipts.v1") !== ledger ||
+                parsed.records.some(function (row: any) {
+                    return !row.acknowledgement;
+                })
+            )
+                throw new Error("reconciliation_required");
+            writing = {
+                current: function () {
+                    return (
+                        admitted() &&
+                        grant.read("favorites-receipts.v1") === ledger
+                    );
+                },
+            };
+            try {
+                var binding = {
+                    owner: "global:" + selector.configurationDigest,
+                    selector: selector,
+                };
+                return registry.provisionPlayback(
+                    {
+                        provider: selector.provider,
+                        profile: binding,
+                        source: binding,
+                    },
+                    revision
+                );
+            } finally {
+                writing = null;
+            }
+        });
+    }
+    async function toggle(
+        payload?: any,
+        externalCurrent?: () => boolean
+    ): Promise<any> {
+        if (toggleCurrent) throw new Error("busy");
+        toggleCurrent =
+            externalCurrent ||
+            function () {
+                return true;
+            };
+        router.cancel();
+        try {
+            if (
+                !committer ||
+                !(await committer.qualify()) ||
+                !committer.canWrite()
+            )
+                throw new Error("reconciliation_required");
+            var capture =
+                router.captureCurrent(payload) ||
+                (await captureGlobalFavorite(w, player, codec, payload));
+            if (!capture) throw new Error("unavailable");
+            if (!capture.bound)
+                await pair(
+                    capture.value.origin,
+                    capture.slot,
+                    capture.root,
+                    capture.current
+                );
+            if (!capture.current()) throw new Error("changed");
+            var before = await store.snapshot(),
+                identity = codec.identity(capture.value);
+            var found = before.entries.filter(function (entry: any) {
+                return (
+                    codec.identity({
+                        title: entry.title,
+                        origin: entry.origin,
+                        locator: entry.locator,
+                    }) === identity
+                );
+            });
+            if (!before.current() || !capture.current())
+                throw new Error("changed");
+            var receiptRaw = grant.read("favorites-receipts.v1");
+            var receipt = await createFavoritesRecoveryCodec({
+                sha256: ports.sha256,
+            }).snapshot(receiptRaw);
+            if (
+                !capture.current() ||
+                receipt.records.some(function (row: any) {
+                    return !row.acknowledgement;
+                })
+            )
+                throw new Error("reconciliation_required");
+            var result = await store.mutate(
+                before.revision,
+                found.length
+                    ? {
+                          op: "remove",
+                          ids: found.map(function (entry: any) {
+                              return entry.id;
+                          }),
+                      }
+                    : { op: "put", entries: [capture.value] },
+                function () {
+                    return (
+                        capture.current() &&
+                        grant.read("favorites-receipts.v1") === receiptRaw
+                    );
+                }
+            );
+            if (result.outcome !== "verified")
+                throw new Error("storage_unavailable");
+            w.showShift(
+                w._("Favorites") +
+                    ": " +
+                    (found.length ? "− " : "+ ") +
+                    capture.value.title
+            );
+            return result;
+        } finally {
+            toggleCurrent = null;
+        }
+    }
+    async function capture() {
+        var captured =
+            router.captureCurrent() ||
+            (await captureGlobalFavorite(w, player, codec));
+        if (!captured) throw new Error("unavailable");
+        if (!captured.current()) throw new Error("changed");
+        return captured;
+    }
+    var facade = createGlobalFavoritesFacade({
+        store: store,
+        codec: codec,
+        caselessKey: function (value: string) {
+            if (!current()) throw new Error("context_changed");
+            return main.caselessKey(value);
+        },
+        locatorKinds: [
+            "channel",
+            "channel-name",
+            "local-media",
+            "plex-media",
+            "vportal-media",
+        ],
+        current: current,
+        uuid: ports.uuid,
+        sha256: ports.sha256,
+        capture: capture,
+        qualify: function () {
+            return committer && committer.qualify();
+        },
+        captureLegacy: ports.captureLegacy,
+        playLegacy: ports.playLegacy,
+        playEntry: function (id: string, admission: () => boolean) {
+            return router.select(id, admission);
+        },
+    });
+    async function captureContext(): Promise<any> {
+        var read = w.stbGetItem;
+        var keys = [
+            registryKey,
+            "m3um3uArr",
+            "vportalprofiles",
+            "plexcfg",
+            "offlineProfiles",
+            "offlineProfileBindings",
+            "localMediaEndpoint",
+        ];
+        var values = keys.map(function (key) {
+            var value = read.call(w, key);
+            if (
+                value !== null &&
+                (typeof value !== "string" || value.length > 1048576)
+            )
+                throw new Error("context_changed");
+            return value;
+        });
+        function policy() {
+            return [
+                !!w.__ottKiosk?.enabled(),
+                !!w.__ottParental?.needs("providers"),
+                !!w.__ottParental?.needs("settings"),
+                !!w.__ottStandby?.blocked(),
+            ];
+        }
+        var flags = globalFavoriteCanonical(policy());
+        function valid(): boolean {
+            return (
+                current() &&
+                w.stbGetItem === read &&
+                flags === globalFavoriteCanonical(policy()) &&
+                keys.every(function (key, index) {
+                    return read.call(w, key) === values[index];
+                })
+            );
+        }
+        var revision = await ports.sha256(
+            globalFavoriteCanonical([
+                "global-favorites-context-v1",
+                grant.origin,
+                values,
+                flags,
+            ])
+        );
+        if (!valid()) throw new Error("context_changed");
+        return { revision: revision, current: valid };
+    }
+    committer = createGlobalFavoritesCommitter({
+        store: store,
+        codec: codec,
+        current: current,
+        capture: ports.capture,
+        sha256: ports.sha256,
+        now: ports.now,
+        captureContext: captureContext,
+        contextRevision: async function () {
+            return (await captureContext()).revision;
+        },
+        freshAdmission: function (id: string, hash: string) {
+            return !!protocol && protocol.freshAdmission(id, hash);
+        },
+        authorizedOperation: function () {
+            return current() && ports.authorized("status");
+        },
+    });
+    protocol = createGlobalFavoritesProtocol({
+        store: store,
+        facade: facade,
+        committer: committer,
+        codec: codec,
+        captureContext: captureContext,
+        current: current,
+        runtime: ports.runtime,
+        authorized: ports.authorized,
+        locatorKinds: [
+            "channel",
+            "channel-name",
+            "local-media",
+            "plex-media",
+            "vportal-media",
+        ],
+        now: ports.now,
+        uuid: ports.uuid,
+        sha256: ports.sha256,
+        base64Encode: ports.base64Encode,
+        base64Decode: ports.base64Decode,
+        setTimer: w.setTimeout.bind(w),
+        clearTimer: w.clearTimeout.bind(w),
+        contextRevision: async function () {
+            return (await captureContext()).revision;
+        },
+        resolve: async function (entries: any[]) {
+            var states: string[] = [];
+            for (var i = 0; i < entries.length; i++) {
+                var candidates = await player.targets(
+                    entries[i].origin,
+                    current,
+                    entries[i].locator
+                );
+                states.push(
+                    candidates.length === 1
+                        ? "resolved"
+                        : candidates.length > 1
+                          ? "ambiguous"
+                          : "missing"
+                );
+            }
+            return states;
+        },
+    });
+    async function currentItem(): Promise<any> {
+        var context = await captureContext(),
+            snapshot = await store.snapshot();
+        var captured =
+            router.captureCurrent() ||
+            (await captureGlobalFavorite(w, player, codec));
+        if (
+            !context.current() ||
+            !snapshot.current() ||
+            (captured && !captured.current())
+        )
+            throw new Error("context_changed");
+        return {
+            revision: snapshot.revision,
+            context_revision: context.revision,
+            entry: captured ? captured.value : null,
+            unavailable_reason: captured
+                ? null
+                : w.__ottStandby?.blocked()
+                  ? "standby"
+                  : "no_portable_current_item",
+            current: function () {
+                return (
+                    context.current() &&
+                    snapshot.current() &&
+                    (!captured || captured.current())
+                );
+            },
+        };
+    }
+    function playUUID(
+        id: string,
+        revision: string,
+        contextRevision: string,
+        admitted: () => boolean
+    ): any {
+        var active = true,
+            inner: any = null;
+        var result = (async function () {
+            var context = await captureContext(),
+                snapshot = await store.snapshot();
+            if (
+                !active ||
+                !admitted() ||
+                !context.current() ||
+                !snapshot.current()
+            )
+                throw new Error("context_changed");
+            if (snapshot.revision !== revision)
+                throw new Error("revision_conflict");
+            if (context.revision !== contextRevision)
+                throw new Error("context_changed");
+            if (
+                !snapshot.entries.some(function (entry: any) {
+                    return entry.id === id;
+                })
+            )
+                throw new Error("favorite_not_found");
+            // Active-profile writes belong to this handoff. The router pins target configuration,
+            // while the immutable Favorites snapshot and request owner remain required throughout.
+            inner = router.select(id, function () {
+                return active && admitted() && snapshot.current();
+            });
+            return inner.result.then(function (value: any) {
+                var errors: any = {
+                    timeout: "expired",
+                    blocked: "policy_denied",
+                    changed: "context_changed",
+                    missing: "source_unavailable",
+                    unsupported: "unsupported_item",
+                    ambiguous: "ambiguous_source",
+                    unavailable: "item_unavailable",
+                };
+                return { id: id, status: errors[value.status] || value.status };
+            });
+        })();
+        return {
+            result: result,
+            cancel: function () {
+                active = false;
+                if (inner) inner.cancel();
+            },
+        };
+    }
+    async function open(
+        _payload?: any,
+        admitted: () => boolean = function () {
+            return true;
+        }
+    ) {
+        if (!permitted() || !admitted()) throw new Error("policy_denied");
+        try {
+            var captured = await captureGlobalFavoriteMigration(
+                w,
+                player,
+                codec
+            );
+            if (!permitted() || !admitted()) return;
+            migrationPending = captured ? captured.pending : [];
+            if (captured && captured.current() && (await committer.qualify())) {
+                var id = await ports.sha256(captured.identity),
+                    entries: any[] = [];
+                for (var index = 0; index < captured.entries.length; index++) {
+                    var entry = captured.entries[index];
+                    var token = await ports.sha256(
+                        JSON.stringify([
+                            "global-favorites-membership-entry-v1",
+                            captured.identity,
+                            codec.identity(entry),
+                        ])
+                    );
+                    if (!captured.current() || !admitted())
+                        throw new Error("context_changed");
+                    entries.push({ token: token, entry: entry });
+                }
+                var before = await store.snapshot();
+                if (!captured.current() || !before.current() || !admitted())
+                    throw new Error("context_changed");
+                var owned = function () {
+                    return captured.current() && admitted();
+                };
+                migrationGuards[id] = owned;
+                try {
+                    if (entries.length)
+                        await store.mutate(
+                            before.revision,
+                            {
+                                op: "migrate-membership",
+                                migrationId: id,
+                                entries: entries,
+                            },
+                            owned
+                        );
+                } finally {
+                    delete migrationGuards[id];
+                }
+            }
+        } catch (_) {
+            if (permitted() && admitted())
+                migrationPending = [
+                    { title: w._("Favorites"), reason: "unresolved" },
+                ];
+        }
+        if (permitted() && admitted()) return view.open();
+    }
+    var recovery = createGlobalFavoritesRecovery({
+        capture: ports.capture,
+        current: current,
+        runtime: ports.runtime,
+        now: ports.now,
+        captureContext: captureContext,
+        sha256: ports.sha256,
+        authorized: ports.authorized,
+    });
+    return {
+        navigation: navigation,
+        favoriteSelected: function (owner: any) {
+            return (
+                owner === w.__ottClassicScreenPort?.screens.current() &&
+                view.favoriteSelected()
+            );
+        },
+        createItems: function () {
+            return createGlobalFavoritesItems({
+                host: {
+                    store: store,
+                    captureContext: captureContext,
+                    currentItem: currentItem,
+                    playUUID: playUUID,
+                },
+                codec: codec,
+                current: current,
+                runtime: ports.runtime,
+                now: ports.now,
+                authorized: ports.authorized,
+                base64Encode: ports.base64Encode,
+                base64Decode: ports.base64Decode,
+            });
+        },
+        currentItem: currentItem,
+        playUUID: playUUID,
+        recovery: recovery,
+        open: open,
+        pair: pair,
+        store: store,
+        router: router,
+        toggle: toggle,
+        facade: facade,
+        codec: codec,
+        protocol: protocol,
+        committer: committer,
+        captureContext: captureContext,
+        capture: capture,
+        playEntry: function (id: string, admission: () => boolean) {
+            return router.select(id, admission);
+        },
+        dispose: function () {
+            navigation.retire();
+            disposed = true;
+            view.close();
+            router.cancel();
+            protocol.dispose();
+        },
+    };
+}
+(window as any).__ottGlobalFavoritesFactory = {
+    create: createGlobalFavoritesHost,
+};

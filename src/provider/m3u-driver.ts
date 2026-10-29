@@ -263,6 +263,8 @@ function createM3uProviderDriver(
             // Companion lookup labels retain the historical first-comma spelling.
             var wireName = entry.titleHashInput || name;
             row.channel_name = name;
+            // Only explicit playlist metadata is portable Favorites identity.
+            row.__ottFavoriteTvgId = attribute(entry.raw, "tvg-id") || "";
             var sources: any[] = [];
             sourceIds(attribute(entry.raw, "tvg-source"), true, sources);
             sourceIds(attribute(entry.raw, "url-tvg"), true, sources);
@@ -447,6 +449,11 @@ function createM3uProviderDriver(
         );
     }
     var driver: any = {
+        cancelConnection: function () {
+            revision++;
+            lifetimes.dispose();
+            closeHostedGuide();
+        },
         archive: function (
             id: string | number,
             start: number,
@@ -757,13 +764,20 @@ function createM3uProviderDriver(
             var row = ownedRow(id);
             return row ? row.logo || "" : "";
         },
-        saveConfiguration: function (value: any): boolean {
+        saveConfiguration: function (
+            value: any,
+            admission?: () => boolean
+        ): boolean {
             if (!active()) return false;
             var next = normalizeM3uConfiguration(value, fixedSlot);
             var operation = ++revision;
             var changed = identity(next) !== identity(configuration());
             function current() {
-                return active() && operation === revision;
+                return (
+                    active() &&
+                    operation === revision &&
+                    (!admission || admission())
+                );
             }
             if (
                 !ports.commit(
@@ -777,14 +791,14 @@ function createM3uProviderDriver(
             if (changed) {
                 closeHostedGuide();
                 lifetimes.dispose();
-                if (!active() || operation !== revision) return false;
+                if (!current()) return false;
                 catalog = helpers.emptyCatalog();
                 catalogIdentity = "";
                 guideSources = Object.create(null);
             }
-            if (!active() || operation !== revision) return false;
+            if (!current()) return false;
             publish("configuration");
-            return active() && operation === revision;
+            return current();
         },
         saveCredentials: function (value: ProviderCredentials) {
             var config = configuration();

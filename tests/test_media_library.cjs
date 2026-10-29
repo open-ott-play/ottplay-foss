@@ -4817,6 +4817,188 @@ test("A page reply preserves foreground overlays and retries after they close", 
     }
 });
 
+test("Flat category favorites use the current source journal without writes or runtime creation", () => {
+    for (const provider of ["m3u", "plex", "vportal", "offline"]) {
+        const c = fixture();
+        c.p_pref = provider;
+        c.sFavorites = 0;
+        let raw = null,
+            writes = 0;
+        c.providerGetItem = () => raw;
+        c.providerSetItem = () => {
+            writes++;
+        };
+        c.channels = {
+            1: { __ottMediaItem: { id: 1, title: "One" } },
+            2: { __ottMediaItem: { id: 2, title: "Two" } },
+        };
+        const source = c.__ottMedia.sourceId();
+        const document = {
+            version: 1,
+            sourceId: source,
+            history: [],
+            favorites: [
+                {
+                    sourceId: source,
+                    itemId: "provider:1",
+                    position: 0,
+                    payload: { id: 1 },
+                },
+            ],
+        };
+        raw = JSON.stringify(document);
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, 2], c.channels)),
+            [1]
+        );
+        raw = JSON.stringify({
+            ...document,
+            favorites: document.favorites.concat(document.favorites),
+        });
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, "1", 1, 2], c.channels)),
+            [1, "1"]
+        );
+        c.channels[3] = {
+            __ottMediaItem: { playlist_url: "library-route", title: "Library" },
+        };
+        raw = JSON.stringify({
+            ...document,
+            favorites: [
+                {
+                    sourceId: source,
+                    itemId: 'route:"library-route"',
+                    position: 0,
+                    payload: c.channels[3].__ottMediaItem,
+                },
+            ],
+        });
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, 2, 3], c.channels)),
+            [3]
+        );
+        c.channels[4] = { __ottMediaItem: { title: "Ambiguous" } };
+        raw = JSON.stringify({
+            ...document,
+            favorites: [
+                {
+                    sourceId: source,
+                    itemId: 'catalog:["","Ambiguous",0]',
+                    position: 0,
+                    payload: c.channels[4].__ottMediaItem,
+                },
+            ],
+        });
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([4], c.channels)),
+            []
+        );
+        raw = JSON.stringify({ ...document, sourceId: source + "-foreign" });
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, 2], c.channels)),
+            []
+        );
+        raw = JSON.stringify(document);
+        c.channels[1].__ottMediaItem.__ottMediaRef = {
+            sourceId: "foreign",
+            itemId: "provider:1",
+        };
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, 2], c.channels)),
+            []
+        );
+        delete c.channels[1].__ottMediaItem.__ottMediaRef;
+        c.sFavorites = -1;
+        assert.deepEqual(
+            plain(c.__ottMedia.categoryMembers([1, 2], c.channels)),
+            []
+        );
+        assert.equal(writes, 0);
+    }
+});
+
+test("Plex native Category exposes empty and populated current-source Favorites", () => {
+    for (const populated of [false, true]) {
+        const c = fixture();
+        const views = [],
+            categories = [];
+        c.sFavorites = 0;
+        c.showPage = () => c.__ottClassicScreenPort.commitList();
+        c.__ottChannelListView = {
+            show(view) {
+                views.push(view);
+                c.listArray = view.rows;
+                c.listDataArray = view.rows;
+                c.selIndex = view.selected;
+                c.listKeyHandlerFn = view.key;
+                c.showPage();
+            },
+        };
+        c.__ottCategoryListView = {
+            show(view) {
+                categories.push(view);
+                c.listArray = view.labels;
+                c.listDataArray = view.labels;
+                c.selIndex = view.selected;
+                c.listKeyHandlerFn = view.key;
+                c.showPage();
+            },
+        };
+        const source = "plex@category-test";
+        const rows = [
+            { id: 1, title: "One", stream_url: "one.mp4" },
+            { id: 2, title: "Two", stream_url: "two.mp4" },
+        ];
+        const doc = {
+            version: 1,
+            sourceId: source,
+            history: [],
+            favorites: populated
+                ? [
+                      {
+                          sourceId: source,
+                          itemId: "provider:1",
+                          position: 0,
+                          payload: rows[0],
+                      },
+                  ]
+                : [],
+        };
+        c.__ottMedia.useSource({
+            catalog: () => rows.slice(),
+            client: {
+                cancel() {},
+                load(_target, done) {
+                    c.mediaRecords = rows;
+                    done();
+                },
+            },
+            read: (key) =>
+                key === "mediaJournal.v1:" + source
+                    ? JSON.stringify(doc)
+                    : null,
+            sourceId: source,
+            title: "Plex",
+            write() {
+                assert.fail("category must not write");
+            },
+        });
+        c.mediaList(null);
+        views.at(-1).key(c.keys.BLUE);
+        const category = categories.at(-1);
+        assert(category.labels.includes("Favorites"));
+        c.selIndex = category.labels.indexOf("Favorites");
+        category.key(c.keys.ENTER);
+        const favorite = views.at(-1);
+        assert.equal(favorite.rows.length, populated ? 1 : 0);
+        if (populated)
+            assert.equal(
+                favorite.channel(favorite.rows[0]).__ottMediaItem.id,
+                1
+            );
+    }
+});
+
 (async () => {
     for (const run of cases) await run();
     console.log(`PASS MediaLibrary/MediaJournal ${groups} scenario groups`);

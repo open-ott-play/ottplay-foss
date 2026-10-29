@@ -13,6 +13,7 @@ import {
 } from "../core";
 import { translate as _, formatLocaleNumber } from "../localization";
 import { settings } from "../settings";
+import { metadataText } from "../utils/helpers";
 
 declare var $: any;
 
@@ -105,6 +106,7 @@ export function toggleKeyboardFavorite(w: any): boolean {
         return false;
     var owner = port && port.screens.current();
     if (owner && owner.kind !== "list") return false;
+    if (owner && w.__ottGlobalFavorites?.favoriteSelected?.(owner)) return true;
     var media = w.__ottMedia;
     var mediaList =
         typeof w.mediaKeyHandler === "function" &&
@@ -154,6 +156,21 @@ export function toggleKeyboardFavorite(w: any): boolean {
     )
         return false;
     var channel = channels && channels[id];
+    if (channel && typeof w.toggleGlobalFavorite === "function" && current()) {
+        if (
+            w.hasParentalLock &&
+            w.hasParentalLock(id) &&
+            (!w.__ottParental || w.__ottParental.needs("channels"))
+        )
+            return false;
+        if (
+            w.toggleGlobalFavorite(
+                channel.__ottMediaItem || { __ottGlobalChannel: id },
+                current
+            ) !== false
+        )
+            return true;
+    }
     // TV PIN membership uses numeric catalog IDs; validate before converting.
     // Provider-media keys stay opaque and are never cast for TV policy.
     if (channel && !channel.__ottMediaItem) {
@@ -214,7 +231,15 @@ export function toggleKeyboardFavorite(w: any): boolean {
     if (typeof action !== "function" || !current()) return false;
     action(id);
     if (!current()) return false;
-    return w.saveChannelsCats() === true;
+    if (w.saveChannelsCats() !== true || !current()) return false;
+    if (w.showShift)
+        w.showShift(
+            w._("Favorites") +
+                ": " +
+                (removing ? "− " : "+ ") +
+                metadataText(channel.channel_name || "")
+        );
+    return true;
 }
 
 /** Plain desktop F owns one favorite toggle; browser find/text/IME remain native. */
@@ -1237,6 +1262,7 @@ export function numberProg(digit: number): void {
  *             wraps to 0. Uses curList.length as the upper bound.
  */
 export function plusProg(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(1)) return;
     var e = ((window as any).primaryIndex || 0) + 1;
     var len = (window as any).curList ? (window as any).curList.length : 0;
     if (e >= len) e = 0;
@@ -1252,6 +1278,7 @@ export function plusProg(): void {
  * @analysis If primaryIndex is undefined/falsy, defaults to 0. If decremented below 0, wraps to len - 1.
  */
 export function minusProg(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(-1)) return;
     var e = ((window as any).primaryIndex || 0) - 1;
     var len = (window as any).curList ? (window as any).curList.length : 0;
     if (e < 0) e = len - 1;

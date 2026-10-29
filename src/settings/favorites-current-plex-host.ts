@@ -1,3 +1,4 @@
+import { isGlobalFavoriteSelector } from "./global-favorites-bindings";
 import { createPlexFavoriteReferences } from "../channels/favorites-plex-references";
 import {
     encodeFavoritesDocumentJson,
@@ -602,14 +603,16 @@ export function createFavoritesCurrentPlexHost(
         read: () => authority().owner.raw(registryKey, 262144),
         uuid: ports.uuid,
         validateSelector: (kind, value) =>
-            exact(value, [
+            isGlobalFavoriteSelector(value) ||
+            (exact(value, [
                 "kind",
                 "serverId",
                 "channelSourceId",
                 "mediaSourceId",
                 "tvKey",
                 "mediaKey",
-            ]) && value.kind === kind,
+            ]) &&
+                value.kind === kind),
     });
     function binding(scope: any) {
         if (!validScope(scope)) return null;

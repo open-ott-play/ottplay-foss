@@ -270,6 +270,22 @@ function classicPlaybackCommand(command: any): boolean | void {
                 state.phase === "stopped")
         )
             return;
+        var favoriteHandoff = w.__ottGlobalFavoritesHandoff;
+        if (type !== "finite-channel" && favoriteHandoff?.current()) {
+            if (command.automatic === true) return false;
+            if (!favoriteHandoff.accept(command)) {
+                var favoriteDriver = w.__ottActiveProviderDriver,
+                    favoriteSession = w._playSession;
+                w.__ottGlobalFavorites?.router.cancel();
+                if (
+                    favoriteDriver !== w.__ottActiveProviderDriver ||
+                    favoriteSession !== w._playSession ||
+                    store !== classicPlaybackOwnedState() ||
+                    state.generation !== classicPlaybackSnapshot().generation
+                )
+                    return false;
+            }
+        }
         var previewDriver = w.__ottActiveProviderDriver;
         if (
             type !== "finite-channel" &&
@@ -288,6 +304,21 @@ function classicPlaybackCommand(command: any): boolean | void {
                 state.generation !== classicPlaybackSnapshot().generation
             )
                 return false;
+        }
+        if (type !== "finite-channel" && !favoriteHandoff?.current()) {
+            var navigation = w.__ottGlobalFavorites?.navigation;
+            if (navigation) {
+                var navigationSession = w._playSession,
+                    navigationDriver = w.__ottActiveProviderDriver;
+                navigation.retire();
+                if (
+                    navigationSession !== w._playSession ||
+                    navigationDriver !== w.__ottActiveProviderDriver ||
+                    store !== classicPlaybackOwnedState() ||
+                    state.generation !== classicPlaybackSnapshot().generation
+                )
+                    return false;
+            }
         }
         var history: PlaybackVisit = {
             archiveStart:

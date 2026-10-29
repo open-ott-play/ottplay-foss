@@ -2756,6 +2756,11 @@ function setupTauriEpgCacheReady(): void {
  * Edge case: If the category doesn't exist, shows an error via infoBox()
  * and sendClientFeedback(). If parental access is required, defers via callback.
  */
+function stopSourcePlayback(): void {
+    var stop = (window as any).__ottCoreTransport?.stopForSource;
+    if (typeof stop === "function") stop();
+    else stbStop();
+}
 function _playChannel(
     catIdx: number,
     chIdx: number,
@@ -2763,7 +2768,8 @@ function _playChannel(
     admit?: () => boolean,
     resume?: { channelId: string; position: number; sourceId: string },
     background = false,
-    fromStart = false
+    fromStart = false,
+    committed?: (ok: boolean) => void
 ): boolean | void {
     var w = window as any;
     if (w.__ottStandby?.blocked()) return false;
@@ -2831,7 +2837,8 @@ function _playChannel(
                     admit,
                     resume,
                     background,
-                    fromStart
+                    fromStart,
+                    committed
                 );
         })
     ) {
@@ -2852,7 +2859,7 @@ function _playChannel(
         settings.stopPlay &&
         !(background && w.__ottClassicPlayback?.snapshot().phase === "stopped")
     )
-        stbStop();
+        stopSourcePlayback();
     if (admit && !admit()) return false;
     if (!resumeCurrent()) return false;
     setCurrent(catIdx, chIdx);
@@ -2876,14 +2883,15 @@ function _playChannel(
         return w.__ottMedia.playChannel(
             mediaItem,
             channelId,
-            undefined,
+            admit,
             background,
             fromStart
                 ? "start"
                 : w.commandChannelsReady === false ||
                     (kiosk && kiosk.locked() && kiosk.allowed(channelId))
                   ? "resume"
-                  : "prompt"
+                  : "prompt",
+            committed
         );
     }
     if (
@@ -2976,7 +2984,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
     if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
-    if (settings.stopPlay) stbStop();
+    if (settings.stopPlay) stopSourcePlayback();
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"

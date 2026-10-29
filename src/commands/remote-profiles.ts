@@ -6,7 +6,48 @@ var profileRequestActive = false;
 /** Handle managed profile operations without returning endpoints or credentials. */
 export function handleRemoteProfiles(
     request: any,
-    done: (result: any) => void
+    done: (result: any) => void,
+    admission?: () => boolean
+): boolean {
+    return handleProfiles(request, done, admission);
+}
+
+/** Internal exact-config selection for an owned global VPortal handoff. */
+export function selectGlobalMediaProfile(
+    driver: any,
+    expectedConfiguration: string,
+    slot: number,
+    done: (result: any) => void,
+    admission: () => boolean
+): boolean {
+    if (
+        typeof admission !== "function" ||
+        !admission() ||
+        !driver ||
+        driver.id !== "m3u" ||
+        driver !== (window as any).__ottActiveProviderDriver
+    ) {
+        done({
+            data: {
+                error: "The media profile selection is no longer current.",
+            },
+            status: "rejected",
+        });
+        return true;
+    }
+    return handleProfiles(
+        { action: "profile", params: { number: slot + 1 } },
+        done,
+        admission,
+        { driver: driver, configuration: expectedConfiguration, slot: slot }
+    );
+}
+
+function handleProfiles(
+    request: any,
+    done: (result: any) => void,
+    admission?: () => boolean,
+    mediaSelection?: { driver: any; configuration: string; slot: number }
 ): boolean {
     var action = request.action;
     var offline = (window as any).__ottOfflineProfiles;
@@ -22,7 +63,7 @@ export function handleRemoteProfiles(
             "profile_import",
         ].indexOf(action) >= 0
     ) {
-        offline.request(request).then(done);
+        offline.request(request, admission).then(done);
         return true;
     }
     if (
@@ -117,6 +158,8 @@ export function handleRemoteProfiles(
         );
     }
     function run(): any {
+        if (admission && !admission())
+            return rejected("Profile operation is no longer current.");
         var params = request.params === undefined ? {} : request.params;
         var driver = w.__ottActiveProviderDriver;
         if (
@@ -125,7 +168,7 @@ export function handleRemoteProfiles(
             isProviderAllowed("vportal") &&
             typeof driver.remoteProfiles === "function"
         )
-            return driver.remoteProfiles(request);
+            return driver.remoteProfiles(request, admission);
         if (
             !driver ||
             driver.id !== "m3u" ||
@@ -140,6 +183,17 @@ export function handleRemoteProfiles(
         if (!object(params)) return rejected("Invalid profile parameters.");
         var config = driver.configuration();
         var before = JSON.stringify(config);
+        if (
+            mediaSelection &&
+            (typeof admission !== "function" ||
+                !admission() ||
+                mediaSelection.driver !== driver ||
+                mediaSelection.configuration !== before ||
+                mediaSelection.slot !== params.number - 1)
+        )
+            return rejected(
+                "The media profile selection is no longer current."
+            );
         if (
             !config ||
             !Array.isArray(config.M3Us) ||
@@ -193,11 +247,20 @@ export function handleRemoteProfiles(
         var fields: string[] = [];
         var reload = false;
         if (action === "profile") {
-            if (!slot.www.trim())
-                return rejected(
-                    "Configure this profile's playlist before selecting it."
-                );
-            if (!checkProviderUrl(slot.www))
+            if (!slot.www.trim()) {
+                var parser = mediaSelection && w.__ottVPortal?.parse;
+                var media =
+                    typeof parser === "function" ? parser(slot.medUrl) : null;
+                if (
+                    !media ||
+                    typeof media.url !== "string" ||
+                    !checkProviderUrl(media.url)
+                )
+                    return rejected(
+                        "Configure this profile's playlist before selecting it."
+                    );
+            }
+            if (slot.www.trim() && !checkProviderUrl(slot.www))
                 return rejected(
                     "This playlist is not allowed on this platform."
                 );
@@ -274,7 +337,7 @@ export function handleRemoteProfiles(
         if (changed) {
             var expected = JSON.parse(JSON.stringify(config));
             if (
-                driver.saveConfiguration(config) !== true ||
+                driver.saveConfiguration(config, admission) !== true ||
                 w.__ottActiveProviderDriver !== driver
             )
                 return rejected("Could not complete the profile save.");
@@ -283,7 +346,7 @@ export function handleRemoteProfiles(
                 return rejected("The profile changed while saving. Try again.");
             config = persisted;
             if (reload) {
-                if (w.loadPlaylist !== load)
+                if ((admission && !admission()) || w.loadPlaylist !== load)
                     return rejected(
                         "The playlist reload lifecycle changed while saving."
                     );

@@ -360,8 +360,8 @@ function createOwnedPlaylistDriver(
         mediaUrl: function (url) {
             return ports.core.operatorVodRoot(id, url, credentials().username);
         },
-        saveCredentials: function (value) {
-            if (!active()) return false;
+        saveCredentials: function (value, admission?: () => boolean) {
+            if (!active() || (admission && !admission())) return false;
             var selected = Number(value.playlist);
             if (
                 id === "kb-team" &&
@@ -376,7 +376,11 @@ function createOwnedPlaylistDriver(
                     ? String(slot) !== value.playlist
                     : credentials().username !== value.username;
             function current() {
-                return active() && operation === revision;
+                return (
+                    active() &&
+                    operation === revision &&
+                    (!admission || admission())
+                );
             }
             var writes: any[] =
                 id === "antifriz"

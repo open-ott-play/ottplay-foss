@@ -533,6 +533,26 @@ export function createVPortalClient(
         };
         if (item.type === "multistream") record.__ottMediaFilterable = true;
         sourceTarget(record);
+        // Portable identity is attested here, before raw provider fields are discarded.
+        var identitySource = item;
+        var identity = directProviderId(identitySource);
+        if (!identity && item.request && typeof item.request === "object") {
+            identitySource = item.request;
+            identity = directProviderId(identitySource);
+        }
+        if (identity) {
+            var rawId = identitySource[identity.field];
+            if (
+                (typeof rawId === "string" ||
+                    (typeof rawId === "number" &&
+                        isFinite(rawId) &&
+                        rawId >= 0 &&
+                        Math.floor(rawId) === rawId &&
+                        rawId <= 9007199254740991)) &&
+                /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(identity.value)
+            )
+                record.__ottFavoriteId = identity;
+        }
         if (item.adult || (parent && parent.adult)) record.adult = 1;
         if (item.type === "stream") {
             if (parent && parent.type === "multistream")
@@ -998,7 +1018,8 @@ export function createVPortalClient(
         data: any,
         params: any,
         name: string,
-        retainDirect = false
+        retainDirect = false,
+        inherited?: any
     ): any[] {
         if (
             !data ||
@@ -1008,13 +1029,16 @@ export function createVPortalClient(
             !Array.isArray(data.items)
         )
             throw new Error();
+        var context = inherited ? mediaContext(data, inherited) : data;
+        if (inherited && inherited.type === "multistream" && inherited.title)
+            context.title = inherited.title;
         var records: any[] = [];
         var next: any = null;
         var occurrences: Record<string, number> = Object.create(null);
         data.items.forEach(function (item: any): void {
             if (item && item.type === "next") next = item;
             else {
-                var record = media(item, data);
+                var record = media(item, context);
                 if (retainDirect && record && item.type === "stream") {
                     var title = String(item.title || "");
                     var occurrence = occurrences[title] || 0;
@@ -1055,16 +1079,16 @@ export function createVPortalClient(
                 Object.keys(supplied).some(function (key) {
                     return page[key] !== params[key];
                 })
-            )
+            ) {
+                var target = sourceTarget({ mediaName: name, request: page });
+                if (inherited) target.__ottVPortalContext = context;
                 records.push({
                     __ottMediaLabel: { key: "Next", value: translate("Next") },
                     __ottMediaNext: true,
-                    playlist_url: sourceTarget({
-                        mediaName: name,
-                        request: page,
-                    }),
+                    playlist_url: target,
                     title: translate("Next"),
                 });
+            }
         }
         if (data.controls && data.controls.search)
             records.push({
@@ -1156,7 +1180,9 @@ export function createVPortalClient(
                     records = catalogRecords(
                         data,
                         params,
-                        target.mediaName || options.title || "VPortal"
+                        target.mediaName || options.title || "VPortal",
+                        false,
+                        target.__ottVPortalContext || {}
                     );
                 } catch (_) {
                     records = undefined;
@@ -1749,7 +1775,13 @@ export function createVPortalClient(
             function (data): void {
                 if (!current()) return;
                 try {
-                    records = catalogRecords(data, params, name);
+                    records = catalogRecords(
+                        data,
+                        params,
+                        name,
+                        false,
+                        target.__ottVPortalContext || {}
+                    );
                 } catch (_) {
                     reportError();
                 }

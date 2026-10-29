@@ -1,3 +1,4 @@
+declare const metadataText: typeof import("../utils/helpers").metadataText;
 /** The provider/UI codec is the only media module that reads the classic host. */
 var mediaClassicInstance: any = null;
 var mediaClassicSource = "";
@@ -93,6 +94,86 @@ function classicMediaSourceId(): string {
     return mediaClassicContext
         ? mediaClassicContext.sourceId
         : (window as any).__ottSourceIdentity.media(window);
+}
+
+/** Read current-source favorite membership without mounting, fetching or writing a runtime. */
+function classicMediaCategoryMembers(ids: any[], catalog: any): any[] {
+    var w = window as any;
+    var source = classicMediaSourceId();
+    var get = w.providerGetItem;
+    function current(): boolean {
+        return (
+            !mediaClassicContext &&
+            source === classicMediaSourceId() &&
+            get === w.providerGetItem &&
+            catalog === w.channels &&
+            w.sFavorites !== -1
+        );
+    }
+    if (!current() || typeof get !== "function" || !w.__ottMediaJournal)
+        return [];
+    var state = w.__ottMediaJournal
+        .create({
+            sourceId: source,
+            current: current,
+            read: function (key: string) {
+                return get.call(w, key);
+            },
+        })
+        .peek();
+    if (!state.document || !current()) return [];
+    var wanted: any = Object.create(null);
+    state.document.favorites.forEach(function (row: any) {
+        if (row.sourceId === source) wanted[row.itemId] = true;
+    });
+    if (!Object.keys(wanted).length) return [];
+    var matches: any = Object.create(null);
+    ids.forEach(function (id: any) {
+        var payload = catalog[id] && catalog[id].__ottMediaItem;
+        if (!payload) return;
+        var ref = payload.__ottMediaRef;
+        if (ref && ref.sourceId !== source) return;
+        var explicit =
+            payload.itemId !== undefined
+                ? payload.itemId
+                : payload.media_id !== undefined
+                  ? payload.media_id
+                  : payload.episode_id !== undefined
+                    ? payload.episode_id
+                    : payload.stream_id !== undefined
+                      ? payload.stream_id
+                      : payload.id;
+        var key =
+            ref && typeof ref.itemId === "string" && ref.itemId
+                ? ref.itemId
+                : explicit !== undefined &&
+                    explicit !== null &&
+                    String(explicit)
+                  ? "provider:" + String(explicit)
+                  : payload.request
+                    ? "request:" + serializeMediaIdentity(payload.request)
+                    : payload.playlist_url && !payload.submenu
+                      ? "route:" + serializeMediaIdentity(payload.playlist_url)
+                      : null;
+        if (key && wanted[key]) (matches[key] || (matches[key] = [])).push(id);
+    });
+    var result: any[] = [];
+    var added: any = Object.create(null);
+    var visited: any = Object.create(null);
+    state.document.favorites.forEach(function (row: any) {
+        if (visited[row.itemId]) return;
+        visited[row.itemId] = true;
+        (matches[row.itemId] || []).forEach(function (id: any) {
+            if (typeof id !== "string" && typeof id !== "number") return;
+            if (id !== id) return;
+            var key = typeof id + ":" + String(id);
+            if (!added[key]) {
+                added[key] = true;
+                result.push(id);
+            }
+        });
+    });
+    return current() ? result : [];
 }
 
 /** Scalar neighbours avoid cloning large channel lists on every footer tick. */
@@ -303,6 +384,7 @@ function classicMediaRuntime(): any {
     var automaticRequest: any = null;
     var automaticGeneration = 0;
     var completedLocalGeneration = -1;
+    var completedGlobalGeneration = -1;
     var collectionRequest: any = null;
     var shuffleRequest: any = null;
     var completionRequest: any = null;
@@ -548,6 +630,15 @@ function classicMediaRuntime(): any {
             if (typeof set === "function") set.call(w, key, value);
         },
     });
+    function favoriteFeedback(name: string, removing: boolean): void {
+        if (w.showShift)
+            w.showShift(
+                w._("Favorites") +
+                    ": " +
+                    (removing ? "− " : "+ ") +
+                    metadataText(name)
+            );
+    }
     function collections() {
         var document = journal.read().document;
         if (!current()) return document;
@@ -1536,6 +1627,8 @@ function classicMediaRuntime(): any {
                 reader.call(context || w, "mediaJournal.v1:" + source);
             if (stored !== JSON.stringify(journal.read().document)) return null;
             collections();
+            if (toggle && persistent() && mediaClassicPlayback === playing)
+                favoriteFeedback(item.title, removing);
             return {
                 context: !!context,
                 payload: record.payload,
@@ -1649,8 +1742,25 @@ function classicMediaRuntime(): any {
                 api.ended(completion.generation);
             }
         },
-        ended: function (generation: number) {
-            if (w.__ottStandby?.blocked() || deferLocalEnd(generation)) return;
+        ended: function (generation: number, globalCompletion?: any) {
+            if (w.__ottStandby?.blocked()) return;
+            if (completedGlobalGeneration === generation) return;
+            var navigation = w.__ottGlobalFavorites?.navigation;
+            if (
+                navigation?.complete(
+                    generation,
+                    globalCompletion,
+                    manualLoading || skipRequest
+                        ? "pending"
+                        : mediaClassicPlayback?.sequence?.repeat || repeat
+                )
+            ) {
+                completedGlobalGeneration = generation;
+                if (mediaClassicPlayback)
+                    api.checkpoint(mediaClassicPlayback.ref, 0, true);
+                return;
+            }
+            if (deferLocalEnd(generation)) return;
             // Local files use the channel catalog, not a media-library queue.
             // Their finite target therefore has no mediaClassicPlayback owner.
             var state = w.__ottClassicPlayback.snapshot();
@@ -1808,6 +1918,11 @@ function classicMediaRuntime(): any {
             authorize(item, proceed);
         },
         favorite: function (payload: any, toggle = false) {
+            if (
+                typeof w.toggleGlobalFavorite === "function" &&
+                w.toggleGlobalFavorite(payload, api.capture()) !== false
+            )
+                return true;
             if (payload.__ottMediaFilter || payload.__ottMediaNext) return;
             var admitted = api.capture();
             if (
@@ -1852,17 +1967,30 @@ function classicMediaRuntime(): any {
                 return;
             collections();
             if (!admitted()) return;
+            favoriteFeedback(classicMediaTitle(item.payload), removing);
             if (removing && frame && frame.route.kind === "favorites") {
                 var items = collectionItems("favorites");
                 if (admitted()) library.replaceItems(items);
-            } else if (w.showShift)
-                w.showShift(
-                    removing
-                        ? w._("Favorites")
-                        : classicMediaTitle(item.payload) +
-                              w._(" added to favorites")
-                );
+            }
             return true;
+        },
+        captureGlobalFavorites: function () {
+            if (context || !current()) return null;
+            var captured = journal.captureFavorites();
+            if (!captured) return null;
+            return {
+                sourceId: source,
+                favorites: captured.favorites,
+                raw: captured.raw,
+                current: function () {
+                    return (
+                        !context &&
+                        mediaClassicInstance === api &&
+                        current() &&
+                        captured.current()
+                    );
+                },
+            };
         },
         favoritesTransfer: function (expectedSource: string, readonly?: any) {
             if (
@@ -2034,7 +2162,8 @@ function classicMediaRuntime(): any {
             id: any,
             guard?: () => boolean,
             background = false,
-            positionMode = "prompt"
+            positionMode = "prompt",
+            committed?: (ok: boolean) => void
         ) {
             if (!current() || (guard && !guard())) return false;
             var list = w.__ottChannels && w.__ottChannels.capture(w.catIndex);
@@ -2079,51 +2208,59 @@ function classicMediaRuntime(): any {
                     playback: playback,
                     valid: valid,
                 };
-            authorize(item, function () {
-                if (!valid()) return;
-                loading = background ? null : beginManualLoading(item, true);
-                if (!valid()) return;
-                var position = 0;
-                if (positionMode === "resume") {
-                    var saved = journal
-                        .read()
-                        .document.history.filter(function (row: any) {
-                            return row.itemId === item.ref.itemId;
-                        })[0];
-                    position = saved ? saved.position || 0 : 0;
-                }
-                if (!valid()) return;
-                resolve(
-                    item,
-                    {
-                        background: background,
-                        channel: { id: id, list: list },
-                        repeat: repeat,
-                        replace: true,
-                    },
-                    true,
-                    valid,
-                    undefined,
-                    positionMode === "prompt"
-                        ? undefined
-                        : {
-                              position: position,
-                              unavailable: function () {},
-                          },
-                    undefined,
-                    function (candidate) {
-                        return (
-                            valid() &&
-                            (Number(candidate.adult) !== 1 ||
-                                !(w.__ottParental
-                                    ? w.__ottParental.needs("channels")
-                                    : w.sPSchannels &&
-                                      w.parentPIN !== "*" &&
-                                      !w.parentAccess))
-                        );
+            authorize(
+                item,
+                function () {
+                    if (!valid()) return;
+                    loading = background
+                        ? null
+                        : beginManualLoading(item, true);
+                    if (!valid()) return;
+                    var position = 0;
+                    if (positionMode === "resume") {
+                        var saved = journal
+                            .read()
+                            .document.history.filter(function (row: any) {
+                                return row.itemId === item.ref.itemId;
+                            })[0];
+                        position = saved ? saved.position || 0 : 0;
                     }
-                );
-            });
+                    if (!valid()) return;
+                    resolve(
+                        item,
+                        {
+                            background: background,
+                            channel: { id: id, list: list },
+                            repeat: repeat,
+                            replace: true,
+                        },
+                        true,
+                        valid,
+                        undefined,
+                        positionMode === "prompt"
+                            ? undefined
+                            : {
+                                  position: position,
+                                  unavailable: function () {},
+                              },
+                        committed,
+                        function (candidate) {
+                            return (
+                                valid() &&
+                                (Number(candidate.adult) !== 1 ||
+                                    !(w.__ottParental
+                                        ? w.__ottParental.needs("channels")
+                                        : w.sPSchannels &&
+                                          w.parentPIN !== "*" &&
+                                          !w.parentAccess))
+                            );
+                        }
+                    );
+                },
+                function () {
+                    if (committed) committed(false);
+                }
+            );
             return true;
         },
         playFavorite: function (
@@ -2746,6 +2883,11 @@ function classicMediaRuntime(): any {
                 });
         },
         skip: function (direction: number) {
+            if (
+                (direction === 1 || direction === -1) &&
+                w.__ottGlobalFavorites?.navigation?.move(direction)
+            )
+                return;
             if (direction === 1 || direction === -1) skipPlayback(direction);
         },
         snapshot: function () {
@@ -2893,6 +3035,7 @@ function classicMediaRuntime(): any {
             ? playing.runtime.captureFavorite()
             : null;
     },
+    categoryMembers: classicMediaCategoryMembers,
     channelLaunch: function (payload: any) {
         return classicMediaRuntime().channelLaunch(payload);
     },
@@ -2919,13 +3062,19 @@ function classicMediaRuntime(): any {
         classicMediaRuntime().cycleRepeat();
     },
     description: classicMediaDescription,
-    ended: function (generation: number) {
+    ended: function (generation: number, completion?: any) {
         if ((window as any).__ottActiveProviderDriver?.id === "offline")
-            classicMediaRuntime().ended(generation);
-        else if (mediaClassicInstance) mediaClassicInstance.ended(generation);
+            classicMediaRuntime().ended(generation, completion);
+        else if (mediaClassicInstance)
+            mediaClassicInstance.ended(generation, completion);
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
+    },
+    captureGlobalFavorites: function () {
+        return mediaClassicInstance
+            ? mediaClassicInstance.captureGlobalFavorites()
+            : null;
     },
     favoritesTransfer: function (source: string, readonly?: any) {
         if (mediaClassicInstance)
@@ -3061,7 +3210,8 @@ function classicMediaRuntime(): any {
         id: any,
         guard?: () => boolean,
         background = false,
-        positionMode = "prompt"
+        positionMode = "prompt",
+        committed?: (ok: boolean) => void
     ) {
         (window as any).__ottMedia.useSource(null);
         return classicMediaRuntime().playChannel(
@@ -3069,7 +3219,8 @@ function classicMediaRuntime(): any {
             id,
             guard,
             background,
-            positionMode
+            positionMode,
+            committed
         );
     },
     playFavorite: function (
@@ -3152,6 +3303,12 @@ function classicMediaRuntime(): any {
         return classicMediaRuntime().favorite(item, true);
     },
     toggleFavoriteCurrent: function () {
+        var host = window as any;
+        if (
+            typeof host.toggleGlobalFavorite === "function" &&
+            host.toggleGlobalFavorite() !== false
+        )
+            return true;
         var playing = mediaClassicPlayback;
         return playing && playing.runtime
             ? playing.runtime.captureFavorite(true)

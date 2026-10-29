@@ -22,15 +22,33 @@ const modules = [
     "media/favorites-plex-document",
     "channels/favorites-plex-references",
     "media/favorites-transfer-port",
+    "settings/global-favorites-bindings",
     "settings/favorites-current-plex-host",
     "plugins/favorites-transfer-runtime",
+    "settings/global-favorites-portable",
+    "settings/global-favorites",
+    "settings/global-favorites-facade",
+    "settings/global-favorites-receipt-codec",
+    "settings/global-favorites-receipts",
+    "settings/global-favorites-recovery",
+    "commands/global-favorites-protocol",
+    "media/global-favorites-identities",
+    "media/global-favorites-providers",
+    "media/global-favorites-router",
+    "media/global-favorites-navigation",
+    "media/global-favorites-player",
+    "media/global-favorites-view",
+    "media/global-favorites-capture",
+    "media/global-favorites-migration",
+    "commands/global-favorites-items",
+    "media/global-favorites-host",
 ];
 test("production registration keeps exact optional graph and main-owned dispatcher/storage", () => {
     assert.deepEqual(
         CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"],
         modules.map((name) => "build/" + name + ".js")
     );
-    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 12);
+    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 30);
     assert(
         CLASSIC_MAIN_MODULES.includes(
             "build/commands/remote-favorites-transfer.js"
@@ -79,7 +97,11 @@ test("optional favorites asset links without entry storage and loads without tou
                 throw new Error("Asset load read player state: " + String(key));
             },
             set(target, key, value) {
-                assert.match(String(key), /^__ottFavorites/);
+                assert(
+                    /^__ottFavorites/.test(String(key)) ||
+                        key === "__ottGlobalFavoritesFactory",
+                    "Unexpected global export " + String(key)
+                );
                 target[key] = value;
                 return true;
             },
@@ -95,6 +117,10 @@ test("optional favorites asset links without entry storage and loads without tou
         );
         assert.equal(
             typeof published.__ottFavoritesCurrentPlexHost.create,
+            "function"
+        );
+        assert.equal(
+            typeof published.__ottGlobalFavoritesFactory.create,
             "function"
         );
         assert.equal(

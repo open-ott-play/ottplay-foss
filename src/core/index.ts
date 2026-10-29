@@ -2377,6 +2377,10 @@ export function stbPlay(url: string, position?: number): void {
     getCoreMediaBackend().open({ position: position, url: url });
 }
 export function stbStop(): void {
+    (window as any).__ottGlobalFavorites?.navigation?.retire();
+    stopCorePlayback();
+}
+function stopCorePlayback(): void {
     var media = (window as any).__ottMedia;
     if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
@@ -3872,6 +3876,15 @@ export function getCoreMediaBackend(): any {
             return !stbIsStandby();
         },
         beforeIntent: function (): boolean {
+            var globalRouter = (window as any).__ottGlobalFavorites?.router;
+            var intentSession = _playSession,
+                intentDriver = (window as any).__ottActiveProviderDriver;
+            if (globalRouter?.busy()) globalRouter.cancel();
+            if (
+                intentSession !== _playSession ||
+                intentDriver !== (window as any).__ottActiveProviderDriver
+            )
+                return false;
             var driver = (window as any).__ottActiveProviderDriver;
             if (
                 !driver ||
@@ -3917,6 +3930,14 @@ export function getCoreMediaBackend(): any {
         ) {
             var playback = (window as any).__ottClassicPlayback;
             if (playback) {
+                var completion =
+                    type === "ended" && context.kind === "vod"
+                        ? (
+                              window as any
+                          ).__ottGlobalFavorites?.navigation?.prepareEnded(
+                              context.generation
+                          )
+                        : null;
                 playback.command({
                     duration: duration,
                     generation: context.generation,
@@ -3925,7 +3946,7 @@ export function getCoreMediaBackend(): any {
                 });
                 var media = (window as any).__ottMedia;
                 if (type === "ended" && context.kind === "vod" && media)
-                    media.ended(context.generation + 1);
+                    media.ended(context.generation + 1, completion);
             }
         },
         observedPosition: function (position: number): void {
@@ -4310,6 +4331,12 @@ if (typeof window !== "undefined") {
             });
         },
         play: stbPlay,
+        // Only fixed source/catalogue dispatch call sites use this internal stop.
+        stopForSource: function () {
+            if ((window as any).__ottGlobalFavoritesHandoff?.current())
+                stopCorePlayback();
+            else stbStop();
+        },
     };
 }
 /** Shared guards avoid duplicating ES5 optional-call expansion in every engine. */

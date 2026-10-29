@@ -35,6 +35,7 @@ module.exports = defineConfig({
         "notification-persistence.spec.cjs",
         "remote-plex.spec.cjs",
         "remote-favorites.spec.cjs",
+        "global-favorites-mixed.spec.cjs",
         "remote-doctor.spec.cjs",
         "standby-native.spec.cjs",
     ],
