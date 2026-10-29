@@ -451,6 +451,14 @@ const RELATIVE_SEEK_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 2613,
     gzipBytes: 768,
 });
+// Selected-only Plex queue metadata adds 308 raw / 70 gzip bytes to its lazy
+// provider on Node22.23.4. Count it once in the complete payload; entry,
+// legacy, provider and optional caps retain their existing limits.
+// See docs/evidence/plex-queue-step-size-20261029.json.
+const PLEX_QUEUE_STEP_TOTAL_ALLOWANCE = Object.freeze({
+    bytes: 308,
+    gzipBytes: 70,
+});
 // Mixed global favorites: measured against the production-equivalent a480
 // baseline using Node22.23.4/zlib1.3.1-e00f703. These bounded named allowances
 // use exact a822/6234 canonical deltas, preserving pre-feature headroom.
@@ -787,7 +795,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
         OPTIONAL_BUDGETS["shaka-tracks"].bytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -804,7 +813,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
         OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -989,6 +999,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
         optionalBudgets: OPTIONAL_BUDGETS,
+        plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
                 modules.includes(file)
@@ -1293,6 +1304,7 @@ function writeBuildBundleReport(
                 stagedExpectedSha256: expectedSha256,
             },
             optionalBudgets: OPTIONAL_BUDGETS,
+            plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
             providerBudget: PROVIDER_BUDGET,
             providerBundles: sets,
             relativeSeekEntryAllowance: RELATIVE_SEEK_ENTRY_ALLOWANCE,
@@ -1376,6 +1388,7 @@ module.exports = {
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
+    PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
     PROVIDER_BUDGET,
     RELATIVE_SEEK_ENTRY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,

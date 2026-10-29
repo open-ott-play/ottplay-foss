@@ -14,6 +14,7 @@ const {
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
     SHAKA_TRACKS_ENTRY_ALLOWANCE,
     RELATIVE_SEEK_ENTRY_ALLOWANCE,
+    PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -46,6 +47,71 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const shakaTrackDelta = (budget, metric) =>
+        SHAKA_TRACKS_ENTRY_ALLOWANCE[metric] +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? OPTIONAL_BUDGETS["shaka-tracks"][metric]
+            : 0);
+    const plexStepDelta = (budget, metric) =>
+        budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? PLEX_QUEUE_STEP_TOTAL_ALLOWANCE[metric]
+            : 0;
+    const plexEvidence = require("../docs/evidence/plex-queue-step-size-20261029.json");
+    assert(Object.isFrozen(PLEX_QUEUE_STEP_TOTAL_ALLOWANCE));
+    assert.deepEqual(PLEX_QUEUE_STEP_TOTAL_ALLOWANCE, {
+        bytes: 308,
+        gzipBytes: 70,
+    });
+    for (const [name, budget] of Object.entries({
+        baseTotalBudget: BASE_TOTAL_BUDGET,
+        budget: BUDGET,
+        legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+        totalBudget: TOTAL_BUDGET,
+    }))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] -
+                    shakaTrackDelta(budget, metric) -
+                    plexEvidence.previousCaps[name][metric],
+                plexStepDelta(budget, metric),
+                name + " counts the Plex change only once in complete totals"
+            );
+    assert.deepEqual(
+        Object.fromEntries(
+            Object.entries(OPTIONAL_BUDGETS).filter(
+                ([name]) => name !== "shaka-tracks"
+            )
+        ),
+        plexEvidence.previousCaps.optionalBudgets
+    );
+    assert.deepEqual(OPTIONAL_BUDGET, plexEvidence.previousCaps.optionalBudget);
+    for (const variant of plexEvidence.variants)
+        for (const metric of ["bytes", "gzipBytes"]) {
+            const delta = PLEX_QUEUE_STEP_TOTAL_ALLOWANCE[metric];
+            assert.equal(
+                variant.plexAfter[metric] - variant.plexBefore[metric],
+                delta
+            );
+            assert.equal(
+                variant.completeAfter[metric] - variant.completeBefore[metric],
+                delta
+            );
+            assert.equal(
+                variant.legacyAfter[metric] - variant.legacyBefore[metric],
+                delta
+            );
+            assert.equal(
+                TOTAL_BUDGET[metric] -
+                    shakaTrackDelta(TOTAL_BUDGET, metric) -
+                    variant.completeAfter[metric],
+                plexEvidence.previousCaps.totalBudget[metric] -
+                    variant.completeBefore[metric],
+                "complete-total headroom is preserved exactly"
+            );
+            assert(variant.entry[metric] <= BUDGET[metric]);
+            assert(variant.legacyAfter[metric] <= LEGACY_TOTAL_BUDGET[metric]);
+            assert(variant.plexAfter[metric] <= PROVIDER_BUDGET[metric]);
+        }
     const source = "var title = 'Программа';";
     const measurement = measureBundle(source, "unicode.js");
     assert.equal(measurement.bytes, Buffer.byteLength(source));
@@ -98,6 +164,7 @@ try {
     assert.equal(
         BASE_TOTAL_BUDGET.bytes,
         LEGACY_TOTAL_BUDGET.bytes +
+            PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes +
             // Relocated assets share the existing complete payload allowance;
             // their independent caps do not allocate additional TOTAL bytes.
             Object.entries(OPTIONAL_BUDGETS)
@@ -115,6 +182,7 @@ try {
     assert.equal(
         BASE_TOTAL_BUDGET.gzipBytes,
         LEGACY_TOTAL_BUDGET.gzipBytes +
+            PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes +
             // Relocated assets share the existing complete payload allowance;
             // their independent caps do not allocate additional TOTAL bytes.
             Object.entries(OPTIONAL_BUDGETS)
@@ -129,7 +197,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1637528, gzipBytes: 503737 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1637836, gzipBytes: 503807 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -142,7 +210,7 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1642008, gzipBytes: 506041 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1642316, gzipBytes: 506111 });
     assert.deepEqual(BUDGET, { bytes: 1136462, gzipBytes: 347587 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
         bytes: 1281298,
@@ -203,11 +271,6 @@ try {
             /gzipBytes .* exceeds budget/
         );
     }
-    const shakaTrackDelta = (budget, metric) =>
-        SHAKA_TRACKS_ENTRY_ALLOWANCE[metric] +
-        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
-            ? OPTIONAL_BUDGETS["shaka-tracks"][metric]
-            : 0);
     assert.deepEqual(OPTIONAL_BUDGETS["shaka-tracks"], {
         bytes: 1200,
         gzipBytes: 640,
@@ -257,6 +320,7 @@ try {
                 budget[metric] -
                     shakaTrackDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
+                    plexStepDelta(budget, metric) -
                     mixedEvidence.previousCaps[name][metric],
                 mixedDelta(budget, metric),
                 name + " counts each mixed component once"
@@ -402,6 +466,7 @@ try {
         assert.equal(
             budget.bytes -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes -
+                plexStepDelta(budget, "bytes") -
                 mixedDelta(budget, "bytes") -
                 shakaTrackDelta(budget, "bytes") -
                 retirementEvidence.previousCaps[name].bytes,
@@ -411,6 +476,7 @@ try {
         assert.equal(
             budget.gzipBytes -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes -
+                plexStepDelta(budget, "gzipBytes") -
                 mixedDelta(budget, "gzipBytes") -
                 shakaTrackDelta(budget, "gzipBytes"),
             retirementEvidence.previousCaps[name].gzipBytes,
@@ -499,6 +565,7 @@ try {
             assert.equal(
                 budget[metric] -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
+                    plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
                     shakaTrackDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
@@ -625,6 +692,7 @@ try {
             assert.equal(
                 budget[metric] -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
+                    plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
                     shakaTrackDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
@@ -686,6 +754,7 @@ try {
             assert.equal(
                 actual[key] -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
+                    plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
                     shakaTrackDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
@@ -737,6 +806,7 @@ try {
             assert.equal(
                 actual[key] -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
+                    plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
                     shakaTrackDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
@@ -773,6 +843,7 @@ try {
                     (item) =>
                         TOTAL_BUDGET[metric] -
                         RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
+                        plexStepDelta(TOTAL_BUDGET, metric) -
                         mixedDelta(TOTAL_BUDGET, metric) -
                         shakaTrackDelta(TOTAL_BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
@@ -1159,6 +1230,10 @@ try {
     assert.equal(failed.artifacts.length, 3);
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        failed.plexQueueStepTotalAllowance,
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE
+    );
     assert.deepEqual(
         failed.shakaRetirementEntryAllowance,
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE
