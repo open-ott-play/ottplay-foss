@@ -38,6 +38,7 @@ function fixture() {
                 event,
                 request,
                 sample,
+                seeks: [],
                 selections: [],
             };
             leases.push(lease);
@@ -52,6 +53,15 @@ function fixture() {
                 pause() {
                     sample.paused = true;
                     event("pause");
+                },
+                relativeSample() {
+                    if (lease.onSample) lease.onSample();
+                    return { ...sample };
+                },
+                relativeSeek(position, paused) {
+                    lease.seeks.push({ paused, position });
+                    sample.position = position;
+                    return true;
                 },
                 resume() {
                     sample.paused = false;
@@ -1880,6 +1890,108 @@ test("source-stop marker is forwarded only for the explicit internal stop", (f) 
     f.domain(null);
     f.backend.stop(undefined, ticket);
     assert.equal(calls.length, 2, "idle stop does not invent an event context");
+});
+
+for (const paused of [false, true]) {
+    test(
+        "relative seek reads actual decoder, clamps and preserves pause " +
+            paused,
+        (f) => {
+            const handle = f.backend.open({ url: "vod" });
+            f.playing(0, 10);
+            const lease = f.leases[0];
+            if (paused) handle.pause();
+            lease.sample.position = 70; // Intentionally newer than the backend snapshot.
+            assert.equal(handle.snapshot().position, 10);
+            const moved = handle.seekRelative(12.5, () => true);
+            assert.deepEqual(JSON.parse(JSON.stringify(moved)), {
+                clamped: false,
+                from: 70,
+                position: 82.5,
+            });
+            assert.equal(lease.sample.paused, paused);
+            assert.deepEqual(lease.seeks, [{ paused, position: 82.5 }]);
+            assert.equal(handle.seekRelative(-100, () => true).position, 0);
+            const end = handle.seekRelative(9007199254740991, () => true);
+            assert.equal(end.clamped, true);
+            assert.equal(end.position, 499.999);
+            assert.ok(end.position < lease.sample.duration);
+            lease.sample.duration = 9007199254740991;
+            const large = handle.seekRelative(9007199254740991, () => true);
+            assert.ok(
+                large.position < lease.sample.duration,
+                "large doubles remain strictly before EOF"
+            );
+            lease.sample.duration = 0.0005;
+            lease.sample.position = 0;
+            assert.equal(handle.seekRelative(1, () => true).position, 0);
+        }
+    );
+}
+for (const field of ["position", "duration"]) {
+    for (const invalid of [NaN, Infinity, -1, "10"]) {
+        test("relative seek rejects invalid " + field + ": " + invalid, (f) => {
+            const handle = f.backend.open({ url: "vod" });
+            f.playing(0, 10);
+            f.leases[0].sample[field] = invalid;
+            assert.equal(
+                handle.seekRelative(1, () => true),
+                null
+            );
+            assert.deepEqual(f.leases[0].seeks, []);
+        });
+    }
+}
+for (const boundary of ["sample", "intent", "seek", "policy"]) {
+    test("relative seek fences replacement during " + boundary, (f) => {
+        const handle = f.backend.open({ url: "old" });
+        f.playing(0, 10);
+        const replace = () => {
+            f.domain({ generation: 2, kind: "vod", position: 0 });
+            f.backend.open({ url: "new" });
+            f.playing(1, 20);
+            return true;
+        };
+        if (boundary === "sample") f.leases[0].onSample = replace;
+        if (boundary === "intent") f.ports.beforeIntent = replace;
+        if (boundary === "seek") f.ports.beforeSeek = replace;
+        assert.equal(
+            handle.seekRelative(
+                1,
+                boundary === "policy" ? () => false : () => true
+            ),
+            null
+        );
+        assert.ok(f.leases.every((lease) => lease.seeks.length === 0));
+    });
+}
+test("relative seek rejects zero, invalid offsets, unavailable phases and non-VOD", (f) => {
+    const handle = f.backend.open({ url: "vod" });
+    assert.equal(
+        handle.seekRelative(1, () => true),
+        null
+    );
+    f.playing(0, 0);
+    for (const value of [0, -0, NaN, Infinity, "1", 9007199254740992])
+        assert.equal(
+            handle.seekRelative(value, () => true),
+            null
+        );
+    assert.equal(handle.seekRelative(1, () => true).from, 0);
+    for (const kind of ["live", "archive"]) {
+        f.domain({ generation: 2, kind, position: 0 });
+        const other = f.backend.open({ url: kind });
+        f.playing(f.leases.length - 1, 10);
+        assert.equal(other.canSeekRelative(), false);
+        assert.equal(
+            other.seekRelative(1, () => true),
+            null
+        );
+    }
+    assert.deepEqual(
+        f.leases.slice(1).map((lease) => lease.seeks),
+        [[], []]
+    );
 });
 
 console.log(

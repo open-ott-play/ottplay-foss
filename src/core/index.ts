@@ -4250,6 +4250,47 @@ function openCoreEngineLease(
                 cancelCoreCompat((window as any).__ottCoreCompatibilityUrl);
             }
         },
+        relativeSample: function () {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                media.seekable.length === 0
+            )
+                return null;
+            return {
+                duration: media.duration,
+                paused: media.paused,
+                position: media.currentTime,
+                ready: media.readyState,
+            };
+        },
+        relativeSeek: function (position: number, paused: boolean) {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                _corePendingSeek !== null
+            )
+                return false;
+            var inRange = false;
+            for (var i = 0; i < media.seekable.length; i++)
+                if (
+                    position >= media.seekable.start(i) &&
+                    position <= media.seekable.end(i)
+                )
+                    inRange = true;
+            if (!inRange || !active()) return false;
+            (window as any).forcePlay = !paused;
+            seekCoreMedia(position, session);
+            return true;
+        },
         resume: function () {
             if (!active() || !media) return;
             var waitingForPlayback =

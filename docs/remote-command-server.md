@@ -345,6 +345,51 @@ domain-specific controls. Capability availability can change between reading it
 and issuing a command. These administrator controls do not expand scoped diagnostic
 operator permissions. The enabled controller connection already authorizes diagnostics.
 
+With `playback_seek_relative: {"version":1}`, an explicitly signed seek moves
+relative to the current decoder position in one player operation:
+
+```sh
+ott l seek +10s             # forward 10 seconds
+ott l seek -10s             # back 10 seconds
+ott l +1m                  # forward one minute (signed-unit shorthand)
+ott l seek +3m             # forward three minutes
+ott l seek -1m30s           # back 90 seconds
+ott l seek +1h30m           # forward 90 minutes
+ott l seek 01:30            # absolute position at 90 seconds
+ott t1,t2 seek -10s         # back 10 seconds on each player
+```
+
+`seek +10` and `seek -10` also accept plain seconds. Units are case-insensitive;
+ordered `h`, `m`, `s` components, fractions such as `+0.5s`, and signed
+`MM:SS` / `HH:MM:SS` clock times are supported. Each player in a list seeks from
+its own current position; group commands do not synchronize playback.
+
+The wire request is `playback` with exactly
+`{"operation":"seek_relative","offset":30}`. The offset is a nonzero finite
+number of seconds with absolute value at most 9007199254740991. A successful
+receipt contains exactly `dispatched`, `operation`, `offset`, `from`, `position`
+and `clamped`; it confirms dispatch to that owned decoder, not completed playback.
+The relative operation uses only its new capability; `caps.playback` retains
+the existing operation names for older clients. Bare `+30`
+and `-90` retain their channel-step meaning; unsigned `seek 30` remains absolute.
+
+Relative seeking requires playing or paused VOD with a known positive finite
+duration and a seekable destination. It preserves pause state, clamps below zero
+to zero, and clamps 1 ms before the end (to zero for shorter clips; a larger
+floating-point guard is used for very large durations). It does not deliberately seek to EOF or advance
+the queue; normal playback can still reach the end. Unknown duration, live/archive,
+a pending decoder seek, standby or a changed source/decoder rejects the operation.
+The shared HTML media path covers web, Tauri, Capacitor and LG; Video.js uses its
+own guarded decoder path. This is capability-dependent, not a claim that every
+device or media format supports seeking.
+
+Authenticated absolute and relative VOD seeks are allowed in strict kiosk, while
+parental/settings PIN restrictions and protected local-input dialogs still block
+them. Other kiosk controls are unchanged. Clients do not emulate relative seek
+with a status read or key presses and do not retry an uncertain mutation. Repeated
+delivery of the same request ID within the current player process replays the
+saved receipt without applying the offset again.
+
 Updated clients additionally support `resolve_archive` and `play_archive_catalog`
 for the CLI's channel → current programme → available archive search. Archive
 resolution is a separate authenticated operation that returns a private media
@@ -768,8 +813,10 @@ player or policy changes; multiple fingers and vertical swipes cancel it too.
 This exception requires the active core player and a known finite duration, and
 stops one second before the end instead of directly triggering the next episode.
 Outside the timeline, swipes and long presses remain blocked. Double-click actions,
-pause, keyboard/remote seeking, menus, player exit and local volume/mute controls
-are blocked. In the Capacitor Android app, physical Volume Up/Down keys control
+pause, keyboard seeking, menus, player exit and local volume/mute controls
+are blocked. Authenticated typed remote VOD seeking remains available under the
+PIN, protected-dialog and ownership checks described above. In the Capacitor
+Android app, physical Volume Up/Down keys control
 Android media output directly, including while the page is locked or unresponsive.
 Repeated taps never expand the description. Remote
 volume/mute, status and recovery remain available; stopping the current diagnostic

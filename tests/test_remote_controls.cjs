@@ -97,6 +97,8 @@ function fixture() {
         phase = "playing";
     const handle = {
         active: () => active,
+        canSeekRelative: () =>
+            active && kind === "vod" && ["playing", "paused"].includes(phase),
         pause: () => {
             effects.push("pause");
             phase = "paused";
@@ -106,6 +108,11 @@ function fixture() {
             phase = "playing";
         },
         seek: (position) => effects.push(["seek", position]),
+        seekRelative: (offset, admitted) => {
+            if (!admitted()) return null;
+            effects.push(["seek_relative", offset]);
+            return { clamped: false, from: 100, position: 100 + offset };
+        },
         snapshot: () => ({ phase }),
     };
     const backend = {
@@ -531,6 +538,112 @@ for (const changed of [
         f.run("playback", { operation: "resume" }).result.status,
         "unsupported"
     );
+}
+{
+    const f = fixture();
+    assert.deepEqual(f.run("capabilities").result.data.playback, [
+        "pause",
+        "resume",
+        "seek",
+    ]);
+    assert.deepEqual(f.run("capabilities").result.data.playback_seek_relative, {
+        version: 1,
+    });
+    assert.deepEqual(
+        f.run("playback", { offset: -10.5, operation: "seek_relative" }).result
+            .data,
+        {
+            clamped: false,
+            dispatched: true,
+            from: 100,
+            offset: -10.5,
+            operation: "seek_relative",
+            position: 89.5,
+        }
+    );
+    f.effects.length = 0;
+    for (const params of [
+        { operation: "seek_relative" },
+        ...[0, NaN, Infinity, "2", true, 9007199254740992].map((offset) => ({
+            offset,
+            operation: "seek_relative",
+        })),
+        { offset: 1, operation: "seek_relative", position: 20 },
+        { extra: true, offset: 1, operation: "seek_relative" },
+    ])
+        assert.equal(f.run("playback", params).result.status, "rejected");
+    assert.equal(
+        f.run(
+            "playback",
+            { offset: 1, operation: "seek_relative" },
+            true,
+            Date.now() / 1000 - 1
+        ).result.status,
+        "rejected"
+    );
+    assert.deepEqual(f.effects, []);
+    f.kiosk(true);
+    assert.deepEqual(f.run("capabilities").result.data.playback, ["seek"]);
+    assert.equal(
+        f.run("playback", { operation: "pause" }).result.status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run("playback", { operation: "resume" }).result.status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run(
+            "playback",
+            { offset: 1, operation: "seek_relative" },
+            true,
+            Date.now() / 1000 + 30
+        ).result.status,
+        "ok"
+    );
+    assert.equal(
+        f.run("playback", { operation: "seek", position: 20 }).result.status,
+        "ok"
+    );
+    f.kiosk(false);
+    f.effects.length = 0;
+    for (const guard of [
+        f.lock,
+        (value) => {
+            f.w.stbIsStandby = () => value;
+        },
+    ]) {
+        guard(true);
+        assert.equal(
+            f.run("capabilities").result.data.playback_seek_relative,
+            undefined
+        );
+        assert.equal(
+            f.run("playback", { offset: 1, operation: "seek_relative" }).result
+                .status,
+            "unsupported"
+        );
+        guard(false);
+    }
+    f.w.$ = () => ({ is: () => true });
+    assert.equal(
+        f.run("playback", { offset: 1, operation: "seek_relative" }).result
+            .status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run("playback", { operation: "seek", position: 20 }).result.status,
+        "unsupported"
+    );
+    f.w.$ = () => ({ is: () => false });
+    f.w.__ottCoreBackendPeek = () => ({ current: () => f.handle });
+    assert.equal(
+        f.run("playback", { offset: 1, operation: "seek_relative" }).result
+            .status,
+        "rejected",
+        "replacement backend cannot receive old seek"
+    );
+    assert.deepEqual(f.effects, []);
 }
 {
     const f = fixture();
