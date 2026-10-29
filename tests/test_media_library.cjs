@@ -1320,7 +1320,60 @@ function episodeFixture(ids = [30, 2, 11]) {
 
 test("Episode completion preserves provider order, resolves fresh URLs and loops last to first", () => {
     const c = episodeFixture();
-    c.settings.stopPlay = true;
+    const sourceStopTickets = [];
+    let disposed = 0;
+    const backend = c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => {
+            const state = c.__ottClassicPlayback.snapshot();
+            return state.target
+                ? { ...state.target, generation: state.generation }
+                : null;
+        },
+        emit(context, type, position, duration, sourceStop) {
+            if (sourceStop) sourceStopTickets.push(sourceStop);
+            c.__ottClassicPlayback.command({
+                duration,
+                generation: context.generation,
+                position,
+                sourceStop,
+                type,
+            });
+        },
+        open() {
+            return {
+                dispose() {
+                    disposed++;
+                },
+                pause() {},
+                resume() {},
+                sample: () => ({
+                    duration: 600,
+                    paused: false,
+                    position: 0,
+                    ready: 3,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: () => 1,
+    });
+    c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", ["stopCoreForSelection"]),
+        c
+    );
+    c.__ottCoreTransport = { stopForSelection: c.stopCoreForSelection };
+    // Keep public Stop cancellation separate from the real owned selection stop.
+    const play = c.stbPlay;
+    c.stbPlay = (url) => {
+        backend.open({ url });
+        play(url);
+    };
+    backend.open({ url: "30-1.mp4" });
+    c.__ottClassicPlayback.command({ type: "playing" });
+    c.settings.stopPlay = 1;
+    assert.equal(c.settings.stopPlay, 1);
     const first = c.__ottMedia.current();
     c.__ottClassicPlayback.command({
         duration: 600,
@@ -1349,6 +1402,9 @@ test("Episode completion preserves provider order, resolves fresh URLs and loops
         c.calls.filter((row) => row[0] === "play").map((row) => row[1]),
         ["30-1.mp4", "2-2.mp4", "11-3.mp4", "30-4.mp4"]
     );
+    assert.equal(sourceStopTickets.length, 3);
+    assert(sourceStopTickets.every((ticket) => ticket.used === true));
+    assert.equal(disposed, 3, "each transition disposes its old decoder once");
     assert(
         !c.calls.some((row) => row[0] === "confirm"),
         "automatic restarts do not prompt to resume"
