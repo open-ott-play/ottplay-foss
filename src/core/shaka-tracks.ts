@@ -27,19 +27,21 @@
                 roles = track.audioRoles || track.roles || [],
                 key = String(track.id);
             active = active || track.active;
-            if (audio) {
-                key = JSON.stringify(
-                    modern
-                        ? [
-                              track.language,
-                              roles,
-                              track.label,
-                              track.channelsCount,
-                              track.codecs,
-                              track.spatialAudio,
-                          ]
-                        : [track.language, roles]
-                );
+            if (audio && modern && track.id == null)
+                // MSE AudioTrack has no id; mirror the engine's rendition identity.
+                key = JSON.stringify([
+                    track.language,
+                    track.originalLanguage,
+                    roles,
+                    track.label,
+                    track.channelsCount,
+                    track.codecs,
+                    track.spatialAudio,
+                    track.accessibilityPurpose,
+                ]);
+            if (audio && !modern) {
+                // Legacy variants repeat each audio language at multiple video qualities.
+                key = JSON.stringify([track.language, roles]);
                 if (seen.indexOf(key) >= 0) continue;
                 seen.push(key);
             }

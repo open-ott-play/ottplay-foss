@@ -3028,7 +3028,9 @@ function installShakaTracks(player, modern = true) {
     const selectAudio = (track) => {
         player.trackWrites.push(["audio", track.language]);
         player.audios.forEach((item) => {
-            item.active = item.language === track.language;
+            item.active = modern
+                ? item === track
+                : item.language === track.language;
         });
         // Shaka may automatically enable forced subtitles on an audio change.
         player.texts[0].active = true;
@@ -3054,10 +3056,16 @@ function installShakaTracks(player, modern = true) {
         throw new Error("must preserve video quality and ABR");
     };
 }
-for (const modern of [true, false]) {
+for (const [modern, nativeIds] of [
+    [true, true],
+    [true, false],
+    [false, true],
+]) {
     test(
         "Shaka tracks preserve explicit Off/audio and owner lifetime: modern=" +
-            modern,
+            modern +
+            " nativeIds=" +
+            nativeIds,
         async () => {
             const { w, shakas, boxes } = fixture();
             const preferences = [];
@@ -3070,6 +3078,10 @@ for (const modern of [true, false]) {
             w.stbPlay("tracks.mpd");
             const player = shakas[0];
             installShakaTracks(player, modern);
+            if (!nativeIds)
+                player.audios.forEach((track) => {
+                    delete track.id;
+                });
             if (modern) {
                 player.attached.resolve();
                 await tick();
@@ -3174,6 +3186,67 @@ for (const modern of [true, false]) {
                 "stale callbacks have no authority"
             );
             player.destroyed.resolve();
+        }
+    );
+}
+
+for (const nativeIds of [true, false]) {
+    test(
+        "modern Shaka keeps distinct audio identities with equal labels: nativeIds=" +
+            nativeIds,
+        async () => {
+            const { w, shakas, boxes } = fixture();
+            w.playerMode = 2;
+            w.__ottNativeRuntime = true;
+            w.stbPlay("same-labels.mpd");
+            const player = shakas[0];
+            installShakaTracks(player);
+            player.audios[1] = { ...player.audios[0], active: false, id: 20 };
+            if (!nativeIds) {
+                player.audios.forEach((track) => {
+                    delete track.id;
+                });
+                player.audios[1].accessibilityPurpose = "visually-impaired";
+            }
+            player.attached.resolve();
+            await tick();
+            player.loaded.resolve();
+            await tick();
+            const owner = w.getCoreMediaBackend().current();
+            const rows = () => owner.tracks("audio");
+            assert.equal(rows().length, 2);
+            assert.deepEqual(
+                Array.from(rows(), (track) => track.id),
+                [0, 1]
+            );
+            assert.deepEqual(
+                Array.from(rows(), (track) => track.selected),
+                [true, false]
+            );
+            assert.equal(w.stbAudioTracksExists(), true);
+            for (const index of [1, 0, 1]) {
+                w.stbToggleAudioTrack();
+                boxes.at(-1)[2](index);
+                assert.deepEqual(
+                    player.audios.map((track) => track.active),
+                    [index === 0, index === 1]
+                );
+                assert.deepEqual(
+                    Array.from(rows(), (track) => track.selected),
+                    [index === 0, index === 1]
+                );
+            }
+            player.audios.reverse();
+            if (nativeIds) player.audios[0].label = "Updated label";
+            player.events.trackschanged();
+            assert.equal(
+                rows().find((track) => track.selected).id,
+                1,
+                "identity survives reorder and native metadata updates"
+            );
+            w.stbStop();
+            player.destroyed.resolve();
+            await tick();
         }
     );
 }
