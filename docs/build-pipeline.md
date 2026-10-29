@@ -144,9 +144,11 @@ worker remain staged together, with their licenses, in every web/native root.
 Each final classic entry bundle is limited to 1,135,886 UTF-8 bytes and 347,459
 bytes compressed with gzip level 9. The entry plus all eight provider families
 must fit within 1,280,722 bytes and 400,149 gzip bytes. Including all optional
-bundles, the complete total is limited to 1,640,232 bytes and 505,273 gzip bytes,
+bundles, the complete total is limited to 1,640,540 bytes and 505,343 gzip bytes,
 summed per file. These limits apply independently to server, Tauri and
-Capacitor artifacts.
+Capacitor artifacts. The complete-total limit includes the measured
+[308-byte / 70-gzip-byte Plex selected-metadata allowance](evidence/plex-queue-step-size-20261029.json);
+entry, legacy, provider and optional limits remain unchanged.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
 These budgets cover the classic entry, providers and optional bundles, not
