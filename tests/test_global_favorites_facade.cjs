@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 const { fixture, row, hash, load } = require("./global-favorites-fixture.cjs");
 async function main() {
     const f = fixture(),
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy fixture bytes used as migration input.
         old = {
             id: "fav-original",
             name: "Old",
@@ -20,44 +21,45 @@ async function main() {
         };
     f.data.set(
         "remoteFavorites.v1",
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy fixture bytes used as migration input.
         JSON.stringify({ version: 1, entries: [old] })
     );
     const rows = Array.from({ length: 205 }, (_, i) => ({
         ...row("Item " + i),
-        locator: { kind: "channel", channelId: String(i + 1) },
+        locator: { channelId: String(i + 1), kind: "channel" },
     }));
     let view = await f.store.snapshot();
-    await f.store.mutate(view.revision, { op: "put", entries: rows });
+    await f.store.mutate(view.revision, { entries: rows, op: "put" });
     let played = null;
     const facade = load(
         "src/settings/global-favorites-facade.ts"
     ).createGlobalFavoritesFacade({
-        caselessKey: realCaselessKey,
-        store: f.store,
-        codec: f.codec,
-        locatorKinds: ["channel"],
-        current: () => true,
-        qualify: () => f.committer.qualify(),
-        uuid: () => "30000000-0000-4000-8000-000000000001",
-        sha256: async (s) => hash(s),
-        capture: async () => ({ value: rows[0], current: () => true }),
+        capture: async () => ({ current: () => true, value: rows[0] }),
         captureLegacy: async () => ({
+            current: () => true,
             entry: { ...old },
             value: rows[0],
-            current: () => true,
         }),
+        caselessKey: realCaselessKey,
+        codec: f.codec,
+        current: () => true,
+        locatorKinds: ["channel"],
         playEntry: (id, current) => ({
+            cancel() {},
             result: Promise.resolve().then(() => {
                 assert(current());
                 played = id;
                 return { status: "ok" };
             }),
-            cancel() {},
         }),
         playLegacy: () => ({
-            result: Promise.resolve({ status: "ok" }),
             cancel() {},
+            result: Promise.resolve({ status: "ok" }),
         }),
+        qualify: () => f.committer.qualify(),
+        sha256: async (s) => hash(s),
+        store: f.store,
+        uuid: () => "30000000-0000-4000-8000-000000000001",
     });
     const legacy = await facade.legacy({ op: "list" }, () => true);
     assert.equal(legacy.entries.length, 1);
@@ -84,44 +86,44 @@ async function main() {
     assert.equal(view.entries.length, 205);
     assert.equal(view.privateLegacy().entries[0].id, "fav-original");
     const play = await facade.legacy(
-        { op: "play", id: "fav-original" },
+        { id: "fav-original", op: "play" },
         () => true
     );
     const result = await play.result;
     assert.equal(played, view.entries[0].id);
     assert.equal(result.dispatched, true);
     assert.equal(result.entry.id, "fav-original");
-    await facade.legacy({ op: "remove", id: "fav-original" }, () => true);
+    await facade.legacy({ id: "fav-original", op: "remove" }, () => true);
     view = await f.store.snapshot();
     assert.equal(view.entries.length, 204);
     assert.equal(view.privateLegacy().entries.length, 0);
     const stable = view.entries[0],
         input = {
-            version: 1,
             entries: [
                 {
-                    title: "Changed title",
-                    origin: stable.origin,
                     locator: stable.locator,
+                    origin: stable.origin,
+                    title: "Changed title",
                 },
                 {
                     ...row("New"),
-                    locator: { kind: "channel", channelId: "999" },
+                    locator: { channelId: "999", kind: "channel" },
                 },
             ],
+            version: 1,
         };
     view = await f.store.snapshot();
-    await f.store.mutate(view.revision, { op: "put", entries: input.entries });
+    await f.store.mutate(view.revision, { entries: input.entries, op: "put" });
     view = await f.store.snapshot();
     assert.equal(view.entries[0].title, stable.title);
     assert.equal(view.entries.at(-1).title, "New");
     const raw = f.data.get("remoteFavorites.v1"),
         ids = view.entries.slice(0, 2).map((x) => x.id);
     await f.store.mutate(view.revision, {
-        op: "replace",
         entries: [view.entries[1], view.entries[0]].map(
-            ({ title, origin, locator }) => ({ title, origin, locator })
+            ({ title, origin, locator }) => ({ locator, origin, title })
         ),
+        op: "replace",
     });
     view = await f.store.snapshot();
     assert.deepEqual(

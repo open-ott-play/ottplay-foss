@@ -4,25 +4,26 @@ async function main() {
     const f = fixture(),
         full = Array.from({ length: 1000 }, (_, i) => ({
             ...row("Item " + i),
-            locator: { kind: "channel", channelId: String(i) },
+            locator: { channelId: String(i), kind: "channel" },
         }));
     let view = await f.store.snapshot();
-    await f.store.mutate(view.revision, { op: "put", entries: full });
+    await f.store.mutate(view.revision, { entries: full, op: "put" });
     view = await f.store.snapshot();
     assert.equal(view.entries.length, 1000);
     await f.store.mutate(view.revision, {
-        op: "replace",
         entries: [
             {
                 ...row("Replacement"),
-                locator: { kind: "channel", channelId: "new" },
+                locator: { channelId: "new", kind: "channel" },
             },
         ],
+        op: "replace",
     });
     view = await f.store.snapshot();
     assert.equal(view.entries.length, 1);
     assert.equal(view.entries[0].title, "Replacement");
     function legacy(id) {
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy input bytes for replacement tests.
         return {
             id,
             name: id,
@@ -38,6 +39,7 @@ async function main() {
     const mixed = fixture();
     mixed.data.set(
         "remoteFavorites.v1",
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy input bytes for replacement tests.
         JSON.stringify({
             version: 1,
             entries: [legacy("fav-mapped"), legacy("fav-unmapped")],
@@ -45,14 +47,14 @@ async function main() {
     );
     view = await mixed.store.snapshot();
     await mixed.store.mutate(view.revision, {
-        op: "legacy-put",
         entry: legacy("fav-mapped"),
+        op: "legacy-put",
         portable: row("Mapped"),
     });
     view = await mixed.store.snapshot();
     assert.equal(view.entries.length, 1);
     assert.equal(view.privateLegacy().entries.length, 2);
-    await mixed.store.mutate(view.revision, { op: "replace", entries: [] });
+    await mixed.store.mutate(view.revision, { entries: [], op: "replace" });
     view = await mixed.store.snapshot();
     assert.equal(view.entries.length, 0);
     assert.deepEqual(
@@ -68,20 +70,20 @@ async function main() {
     const mappedOnly = fixture();
     view = await mappedOnly.store.snapshot();
     await mappedOnly.store.mutate(view.revision, {
-        op: "legacy-put",
         entry: legacy("fav-mapped"),
+        op: "legacy-put",
         portable: row("Mapped"),
     });
     view = await mappedOnly.store.snapshot();
     await mappedOnly.store.mutate(view.revision, {
-        op: "migrate-source",
-        migrationId: "b".repeat(64),
         entries: [],
+        migrationId: "b".repeat(64),
+        op: "migrate-source",
     });
     view = await mappedOnly.store.snapshot();
     await mappedOnly.store.mutate(view.revision, {
-        op: "replace",
         entries: [],
+        op: "replace",
     });
     const exported = await mappedOnly.store.portableSnapshot();
     assert.equal(exported.entries.length, 0);
@@ -106,15 +108,15 @@ async function main() {
         longTitle = "界".repeat(1024);
     view = await titles.store.snapshot();
     await titles.store.mutate(view.revision, {
-        op: "put",
         entries: [row(longTitle)],
+        op: "put",
     });
     view = await titles.store.snapshot();
     assert.equal(view.entries[0].title, longTitle);
     await assert.rejects(
         titles.store.mutate(view.revision, {
-            op: "replace",
             entries: [row(longTitle + "a")],
+            op: "replace",
         }),
         /invalid_entry|unsupported_entry/
     );
@@ -129,6 +131,7 @@ async function main() {
         );
     tombstones.data.set(
         "remoteFavorites.v1",
+        // biome-ignore assist/source/useSortedKeys: Preserve the protected raw ledger baseline for the capacity test.
         JSON.stringify({
             version: 2,
             entries: [],
@@ -139,9 +142,9 @@ async function main() {
     );
     let tombView = await tombstones.store.snapshot();
     await tombstones.store.mutate(tombView.revision, {
-        op: "migrate-membership",
+        entries: [{ entry: row("Already removed"), token: tokens[0] }],
         migrationId: "f".repeat(64),
-        entries: [{ token: tokens[0], entry: row("Already removed") }],
+        op: "migrate-membership",
     });
     assert.equal(
         (await tombstones.store.snapshot()).entries.length,
@@ -152,9 +155,9 @@ async function main() {
     const rawBefore = tombstones.data.get("remoteFavorites.v1");
     await assert.rejects(
         tombstones.store.mutate(tombView.revision, {
-            op: "migrate-membership",
+            entries: [{ entry: row("New"), token: "e".repeat(64) }],
             migrationId: "f".repeat(64),
-            entries: [{ token: "e".repeat(64), entry: row("New") }],
+            op: "migrate-membership",
         }),
         /limits_exceeded/
     );

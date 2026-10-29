@@ -449,11 +449,6 @@ function createM3uProviderDriver(
         );
     }
     var driver: any = {
-        cancelConnection: function () {
-            revision++;
-            lifetimes.dispose();
-            closeHostedGuide();
-        },
         archive: function (
             id: string | number,
             start: number,
@@ -473,6 +468,11 @@ function createM3uProviderDriver(
                       0
                   ) || ""
                 : "";
+        },
+        cancelConnection: function () {
+            revision++;
+            lifetimes.dispose();
+            closeHostedGuide();
         },
         cancelMedia: function () {
             if (media) media.cancel();

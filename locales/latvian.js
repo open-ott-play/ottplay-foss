@@ -170,6 +170,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Notiek Plex servera savienojuma pārbaude…",
     "Choose a folder in the browser window": "Pārlūka logā izvēlieties mapi",
+    "Choose a profile": "Izvēlēties profilu",
     "Choose files in the browser window": "Pārlūka logā izvēlieties failus",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
@@ -1111,6 +1112,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X iestatījumi",
     "Unable to load playlist": "Neizdevās ielādēt atskaņošanas sarakstu",
+    Unavailable: "Nav pieejams",
     "Unlock the player's settings before changing its playlist.":
         "Pirms atskaņošanas saraksta maiņas atbloķējiet atskaņotāja iestatījumus.",
     Untitled: "Bez nosaukuma",

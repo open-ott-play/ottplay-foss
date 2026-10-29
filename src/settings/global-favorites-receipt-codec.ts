@@ -3,6 +3,7 @@ import {
     favoritesReceiptUtf8Length,
     validateFavoritesReceiptFence,
 } from "./favorites-recovery-codec";
+
 /** Strict private schema adapter. The old scoped receipt parser/wire is unchanged. */
 function globalFavoritesReceiptScope(value: any): boolean {
     return (
@@ -138,7 +139,7 @@ function globalFavoritesReceiptAudit(value: any): boolean {
             "reason",
         ]) &&
         base.hash(value.acknowledgement_id) &&
-        base.refs({ stageId: "audit", runtimeId: value.runtime }) &&
+        base.refs({ runtimeId: value.runtime, stageId: "audit" }) &&
         base.hash(value.ledger_revision_before) &&
         base.hash(value.store_revision) &&
         base.hash(value.context_revision) &&
@@ -147,7 +148,7 @@ function globalFavoritesReceiptAudit(value: any): boolean {
     );
 }
 function parse(raw: string | null): any {
-    if (raw === null) return { version: null, entries: [] };
+    if (raw === null) return { entries: [], version: null };
     if (typeof raw !== "string" || favoritesReceiptUtf8Length(raw) > 65536)
         throw new Error("invalid_ledger");
     var value = JSON.parse(raw);
@@ -168,13 +169,6 @@ function parse(raw: string | null): any {
     return value;
 }
 export const globalFavoritesReceiptSchema = Object.freeze({
-    version: 1,
-    validators: Object.assign({}, base, {
-        scope: globalFavoritesReceiptScope,
-        counts: counts,
-    }),
-    row: row,
-    parse: parse,
     capacity: function (raw: string) {
         try {
             var value = parse(raw);
@@ -195,18 +189,25 @@ export const globalFavoritesReceiptSchema = Object.freeze({
             return false;
         }
     },
+    outcome: function (value: any) {
+        return context(value.global);
+    },
     outcomeFromReceipt: function (receipt: any, outcome: any) {
         return Object.assign({}, outcome, {
             global: JSON.parse(JSON.stringify(receipt.global)),
         });
     },
     outcomeKeys: ["global"],
-    outcome: function (value: any) {
-        return context(value.global);
-    },
+    parse: parse,
     receipt: function (_entry: any, outcome: any, receipt: any) {
         return Object.assign({}, receipt, {
             global: JSON.parse(JSON.stringify(outcome.global)),
         });
     },
+    row: row,
+    validators: Object.assign({}, base, {
+        counts: counts,
+        scope: globalFavoritesReceiptScope,
+    }),
+    version: 1,
 });

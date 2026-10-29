@@ -1,24 +1,24 @@
 import { utf8Encode } from "../commands/favorites-document-json";
-import { createGlobalFavoritesNavigation } from "./global-favorites-navigation";
+import { createGlobalFavoritesItems } from "../commands/global-favorites-items";
+import { createGlobalFavoritesProtocol } from "../commands/global-favorites-protocol";
+import { createFavoritesBindings } from "../settings/favorites-bindings";
+import { createFavoritesRecoveryCodec } from "../settings/favorites-recovery-codec";
+import { createGlobalFavoritesStore } from "../settings/global-favorites";
+import { isGlobalFavoriteSelector } from "../settings/global-favorites-bindings";
+import { createGlobalFavoritesFacade } from "../settings/global-favorites-facade";
+import { createGlobalFavoritesPortableCodec } from "../settings/global-favorites-portable";
+import { createGlobalFavoritesCommitter } from "../settings/global-favorites-receipts";
+import { createGlobalFavoritesRecovery } from "../settings/global-favorites-recovery";
+import { captureGlobalFavorite } from "./global-favorites-capture";
+import { globalFavoriteCanonical } from "./global-favorites-identities";
 import {
     captureGlobalFavoriteMigration,
     globalFavoriteMigrationSource,
 } from "./global-favorites-migration";
-import { createGlobalFavoritesItems } from "../commands/global-favorites-items";
-import { createGlobalFavoritesRecovery } from "../settings/global-favorites-recovery";
-import { createGlobalFavoritesProtocol } from "../commands/global-favorites-protocol";
-import { createGlobalFavoritesCommitter } from "../settings/global-favorites-receipts";
-import { globalFavoriteCanonical } from "./global-favorites-identities";
-import { createGlobalFavoritesFacade } from "../settings/global-favorites-facade";
-import { createGlobalFavoritesStore } from "../settings/global-favorites";
-import { createGlobalFavoritesPortableCodec } from "../settings/global-favorites-portable";
-import { createFavoritesBindings } from "../settings/favorites-bindings";
-import { isGlobalFavoriteSelector } from "../settings/global-favorites-bindings";
-import { createFavoritesRecoveryCodec } from "../settings/favorites-recovery-codec";
-import { createGlobalFavoritesRouter } from "./global-favorites-router";
+import { createGlobalFavoritesNavigation } from "./global-favorites-navigation";
 import { createGlobalFavoritesPlayer } from "./global-favorites-player";
+import { createGlobalFavoritesRouter } from "./global-favorites-router";
 import { createGlobalFavoritesView } from "./global-favorites-view";
-import { captureGlobalFavorite } from "./global-favorites-capture";
 
 /** One lazy UI host; MAIN passes its existing physical adapter, never a new storage instance. */
 export function createGlobalFavoritesHost(w: any, ports: any): any {
@@ -104,13 +104,13 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         );
     }
     var registry = createFavoritesBindings({
-        read: readRegistry,
-        persistedRead: readRegistry,
-        uuid: ports.uuid,
-        validateSelector: function (kind, selector) {
-            return (
-                isGlobalFavoriteSelector(selector) ||
-                legacySelector(kind, selector)
+        compareAndSwap: function (before, after) {
+            if (!writing || !writing.current()) return "conflict";
+            return grant.compareAndSwap(
+                registryKey,
+                before,
+                after,
+                writing.current
             );
         },
         current: function (_entry, value) {
@@ -119,13 +119,13 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 isPrepared(value.selector)
             );
         },
-        compareAndSwap: function (before, after) {
-            if (!writing || !writing.current()) return "conflict";
-            return grant.compareAndSwap(
-                registryKey,
-                before,
-                after,
-                writing.current
+        persistedRead: readRegistry,
+        read: readRegistry,
+        uuid: ports.uuid,
+        validateSelector: function (kind, selector) {
+            return (
+                isGlobalFavoriteSelector(selector) ||
+                legacySelector(kind, selector)
             );
         },
     });
@@ -175,25 +175,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         },
     };
     player = createGlobalFavoritesPlayer(w, {
-        selectMediaProfile: function (
-            driver: any,
-            value: string,
-            index: number,
-            done: any,
-            admission?: () => boolean
-        ) {
-            return mainCall(
-                "selectMediaProfile",
-                [driver, value, index, done, mainAdmission(admission)],
-                false
-            );
-        },
         bindings: bindings,
         current: current,
-        sha256: ports.sha256,
-        remoteCheckpoint: function (target: any) {
-            return mainCall("remoteCheckpoint", [target]);
-        },
         handleRemoteProfiles: function (
             request: any,
             done: any,
@@ -211,9 +194,26 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         providerIds: function () {
             return mainCall("providerIds", [], []);
         },
+        remoteCheckpoint: function (target: any) {
+            return mainCall("remoteCheckpoint", [target]);
+        },
+        selectMediaProfile: function (
+            driver: any,
+            value: string,
+            index: number,
+            done: any,
+            admission?: () => boolean
+        ) {
+            return mainCall(
+                "selectMediaProfile",
+                [driver, value, index, done, mainAdmission(admission)],
+                false
+            );
+        },
         selectProviderByIndex: function (index: number) {
             return mainCall("selectProviderByIndex", [index], false);
         },
+        sha256: ports.sha256,
     });
     var canonicalBindings: any = null;
     player.canonicalizeFavorite = async function (captured: any): Promise<any> {
@@ -239,7 +239,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 } catch (_) {}
             });
             if (!captured.current() || readRegistry() !== raw) return null;
-            canonicalBindings = { raw: raw, key: key, rows: rows };
+            canonicalBindings = { key: key, raw: raw, rows: rows };
         }
         var matches = canonicalBindings.rows.filter(function (bound: any) {
             return (
@@ -288,29 +288,19 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         return captured.current() ? captured : null;
     };
     var store = createGlobalFavoritesStore({
-        capture: ports.capture,
-        current: current,
         canWrite: function () {
             return !!committer && committer.canWrite();
         },
+        capture: ports.capture,
+        codec: codec,
+        current: current,
         migrationCurrent: function (id: string) {
             return !!migrationGuards[id] && migrationGuards[id]();
         },
         sha256: ports.sha256,
         uuid: ports.uuid,
-        codec: codec,
     });
     var router = createGlobalFavoritesRouter({
-        snapshot: store.snapshot,
-        codec: codec,
-        current: current,
-        allowed: player.allowed,
-        targets: function (origin: any, guard: () => boolean, locator: any) {
-            var mapped = mappings[globalFavoriteCanonical(origin)];
-            return mapped && mapped.current()
-                ? [mapped]
-                : player.targets(origin, guard, locator);
-        },
         activate: async function (target: any, guard: () => boolean) {
             var session = await player.activate(target, guard);
             if (target.ephemeral) {
@@ -357,97 +347,50 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             }
             return session;
         },
-        now: ports.now,
-        setTimer: w.setTimeout.bind(w),
-        clearTimer: w.clearTimeout.bind(w),
+        allowed: player.allowed,
         changed: function (state: any) {
             if (navigation) navigation.routeState(state);
             ports.changed?.(state);
         },
+        clearTimer: w.clearTimeout.bind(w),
+        codec: codec,
+        current: current,
+        now: ports.now,
+        setTimer: w.setTimeout.bind(w),
+        snapshot: store.snapshot,
+        targets: function (origin: any, guard: () => boolean, locator: any) {
+            var mapped = mappings[globalFavoriteCanonical(origin)];
+            return mapped && mapped.current()
+                ? [mapped]
+                : player.targets(origin, guard, locator);
+        },
     });
     navigation = createGlobalFavoritesNavigation({
+        allowed: permitted,
+        cancel: router.cancel,
         capture: function () {
             return router.captureCurrent();
         },
         captureEnding: function (generation: number) {
             return router.captureEnding(generation);
         },
-        snapshot: store.snapshot,
         current: current,
-        allowed: permitted,
-        select: router.select,
-        cancel: router.cancel,
-        identity: function (entry: any) {
-            return codec.identity({
-                title: entry.title,
-                origin: entry.origin,
-                locator: entry.locator,
-            });
-        },
         failed: function () {
             if (current()) w.showShift(w._("Unavailable"));
         },
-    });
-    var view = createGlobalFavoritesView({
-        store: store,
-        router: router,
-        navigation: navigation,
-        current: current,
-        translate: w._,
-        selected: function () {
-            return w.selIndex;
-        },
-        canFavorite: function () {
-            return permitted() && w.sFavorites !== -1;
-        },
-        remove: async function (id: string, admitted: () => boolean) {
-            if (!(await committer.qualify()) || !admitted())
-                throw new Error("reconciliation_required");
-            var raw = grant.read("favorites-receipts.v1");
-            var receipt = await createFavoritesRecoveryCodec({
-                sha256: ports.sha256,
-            }).snapshot(raw);
-            if (
-                !admitted() ||
-                receipt.records.some(function (row: any) {
-                    return !row.acknowledgement;
-                })
-            )
-                throw new Error("reconciliation_required");
-            return facade.remove(id, function () {
-                return (
-                    admitted() && grant.read("favorites-receipts.v1") === raw
-                );
+        identity: function (entry: any) {
+            return codec.identity({
+                locator: entry.locator,
+                origin: entry.origin,
+                title: entry.title,
             });
         },
-        removed: ports.favoriteRemoved,
-        pendingMigration: function () {
-            return migrationPending;
-        },
-        playLegacy: function (id: string) {
-            var active = true,
-                child: any = null;
-            var result = Promise.resolve()
-                .then(function () {
-                    return facade.legacy({ op: "play", id: id }, function () {
-                        return active && permitted();
-                    });
-                })
-                .then(function (value: any) {
-                    child = value;
-                    if (!active) {
-                        child.cancel();
-                        return { status: "cancelled" };
-                    }
-                    return child.result;
-                });
-            return {
-                result: result,
-                cancel: function () {
-                    active = false;
-                    if (child) child.cancel();
-                },
-            };
+        select: router.select,
+        snapshot: store.snapshot,
+    });
+    var view = createGlobalFavoritesView({
+        canFavorite: function () {
+            return permitted() && w.sFavorites !== -1;
         },
         captureScreen: function () {
             var handler = w.listKeyHandlerFn,
@@ -459,6 +402,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 );
             };
         },
+        current: current,
         describe: function (origin: any) {
             return [
                 origin.provider,
@@ -484,6 +428,60 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     if (current()) w.showShift(w._("Unavailable"));
                 });
         },
+        navigation: navigation,
+        pendingMigration: function () {
+            return migrationPending;
+        },
+        playLegacy: function (id: string) {
+            var active = true,
+                child: any = null;
+            var result = Promise.resolve()
+                .then(function () {
+                    return facade.legacy({ id: id, op: "play" }, function () {
+                        return active && permitted();
+                    });
+                })
+                .then(function (value: any) {
+                    child = value;
+                    if (!active) {
+                        child.cancel();
+                        return { status: "cancelled" };
+                    }
+                    return child.result;
+                });
+            return {
+                cancel: function () {
+                    active = false;
+                    if (child) child.cancel();
+                },
+                result: result,
+            };
+        },
+        remove: async function (id: string, admitted: () => boolean) {
+            if (!(await committer.qualify()) || !admitted())
+                throw new Error("reconciliation_required");
+            var raw = grant.read("favorites-receipts.v1");
+            var receipt = await createFavoritesRecoveryCodec({
+                sha256: ports.sha256,
+            }).snapshot(raw);
+            if (
+                !admitted() ||
+                receipt.records.some(function (row: any) {
+                    return !row.acknowledgement;
+                })
+            )
+                throw new Error("reconciliation_required");
+            return facade.remove(id, function () {
+                return (
+                    admitted() && grant.read("favorites-receipts.v1") === raw
+                );
+            });
+        },
+        removed: ports.favoriteRemoved,
+        router: router,
+        selected: function () {
+            return w.selIndex;
+        },
         show: function (list: any) {
             var rows: any = Object.create(null);
             list.rows.forEach(function (row: any) {
@@ -492,55 +490,57 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     logo: "",
                 };
             });
-            w.__ottChannelListView.show({
-                id: list.id,
-                rows: list.rows.map(function (row: any) {
-                    return row.id;
-                }),
-                categoryName: list.title,
-                actions:
-                    permitted() && w.sFavorites !== -1
-                        ? w._("Favorites") + ": −"
-                        : false,
-                selected: Math.max(
-                    0,
-                    list.rows
-                        .map(function (row: any) {
-                            return row.id;
-                        })
-                        .indexOf(list.selected)
-                ),
-                channel: function (id: string) {
-                    return rows[id];
-                },
-                picon: function () {
-                    return "";
-                },
-                playing: list.playing,
-                locked: function () {
-                    return false;
-                },
-                detail: function () {},
-                key: function (key: number) {
-                    if (
-                        key === w.keys.YELLOW ||
-                        key === w.keys.TOOLS ||
-                        key === w.keys.N0
-                    )
-                        return list.remove();
-                    if (key === w.keys.ENTER || key === w.keys.PLAY) {
-                        var row = list.rows[w.selIndex];
-                        if (row) list.select(row.id);
-                        return true;
-                    }
-                    if (key === w.keys.RETURN || key === w.keys.EXIT) {
-                        list.close();
-                        w.closeList(false);
-                        return true;
-                    }
-                    return false;
-                },
-            });
+            w.__ottChannelListView.show(
+                /* biome-ignore assist/source/useSortedKeys: Preserve list state reads around permission and translation callbacks. */ {
+                    id: list.id,
+                    rows: list.rows.map(function (row: any) {
+                        return row.id;
+                    }),
+                    categoryName: list.title,
+                    actions:
+                        permitted() && w.sFavorites !== -1
+                            ? w._("Favorites") + ": −"
+                            : false,
+                    selected: Math.max(
+                        0,
+                        list.rows
+                            .map(function (row: any) {
+                                return row.id;
+                            })
+                            .indexOf(list.selected)
+                    ),
+                    channel: function (id: string) {
+                        return rows[id];
+                    },
+                    picon: function () {
+                        return "";
+                    },
+                    playing: list.playing,
+                    locked: function () {
+                        return false;
+                    },
+                    detail: function () {},
+                    key: function (key: number) {
+                        if (
+                            key === w.keys.YELLOW ||
+                            key === w.keys.TOOLS ||
+                            key === w.keys.N0
+                        )
+                            return list.remove();
+                        if (key === w.keys.ENTER || key === w.keys.PLAY) {
+                            var row = list.rows[w.selIndex];
+                            if (row) list.select(row.id);
+                            return true;
+                        }
+                        if (key === w.keys.RETURN || key === w.keys.EXIT) {
+                            list.close();
+                            w.closeList(false);
+                            return true;
+                        }
+                        return false;
+                    },
+                }
+            );
             var handler = w.listKeyHandlerFn,
                 screen = w.__ottClassicScreenPort?.screens.current();
             return function () {
@@ -550,6 +550,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 );
             };
         },
+        store: store,
+        translate: w._,
     });
     async function chooseMapping(id: string): Promise<void> {
         var snapshot = await store.snapshot();
@@ -561,10 +563,6 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             choices = await player.choices(entry.origin.provider);
         if (!choices.length) return;
         w.__ottCategoryListView.show({
-            labels: choices.map(function (row: any) {
-                return row.label;
-            }),
-            selected: 0,
             key: function (key: number) {
                 if (!snapshot.current() || !permitted()) return true;
                 if (key === w.keys.RETURN || key === w.keys.EXIT) {
@@ -584,6 +582,10 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     });
                 return true;
             },
+            labels: choices.map(function (row: any) {
+                return row.label;
+            }),
+            selected: 0,
         });
     }
     async function pair(
@@ -641,8 +643,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 };
                 return registry.provisionPlayback(
                     {
-                        provider: selector.provider,
                         profile: binding,
+                        provider: selector.provider,
                         source: binding,
                     },
                     revision
@@ -708,9 +710,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             var found = before.entries.filter(function (entry: any) {
                 return (
                     codec.identity({
-                        title: entry.title,
-                        origin: entry.origin,
                         locator: entry.locator,
+                        origin: entry.origin,
+                        title: entry.title,
                     }) === identity
                 );
             });
@@ -731,8 +733,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             if (!removing && found.length) {
                 if (!before.current()) throw new Error("revision_conflict");
                 return {
-                    outcome: "verified",
                     changed: false,
+                    outcome: "verified",
                     revision: before.revision,
                 };
             }
@@ -754,13 +756,13 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 before.revision,
                 removing
                     ? {
-                          op: "forget-membership",
-                          tokens: tokens,
                           ids: found.map(function (entry: any) {
                               return entry.id;
                           }),
+                          op: "forget-membership",
+                          tokens: tokens,
                       }
-                    : { op: "put", entries: [capture.value] },
+                    : { entries: [capture.value], op: "put" },
                 function () {
                     return (
                         capture.current() &&
@@ -787,12 +789,14 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         return captured;
     }
     var facade = createGlobalFavoritesFacade({
-        store: store,
-        codec: codec,
+        capture: capture,
+        captureLegacy: ports.captureLegacy,
         caselessKey: function (value: string) {
             if (!current()) throw new Error("context_changed");
             return main.caselessKey(value);
         },
+        codec: codec,
+        current: current,
         locatorKinds: [
             "channel",
             "channel-name",
@@ -800,18 +804,16 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             "plex-media",
             "vportal-media",
         ],
-        current: current,
-        uuid: ports.uuid,
-        sha256: ports.sha256,
-        capture: capture,
-        qualify: function () {
-            return committer && committer.qualify();
-        },
-        captureLegacy: ports.captureLegacy,
-        playLegacy: ports.playLegacy,
         playEntry: function (id: string, admission: () => boolean) {
             return router.select(id, admission);
         },
+        playLegacy: ports.playLegacy,
+        qualify: function () {
+            return committer && committer.qualify();
+        },
+        sha256: ports.sha256,
+        store: store,
+        uuid: ports.uuid,
     });
     async function captureContext(): Promise<any> {
         var read = w.stbGetItem;
@@ -861,35 +863,39 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             ])
         );
         if (!valid()) throw new Error("context_changed");
-        return { revision: revision, current: valid };
+        return { current: valid, revision: revision };
     }
     committer = createGlobalFavoritesCommitter({
-        store: store,
-        codec: codec,
-        current: current,
-        capture: ports.capture,
-        sha256: ports.sha256,
-        now: ports.now,
-        captureContext: captureContext,
-        contextRevision: async function () {
-            return (await captureContext()).revision;
-        },
-        freshAdmission: function (id: string, hash: string) {
-            return !!protocol && protocol.freshAdmission(id, hash);
-        },
         authorizedOperation: function () {
             return current() && ports.authorized("status");
         },
+        capture: ports.capture,
+        captureContext: captureContext,
+        codec: codec,
+        contextRevision: async function () {
+            return (await captureContext()).revision;
+        },
+        current: current,
+        freshAdmission: function (id: string, hash: string) {
+            return !!protocol && protocol.freshAdmission(id, hash);
+        },
+        now: ports.now,
+        sha256: ports.sha256,
+        store: store,
     });
     protocol = createGlobalFavoritesProtocol({
-        store: store,
-        facade: facade,
-        committer: committer,
-        codec: codec,
-        captureContext: captureContext,
-        current: current,
-        runtime: ports.runtime,
         authorized: ports.authorized,
+        base64Decode: ports.base64Decode,
+        base64Encode: ports.base64Encode,
+        captureContext: captureContext,
+        clearTimer: w.clearTimeout.bind(w),
+        codec: codec,
+        committer: committer,
+        contextRevision: async function () {
+            return (await captureContext()).revision;
+        },
+        current: current,
+        facade: facade,
         locatorKinds: [
             "channel",
             "channel-name",
@@ -898,15 +904,6 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             "vportal-media",
         ],
         now: ports.now,
-        uuid: ports.uuid,
-        sha256: ports.sha256,
-        base64Encode: ports.base64Encode,
-        base64Decode: ports.base64Decode,
-        setTimer: w.setTimeout.bind(w),
-        clearTimer: w.clearTimeout.bind(w),
-        contextRevision: async function () {
-            return (await captureContext()).revision;
-        },
         resolve: async function (entries: any[]) {
             var states: string[] = [];
             for (var i = 0; i < entries.length; i++) {
@@ -925,6 +922,11 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             }
             return states;
         },
+        runtime: ports.runtime,
+        setTimer: w.setTimeout.bind(w),
+        sha256: ports.sha256,
+        store: store,
+        uuid: ports.uuid,
     });
     async function currentItem(): Promise<any> {
         var context = await captureContext(),
@@ -939,14 +941,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         )
             throw new Error("context_changed");
         return {
-            revision: snapshot.revision,
             context_revision: context.revision,
-            entry: captured ? captured.value : null,
-            unavailable_reason: captured
-                ? null
-                : w.__ottStandby?.blocked()
-                  ? "standby"
-                  : "no_portable_current_item",
             current: function () {
                 return (
                     context.current() &&
@@ -954,6 +949,13 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     (!captured || captured.current())
                 );
             },
+            entry: captured ? captured.value : null,
+            revision: snapshot.revision,
+            unavailable_reason: captured
+                ? null
+                : w.__ottStandby?.blocked()
+                  ? "standby"
+                  : "no_portable_current_item",
         };
     }
     function playUUID(
@@ -991,23 +993,23 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             });
             return inner.result.then(function (value: any) {
                 var errors: any = {
-                    timeout: "expired",
+                    ambiguous: "ambiguous_source",
                     blocked: "policy_denied",
                     changed: "context_changed",
                     missing: "source_unavailable",
-                    unsupported: "unsupported_item",
-                    ambiguous: "ambiguous_source",
+                    timeout: "expired",
                     unavailable: "item_unavailable",
+                    unsupported: "unsupported_item",
                 };
                 return { id: id, status: errors[value.status] || value.status };
             });
         })();
         return {
-            result: result,
             cancel: function () {
                 active = false;
                 if (inner) inner.cancel();
             },
+            result: result,
         };
     }
     async function open(
@@ -1033,7 +1035,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     var token = await membershipToken(captured.identity, entry);
                     if (!captured.current() || !admitted())
                         throw new Error("context_changed");
-                    entries.push({ token: token, entry: entry });
+                    entries.push({ entry: entry, token: token });
                 }
                 var before = await store.snapshot();
                 if (!captured.current() || !before.current() || !admitted())
@@ -1047,9 +1049,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                         await store.mutate(
                             before.revision,
                             {
-                                op: "migrate-membership",
-                                migrationId: id,
                                 entries: entries,
+                                migrationId: id,
+                                op: "migrate-membership",
                             },
                             owned
                         );
@@ -1060,71 +1062,46 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         } catch (_) {
             if (permitted() && admitted())
                 migrationPending = [
-                    { title: w._("Favorites"), reason: "unresolved" },
+                    { reason: "unresolved", title: w._("Favorites") },
                 ];
         }
         if (permitted() && admitted()) return view.open();
     }
     var recovery = createGlobalFavoritesRecovery({
-        capture: ports.capture,
-        current: current,
-        runtime: ports.runtime,
-        now: ports.now,
-        captureContext: captureContext,
-        sha256: ports.sha256,
         authorized: ports.authorized,
+        capture: ports.capture,
+        captureContext: captureContext,
+        current: current,
+        now: ports.now,
+        runtime: ports.runtime,
+        sha256: ports.sha256,
     });
     return {
-        requestBytes: function (request: any): number {
-            return utf8Encode(JSON.stringify(request)).length;
-        },
-        navigation: navigation,
-        favoriteSelected: function (owner: any) {
-            return (
-                owner === w.__ottClassicScreenPort?.screens.current() &&
-                view.favoriteSelected()
-            );
-        },
-        createItems: function () {
-            return createGlobalFavoritesItems({
-                host: {
-                    store: store,
-                    captureContext: captureContext,
-                    currentItem: currentItem,
-                    playUUID: playUUID,
-                },
-                codec: codec,
-                current: current,
-                runtime: ports.runtime,
-                now: ports.now,
-                authorized: ports.authorized,
-                base64Encode: ports.base64Encode,
-                base64Decode: ports.base64Decode,
-            });
-        },
-        currentItem: currentItem,
-        playUUID: playUUID,
-        recovery: recovery,
-        open: open,
-        pair: pair,
-        store: store,
-        router: router,
-        toggle: toggle,
         add: function (payload: any, current?: () => boolean) {
             return toggle(payload, current, true);
         },
-        remove: function (payload: any, current?: () => boolean) {
-            return toggle(payload, current, false);
-        },
-        facade: facade,
-        codec: codec,
-        protocol: protocol,
-        committer: committer,
-        captureContext: captureContext,
         capture: capture,
-        playEntry: function (id: string, admission: () => boolean) {
-            return router.select(id, admission);
+        captureContext: captureContext,
+        codec: codec,
+        committer: committer,
+        createItems: function () {
+            return createGlobalFavoritesItems({
+                authorized: ports.authorized,
+                base64Decode: ports.base64Decode,
+                base64Encode: ports.base64Encode,
+                codec: codec,
+                current: current,
+                host: {
+                    captureContext: captureContext,
+                    currentItem: currentItem,
+                    playUUID: playUUID,
+                    store: store,
+                },
+                now: ports.now,
+                runtime: ports.runtime,
+            });
         },
+        currentItem: currentItem,
         dispose: function () {
             navigation.retire();
             disposed = true;
@@ -1132,6 +1109,31 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             router.cancel();
             protocol.dispose();
         },
+        facade: facade,
+        favoriteSelected: function (owner: any) {
+            return (
+                owner === w.__ottClassicScreenPort?.screens.current() &&
+                view.favoriteSelected()
+            );
+        },
+        navigation: navigation,
+        open: open,
+        pair: pair,
+        playEntry: function (id: string, admission: () => boolean) {
+            return router.select(id, admission);
+        },
+        playUUID: playUUID,
+        protocol: protocol,
+        recovery: recovery,
+        remove: function (payload: any, current?: () => boolean) {
+            return toggle(payload, current, false);
+        },
+        requestBytes: function (request: any): number {
+            return utf8Encode(JSON.stringify(request)).length;
+        },
+        router: router,
+        store: store,
+        toggle: toggle,
     };
 }
 (window as any).__ottGlobalFavoritesFactory = {

@@ -324,8 +324,8 @@ function createPlexList(ports: any): any {
             groups.push(
                 (byGroup["system:favorites"] = {
                     id: "system:favorites",
-                    name: w._("Favorites"),
                     members: [],
+                    name: w._("Favorites"),
                 })
             );
         }

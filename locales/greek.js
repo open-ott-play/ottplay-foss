@@ -177,6 +177,7 @@ var keyStrings = {
         "Έλεγχος της σύνδεσης διακομιστή Plex…",
     "Choose a folder in the browser window":
         "Επιλέξτε έναν φάκελο στο παράθυρο του προγράμματος περιήγησης",
+    "Choose a profile": "Επιλογή προφίλ",
     "Choose files in the browser window":
         "Επιλέξτε αρχεία στο παράθυρο του προγράμματος περιήγησης",
     "Choose from": "Επιλογή από",
@@ -1140,6 +1141,7 @@ var keyStrings = {
     "ULTIFL1X settings": "Ρυθμίσεις ULTIFL1X",
     "Unable to load playlist":
         "Δεν ήταν δυνατή η φόρτωση της λίστας αναπαραγωγής",
+    Unavailable: "Μη διαθέσιμο",
     "Unlock the player's settings before changing its playlist.":
         "Ξεκλειδώστε τις ρυθμίσεις της συσκευής αναπαραγωγής πριν αλλάξετε τη λίστα.",
     Untitled: "Χωρίς τίτλο",

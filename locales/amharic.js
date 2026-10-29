@@ -161,6 +161,7 @@ var keyStrings = {
     "Checking folder permission": "የአቃፊ ፈቃድ በመፈተሽ ላይ",
     "Checking the Plex server connection…": "የPlex አገልጋይ ግንኙነትን በማረጋገጥ ላይ…",
     "Choose a folder in the browser window": "በአሳሽ መስኮት ውስጥ አቃፊ ይምረጡ",
+    "Choose a profile": "መገለጫ ምረጥ",
     "Choose files in the browser window": "በአሳሽ መስኮት ውስጥ ፋይሎችን ይምረጡ",
     "Choose from": "ከዚህ ምረጥ",
     "Choose language": "ቋንቋ ምረጥ",
@@ -1060,6 +1061,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "የULTIFL1X ቅንብሮች",
     "Unable to load playlist": "አጫዋች ዝርዝሩን መጫን አልተቻለም",
+    Unavailable: "አይገኝም",
     "Unlock the player's settings before changing its playlist.":
         "የማጫወቻ ዝርዝሩን ከመቀየርዎ በፊት የአጫዋቹን ቅንብሮች ቁልፍ ይክፈቱ።",
     Untitled: "ያለ ርዕስ",

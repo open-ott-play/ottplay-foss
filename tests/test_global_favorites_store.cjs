@@ -10,8 +10,8 @@ function load(file, dependency = {}) {
     vm.runInNewContext(
         ts.transpileModule(fs.readFileSync(path.join(root, file), "utf8"), {
             compilerOptions: {
-                target: ts.ScriptTarget.ES5,
                 module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
             },
         }).outputText,
         { exports, require: () => dependency, Uint8Array }
@@ -24,9 +24,12 @@ const { createGlobalFavoritesStore } = load(
     json
 );
 const plain = (value) => JSON.parse(JSON.stringify(value));
+// biome-ignore assist/source/useSortedKeys: The fixture identity function serializes these fields in insertion order.
 const entry = (provider, profile, id) => ({
     title: id,
+    // biome-ignore assist/source/useSortedKeys: The fixture identity function serializes these fields in insertion order.
     origin: { provider, profile, subprofile: null, sourceAlias: profile },
+    // biome-ignore assist/source/useSortedKeys: The fixture identity function serializes these fields in insertion order.
     locator: { kind: "test", id },
 });
 function fixture(initial = null, actualCodec = null) {
@@ -37,20 +40,6 @@ function fixture(initial = null, actualCodec = null) {
     const writes = [],
         hooks = {};
     const grant = {
-        current: () => active,
-        read(key) {
-            assert.equal(key, "remoteFavorites.v1");
-            return raw;
-        },
-        async exclusive(work) {
-            if (held) throw Error("busy");
-            held = true;
-            try {
-                return await work(grant);
-            } finally {
-                held = false;
-            }
-        },
         compareAndSwap(key, before, after, admission) {
             assert(held);
             assert.equal(key, "remoteFavorites.v1");
@@ -66,18 +55,27 @@ function fixture(initial = null, actualCodec = null) {
             raw = hooks.mode === "corrupt" ? "corrupt" : after;
             return hooks.mode === "unknown" ? "unknown" : "confirmed";
         },
+        current: () => active,
+        async exclusive(work) {
+            if (held) throw Error("busy");
+            held = true;
+            try {
+                return await work(grant);
+            } finally {
+                held = false;
+            }
+        },
+        read(key) {
+            assert.equal(key, "remoteFavorites.v1");
+            return raw;
+        },
     };
     const store = createGlobalFavoritesStore({
         capture: () => grant,
-        current: () => active,
-        async sha256(text) {
-            if (hooks.hash) await hooks.hash();
-            return crypto.createHash("sha256").update(text).digest("hex");
-        },
-        migrationCurrent: () => !hooks.migrationLost,
-        uuid: () =>
-            "00000000-0000-4000-8000-" + String(++serial).padStart(12, "0"),
         codec: actualCodec || {
+            identity: (value) => JSON.stringify([value.origin, value.locator]),
+            migrateLegacy: (row) =>
+                row.id === "fav-map" ? entry("m3u", "mapped", "stable") : null,
             normalize(value) {
                 return value.origin &&
                     value.locator &&
@@ -87,22 +85,27 @@ function fixture(initial = null, actualCodec = null) {
                     ? plain(value)
                     : null;
             },
-            identity: (value) => JSON.stringify([value.origin, value.locator]),
-            migrateLegacy: (row) =>
-                row.id === "fav-map" ? entry("m3u", "mapped", "stable") : null,
         },
+        current: () => active,
+        migrationCurrent: () => !hooks.migrationLost,
+        async sha256(text) {
+            if (hooks.hash) await hooks.hash();
+            return crypto.createHash("sha256").update(text).digest("hex");
+        },
+        uuid: () =>
+            "00000000-0000-4000-8000-" + String(++serial).padStart(12, "0"),
     });
     return {
-        store,
+        deactivate: () => {
+            active = false;
+        },
         hooks,
-        writes,
         raw: () => raw,
         replace: (value) => {
             raw = value;
         },
-        deactivate: () => {
-            active = false;
-        },
+        store,
+        writes,
     };
 }
 async function main() {
@@ -110,21 +113,21 @@ async function main() {
         original = entry("m3u", "A", "one");
     let identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "put",
         entries: [original],
+        op: "put",
     });
     identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "remove",
         ids: [identityView.entries[0].id],
+        op: "remove",
     });
     identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "migrate-membership",
-        migrationId: "c".repeat(64),
         entries: [
-            { token: "d".repeat(64), entry: { ...original, title: "Renamed" } },
+            { entry: { ...original, title: "Renamed" }, token: "d".repeat(64) },
         ],
+        migrationId: "c".repeat(64),
+        op: "migrate-membership",
     });
     assert.equal(
         (await identityRemoval.store.snapshot()).entries.length,
@@ -134,9 +137,9 @@ async function main() {
     identityView = await identityRemoval.store.snapshot();
     const different = entry("m3u", "B", "one");
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "migrate-source",
-        migrationId: "e".repeat(64),
         entries: [different],
+        migrationId: "e".repeat(64),
+        op: "migrate-source",
     });
     assert.equal(
         (await identityRemoval.store.snapshot()).entries.length,
@@ -145,8 +148,8 @@ async function main() {
     );
     identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "replace",
         entries: [original],
+        op: "replace",
     });
     identityView = await identityRemoval.store.snapshot();
     assert.equal(
@@ -155,9 +158,9 @@ async function main() {
         "explicit import/replace re-adds A"
     );
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "migrate-source",
-        migrationId: "f".repeat(64),
         entries: [different],
+        migrationId: "f".repeat(64),
+        op: "migrate-source",
     });
     assert.equal(
         (await identityRemoval.store.snapshot()).entries.length,
@@ -166,13 +169,13 @@ async function main() {
     );
     identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "remove",
         ids: [identityView.entries[0].id],
+        op: "remove",
     });
     identityView = await identityRemoval.store.snapshot();
     await identityRemoval.store.mutate(identityView.revision, {
-        op: "put",
         entries: [original],
+        op: "put",
     });
     assert.equal(
         (await identityRemoval.store.snapshot()).entries.length,
@@ -189,8 +192,8 @@ async function main() {
         pressureWrites = identityRemoval.writes.length;
     await assert.rejects(
         identityRemoval.store.mutate(identityView.revision, {
-            op: "remove",
             ids: [identityView.entries[0].id],
+            op: "remove",
         }),
         /limits_exceeded/
     );
@@ -206,15 +209,15 @@ async function main() {
         forgottenEntry = entry("m3u", "Profile", "one");
     let forgetView = await forgotten.store.snapshot();
     await forgotten.store.mutate(forgetView.revision, {
-        op: "forget-membership",
         ids: [],
+        op: "forget-membership",
         tokens: [token],
     });
     forgetView = await forgotten.store.snapshot();
     await forgotten.store.mutate(forgetView.revision, {
-        op: "migrate-membership",
+        entries: [{ entry: forgottenEntry, token }],
         migrationId: "b".repeat(64),
-        entries: [{ token, entry: forgottenEntry }],
+        op: "migrate-membership",
     });
     assert.equal(
         (await forgotten.store.snapshot()).entries.length,
@@ -225,16 +228,16 @@ async function main() {
     assert.equal(
         (
             await forgotten.store.mutate(forgetView.revision, {
-                op: "forget-membership",
                 ids: [],
+                op: "forget-membership",
                 tokens: [token],
             })
         ).changed,
         false
     );
     await forgotten.store.mutate(forgetView.revision, {
-        op: "put",
         entries: [forgottenEntry],
+        op: "put",
     });
     forgetView = await forgotten.store.snapshot();
     assert.equal(
@@ -243,8 +246,8 @@ async function main() {
         "explicit add is not blocked by migration tombstone"
     );
     await forgotten.store.mutate(forgetView.revision, {
-        op: "forget-membership",
         ids: [forgetView.entries[0].id],
+        op: "forget-membership",
         tokens: [token],
     });
     assert.equal((await forgotten.store.snapshot()).entries.length, 0);
@@ -254,8 +257,8 @@ async function main() {
         removedEntry = entry("m3u", "B", "removed");
     let releaseView = await release.store.snapshot();
     await release.store.mutate(releaseView.revision, {
-        op: "put",
         entries: [removedEntry],
+        op: "put",
     });
     const releaseRaw = JSON.parse(release.raw());
     const releaseToken = crypto
@@ -276,8 +279,8 @@ async function main() {
     release.replace(JSON.stringify(releaseRaw));
     releaseView = await release.store.snapshot();
     await release.store.mutate(releaseView.revision, {
-        op: "replace",
         entries: [releaseEntry],
+        op: "replace",
     });
     assert.equal(
         (await release.store.snapshot()).entries[0].origin.profile,
@@ -291,8 +294,8 @@ async function main() {
     const drift = fixture();
     let driftView = await drift.store.snapshot();
     await drift.store.mutate(driftView.revision, {
-        op: "put",
         entries: [removedEntry],
+        op: "put",
     });
     driftView = await drift.store.snapshot();
     const driftWrites = drift.writes.length;
@@ -306,8 +309,8 @@ async function main() {
     };
     await assert.rejects(
         drift.store.mutate(driftView.revision, {
-            op: "remove",
             ids: [driftView.entries[0].id],
+            op: "remove",
         }),
         /revision_conflict/
     );
@@ -329,7 +332,7 @@ async function main() {
         entry("m3u", "two", "channel"),
     ];
     assert.equal(
-        (await f.store.mutate(first.revision, { op: "put", entries: mixed }))
+        (await f.store.mutate(first.revision, { entries: mixed, op: "put" }))
             .outcome,
         "verified"
     );
@@ -339,14 +342,14 @@ async function main() {
         ["local", "one", "portal", "plex", "two"]
     );
     await assert.rejects(
-        f.store.mutate(first.revision, { op: "put", entries: mixed }),
+        f.store.mutate(first.revision, { entries: mixed, op: "put" }),
         /revision_conflict/
     );
     assert.equal(f.writes.length, 1);
-    await f.store.mutate(view.revision, { op: "put", entries: mixed });
+    await f.store.mutate(view.revision, { entries: mixed, op: "put" });
     assert.equal(f.writes.length, 1, "dedup is not another write");
     const ids = Array.from(view.entries, (x) => x.id).reverse();
-    await f.store.mutate(view.revision, { op: "reorder", ids });
+    await f.store.mutate(view.revision, { ids, op: "reorder" });
     view = await f.store.snapshot();
     assert.deepEqual(
         Array.from(view.entries, (x) => x.id),
@@ -358,24 +361,25 @@ async function main() {
     const migration = fixture();
     view = await migration.store.snapshot();
     await migration.store.mutate(view.revision, {
-        op: "migrate-source",
-        migrationId: "a".repeat(64),
         entries: [mixed[0]],
+        migrationId: "a".repeat(64),
+        op: "migrate-source",
     });
     view = await migration.store.snapshot();
     await migration.store.mutate(view.revision, {
-        op: "remove",
         ids: [view.entries[0].id],
+        op: "remove",
     });
     view = await migration.store.snapshot();
     const count = migration.writes.length;
     await migration.store.mutate(view.revision, {
-        op: "migrate-source",
-        migrationId: "a".repeat(64),
         entries: [mixed[0]],
+        migrationId: "a".repeat(64),
+        op: "migrate-source",
     });
     assert.equal(migration.writes.length, count);
     assert.equal((await migration.store.snapshot()).entries.length, 0);
+    // biome-ignore assist/source/useSortedKeys: Preserve legacy raw bytes in the no-write migration baseline.
     const legacyRow = (id) => ({
         id,
         name: "legacy",
@@ -387,6 +391,7 @@ async function main() {
         source: "private-local-source",
         ref: { itemId: "old-reference" },
     });
+    // biome-ignore assist/source/useSortedKeys: Preserve legacy raw bytes in the no-write migration baseline.
     const raw = JSON.stringify({
         version: 1,
         entries: [legacyRow("fav-map"), legacyRow("fav-unresolved")],
@@ -407,8 +412,8 @@ async function main() {
             rev = (await x.store.snapshot()).revision;
         x.hooks.mode = mode;
         const outcome = await x.store.mutate(rev, {
-            op: "put",
             entries: [mixed[0]],
+            op: "put",
         });
         assert.equal(
             outcome.outcome,
@@ -420,7 +425,7 @@ async function main() {
         rev = (await lost.store.snapshot()).revision;
     lost.hooks.hash = async () => lost.deactivate();
     await assert.rejects(
-        lost.store.mutate(rev, { op: "put", entries: [mixed[0]] }),
+        lost.store.mutate(rev, { entries: [mixed[0]], op: "put" }),
         /revision_conflict/
     );
     assert.equal(lost.writes.length, 0);
@@ -428,17 +433,17 @@ async function main() {
         blank = (await bad.store.snapshot()).revision;
     await assert.rejects(
         bad.store.mutate(blank, {
-            op: "put",
             entries: [
                 entry("plex", "P", "https://access.invalid/?token=secret"),
             ],
+            op: "put",
         }),
         /unsupported_entry/
     );
     await assert.rejects(
         bad.store.mutate(blank, {
-            op: "put",
             entries: new Array(1001).fill(mixed[0]),
+            op: "put",
         }),
         /limits_exceeded/
     );
@@ -451,9 +456,9 @@ async function main() {
     // Admission/revision guards reject this source before apply can migrate it.
     await assert.rejects(
         incomplete.store.mutate(initialRevision, {
-            op: "migrate-source",
-            migrationId: "b".repeat(64),
             entries: [mixed[0]],
+            migrationId: "b".repeat(64),
+            op: "migrate-source",
         }),
         (error) => error.message === "revision_conflict"
     );
@@ -476,6 +481,7 @@ async function main() {
         stable = await guard.store.snapshot();
     assert.equal(stable.current(), true);
     guard.replace(
+        // biome-ignore assist/source/useSortedKeys: Preserve the exact raw replacement used by the stale-snapshot guard.
         JSON.stringify({ version: 2, entries: [], legacy: [], migrations: [] })
     );
     assert.equal(
@@ -497,47 +503,47 @@ async function main() {
     const real = fixture(null, actualCodec),
         emptyView = await real.store.snapshot();
     const origin = (provider, profile) => ({
-        provider,
         profile,
-        subprofile: null,
+        provider,
         sourceAlias: profile,
+        subprofile: null,
     });
     const items = [
         {
-            title: "Local film",
-            origin: origin("local", "Movies"),
             locator: {
                 kind: "local-media",
-                rootAlias: "Movies",
                 relativePath: "Films/film.mkv",
+                rootAlias: "Movies",
             },
+            origin: origin("local", "Movies"),
+            title: "Local film",
         },
         {
-            title: "TV one",
+            locator: { channelId: "001", kind: "channel" },
             origin: origin("m3u", "Profile one"),
-            locator: { kind: "channel", channelId: "001" },
+            title: "TV one",
         },
         {
-            title: "Portal film",
+            locator: { id: "film-42", idField: "id", kind: "vportal-media" },
             origin: origin("vportal", "Portal"),
-            locator: { kind: "vportal-media", idField: "id", id: "film-42" },
+            title: "Portal film",
         },
         {
-            title: "Plex film",
+            locator: { kind: "plex-media", ratingKey: "42", serverId: "PMS_1" },
             origin: origin("plex", "Plex"),
-            locator: { kind: "plex-media", serverId: "PMS_1", ratingKey: "42" },
+            title: "Plex film",
         },
         {
-            title: "TV two",
+            locator: { channelId: "001", kind: "channel" },
             origin: origin("m3u", "Profile two"),
-            locator: { kind: "channel", channelId: "001" },
+            title: "TV two",
         },
     ];
     assert.equal(
         (
             await real.store.mutate(emptyView.revision, {
-                op: "put",
                 entries: items,
+                op: "put",
             })
         ).outcome,
         "verified"
@@ -560,8 +566,8 @@ async function main() {
         "private guard is not exported"
     );
     await real.store.mutate(realView.revision, {
-        op: "put",
         entries: [{ ...items[1], title: "Renamed" }],
+        op: "put",
     });
     assert.equal(
         (await real.store.snapshot()).entries.length,
@@ -577,7 +583,7 @@ async function main() {
         "PASS global favorites store: mixed order/dedup, exact revision/CAS, private legacy preservation, one-time migration and fail-closed writes"
     );
 }
-module.exports = { fixture, entry, load };
+module.exports = { entry, fixture, load };
 if (require.main === module)
     main().catch((error) => {
         console.error(error);

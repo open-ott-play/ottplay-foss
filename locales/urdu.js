@@ -172,6 +172,7 @@ var keyStrings = {
         "Plex سرور کنکشن کو چیک کیا جا رہا ہے…",
     "Choose a folder in the browser window":
         "براؤزر کی ونڈو میں ایک فولڈر منتخب کریں",
+    "Choose a profile": "پروفائل کا انتخاب کریں۔",
     "Choose files in the browser window":
         "براؤزر کی ونڈو میں فائلیں منتخب کریں",
     "Choose from": "میں سے انتخاب کریں۔",
@@ -1108,6 +1109,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ترتیبات",
     "Unable to load playlist": "پلے لسٹ لوڈ کرنے سے قاصر",
+    Unavailable: "دستیاب نہیں ہے",
     "Unlock the player's settings before changing its playlist.":
         "پلے لسٹ بدلنے سے پہلے پلیئر کی ترتیبات کا لاک کھولیں۔",
     Untitled: "بلا عنوان",

@@ -12,7 +12,15 @@ function load(file, supplied = {}) {
         },
     }).outputText;
     vm.runInNewContext(code, {
+        Array,
+        Error,
         exports,
+        isFinite,
+        JSON,
+        Math,
+        Number,
+        Object,
+        Promise,
         require(name) {
             if (name === "./global-favorites-providers")
                 return load("src/media/global-favorites-providers.ts");
@@ -20,16 +28,8 @@ function load(file, supplied = {}) {
                 throw new Error("Unprovided dependency " + name);
             return supplied[name];
         },
-        window: {},
-        Promise,
-        Object,
-        Array,
-        JSON,
-        Math,
-        Number,
         String,
-        Error,
-        isFinite,
+        window: {},
     });
     return exports;
 }
@@ -56,75 +56,75 @@ function fixture(provider = "m3u") {
         releases = 0,
         timer;
     const origin = {
-        provider,
         profile: "Second",
-        subprofile: null,
+        provider,
         sourceAlias: "Source",
+        subprofile: null,
     };
     const locator =
         provider === "plex"
-            ? { kind: "plex-media", serverId: "PMS", ratingKey: "42" }
+            ? { kind: "plex-media", ratingKey: "42", serverId: "PMS" }
             : provider === "local"
               ? {
                     kind: "local-media",
-                    rootAlias: "Root",
                     relativePath: "Dir/file.mp4",
+                    rootAlias: "Root",
                 }
               : provider === "vportal"
-                ? { kind: "vportal-media", idField: "id", id: "42" }
-                : { kind: "channel", channelId: "m3u-epg:news" };
+                ? { id: "42", idField: "id", kind: "vportal-media" }
+                : { channelId: "m3u-epg:news", kind: "channel" };
     const row = {
         id: "00000000-0000-4000-8000-000000000001",
-        title: "Title",
-        origin,
         locator,
-    };
-    const target = { origin, current: () => targetCurrent };
-    const session = {
         origin,
+        title: "Title",
+    };
+    const target = { current: () => targetCurrent, origin };
+    const session = {
+        complete() {},
         current: () => targetCurrent,
-        resolve: async () => ({ available: true, locator }),
+        origin,
         play: async () => {
             plays++;
             return true;
         },
         release: () => releases++,
-        complete() {},
+        resolve: async () => ({ available: true, locator }),
     };
     const ports = {
-        codec,
-        now: () => now,
-        current: () => current,
-        allowed: () => current,
-        snapshot: async () => ({
-            revision: "r1",
-            entries: [row],
-            current: () => snapshotCurrent,
-        }),
-        targets: async () => [target],
         activate: async () => session,
+        allowed: () => current,
+        changed() {},
+        clearTimer() {},
+        codec,
+        current: () => current,
+        now: () => now,
         setTimer: (fn) => {
             timer = fn;
             return 1;
         },
-        clearTimer() {},
-        changed() {},
+        snapshot: async () => ({
+            current: () => snapshotCurrent,
+            entries: [row],
+            revision: "r1",
+        }),
+        targets: async () => [target],
     };
     return {
-        row,
-        target,
-        session,
-        ports,
-        router: create(ports),
-        plays: () => plays,
-        releases: () => releases,
-        staleStore: () => (snapshotCurrent = false),
-        staleTarget: () => (targetCurrent = false),
         block: () => (current = false),
         expire: () => {
             now = 30000;
             timer();
         },
+        plays: () => plays,
+        ports,
+        releases: () => releases,
+        router: create(ports),
+        row,
+        session,
+        staleStore: () => (snapshotCurrent = false),
+        staleTarget: () => (targetCurrent = false),
+        target,
     };
 }
 const cases = [];
@@ -208,8 +208,8 @@ test("numeric renderer fallback is never portable identity", () => {
     const helpers = load("src/media/global-favorites-identities.ts");
     assert.equal(
         helpers.globalFavoriteChannelId("m3u", {
-            itemId: "channel:42",
             epg: "guessed",
+            itemId: "channel:42",
         }),
         null
     );
@@ -246,38 +246,38 @@ test("actual capture prefers an explicit identity, otherwise exact unique name/g
     const state = {
         generation: 1,
         phase: "playing",
-        target: { kind: "live", sourceId: "source", channelId: 7 },
+        target: { channelId: 7, kind: "live", sourceId: "source" },
     };
     const w = {
         __ottActiveProviderDriver: {
-            id: "m3u",
             configuration: () => ({ active: 0 }),
+            id: "m3u",
+        },
+        __ottChannelReferences: {
+            create: () => ({
+                project: () => 7,
+                resolve: () => ({ itemId: "channel:7" }),
+            }),
         },
         __ottClassicPlayback: { snapshot: () => state },
         __ottCommandChannelLoad: {},
         __ottSourceIdentity: { current: () => "source" },
         channels: {
-            7: { channel_name: "News", category: { name: "A" } },
-            8: { channel_name: "News", category: { name: "B" } },
+            7: { category: { name: "A" }, channel_name: "News" },
+            8: { category: { name: "B" }, channel_name: "News" },
         },
         cList: [7, 8],
-        __ottChannelReferences: {
-            create: () => ({
-                resolve: () => ({ itemId: "channel:7" }),
-                project: () => 7,
-            }),
-        },
     };
     const player = {
         allowed: () => true,
-        selected: () => ({ name: "Profile" }),
         captureSelector: async () => ({ bound: true }),
+        selected: () => ({ name: "Profile" }),
     };
     const captured = await capture(w, player, codec);
     assert.deepEqual(JSON.parse(JSON.stringify(captured.value.locator)), {
+        group: "A",
         kind: "channel-name",
         name: "News",
-        group: "A",
     });
     w.channels[8].category.name = "A";
     assert.equal(
@@ -298,8 +298,8 @@ test("actual VPortal capture requires source-owned ID attestation", async () => 
     }).captureGlobalFavorite;
     const w = {
         __ottActiveProviderDriver: {
-            id: "vportal",
             configuration: () => ({ active: 1 }),
+            id: "vportal",
         },
         __ottClassicPlayback: { snapshot: () => ({ generation: 3 }) },
         __ottCommandChannelLoad: {},
@@ -307,10 +307,10 @@ test("actual VPortal capture requires source-owned ID attestation", async () => 
     };
     const player = {
         allowed: () => true,
-        selected: () => ({ name: "Second" }),
         captureSelector: async () => ({ bound: true }),
+        selected: () => ({ name: "Second" }),
     };
-    const payload = { title: "Film", vportalSource: "media", id: "42" };
+    const payload = { id: "42", title: "Film", vportalSource: "media" };
     assert.equal(await capture(w, player, codec, payload), null);
     payload.__ottFavoriteId = { field: "id", value: "42" };
     w.cList = [7];
@@ -350,7 +350,7 @@ test("actual Local capture uses exact bound root and relative path", async () =>
     }).captureGlobalFavorite;
     let same = true;
     const w = {
-        __ottActiveProviderDriver: { id: "offline", configuration: () => null },
+        __ottActiveProviderDriver: { configuration: () => null, id: "offline" },
         __ottClassicPlayback: {
             snapshot: () => ({
                 generation: 3,
@@ -358,29 +358,29 @@ test("actual Local capture uses exact bound root and relative path", async () =>
             }),
         },
         __ottCommandChannelLoad: {},
-        __ottSourceIdentity: { current: () => "source" },
-        __ottOfflineProfiles: { read: () => ({ active: -1 }) },
         __ottLocalMedia: {
             favoriteSnapshot: () => ({
-                current: () => same,
                 catalog: {
                     items: [
                         {
-                            id: "one",
-                            sourceId: "root",
-                            name: "Folder/file.mp4",
                             available: true,
+                            id: "one",
+                            name: "Folder/file.mp4",
+                            sourceId: "root",
                         },
                     ],
-                    sources: [{ id: "root", name: "Movies", kind: "folder" }],
+                    sources: [{ id: "root", kind: "folder", name: "Movies" }],
                 },
+                current: () => same,
             }),
         },
+        __ottOfflineProfiles: { read: () => ({ active: -1 }) },
+        __ottSourceIdentity: { current: () => "source" },
     };
     const player = {
         allowed: () => true,
-        selected: () => ({ default: true }),
         captureSelector: async () => ({ bound: true }),
+        selected: () => ({ default: true }),
     };
     const result = await capture(w, player, codec);
     assert.equal(result.value.locator.relativePath, "Folder/file.mp4");
@@ -400,12 +400,12 @@ test("actual Plex capture pins verified server and current source", async () => 
     let verified = true;
     const w = {
         __ottActiveProviderDriver: {
-            id: "plex",
             configuration: () => ({}),
             favoritesSource: () => ({
-                serverId: "PMS-A",
                 current: () => verified,
+                serverId: "PMS-A",
             }),
+            id: "plex",
         },
         __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
         __ottCommandChannelLoad: {},
@@ -413,13 +413,13 @@ test("actual Plex capture pins verified server and current source", async () => 
     };
     const player = {
         allowed: () => true,
-        selected: () => ({}),
         captureSelector: async () => ({}),
+        selected: () => ({}),
     };
     const payload = {
-        title: "Film",
         plexSource: "media",
         request: { path: "/library/metadata/42" },
+        title: "Film",
     };
     assert.equal(
         (await capture(w, player, codec, payload)).value.locator.serverId,
@@ -442,49 +442,49 @@ test("global empty category is localized and a stale async open cannot reopen UI
     const navigation = load(
         "src/media/global-favorites-navigation.ts"
     ).createGlobalFavoritesNavigation({
-        current: () => true,
         allowed: () => true,
-        capture: () => null,
-        identity: (value) => codec.identity(value),
-        snapshot: async () => ({ entries: [], current: () => true }),
-        select: () => {
-            throw Error("empty view must not dispatch");
-        },
         cancel() {},
+        capture: () => null,
+        current: () => true,
         failed() {
             throw Error("unexpected navigation failure");
         },
+        identity: (value) => codec.identity(value),
+        select: () => {
+            throw Error("empty view must not dispatch");
+        },
+        snapshot: async () => ({ current: () => true, entries: [] }),
     });
     const ports = {
-        navigation,
-        store: { snapshot: () => pending.promise },
-        router: {},
-        current: () => true,
-        translate: (text) => (text === "Favorites" ? "Избранное" : text),
         captureScreen: () => () => active,
+        current: () => true,
         describe: () => "",
+        error: () => {
+            throw Error("unexpected");
+        },
+        navigation,
+        router: {},
         show: (view) => {
             shown++;
             descriptor = view;
             return () => true;
         },
-        error: () => {
-            throw Error("unexpected");
-        },
+        store: { snapshot: () => pending.promise },
+        translate: (text) => (text === "Favorites" ? "Избранное" : text),
     };
     const view = make(ports);
     assert.equal(view.category().id, "system:global-favorites");
     assert.equal(view.category().label, "Избранное");
     const first = view.open();
     active = false;
-    pending.resolve({ entries: [], unresolvedLegacy: [], current: () => true });
+    pending.resolve({ current: () => true, entries: [], unresolvedLegacy: [] });
     await first;
     assert.equal(shown, 0);
     active = true;
     ports.store.snapshot = async () => ({
+        current: () => true,
         entries: [],
         unresolvedLegacy: [],
-        current: () => true,
     });
     await view.open();
     assert.equal(shown, 1);
@@ -501,44 +501,44 @@ test("generic private profile/source pair uses one actual registry CAS", () => {
         writes = 0,
         next = 1;
     const registry = make({
-        read: () => raw,
-        persistedRead: () => raw,
-        uuid: () =>
-            "00000000-0000-4000-8000-" + String(next++).padStart(12, "0"),
-        validateSelector: (_kind, value) => valid(value),
-        current: () => true,
         compareAndSwap: (before, after) => {
             assert.equal(before, raw);
             raw = after;
             writes++;
             return "confirmed";
         },
+        current: () => true,
+        persistedRead: () => raw,
+        read: () => raw,
+        uuid: () =>
+            "00000000-0000-4000-8000-" + String(next++).padStart(12, "0"),
+        validateSelector: (_kind, value) => valid(value),
     });
     const selector = {
-        kind: "global-playback-target",
-        provider: "m3u",
-        origin: {
-            provider: "m3u",
-            profile: "Two",
-            subprofile: null,
-            sourceAlias: "Two",
-        },
-        slot: 1,
         configurationDigest: "a".repeat(64),
+        kind: "global-playback-target",
+        origin: {
+            profile: "Two",
+            provider: "m3u",
+            sourceAlias: "Two",
+            subprofile: null,
+        },
+        provider: "m3u",
+        slot: 1,
     };
     const binding = {
         owner: "global:" + selector.configurationDigest,
         selector,
     };
     const result = registry.provisionPlayback(
-        { provider: "m3u", profile: binding, source: binding },
+        { profile: binding, provider: "m3u", source: binding },
         0
     );
     assert.equal(writes, 1);
     assert.equal(JSON.parse(raw).entries.length, 2);
     assert.equal(result.result.source.profile_id, result.result.profile.id);
     registry.provisionPlayback(
-        { provider: "m3u", profile: binding, source: binding },
+        { profile: binding, provider: "m3u", source: binding },
         result.revision
     );
     assert.equal(writes, 1, "existing exact pair is idempotent");

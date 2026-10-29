@@ -17,10 +17,8 @@ function actualModule(name, window, overrides = {}) {
         }
     ).outputText;
     vm.runInNewContext(code, {
-        exports,
-        window,
-        URL,
         console,
+        exports,
         require(relative) {
             if (Object.prototype.hasOwnProperty.call(overrides, relative))
                 return overrides[relative];
@@ -31,6 +29,8 @@ function actualModule(name, window, overrides = {}) {
                 window
             );
         },
+        URL,
+        window,
     });
     return exports;
 }
@@ -74,15 +74,15 @@ function createMainPorts(w) {
         return w[name].apply(w, args);
     }
     const context = vm.createContext({
-        window: w,
-        URL,
-        console,
-        alert: (...args) => call("alert", args),
         _: (...args) => call("_", args),
+        alert: (...args) => call("alert", args),
+        console,
+        enterPinAndSetAccess: (...args) => call("enterPinAndSetAccess", args),
+        loadProv: (...args) => call("loadProv", args),
         stbGetItem: (...args) => call("stbGetItem", args),
         stbSetItem: (...args) => call("stbSetItem", args),
-        loadProv: (...args) => call("loadProv", args),
-        enterPinAndSetAccess: (...args) => call("enterPinAndSetAccess", args),
+        URL,
+        window: w,
     });
     vm.runInContext(
         actualFunctions("src/provider/index.ts", [
@@ -100,8 +100,8 @@ function createMainPorts(w) {
         context
     );
     const provider = {
-        isProviderAllowed: context.isProviderAllowed,
         checkProviderUrl: context.checkProviderUrl,
+        isProviderAllowed: context.isProviderAllowed,
         selectProviderByIndex: context.selectProviderByIndex,
     };
     Object.defineProperty(provider, "providerIds", {
@@ -113,14 +113,14 @@ function createMainPorts(w) {
     const caseless = actualModule("src/utils/caseless.ts", w);
     return {
         caselessKey: caseless.caselessKey,
-        remoteCheckpoint: context.remoteCheckpoint,
         handleRemoteProfiles: profiles.handleRemoteProfiles,
-        selectMediaProfile: profiles.selectGlobalMediaProfile,
         isProviderAllowed: provider.isProviderAllowed,
-        providerIds: () => provider.providerIds,
-        selectProviderByIndex: provider.selectProviderByIndex,
-        providerModule: provider,
         profilesModule: profiles,
+        providerIds: () => provider.providerIds,
+        providerModule: provider,
+        remoteCheckpoint: context.remoteCheckpoint,
+        selectMediaProfile: profiles.selectGlobalMediaProfile,
+        selectProviderByIndex: provider.selectProviderByIndex,
     };
 }
-module.exports = { createMainPorts, actualModule };
+module.exports = { actualModule, createMainPorts };

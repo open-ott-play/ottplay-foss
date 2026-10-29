@@ -2,6 +2,7 @@ import {
     parseFavoritesDocumentJson,
     utf8Encode,
 } from "./favorites-document-json";
+
 const OPS = [
     "describe",
     "export",
@@ -38,19 +39,19 @@ const GLOBAL_PROTOCOL_ERRORS = [
     "reconciliation_required",
 ];
 const LIMITS = {
-    max_document_bytes: 1048576,
-    max_entries: 1000,
+    absolute_ttl_seconds: 600,
+    idle_ttl_seconds: 120,
+    max_active_transactions: 1,
     max_append_bytes: 8192,
     max_chunks: 256,
-    max_export_bytes: 65536,
-    max_preview_rows: 64,
+    max_document_bytes: 1048576,
+    max_entries: 1000,
     max_envelope_bytes: 16384,
+    max_export_bytes: 65536,
     max_metadata_bytes: 131072,
-    max_active_transactions: 1,
-    idle_ttl_seconds: 120,
-    absolute_ttl_seconds: 600,
-    max_receipts: 32,
+    max_preview_rows: 64,
     max_receipt_ledger_bytes: 65536,
+    max_receipts: 32,
 };
 const GLOBAL_PROTOCOL_UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
@@ -105,10 +106,10 @@ export function createGlobalFavoritesProtocol(ports: any) {
             terminal = {
                 operation_id: stage.args.operation_id,
                 operation_runtime: stage.runtime,
-                transaction_id: stage.id,
-                state: "expired",
                 outcome: "not_applied",
                 receipt: null,
+                state: "expired",
+                transaction_id: stage.id,
             };
             clearBytes(stage);
             ports.clearTimer(stage.timer);
@@ -183,11 +184,11 @@ export function createGlobalFavoritesProtocol(ports: any) {
             );
         if (busy)
             return {
-                version: 1,
-                runtime: replyRuntime,
-                op: op,
-                subject: "global",
                 error: "busy",
+                op: op,
+                runtime: replyRuntime,
+                subject: "global",
+                version: 1,
             };
         busy = true;
         requestAdmission = admission;
@@ -216,10 +217,10 @@ export function createGlobalFavoritesProtocol(ports: any) {
             return metadata(
                 Object.assign(
                     {
-                        version: 1,
-                        runtime: replyRuntime,
                         op: op,
+                        runtime: replyRuntime,
                         subject: "global",
+                        version: 1,
                     },
                     data
                 )
@@ -227,14 +228,14 @@ export function createGlobalFavoritesProtocol(ports: any) {
         } catch (error: any) {
             var code = error && (error.code || error.message);
             return {
-                version: 1,
-                runtime: replyRuntime,
-                op: op,
-                subject: "global",
                 error:
                     GLOBAL_PROTOCOL_ERRORS.indexOf(code) >= 0
                         ? code
                         : "storage_unavailable",
+                op: op,
+                runtime: replyRuntime,
+                subject: "global",
+                version: 1,
             };
         } finally {
             busy = false;
@@ -268,21 +269,22 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 if (!exported.current())
                     globalFavoritesProtocolFail("revision_conflict");
                 clearBytes(snapshot);
-                snapshot = {
-                    id: ports.uuid(),
-                    bytes: bytes,
-                    hash: hash,
-                    revision: view.revision,
-                    expires: ports.now() + 600000,
-                };
+                snapshot =
+                    /* biome-ignore assist/source/useSortedKeys: Preserve UUID generation before the snapshot expiry clock sample. */ {
+                        id: ports.uuid(),
+                        bytes: bytes,
+                        hash: hash,
+                        revision: view.revision,
+                        expires: ports.now() + 600000,
+                    };
                 if (!GLOBAL_PROTOCOL_UUID.test(snapshot.id))
                     globalFavoritesProtocolFail("invalid_request");
                 descriptor = {
-                    snapshot_id: snapshot.id,
                     document_sha256: hash,
-                    size_bytes: bytes.length,
                     entries: doc.entries.length,
                     expires_at: new Date(snapshot.expires).toISOString(),
+                    size_bytes: bytes.length,
+                    snapshot_id: snapshot.id,
                 };
             } catch (e: any) {
                 error =
@@ -307,15 +309,16 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 var id = ports.uuid();
                 if (!GLOBAL_PROTOCOL_UUID.test(id))
                     globalFavoritesProtocolFail("unsupported");
-                admission = {
-                    id: id,
-                    runtime: runtime,
-                    revision: view.revision,
-                    context: contextRevision,
-                    expires: ports.now() + 10000,
-                };
+                admission =
+                    /* biome-ignore assist/source/useSortedKeys: Preserve captured revision reads before sampling the admission expiry clock. */ {
+                        id: id,
+                        runtime: runtime,
+                        revision: view.revision,
+                        context: contextRevision,
+                        expires: ports.now() + 10000,
+                    };
             }
-            return {
+            return /* biome-ignore assist/source/useSortedKeys: Preserve policy and blocker callback evaluation relative to response state reads. */ {
                 admission: admission
                     ? { operation_id: admission.id, ttl_ms: 10000 }
                     : null,
@@ -361,15 +364,15 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 hash = await ports.sha256(exportBytes);
             current(runtime, deadline);
             return {
-                snapshot_id: snapshot.id,
-                revision: snapshot.revision,
-                document_sha256: snapshot.hash,
-                size_bytes: snapshot.bytes.length,
-                offset: p.offset,
                 chunk_sha256: hash,
                 data_base64: ports.base64Encode(exportBytes),
-                next_offset: end,
+                document_sha256: snapshot.hash,
                 eof: end === snapshot.bytes.length,
+                next_offset: end,
+                offset: p.offset,
+                revision: snapshot.revision,
+                size_bytes: snapshot.bytes.length,
+                snapshot_id: snapshot.id,
             };
         }
         if (
@@ -476,38 +479,39 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     );
                 },
             };
-            stage = {
-                id: ports.uuid(),
-                runtime: runtime,
-                args: JSON.parse(JSON.stringify(p)),
-                bytes: new Uint8Array(p.size_bytes),
-                grant: grant,
-                view: view,
-                next: 0,
-                received: 0,
-                chunks: [],
-                plan: null,
-                started: false,
-                idle: ports.now() + Math.min(120000, p.budget_ms),
-                absolute: ports.now() + p.budget_ms,
-                timer: null,
-            };
+            stage =
+                /* biome-ignore assist/source/useSortedKeys: Preserve UUID, request copy, allocation and the two deadline clock samples. */ {
+                    id: ports.uuid(),
+                    runtime: runtime,
+                    args: JSON.parse(JSON.stringify(p)),
+                    bytes: new Uint8Array(p.size_bytes),
+                    grant: grant,
+                    view: view,
+                    next: 0,
+                    received: 0,
+                    chunks: [],
+                    plan: null,
+                    started: false,
+                    idle: ports.now() + Math.min(120000, p.budget_ms),
+                    absolute: ports.now() + p.budget_ms,
+                    timer: null,
+                };
             if (!GLOBAL_PROTOCOL_UUID.test(stage.id))
                 globalFavoritesProtocolFail("invalid_request");
             arm(stage);
             stage.beginResult = {
-                operation_id: p.operation_id,
-                transaction_id: stage.id,
-                expected_revision: p.expected_revision,
+                absolute_expires_at: new Date(stage.absolute).toISOString(),
+                chunk_count: p.chunk_count,
                 context_revision: revision,
                 document_sha256: p.document_sha256,
-                size_bytes: p.size_bytes,
-                chunk_count: p.chunk_count,
-                next_seq: 0,
-                received_bytes: 0,
+                expected_revision: p.expected_revision,
                 idle_expires_at: new Date(stage.idle).toISOString(),
-                absolute_expires_at: new Date(stage.absolute).toISOString(),
+                next_seq: 0,
+                operation_id: p.operation_id,
+                received_bytes: 0,
                 required_kinds: p.required_kinds,
+                size_bytes: p.size_bytes,
+                transaction_id: stage.id,
             };
             return stage.beginResult;
         }
@@ -526,14 +530,14 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 return {
                     operation_id: p.operation_id,
                     operation_runtime: value.runtime,
-                    transaction_id: value.id,
+                    outcome: value.started ? "unknown" : "not_applied",
+                    receipt: null,
                     state: value.started
                         ? "applying"
                         : value.plan
                           ? "ready"
                           : "receiving",
-                    outcome: value.started ? "unknown" : "not_applied",
-                    receipt: null,
+                    transaction_id: value.id,
                 };
             if (
                 terminal &&
@@ -547,12 +551,12 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 operation_runtime: result.receipt
                     ? result.receipt.operation_runtime
                     : null,
+                outcome: result.outcome,
+                receipt: result.receipt,
+                state: result.state,
                 transaction_id: result.receipt
                     ? result.receipt.transaction_id
                     : null,
-                state: result.state,
-                outcome: result.outcome,
-                receipt: result.receipt,
             };
         }
         if (!value || p.transaction_id !== value.id)
@@ -601,14 +605,14 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 )
                     globalFavoritesProtocolFail("chunk_conflict");
                 return {
-                    operation_id: value.args.operation_id,
-                    transaction_id: value.id,
-                    seq: p.seq,
-                    offset: p.offset,
                     chunk_sha256: hash,
-                    next_seq: value.next,
-                    received_bytes: value.received,
                     duplicate: true,
+                    next_seq: value.next,
+                    offset: p.offset,
+                    operation_id: value.args.operation_id,
+                    received_bytes: value.received,
+                    seq: p.seq,
+                    transaction_id: value.id,
                 };
             }
             if (p.seq !== value.next || p.offset !== value.received)
@@ -622,21 +626,21 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 globalFavoritesProtocolFail("limits_exceeded");
             value.bytes.set(appendBytes, value.received);
             value.chunks.push({
-                offset: p.offset,
                 hash: hash,
+                offset: p.offset,
                 size: appendBytes.length,
             });
             value.received += appendBytes.length;
             value.next++;
             return {
-                operation_id: value.args.operation_id,
-                transaction_id: value.id,
-                seq: p.seq,
-                offset: p.offset,
                 chunk_sha256: hash,
-                next_seq: value.next,
-                received_bytes: value.received,
                 duplicate: false,
+                next_seq: value.next,
+                offset: p.offset,
+                operation_id: value.args.operation_id,
+                received_bytes: value.received,
+                seq: p.seq,
+                transaction_id: value.id,
             };
         }
         if (
@@ -688,9 +692,9 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 before.entries.forEach(function (row: any) {
                     known[
                         ports.codec.identity({
-                            title: row.title,
-                            origin: row.origin,
                             locator: row.locator,
+                            origin: row.origin,
+                            title: row.title,
                         })
                     ] = row;
                 });
@@ -699,23 +703,12 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     if (prior && prior.title !== row.title) {
                         conflict = true;
                         conflicts[ports.codec.identity(row)] = {
-                            reason: "title_mismatch",
                             incoming_entry_index: index,
+                            reason: "title_mismatch",
                         };
                     }
                 });
                 var planned = await ports.committer.prepare({
-                    operation_id: value.args.operation_id,
-                    transaction_id: value.id,
-                    runtime: runtime,
-                    input_document_sha256: value.args.document_sha256,
-                    expected_revision: value.args.expected_revision,
-                    expected_context_revision:
-                        value.args.expected_context_revision,
-                    change: {
-                        op: value.args.mode === "merge" ? "put" : "replace",
-                        entries: doc.entries,
-                    },
                     admission: function () {
                         return (
                             stage === value &&
@@ -726,6 +719,17 @@ export function createGlobalFavoritesProtocol(ports: any) {
                             (!value.commitAdmission || value.commitAdmission())
                         );
                     },
+                    change: {
+                        entries: doc.entries,
+                        op: value.args.mode === "merge" ? "put" : "replace",
+                    },
+                    expected_context_revision:
+                        value.args.expected_context_revision,
+                    expected_revision: value.args.expected_revision,
+                    input_document_sha256: value.args.document_sha256,
+                    operation_id: value.args.operation_id,
+                    runtime: runtime,
+                    transaction_id: value.id,
                 });
                 check(value, runtime);
                 value.plan = planned;
@@ -762,9 +766,9 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     );
                 });
                 value.resolution = {
-                    resolved: 0,
-                    missing: 0,
                     ambiguous: 0,
+                    missing: 0,
+                    resolved: 0,
                     unsupported: 0,
                 };
                 statuses.forEach(function (state: string) {
@@ -780,22 +784,22 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 p.page_offset + p.max_entries
             );
             return {
-                operation_id: value.args.operation_id,
-                transaction_id: value.id,
-                expected_revision: value.args.expected_revision,
+                blocker: value.blocker,
                 context_revision: value.args.expected_context_revision,
-                input_document_sha256: value.args.document_sha256,
-                result_document_sha256: value.plan.result_document_sha256,
-                plan_digest: value.plan.plan_digest,
                 counts: value.plan.counts,
+                expected_revision: value.args.expected_revision,
+                input_document_sha256: value.args.document_sha256,
                 legacy_effects: value.plan.legacy_effects,
+                next_offset: end < value.rows.length ? end : null,
+                operation_id: value.args.operation_id,
+                page_offset: p.page_offset,
+                plan_digest: value.plan.plan_digest,
+                ready: value.ready,
                 required_kinds: value.args.required_kinds,
                 resolution_counts: value.resolution,
-                ready: value.ready,
-                blocker: value.blocker,
-                page_offset: p.page_offset,
+                result_document_sha256: value.plan.result_document_sha256,
                 rows: value.rows.slice(p.page_offset, end),
-                next_offset: end < value.rows.length ? end : null,
+                transaction_id: value.id,
             };
         }
         if (
@@ -834,15 +838,15 @@ export function createGlobalFavoritesProtocol(ports: any) {
             terminal = {
                 operation_id: p.operation_id,
                 operation_runtime: runtime,
-                transaction_id: value.id,
+                outcome: result.outcome,
+                receipt: result.receipt,
                 state:
                     result.outcome === "verified"
                         ? "committed"
                         : result.outcome === "not_applied"
                           ? "aborted"
                           : "unknown",
-                outcome: result.outcome,
-                receipt: result.receipt,
+                transaction_id: value.id,
             };
             ports.clearTimer(value.timer);
             clearBytes(value);
@@ -855,8 +859,8 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 );
             return {
                 operation_id: p.operation_id,
-                transaction_id: value.id,
                 receipt: result.receipt,
+                transaction_id: value.id,
             };
         }
         if (
@@ -876,34 +880,24 @@ export function createGlobalFavoritesProtocol(ports: any) {
             terminal = {
                 operation_id: p.operation_id,
                 operation_runtime: runtime,
-                transaction_id: value.id,
-                state: "aborted",
                 outcome: "not_applied",
                 receipt: null,
+                state: "aborted",
+                transaction_id: value.id,
             };
             ports.clearTimer(value.timer);
             clearBytes(value);
             stage = null;
             return {
                 operation_id: p.operation_id,
-                transaction_id: value.id,
-                state: "aborted",
                 outcome: "not_applied",
+                state: "aborted",
+                transaction_id: value.id,
             };
         }
         globalFavoritesProtocolFail("invalid_request");
     }
     return {
-        execute: execute,
-        freshAdmission: function (id: string, hash: string) {
-            return (
-                !!stage &&
-                !stage.started &&
-                stage.args.operation_id === id &&
-                stage.args.document_sha256 === hash &&
-                stage.grant.current()
-            );
-        },
         capability: function () {
             return { version: 1 };
         },
@@ -917,6 +911,16 @@ export function createGlobalFavoritesProtocol(ports: any) {
             }
             clearBytes(snapshot);
             snapshot = null;
+        },
+        execute: execute,
+        freshAdmission: function (id: string, hash: string) {
+            return (
+                !!stage &&
+                !stage.started &&
+                stage.args.operation_id === id &&
+                stage.args.document_sha256 === hash &&
+                stage.grant.current()
+            );
         },
     };
 }

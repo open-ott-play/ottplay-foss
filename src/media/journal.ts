@@ -139,38 +139,6 @@ function createMediaJournal(ports: MediaJournalPorts) {
         }
     }
     return {
-        // Source-owned, read-only export. It neither claims legacy data nor initializes storage.
-        captureFavorites: function () {
-            if (!ports.current || !ports.current()) return null;
-            try {
-                var raw = ports.read(key);
-                if (raw === null || raw.length > 2 * 1024 * 1024) return null;
-                var parsed = JSON.parse(raw);
-                if (
-                    parsed.version !== 1 ||
-                    parsed.sourceId !== ports.sourceId ||
-                    !valid(parsed.history) ||
-                    !valid(parsed.favorites)
-                )
-                    return null;
-                if (!ports.current() || ports.read(key) !== raw) return null;
-                return {
-                    sourceId: ports.sourceId,
-                    favorites: detached(parsed.favorites),
-                    raw: raw,
-                    current: function () {
-                        return (
-                            !!ports.current &&
-                            ports.current() &&
-                            ports.read(key) === raw &&
-                            ports.current()
-                        );
-                    },
-                };
-            } catch (_) {
-                return null;
-            }
-        },
         // Adopt verified external bytes without writing or replaying a mutation.
         adopt: function (
             raw: string,
@@ -207,6 +175,38 @@ function createMediaJournal(ports: MediaJournalPorts) {
                 return true;
             } catch (_) {
                 return false;
+            }
+        },
+        // Source-owned, read-only export. It neither claims legacy data nor initializes storage.
+        captureFavorites: function () {
+            if (!ports.current || !ports.current()) return null;
+            try {
+                var raw = ports.read(key);
+                if (raw === null || raw.length > 2 * 1024 * 1024) return null;
+                var parsed = JSON.parse(raw);
+                if (
+                    parsed.version !== 1 ||
+                    parsed.sourceId !== ports.sourceId ||
+                    !valid(parsed.history) ||
+                    !valid(parsed.favorites)
+                )
+                    return null;
+                if (!ports.current() || ports.read(key) !== raw) return null;
+                return {
+                    current: function () {
+                        return (
+                            !!ports.current &&
+                            ports.current() &&
+                            ports.read(key) === raw &&
+                            ports.current()
+                        );
+                    },
+                    favorites: detached(parsed.favorites),
+                    raw: raw,
+                    sourceId: ports.sourceId,
+                };
+            } catch (_) {
+                return null;
             }
         },
         change: function (operation: string, entry: any): boolean {

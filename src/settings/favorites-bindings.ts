@@ -535,12 +535,13 @@ export function createFavoritesBindings(ports: FavoritesBindingPorts) {
                         );
                     })[0];
                     if (!profile)
-                        profile = {
-                            id: freshId(rows),
-                            kind: "profile",
-                            provider: value.provider,
-                            binding: profileBinding,
-                        };
+                        profile =
+                            /* biome-ignore assist/source/useSortedKeys: Preserve private profile registry row byte order and freshId initializer position. */ {
+                                id: freshId(rows),
+                                kind: "profile",
+                                provider: value.provider,
+                                binding: profileBinding,
+                            };
                     requireCurrent(profile);
                     if (rows.indexOf(profile) < 0) rows.push(profile);
                     var source = rows.filter(function (entry) {
@@ -553,13 +554,14 @@ export function createFavoritesBindings(ports: FavoritesBindingPorts) {
                         );
                     })[0];
                     if (!source)
-                        source = {
-                            id: freshId(rows),
-                            kind: "source",
-                            provider: value.provider,
-                            profile_id: profile.id,
-                            binding: sourceBinding,
-                        };
+                        source =
+                            /* biome-ignore assist/source/useSortedKeys: Preserve private source registry row byte order and freshId initializer position. */ {
+                                id: freshId(rows),
+                                kind: "source",
+                                provider: value.provider,
+                                profile_id: profile.id,
+                                binding: sourceBinding,
+                            };
                     requireCurrent(source);
                     if (rows.indexOf(source) < 0) rows.push(source);
                     return {

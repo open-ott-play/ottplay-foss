@@ -72,6 +72,12 @@ jobs:
           ref: 7a4f25eae7a0f43859cdddb0bc644b91747e6aeb
           path: .control-current
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: open-ott-play/ottplay-control-server
+          ref: 27d1abc81de025fa93e3ac7dc6fbcc67eb6de130
+          path: .control-global
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -130,6 +136,16 @@ jobs:
         run: node scripts/smoke-workbench.cjs
       - name: Exercise roadmap with the current controller
         run: node .control-current/scripts/smoke_foss_roadmap.cjs .
+      - name: Build the pinned global Favorites control server
+        working-directory: .control-global
+        run: go build -o "$RUNNER_TEMP/ottplay-control-server-global" ./cmd/ottplay-control-server
+      - name: Exercise global Favorites through real CLI and HTTP transport
+        env:
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-global
+          OTT_CLI: ${{ github.workspace }}/.control-global/cli/ott.py
+          OTT_GLOBAL_CONTROL_REVISION: 27d1abc81de025fa93e3ac7dc6fbcc67eb6de130
+        run: node scripts/smoke-remote-cli.cjs --global-favorites-only
+
   typecheck:
     name: Typecheck
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && (vars.CI_RUNNER_LABELS || '[]') || '["ubuntu-latest"]') }}

@@ -544,6 +544,248 @@ async function main() {
         await view.open();
         assert.equal(shown.selected, "id2");
     });
+    function keyboard(f) {
+        let command = "",
+            timer = null,
+            reopened = 0,
+            provider = 0,
+            seeks = 0,
+            screenRevision = 0;
+        const osd = { innerHTML: "", style: {}, textContent: "" };
+        const w = {
+            __ottClassicScreenPort: {
+                dispatch: (_code, _event, callback) => callback({ code: 1 }),
+                normalize: () => ({ id: command }),
+                revision: () => screenRevision,
+            },
+            __ottGlobalFavorites: { navigation: f.nav },
+            catIndex: 7,
+            channels: [{ channel_name: "Provider row" }],
+            channelsList: () => provider++,
+            curList: [0],
+            forcePlay: false,
+            openGlobalFavorites: () => reopened++,
+            playChannel: () => provider++,
+            playType: -1,
+            primaryIndex: -1,
+            s13dur: 15,
+            shiftArchive: () => seeks++,
+        };
+        const names = ["keyHandler", "handleMainKey", "numberProg"];
+        const source = names
+            .map((name) =>
+                extract(
+                    "src/key-handler/index.ts",
+                    (n) => ts.isFunctionDeclaration(n) && n.name?.text === name
+                ).replace(/^export\s+/, "")
+            )
+            .join("\n");
+        const metadata = extract(
+            "src/utils/helpers.ts",
+            (n) =>
+                ts.isFunctionDeclaration(n) && n.name?.text === "metadataText"
+        ).replace(/^export\s+/, "");
+        const context = {
+            cancelNativeListInertia: () => {},
+            clearTimeout: () => {
+                timer = null;
+            },
+            document: { getElementById: () => osd },
+            keys: {},
+            setTimeout: (fn) => {
+                timer = fn;
+                return 1;
+            },
+            settings: { okFun: false },
+            stbEventToKeyCode: () => 1,
+            toggleMainPlayback: () => provider++,
+            window: w,
+        };
+        const js = ts.transpileModule(
+            'var nProg="",numTimeout=null,numProgEl=null,globalNumber=null;\n' +
+                metadata +
+                "\n" +
+                source,
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText;
+        vm.runInNewContext(js, context);
+        w.numberProg = context.numberProg;
+        return {
+            finish: () => {
+                const fn = timer;
+                timer = null;
+                if (fn) fn();
+            },
+            modal: () => screenRevision++,
+            osd,
+            press: (id, target = { tagName: "BODY" }) => {
+                command = id;
+                context.keyHandler({
+                    code: "",
+                    key: id,
+                    preventDefault() {},
+                    stopPropagation() {},
+                    target,
+                });
+            },
+            get provider() {
+                return provider;
+            },
+            get reopened() {
+                return reopened;
+            },
+            get seeks() {
+                return seeks;
+            },
+            w,
+        };
+    }
+    await test("real key ingress selects global ordinal during media and reopens on OK/Channels", async () => {
+        const f = setup();
+        await start(f);
+        f.rows[2].title = '<img src=x onerror="bad">';
+        const k = keyboard(f);
+        k.press("digit-3");
+        await settle();
+        assert(k.osd.innerHTML.includes("&lt;img"));
+        assert(!k.osd.innerHTML.includes("<img"));
+        k.finish();
+        await settle();
+        assert.equal(f.nav.currentId(), "id2");
+        assert.equal(k.seeks, 0);
+        assert.equal(k.provider, 0);
+        k.press("accept");
+        k.press("channels");
+        assert.equal(k.reopened, 2);
+        assert.equal(k.provider, 0);
+        k.press("digit-2", { tagName: "INPUT" });
+        k.finish();
+        await settle();
+        assert.equal(f.nav.currentId(), "id2");
+    });
+    await test("numeric snapshot cannot retarget after reorder/delete or manual departure", async () => {
+        for (const change of [
+            (f) => f.reorder(),
+            (f) => f.remove("id1"),
+            (f) => f.nav.retire(),
+        ]) {
+            const f = setup();
+            await start(f);
+            const k = keyboard(f);
+            k.press("digit-2");
+            await settle();
+            const before = f.calls.length;
+            change(f);
+            k.finish();
+            await settle();
+            assert.equal(f.calls.length, before);
+            assert.equal(k.provider, 0);
+            assert.equal(k.osd.style.display, "none");
+        }
+    });
+    await test("numeric entry is retired by another UI and unavailable target reports failure", async () => {
+        const f = setup();
+        await start(f);
+        const k = keyboard(f);
+        k.press("digit-0");
+        f.reorder();
+        k.press("digit-2");
+        await settle();
+        k.modal();
+        const before = f.calls.length;
+        k.finish();
+        await settle();
+        assert.equal(f.calls.length, before);
+        k.press("digit-2");
+        await settle();
+        k.press("channels");
+        k.finish();
+        await settle();
+        assert.equal(f.calls.length, before);
+        f.unavailable("id3");
+        k.press("digit-2");
+        await settle();
+        k.finish();
+        await settle();
+        assert(f.errors.includes("unavailable"));
+        assert.equal(k.provider, 0);
+    });
+    await test("late numeric snapshot cannot dispatch after a modal takes ownership", async () => {
+        const f = setup();
+        await start(f);
+        const k = keyboard(f);
+        let release;
+        f.defer(
+            () =>
+                new Promise((resolve) => {
+                    release = resolve;
+                })
+        );
+        k.press("digit-2");
+        k.finish();
+        k.modal();
+        f.defer(null);
+        release();
+        await settle();
+        assert.equal(f.calls.length, 1);
+        assert.equal(k.provider, 0);
+    });
+    await test("committed numeric handoff survives loading UI and newer selection wins", async () => {
+        for (const supersede of [false, true]) {
+            const f = setup();
+            await start(f);
+            const k = keyboard(f);
+            k.press("digit-2");
+            await settle();
+            let release;
+            f.defer(
+                () =>
+                    new Promise((resolve) => {
+                        release = resolve;
+                    })
+            );
+            k.finish();
+            await turn();
+            // Timer committed: normal loading UI may now change screens, just
+            // as it does for an ENTER selection in the Favorites list.
+            k.modal();
+            f.defer(null);
+            if (supersede) await start(f, "id4");
+            release();
+            await settle();
+            assert.equal(f.nav.currentId(), supersede ? "id4" : "id1");
+            assert.equal(f.calls.length, 2);
+            assert.equal(f.errors.length, 0);
+            assert.equal(k.provider, 0);
+        }
+    });
+    await test("removed current UUID keeps numeric global order and out-of-range never uses provider", async () => {
+        const f = setup();
+        await start(f);
+        f.remove("id0");
+        const k = keyboard(f);
+        k.press("channels");
+        assert.equal(k.reopened, 1);
+        k.press("digit-1");
+        await settle();
+        k.finish();
+        await settle();
+        assert.equal(f.nav.currentId(), "id1");
+        const before = f.calls.length;
+        k.press("digit-9");
+        await settle();
+        k.finish();
+        await settle();
+        assert.equal(f.calls.length, before);
+        assert.equal(k.provider, 0);
+        assert.equal(f.errors[f.errors.length - 1], "missing");
+        f.nav.retire();
+        k.press("digit-3");
+        assert.equal(k.seeks, 1);
+        k.w.playType = 0;
+        k.press("channels");
+        assert.equal(k.provider, 1);
+    });
     console.log("PASS " + count + " navigation groups");
 }
 main().catch((e) => {

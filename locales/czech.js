@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking folder permission": "Kontrola oprávnění ke složce",
     "Checking the Plex server connection…": "Kontrola připojení serveru Plex…",
     "Choose a folder in the browser window": "Vyberte složku v okně prohlížeče",
+    "Choose a profile": "Vyberte profil",
     "Choose files in the browser window": "Vyberte soubory v okně prohlížeče",
     "Choose from": "Vybrat z",
     "Choose language": "Vyberte jazyk",
@@ -1098,6 +1099,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Nastavení ULTIFL1X",
     "Unable to load playlist": "Seznam přehrávání se nepodařilo načíst",
+    Unavailable: "Nedostupné",
     "Unlock the player's settings before changing its playlist.":
         "Před změnou seznamu odemkněte nastavení přehrávače.",
     Untitled: "Bez názvu",

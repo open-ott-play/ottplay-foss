@@ -193,9 +193,6 @@ test("optional favorites asset links without entry storage and loads without tou
         ]);
         const writes = [];
         const grant = {
-            current: () => true,
-            read: (key) => raw.get(key) ?? null,
-            exclusive: async (work) => work(grant),
             compareAndSwap(key, before, after, current) {
                 if (!current() || (raw.get(key) ?? null) !== before)
                     return "conflict";
@@ -203,6 +200,9 @@ test("optional favorites asset links without entry storage and loads without tou
                 raw.set(key, after);
                 return "confirmed";
             },
+            current: () => true,
+            exclusive: async (work) => work(grant),
+            read: (key) => raw.get(key) ?? null,
         };
         const sha256 = async (value) =>
             require("node:crypto")
@@ -211,29 +211,29 @@ test("optional favorites asset links without entry storage and loads without tou
                 .digest("hex");
         const codec = realm.createGlobalFavoritesPortableCodec();
         const store = realm.createGlobalFavoritesStore({
-            capture: () => grant,
-            current: () => true,
             canWrite: () => true,
+            capture: () => grant,
+            codec,
+            current: () => true,
             sha256,
             uuid: () => "11111111-1111-4111-8111-111111111111",
-            codec,
         });
         const before = await store.snapshot();
         const entry = {
-            title: "Shared scope",
+            locator: { channelId: "channel-1", kind: "channel" },
             origin: {
-                provider: "m3u",
                 profile: "Profile",
-                subprofile: null,
+                provider: "m3u",
                 sourceAlias: "Source",
+                subprofile: null,
             },
-            locator: { kind: "channel", channelId: "channel-1" },
+            title: "Shared scope",
         };
         assert.equal(
             (
                 await store.mutate(before.revision, {
-                    op: "put",
                     entries: [entry],
+                    op: "put",
                 })
             ).outcome,
             "verified"
@@ -248,31 +248,31 @@ test("optional favorites asset links without entry storage and loads without tou
             "global-receipt-sentinel"
         );
         const protocol = realm.createGlobalFavoritesProtocol({
-            runtime: () => "runtime-1",
-            current: () => true,
-            now: () => 1000,
             authorized: () => true,
-            codec,
-            store,
-            sha256,
-            uuid: () => "22222222-2222-4222-8222-222222222222",
-            locatorKinds: ["channel"],
+            base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
             captureContext: async () => ({
-                revision: await sha256("context"),
                 current: () => true,
+                revision: await sha256("context"),
             }),
+            codec,
             committer: {
-                qualify: async () => {},
-                canWrite: () => false,
                 blocker: () => "policy_denied",
+                canWrite: () => false,
+                qualify: async () => {},
             },
+            current: () => true,
             facade: {
                 exportSnapshot: async () => ({
-                    document: await store.portableSnapshot(),
                     current: () => true,
+                    document: await store.portableSnapshot(),
                 }),
             },
-            base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
+            locatorKinds: ["channel"],
+            now: () => 1000,
+            runtime: () => "runtime-1",
+            sha256,
+            store,
+            uuid: () => "22222222-2222-4222-8222-222222222222",
         });
         const described = await protocol.execute(
             { op: "describe", runtime: "runtime-1" },
@@ -283,11 +283,11 @@ test("optional favorites asset links without entry storage and loads without tou
         assert.equal(described.write_ready, false);
         const exported = await protocol.execute(
             {
+                max_bytes: 65536,
+                offset: 0,
                 op: "export",
                 runtime: "runtime-1",
                 snapshot_id: described.export.snapshot_id,
-                offset: 0,
-                max_bytes: 65536,
             },
             200,
             60
@@ -296,7 +296,7 @@ test("optional favorites asset links without entry storage and loads without tou
             JSON.parse(
                 Buffer.from(exported.data_base64, "base64").toString("utf8")
             ),
-            { version: 1, entries: [entry] }
+            { entries: [entry], version: 1 }
         );
         const invalid = await protocol.execute(
             { op: "describe", runtime: "runtime-1" },

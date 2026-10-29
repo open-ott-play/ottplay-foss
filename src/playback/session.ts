@@ -231,6 +231,12 @@ function createPlaybackSessionController(
                 };
         },
         cancel: cancel,
+        cancelAndCapture: function (): () => boolean {
+            var ticket = reset(true);
+            return function () {
+                return accepts(ticket);
+            };
+        },
         dispose: cancel,
         guard: function (
             callback: (...args: any[]) => void

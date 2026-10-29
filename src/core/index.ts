@@ -2387,6 +2387,44 @@ function stopCorePlayback(): void {
         (window as any).__ottClassicPlayback.cancel();
     getCoreMediaBackend().stop();
 }
+function stopCoreForSelection(): any {
+    var w = window as any;
+    var playback = w.__ottClassicPlayback;
+    if (!playback?.cancelForSource || !playback.finishSourceStop) return null;
+    // Capture cancellation ownership before any teardown callback can reenter.
+    var ticket = playback.cancelForSource();
+    try {
+        if (!ticket?.current()) return null;
+        var before = playback.snapshot();
+        if (!ticket.current()) return null;
+        var ownedHandoff = w.__ottGlobalFavoritesHandoff?.current();
+        if (!ticket.current()) return null;
+        if (!ownedHandoff) {
+            w.__ottGlobalFavorites?.navigation?.retire();
+            if (!ticket.current()) return null;
+        }
+        if (w.__ottMedia?.cancelAuto) w.__ottMedia.cancelAuto();
+        if (!ticket.current()) return null;
+        var backend = getCoreMediaBackend();
+        if (!ticket.current()) return null;
+        backend.stop(undefined, ticket);
+        if (
+            !ticket.current() ||
+            backend.current() ||
+            (before.target && !ticket.used)
+        )
+            return null;
+        return function (): boolean {
+            return (
+                ticket.current() &&
+                backend === getCoreMediaBackend() &&
+                !backend.current()
+            );
+        };
+    } finally {
+        playback.finishSourceStop(ticket);
+    }
+}
 export function stbPause(): void {
     var handle = getCoreMediaBackend().current();
     if (handle) handle.pause();
@@ -3926,7 +3964,8 @@ export function getCoreMediaBackend(): any {
             context: any,
             type: string,
             position: number,
-            duration: number
+            duration: number,
+            sourceStop?: any
         ) {
             var playback = (window as any).__ottClassicPlayback;
             if (playback) {
@@ -3938,12 +3977,15 @@ export function getCoreMediaBackend(): any {
                               context.generation
                           )
                         : null;
-                playback.command({
+                var command: any = {
                     duration: duration,
                     generation: context.generation,
                     position: position,
                     type: type === "ended" ? "stop" : type,
-                });
+                };
+                if (type === "stop" && sourceStop)
+                    command.sourceStop = sourceStop;
+                playback.command(command);
                 var media = (window as any).__ottMedia;
                 if (type === "ended" && context.kind === "vod" && media)
                     media.ended(context.generation + 1, completion);
@@ -4332,6 +4374,7 @@ if (typeof window !== "undefined") {
         },
         play: stbPlay,
         // Only fixed source/catalogue dispatch call sites use this internal stop.
+        stopForSelection: stopCoreForSelection,
         stopForSource: function () {
             if ((window as any).__ottGlobalFavoritesHandoff?.current())
                 stopCorePlayback();

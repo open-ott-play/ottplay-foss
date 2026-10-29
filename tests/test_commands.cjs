@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -765,7 +766,7 @@ try {
             ts.isFunctionDeclaration(node) &&
             node.name?.text === "handleMainKey"
     );
-    host.eval(emit(mainKey.getText(keySource)));
+    host.eval(numericKeyState() + emit(mainKey.getText(keySource)));
     host.settings = { volumeStep: 5 };
     host.toggleMainPlayback = () => {};
     host.__ottClassicScreenPort = { normalize: () => ({ id: "volume-up" }) };

@@ -91,9 +91,9 @@ function mountM3uProviderSettings(
         if (/^portal:/i.test(source.trim())) {
             if (!host.__ottVPortal?.parse(source)) return;
             client = host.__ottVPortal.create(source, {
+                isCurrent: current,
                 sourceId: host.__ottSourceIdentity.media(host),
                 title: slot.name || "VPortal",
-                isCurrent: current,
             });
             if (!client) return;
             host.providerMediaClient = client;

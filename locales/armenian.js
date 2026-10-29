@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex սերվերի կապի ստուգում…",
     "Choose a folder in the browser window":
         "Ընտրեք պանակ զննարկչի պատուհանում",
+    "Choose a profile": "Ընտրել պրոֆիլը",
     "Choose files in the browser window": "Ընտրեք ֆայլեր զննարկչի պատուհանում",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
@@ -1114,6 +1115,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X կարգավորումներ",
     "Unable to load playlist": "Չհաջողվեց բեռնել նվագացանկը",
+    Unavailable: "Հասանելի չէ",
     "Unlock the player's settings before changing its playlist.":
         "Նվագացանկը փոխելուց առաջ ապակողպեք նվագարկչի կարգավորումները։",
     Untitled: "Անվերնագիր",

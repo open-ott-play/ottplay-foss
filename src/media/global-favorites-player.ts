@@ -1,16 +1,15 @@
-import {
-    globalFavoriteBuiltin,
-    globalFavoriteBuiltinSlot,
-    globalFavoriteBuiltinConfiguration,
-    globalFavoriteBuiltinChoices,
-} from "./global-favorites-providers";
+import { isGlobalFavoriteSelector } from "../settings/global-favorites-bindings";
 import {
     globalFavoriteCanonical,
     globalFavoriteChannelId,
     globalFavoriteProviderId,
 } from "./global-favorites-identities";
-
-import { isGlobalFavoriteSelector } from "../settings/global-favorites-bindings";
+import {
+    globalFavoriteBuiltin,
+    globalFavoriteBuiltinChoices,
+    globalFavoriteBuiltinConfiguration,
+    globalFavoriteBuiltinSlot,
+} from "./global-favorites-providers";
 
 /** Actual provider operations. Imported descriptors never supply a private slot. */
 export function createGlobalFavoritesPlayer(w: any, ports: any): any {
@@ -67,11 +66,11 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 address: String(cfg.address || cfg.server || "")
                     .trim()
                     .replace(/\/+$/, ""),
-                token: typeof cfg.token === "string" ? cfg.token.trim() : "",
                 playback:
                     cfg.playback === "original" || cfg.playback === "compatible"
                         ? cfg.playback
                         : "auto",
+                token: typeof cfg.token === "string" ? cfg.token.trim() : "",
             };
             if (cfg.folders !== undefined) {
                 plex.folders = cfg.folders;
@@ -116,13 +115,13 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
         }
         if (provider === "vportal" && value)
             return {
-                name: typeof value.name === "string" ? value.name : "",
                 link: typeof value.link === "string" ? value.link : "",
+                name: typeof value.name === "string" ? value.name : "",
                 sections: Array.isArray(value.sections) ? value.sections : [],
             };
         if (provider === "offline" && value) {
             try {
-                return {
+                return /* biome-ignore assist/source/useSortedKeys: Preserve the captured profile before the external storage-reader callback. */ {
                     profile: value,
                     binding:
                         JSON.parse(
@@ -177,12 +176,12 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 sources.forEach(function (root: any) {
                     if (root.kind === "folder")
                         result.push({
+                            alias: root.name,
                             label: "Local videos / " + root.name,
                             profile: "Local videos",
-                            alias: root.name,
                             provider: provider,
-                            slot: null,
                             root: { alias: root.name, id: root.id, key: "s0" },
+                            slot: null,
                         });
                 });
             } catch (_) {}
@@ -216,9 +215,9 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         w.__ottVPortal?.parse(row.medUrl))
                 )
                     result.push({
+                        alias: row.name,
                         label: row.name,
                         profile: row.name,
-                        alias: row.name,
                         provider: provider,
                         slot: slot,
                     });
@@ -230,12 +229,12 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 var id = value.binding.sources[root.key];
                 if (root.kind === "folder" && id)
                     result.push({
+                        alias: root.name,
                         label: row.name + " / " + root.name,
                         profile: row.name,
-                        alias: root.name,
                         provider: provider,
-                        slot: slot,
                         root: { alias: root.name, id: id, key: root.key },
+                        slot: slot,
                     });
             });
         });
@@ -259,27 +258,24 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
         var value = selected(choice.provider, choice.slot),
             text = value && globalFavoriteCanonical(value);
         if (!text) return null;
-        var selector: any = {
-            kind: "global-playback-target",
-            origin: origin,
-            provider: choice.provider,
-            slot: choice.slot,
-            configurationDigest: await ports.sha256(text),
-        };
+        var selector: any =
+            /* biome-ignore assist/source/useSortedKeys: Preserve captured selector reads before awaiting the digest callback. */ {
+                kind: "global-playback-target",
+                origin: origin,
+                provider: choice.provider,
+                slot: choice.slot,
+                configurationDigest: await ports.sha256(text),
+            };
         if (choice.root) {
             if (!locator || locator.kind !== "local-media") return null;
             selector.root = {
                 alias: locator.rootAlias,
-                key: choice.root.key,
                 id: choice.root.id,
+                key: choice.root.key,
             };
         }
         if (!isGlobalFavoriteSelector(selector)) return null;
         return {
-            origin: origin,
-            selector: selector,
-            locatorKind: locator?.kind,
-            ephemeral: true,
             current: function () {
                 return (
                     allowed() &&
@@ -288,6 +284,10 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     ) === text
                 );
             },
+            ephemeral: true,
+            locatorKind: locator?.kind,
+            origin: origin,
+            selector: selector,
         };
     }
     async function captureSelector(
@@ -345,11 +345,11 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
         )
             return null;
         var selector: any = {
+            configurationDigest: digest,
             kind: "global-playback-target",
             origin: origin,
             provider: provider,
             slot: slot,
-            configurationDigest: digest,
         };
         if (provider === "offline")
             selector.root = { alias: root.alias, id: root.id, key: root.key };
@@ -417,10 +417,10 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     }
                 }
                 found.push({
+                    current: valid,
+                    locatorKind: locator?.kind,
                     origin: selector.origin,
                     selector: selector,
-                    locatorKind: locator?.kind,
-                    current: valid,
                 });
             })(selector, row.id, text, bound.revision);
         }
@@ -572,10 +572,10 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     ? null
                     : {
                           available: true,
-                          locator: locator,
                           group: group,
-                          index: index,
                           id: id,
+                          index: index,
+                          locator: locator,
                       };
             }
             async function resolveItem(
@@ -635,8 +635,8 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                                     found.length === 1
                                         ? {
                                               available: true,
-                                              locator: locator,
                                               items: found,
+                                              locator: locator,
                                           }
                                         : null
                                 );
@@ -807,8 +807,8 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         }
                         done({
                             available: true,
-                            locator: locator,
                             items: items,
+                            locator: locator,
                         });
                     });
                 });
@@ -868,7 +868,10 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                             undefined,
                             false,
                             false,
-                            finish
+                            finish,
+                            function () {
+                                return same() && guard();
+                            }
                         );
                         if (accepted !== true) finish(false);
                     });
@@ -897,8 +900,14 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     !hasItems &&
                     (locator.kind === "plex-media" ||
                         locator.kind === "vportal-media");
-                var catalogSource = catalogRef?.sourceId,
-                    catalogId = catalogRef?.itemId;
+                // Catalog records may precede describe(), which adds a ref only
+                // to its copy. Bind the actual committed media, never a row index.
+                var catalogMedia = mediaCatalog
+                    ? w.__ottMedia?.current()
+                    : null;
+                var catalogSource = catalogMedia?.ref?.sourceId,
+                    catalogId = catalogMedia?.ref?.itemId;
+                var catalogHadRef = !!catalogRef;
                 var expectedRequest = hasItems
                     ? globalFavoriteCanonical(playbackItem.items[0].request)
                     : mediaCatalog
@@ -914,14 +923,22 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         if (!row) return false;
                         if (mediaCatalog) {
                             var livePayload = row.__ottMediaItem,
-                                liveRef = livePayload?.__ottMediaRef;
+                                liveRef = livePayload?.__ottMediaRef,
+                                liveMedia = w.__ottMedia?.current();
                             if (
                                 typeof catalogId !== "string" ||
                                 !catalogId ||
                                 catalogSource !== playedSource ||
                                 catalogId !== playedId ||
-                                liveRef?.sourceId !== catalogSource ||
-                                liveRef?.itemId !== catalogId ||
+                                liveMedia?.ref?.sourceId !== catalogSource ||
+                                liveMedia?.ref?.itemId !== catalogId ||
+                                !!liveRef !== catalogHadRef ||
+                                (catalogHadRef &&
+                                    (liveRef.sourceId !== catalogSource ||
+                                        liveRef.itemId !== catalogId)) ||
+                                globalFavoriteCanonical(
+                                    liveMedia?.payload?.request
+                                ) !== expectedRequest ||
                                 globalFavoriteCanonical(
                                     livePayload?.request
                                 ) !== expectedRequest
@@ -1030,12 +1047,12 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     return proofCurrent();
                 }
                 function prepareEnded(expectedGeneration: number): any {
-                    if (
-                        expectedGeneration !== generation ||
-                        !current() ||
-                        w.__ottClassicPlayback?.snapshot()?.phase !== "playing"
-                    )
+                    if (expectedGeneration !== generation || !current())
                         return null;
+                    // HTML5 can report pause immediately before its guarded EOF.
+                    // Neither a manual Stop nor another generation can mint this proof.
+                    var phase = w.__ottClassicPlayback?.snapshot()?.phase;
+                    if (phase !== "playing" && phase !== "paused") return null;
                     return function () {
                         return proofCurrent(expectedGeneration + 1);
                     };
@@ -1043,7 +1060,6 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 return current()
                     ? {
                           current: current,
-                          prepareEnded: prepareEnded,
                           matches: function (payload: any) {
                               if (!current()) return false;
                               if (payload?.__ottMediaRef)
@@ -1067,6 +1083,7 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                                       expectedRequest
                               );
                           },
+                          prepareEnded: prepareEnded,
                       }
                     : null;
             }
@@ -1221,14 +1238,13 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 source = w.__ottSourceIdentity.current(w);
                 settled = true;
                 resolve({
-                    origin: target.origin,
-                    current: same,
-                    resolve: resolveItem,
-                    play: play,
                     capturePlayback: capturePlayback,
                     complete: function () {
                         close(true);
                     },
+                    current: same,
+                    origin: target.origin,
+                    play: play,
                     release: function () {
                         if (owned()) {
                             pendingOperations.forEach(function (cancel) {
@@ -1241,6 +1257,7 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         }
                         close();
                     },
+                    resolve: resolveItem,
                 });
             }
             var provider = target.selector.provider;
@@ -1265,12 +1282,12 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
         });
     }
     return {
-        targets: targets,
         activate: activate,
         allowed: allowed,
         captureSelector: captureSelector,
-        selected: selected,
         choices: choices,
         choiceTarget: choiceTarget,
+        selected: selected,
+        targets: targets,
     };
 }

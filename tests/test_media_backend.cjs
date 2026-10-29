@@ -535,6 +535,7 @@ function coreBridge(f, kind = "vod") {
                 [
                     "getCoreMediaBackend",
                     "coreCompat",
+                    "stopCorePlayback",
                     "stbStop",
                     "stbIsStandby",
                     "configureLiveRecovery",
@@ -1857,6 +1858,28 @@ test("external seek hook reentry cannot operate on a replacement generation", (f
         f.domain({ generation: 2, kind: "vod", position: 0 });
     handle.seek(50);
     assert.equal(f.leases[0].sample.position, 10);
+});
+
+test("source-stop marker is forwarded only for the explicit internal stop", (f) => {
+    const calls = [];
+    f.ports.emit = (...args) => calls.push(args);
+    const ticket = { current: () => true };
+    f.backend.open({ url: "source-stop" });
+    calls.length = 0; // Exclude the ordinary initial loading event.
+    f.backend.stop(undefined, ticket);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].length, 5);
+    assert.equal(calls[0][1], "stop");
+    assert.equal(calls[0][4], ticket);
+    f.backend.stop();
+    assert.equal(
+        calls[1].length,
+        2,
+        "ordinary public stop has no internal marker"
+    );
+    f.domain(null);
+    f.backend.stop(undefined, ticket);
+    assert.equal(calls.length, 2, "idle stop does not invent an event context");
 });
 
 console.log(

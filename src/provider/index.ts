@@ -1469,12 +1469,12 @@ export function loadChannels(): void {
             (window as any).clearBootHide();
     }
     (window as any).__ottCommandChannelCancel = {
-        owner: commandLoad,
         cancel: function () {
             if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
             catalogSession.dispose();
             dismissLoading();
         },
+        owner: commandLoad,
     };
     // Managed drivers settle explicitly, including credential editors. Only
     // dealer scripts that may omit their callback need the compatibility timer.
@@ -2449,8 +2449,8 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
         (!view || view.actions
             ? renderButtonHint(
                   keys.YELLOW,
-                  "",
-                  typeof view?.actions === "string" ? view.actions : "Actions",
+                  view ? "−" : "",
+                  view ? "Favorites" : "Actions",
                   strTools,
                   "0"
               )

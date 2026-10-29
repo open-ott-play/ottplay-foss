@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex სერვერის კავშირის შემოწმება…",
     "Choose a folder in the browser window":
         "აირჩიეთ საქაღალდე ბრაუზერის ფანჯარაში",
+    "Choose a profile": "აირჩიეთ პროფილი",
     "Choose files in the browser window": "აირჩიეთ ფაილები ბრაუზერის ფანჯარაში",
     "Choose from": "აირჩიეთ",
     "Choose language": "აირჩიეთ ენა",
@@ -1108,6 +1109,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X პარამეტრები",
     "Unable to load playlist": "დასაკრავი სიის ჩატვირთვა შეუძლებელია",
+    Unavailable: "მიუწვდომელია",
     "Unlock the player's settings before changing its playlist.":
         "დასაკრავი სიის შეცვლამდე განბლოკეთ პლეერის პარამეტრები.",
     Untitled: "უსათაურო",

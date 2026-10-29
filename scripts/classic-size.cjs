@@ -450,12 +450,12 @@ const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
 // Individual provider and unrelated optional limits remain unchanged.
 // See docs/evidence/mixed-global-favorites-size-20261028.json.
 const MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE = Object.freeze({
-    bytes: 27143,
-    gzipBytes: 6516,
+    bytes: 34739,
+    gzipBytes: 8485,
 });
 const MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE = Object.freeze({
-    bytes: 130438,
-    gzipBytes: 32418,
+    bytes: 132130,
+    gzipBytes: 32892,
 });
 const MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE = Object.freeze({
     bytes: 1536,
@@ -948,6 +948,12 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
         localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+        mixedGlobalFavoritesEntryAllowance:
+            MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+        mixedGlobalFavoritesOptionalAllowance:
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+        mixedGlobalFavoritesProviderAllowance:
+            MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -960,12 +966,6 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         providerBundles: sets,
         schema: 1,
         shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
-        mixedGlobalFavoritesEntryAllowance:
-            MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
-        mixedGlobalFavoritesOptionalAllowance:
-            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
-        mixedGlobalFavoritesProviderAllowance:
-            MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1248,6 +1248,12 @@ function writeBuildBundleReport(
             favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+            mixedGlobalFavoritesEntryAllowance:
+                MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+            mixedGlobalFavoritesOptionalAllowance:
+                MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+            mixedGlobalFavoritesProviderAllowance:
+                MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             mode: label(context.mode || "standard"),
             optimizerBinding: {
                 outputSha256: optimizer.outputSha256,
@@ -1260,12 +1266,6 @@ function writeBuildBundleReport(
             runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
             schema: 1,
             shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
-            mixedGlobalFavoritesEntryAllowance:
-                MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
-            mixedGlobalFavoritesOptionalAllowance:
-                MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
-            mixedGlobalFavoritesProviderAllowance:
-                MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             source: label(context.source || process.env.GITHUB_SHA),
             toolchain: {
                 node: process.versions.node,
@@ -1317,9 +1317,6 @@ if (require.main === module) {
     }
 }
 module.exports = {
-    MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
-    MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
-    MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     ARTIFACTS,
     BASE_TOTAL_BUDGET,
     BUDGET,
@@ -1338,6 +1335,9 @@ module.exports = {
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

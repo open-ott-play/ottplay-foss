@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking folder permission": "Athuga aðgangsheimild að möppu",
     "Checking the Plex server connection…": "Athuga tengingu við Plex-þjón…",
     "Choose a folder in the browser window": "Veldu möppu í vafraglugganum",
+    "Choose a profile": "Velja snið",
     "Choose files in the browser window": "Veldu skrár í vafraglugganum",
     "Choose from": "Velja úr",
     "Choose language": "Velja tungumál",
@@ -1094,6 +1095,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Stillingar fyrir ULTIFL1X",
     "Unable to load playlist": "Ekki hægt að hlaða spilunarlista",
+    Unavailable: "Ekki tiltækt",
     "Unlock the player's settings before changing its playlist.":
         "Aflæstu stillingum spilarans áður en þú breytir spilunarlista hans.",
     Untitled: "Án titils",

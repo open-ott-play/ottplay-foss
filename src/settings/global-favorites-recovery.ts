@@ -1,4 +1,5 @@
 import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
+
 const LEDGER = "favorites-global-receipts.v1",
     STORE = "remoteFavorites.v1",
     GLOBAL_RECOVERY_REASON = "accept-unknown-no-replay";
@@ -120,13 +121,13 @@ export function createGlobalFavoritesRecovery(ports: any) {
                 globalFavoritesRecoveryFail("invalid_ledger");
         }
         return {
+            acknowledgement: audit,
             operation_id: row.operationId,
             operation_runtime: row.refs.runtimeId,
-            subject: "global",
-            original_state: row.state,
-            original_outcome: row.state === "partial" ? "partial" : "unknown",
             original_entry_sha256: digest,
-            acknowledgement: audit,
+            original_outcome: row.state === "partial" ? "partial" : "unknown",
+            original_state: row.state,
+            subject: "global",
         };
     }
     async function view(
@@ -168,22 +169,22 @@ export function createGlobalFavoritesRecovery(ports: any) {
         )
             globalFavoritesRecoveryFail("revision_conflict");
         return {
-            raw: raw,
-            store: store,
-            parsed: parsed,
-            rows: rows,
-            records: records,
             meta: {
-                version: 1,
-                runtime: runtime,
-                op: "inspect",
-                subject: "global",
+                backend_proof: proof,
+                context_revision: context.revision,
                 ledger_format: 1,
                 ledger_revision: ledgerRevision,
+                op: "inspect",
+                runtime: runtime,
                 store_revision: storeRevision,
-                context_revision: context.revision,
-                backend_proof: proof,
+                subject: "global",
+                version: 1,
             },
+            parsed: parsed,
+            raw: raw,
+            records: records,
+            rows: rows,
+            store: store,
         };
     }
     async function selected(state: any, id: string, runtime: string) {
@@ -193,12 +194,12 @@ export function createGlobalFavoritesRecovery(ports: any) {
             row = index < 0 ? null : state.rows[index],
             record = index < 0 ? null : state.records[index];
         var result: any = Object.assign({}, state.meta, {
-            operation_id: id,
-            record: record,
             acknowledge_allowed: false,
             acknowledgement_id: null,
             after_ledger_sha256: null,
+            operation_id: id,
             plan_sha256: null,
+            record: record,
         });
         if (
             !ports.authorized("acknowledge") ||
@@ -207,7 +208,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
             !row.fence ||
             row.fence.backendProof !== state.meta.backend_proof
         )
-            return { result: result, after: null };
+            return { after: null, result: result };
         var acknowledgement = await hash(
             JSON.stringify([
                 "ottplay-favorites-global-recovery-ack-v1",
@@ -227,15 +228,16 @@ export function createGlobalFavoritesRecovery(ports: any) {
             target = after.entries.filter(function (entry: any) {
                 return entry.operationId === id;
             })[0];
-        target.recovery_ack = {
-            acknowledgement_id: acknowledgement,
-            runtime: runtime,
-            ledger_revision_before: state.meta.ledger_revision,
-            store_revision: state.meta.store_revision,
-            context_revision: state.meta.context_revision,
-            backend_proof: state.meta.backend_proof,
-            reason: GLOBAL_RECOVERY_REASON,
-        };
+        target.recovery_ack =
+            /* biome-ignore assist/source/useSortedKeys: Preserve recovery acknowledgement byte order in the hashed ledger after-image. */ {
+                acknowledgement_id: acknowledgement,
+                runtime: runtime,
+                ledger_revision_before: state.meta.ledger_revision,
+                store_revision: state.meta.store_revision,
+                context_revision: state.meta.context_revision,
+                backend_proof: state.meta.backend_proof,
+                reason: GLOBAL_RECOVERY_REASON,
+            };
         var afterRaw = JSON.stringify(after);
         if (!schema.capacity(afterRaw) || afterRaw === state.raw)
             globalFavoritesRecoveryFail("capacity");
@@ -265,7 +267,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
             after_ledger_sha256: afterHash,
             plan_sha256: plan,
         });
-        return { result: result, after: afterRaw };
+        return { after: afterRaw, result: result };
     }
     function utf8Size(raw: string) {
         return encodeURIComponent(raw).replace(/%[0-9A-F]{2}/g, "x").length;
@@ -368,9 +370,9 @@ export function createGlobalFavoritesRecovery(ports: any) {
                               )
                             : null;
                 return Object.assign({}, state.meta, {
-                    total: state.records.length,
-                    records: state.records.slice(offset, end),
                     next_cursor: next,
+                    records: state.records.slice(offset, end),
+                    total: state.records.length,
                 });
             }
             var planned = await selected(state, p.operation_id, runtime);
@@ -397,15 +399,15 @@ export function createGlobalFavoritesRecovery(ports: any) {
             )
                 globalFavoritesRecoveryFail("invalid_request");
             var expected = {
+                acknowledgement_id: planned.result.acknowledgement_id,
+                after_ledger_sha256: planned.result.after_ledger_sha256,
+                backend_proof: state.meta.backend_proof,
+                expected_context_revision: state.meta.context_revision,
+                expected_ledger_revision: state.meta.ledger_revision,
+                expected_store_revision: state.meta.store_revision,
                 operation_runtime: planned.result.record.operation_runtime,
                 original_entry_sha256:
                     planned.result.record.original_entry_sha256,
-                expected_ledger_revision: state.meta.ledger_revision,
-                expected_store_revision: state.meta.store_revision,
-                expected_context_revision: state.meta.context_revision,
-                backend_proof: state.meta.backend_proof,
-                acknowledgement_id: planned.result.acknowledgement_id,
-                after_ledger_sha256: planned.result.after_ledger_sha256,
                 plan_sha256: planned.result.plan_sha256,
             };
             for (var key of Object.keys(expected))
@@ -453,20 +455,20 @@ export function createGlobalFavoritesRecovery(ports: any) {
                 )
                     globalFavoritesRecoveryFail("outcome_unknown");
                 return {
-                    version: 1,
-                    runtime: runtime,
+                    acknowledged: true,
+                    acknowledgement_id: p.acknowledgement_id,
+                    context_revision: state.meta.context_revision,
+                    ledger_revision: planned.result.after_ledger_sha256,
                     op: "acknowledge",
-                    subject: "global",
                     operation_id: p.operation_id,
                     operation_runtime: p.operation_runtime,
-                    acknowledgement_id: p.acknowledgement_id,
-                    plan_sha256: p.plan_sha256,
-                    acknowledged: true,
                     persistence: "persistent",
-                    ledger_revision: planned.result.after_ledger_sha256,
-                    store_revision: state.meta.store_revision,
-                    context_revision: state.meta.context_revision,
+                    plan_sha256: p.plan_sha256,
                     record: row,
+                    runtime: runtime,
+                    store_revision: state.meta.store_revision,
+                    subject: "global",
+                    version: 1,
                 };
             } catch (_) {
                 globalFavoritesRecoveryFail("outcome_unknown");

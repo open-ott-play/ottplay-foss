@@ -172,6 +172,7 @@ var keyStrings = {
         "Kontroleer die Plex-bedienerverbinding…",
     "Choose a folder in the browser window":
         "Kies ’n vouer in die blaaiervenster",
+    "Choose a profile": "Kies 'n profiel",
     "Choose files in the browser window": "Kies lêers in die blaaiervenster",
     "Choose from": "Kies uit",
     "Choose language": "Kies taal",
@@ -1109,6 +1110,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-instellings",
     "Unable to load playlist": "Kan nie snitlys laai nie",
+    Unavailable: "Nie beskikbaar nie",
     "Unlock the player's settings before changing its playlist.":
         "Ontsluit die speler se instellings voordat jy die afspeellys verander.",
     Untitled: "Naamloos",

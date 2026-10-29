@@ -16,21 +16,21 @@ function moduleAt(file, deps, window) {
             },
         }).outputText,
         {
+            Array,
+            Error,
             exports,
+            JSON,
+            Math,
+            Number,
+            Object,
+            Promise,
             require: (name) => {
                 if (!(name in deps)) throw Error(name);
                 return deps[name];
             },
-            window,
-            Uint8Array,
-            Promise,
-            JSON,
-            Object,
-            Array,
-            Math,
-            Number,
             String,
-            Error,
+            Uint8Array,
+            window,
         }
     );
     return exports;
@@ -61,17 +61,17 @@ const storage = {
     getItem() {
         return null;
     },
-    setItem() {
+    removeItem() {
         writes++;
     },
-    removeItem() {
+    setItem() {
         writes++;
     },
 };
 const w = {
     localStorage: storage,
-    navigator: {},
     location: { origin: "https://fixture.test" },
+    navigator: {},
 };
 const capture = () =>
     physical.createFavoritesPhysicalStorageGrant(w, storage, () => true);
@@ -85,20 +85,9 @@ const entry = moduleAt(
     "src/commands/global-favorites.ts",
     {
         "../provider": mainPorts.providerModule,
-        "../utils/caseless": { caselessKey: mainPorts.caselessKey },
-        "./remote-profiles": mainPorts.profilesModule,
-        "../utils/helpers": helperExports,
         "../storage/index": { captureFavoritesPhysicalStorage: capture },
-        "./remote-feature": {
-            loadRemoteFeature() {
-                loads++;
-                throw Error("must not load");
-            },
-        },
-        "./remote-restart": {
-            remotePlayerInfo: () => ({ runtime: "fixture-runtime" }),
-            remoteCheckpoint: mainPorts.remoteCheckpoint,
-        },
+        "../utils/caseless": { caselessKey: mainPorts.caselessKey },
+        "../utils/helpers": helperExports,
         "./remote-favorites": {
             captureLegacyCurrentFavorite() {
                 throw Error("must not capture");
@@ -106,6 +95,17 @@ const entry = moduleAt(
             executeLegacyFavoriteTarget() {
                 throw Error("must not dispatch");
             },
+        },
+        "./remote-feature": {
+            loadRemoteFeature() {
+                loads++;
+                throw Error("must not load");
+            },
+        },
+        "./remote-profiles": mainPorts.profilesModule,
+        "./remote-restart": {
+            remoteCheckpoint: mainPorts.remoteCheckpoint,
+            remotePlayerInfo: () => ({ runtime: "fixture-runtime" }),
         },
     },
     w
@@ -153,25 +153,25 @@ vm.runInContext(
 );
 let saves = 0;
 Object.assign(w, {
-    ott_device: "pc",
-    sFavorites: 0,
-    __ottClassicScreenPort: { screens: { current: () => null } },
-    __ottSourceIdentity: { current: () => "source" },
+    _: (value) => value,
     __ottActiveProviderDriver: { id: "m3u" },
-    channels: { 7: { channel_name: "News" } },
     __ottClassicPlayback: {
         snapshot: () => ({
             phase: "playing",
-            target: { kind: "live", sourceId: "source", channelId: 7 },
+            target: { channelId: 7, kind: "live", sourceId: "source" },
         }),
     },
-    favoritesArray: [],
+    __ottClassicScreenPort: { screens: { current: () => null } },
+    __ottSourceIdentity: { current: () => "source" },
     addToFavorites: (id) => w.favoritesArray.push(id),
+    channels: { 7: { channel_name: "News" } },
+    favoritesArray: [],
+    ott_device: "pc",
     saveChannelsCats: () => {
         saves++;
         return true;
     },
-    _: (value) => value,
+    sFavorites: 0,
 });
 assert.equal(runtime.toggleKeyboardFavorite(w), true);
 assert.deepEqual(w.favoritesArray, [7]);

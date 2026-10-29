@@ -7,24 +7,35 @@ async function main() {
         cases = [];
     let serial = 0;
     const ports = {
-        store: f.store,
+        authorized: () => true,
+        base64Decode: (x) => new Uint8Array(Buffer.from(x, "base64")),
+        base64Encode: (x) => Buffer.from(x).toString("base64"),
+        captureContext: async () => ({
+            current: () => true,
+            revision: f.context,
+        }),
+        clearTimer() {},
         codec: f.codec,
         committer: f.committer,
         current: () => true,
-        runtime: () => "runtime-one",
-        authorized: () => true,
-        now: () => 1000000,
-        captureContext: async () => ({
-            revision: f.context,
-            current: () => true,
-        }),
-        uuid: () =>
-            `20000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
-        sha256: async (x) => hash(x),
-        base64Encode: (x) => Buffer.from(x).toString("base64"),
-        base64Decode: (x) => new Uint8Array(Buffer.from(x, "base64")),
-        setTimer: () => 1,
-        clearTimer() {},
+        facade: {
+            exportSnapshot: async () => {
+                const s = await f.store.snapshot();
+                return {
+                    current: s.current,
+                    document: f.codec.document({
+                        entries: s.entries.map(
+                            ({ title, origin, locator }) => ({
+                                locator,
+                                origin,
+                                title,
+                            })
+                        ),
+                        version: 1,
+                    }),
+                };
+            },
+        },
         locatorKinds: [
             "vportal-media",
             "channel",
@@ -32,25 +43,14 @@ async function main() {
             "local-media",
             "channel-name",
         ],
+        now: () => 1000000,
         resolve: async (entries) => entries.map(() => "missing"),
-        facade: {
-            exportSnapshot: async () => {
-                const s = await f.store.snapshot();
-                return {
-                    current: s.current,
-                    document: f.codec.document({
-                        version: 1,
-                        entries: s.entries.map(
-                            ({ title, origin, locator }) => ({
-                                title,
-                                origin,
-                                locator,
-                            })
-                        ),
-                    }),
-                };
-            },
-        },
+        runtime: () => "runtime-one",
+        setTimer: () => 1,
+        sha256: async (x) => hash(x),
+        store: f.store,
+        uuid: () =>
+            `20000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
     };
     const api = load(
         "src/commands/global-favorites-protocol.ts"
@@ -61,9 +61,9 @@ async function main() {
         const params = { op, runtime: "runtime-one", ...rest },
             data = await api.execute(params, 512, 1030);
         cases.push({
+            data,
             family: "core",
             params,
-            data,
             status: data.error ? "rejected" : "ok",
         });
         return data;
@@ -78,46 +78,46 @@ async function main() {
             "vportal-media",
         ]);
         assert.equal(typeof d.export.expires_at, "string");
-        const doc = f.codec.document({ version: 1, entries }),
+        const doc = f.codec.document({ entries, version: 1 }),
             bytes = Buffer.from(JSON.stringify(doc)),
             begin = await call("begin", {
-                operation_id: d.admission.operation_id,
-                mode,
-                expected_revision: d.revision,
-                expected_context_revision: d.context_revision,
-                document_sha256: hash(bytes),
-                size_bytes: bytes.length,
-                chunk_count: 1,
                 budget_ms: 45000,
+                chunk_count: 1,
+                document_sha256: hash(bytes),
+                expected_context_revision: d.context_revision,
+                expected_revision: d.revision,
+                mode,
+                operation_id: d.admission.operation_id,
                 required_kinds: f.codec
                     .requiredLocatorKinds(doc)
                     .slice()
                     .sort(),
+                size_bytes: bytes.length,
             });
         assert.equal(begin.error, undefined);
         assert.equal(typeof begin.absolute_expires_at, "string");
         await call("append", {
-            transaction_id: begin.transaction_id,
-            seq: 0,
-            offset: 0,
             chunk_sha256: hash(bytes),
             data_base64: bytes.toString("base64"),
+            offset: 0,
+            seq: 0,
+            transaction_id: begin.transaction_id,
         });
         const preview = await call("preview", {
-            transaction_id: begin.transaction_id,
-            page_offset: 0,
             max_entries: 64,
+            page_offset: 0,
+            transaction_id: begin.transaction_id,
         });
         assert.equal(preview.error, undefined);
         return { begin, preview };
     }
     const a = row("A"),
-        b = { ...row("B"), locator: { kind: "channel", channelId: "002" } };
+        b = { ...row("B"), locator: { channelId: "002", kind: "channel" } };
     let staged = await stage("merge", [a]);
     let result = await call("commit", {
         operation_id: staged.begin.operation_id,
-        transaction_id: staged.begin.transaction_id,
         plan_digest: staged.preview.plan_digest,
+        transaction_id: staged.begin.transaction_id,
     });
     assert.equal(result.receipt.outcome, "verified");
     assert.deepEqual(Array.from(result.receipt.required_kinds), ["channel"]);
@@ -128,8 +128,8 @@ async function main() {
     assert.equal(staged.preview.resolution_counts.missing, 2);
     await call("commit", {
         operation_id: staged.begin.operation_id,
-        transaction_id: staged.begin.transaction_id,
         plan_digest: staged.preview.plan_digest,
+        transaction_id: staged.begin.transaction_id,
     });
     staged = await stage("merge", [row("Renamed A")]);
     assert.equal(staged.preview.ready, false);
@@ -155,9 +155,9 @@ async function main() {
     assert.equal(staleData.runtime, "runtime-old");
     assert(staleData.error);
     cases.push({
+        data: staleData,
         family: "core",
         params: stale,
-        data: staleData,
         status: "rejected",
     });
     for (const family of ["core", "recovery"]) {
@@ -173,7 +173,7 @@ async function main() {
             op: family === "core" ? "describe" : "inspect",
             runtime: "runtime-old",
             ...(family === "recovery"
-                ? { subject: "global", cursor: null }
+                ? { cursor: null, subject: "global" }
                 : {}),
         };
         const module = load(
@@ -185,13 +185,13 @@ async function main() {
             family === "core"
                 ? module.executeGlobalFavorites
                 : module.executeGlobalFavoritesRecovery;
-        execute(w, "runtime-one", { params, expires_at: 1030 }, (r) => {
+        execute(w, "runtime-one", { expires_at: 1030, params }, (r) => {
             value = r;
         });
         assert.equal(calls, 0);
         assert.equal(value.data.runtime, "runtime-old");
         assert.equal(value.data.error, "runtime_changed");
-        cases.push({ family, params, data: value.data, status: value.status });
+        cases.push({ data: value.data, family, params, status: value.status });
     }
     if (process.argv[2])
         fs.writeFileSync(

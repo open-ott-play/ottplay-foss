@@ -177,6 +177,7 @@ var keyStrings = {
         "S’està comprovant la connexió amb el servidor Plex…",
     "Choose a folder in the browser window":
         "Trieu una carpeta a la finestra del navegador",
+    "Choose a profile": "Tria un perfil",
     "Choose files in the browser window":
         "Trieu fitxers a la finestra del navegador",
     "Choose from": "Tria entre",
@@ -1141,6 +1142,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Configuració de ULTIFL1X",
     "Unable to load playlist": "No es pot carregar la llista de reproducció",
+    Unavailable: "No disponible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquegeu la configuració del reproductor abans de canviar-ne la llista.",
     Untitled: "Sense títol",

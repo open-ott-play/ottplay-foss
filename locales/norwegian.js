@@ -172,6 +172,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Kontrollerer Plex-servertilkoblingen...",
     "Choose a folder in the browser window": "Velg en mappe i nettleservinduet",
+    "Choose a profile": "Velg profil",
     "Choose files in the browser window": "Velg filer i nettleservinduet",
     "Choose from": "Velg mellom",
     "Choose language": "Velg språk",
@@ -1105,6 +1106,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X innstillinger",
     "Unable to load playlist": "Kan ikke laste inn spillelisten",
+    Unavailable: "Utilgjengelig",
     "Unlock the player's settings before changing its playlist.":
         "Lås opp spillerens innstillinger før du endrer spillelisten.",
     Untitled: "Uten tittel",

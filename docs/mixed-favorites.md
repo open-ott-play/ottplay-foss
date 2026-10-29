@@ -6,6 +6,12 @@ different profiles, VPortal videos and Plex videos. **Category → Favorites**
 opens the collection. On PC and PC2, plain **F** adds or removes the focused or
 currently playing item and shows a confirmation after persistence succeeds.
 
+While a Global Favorites sequence is active in fullscreen, **Enter/OK** or
+**Channels** reopens the mixed list. Number keys select its one-based mixed
+order, rather than channel numbers in the currently loaded provider. Enter the
+position and wait for the number-entry timeout; text editors, dialogs and access
+restrictions retain priority.
+
 The existing Add and Remove menu actions are idempotent: adding an existing
 entry does not remove it, and removing an absent entry does not add it. F remains
 a toggle. In the global list, the **Favorites: −** action removes only the selected
@@ -102,3 +108,25 @@ with `load Home --settings-only`, then load its collection with
 `fav global load Home ...`; the normal profile load refuses silent omission.
 An older per-source `preset_favorites` companion is a different format and cannot
 be loaded with `fav global load`.
+
+## After an interrupted write
+
+Do not repeat an uncertain import, load, add or remove blindly. Use the operation
+UUID printed by the CLI to check its outcome and inspect the separate recovery
+ledger:
+
+```sh
+ott t2 fav global status OPERATION_UUID
+ott t2 fav global recovery
+ott t2 fav global recovery inspect OPERATION_UUID
+ott t2 fav global acknowledge OPERATION_UUID --dry-run
+```
+
+Status uses the locally retained operation context. If that context is missing,
+use the separately advertised recovery inspection. Only if you accept the
+remaining uncertainty, confirm the exact fresh plan for this one player with
+`ott t2 fav global acknowledge OPERATION_UUID --confirm PLAN_SHA256`.
+Acknowledgement records that decision; it does not verify, undo or replay the
+original write. A changed plan requires a new inspection. These commands do not
+wake the player; availability still depends on its capabilities and your
+controller permissions.

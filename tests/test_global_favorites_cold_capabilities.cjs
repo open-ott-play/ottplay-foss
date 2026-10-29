@@ -45,22 +45,22 @@ function scenario(change) {
         delivered = [],
         cancelled = 0;
     const w = {
-        setTimeout() {
-            return 1;
+        __ottGlobalFavorites: {
+            committer: { canWrite: () => true },
+            createItems() {},
         },
-        clearTimeout() {},
-        stbGetPersistedItem: () => null,
+        __ottGlobalFavoritesFacade: {},
+        __ottGlobalFavoritesPorts: {},
+        __ottGlobalFavoritesProtocol: {},
+        __ottGlobalFavoritesRecovery: {},
         __ottInitializeGlobalFavorites() {
             initializations++;
         },
-        __ottGlobalFavoritesProtocol: {},
-        __ottGlobalFavoritesFacade: {},
-        __ottGlobalFavoritesPorts: {},
-        __ottGlobalFavoritesRecovery: {},
-        __ottGlobalFavorites: {
-            createItems() {},
-            committer: { canWrite: () => true },
+        clearTimeout() {},
+        setTimeout() {
+            return 1;
         },
+        stbGetPersistedItem: () => null,
     };
     const exported = {};
     const loader = ts.transpileModule(
@@ -79,8 +79,8 @@ function scenario(change) {
         }
     ).outputText;
     vm.runInNewContext(loader, {
-        exports: exported,
         Date: { now: () => clock },
+        exports: exported,
         Promise,
         require: (name) => {
             if (name === "./remote-feature")
@@ -109,28 +109,28 @@ function scenario(change) {
             compilerOptions: { target: ts.ScriptTarget.ES5 },
         }).outputText,
         {
-            w,
-            request: { action: "capabilities", expires_at: 1.5 },
-            params: {},
+            activeProvider: () => "",
             afterReply() {},
             Date: { now: () => clock },
-            remotePlayerInfo: () => ({ runtime }),
+            done: (r) => delivered.push(r),
             executeRemoteControl(_w, _action, _params, done) {
-                done({ status: "ok", data: { runtime } });
+                done({ data: { runtime }, status: "ok" });
                 return () => {
                     cancelled++;
                 };
             },
-            activeProvider: () => "",
-            remoteFavoritesTransferCapability:
-                exported.remoteFavoritesTransferCapability,
             globalFavoritesCapability: global.globalFavoritesCapability,
             globalFavoritesItemsCapability:
                 items.globalFavoritesItemsCapability,
             globalFavoritesRecoveryCapability:
                 recovery.globalFavoritesRecoveryCapability,
             legacyFavoritesCapability: global.legacyFavoritesCapability,
-            done: (r) => delivered.push(r),
+            params: {},
+            remoteFavoritesTransferCapability:
+                exported.remoteFavoritesTransferCapability,
+            remotePlayerInfo: () => ({ runtime }),
+            request: { action: "capabilities", expires_at: 1.5 },
+            w,
         }
     );
     const cancel = run();
@@ -142,7 +142,7 @@ function scenario(change) {
     assert.equal(
         typeof pending,
         "function",
-        JSON.stringify({ change, delivered, initializations, runtime, clock })
+        JSON.stringify({ change, clock, delivered, initializations, runtime })
     );
     if (change === "runtime") runtime = "runtime-new";
     if (change === "expiry") clock = 1600;

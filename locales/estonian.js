@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Plex serveriühenduse kontrollimine…",
     "Choose a folder in the browser window": "Valige brauseriaknas kaust",
+    "Choose a profile": "Valige profiil",
     "Choose files in the browser window": "Valige brauseriaknas failid",
     "Choose from": "Valige",
     "Choose language": "Valige keel",
@@ -1104,6 +1105,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X seaded",
     "Unable to load playlist": "Esitusloendit ei saa laadida",
+    Unavailable: "Pole saadaval",
     "Unlock the player's settings before changing its playlist.":
         "Enne esitusloendi muutmist avage mängija seadete lukustus.",
     Untitled: "Pealkirjata",

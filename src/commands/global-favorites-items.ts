@@ -2,6 +2,7 @@ import {
     parseFavoritesDocumentJson,
     utf8Encode,
 } from "./favorites-document-json";
+
 const ITEM_ERRORS = [
     "invalid_request",
     "envelope_too_large",
@@ -68,7 +69,7 @@ export function createGlobalFavoritesItems(ports: any) {
         var runtime = ports.runtime(),
             op = p && p.op,
             deadline = Math.floor(expiresAt * 1000);
-        var base = { version: 1, runtime: runtime, op: op, subject: "global" };
+        var base = { op: op, runtime: runtime, subject: "global", version: 1 };
         try {
             if (
                 typeof envelopeBytes !== "number" ||
@@ -95,9 +96,9 @@ export function createGlobalFavoritesItems(ports: any) {
                 current(runtime, deadline, admission);
                 if (!item.current()) itemsFail("context_changed");
                 return Object.assign(base, {
-                    revision: item.revision,
                     context_revision: item.context_revision,
                     entry: item.entry,
+                    revision: item.revision,
                     unavailable_reason: item.unavailable_reason,
                 });
             }
@@ -136,21 +137,21 @@ export function createGlobalFavoritesItems(ports: any) {
                 if (!result || result.status !== "ok") {
                     var status = result && result.status,
                         errors: any = {
-                            timeout: "expired",
+                            ambiguous: "ambiguous_source",
                             blocked: "policy_denied",
                             changed: "context_changed",
                             missing: "favorite_not_found",
-                            unsupported: "unsupported_item",
-                            ambiguous: "ambiguous_source",
+                            timeout: "expired",
                             unavailable: "item_unavailable",
+                            unsupported: "unsupported_item",
                         };
                     itemsFail(errors[status] || status || "playback_failed");
                 }
                 return Object.assign(base, {
-                    revision: p.expected_revision,
                     context_revision: p.expected_context_revision,
-                    id: p.id,
                     dispatched: true,
+                    id: p.id,
+                    revision: p.expected_revision,
                 });
             }
             if (
@@ -209,13 +210,13 @@ export function createGlobalFavoritesItems(ports: any) {
                 offset = decoded[2];
             }
             var response: any = Object.assign(base, {
-                revision: snapshot.revision,
                 context_revision: context.revision,
                 cursor: p.cursor,
-                page_offset: offset,
-                total: snapshot.entries.length,
                 entries: [],
                 next_cursor: null,
+                page_offset: offset,
+                revision: snapshot.revision,
+                total: snapshot.entries.length,
                 unresolved_legacy_count: snapshot.unresolvedLegacy.length,
             });
             for (
@@ -226,13 +227,13 @@ export function createGlobalFavoritesItems(ports: any) {
             ) {
                 var row = snapshot.entries[index],
                     entry = ports.codec.normalize({
-                        title: row.title,
-                        origin: row.origin,
                         locator: row.locator,
+                        origin: row.origin,
+                        title: row.title,
                     });
                 if (!entry || !ITEM_UUID.test(row.id))
                     itemsFail("storage_unavailable");
-                response.entries.push({ id: row.id, entry: entry });
+                response.entries.push({ entry: entry, id: row.id });
                 response.next_cursor =
                     index + 1 < snapshot.entries.length
                         ? cursor(snapshot.revision, context.revision, index + 1)
@@ -263,10 +264,10 @@ export function createGlobalFavoritesItems(ports: any) {
         }
     }
     return {
-        execute: execute,
         cancel: function () {
             cancelled = true;
             if (play) play.cancel();
         },
+        execute: execute,
     };
 }

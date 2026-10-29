@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking folder permission": "ෆෝල්ඩරයේ අවසර පරීක්ෂා කරමින්",
     "Checking the Plex server connection…": "Plex සේවාදායක සම්බන්ධතාව පරීක්ෂා කරමින්...",
     "Choose a folder in the browser window": "බ්‍රවුසර කවුළුව තුළ ෆෝල්ඩරයක් තෝරන්න",
+    "Choose a profile": "පැතිකඩක් තෝරන්න",
     "Choose files in the browser window": "බ්‍රවුසර කවුළුව තුළ ගොනු තෝරන්න",
     "Choose from": "තෝරන්න",
     "Choose language": "භාෂාව තෝරන්න",
@@ -1080,6 +1081,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X සැකසුම්",
     "Unable to load playlist": "ධාවන ලැයිස්තුව පූරණය කළ නොහැක",
+    Unavailable: "ලබා ගත නොහැක",
     "Unlock the player's settings before changing its playlist.":
         "ධාවන ලැයිස්තුව වෙනස් කිරීමට පෙර වාදකයේ සැකසුම් අගුල අරින්න.",
     Untitled: "මාතෘකා නැත",

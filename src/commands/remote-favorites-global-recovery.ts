@@ -1,4 +1,5 @@
 import { ensureRemoteGlobalFavorites } from "./remote-favorites-global";
+
 const REMOTE_GLOBAL_RECOVERY_ERRORS = [
     "invalid_request",
     "envelope_too_large",
@@ -32,15 +33,15 @@ export function executeGlobalFavoritesRecovery(
         )
             data.runtime = request.params.runtime;
         finished = true;
-        done({ status: data.error ? "rejected" : "ok", data: data });
+        done({ data: data, status: data.error ? "rejected" : "ok" });
     }
     if (request.params && request.params.runtime !== runtime) {
         reply({
-            version: 1,
-            runtime: request.params.runtime,
-            op: request.params.op,
-            subject: "global",
             error: "runtime_changed",
+            op: request.params.op,
+            runtime: request.params.runtime,
+            subject: "global",
+            version: 1,
         });
         return function () {};
     }
@@ -52,11 +53,11 @@ export function executeGlobalFavoritesRecovery(
             var p = request.params || {};
             function reject(code: string) {
                 reply({
-                    version: 1,
-                    runtime: runtime,
-                    op: p.op,
-                    subject: "global",
                     error: code,
+                    op: p.op,
+                    runtime: runtime,
+                    subject: "global",
+                    version: 1,
                 });
             }
             if (error || !w.__ottGlobalFavoritesRecovery) {
@@ -92,11 +93,11 @@ export function executeGlobalFavoritesRecovery(
         if (cancel) cancel();
         if (!finished)
             reply({
-                version: 1,
-                runtime: runtime,
-                op: request.params && request.params.op,
-                subject: "global",
                 error: "expired",
+                op: request.params && request.params.op,
+                runtime: runtime,
+                subject: "global",
+                version: 1,
             });
     };
 }

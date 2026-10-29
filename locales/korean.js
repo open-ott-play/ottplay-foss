@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex 서버 연결을 확인하는 중…",
     "Choose a folder in the browser window":
         "브라우저 창에서 폴더를 선택하세요",
+    "Choose a profile": "프로필 선택",
     "Choose files in the browser window": "브라우저 창에서 파일을 선택하세요",
     "Choose from": "선택하세요",
     "Choose language": "언어를 선택하세요",
@@ -1094,6 +1095,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X 설정",
     "Unable to load playlist": "재생 목록을 로드할 수 없습니다.",
+    Unavailable: "사용할 수 없습니다",
     "Unlock the player's settings before changing its playlist.":
         "재생목록을 변경하기 전에 플레이어 설정의 잠금을 해제하세요.",
     Untitled: "제목없음",

@@ -173,6 +173,7 @@ var keyStrings = {
         "Plex серверийн холболтыг шалгаж байна…",
     "Choose a folder in the browser window":
         "Хөтчийн цонхноос хавтас сонгоно уу",
+    "Choose a profile": "Профайл сонгох",
     "Choose files in the browser window": "Хөтчийн цонхноос файл сонгоно уу",
     "Choose from": "Эндээс сонгох",
     "Choose language": "Хэл сонгох",
@@ -1114,6 +1115,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-ийн тохиргоо",
     "Unable to load playlist": "Тоглуулах жагсаалт ачаалж чадсангүй",
+    Unavailable: "Ашиглах боломжгүй",
     "Unlock the player's settings before changing its playlist.":
         "Тоглуулах жагсаалтыг өөрчлөхөөс өмнө тоглуулагчийн тохиргооны түгжээг тайлна уу.",
     Untitled: "Нэргүй",

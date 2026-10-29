@@ -179,6 +179,7 @@ var keyStrings = {
         "Vérification de la connexion au serveur Plex…",
     "Choose a folder in the browser window":
         "Choisissez un dossier dans la fenêtre du navigateur",
+    "Choose a profile": "Choisir un profil",
     "Choose files in the browser window":
         "Choisissez des fichiers dans la fenêtre du navigateur",
     "Choose from": "Choisir parmi",
@@ -1141,6 +1142,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Paramètres de ULTIFL1X",
     "Unable to load playlist": "Impossible de charger la liste de lecture",
+    Unavailable: "Indisponible",
     "Unlock the player's settings before changing its playlist.":
         "Déverrouillez les paramètres du lecteur avant de modifier sa liste de lecture.",
     Untitled: "Sans titre",

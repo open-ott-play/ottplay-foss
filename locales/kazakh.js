@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex сервер қосылымы тексерілуде…",
     "Choose a folder in the browser window":
         "Браузер терезесінде қалтаны таңдаңыз",
+    "Choose a profile": "Профильді таңдаңыз",
     "Choose files in the browser window":
         "Браузер терезесінде файлдарды таңдаңыз",
     "Choose from": "Мынадан таңдау",
@@ -1107,6 +1108,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X баптаулары",
     "Unable to load playlist": "Ойнату тізімін жүктеу мүмкін болмады",
+    Unavailable: "Қолжетімсіз",
     "Unlock the player's settings before changing its playlist.":
         "Ойнату тізімін өзгертпес бұрын ойнатқыш баптауларының құлпын ашыңыз.",
     Untitled: "Атаусыз",

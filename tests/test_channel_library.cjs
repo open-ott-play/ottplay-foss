@@ -1276,18 +1276,18 @@ for (const provider of ["m3u", "plex", "vportal", "offline"]) {
             Object.assign(w, {
                 _: (text) => (text === "Favorites" ? "Избранное" : text),
                 __ottSourceIdentity: { current: () => provider + "@one" },
-                sFavorites: style,
-                favoritesArray: saved,
-                cList: [1, 2],
+                catIndex: 0,
                 channels: {
                     1: { channel_name: "One" },
                     2: { channel_name: "Two" },
                 },
-                catIndex: 0,
-                primaryIndex: 0,
+                cList: [1, 2],
                 curList: [],
+                favoritesArray: saved,
+                primaryIndex: 0,
                 providerGetItem: () => null,
                 providerSetItem() {},
+                sFavorites: style,
             });
             w.__ottChannels.mount(w);
             const catalog = w.__ottChannels.remoteCatalog();
@@ -1308,7 +1308,6 @@ for (const provider of ["m3u", "plex", "vportal", "offline"]) {
                 let editCalls = 0;
                 const beforeFavorites = saved.slice();
                 Object.assign(w, {
-                    ott_device: "pc",
                     __ottClassicScreenPort: {
                         screens: { current: () => ({ kind: "list" }) },
                     },
@@ -1321,6 +1320,7 @@ for (const provider of ["m3u", "plex", "vportal", "offline"]) {
                     addToFavorites() {
                         editCalls++;
                     },
+                    ott_device: "pc",
                     removeFromFavorites() {
                         editCalls++;
                     },
@@ -1361,17 +1361,17 @@ for (const provider of ["m3u", "plex", "vportal", "offline"]) {
     };
     Object.assign(w, {
         _: (text) => text,
-        sFavorites: 0,
-        favoritesArray: [1, 1, "1", NaN],
-        cList: [1, "1", 2],
-        channels: {},
-        curList: [],
-        catIndex: 0,
-        primaryIndex: 0,
         __ottMedia: { categoryMembers: () => ["1", 1, 2, 2] },
         __ottSourceIdentity: { current: () => "projection@typed-ids" },
+        catIndex: 0,
+        channels: {},
+        cList: [1, "1", 2],
+        curList: [],
+        favoritesArray: [1, 1, "1", NaN],
+        primaryIndex: 0,
         providerGetItem: () => null,
         providerSetItem() {},
+        sFavorites: 0,
     });
     w.__ottChannels.mount(w);
     w.__ottChannels.refresh();

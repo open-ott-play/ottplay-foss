@@ -1,8 +1,4 @@
 import {
-    executeLegacySharedFavorites,
-    ensureRemoteGlobalFavorites,
-} from "./remote-favorites-global";
-import {
     checkProviderUrl,
     isProviderAllowed,
     providerIds,
@@ -10,6 +6,10 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { remoteFavoritesCapability } from "./remote-favorites-contract";
+import {
+    ensureRemoteGlobalFavorites,
+    executeLegacySharedFavorites,
+} from "./remote-favorites-global";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
 
@@ -143,6 +143,7 @@ export function executeRemoteFavorites(
     var params = request.params || {};
     var op = params.op;
     var complete = false;
+    var failedOrCancelled = false;
     var timer: any = null;
     var poll: any = null;
     var inner: any = null;
@@ -150,6 +151,7 @@ export function executeRemoteFavorites(
     function finish(error?: string, data?: any): void {
         if (complete) return;
         complete = true;
+        failedOrCancelled = !!error;
         w.clearTimeout(timer);
         w.clearTimeout(poll);
         var cancel = inner;
@@ -319,10 +321,9 @@ export function executeRemoteFavorites(
         finish("profile_unavailable");
         return;
     }
-    function sourceCurrent(): boolean {
+    function sourceOwned(): boolean {
         var next = favoriteProfile(w);
         return (
-            !complete &&
             !favoriteLocked(w) &&
             w.commandChannelsReady === true &&
             w.__ottCommandChannelLoad === load &&
@@ -331,6 +332,9 @@ export function executeRemoteFavorites(
             next.provider === profile.provider &&
             next.profile_number === profile.profile_number
         );
+    }
+    function sourceCurrent(): boolean {
+        return !complete && sourceOwned();
     }
     if (op === "add") {
         try {
@@ -741,7 +745,23 @@ export function executeRemoteFavorites(
                                 fail("playback_failed");
                                 return;
                             }
-                            var admitted = w.playChannel(c, i, true, valid);
+                            var admitted = w.playChannel(
+                                c,
+                                i,
+                                true,
+                                valid,
+                                undefined,
+                                false,
+                                false,
+                                undefined,
+                                function () {
+                                    return (
+                                        !failedOrCancelled &&
+                                        sourceOwned() &&
+                                        Date.now() < deadline
+                                    );
+                                }
+                            );
                             if (
                                 w.channels[id].__ottMediaItem &&
                                 expectedDriver.capabilities &&
@@ -980,7 +1000,7 @@ export function captureLegacyCurrentFavorite(w: any): any {
     }
     if (!current()) throw new Error("context_changed");
     entry.name = favoriteLabel(entry.title, 160) || "Favorite";
-    return { entry: entry, current: current };
+    return { current: current, entry: entry };
 }
 export function executeLegacyFavoriteTarget(
     w: any,

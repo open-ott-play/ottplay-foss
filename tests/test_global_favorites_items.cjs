@@ -12,50 +12,50 @@ async function main() {
     let snapshot = await f.store.snapshot();
     const entries = Array.from({ length: 207 }, (_, i) => ({
         ...row(`Film ${i}`),
-        locator: { kind: "channel", channelId: String(i) },
+        locator: { channelId: String(i), kind: "channel" },
     }));
-    await f.store.mutate(snapshot.revision, { op: "put", entries });
+    await f.store.mutate(snapshot.revision, { entries, op: "put" });
     const factory = load(
         "src/commands/global-favorites-items.ts"
     ).createGlobalFavoritesItems;
     const host = {
-        store: f.store,
         captureContext: async () => ({
-            revision: contextRevision,
             current: () => contextAlive,
+            revision: contextRevision,
         }),
         currentItem: async () => {
             const s = await f.store.snapshot();
             return {
-                revision: s.revision,
                 context_revision: contextRevision,
-                entry: row(),
-                unavailable_reason: null,
                 current: () => s.current() && contextAlive,
+                entry: row(),
+                revision: s.revision,
+                unavailable_reason: null,
             };
         },
         playUUID(id, revision, context, admitted) {
             plays++;
             return {
+                cancel() {},
                 result: (async () => {
                     assert(admitted());
                     assert.equal((await f.store.snapshot()).revision, revision);
                     assert.equal(context, contextRevision);
-                    return { status: playStatus, id };
+                    return { id, status: playStatus };
                 })(),
-                cancel() {},
             };
         },
+        store: f.store,
     };
     const items = factory({
-        host,
+        authorized: () => true,
+        base64Decode: (s) => Uint8Array.from(Buffer.from(s, "base64")),
+        base64Encode: (b) => Buffer.from(b).toString("base64"),
         codec: f.codec,
         current: () => true,
-        runtime: () => runtime,
+        host,
         now: () => now,
-        authorized: () => true,
-        base64Encode: (b) => Buffer.from(b).toString("base64"),
-        base64Decode: (s) => Uint8Array.from(Buffer.from(s, "base64")),
+        runtime: () => runtime,
     });
     const send = (p) =>
         items.execute(
@@ -68,7 +68,7 @@ async function main() {
         ids = [],
         revision;
     do {
-        const result = await send({ op: "list", cursor, max_entries: 100 });
+        const result = await send({ cursor, max_entries: 100, op: "list" });
         assert.equal(result.error, undefined);
         assert.equal(result.total, 207);
         assert(result.entries.length <= 100);
@@ -81,23 +81,23 @@ async function main() {
     assert.equal(new Set(ids).size, 207);
     assert.equal(plays, 0);
     assert.equal(f.events.length, 1);
-    const first = await send({ op: "list", cursor: null, max_entries: 1 });
+    const first = await send({ cursor: null, max_entries: 1, op: "list" });
     contextRevision = "a".repeat(64);
     assert.equal(
-        (await send({ op: "list", cursor: first.next_cursor, max_entries: 1 }))
+        (await send({ cursor: first.next_cursor, max_entries: 1, op: "list" }))
             .error,
         "context_changed"
     );
     contextRevision = f.context;
     snapshot = await f.store.snapshot();
-    await f.store.mutate(snapshot.revision, { op: "remove", ids: [ids[206]] });
+    await f.store.mutate(snapshot.revision, { ids: [ids[206]], op: "remove" });
     assert.equal(
-        (await send({ op: "list", cursor: first.next_cursor, max_entries: 1 }))
+        (await send({ cursor: first.next_cursor, max_entries: 1, op: "list" }))
             .error,
         "revision_conflict"
     );
     assert.equal(
-        (await send({ op: "list", cursor: "invalid", max_entries: 100 })).error,
+        (await send({ cursor: "invalid", max_entries: 100, op: "list" })).error,
         "invalid_cursor"
     );
     const current = await send({ op: "current" });
@@ -107,15 +107,16 @@ async function main() {
     assert.equal(
         (
             await send({
-                op: "play",
-                id: ids[0],
-                expected_revision: current.revision,
                 expected_context_revision: f.context,
+                expected_revision: current.revision,
+                id: ids[0],
+                op: "play",
             })
         ).dispatched,
         true
     );
     assert.equal(plays, 1);
+    // biome-ignore assist/source/useSortedKeys: Preserve the sequential stateful error-case exercise order.
     for (const [status, error] of Object.entries({
         cancelled: "cancelled",
         timeout: "expired",
@@ -130,10 +131,10 @@ async function main() {
         assert.equal(
             (
                 await send({
-                    op: "play",
-                    id: ids[0],
-                    expected_revision: current.revision,
                     expected_context_revision: f.context,
+                    expected_revision: current.revision,
+                    id: ids[0],
+                    op: "play",
                 })
             ).error,
             error

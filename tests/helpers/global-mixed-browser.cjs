@@ -55,31 +55,31 @@ async function install(context, baseURL, name, scenario) {
         if (u.pathname === "/mixed/local")
             return route.fulfill({
                 json: {
-                    scanning: false,
                     items: configured
                         .filter((t) => t.entry_index === 0 && !t.rootMissing)
                         .map((t) => ({
-                            id: "local-clip-" + t.private_root_id,
-                            sourceId: t.private_root_id,
-                            name: "Features/clip.mp4",
                             available: true,
+                            id: "local-clip-" + t.private_root_id,
+                            name: "Features/clip.mp4",
+                            sourceId: t.private_root_id,
                             url: origin + "/mixed/media/local.mp4",
                         })),
+                    scanning: false,
                     sources: configured
                         .filter((t) => t.entry_index === 0 && !t.rootMissing)
                         .map((t) => ({
-                            id: t.private_root_id,
-                            name: "Local Videos",
-                            kind: "folder",
                             available: true,
+                            id: t.private_root_id,
+                            kind: "folder",
+                            name: "Local Videos",
                         })),
                 },
             });
         if (/^\/mixed\/(one|two)\.m3u$/.test(u.pathname)) {
             const part = u.pathname.includes("one") ? "one" : "two";
             return route.fulfill({
-                contentType: "text/plain",
                 body: `#EXTM3U\n#EXTINF:-1 tvg-id="station-${part}",${part === "one" ? "One channel" : "Two channel"}\n${origin}/mixed/media/${part}.mp4\n`,
+                contentType: "text/plain",
             });
         }
         if (u.pathname.endsWith("/vportal/api")) {
@@ -96,28 +96,28 @@ async function install(context, baseURL, name, scenario) {
                 json:
                     p.cmd === "series"
                         ? {
-                              type: "category",
                               items: [
                                   {
                                       id: "episode-17",
-                                      title: "Portal episode",
-                                      type: "stream",
                                       request: {
                                           cmd: "play",
                                           id: "episode-17",
                                       },
+                                      title: "Portal episode",
+                                      type: "stream",
                                   },
                               ],
+                              type: "category",
                           }
                         : {
-                              type: "category",
                               items: [
                                   {
+                                      request: { cmd: "series" },
                                       title: "Series",
                                       type: "category",
-                                      request: { cmd: "series" },
                                   },
                               ],
+                              type: "category",
                           },
             });
         }
@@ -148,26 +148,26 @@ async function install(context, baseURL, name, scenario) {
                         MediaContainer: {
                             Metadata: [
                                 {
-                                    ratingKey: "42",
-                                    title: "Plex film",
-                                    type: "movie",
                                     Media: [
                                         {
-                                            container: "mp4",
-                                            videoCodec: "h264",
                                             audioCodec: "aac",
+                                            container: "mp4",
                                             Part: [
                                                 {
                                                     key: "/library/parts/42/file.mp4",
                                                 },
                                             ],
+                                            videoCodec: "h264",
                                         },
                                     ],
+                                    ratingKey: "42",
+                                    title: "Plex film",
+                                    type: "movie",
                                 },
                             ],
+                            offset: 0,
                             size: 1,
                             totalSize: 1,
-                            offset: 0,
                         },
                     },
                 });
@@ -176,8 +176,8 @@ async function install(context, baseURL, name, scenario) {
             if (endpoint.endsWith("/stop") || endpoint.endsWith("/ping"))
                 return route.fulfill({ body: "" });
             return route.fulfill({
-                status: 404,
                 body: "unknown synthetic route",
+                status: 404,
             });
         }
         if (/^\/mixed\/media\/(local|one|two|portal)\.mp4$/.test(u.pathname))
@@ -189,30 +189,30 @@ async function install(context, baseURL, name, scenario) {
         ({ origin, targets, name }) => {
             const m3us = Array.from({ length: 15 }, () => ({
                 name: "",
-                www: "",
                 rechours: 0,
+                www: "",
             }));
             for (const t of targets.filter(
                 (t) => t.configured_origin.provider === "m3u"
             ))
                 m3us[t.profile_slot] = {
                     name: t.configured_origin.profile,
+                    rechours: 0,
                     www:
                         origin +
                         "/mixed/" +
                         (t.entry_index === 1 ? "one" : "two") +
                         ".m3u",
-                    rechours: 0,
                 };
             const portals = Array.from({ length: 15 }, () => ({
-                name: "",
                 link: "",
+                name: "",
                 sections: [],
             }));
             for (const t of targets.filter((t) => t.entry_index === 2))
                 portals[t.profile_slot] = {
-                    name: t.configured_origin.profile,
                     link: "portal::[key:synthetic]https://portal.fixture/api/",
+                    name: t.configured_origin.profile,
                     sections: [],
                 };
             const profiles = Array.from({ length: 15 }, () => null),
@@ -239,19 +239,19 @@ async function install(context, baseURL, name, scenario) {
                             (name === "origin" ? 100 : 200) + t.profile_slot
                         ).padStart(12, "0"),
                     profile = {
-                        version: 1,
-                        provider: "offline",
                         binding_id: binding,
                         name: t.configured_origin.profile,
+                        provider: "offline",
                         selected: null,
                         sources,
+                        version: 1,
                     };
                 profiles[t.profile_slot] = profile;
                 bindings[binding] = {
                     library: "browser:" + origin + "/mixed/local",
+                    selected: null,
                     signature: JSON.stringify({ selected: null, sources }),
                     sources: mapped,
-                    selected: null,
                 };
             }
             const m3u = targets.find(
@@ -260,43 +260,43 @@ async function install(context, baseURL, name, scenario) {
                 local = targets.find((t) => t.entry_index === 0),
                 portal = targets.find((t) => t.entry_index === 2);
             const values = {
-                ottplaylang: "_eng",
-                ottplayprov: "m3u",
+                localMediaEndpoint: origin + "/mixed/local",
                 m3um3uArr: JSON.stringify({
                     active: m3u.profile_slot,
                     M3Us: m3us,
                 }),
+                m3usPlayers: "0",
+                offlineProfileBindings: JSON.stringify(bindings),
+                offlineProfiles: JSON.stringify({
+                    active: local ? local.profile_slot : -1,
+                    profiles,
+                    version: 1,
+                }),
+                offlinesPlayers: "0",
+                ottplaylang: "_eng",
+                ottplayprov: "m3u",
+                plexcfg: JSON.stringify({
+                    account: {
+                        connections: [
+                            {
+                                local: true,
+                                relay: false,
+                                secure: false,
+                                url: origin + "/mixed/plex",
+                            },
+                        ],
+                        id: "fixture-pms",
+                    },
+                    address: origin + "/mixed/plex",
+                    playback: "original",
+                    token: "synthetic",
+                }),
+                plexsPlayers: "0",
                 vportalprofiles: JSON.stringify({
                     active: portal.profile_slot,
                     portals,
                 }),
-                localMediaEndpoint: origin + "/mixed/local",
-                offlineProfiles: JSON.stringify({
-                    version: 1,
-                    active: local ? local.profile_slot : -1,
-                    profiles,
-                }),
-                offlineProfileBindings: JSON.stringify(bindings),
-                plexcfg: JSON.stringify({
-                    address: origin + "/mixed/plex",
-                    token: "synthetic",
-                    playback: "original",
-                    account: {
-                        id: "fixture-pms",
-                        connections: [
-                            {
-                                url: origin + "/mixed/plex",
-                                local: true,
-                                secure: false,
-                                relay: false,
-                            },
-                        ],
-                    },
-                }),
-                m3usPlayers: "0",
                 vportalsPlayers: "0",
-                plexsPlayers: "0",
-                offlinesPlayers: "0",
             };
             for (const key of Object.keys(values))
                 localStorage.setItem(key, values[key]);
@@ -318,7 +318,7 @@ async function install(context, baseURL, name, scenario) {
                 true
             );
         },
-        { origin, targets: configured, name }
+        { name, origin, targets: configured }
     );
 }
 module.exports = { fixture, install, scenarioTargets };
@@ -373,7 +373,7 @@ async function pair(page, targets) {
                     if (result.status !== "ok")
                         throw Error("fixture profile rejected");
                 },
-                { provider, number: target.profile_slot + 1 }
+                { number: target.profile_slot + 1, provider }
             );
             await page.waitForFunction(() => window.commandChannelsReady);
         } else
@@ -423,41 +423,41 @@ async function importDocument(page, document) {
             bytes = new TextEncoder().encode(JSON.stringify(document)),
             hash = await ports.sha256(bytes),
             b = await call("begin", {
-                operation_id: d.admission.operation_id,
-                mode: "merge",
-                expected_revision: d.revision,
-                expected_context_revision: d.context_revision,
-                document_sha256: hash,
-                size_bytes: bytes.length,
-                chunk_count: 1,
                 budget_ms: 60000,
+                chunk_count: 1,
+                document_sha256: hash,
+                expected_context_revision: d.context_revision,
+                expected_revision: d.revision,
+                mode: "merge",
+                operation_id: d.admission.operation_id,
                 required_kinds: host.codec.requiredLocatorKinds(document),
+                size_bytes: bytes.length,
             });
         await call("append", {
-            transaction_id: b.transaction_id,
-            seq: 0,
-            offset: 0,
             chunk_sha256: hash,
             data_base64: ports.base64Encode(bytes),
+            offset: 0,
+            seq: 0,
+            transaction_id: b.transaction_id,
         });
         const p = await call("preview", {
-            transaction_id: b.transaction_id,
-            page_offset: 0,
             max_entries: 64,
+            page_offset: 0,
+            transaction_id: b.transaction_id,
         });
         if (!p.ready) throw Error("fixture preview not ready");
         await call("commit", {
-            transaction_id: b.transaction_id,
             operation_id: b.operation_id,
             plan_digest: p.plan_digest,
+            transaction_id: b.transaction_id,
         });
         return (await host.store.snapshot()).entries.map((row) => ({
-            id: row.id,
             entry: {
-                title: row.title,
-                origin: row.origin,
                 locator: row.locator,
+                origin: row.origin,
+                title: row.title,
             },
+            id: row.id,
         }));
     }, document);
 }
@@ -466,6 +466,7 @@ module.exports.importDocument = importDocument;
 async function openFavorites(page, ids, selectedId = ids[0]) {
     const before = await page.evaluate(() => {
         const owner = window.__ottClassicScreenPort.screens.current();
+        // biome-ignore assist/source/useSortedKeys: Capture the prior owner ID before invoking the open action.
         const result = {
             id: owner ? owner.id : null,
             accepted: window.openGlobalFavorites(),
@@ -494,7 +495,7 @@ async function openFavorites(page, ids, selectedId = ids[0]) {
                     window.listArray[window.selIndex] === selectedId)
             );
         },
-        { ids, selectedId, previous: before.id }
+        { ids, previous: before.id, selectedId }
     );
 }
 module.exports.openFavorites = openFavorites;

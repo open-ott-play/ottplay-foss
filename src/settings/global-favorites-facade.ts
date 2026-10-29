@@ -4,16 +4,12 @@ import {
 } from "../commands/favorites-document-json";
 
 export interface GlobalFavoritesFacadePorts {
-    caselessKey(value: string): string;
-    store: any;
-    codec: any;
-    locatorKinds: string[];
-    current(): boolean;
-    qualify?(): Promise<boolean>;
-    uuid(): string;
-    sha256(text: string): Promise<string>;
     capture(): Promise<{ value: any; current(): boolean }>;
     captureLegacy(): Promise<{ entry: any; value?: any; current(): boolean }>;
+    caselessKey(value: string): string;
+    codec: any;
+    current(): boolean;
+    locatorKinds: string[];
     playEntry(
         id: string,
         current: () => boolean
@@ -22,6 +18,10 @@ export interface GlobalFavoritesFacadePorts {
         entry: any,
         current: () => boolean
     ): { result: Promise<any>; cancel(): void };
+    qualify?(): Promise<boolean>;
+    sha256(text: string): Promise<string>;
+    store: any;
+    uuid(): string;
 }
 function failure(code: string): never {
     throw new Error(code);
@@ -36,6 +36,33 @@ function publicLegacy(row: any): any {
         provider: row.provider,
         title: row.title,
     };
+}
+// MAIN and optional bundles keep the same v1 vocabulary without cross-bundle imports.
+function globalFavoritesLegacyPlaybackError(value: any): string {
+    var code =
+        value && value.status === "rejected" && value.data && value.data.error;
+    var allowed = [
+        "invalid_request",
+        "unsupported",
+        "no_current_item",
+        "unsupported_item",
+        "profile_unavailable",
+        "profile_changed",
+        "item_unavailable",
+        "ambiguous_favorite",
+        "favorite_not_found",
+        "too_many_favorites",
+        "storage_unavailable",
+        "policy_denied",
+        "busy",
+        "timeout",
+        "cancelled",
+        "context_changed",
+        "playback_failed",
+    ];
+    return typeof code === "string" && allowed.indexOf(code) >= 0
+        ? code
+        : "playback_failed";
 }
 /** Shared facade: legacy writes never serialize a projected/limited list. */
 export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
@@ -61,12 +88,12 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
         function page() {
             return {
                 entries: view.entries.slice(offset, end),
-                total: view.entries.length,
                 next_cursor:
                     end < view.entries.length
-                        ? { revision: view.revision, offset: end }
+                        ? { offset: end, revision: view.revision }
                         : null,
                 revision: view.revision,
+                total: view.entries.length,
                 unresolved_legacy_count: view.unresolvedLegacy.length,
             };
         }
@@ -87,7 +114,7 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
         var view = await ports.store.snapshot();
         return ports.store.mutate(
             view.revision,
-            { op: "put", entries: [captured.value] },
+            { entries: [captured.value], op: "put" },
             function () {
                 return current(admission) && captured.current();
             }
@@ -99,7 +126,7 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
         if (!current(admission) || !view.current()) failure("context_changed");
         return ports.store.mutate(
             view.revision,
-            { op: "remove", ids: [id] },
+            { ids: [id], op: "remove" },
             function () {
                 return current(admission);
             }
@@ -134,7 +161,7 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
         if (params.op === "remove") {
             var removed = await ports.store.mutate(
                 view.revision,
-                { op: "legacy-remove", id: selected.id },
+                { id: selected.id, op: "legacy-remove" },
                 function () {
                     return current(admission);
                 }
@@ -164,7 +191,7 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
                       ? previous.name
                       : entry.name;
             if (!previous && rows.length >= 100) failure("too_many_favorites");
-            var change: any = { op: "legacy-put", entry: entry };
+            var change: any = { entry: entry, op: "legacy-put" };
             if (captured.value) change.portable = captured.value;
             var added = await ports.store.mutate(
                 view.revision,
@@ -191,7 +218,7 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
                     !value ||
                     (value.status !== "ok" && value.dispatched !== true)
                 )
-                    failure("playback_failed");
+                    failure(globalFavoritesLegacyPlaybackError(value));
                 return { dispatched: true, entry: publicLegacy(selected) };
             }),
         };
@@ -217,27 +244,27 @@ export function createGlobalFavoritesFacade(ports: GlobalFavoritesFacadePorts) {
         return {
             current: view.current,
             document: {
-                version: 1,
                 entries: view.entries.map(function (row: any) {
                     return {
-                        title: row.title,
-                        origin: row.origin,
                         locator: row.locator,
+                        origin: row.origin,
+                        title: row.title,
                     };
                 }),
+                version: 1,
             },
         };
     }
     return {
-        current: ports.current,
-        list: list,
         add: add,
-        remove: remove,
-        legacy: legacy,
-        play: play,
-        exportSnapshot: exportSnapshot,
+        current: ports.current,
         export: function () {
             return ports.store.portableSnapshot();
         },
+        exportSnapshot: exportSnapshot,
+        legacy: legacy,
+        list: list,
+        play: play,
+        remove: remove,
     };
 }

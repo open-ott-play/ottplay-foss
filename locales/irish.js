@@ -175,6 +175,7 @@ var keyStrings = {
         "Ceangal leis an bhfreastalaí Plex á sheiceáil…",
     "Choose a folder in the browser window":
         "Roghnaigh fillteán i bhfuinneog an bhrabhsálaí",
+    "Choose a profile": "Roghnaigh próifíl",
     "Choose files in the browser window":
         "Roghnaigh comhaid i bhfuinneog an bhrabhsálaí",
     "Choose from": "Roghnaigh as",
@@ -1123,6 +1124,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Socruithe ULTIFL1X",
     "Unable to load playlist": "Níorbh fhéidir an seinmliosta a luchtú",
+    Unavailable: "Níl ar fáil",
     "Unlock the player's settings before changing its playlist.":
         "Díghlasáil socruithe an tseinnteora sula n-athraíonn tú a sheinmliosta.",
     Untitled: "Gan teideal",

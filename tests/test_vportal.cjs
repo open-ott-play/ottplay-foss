@@ -1204,28 +1204,28 @@ for (const mode of ["load", "page"]) {
     const synopsis = "Inherited full synopsis ".repeat(20) + "END-PARENT";
     f.client.load("", () => {});
     f.requests.at(-1).receive({
-        type: "videoportal",
         items: [
             {
-                type: "multistream",
-                title: "Series",
+                adult: 1,
                 description: synopsis,
                 img: "../posters/series.jpg",
-                year: "2026",
-                adult: 1,
                 request: { cmd: "episodes", id: 7 },
+                title: "Series",
+                type: "multistream",
+                year: "2026",
             },
         ],
+        type: "videoportal",
     });
     const folder = f.w.mediaRecords[0].playlist_url;
     const originalFolder = JSON.stringify(folder);
     f.client.load(folder, () => {});
     f.requests.at(-1).receive({
-        type: "category",
         items: [
-            { type: "stream", title: "First", request: { cmd: "play", id: 1 } },
-            { type: "next", request: { offset: 300 } },
+            { request: { cmd: "play", id: 1 }, title: "First", type: "stream" },
+            { request: { offset: 300 }, type: "next" },
         ],
+        type: "category",
     });
     const first = f.w.mediaRecords[0];
     assert.equal(first.title, "Series - First");
@@ -1254,21 +1254,21 @@ for (const mode of ["load", "page"]) {
     const request = f.requests.at(-1);
     assert.equal(JSON.parse(request.options.data).params.offset, 300);
     request.receive({
-        type: "category",
         items: [
             {
-                type: "stream",
-                title: "Second",
                 request: { cmd: "play", id: 2 },
+                title: "Second",
+                type: "stream",
             },
             {
-                type: "stream",
-                title: "Own",
                 description: "Own synopsis",
                 img: "/own.jpg",
                 request: { cmd: "play", id: 3 },
+                title: "Own",
+                type: "stream",
             },
         ],
+        type: "category",
     });
     assert.equal(next[0].title, "Series - Second");
     assert(next[0].description.endsWith("END-PARENT"));

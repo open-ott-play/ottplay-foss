@@ -39,7 +39,7 @@ export function selectGlobalMediaProfile(
         { action: "profile", params: { number: slot + 1 } },
         done,
         admission,
-        { driver: driver, configuration: expectedConfiguration, slot: slot }
+        { configuration: expectedConfiguration, driver: driver, slot: slot }
     );
 }
 

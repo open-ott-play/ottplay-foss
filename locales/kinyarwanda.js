@@ -173,6 +173,7 @@ var keyStrings = {
         "Ihuza rya seriveri ya Plex ririmo kugenzurwa…",
     "Choose a folder in the browser window":
         "Hitamo ububiko mu idirishya rya mushakisha",
+    "Choose a profile": "Hitamo umwirondoro",
     "Choose files in the browser window":
         "Hitamo dosiye mu idirishya rya mushakisha",
     "Choose from": "Hitamo muri",
@@ -1134,6 +1135,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Igenamiterere rya ULTIFL1X",
     "Unable to load playlist": "Gufungura urutonde rwo gukina byanze",
+    Unavailable: "Ntiboneka",
     "Unlock the player's settings before changing its playlist.":
         "Fungura igenamiterere rya porogaramu ryafunzwe mbere yo guhindura urutonde rwayo rwo gukina.",
     Untitled: "Nta mutwe",

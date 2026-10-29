@@ -173,6 +173,7 @@ var keyStrings = {
         "Пайвастшавӣ ба сервери Plex санҷида мешавад…",
     "Choose a folder in the browser window":
         "Дар равзанаи браузер ҷузвдонеро интихоб кунед",
+    "Choose a profile": "Профилро интихоб кунед",
     "Choose files in the browser window":
         "Дар равзанаи браузер файлҳоро интихоб кунед",
     "Choose from": "Интихоб аз",
@@ -1114,6 +1115,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Танзимоти ULTIFL1X",
     "Unable to load playlist": "Рӯйхати пахш бор нашуд",
+    Unavailable: "Дастрас нест",
     "Unlock the player's settings before changing its playlist.":
         "Пеш аз тағйир додани рӯйхати пахш қулфи танзимоти плеерро кушоед.",
     Untitled: "Беном",

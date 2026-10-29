@@ -70,7 +70,7 @@ export function globalFavoriteBuiltinConfiguration(
         keys = ["key", "mpeg"];
     } else if (row.kind === "edem") keys = ["edcdn", "key", "vpurl"];
     else if (row.kind === "demo")
-        return { name: row.title, values: [], slot: null };
+        return { name: row.title, slot: null, values: [] };
     else return null;
     var values = keys.map(function (key) {
         return w.stbGetItem(prefix + key);
@@ -90,7 +90,7 @@ export function globalFavoriteBuiltinConfiguration(
         })
     )
         return null;
-    return { name: row.title, values: values, slot: slot };
+    return { name: row.title, slot: slot, values: values };
 }
 export function globalFavoriteBuiltinChoices(w: any, row: any): any[] {
     if (!row) return [];
@@ -109,13 +109,13 @@ export function globalFavoriteBuiltinChoices(w: any, row: any): any[] {
             var name =
                 row.kind === "stalker" ? value.name || row.title : row.title;
             return {
+                alias: name,
                 label:
                     name +
                     (slot !== null && row.kind !== "stalker"
                         ? " / Playlist " + (slot + 1)
                         : ""),
                 profile: name,
-                alias: name,
                 provider: row.id,
                 slot: slot,
                 subprofile:

@@ -132,6 +132,81 @@ export function createGlobalFavoritesNavigation(ports: any): any {
         advance(captured, direction);
         return true;
     }
+    function active(): boolean {
+        return !!(ports.current() && ports.allowed() && (pending || proof()));
+    }
+    // Pin the displayed portable prefix once, rather than re-reading its ordinal
+    // after the number-entry timer. Legacy/pending rows cannot dispatch here.
+    function captureNumber(): any {
+        var captured = proof(),
+            revision = epoch;
+        if (!captured || pending) return null;
+        function current(): boolean {
+            return (
+                revision === epoch &&
+                ports.current() &&
+                ports.allowed() &&
+                captured.current()
+            );
+        }
+        var snapshot = ports.snapshot();
+        return {
+            current: current,
+            select: async function (
+                index: number,
+                admitted: () => boolean
+            ): Promise<void> {
+                var value = await snapshot;
+                if (!current() || !value.current() || !admitted()) return;
+                if (
+                    !Number.isInteger(index) ||
+                    index < 0 ||
+                    index >= value.entries.length
+                ) {
+                    ports.failed("missing");
+                    return;
+                }
+                // select() enters the normal owned route, including all target guards.
+                var token: any = {
+                    epoch: ++epoch,
+                    external: false,
+                    route: null,
+                    target: value.entries[index].id,
+                };
+                pending = token;
+                function owned(): boolean {
+                    return (
+                        pending === token &&
+                        epoch === token.epoch &&
+                        ports.current() &&
+                        ports.allowed()
+                    );
+                }
+                try {
+                    token.route = ports.select(token.target);
+                    var result = await token.route.result;
+                    if (!owned()) return;
+                    if (!result || result.status !== "ok") {
+                        retire();
+                        ports.failed(
+                            (result && result.status) || "unavailable"
+                        );
+                    } else routeState({ id: token.target, phase: "playing" });
+                } catch (_) {
+                    if (owned()) {
+                        retire();
+                        ports.failed("unavailable");
+                    }
+                }
+            },
+            title: async function (index: number): Promise<string> {
+                var value = await snapshot;
+                return current() && value.current() && value.entries[index]
+                    ? value.entries[index].title
+                    : "";
+            },
+        };
+    }
     // Called only by the guarded decoder EOF callback, before its Stop transition.
     function prepareEnded(generation: number): any {
         if (pending || !proof()) return null;
@@ -178,6 +253,8 @@ export function createGlobalFavoritesNavigation(ports: any): any {
         return index < 0 ? null : rows[index].id;
     }
     return {
+        active: active,
+        captureNumber: captureNumber,
         complete: complete,
         currentId: selected,
         isPlaying: function (id: string, rows: any[]): boolean {

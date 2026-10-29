@@ -22,8 +22,8 @@ for (const name of files) {
     const source = fs.readFileSync(path.join(__dirname, "..", name), "utf8");
     const compiled = ts.transpileModule(source, {
         compilerOptions: {
-            target: ts.ScriptTarget.ES5,
             module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES5,
         },
         reportDiagnostics: true,
     });

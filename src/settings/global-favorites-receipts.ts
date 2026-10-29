@@ -1,9 +1,10 @@
+import { createFavoritesOperationReceipts } from "./favorites-operation-receipts";
+import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
 import {
     globalFavoritesBackendProof,
     verifyGlobalFavoritesAudit,
 } from "./global-favorites-recovery";
-import { createFavoritesOperationReceipts } from "./favorites-operation-receipts";
-import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
+
 const GLOBAL_FAVORITES_RECEIPTS_KEY = "favorites-global-receipts.v1";
 /** Same proven receipt algorithm and real Web Lock, separate strict global ledger. */
 export function createGlobalFavoritesCommitter(ports: any) {
@@ -37,40 +38,6 @@ export function createGlobalFavoritesCommitter(ports: any) {
     ) {
         return createFavoritesOperationReceipts(
             {
-                read: function () {
-                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
-                },
-                persistedRead: function () {
-                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
-                },
-                now: ports.now,
-                current: function (scope: any, refs: any) {
-                    return (
-                        scope.kind === "global" &&
-                        scope.store === "remoteFavorites.v1" &&
-                        current() &&
-                        (!admission || admission()) &&
-                        grant.current() &&
-                        (!expectedRefs ||
-                            JSON.stringify(refs) ===
-                                JSON.stringify(expectedRefs))
-                    );
-                },
-                fence: function () {
-                    return {
-                        version: 2,
-                        backendProof: proof,
-                        guardImplementationVersion: 1,
-                    };
-                },
-                writeGuard: function () {
-                    return (
-                        active() &&
-                        current() &&
-                        (!admission || admission()) &&
-                        grant.current()
-                    );
-                },
                 compareAndSwap: function (
                     before: string | null,
                     after: string
@@ -88,6 +55,40 @@ export function createGlobalFavoritesCommitter(ports: any) {
                           )
                         : "conflict";
                 },
+                current: function (scope: any, refs: any) {
+                    return (
+                        scope.kind === "global" &&
+                        scope.store === "remoteFavorites.v1" &&
+                        current() &&
+                        (!admission || admission()) &&
+                        grant.current() &&
+                        (!expectedRefs ||
+                            JSON.stringify(refs) ===
+                                JSON.stringify(expectedRefs))
+                    );
+                },
+                fence: function () {
+                    return /* biome-ignore assist/source/useSortedKeys: Preserve persisted fence key order used by writeAdmission JSON.stringify equality. */ {
+                        version: 2,
+                        backendProof: proof,
+                        guardImplementationVersion: 1,
+                    };
+                },
+                now: ports.now,
+                persistedRead: function () {
+                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
+                },
+                read: function () {
+                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
+                },
+                writeGuard: function () {
+                    return (
+                        active() &&
+                        current() &&
+                        (!admission || admission()) &&
+                        grant.current()
+                    );
+                },
             },
             schema
         );
@@ -99,22 +100,22 @@ export function createGlobalFavoritesCommitter(ports: any) {
     }
     function receipt(row: any) {
         return {
-            version: 1,
-            subject: "global",
+            changed: row.receipt.global.changed,
+            context_revision: row.receipt.global.context_revision,
+            counts: row.receipt.counts,
+            expected_revision: row.receipt.global.expected_revision,
+            input_document_sha256: row.payloadHash,
+            new_revision: row.receipt.new_revision,
             operation_id: row.operationId,
             operation_runtime: row.refs.runtimeId,
-            transaction_id: row.refs.stageId,
-            input_document_sha256: row.payloadHash,
-            result_document_sha256: row.receipt.global.result_document_sha256,
-            expected_revision: row.receipt.global.expected_revision,
-            new_revision: row.receipt.new_revision,
-            context_revision: row.receipt.global.context_revision,
-            plan_digest: row.receipt.plan_digest,
-            counts: row.receipt.counts,
-            changed: row.receipt.global.changed,
             outcome: "verified",
             persistence: "persistent",
+            plan_digest: row.receipt.plan_digest,
             required_kinds: row.receipt.global.required_kinds,
+            result_document_sha256: row.receipt.global.result_document_sha256,
+            subject: "global",
+            transaction_id: row.refs.stageId,
+            version: 1,
         };
     }
     async function qualify() {
@@ -170,7 +171,11 @@ export function createGlobalFavoritesCommitter(ports: any) {
         var raw = grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
         if (uncertain(raw, grant)) fail("reconciliation_required");
         var held = false,
-            refs = { stageId: args.transaction_id, runtimeId: args.runtime };
+            refs =
+                /* biome-ignore assist/source/useSortedKeys: Preserve the refs byte order copied into persisted reservation tickets. */ {
+                    stageId: args.transaction_id,
+                    runtimeId: args.runtime,
+                };
         var ledger = service(
             grant,
             backend,
@@ -192,10 +197,10 @@ export function createGlobalFavoritesCommitter(ports: any) {
             oldIds: any = Object.create(null),
             newIds: any = Object.create(null);
         before.entries.forEach(function (row: any, index: number) {
-            oldIds[row.id] = { row: row, index: index };
+            oldIds[row.id] = { index: index, row: row };
         });
         after.entries.forEach(function (row: any, index: number) {
-            newIds[row.id] = { row: row, index: index };
+            newIds[row.id] = { index: index, row: row };
         });
         after.legacy.forEach(function (row: any) {
             remainingLegacy[row.id] = true;
@@ -207,16 +212,17 @@ export function createGlobalFavoritesCommitter(ports: any) {
             else if (!aliases[row.id] && remainingLegacy[row.id])
                 legacyEffects.unmapped_retained++;
         });
-        var counts = {
-            before: before.entries.length,
-            after: after.entries.length,
-            added: 0,
-            removed: 0,
-            retained: 0,
-            updated: 0,
-            moved: 0,
-            duplicates_skipped: 0,
-        };
+        var counts =
+            /* biome-ignore assist/source/useSortedKeys: Preserve counts byte order copied into persisted completion receipts. */ {
+                before: before.entries.length,
+                after: after.entries.length,
+                added: 0,
+                removed: 0,
+                retained: 0,
+                updated: 0,
+                moved: 0,
+                duplicates_skipped: 0,
+            };
         after.entries.forEach(function (row: any, index: number) {
             if (!oldIds[row.id]) counts.added++;
             else {
@@ -233,9 +239,9 @@ export function createGlobalFavoritesCommitter(ports: any) {
         before.entries.forEach(function (row: any) {
             previousIdentities[
                 ports.codec.identity({
-                    title: row.title,
-                    origin: row.origin,
                     locator: row.locator,
+                    origin: row.origin,
+                    title: row.title,
                 })
             ] = true;
         });
@@ -249,62 +255,69 @@ export function createGlobalFavoritesCommitter(ports: any) {
             identities[key] = true;
         });
         var exported = ports.codec.document({
-            version: 1,
             entries: after.entries.map(function (row: any) {
                 return {
-                    title: row.title,
-                    origin: row.origin,
                     locator: row.locator,
+                    origin: row.origin,
+                    title: row.title,
                 };
             }),
+            version: 1,
         });
         if (!exported) fail("invalid_document");
         var resultHash = await ports.sha256(JSON.stringify(exported));
         var input = ports.codec.document({
-            version: 1,
             entries: args.change.entries,
+            version: 1,
         });
         if (!input) fail("invalid_document");
         var requiredKinds = ports.codec
             .requiredLocatorKinds(input)
             .slice()
             .sort();
-        var outcome = {
-            state: "verified",
-            meta: { code: "none", appliedStores: 2, totalStores: 2 },
-            counts: counts,
-            newRevision: plan.newRevision,
-            persistence: "persistent",
-            global: {
-                required_kinds: requiredKinds,
-                expected_revision: plan.expectedRevision,
-                context_revision: context,
-                result_document_sha256: resultHash,
-                changed: plan.newRevision !== plan.expectedRevision,
-            },
-        };
+        var outcome =
+            /* biome-ignore assist/source/useSortedKeys: Preserve the qualified completion outcome and nested ledger representation. */ {
+                state: "verified",
+                meta: /* biome-ignore assist/source/useSortedKeys: Preserve meta byte order copied into persisted completion rows. */ {
+                    code: "none",
+                    appliedStores: 2,
+                    totalStores: 2,
+                },
+                counts: counts,
+                newRevision: plan.newRevision,
+                persistence: "persistent",
+                global: /* biome-ignore assist/source/useSortedKeys: Preserve global metadata byte order copied into persisted receipts. */ {
+                    required_kinds: requiredKinds,
+                    expected_revision: plan.expectedRevision,
+                    context_revision: context,
+                    result_document_sha256: resultHash,
+                    changed: plan.newRevision !== plan.expectedRevision,
+                },
+            };
         var reservation = ledger.prepareReservation(
             {
                 operationId: args.operation_id,
                 payloadHash: args.input_document_sha256,
-                scope: { kind: "global", store: "remoteFavorites.v1" },
                 refs: refs,
+                scope: { kind: "global", store: "remoteFavorites.v1" },
             },
             { freshAdmission: true },
             outcome
         );
         var digest = await ports.sha256(
-            JSON.stringify({
-                domain: "favorites-global-plan-v1",
-                operation_id: args.operation_id,
-                transaction_id: args.transaction_id,
-                context_revision: context,
-                expected_revision: plan.expectedRevision,
-                new_revision: plan.newRevision,
-                after_sha256: await ports.sha256(plan.afterRaw),
-                legacy_effects: legacyEffects,
-                reservation: reservation,
-            })
+            JSON.stringify(
+                /* biome-ignore assist/source/useSortedKeys: Preserve this exact JSON plan digest preimage and awaited initializer order. */ {
+                    domain: "favorites-global-plan-v1",
+                    operation_id: args.operation_id,
+                    transaction_id: args.transaction_id,
+                    context_revision: context,
+                    expected_revision: plan.expectedRevision,
+                    new_revision: plan.newRevision,
+                    after_sha256: await ports.sha256(plan.afterRaw),
+                    legacy_effects: legacyEffects,
+                    reservation: reservation,
+                }
+            )
         );
         if (
             !current() ||
@@ -313,25 +326,25 @@ export function createGlobalFavoritesCommitter(ports: any) {
         )
             fail("revision_conflict");
         plans[args.operation_id] = {
-            plan: plan,
+            context: context,
+            contextCurrent: captured.current,
+            digest: digest,
             grant: grant,
             ledger: ledger,
+            plan: plan,
             reservation: reservation,
-            digest: digest,
-            context: context,
-            started: false,
-            contextCurrent: captured.current,
             setHeld: function (value: boolean) {
                 held = value;
             },
+            started: false,
         };
         return {
-            plan_digest: digest,
-            new_revision: plan.newRevision,
-            result_document_sha256: resultHash,
             counts: counts,
             legacy_effects: legacyEffects,
+            new_revision: plan.newRevision,
+            plan_digest: digest,
             result_document: exported,
+            result_document_sha256: resultHash,
         };
     }
     async function commit(operationId: string, digest: string) {
@@ -408,16 +421,16 @@ export function createGlobalFavoritesCommitter(ports: any) {
             return row.operationId === operationId;
         })[0];
         if (!row || ports.now() >= row.expiresAt)
-            return { state: "not_found", outcome: "unknown", receipt: null };
+            return { outcome: "unknown", receipt: null, state: "not_found" };
         if (
             !row.fence ||
             row.fence.backendProof !== backend ||
             !current() ||
             grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw
         )
-            return { state: "unknown", outcome: "unknown", receipt: null };
+            return { outcome: "unknown", receipt: null, state: "unknown" };
         if (row.state !== "verified" || !row.receipt)
-            return { state: "unknown", outcome: "unknown", receipt: null };
+            return { outcome: "unknown", receipt: null, state: "unknown" };
         var target = grant.read("remoteFavorites.v1"),
             revision = await ports.sha256(target === null ? "null" : target);
         if (
@@ -426,12 +439,12 @@ export function createGlobalFavoritesCommitter(ports: any) {
             grant.read("remoteFavorites.v1") !== target ||
             revision !== row.receipt.new_revision
         )
-            return { state: "unknown", outcome: "unknown", receipt: null };
+            return { outcome: "unknown", receipt: null, state: "unknown" };
         delete plans[operationId];
         return {
-            state: "committed",
             outcome: "verified",
             receipt: receipt(row),
+            state: "committed",
         };
     }
     function blocker() {
@@ -466,17 +479,17 @@ export function createGlobalFavoritesCommitter(ports: any) {
         return blocker() === null;
     }
     return {
-        prepare: prepare,
-        commit: commit,
-        status: status,
-        qualify: qualify,
-        canWrite: canWrite,
         blocker: blocker,
+        canWrite: canWrite,
+        commit: commit,
         discard: function (id: string) {
             var plan = plans[id];
             if (plan && (plan.started || plan.queued))
                 fail("reconciliation_required");
             delete plans[id];
         },
+        prepare: prepare,
+        qualify: qualify,
+        status: status,
     };
 }

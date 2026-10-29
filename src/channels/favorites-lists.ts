@@ -508,7 +508,6 @@ function captureFavoriteTransfer(readonly?: any): any {
 
 if (typeof window !== "undefined")
     (window as any).__ottFavoritesLibrary = {
-        document: favoriteLibraryDocument,
         captureGlobal: function () {
             var w = window as any,
                 owner = favoritesOwner,
@@ -542,12 +541,13 @@ if (typeof window !== "undefined")
                     );
                 };
                 return current()
-                    ? { document: document, raw: raw, current: current }
+                    ? { current: current, document: document, raw: raw }
                     : null;
             } catch (_) {
                 return null;
             }
         },
+        document: favoriteLibraryDocument,
         reset: function () {
             favoritesGeneration++;
             favoritesOwner = null;

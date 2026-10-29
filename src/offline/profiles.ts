@@ -895,7 +895,6 @@ export function installOfflineProfiles(w: any, media: any): any {
         }
     }
     var api = {
-        useDefault: useDefault,
         bind: bind,
         bindCurrent: bindCurrent,
         capabilities: function () {
@@ -954,6 +953,7 @@ export function installOfflineProfiles(w: any, media: any): any {
                 : null;
         },
         selection: selection,
+        useDefault: useDefault,
         validateProfile: validateProfile,
         validateStore: validateStore,
     };

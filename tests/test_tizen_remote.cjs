@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const {
     attachSourceAliases,
     sourceNames,
@@ -115,6 +116,8 @@ if (useBundle) {
         localizationRuntime("dist/player.js") +
         Array.from(selected.values()).join("\n");
 }
+
+handlers = numericKeyState() + handlers;
 
 // Independent platform contract, from Samsung's Remote Control guide:
 // https://developer.samsung.com/smarttv/develop/guides/user-interaction/remote-control.html

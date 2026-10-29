@@ -13,7 +13,7 @@ export function createGlobalFavoritesRouter(ports: any): any {
         );
     }
     function portable(row: any): any {
-        return { title: row.title, origin: row.origin, locator: row.locator };
+        return { locator: row.locator, origin: row.origin, title: row.title };
     }
     function cancel(): void {
         if (running) running.finish("cancelled");
@@ -153,9 +153,9 @@ export function createGlobalFavoritesRouter(ports: any): any {
                     !resolved ||
                     !resolved.available ||
                     ports.codec.identity({
-                        title: canonical.title,
-                        origin: session.origin,
                         locator: resolved.locator,
+                        origin: session.origin,
+                        title: canonical.title,
                     }) !== identity
                 ) {
                     finish("unavailable");
@@ -178,11 +178,11 @@ export function createGlobalFavoritesRouter(ports: any): any {
                 playing =
                     playback && playback.current()
                         ? {
+                              current: playback.current,
                               id: id,
+                              matches: playback.matches,
                               prepareEnded: playback.prepareEnded,
                               value: JSON.parse(JSON.stringify(canonical)),
-                              current: playback.current,
-                              matches: playback.matches,
                           }
                         : null;
                 finish("ok");
@@ -191,13 +191,17 @@ export function createGlobalFavoritesRouter(ports: any): any {
                 finish("unavailable");
             });
         return {
-            result: result,
             cancel: function () {
                 finish("cancelled");
             },
+            result: result,
         };
     }
     return {
+        busy: function () {
+            return !!running;
+        },
+        cancel: cancel,
         captureCurrent: function (payload?: any) {
             if (!playing || !playing.current()) {
                 playing = null;
@@ -209,10 +213,10 @@ export function createGlobalFavoritesRouter(ports: any): any {
             )
                 return null;
             return {
+                bound: true,
+                current: playing.current,
                 id: playing.id,
                 value: JSON.parse(JSON.stringify(playing.value)),
-                current: playing.current,
-                bound: true,
             };
         },
         captureEnding: function (generation: number) {
@@ -222,15 +226,11 @@ export function createGlobalFavoritesRouter(ports: any): any {
             if (!postStopCurrent) return null;
             playing = null;
             return {
+                current: postStopCurrent,
                 id: ended.id,
                 value: JSON.parse(JSON.stringify(ended.value)),
-                current: postStopCurrent,
             };
         },
         select: select,
-        cancel: cancel,
-        busy: function () {
-            return !!running;
-        },
     };
 }

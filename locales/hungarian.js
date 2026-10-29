@@ -172,6 +172,7 @@ var keyStrings = {
         "A Plex szerverkapcsolat ellenőrzése…",
     "Choose a folder in the browser window":
         "Válasszon mappát a böngészőablakban",
+    "Choose a profile": "Profil kiválasztása",
     "Choose files in the browser window":
         "Válasszon fájlokat a böngészőablakban",
     "Choose from": "Választás innen",
@@ -1122,6 +1123,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X beállításai",
     "Unable to load playlist": "Nem sikerült betölteni a lejátszási listát",
+    Unavailable: "Nem érhető el",
     "Unlock the player's settings before changing its playlist.":
         "A lejátszási lista módosítása előtt oldja fel a lejátszó beállításainak zárolását.",
     Untitled: "Névtelen",

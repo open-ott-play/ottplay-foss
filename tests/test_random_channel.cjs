@@ -360,6 +360,109 @@ assert.equal(
     mediaRequest("play_catalog", { catalog, random: {} }).status,
     "rejected"
 );
+{
+    const r = host(3);
+    let included = true;
+    let postSelection;
+    r.playChannel = (_c, _i, _f, admit, _r, _b, _s, _done, current) => {
+        assert.equal(admit(), true);
+        postSelection = current;
+        return true;
+    };
+    assert(play(r, r.cList, { range: [1, 1] }, () => included, all));
+    assert.equal(postSelection(), true);
+    included = false;
+    assert.equal(
+        postSelection(),
+        false,
+        "same-row include drift remains fenced"
+    );
+}
+
+// Retain the actual random callback through asynchronous catalogue loading.
+{
+    const r = host(3);
+    const call = remote(r);
+    const receipt = call("epg_catalog").data.catalog;
+    let postSelection;
+    let screen = null;
+    r.__ottClassicScreenPort.owner = () => screen;
+    r.__ottClassicScreenPort.screens.current = () => screen;
+    r.$ = (selector) => ({
+        is: () => selector.includes("#dialogbox") && !!screen,
+    });
+    r.playChannel = (
+        _category,
+        _index,
+        _fullscreen,
+        admit,
+        _resume,
+        _background,
+        _fromStart,
+        _committed,
+        current
+    ) => {
+        assert.equal(admit(), true);
+        postSelection = current;
+        return true;
+    };
+    assert.equal(
+        call(
+            "play_catalog",
+            { catalog: receipt, random: { range: [1, 1] } },
+            { expires_at: Date.now() / 1000 + 30 }
+        ).status,
+        "ok"
+    );
+    const loading = {
+        active: () => true,
+        foreground: () => true,
+        kind: "dialog",
+    };
+    screen = loading;
+    assert.equal(
+        postSelection(loading),
+        true,
+        "own registered loading dialog is allowed"
+    );
+    assert.equal(
+        postSelection(),
+        false,
+        "no owner proof cannot exempt a dialog"
+    );
+    screen = { ...loading };
+    assert.equal(
+        postSelection(loading),
+        false,
+        "different registered dialog is protected"
+    );
+    screen = loading;
+    r.channels[1].adult = 1;
+    assert.equal(
+        postSelection(loading),
+        false,
+        "same-row classification drift rejects"
+    );
+    delete r.channels[1].adult;
+    const now = Date.now;
+    try {
+        Date.now = () => now() + 120000;
+        assert.equal(
+            postSelection(loading),
+            false,
+            "request/catalogue expiry remains active"
+        );
+    } finally {
+        Date.now = now;
+    }
+    r.__ottParental.needs = (section) => section === "providers";
+    assert.equal(
+        postSelection(loading),
+        false,
+        "own loading never exempts provider PIN"
+    );
+}
+
 console.log(
     "PASS safe weighted random selection, parser metadata, PIN handoff, and fenced IPTV/large-media RPCs"
 );

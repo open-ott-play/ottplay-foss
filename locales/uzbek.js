@@ -174,6 +174,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Plex server ulanishi tekshirilmoqda…",
     "Choose a folder in the browser window": "Brauzer oynasida papkani tanlang",
+    "Choose a profile": "Profilni tanlash",
     "Choose files in the browser window": "Brauzer oynasida fayllarni tanlang",
     "Choose from": "Quyidagidan tanlash",
     "Choose language": "Tilni tanlash",
@@ -1118,6 +1119,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sozlamalari",
     "Unable to load playlist": "Ijro roʻyxatini yuklab boʻlmadi",
+    Unavailable: "Mavjud emas",
     "Unlock the player's settings before changing its playlist.":
         "Pleylistni o‘zgartirishdan oldin pleyer sozlamalarining qulfini oching.",
     Untitled: "Nomsiz",

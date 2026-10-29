@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "بررسی اتصال سرور Plex…",
     "Choose a folder in the browser window":
         "یک پوشه در پنجره مرورگر انتخاب کنید",
+    "Choose a profile": "پروفایل را انتخاب کنید",
     "Choose files in the browser window":
         "فایل‌ها را در پنجره مرورگر انتخاب کنید",
     "Choose from": "را انتخاب کنید",
@@ -1103,6 +1104,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "تنظیمات ULTIFL1X",
     "Unable to load playlist": "لیست پخش بارگیری نمی شود",
+    Unavailable: "در دسترس نیست",
     "Unlock the player's settings before changing its playlist.":
         "پیش از تغییر فهرست پخش، قفل تنظیمات پخش‌کننده را باز کنید.",
     Untitled: "بدون عنوان",

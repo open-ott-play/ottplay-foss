@@ -29,43 +29,43 @@ function fixture(partial = false) {
             .digest("hex");
     const w = {
         _: (v) => v,
-        stbGetItem: (key) => (data.has(key) ? data.get(key) : null),
-        __ottStandby: { blocked: () => false },
-        __ottKiosk: { enabled: () => false },
-        __ottParental: { needs: () => false },
-        setTimeout(fn) {
-            timers.set(++serial, fn);
-            return serial;
-        },
-        clearTimeout(id) {
-            timers.delete(id);
-        },
-        __ottCommandChannelLoad: {},
-        commandChannelsReady: true,
-        __ottSourceIdentity: {
-            current: () => "m3u:source",
-            media: () => "media:source",
-        },
-        __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
-        listKeyHandlerFn: handler,
-        __ottClassicScreenPort: { screens: { current: () => null } },
-        keys: { ENTER: 13, PLAY: 80, RETURN: 27, EXIT: 27 },
-        showShift() {},
-        closeList() {},
         __ottChannelListView: {
             show(view) {
                 w.selIndex = view.selected;
                 shown.push(view);
             },
         },
+        __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
+        __ottClassicScreenPort: { screens: { current: () => null } },
+        __ottCommandChannelLoad: {},
+        __ottKiosk: { enabled: () => false },
+        __ottParental: { needs: () => false },
+        __ottSourceIdentity: {
+            current: () => "m3u:source",
+            media: () => "media:source",
+        },
+        __ottStandby: { blocked: () => false },
         channels: {
             7: {
-                itemId: "news",
                 __ottFavoriteTvgId: "News",
                 channel_name: "News",
+                itemId: "news",
             },
         },
         cList: [7],
+        clearTimeout(id) {
+            timers.delete(id);
+        },
+        closeList() {},
+        commandChannelsReady: true,
+        keys: { ENTER: 13, EXIT: 27, PLAY: 80, RETURN: 27 },
+        listKeyHandlerFn: handler,
+        setTimeout(fn) {
+            timers.set(++serial, fn);
+            return serial;
+        },
+        showShift() {},
+        stbGetItem: (key) => (data.has(key) ? data.get(key) : null),
     };
     data.set(
         "m3um3uArr",
@@ -74,15 +74,15 @@ function fixture(partial = false) {
             M3Us: [
                 {
                     name: "Profile",
-                    www: "https://fixture.test/list",
                     rechours: 0,
+                    www: "https://fixture.test/list",
                 },
             ],
         })
     );
     w.__ottActiveProviderDriver = {
-        id: "m3u",
         configuration: () => JSON.parse(w.stbGetItem("m3um3uArr")),
+        id: "m3u",
     };
     function load(name) {
         if (cache[name]) return cache[name];
@@ -95,11 +95,9 @@ function fixture(partial = false) {
                 },
             }).outputText,
             {
-                exports,
-                window: w,
-                Uint8Array,
-                Promise,
                 console,
+                exports,
+                Promise,
                 require: (relative) =>
                     load(
                         path.posix.normalize(
@@ -109,6 +107,8 @@ function fixture(partial = false) {
                             )
                         )
                     ),
+                Uint8Array,
+                window: w,
             }
         );
         return exports;
@@ -118,22 +118,27 @@ function fixture(partial = false) {
     function journal(position, title = "News") {
         data.set(
             "mediaJournal.v1:media:source",
+            // biome-ignore assist/source/useSortedKeys: Preserve the raw media journal fixture used by capture guards.
             JSON.stringify({
                 version: 1,
                 sourceId: "media:source",
                 favorites: [
+                    // biome-ignore assist/source/useSortedKeys: Preserve the raw media journal fixture used by capture guards.
                     {
                         sourceId: "media:source",
                         itemId: "news",
                         position: 0,
+                        // biome-ignore assist/source/useSortedKeys: Preserve the raw media journal fixture used by capture guards.
                         payload: { title, __ottGlobalChannel: 7 },
                     },
                 ],
                 history: [
+                    // biome-ignore assist/source/useSortedKeys: Preserve the raw media journal fixture used by capture guards.
                     {
                         sourceId: "media:source",
                         itemId: "news",
                         position,
+                        // biome-ignore assist/source/useSortedKeys: Preserve the raw media journal fixture used by capture guards.
                         payload: { title, __ottGlobalChannel: 7 },
                     },
                 ],
@@ -142,24 +147,26 @@ function fixture(partial = false) {
     }
     journal(1);
     const media = w.__ottMediaJournal.create({
-        sourceId: "media:source",
+        core: {},
         current: () => active,
         enabled: () => true,
+        importRows: () => [],
+        limit: () => 20,
         read: w.stbGetItem,
+        sourceId: "media:source",
         write() {
             throw Error("read-only capture must not write journal");
         },
-        importRows: () => [],
-        limit: () => 20,
-        core: {},
     });
     w.__ottMedia = {
-        current: () => null,
         captureGlobalFavorites: () => media.captureFavorites(),
+        current: () => null,
     };
     if (partial) {
+        // biome-ignore assist/source/useSortedKeys: Preserve the raw channel-list fixture used by capture guards.
         const document = {
             sourceId: "m3u:source",
+            // biome-ignore assist/source/useSortedKeys: Preserve the raw channel-list fixture used by capture guards.
             lists: {
                 order: ["Favorites"],
                 lists: {
@@ -169,29 +176,13 @@ function fixture(partial = false) {
         };
         w.__ottFavoritesLibrary = {
             captureGlobal: () => ({
+                current: () => active,
                 document,
                 raw: JSON.stringify(document),
-                current: () => active,
             }),
         };
     }
     const grant = {
-        origin: "https://fixture.test",
-        privateLedgerKey: "favorites-receipts.v1",
-        lockName: "ottplay:favorites-ledger",
-        implementationVersion: 1,
-        kind: "synchronous-localstorage",
-        current: () => active,
-        read: w.stbGetItem,
-        async exclusive(work) {
-            assert(!held);
-            held = true;
-            try {
-                return await work(grant);
-            } finally {
-                held = false;
-            }
-        },
         compareAndSwap(key, before, after, admitted) {
             assert(held);
             if (
@@ -208,6 +199,22 @@ function fixture(partial = false) {
                 ? "unknown"
                 : "confirmed";
         },
+        current: () => active,
+        async exclusive(work) {
+            assert(!held);
+            held = true;
+            try {
+                return await work(grant);
+            } finally {
+                held = false;
+            }
+        },
+        implementationVersion: 1,
+        kind: "synchronous-localstorage",
+        lockName: "ottplay:favorites-ledger",
+        origin: "https://fixture.test",
+        privateLedgerKey: "favorites-receipts.v1",
+        read: w.stbGetItem,
     };
     const mainCalls = [],
         main = createMainPorts(w);
@@ -227,51 +234,51 @@ function fixture(partial = false) {
     }
     const hostPorts = {
         ...main,
-        favoriteRemoved: (title) => w.showShift("Favorites: − " + title),
-        favoriteToggled: (title, added) => toggles.push([title, added]),
-        capture: () => grant,
-        current: () => active && runtimeCurrent,
-        runtime: () => "runtime-one",
         authorized: () => true,
-        now: () => clock,
-        uuid: () =>
-            `00000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
-        sha256: async (value) => hash(value),
-        base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
         base64Decode: (text) => new Uint8Array(Buffer.from(text, "base64")),
+        base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
+        capture: () => grant,
         captureLegacy: async () => {
             throw Error("unexpected legacy capture");
         },
+        current: () => active && runtimeCurrent,
+        favoriteRemoved: (title) => w.showShift("Favorites: − " + title),
+        favoriteToggled: (title, added) => toggles.push([title, added]),
+        now: () => clock,
         playLegacy() {
             throw Error("unexpected legacy play");
         },
+        runtime: () => "runtime-one",
+        sha256: async (value) => hash(value),
+        uuid: () =>
+            `00000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
     };
     const makeHost = load(
             "src/media/global-favorites-host.ts"
         ).createGlobalFavoritesHost,
         host = makeHost(w, hostPorts);
     return {
-        host,
-        load,
-        w,
         data,
-        writes,
-        journal,
-        shown,
-        hash,
-        makeHost,
-        hostPorts,
-        mainCalls,
-        toggles,
-        failWrites(mode) {
-            writeFailure = mode;
-        },
         deactivate() {
             active = false;
         },
         expireRuntime() {
             runtimeCurrent = false;
         },
+        failWrites(mode) {
+            writeFailure = mode;
+        },
+        hash,
+        host,
+        hostPorts,
+        journal,
+        load,
+        mainCalls,
+        makeHost,
+        shown,
+        toggles,
+        w,
+        writes,
     };
 }
 async function seededPlayableFixture(title = "Seeded playable") {
@@ -280,11 +287,11 @@ async function seededPlayableFixture(title = "Seeded playable") {
     let state = {
             generation: 1,
             phase: "playing",
-            target: { kind: "live", sourceId: "m3u:source", channelId: 7 },
+            target: { channelId: 7, kind: "live", sourceId: "m3u:source" },
         },
         plays = 0;
     w._playSession = 11;
-    w.__ottClassicPlayback = { snapshot: () => state, checkpoint() {} };
+    w.__ottClassicPlayback = { checkpoint() {}, snapshot: () => state };
     w.__ottChannels = { index: () => 0 };
     w.catsArray = ["all"];
     w.cats = { all: [7] };
@@ -296,26 +303,26 @@ async function seededPlayableFixture(title = "Seeded playable") {
             generation: state.generation + 1,
             phase: "playing",
             target: {
+                channelId: w.cats[w.catsArray[group]][index],
                 kind: "live",
                 sourceId: "m3u:source",
-                channelId: w.cats[w.catsArray[group]][index],
             },
         };
         return true;
     };
     const entry = {
-        title,
+        locator: { channelId: "m3u-epg:News", kind: "channel" },
         origin: {
-            provider: "m3u",
             profile: "Paired Profile",
-            subprofile: null,
+            provider: "m3u",
             sourceAlias: "Paired Source",
+            subprofile: null,
         },
-        locator: { kind: "channel", channelId: "m3u-epg:News" },
+        title,
     };
     await f.host.committer.qualify();
     const before = await f.host.store.snapshot();
-    await f.host.store.mutate(before.revision, { op: "put", entries: [entry] });
+    await f.host.store.mutate(before.revision, { entries: [entry], op: "put" });
     await f.host.pair(entry.origin, 0, undefined, () => true);
     const snapshot = await f.host.store.snapshot();
     assert.equal(snapshot.entries.length, 1);
@@ -338,19 +345,19 @@ async function main() {
     const localA = fixture();
     await localA.host.committer.qualify();
     const foreign = {
-        title: "Foreign binding",
+        locator: { channelId: "m3u-epg:News", kind: "channel" },
         origin: {
-            provider: "m3u",
             profile: "Foreign",
+            provider: "m3u",
             sourceAlias: "Foreign alias",
             subprofile: null,
         },
-        locator: { kind: "channel", channelId: "m3u-epg:News" },
+        title: "Foreign binding",
     };
     let aliasView = await localA.host.store.snapshot();
     await localA.host.store.mutate(aliasView.revision, {
-        op: "put",
         entries: [foreign],
+        op: "put",
     });
     await localA.host.pair(foreign.origin, 0, undefined, () => true);
     const awayB = fixture();
@@ -430,19 +437,19 @@ async function main() {
     const sourceB = fixture();
     await sourceB.host.committer.qualify();
     const importedA = {
-        title: "Imported A",
+        locator: { channelId: "m3u-epg:News", kind: "channel" },
         origin: {
-            provider: "m3u",
             profile: "A",
+            provider: "m3u",
             sourceAlias: "A",
             subprofile: null,
         },
-        locator: { kind: "channel", channelId: "m3u-epg:News" },
+        title: "Imported A",
     };
     let importedView = await sourceB.host.store.snapshot();
     await sourceB.host.store.mutate(importedView.revision, {
-        op: "put",
         entries: [importedA],
+        op: "put",
     });
     sourceB.w.keys.YELLOW = 405;
     sourceB.w.keys.TOOLS = 84;
@@ -641,7 +648,7 @@ async function main() {
         byteFixture.host.requestBytes = missingMethod
             ? undefined
             : originalRequestBytes;
-        byteFixture.host.createItems = () => ({ execute, cancel() {} });
+        byteFixture.host.createItems = () => ({ cancel() {}, execute });
         const w = {
             __ottGlobalFavorites: byteFixture.host,
             __ottGlobalFavoritesFacade: byteFixture.host.facade,
@@ -688,9 +695,9 @@ async function main() {
     }
     function byteRequest(size) {
         const request = {
-            params: { op: "describe", runtime: "runtime-one" },
             expires_at: Date.now() / 1000 + 60,
             padding: "😀界",
+            params: { op: "describe", runtime: "runtime-one" },
         };
         request.padding += "a".repeat(
             size - Buffer.byteLength(JSON.stringify(request), "utf8")
@@ -760,11 +767,11 @@ async function main() {
         () =>
             missing.makeHost(missing.w, {
                 ...missing.hostPorts,
-                current: () => false,
                 capture() {
                     captures++;
                     throw Error("stale host captured storage");
                 },
+                current: () => false,
             }),
         (error) => error.message === "context_changed"
     );
@@ -848,8 +855,8 @@ async function main() {
             "actual capture migrates source membership"
         );
         await f.host.store.mutate(snapshot.revision, {
-            op: "remove",
             ids: [snapshot.entries[0].id],
+            op: "remove",
         });
         assert.equal((await f.host.store.snapshot()).entries.length, 0);
         f.journal(99, "Renamed label");
@@ -872,17 +879,17 @@ async function main() {
     let state = {
         generation: 1,
         phase: "playing",
-        target: { kind: "live", sourceId: "m3u:source", channelId: 7 },
+        target: { channelId: 7, kind: "live", sourceId: "m3u:source" },
     };
     w._playSession = 11;
-    w.__ottClassicPlayback = { snapshot: () => state, checkpoint() {} };
+    w.__ottClassicPlayback = { checkpoint() {}, snapshot: () => state };
     w.__ottChannels = { index: () => 0 };
     w.catsArray = ["all"];
     w.cats = { all: [7, 8] };
     w.channels[8] = {
-        itemId: "other",
         __ottFavoriteTvgId: "Other",
         channel_name: "Other",
+        itemId: "other",
     };
     w.cList.push(8);
     w.playChannel = (group, index, _force, current) => {
@@ -892,38 +899,38 @@ async function main() {
             generation: state.generation + 1,
             phase: "playing",
             target: {
+                channelId: w.cats[w.catsArray[group]][index],
                 kind: "live",
                 sourceId: "m3u:source",
-                channelId: w.cats[w.catsArray[group]][index],
             },
         };
         return true;
     };
     const imported = {
-        title: "Imported News",
+        locator: { channelId: "m3u-epg:News", kind: "channel" },
         origin: {
-            provider: "m3u",
             profile: "Imported Profile Alias",
-            subprofile: null,
+            provider: "m3u",
             sourceAlias: "Imported Source Alias",
+            subprofile: null,
         },
-        locator: { kind: "channel", channelId: "m3u-epg:News" },
+        title: "Imported News",
     };
     const other = {
-        title: "Unrelated row",
+        locator: { channelId: "m3u-epg:Other", kind: "channel" },
         origin: {
-            provider: "m3u",
             profile: "Another profile",
-            subprofile: null,
+            provider: "m3u",
             sourceAlias: "Another source",
+            subprofile: null,
         },
-        locator: { kind: "channel", channelId: "m3u-epg:Other" },
+        title: "Unrelated row",
     };
     await f.host.committer.qualify();
     let before = await f.host.store.snapshot();
     await f.host.store.mutate(before.revision, {
-        op: "put",
         entries: [imported, other],
+        op: "put",
     });
     await f.host.pair(imported.origin, 0, undefined, () => true);
     const entries = (await f.host.store.snapshot()).entries,
@@ -981,7 +988,7 @@ async function main() {
     state = {
         generation: state.generation + 1,
         phase: "playing",
-        target: { kind: "live", sourceId: "m3u:source", channelId: 8 },
+        target: { channelId: 8, kind: "live", sourceId: "m3u:source" },
     };
     assert.equal(
         f.host.router.captureCurrent(),
@@ -1005,10 +1012,10 @@ async function main() {
     let gs = {
         generation: 1,
         phase: "playing",
-        target: { kind: "live", sourceId: "m3u:source", channelId: 7 },
+        target: { channelId: 7, kind: "live", sourceId: "m3u:source" },
     };
     gw._playSession = 1;
-    gw.__ottClassicPlayback = { snapshot: () => gs, checkpoint() {} };
+    gw.__ottClassicPlayback = { checkpoint() {}, snapshot: () => gs };
     gw.__ottChannels = { index: () => 0 };
     gw.catsArray = ["all"];
     gw.cats = { all: [7] };
@@ -1018,26 +1025,26 @@ async function main() {
         gs = {
             generation: gs.generation + 1,
             phase: "playing",
-            target: { kind: "live", sourceId: "m3u:source", channelId: 7 },
+            target: { channelId: 7, kind: "live", sourceId: "m3u:source" },
         };
         return true;
     };
     await g.host.committer.qualify();
     let gb = await g.host.store.snapshot();
     await g.host.store.mutate(gb.revision, {
-        op: "put",
         entries: [
             {
-                title: "Automatic mapping",
+                locator: { channelId: "m3u-epg:News", kind: "channel" },
                 origin: {
-                    provider: "m3u",
                     profile: "Profile",
+                    provider: "m3u",
                     sourceAlias: "Profile",
                     subprofile: null,
                 },
-                locator: { kind: "channel", channelId: "m3u-epg:News" },
+                title: "Automatic mapping",
             },
         ],
+        op: "put",
     });
     const gid = (await g.host.store.snapshot()).entries[0].id;
     assert.equal((await g.host.router.select(gid).result).status, "ok");

@@ -29,17 +29,17 @@ export function createGlobalFavoritesView(ports: any): any {
         var rows = snapshot.entries
             .map(function (entry: any) {
                 return {
+                    detail: ports.describe(entry.origin),
                     id: entry.id,
                     label: entry.title,
-                    detail: ports.describe(entry.origin),
                 };
             })
             .concat(
                 (snapshot.unresolvedLegacy || []).map(function (entry: any) {
                     return {
+                        detail: ports.translate("Unavailable"),
                         id: entry.id,
                         label: entry.title,
-                        detail: ports.translate("Unavailable"),
                         unresolved: true,
                     };
                 })
@@ -47,9 +47,9 @@ export function createGlobalFavoritesView(ports: any): any {
         (ports.pendingMigration ? ports.pendingMigration() : []).forEach(
             function (row: any) {
                 rows.push({
+                    detail: ports.translate("Unavailable"),
                     id: "pending-migration-" + rows.length,
                     label: row.title,
-                    detail: ports.translate("Unavailable"),
                     pending: true,
                 });
             }
@@ -109,88 +109,88 @@ export function createGlobalFavoritesView(ports: any): any {
                 });
             return true;
         };
-        screen = ports.show({
-            id: "system:global-favorites",
-            title: ports.translate("Favorites"),
-            rows: rows,
-            remove: function (): boolean {
-                return (
-                    generation === owner && shown && !!favorite && favorite()
-                );
-            },
-            selected: ports.navigation.currentId(snapshot.entries),
-            playing: function (id: string) {
-                return ports.navigation.isPlaying(id, snapshot.entries);
-            },
-            select: function (id: string): void {
-                if (
-                    !shown ||
-                    generation !== owner ||
-                    !ports.current() ||
-                    !screen()
-                )
-                    return;
-                if (!snapshot.current()) {
-                    open();
-                    return;
-                }
-                if (/^pending-migration-/.test(id)) {
-                    ports.error("unavailable");
-                    return;
-                }
-                var chosen = rows.filter(function (row: any) {
-                    return row.id === id;
-                });
-                if (chosen.length !== 1) return;
-                if (route) route.cancel();
-                if (chosen[0].unresolved) {
-                    if (!ports.playLegacy) {
-                        ports.error("mapping_required");
+        screen = ports.show(
+            /* biome-ignore assist/source/useSortedKeys: Preserve translation and navigation ownership callback evaluation order. */ {
+                id: "system:global-favorites",
+                title: ports.translate("Favorites"),
+                rows: rows,
+                remove: function (): boolean {
+                    return (
+                        generation === owner &&
+                        shown &&
+                        !!favorite &&
+                        favorite()
+                    );
+                },
+                selected: ports.navigation.currentId(snapshot.entries),
+                playing: function (id: string) {
+                    return ports.navigation.isPlaying(id, snapshot.entries);
+                },
+                select: function (id: string): void {
+                    if (
+                        !shown ||
+                        generation !== owner ||
+                        !ports.current() ||
+                        !screen()
+                    )
+                        return;
+                    if (!snapshot.current()) {
+                        open();
                         return;
                     }
-                    route = ports.playLegacy(id);
-                } else route = ports.router.select(id);
-                route.result.then(
-                    function (result: any) {
-                        if (
-                            !shown ||
-                            generation !== owner ||
-                            !ports.current() ||
-                            !screen()
-                        )
-                            return;
-                        if (result.status === "ok") {
-                            void open();
+                    if (/^pending-migration-/.test(id)) {
+                        ports.error("unavailable");
+                        return;
+                    }
+                    var chosen = rows.filter(function (row: any) {
+                        return row.id === id;
+                    });
+                    if (chosen.length !== 1) return;
+                    if (route) route.cancel();
+                    if (chosen[0].unresolved) {
+                        if (!ports.playLegacy) {
+                            ports.error("mapping_required");
                             return;
                         }
-                        if (
-                            result.status !== "ok" &&
-                            result.status !== "cancelled"
-                        )
-                            ports.error(result.status, id);
-                    },
-                    function () {
-                        if (
-                            shown &&
-                            generation === owner &&
-                            ports.current() &&
-                            screen()
-                        )
-                            ports.error("unavailable", id);
-                    }
-                );
-            },
-            close: function () {
-                if (generation === owner) close();
-            },
-        });
+                        route = ports.playLegacy(id);
+                    } else route = ports.router.select(id);
+                    route.result.then(
+                        function (result: any) {
+                            if (
+                                !shown ||
+                                generation !== owner ||
+                                !ports.current() ||
+                                !screen()
+                            )
+                                return;
+                            if (result.status === "ok") {
+                                void open();
+                                return;
+                            }
+                            if (
+                                result.status !== "ok" &&
+                                result.status !== "cancelled"
+                            )
+                                ports.error(result.status, id);
+                        },
+                        function () {
+                            if (
+                                shown &&
+                                generation === owner &&
+                                ports.current() &&
+                                screen()
+                            )
+                                ports.error("unavailable", id);
+                        }
+                    );
+                },
+                close: function () {
+                    if (generation === owner) close();
+                },
+            }
+        );
     }
     return {
-        open: open,
-        close: close,
-        favoriteSelected: function () {
-            return !!favorite && favorite();
-        },
         category: function () {
             return {
                 id: "system:global-favorites",
@@ -198,5 +198,10 @@ export function createGlobalFavoritesView(ports: any): any {
                 open: open,
             };
         },
+        close: close,
+        favoriteSelected: function () {
+            return !!favorite && favorite();
+        },
+        open: open,
     };
 }

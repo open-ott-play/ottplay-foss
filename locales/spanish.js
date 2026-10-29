@@ -177,6 +177,7 @@ var keyStrings = {
         "Comprobando la conexión del servidor Plex…",
     "Choose a folder in the browser window":
         "Elige una carpeta en la ventana del navegador",
+    "Choose a profile": "Elegir perfil",
     "Choose files in the browser window":
         "Elige archivos en la ventana del navegador",
     "Choose from": "Elegir entre",
@@ -1126,6 +1127,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ajustes de ULTIFL1X",
     "Unable to load playlist": "No se pudo cargar la lista de reproducción",
+    Unavailable: "No disponible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquea los ajustes del reproductor antes de cambiar su lista de reproducción.",
     Untitled: "Sin título",

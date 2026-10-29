@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const { fixture, sourceFunctions } = require("./test_port_vod.cjs");
 const vm = require("node:vm");
@@ -18,7 +19,7 @@ function setup(provider = "plex") {
     c.__ottChannels = {
         capture: () => ({
             active: () => c.__ottActiveProviderDriver.id === provider,
-            category: () => 0,
+            category: () => c.catsArray.indexOf("All"),
             members: () => c.cats.All.slice(),
         }),
         group: () => "system:all",
@@ -283,11 +284,12 @@ for (const provider of ["plex", "vportal"]) {
     assert.equal(c.playType, -99999999999);
     assert.equal(c.__ottMedia.kioskSelection(), null);
     vm.runInContext(
-        sourceFunctions("src/key-handler/index.ts", [
-            "handleMainKey",
-            "keyFun",
-            "toggleMainPlayback",
-        ]),
+        numericKeyState() +
+            sourceFunctions("src/key-handler/index.ts", [
+                "handleMainKey",
+                "keyFun",
+                "toggleMainPlayback",
+            ]),
         c
     );
     const seeks = [];
@@ -470,9 +472,32 @@ console.log(
 }
 
 {
-    const { c, resolve } = setup();
+    const { c, resolve, pending } = setup();
     c.parentalArray = [];
     const priorIndex = c.primaryIndex;
+    const parental = c.__ottParental;
+    assert.equal(typeof parental.needs, "function");
+    assert.equal(parental.needs("channels"), true);
+    c.__ottParental = undefined;
+    assert.equal(c.__ottParental, undefined);
+    assert.equal(
+        c._playChannel(0, 1, true, () => c.primaryIndex === priorIndex),
+        false,
+        "missing parental runtime must reject relative admission"
+    );
+    assert.equal(pending.length, 0);
+    assert.equal(c.primaryIndex, priorIndex);
+    c.__ottParental = parental;
+    assert.equal(c.__ottParental, parental);
+    assert.equal(c.__ottParental.needs("channels"), true);
+    c.parentalArray = [102];
+    assert.equal(
+        c._playChannel(0, 1, true, () => c.primaryIndex === priorIndex),
+        false,
+        "relative admission cannot leave a protected-channel PIN continuation"
+    );
+    assert.equal(pending.length, 0);
+    c.parentalArray = [];
     assert.equal(
         c._playChannel(0, 1, true, () => c.primaryIndex === priorIndex),
         true
@@ -486,6 +511,386 @@ console.log(
     console.log(
         "PASS relative channel admission is not reused after selection commits"
     );
+}
+
+{
+    const { c, resolve } = setup();
+    for (const file of [
+        "src/provider/source-identity.ts",
+        "src/access/session.ts",
+        "src/access/classic-adapter.ts",
+    ])
+        require("./helpers/private-runtime.cjs")(c, file);
+    c.parentalArray = [];
+    const prior = c.primaryIndex;
+    assert.equal(
+        c._playChannel(0, 1, true, () => c.primaryIndex === prior),
+        true
+    );
+    // The actual library resolves captured categories by identity, not index.
+    // Its adapter may observe the same chosen ID at a different cursor.
+    const members = c.cats.All;
+    members.splice(0, members.length, 102, 101, 103);
+    c.cats.Other = [];
+    c.catsArray = ["Other", "All"];
+    c.curList = members;
+    c.catIndex = 1;
+    c.primaryIndex = 0;
+    resolve();
+    assert.equal(c.__ottMedia.current().payload.id, 102);
+    assert.equal(c.catIndex, 1);
+    assert.equal(c.primaryIndex, 0);
+}
+
+// Real controller tickets and backend stop emission protect owned teardown.
+// An older core keeps its ordinary Stop behavior but cannot authorize a new proof.
+{
+    const { c, pending } = setup();
+    for (const file of [
+        "src/provider/source-identity.ts",
+        "src/access/session.ts",
+        "src/access/classic-adapter.ts",
+    ])
+        require("./helpers/private-runtime.cjs")(c, file);
+    c.parentalArray = [];
+    c.settings.stopPlay = 1;
+    assert.equal(
+        c.settings.stopPlay,
+        1,
+        "actual settings facade enables Stop before selection"
+    );
+    let stops = 0;
+    c.stbStop = () => {
+        stops++;
+    };
+    assert.equal(
+        c._playChannel(
+            0,
+            1,
+            true,
+            () => true,
+            undefined,
+            false,
+            false,
+            undefined,
+            () => true
+        ),
+        false
+    );
+    assert.equal(stops, 1);
+    assert.equal(pending.length, 0);
+}
+
+for (const change of [
+    "none",
+    "nested-stop",
+    "replace",
+    "cancel",
+    "throw",
+    "archive-cancel",
+    "retire-cancel",
+    "auto-cancel",
+]) {
+    const { c, pending, resolve } = setup();
+    for (const file of [
+        "src/provider/source-identity.ts",
+        "src/access/session.ts",
+        "src/access/classic-adapter.ts",
+        "src/device/media-backend.ts",
+    ])
+        require("./helpers/private-runtime.cjs")(c, file);
+    c.parentalArray = [];
+    c._playChannel(0, 0);
+    resolve();
+    let onDispose = null;
+    let emittedTicket = null;
+    let engineEvent;
+    const backend = c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => {
+            const state = c.__ottClassicPlayback.snapshot();
+            return state.target
+                ? { ...state.target, generation: state.generation }
+                : null;
+        },
+        emit(context, type, position, duration, sourceStop) {
+            if (sourceStop) emittedTicket = sourceStop;
+            c.__ottClassicPlayback.command({
+                duration,
+                generation: context.generation,
+                position,
+                sourceStop,
+                type,
+            });
+        },
+        open(_request, event) {
+            engineEvent = event;
+            return {
+                dispose() {
+                    if (onDispose) {
+                        const hook = onDispose;
+                        onDispose = null;
+                        hook();
+                    }
+                },
+                pause() {},
+                resume() {},
+                sample: () => ({
+                    duration: 100,
+                    paused: false,
+                    position: 0,
+                    ready: 3,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: () => 1,
+    });
+    c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", [
+            "stbStop",
+            "stopCorePlayback",
+            "stopCoreForSelection",
+        ]),
+        c
+    );
+    c.__ottCoreTransport = { stopForSelection: c.stopCoreForSelection };
+    backend.open({ url: "fixture-old" });
+    engineEvent("playing");
+    c.settings.stopPlay = 1;
+    assert.equal(
+        c.settings.stopPlay,
+        1,
+        "actual settings facade enables Stop before selection"
+    );
+    if (change === "archive-cancel")
+        c.__ottClassicArchive = {
+            cancel() {
+                c.__ottClassicArchive = null;
+                c.__ottClassicPlayback.cancel();
+            },
+        };
+    if (change === "retire-cancel")
+        c.__ottGlobalFavorites = {
+            navigation: { retire: () => c.__ottClassicPlayback.cancel() },
+        };
+    if (change === "auto-cancel")
+        c.__ottMedia.cancelAuto = () => c.__ottClassicPlayback.cancel();
+    const before = c.__ottClassicPlayback.snapshot();
+    let phases = [];
+    let active = true;
+    onDispose = () => {
+        if (change === "nested-stop") c.stbStop();
+        if (change === "replace") c._playChannel(0, 2);
+        if (change === "cancel") {
+            active = false;
+            c.__ottClassicPlayback.cancel();
+        }
+        if (change === "throw") throw new Error("teardown fixture");
+    };
+    const select = () =>
+        c._playChannel(
+            0,
+            1,
+            true,
+            () =>
+                c.__ottClassicPlayback.snapshot().generation ===
+                before.generation,
+            undefined,
+            false,
+            false,
+            undefined,
+            (_owner, selected = true) => {
+                phases.push(selected);
+                return active;
+            }
+        );
+    if (change === "throw") assert.throws(select, /teardown fixture/);
+    else assert.equal(select(), change === "none");
+    if (change === "none") {
+        assert(phases.includes(false));
+        assert(phases.includes(true));
+        assert.equal(emittedTicket.used, true);
+        resolve(pending.length - 1);
+        assert.equal(c.__ottMedia.current().payload.id, 102);
+    } else assert.notEqual(c.curList[c.primaryIndex], 102);
+    if (["archive-cancel", "retire-cancel", "auto-cancel"].includes(change)) {
+        assert.equal(
+            emittedTicket,
+            null,
+            "cleanup cancellation prevents backend stop"
+        );
+        assert(
+            backend.current(),
+            "the replacement owner's backend was not stopped"
+        );
+    }
+    if (emittedTicket) {
+        c.__ottClassicPlayback.command({
+            sourceStop: emittedTicket,
+            type: "stop",
+        });
+        assert.equal(
+            emittedTicket.current(),
+            false,
+            "retired/replayed token cannot skip cancellation"
+        );
+    }
+}
+{
+    const { c } = setup();
+    require("./helpers/private-runtime.cjs")(
+        c,
+        "src/provider/source-identity.ts"
+    );
+    const backend = { current: () => null, stop() {} };
+    c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", ["stopCoreForSelection"]),
+        c
+    );
+    const proof = c.stopCoreForSelection();
+    assert.equal(
+        typeof proof,
+        "function",
+        "idle no-context stop retains bounded ownership"
+    );
+    assert.equal(proof(), true);
+    c.__ottClassicPlayback.cancel();
+    assert.equal(proof(), false);
+}
+
+// Direct VOD dispatch consumes the same owned stop proof, not a second void stop.
+for (const change of ["none", "source", "nested-stop"]) {
+    const { c, resolve } = setup();
+    c._playChannel(0, 0);
+    resolve();
+    require("./helpers/private-runtime.cjs")(c, "src/device/media-backend.ts");
+    let dispose;
+    const backend = c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => {
+            const state = c.__ottClassicPlayback.snapshot();
+            return state.target
+                ? { ...state.target, generation: state.generation }
+                : null;
+        },
+        emit(context, type, position, duration, sourceStop) {
+            c.__ottClassicPlayback.command({
+                duration,
+                generation: context.generation,
+                position,
+                sourceStop,
+                type,
+            });
+        },
+        open() {
+            return {
+                dispose() {
+                    if (dispose) {
+                        const callback = dispose;
+                        dispose = null;
+                        callback();
+                    }
+                },
+                pause() {},
+                resume() {},
+                sample: () => ({
+                    duration: 100,
+                    paused: false,
+                    position: 0,
+                    ready: 3,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: () => 1,
+    });
+    c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", [
+            "stbStop",
+            "stopCorePlayback",
+            "stopCoreForSelection",
+        ]),
+        c
+    );
+    c.__ottCoreTransport = { stopForSelection: c.stopCoreForSelection };
+    backend.open({ url: "old-direct" });
+    c.settings.stopPlay = 1;
+    assert.equal(
+        c.settings.stopPlay,
+        1,
+        "actual settings facade enables Stop before selection"
+    );
+    dispose = () => {
+        if (change === "source") c.p_pref = "replacement-source";
+        if (change === "nested-stop") c.stbStop();
+    };
+    const before = c.calls.filter(([kind]) => kind === "play").length;
+    c._playMedia({ id: "direct", stream_url: "direct.mp4", title: "Direct" });
+    assert.equal(
+        c.calls.filter(([kind]) => kind === "play").length,
+        before + (change === "none" ? 1 : 0),
+        change
+    );
+}
+
+for (const change of ["cancel", "standby", "catalog", "replacement"]) {
+    const { c, pending, resolve } = setup();
+    for (const file of [
+        "src/provider/source-identity.ts",
+        "src/access/session.ts",
+        "src/access/classic-adapter.ts",
+    ])
+        require("./helpers/private-runtime.cjs")(c, file);
+    c.parentalArray = [];
+    const prior = c.primaryIndex;
+    let active = true;
+    let loadingOwner = null;
+    assert.equal(
+        c._playChannel(
+            0,
+            1,
+            true,
+            () => c.primaryIndex === prior,
+            undefined,
+            false,
+            false,
+            undefined,
+            (owner) => {
+                if (owner) {
+                    assert.equal(
+                        owner,
+                        c.__ottClassicScreenPort.owner("dialog")
+                    );
+                    loadingOwner = owner;
+                }
+                return active;
+            }
+        ),
+        true
+    );
+    assert.equal(pending.length, 1);
+    assert(
+        loadingOwner,
+        "actual media adapter passes its owned loading dialog"
+    );
+    if (change === "cancel") active = false;
+    if (change === "standby") c.__ottStandby = { blocked: () => true };
+    if (change === "catalog") c.channels[102] = { ...c.channels[102] };
+    if (change === "replacement") c._playChannel(0, 2);
+    resolve(0);
+    assert.equal(
+        c.calls.filter(([kind]) => kind === "play").length,
+        0,
+        change + " rejects the stale finite-channel resolver"
+    );
+    if (change === "replacement") {
+        resolve(1);
+        assert.equal(c.__ottMedia.current().payload.id, 103);
+    }
 }
 
 {
@@ -960,14 +1365,54 @@ console.log("PASS Local EOF retains group identity across library edits");
     c.sStopPlay = 1;
     c.parentalArray = [];
     c.__ottParental = { needs: () => false };
+    const backend = c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => {
+            const state = c.__ottClassicPlayback.snapshot();
+            return state.target
+                ? { ...state.target, generation: state.generation }
+                : null;
+        },
+        emit(context, type, position, duration, sourceStop) {
+            c.__ottClassicPlayback.command({
+                duration,
+                generation: context.generation,
+                position,
+                sourceStop,
+                type,
+            });
+        },
+        open() {
+            return {
+                dispose() {},
+                pause() {},
+                resume() {},
+                sample: () => ({
+                    duration: 100,
+                    paused: false,
+                    position: 0,
+                    ready: 3,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: () => 1,
+    });
     let stops = 0;
-    c.stbStop = () => {
+    const stop = backend.stop;
+    backend.stop = (...args) => {
         stops++;
-        c.__ottMedia.cancelAuto();
-        c.__ottClassicPlayback.cancel();
-        c.__ottClassicPlayback.command({ type: "stop" });
+        return stop(...args);
     };
+    c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", ["stopCoreForSelection"]),
+        c
+    );
+    c.__ottCoreTransport = { stopForSelection: c.stopCoreForSelection };
+    assert.equal(c.settings.stopPlay, 1);
     c._playChannel(0, 0);
+    assert.equal(stops, 1, "manual selection performs its real owned Stop");
     const before = stops;
     end();
     assert.equal(

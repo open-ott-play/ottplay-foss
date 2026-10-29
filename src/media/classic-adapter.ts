@@ -114,11 +114,11 @@ function classicMediaCategoryMembers(ids: any[], catalog: any): any[] {
         return [];
     var state = w.__ottMediaJournal
         .create({
-            sourceId: source,
             current: current,
             read: function (key: string) {
                 return get.call(w, key);
             },
+            sourceId: source,
         })
         .peek();
     if (!state.document || !current()) return [];
@@ -1636,6 +1636,24 @@ function classicMediaRuntime(): any {
                 title: item.title,
             };
         },
+        captureGlobalFavorites: function () {
+            if (context || !current()) return null;
+            var captured = journal.captureFavorites();
+            if (!captured) return null;
+            return {
+                current: function () {
+                    return (
+                        !context &&
+                        mediaClassicInstance === api &&
+                        current() &&
+                        captured.current()
+                    );
+                },
+                favorites: captured.favorites,
+                raw: captured.raw,
+                sourceId: source,
+            };
+        },
         channelLaunch: function (payload: any) {
             return current() &&
                 pendingStart &&
@@ -1990,24 +2008,6 @@ function classicMediaRuntime(): any {
             }
             return true;
         },
-        captureGlobalFavorites: function () {
-            if (context || !current()) return null;
-            var captured = journal.captureFavorites();
-            if (!captured) return null;
-            return {
-                sourceId: source,
-                favorites: captured.favorites,
-                raw: captured.raw,
-                current: function () {
-                    return (
-                        !context &&
-                        mediaClassicInstance === api &&
-                        current() &&
-                        captured.current()
-                    );
-                },
-            };
-        },
         favoritesTransfer: function (expectedSource: string, readonly?: any) {
             if (
                 context ||
@@ -2176,7 +2176,7 @@ function classicMediaRuntime(): any {
         playChannel: function (
             payload: any,
             id: any,
-            guard?: () => boolean,
+            guard?: (loadingOwner?: any) => boolean,
             background = false,
             positionMode = "prompt",
             committed?: (ok: boolean) => void
@@ -2202,7 +2202,7 @@ function classicMediaRuntime(): any {
                     list.active() &&
                     (!loading || !loading.cancelled) &&
                     automaticGeneration === revision &&
-                    (!guard || guard()) &&
+                    (!guard || guard(loading && loading.owner)) &&
                     (state.generation === generation ||
                         (loading &&
                             state.generation === loading.endedGeneration)) &&
@@ -3057,6 +3057,11 @@ function classicMediaRuntime(): any {
             ? playing.runtime.captureFavorite()
             : null;
     },
+    captureGlobalFavorites: function () {
+        return mediaClassicInstance
+            ? mediaClassicInstance.captureGlobalFavorites()
+            : null;
+    },
     categoryMembers: classicMediaCategoryMembers,
     channelLaunch: function (payload: any) {
         return classicMediaRuntime().channelLaunch(payload);
@@ -3092,11 +3097,6 @@ function classicMediaRuntime(): any {
     },
     favorite: function (item: any) {
         classicMediaRuntime().favorite(item);
-    },
-    captureGlobalFavorites: function () {
-        return mediaClassicInstance
-            ? mediaClassicInstance.captureGlobalFavorites()
-            : null;
     },
     favoritesTransfer: function (source: string, readonly?: any) {
         if (mediaClassicInstance)
@@ -3230,7 +3230,7 @@ function classicMediaRuntime(): any {
     playChannel: function (
         payload: any,
         id: any,
-        guard?: () => boolean,
+        guard?: (loadingOwner?: any) => boolean,
         background = false,
         positionMode = "prompt",
         committed?: (ok: boolean) => void

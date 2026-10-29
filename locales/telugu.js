@@ -162,6 +162,7 @@ var keyStrings = {
     "Checking folder permission": "ఫోల్డర్ అనుమతి తనిఖీ చేయబడుతోంది",
     "Checking the Plex server connection…": "Plex సర్వర్ కనెక్షన్‌ని తనిఖీ చేస్తోంది…",
     "Choose a folder in the browser window": "బ్రౌజర్ విండోలో ఒక ఫోల్డర్‌ను ఎంచుకోండి",
+    "Choose a profile": "ప్రొఫైల్‌ను ఎంచుకోండి",
     "Choose files in the browser window": "బ్రౌజర్ విండోలో ఫైల్‌లను ఎంచుకోండి",
     "Choose from": "నుండి ఎంచుకోండి",
     "Choose language": "భాషను ఎంచుకోండి",
@@ -1069,6 +1070,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X సెట్టింగ్‌లు",
     "Unable to load playlist": "ప్లేజాబితాను లోడ్ చేయడం సాధ్యపడలేదు",
+    Unavailable: "అందుబాటులో లేదు",
     "Unlock the player's settings before changing its playlist.":
         "ప్లేజాబితాను మార్చే ముందు ప్లేయర్ సెట్టింగ్‌ల లాక్‌ను తీసివేయండి.",
     Untitled: "శీర్షిక లేదు",

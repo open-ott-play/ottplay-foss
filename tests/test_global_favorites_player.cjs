@@ -18,7 +18,15 @@ function moduleAt(file, deps, window) {
             },
         }).outputText,
         {
+            Array,
+            Error,
             exports,
+            isFinite,
+            JSON,
+            Math,
+            Number,
+            Object,
+            Promise,
             require: (name) => {
                 if (name === "./global-favorites-providers")
                     return moduleAt(
@@ -29,16 +37,8 @@ function moduleAt(file, deps, window) {
                 if (!deps[name]) throw new Error(name);
                 return deps[name];
             },
-            window,
-            Promise,
-            Object,
-            Array,
-            JSON,
-            Math,
-            Number,
             String,
-            Error,
-            isFinite,
+            window,
         }
     );
     return exports;
@@ -50,8 +50,8 @@ function setup() {
         m3um3uArr: JSON.stringify({
             active: 0,
             M3Us: [
-                { name: "One", www: "https://one.test/list", rechours: 0 },
-                { name: "Two", www: "https://two.test/list", rechours: 0 },
+                { name: "One", rechours: 0, www: "https://one.test/list" },
+                { name: "Two", rechours: 0, www: "https://two.test/list" },
             ],
         }),
     });
@@ -94,9 +94,9 @@ function setup() {
         w
     ).createGlobalFavoritesPlayer(w, {
         ...createMainPorts(w),
+        bindings: { list: () => ({ entries: [] }) },
         current: () => true,
         sha256: async (text) => createHash("sha256").update(text).digest("hex"),
-        bindings: { list: () => ({ entries: [] }) },
     });
     const loadedSource = ts.createSourceFile(
         "channels.ts",
@@ -115,12 +115,12 @@ function setup() {
     w.loadFavoritesLists = () => {};
     w.__ottClassicPlayback = { hydrate() {} };
     w.__ottMedia = {
-        useSource() {},
-        sourceId: () => "source",
         restoreLast: () => {
             restores++;
             return false;
         },
+        sourceId: () => "source",
+        useSource() {},
     };
     w.popMedia = () => opens++;
     w.restoreContinueWatch = () => {
@@ -148,21 +148,21 @@ function setup() {
         return true;
     };
     return {
-        f,
-        w,
         driver,
-        player,
-        timers,
-        played,
+        f,
         get mounts() {
             return mounts;
-        },
-        get restores() {
-            return restores;
         },
         get opens() {
             return opens;
         },
+        played,
+        player,
+        get restores() {
+            return restores;
+        },
+        timers,
+        w,
     };
 }
 async function flush() {
@@ -171,15 +171,15 @@ async function flush() {
 async function main() {
     const s = setup(),
         origin = {
-            provider: "m3u",
             profile: "Two",
-            subprofile: null,
+            provider: "m3u",
             sourceAlias: "Two",
+            subprofile: null,
         };
     const target = await s.player.choiceTarget(origin, {
+        alias: "Two",
         label: "Two",
         profile: "Two",
-        alias: "Two",
         provider: "m3u",
         slot: 1,
     });
@@ -207,7 +207,7 @@ async function main() {
     await flush();
     const session = await pending,
         resolved = await session.resolve(
-            { kind: "channel", channelId: "m3u-epg:Second.ID" },
+            { channelId: "m3u-epg:Second.ID", kind: "channel" },
             () => true
         );
     assert(resolved && resolved.available);
@@ -225,9 +225,9 @@ async function main() {
     assert.equal(names.length, 2);
     assert.equal(
         await s.player.choiceTarget(origin, {
+            alias: "Two",
             label: "wrong",
             profile: "Two",
-            alias: "Two",
             provider: "m3u",
             slot: 1,
         }),
@@ -250,9 +250,9 @@ async function main() {
     const late = setup();
     let admission = true;
     const lateTarget = await late.player.choiceTarget(origin, {
+        alias: "Two",
         label: "Two",
         profile: "Two",
-        alias: "Two",
         provider: "m3u",
         slot: 1,
     });
@@ -295,22 +295,22 @@ async function main() {
     );
     const map = new Map(),
         before = JSON.stringify({
-            version: 1,
             active: 0,
             profiles: Array.from({ length: 15 }, (_, i) =>
                 i < 2
                     ? {
-                          version: 1,
-                          provider: "offline",
                           binding_id:
                               "00000000-0000-4000-8000-" +
                               String(i + 1).padStart(12, "0"),
                           name: "Local" + i,
-                          sources: [],
+                          provider: "offline",
                           selected: null,
+                          sources: [],
+                          version: 1,
                       }
                     : null
             ),
+            version: 1,
         });
     map.set("offlineProfiles", before);
     let writes = 0,
@@ -320,16 +320,16 @@ async function main() {
         __ottActiveProviderDriver: { id: "offline" },
         __ottKiosk: { enabled: () => false },
         __ottParental: { needs: () => false },
+        loadChannels: () => reloads++,
+        stbDelItem: (key) => {
+            writes++;
+            map.delete(key);
+        },
         stbGetItem: (key) => map.get(key) || null,
         stbSetItem: (key, value) => {
             writes++;
             map.set(key, value);
         },
-        stbDelItem: (key) => {
-            writes++;
-            map.delete(key);
-        },
-        loadChannels: () => reloads++,
     };
     const settings = moduleAt("src/settings/store.ts", {}, local);
     const install = moduleAt(

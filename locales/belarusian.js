@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Праверка злучэння з серверам Plex…",
     "Choose a folder in the browser window": "Выберыце папку ў акне браўзера",
+    "Choose a profile": "Выберыце профіль",
     "Choose files in the browser window": "Выберыце файлы ў акне браўзера",
     "Choose from": "Выбраць з",
     "Choose language": "Выберыце мову",
@@ -1099,6 +1100,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Налады ULTIFL1X",
     "Unable to load playlist": "Не ўдалося загрузіць спіс прайгравання",
+    Unavailable: "Недаступна",
     "Unlock the player's settings before changing its playlist.":
         "Разблакуйце налады плэера перад зменай плэйліста.",
     Untitled: "Без назвы",

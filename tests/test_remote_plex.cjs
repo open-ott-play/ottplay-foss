@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -352,10 +353,11 @@ test("Fullscreen arrows follow the playing Plex source without changing the sele
         h.c.__ottActiveProviderDriver = { id: provider };
         const selected = h.c.__ottActiveProviderDriver;
         vm.runInContext(
-            sourceFunctions("src/key-handler/index.ts", [
-                "handleMainKey",
-                "keyFun",
-            ]),
+            numericKeyState() +
+                sourceFunctions("src/key-handler/index.ts", [
+                    "handleMainKey",
+                    "keyFun",
+                ]),
             h.c
         );
         h.c.settings.auFun = 19;

@@ -24,13 +24,13 @@ function load(name) {
     ).outputText;
     vm.runInNewContext(code, {
         exports,
-        Uint8Array,
         require: (p) =>
             load(
                 path.posix.normalize(
                     path.posix.join(path.posix.dirname(name), p + ".ts")
                 )
             ),
+        Uint8Array,
     });
     return exports;
 }
@@ -49,22 +49,6 @@ function fixture() {
         committer = null;
     const hooks = {};
     const grant = {
-        origin: "https://fixture.invalid",
-        privateLedgerKey: "favorites-receipts.v1",
-        lockName: "ottplay:favorites-ledger",
-        implementationVersion: 1,
-        kind: "synchronous-localstorage",
-        current: () => active,
-        read: (key) => (data.has(key) ? data.get(key) : null),
-        async exclusive(work) {
-            if (held) throw Error("busy");
-            held = true;
-            try {
-                return await work(grant);
-            } finally {
-                held = false;
-            }
-        },
         compareAndSwap(key, before, after, admission) {
             if (
                 !held ||
@@ -85,6 +69,22 @@ function fixture() {
             if (hooks.after) hooks.after(key);
             return hooks.unknown === key ? "unknown" : "confirmed";
         },
+        current: () => active,
+        async exclusive(work) {
+            if (held) throw Error("busy");
+            held = true;
+            try {
+                return await work(grant);
+            } finally {
+                held = false;
+            }
+        },
+        implementationVersion: 1,
+        kind: "synchronous-localstorage",
+        lockName: "ottplay:favorites-ledger",
+        origin: "https://fixture.invalid",
+        privateLedgerKey: "favorites-receipts.v1",
+        read: (key) => (data.has(key) ? data.get(key) : null),
     };
     const codec = load(
         "src/settings/global-favorites-portable.ts"
@@ -92,59 +92,59 @@ function fixture() {
     const store = load(
         "src/settings/global-favorites.ts"
     ).createGlobalFavoritesStore({
+        canWrite: () => !!committer && committer.canWrite(),
         capture: () => grant,
+        codec,
         current: () => active,
         migrationCurrent: () => true,
-        canWrite: () => !!committer && committer.canWrite(),
         sha256: async (x) => hash(x),
         uuid: () =>
             `00000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
-        codec,
     });
     const context = hash("context");
     committer = load(
         "src/settings/global-favorites-receipts.ts"
     ).createGlobalFavoritesCommitter({
-        store,
-        codec,
+        authorizedOperation: async (id) =>
+            authorized.has(id) || hooks.statusAllowed === true,
         capture: () => grant,
-        current: () => active,
-        sha256: async (x) => hash(x),
-        contextRevision: async () => context,
         captureContext: async () => ({
-            revision: context,
             current: () => active,
+            revision: context,
         }),
-        now: () => 1000000,
+        codec,
+        contextRevision: async () => context,
+        current: () => active,
         freshAdmission: async (id, hash) =>
             authorized.has(id) ||
             !!(hooks.authority && hooks.authority(id, hash)),
-        authorizedOperation: async (id) =>
-            authorized.has(id) || hooks.statusAllowed === true,
+        now: () => 1000000,
+        sha256: async (x) => hash(x),
+        store,
     });
     return {
-        data,
-        events,
-        hooks,
-        grant,
+        authorize: (id) => authorized.add(id),
         codec,
-        store,
         committer,
         context,
-        authorize: (id) => authorized.add(id),
+        data,
         deactivate: () => {
             active = false;
         },
+        events,
+        grant,
+        hooks,
+        store,
     };
 }
 const row = (title = "Film") => ({
-    title,
+    locator: { channelId: "001", kind: "channel" },
     origin: {
-        provider: "m3u",
         profile: "TV",
-        subprofile: null,
+        provider: "m3u",
         sourceAlias: "TV",
+        subprofile: null,
     },
-    locator: { kind: "channel", channelId: "001" },
+    title,
 });
-module.exports = { load, hash, fixture, row };
+module.exports = { fixture, hash, load, row };

@@ -1,21 +1,21 @@
-import { caselessKey } from "../utils/caseless";
 import {
     isProviderAllowed,
     providerIds,
     selectProviderByIndex,
 } from "../provider";
-import {
-    selectGlobalMediaProfile,
-    handleRemoteProfiles,
-} from "./remote-profiles";
-import { metadataText } from "../utils/helpers";
 import { captureFavoritesPhysicalStorage } from "../storage/index";
-import { loadRemoteFeature } from "./remote-feature";
-import { remotePlayerInfo, remoteCheckpoint } from "./remote-restart";
+import { caselessKey } from "../utils/caseless";
+import { metadataText } from "../utils/helpers";
 import {
     captureLegacyCurrentFavorite,
     executeLegacyFavoriteTarget,
 } from "./remote-favorites";
+import { loadRemoteFeature } from "./remote-feature";
+import {
+    handleRemoteProfiles,
+    selectGlobalMediaProfile,
+} from "./remote-profiles";
+import { remoteCheckpoint, remotePlayerInfo } from "./remote-restart";
 
 var globalFavoriteIntent = 0;
 /** Called only after the fixed optional bundle exists; constructing this facade writes nothing. */
@@ -45,6 +45,14 @@ export function initializeGlobalFavorites(): any {
         );
     }
     var ports: any = {
+        capture: captureFavoritesPhysicalStorage,
+        captureLegacy: function () {
+            return Promise.resolve(captureLegacyCurrentFavorite(w));
+        },
+        caselessKey: caselessKey,
+        current: function () {
+            return runtime === remotePlayerInfo(w).runtime;
+        },
         favoriteRemoved: function (title: string) {
             if (runtime === remotePlayerInfo(w).runtime)
                 w.showShift(w._("Favorites") + ": − " + metadataText(title));
@@ -58,23 +66,9 @@ export function initializeGlobalFavorites(): any {
                         metadataText(title)
                 );
         },
-        selectMediaProfile: selectGlobalMediaProfile,
-        caselessKey: caselessKey,
-        remoteCheckpoint: remoteCheckpoint,
         handleRemoteProfiles: handleRemoteProfiles,
         isProviderAllowed: isProviderAllowed,
-        providerIds: function () {
-            return providerIds;
-        },
-        selectProviderByIndex: selectProviderByIndex,
-        capture: captureFavoritesPhysicalStorage,
-        current: function () {
-            return runtime === remotePlayerInfo(w).runtime;
-        },
         now: Date.now,
-        captureLegacy: function () {
-            return Promise.resolve(captureLegacyCurrentFavorite(w));
-        },
         playLegacy: function (entry: any, admission: () => boolean) {
             var cancel: any;
             var result = new Promise(function (done, reject) {
@@ -87,19 +81,42 @@ export function initializeGlobalFavorites(): any {
                     runtime,
                     {
                         action: "favorites",
-                        params: { op: "play", runtime: runtime, id: entry.id },
                         expires_at: (Date.now() + 30000) / 1000,
+                        params: { id: entry.id, op: "play", runtime: runtime },
                     },
                     done,
                     entry
                 );
             });
             return {
-                result: result,
                 cancel: function () {
                     if (cancel) cancel();
                 },
+                result: result,
             };
+        },
+        providerIds: function () {
+            return providerIds;
+        },
+        remoteCheckpoint: remoteCheckpoint,
+        selectMediaProfile: selectGlobalMediaProfile,
+        selectProviderByIndex: selectProviderByIndex,
+        sha256: async function (text: string | Uint8Array) {
+            var bytes: Uint8Array;
+            if (typeof text === "string") {
+                var encoded = unescape(encodeURIComponent(text));
+                bytes = new Uint8Array(encoded.length);
+                for (var i = 0; i < encoded.length; i++)
+                    bytes[i] = encoded.charCodeAt(i);
+            } else bytes = text;
+            var digest = new Uint8Array(
+                await w.crypto.subtle.digest("SHA-256", bytes)
+            );
+            return Array.prototype.map
+                .call(digest, function (value: number) {
+                    return ("0" + value.toString(16)).slice(-2);
+                })
+                .join("");
         },
         uuid: function () {
             if (!w.crypto?.getRandomValues) throw new Error("Unavailable");
@@ -123,23 +140,6 @@ export function initializeGlobalFavorites(): any {
                 "-" +
                 hex.slice(20)
             );
-        },
-        sha256: async function (text: string | Uint8Array) {
-            var bytes: Uint8Array;
-            if (typeof text === "string") {
-                var encoded = unescape(encodeURIComponent(text));
-                bytes = new Uint8Array(encoded.length);
-                for (var i = 0; i < encoded.length; i++)
-                    bytes[i] = encoded.charCodeAt(i);
-            } else bytes = text;
-            var digest = new Uint8Array(
-                await w.crypto.subtle.digest("SHA-256", bytes)
-            );
-            return Array.prototype.map
-                .call(digest, function (value: number) {
-                    return ("0" + value.toString(16)).slice(-2);
-                })
-                .join("");
         },
     };
     ports.runtime = function () {
@@ -181,19 +181,6 @@ export function initializeGlobalFavorites(): any {
     w.__ottGlobalFavoritesProtocol = host.protocol;
     w.__ottGlobalFavoritesRecovery = host.recovery;
     w.__ottGlobalFavoritesPorts = {
-        runtime: function () {
-            return remotePlayerInfo(w).runtime;
-        },
-        codec: host.codec,
-        locatorKinds: [
-            "channel",
-            "channel-name",
-            "local-media",
-            "plex-media",
-            "vportal-media",
-        ],
-        uuid: ports.uuid,
-        sha256: ports.sha256,
         authorized: function (op: string) {
             return (
                 [
@@ -207,12 +194,6 @@ export function initializeGlobalFavorites(): any {
                 ].indexOf(op) >= 0 || writable()
             );
         },
-        base64Encode: function (bytes: Uint8Array) {
-            var text = "";
-            for (var i = 0; i < bytes.length; i++)
-                text += String.fromCharCode(bytes[i]);
-            return w.btoa(text);
-        },
         base64Decode: function (text: string) {
             var value = w.atob(text),
                 bytes = new Uint8Array(value.length);
@@ -220,6 +201,25 @@ export function initializeGlobalFavorites(): any {
                 bytes[i] = value.charCodeAt(i);
             return bytes;
         },
+        base64Encode: function (bytes: Uint8Array) {
+            var text = "";
+            for (var i = 0; i < bytes.length; i++)
+                text += String.fromCharCode(bytes[i]);
+            return w.btoa(text);
+        },
+        codec: host.codec,
+        locatorKinds: [
+            "channel",
+            "channel-name",
+            "local-media",
+            "plex-media",
+            "vportal-media",
+        ],
+        runtime: function () {
+            return remotePlayerInfo(w).runtime;
+        },
+        sha256: ports.sha256,
+        uuid: ports.uuid,
     };
     return host;
 }

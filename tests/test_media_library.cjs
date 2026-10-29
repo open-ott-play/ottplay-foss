@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const { fixture } = require("./test_port_vod.cjs");
 const { sourceFunctions } = require("./test_port_vod.cjs");
@@ -3395,11 +3396,12 @@ function coldFolderResumeFixture() {
 test("Full-screen Plex arrows seek horizontally and select adjacent videos vertically", () => {
     const c = coldFolderResumeFixture();
     vm.runInContext(
-        sourceFunctions("src/key-handler/index.ts", [
-            "handleMainKey",
-            "keyFun",
-            "toggleMainPlayback",
-        ]),
+        numericKeyState() +
+            sourceFunctions("src/key-handler/index.ts", [
+                "handleMainKey",
+                "keyFun",
+                "toggleMainPlayback",
+            ]),
         c
     );
     c.settings.auFun = 19;
@@ -4833,11 +4835,13 @@ test("Flat category favorites use the current source journal without writes or r
             2: { __ottMediaItem: { id: 2, title: "Two" } },
         };
         const source = c.__ottMedia.sourceId();
+        // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
         const document = {
             version: 1,
             sourceId: source,
             history: [],
             favorites: [
+                // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
                 {
                     sourceId: source,
                     itemId: "provider:1",
@@ -4865,6 +4869,7 @@ test("Flat category favorites use the current source journal without writes or r
         raw = JSON.stringify({
             ...document,
             favorites: [
+                // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
                 {
                     sourceId: source,
                     itemId: 'route:"library-route"',
@@ -4881,6 +4886,7 @@ test("Flat category favorites use the current source journal without writes or r
         raw = JSON.stringify({
             ...document,
             favorites: [
+                // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
                 {
                     sourceId: source,
                     itemId: 'catalog:["","Ambiguous",0]',
@@ -4900,8 +4906,8 @@ test("Flat category favorites use the current source journal without writes or r
         );
         raw = JSON.stringify(document);
         c.channels[1].__ottMediaItem.__ottMediaRef = {
-            sourceId: "foreign",
             itemId: "provider:1",
+            sourceId: "foreign",
         };
         assert.deepEqual(
             plain(c.__ottMedia.categoryMembers([1, 2], c.channels)),
@@ -4946,15 +4952,17 @@ test("Plex native Category exposes empty and populated current-source Favorites"
         };
         const source = "plex@category-test";
         const rows = [
-            { id: 1, title: "One", stream_url: "one.mp4" },
-            { id: 2, title: "Two", stream_url: "two.mp4" },
+            { id: 1, stream_url: "one.mp4", title: "One" },
+            { id: 2, stream_url: "two.mp4", title: "Two" },
         ];
+        // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
         const doc = {
             version: 1,
             sourceId: source,
             history: [],
             favorites: populated
                 ? [
+                      // biome-ignore assist/source/useSortedKeys: Preserve raw journal input in read-only membership tests.
                       {
                           sourceId: source,
                           itemId: "provider:1",

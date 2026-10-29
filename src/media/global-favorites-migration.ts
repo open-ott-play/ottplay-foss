@@ -56,7 +56,7 @@ export async function captureGlobalFavoriteMigration(
                 var id = refs.project(reference),
                     channel = id !== null && w.channels[id];
                 if (!channel) {
-                    pending.push({ title: name, reason: "missing" });
+                    pending.push({ reason: "missing", title: name });
                     return;
                 }
                 payloads.push(
@@ -81,8 +81,8 @@ export async function captureGlobalFavoriteMigration(
                     });
                 if (!matches || matches.length !== 1) {
                     pending.push({
-                        title: payload?.title || "Favorites",
                         reason: "missing",
+                        title: payload?.title || "Favorites",
                     });
                     return;
                 }
@@ -105,8 +105,8 @@ export async function captureGlobalFavoriteMigration(
         if (!current()) return null;
         if (!captured || !captured.current()) {
             pending.push({
-                title: payloads[i]?.title || "Favorites",
                 reason: "unresolved",
+                title: payloads[i]?.title || "Favorites",
             });
             continue;
         }
@@ -120,10 +120,10 @@ export async function captureGlobalFavoriteMigration(
     complete = true;
     return current()
         ? {
-              entries: entries,
-              pending: pending,
               current: current,
+              entries: entries,
               identity: globalFavoriteMigrationSource(w),
+              pending: pending,
           }
         : null;
 }

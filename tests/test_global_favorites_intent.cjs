@@ -50,29 +50,22 @@ function fixture() {
         },
     };
     context.__ottActiveProviderDriver = {
-        id: "offline",
         commitStartupPreview() {
             order.push("preview");
             return true;
         },
+        id: "offline",
     };
     const ports = {
         beforeIntent: context.actualIntent,
+        clearInterval() {},
         context: () => ({ generation: 1, kind: "vod", position: 0 }),
         emit() {},
-        setInterval: () => 1,
-        clearInterval() {},
         open(request, event) {
             actions.push(["open", request.position]);
             return {
-                sample: () => ({
-                    position: 0,
-                    duration: 100,
-                    paused: false,
-                    ready: 2,
-                }),
-                seek(value) {
-                    actions.push(["seek", value]);
+                dispose() {
+                    actions.push(["dispose"]);
                 },
                 pause() {
                     actions.push(["pause"]);
@@ -81,18 +74,25 @@ function fixture() {
                 resume() {
                     actions.push(["resume"]);
                 },
-                dispose() {
-                    actions.push(["dispose"]);
+                sample: () => ({
+                    duration: 100,
+                    paused: false,
+                    position: 0,
+                    ready: 2,
+                }),
+                seek(value) {
+                    actions.push(["seek", value]);
                 },
             };
         },
+        setInterval: () => 1,
     };
     const backend = context.__ottMediaBackend.create(ports);
-    return { context, backend, ports, actions, order };
+    return { actions, backend, context, order, ports };
 }
 for (const operation of ["pause", "seek"]) {
     const f = fixture(),
-        handle = f.backend.open({ url: "fixture", position: 17, paused: true });
+        handle = f.backend.open({ paused: true, position: 17, url: "fixture" });
     assert.deepEqual(
         f.order,
         [],

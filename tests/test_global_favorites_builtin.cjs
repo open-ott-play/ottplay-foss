@@ -18,22 +18,22 @@ function moduleAt(file, deps = {}, window = {}) {
             },
         }).outputText,
         {
+            Array,
+            Error,
             exports,
+            isFinite,
+            JSON,
+            Math,
+            Number,
+            Object,
+            Promise,
             require: (name) => {
                 if (!(name in deps)) throw Error(name);
                 return deps[name];
             },
-            window,
-            URL,
-            Promise,
-            Object,
-            Array,
-            JSON,
-            Math,
-            Number,
             String,
-            Error,
-            isFinite,
+            URL,
+            window,
         }
     );
     return exports;
@@ -141,9 +141,9 @@ async function main() {
         [
             "xtreamxtream_data",
             JSON.stringify({
+                password: "secret",
                 server: "https://fixture.test",
                 username: "user",
-                password: "secret",
             }),
         ],
     ]);
@@ -171,13 +171,13 @@ async function main() {
             m3um3uArr: JSON.stringify({
                 active: 0,
                 M3Us: [
-                    { name: "One", www: "https://one.test/list", rechours: 0 },
+                    { name: "One", rechours: 0, www: "https://one.test/list" },
                     {
-                        name: "Two",
-                        www: withLive ? "https://two.test/list" : "",
-                        rechours: 0,
-                        medUrl: "portal::[key:fixture]https://portal.test/api/",
                         medSourceId: "embedded",
+                        medUrl: "portal::[key:fixture]https://portal.test/api/",
+                        name: "Two",
+                        rechours: 0,
+                        www: withLive ? "https://two.test/list" : "",
                     },
                 ],
             }),
@@ -201,11 +201,11 @@ async function main() {
         w.$.ajax = (options) => {
             if (!options.success) return ajax(options);
             const row = {
-                options,
                 abort() {
                     options.error?.({}, "abort");
                     options.complete?.();
                 },
+                options,
                 receive(value) {
                     options.success(value);
                     options.complete?.();
@@ -238,24 +238,24 @@ async function main() {
             w
         ).createGlobalFavoritesPlayer(w, {
             ...createMainPorts(w),
+            bindings: { list: () => ({ entries: [] }) },
             current: () => true,
             sha256: async (text) =>
                 createHash("sha256").update(text).digest("hex"),
-            bindings: { list: () => ({ entries: [] }) },
         });
         const origin = {
-                provider: "m3u",
                 profile: "Two",
-                subprofile: null,
+                provider: "m3u",
                 sourceAlias: "Two",
+                subprofile: null,
             },
-            locator = { kind: "vportal-media", idField: "id", id: "42" };
+            locator = { id: "42", idField: "id", kind: "vportal-media" };
         const target = await player.choiceTarget(
             origin,
             {
+                alias: "Two",
                 label: "Two",
                 profile: "Two",
-                alias: "Two",
                 provider: "m3u",
                 slot: 1,
             },
@@ -284,26 +284,26 @@ async function main() {
         const selected = session.resolve(locator, () => true);
         assert.equal(requests.length, 1);
         requests[0].receive({
-            type: "category",
             items: [
                 {
+                    request: { cmd: "folder" },
                     title: "Folder",
                     type: "category",
-                    request: { cmd: "folder" },
                 },
             ],
+            type: "category",
         });
         assert.equal(requests.length, 2);
         requests[1].receive({
-            type: "category",
             items: [
                 {
                     id: 42,
+                    request: { cmd: "play", id: 42 },
                     title: "Film",
                     type: "stream",
-                    request: { cmd: "play", id: 42 },
                 },
             ],
+            type: "category",
         });
         const resolved = await selected;
         assert(resolved && resolved.available);
@@ -333,15 +333,15 @@ async function main() {
             m3um3uArr: JSON.stringify({
                 active: 0,
                 M3Us: [
-                    { name: "One", www: "https://one.test/list", rechours: 0 },
+                    { name: "One", rechours: 0, www: "https://one.test/list" },
                     {
-                        name: "Two",
-                        www: "",
-                        rechours: 0,
                         medUrl:
                             mode === "invalid"
                                 ? "portal::bad"
                                 : "portal::[key:fixture]https://portal.test/api/",
+                        name: "Two",
+                        rechours: 0,
+                        www: "",
                     },
                 ],
             }),
@@ -352,8 +352,8 @@ async function main() {
         let loads = 0;
         w.loadPlaylist = () => loads++;
         const provider = {
-            isProviderAllowed: () => true,
             checkProviderUrl: () => mode !== "platform",
+            isProviderAllowed: () => true,
         };
         const profiles = moduleAt(
             "src/commands/remote-profiles.ts",

@@ -1,17 +1,4 @@
 import {
-    executeGlobalFavoritesItems,
-    globalFavoritesItemsCapability,
-} from "./remote-favorites-global-items";
-import {
-    executeGlobalFavoritesRecovery,
-    globalFavoritesRecoveryCapability,
-} from "./remote-favorites-global-recovery";
-import {
-    executeGlobalFavorites,
-    globalFavoritesCapability,
-    legacyFavoritesCapability,
-} from "./remote-favorites-global";
-import {
     isProviderAllowed,
     providerIds,
     providerLabels,
@@ -23,6 +10,19 @@ import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
+import {
+    executeGlobalFavorites,
+    globalFavoritesCapability,
+    legacyFavoritesCapability,
+} from "./remote-favorites-global";
+import {
+    executeGlobalFavoritesItems,
+    globalFavoritesItemsCapability,
+} from "./remote-favorites-global-items";
+import {
+    executeGlobalFavoritesRecovery,
+    globalFavoritesRecoveryCapability,
+} from "./remote-favorites-global-recovery";
 import {
     executeRemoteFavoritesTransfer,
     remoteFavoritesTransferCapability,
@@ -297,7 +297,11 @@ function remoteMediaRows(
     });
     return valid && snapshot.active() ? result : null;
 }
-function remoteMediaRestricted(w: any, channels = true): boolean {
+function remoteMediaRestricted(
+    w: any,
+    channels = true,
+    loadingOwner?: any
+): boolean {
     try {
         if (
             (w.__ottKiosk && w.__ottKiosk.enabled()) ||
@@ -319,10 +323,18 @@ function remoteMediaRestricted(w: any, channels = true): boolean {
         )
             return true;
         var owner = port.screens.current();
+        var ownedLoading =
+            !!loadingOwner &&
+            owner === loadingOwner &&
+            loadingOwner.kind === "dialog" &&
+            loadingOwner.active() &&
+            loadingOwner.foreground() &&
+            typeof port.owner === "function" &&
+            port.owner("dialog") === loadingOwner;
         var list = port.listOwner && port.listOwner();
         if (
             (owner &&
-                (owner.kind !== "list" ||
+                ((owner.kind !== "list" && !ownedLoading) ||
                     (owner.model && owner.model.localOnlyInput))) ||
             (list && list.model && list.model.localOnlyInput)
         )
@@ -331,7 +343,8 @@ function remoteMediaRestricted(w: any, channels = true): boolean {
             w.$ &&
             w
                 .$(
-                    "#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust, #remoteScreenshotToggle, #dialogbox, #listAbout, #listEdit, #numprog"
+                    "#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust, #remoteScreenshotToggle, #listAbout, #listEdit, #numprog" +
+                        (ownedLoading ? "" : ", #dialogbox")
                 )
                 .is(":visible")
         )
@@ -491,10 +504,10 @@ export function executeRemoteRequest(
             ids,
             params.random,
             include,
-            function () {
+            function (loadingOwner?: any) {
                 return (
                     current() &&
-                    !remoteMediaRestricted(w, false) &&
+                    !remoteMediaRestricted(w, false, loadingOwner) &&
                     (request.expires_at === undefined ||
                         request.expires_at > Date.now() / 1000)
                 );

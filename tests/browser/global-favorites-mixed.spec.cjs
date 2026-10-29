@@ -66,7 +66,7 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
         ).toEqual(settingsBefore);
         const secondMerge = await importDocument(second, exported);
         expect(secondMerge.map((row) => row.id)).toEqual(ids);
-        async function check(index) {
+        async function check(index, observationStart = 0) {
             const provider =
                     fixture.hosts.receiver.targets[index].configured_origin
                         .provider,
@@ -87,11 +87,14 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
                     window.video.currentSrc.includes(suffix),
                 { provider, suffix }
             );
-            const state = await second.evaluate(() => ({
-                provider: window.__ottActiveProviderDriver.id,
-                observed: window.__mixedObserved,
-                src: window.video.currentSrc,
-            }));
+            const state = await second.evaluate(
+                (observationStart) => ({
+                    observed: window.__mixedObserved.slice(observationStart),
+                    provider: window.__ottActiveProviderDriver.id,
+                    src: window.video.currentSrc,
+                }),
+                observationStart
+            );
             expect(state.provider).toBe(
                 provider === "local" ? "offline" : provider
             );
@@ -108,7 +111,62 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
                     (await window.__ottGlobalFavorites.currentItem()).entry
             );
             expect(current).toEqual(rows[index].entry);
-            await openFavorites(second, ids, ids[index]);
+            const previousScreen = await second.evaluate((ids) => {
+                const owner = window.__ottClassicScreenPort.screens.current(),
+                    list = document.getElementById("list");
+                const globalList =
+                    !!owner &&
+                    owner.kind === "list" &&
+                    owner.active() &&
+                    owner.foreground() &&
+                    window.isListVisible === true &&
+                    !!list &&
+                    list.getClientRects().length > 0 &&
+                    owner.model.items === window.listArray &&
+                    owner.model.handler === window.listKeyHandlerFn &&
+                    JSON.stringify(window.listArray) === JSON.stringify(ids);
+                return {
+                    globalList,
+                    id: owner ? owner.id : null,
+                    otherOwner: !!owner && !globalList,
+                };
+            }, ids);
+            // Escape only an actual global list. Fullscreen Back is configurable
+            // and must not accidentally invoke previous-channel/menu/exit here.
+            expect(previousScreen.otherOwner).toBe(false);
+            if (previousScreen.globalList) {
+                await second.keyboard.press("Escape");
+                await second.waitForFunction(
+                    () =>
+                        !window.__ottClassicScreenPort.screens.current() &&
+                        window.isListVisible !== true
+                );
+            }
+            // Exercise ordinary fullscreen Enter, not the direct open helper.
+            await second.keyboard.press("Enter");
+            await second.waitForFunction(
+                ({ ids, selectedId, previous }) => {
+                    const owner =
+                            window.__ottClassicScreenPort?.screens.current(),
+                        list = document.getElementById("list");
+                    return (
+                        !!owner &&
+                        owner.id !== previous &&
+                        owner.kind === "list" &&
+                        owner.active() &&
+                        owner.foreground() &&
+                        window.isListVisible === true &&
+                        !!list &&
+                        list.getClientRects().length > 0 &&
+                        owner.model.items === window.listArray &&
+                        owner.model.handler === window.listKeyHandlerFn &&
+                        JSON.stringify(window.listArray) ===
+                            JSON.stringify(ids) &&
+                        window.listArray[window.selIndex] === selectedId
+                    );
+                },
+                { ids, previous: previousScreen.id, selectedId: ids[index] }
+            );
             await expect(second.locator("#list")).toContainText(
                 rows[index].entry.title
             );
@@ -153,9 +211,64 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
             const video = window.video;
             if (!Number.isFinite(video.duration) || video.duration < 0.2)
                 throw Error("finite fixture required");
+            window.__mixedEnded = {
+                count: 0,
+                expectedProvider: window.__ottActiveProviderDriver.id,
+                expectedUrl: video.currentSrc,
+            };
+            window.__mixedEndedListener = (event) => {
+                if (event.target !== video) return;
+                const ended = window.__mixedEnded;
+                ended.count++;
+                if (ended.count !== 1) return;
+                ended.boundary = window.__mixedObserved.length;
+                ended.provider = window.__ottActiveProviderDriver.id;
+                ended.trusted = event.isTrusted;
+                ended.url = video.currentSrc;
+            };
+            // Capture precedes the app's target handler and next-source play.
+            document.addEventListener(
+                "ended",
+                window.__mixedEndedListener,
+                true
+            );
             video.currentTime = video.duration - 0.15;
         });
-        await check(4);
+        await second.waitForFunction(() => window.__mixedEnded.count > 0);
+        const boundary = await second.evaluate(
+            () => window.__mixedEnded.boundary
+        );
+        await check(4, boundary);
+        const ended = await second.evaluate(() => {
+            document.removeEventListener(
+                "ended",
+                window.__mixedEndedListener,
+                true
+            );
+            window.__mixedEnded.observed = window.__mixedObserved;
+            return window.__mixedEnded;
+        });
+        expect(ended.count).toBe(1);
+        expect(ended.trusted).toBe(true);
+        expect(ended.expectedProvider).toBe("plex");
+        expect(ended.expectedUrl).toContain("/library/parts/42/file.mp4");
+        expect(ended.provider).toBe(ended.expectedProvider);
+        expect(ended.url).toBe(ended.expectedUrl);
+        expect(
+            ended.observed
+                .slice(0, boundary)
+                .every(
+                    (row) =>
+                        row.provider === ended.expectedProvider &&
+                        row.url === ended.expectedUrl
+                )
+        ).toBe(true);
+        const suffix = ended.observed.slice(boundary);
+        const nextUrl = new URL("/mixed/media/two.mp4", baseURL).href;
+        expect(suffix.length).toBeGreaterThan(0);
+        expect(
+            suffix.every((row) => row.provider === "m3u" && row.url === nextUrl)
+        ).toBe(true);
         // Plain fullscreen F, not a direct store.remove call. Other providers survive.
         await second.keyboard.press("Escape");
         await second.keyboard.press("f");
@@ -184,9 +297,9 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
                     (
                         await window.__ottGlobalFavorites.store.snapshot()
                     ).entries.map((row) => ({
-                        title: row.title,
-                        origin: row.origin,
                         locator: row.locator,
+                        origin: row.origin,
+                        title: row.title,
                     }))
                 )
             )
@@ -216,9 +329,9 @@ test("receiver with reordered profiles plays imported mixed Favorites through th
                     (
                         await window.__ottGlobalFavorites.store.snapshot()
                     ).entries.map((row) => ({
-                        title: row.title,
-                        origin: row.origin,
                         locator: row.locator,
+                        origin: row.origin,
+                        title: row.title,
                     }))
                 )
             )
@@ -280,6 +393,7 @@ for (const scenario of fixture.receiver_scenarios.filter(
                     rows.map((row) => row.id),
                     rows[0].id
                 );
+                // biome-ignore assist/source/useSortedKeys: Observe provider before the playback snapshot call.
                 const before = await page.evaluate(() => ({
                     provider: window.__ottActiveProviderDriver.id,
                     generation:
@@ -304,6 +418,7 @@ for (const scenario of fixture.receiver_scenarios.filter(
                     await page.evaluate(() => window.__mixedObserved)
                 ).toEqual([]);
                 expect(
+                    // biome-ignore assist/source/useSortedKeys: Observe provider before the playback snapshot call.
                     await page.evaluate(() => ({
                         provider: window.__ottActiveProviderDriver.id,
                         generation:
@@ -315,9 +430,9 @@ for (const scenario of fixture.receiver_scenarios.filter(
                         (
                             await window.__ottGlobalFavorites.store.snapshot()
                         ).entries.map((row) => ({
-                            title: row.title,
-                            origin: row.origin,
                             locator: row.locator,
+                            origin: row.origin,
+                            title: row.title,
                         }))
                     )
                 ).toEqual(rows.map((row) => row.entry));

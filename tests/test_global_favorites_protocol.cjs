@@ -7,25 +7,40 @@ async function main() {
     let serial = 0,
         clock = 1000000;
     const ports = {
-        store: f.store,
+        acceptOperation: async (p) => {
+            f.authorize(p.operation_id);
+            return { current: () => true };
+        },
+        authorized: () => true,
+        base64Decode: (x) => new Uint8Array(Buffer.from(x, "base64")),
+        base64Encode: (x) => Buffer.from(x).toString("base64"),
+        captureContext: async () => ({
+            current: () => true,
+            revision: f.context,
+        }),
+        clearTimer() {},
         codec: f.codec,
         committer: f.committer,
-        current: () => true,
-        runtime: () => "runtime-one",
-        authorized: () => true,
-        now: () => clock,
         contextRevision: async () => f.context,
-        captureContext: async () => ({
-            revision: f.context,
-            current: () => true,
-        }),
-        uuid: () =>
-            `20000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
-        sha256: async (x) => hash(x),
-        base64Encode: (x) => Buffer.from(x).toString("base64"),
-        base64Decode: (x) => new Uint8Array(Buffer.from(x, "base64")),
-        setTimer: () => 1,
-        clearTimer() {},
+        current: () => true,
+        facade: {
+            exportSnapshot: async () => {
+                const s = await f.store.snapshot();
+                return {
+                    current: s.current,
+                    document: f.codec.document({
+                        entries: s.entries.map(
+                            ({ title, origin, locator }) => ({
+                                locator,
+                                origin,
+                                title,
+                            })
+                        ),
+                        version: 1,
+                    }),
+                };
+            },
+        },
         locatorKinds: [
             "channel",
             "channel-name",
@@ -33,29 +48,14 @@ async function main() {
             "local-media",
             "vportal-media",
         ],
+        now: () => clock,
         resolve: async (entries) => entries.map(() => "missing"),
-        acceptOperation: async (p) => {
-            f.authorize(p.operation_id);
-            return { current: () => true };
-        },
-        facade: {
-            exportSnapshot: async () => {
-                const s = await f.store.snapshot();
-                return {
-                    current: s.current,
-                    document: f.codec.document({
-                        version: 1,
-                        entries: s.entries.map(
-                            ({ title, origin, locator }) => ({
-                                title,
-                                origin,
-                                locator,
-                            })
-                        ),
-                    }),
-                };
-            },
-        },
+        runtime: () => "runtime-one",
+        setTimer: () => 1,
+        sha256: async (x) => hash(x),
+        store: f.store,
+        uuid: () =>
+            `20000000-0000-4000-8000-${String(++serial).padStart(12, "0")}`,
     };
     const protocol = load(
         "src/commands/global-favorites-protocol.ts"
@@ -67,6 +67,7 @@ async function main() {
         const result = await protocol.execute(
             p,
             Buffer.byteLength(
+                // biome-ignore assist/source/useSortedKeys: Preserve the serialized envelope used by the byte-limit fixture.
                 JSON.stringify({
                     id: "request",
                     action: "favorites_global",
@@ -90,64 +91,64 @@ async function main() {
         ports.locatorKinds.slice().sort()
     );
     assert.equal(f.events.length, 0);
-    const document = f.codec.document({ version: 1, entries: [row()] });
+    const document = f.codec.document({ entries: [row()], version: 1 });
     const bytes = json.utf8Encode(JSON.stringify(document)),
         operation = described.admission.operation_id;
     const began = await call("begin", {
-        operation_id: operation,
-        mode: "merge",
-        expected_revision: described.revision,
-        expected_context_revision: described.context_revision,
-        document_sha256: hash(bytes),
-        size_bytes: bytes.length,
-        chunk_count: 1,
         budget_ms: 45000,
+        chunk_count: 1,
+        document_sha256: hash(bytes),
+        expected_context_revision: described.context_revision,
+        expected_revision: described.revision,
+        mode: "merge",
+        operation_id: operation,
         required_kinds: ["channel"],
+        size_bytes: bytes.length,
     });
     assert.equal(began.error, undefined);
     assert.equal(f.events.length, 0);
     const sameBegin = await call("begin", {
-        operation_id: operation,
-        mode: "merge",
-        expected_revision: described.revision,
-        expected_context_revision: described.context_revision,
-        document_sha256: hash(bytes),
-        size_bytes: bytes.length,
-        chunk_count: 1,
         budget_ms: 45000,
+        chunk_count: 1,
+        document_sha256: hash(bytes),
+        expected_context_revision: described.context_revision,
+        expected_revision: described.revision,
+        mode: "merge",
+        operation_id: operation,
         required_kinds: ["channel"],
+        size_bytes: bytes.length,
     });
     assert.equal(sameBegin.transaction_id, began.transaction_id);
     assert.equal(
         (
             await call("begin", {
-                operation_id: operation,
-                mode: "replace",
-                expected_revision: described.revision,
-                expected_context_revision: described.context_revision,
-                document_sha256: hash(bytes),
-                size_bytes: bytes.length,
-                chunk_count: 1,
                 budget_ms: 45000,
+                chunk_count: 1,
+                document_sha256: hash(bytes),
+                expected_context_revision: described.context_revision,
+                expected_revision: described.revision,
+                mode: "replace",
+                operation_id: operation,
                 required_kinds: ["channel"],
+                size_bytes: bytes.length,
             })
         ).error,
         "operation_conflict"
     );
     const chunk = {
-        transaction_id: began.transaction_id,
-        seq: 0,
-        offset: 0,
         chunk_sha256: hash(bytes),
         data_base64: Buffer.from(bytes).toString("base64"),
+        offset: 0,
+        seq: 0,
+        transaction_id: began.transaction_id,
     };
     const append = await call("append", chunk);
     assert.equal(append.duplicate, false);
     assert.equal((await call("append", chunk)).duplicate, true);
     const preview = await call("preview", {
-        transaction_id: began.transaction_id,
-        page_offset: 0,
         max_entries: 64,
+        page_offset: 0,
+        transaction_id: began.transaction_id,
     });
     assert.equal(preview.error, undefined, JSON.stringify(preview));
     assert.equal(preview.ready, true);
@@ -161,9 +162,9 @@ async function main() {
     assert.equal(preview.legacy_effects.unmapped_retained, 0);
     assert.equal(f.events.length, 0);
     const committed = await call("commit", {
-        transaction_id: began.transaction_id,
         operation_id: operation,
         plan_digest: preview.plan_digest,
+        transaction_id: began.transaction_id,
     });
     assert.equal(committed.receipt.outcome, "verified");
     assert.equal(committed.receipt.subject, "global");
@@ -180,9 +181,9 @@ async function main() {
         parts = [];
     do {
         const page = await call("export", {
-            snapshot_id: d.export.snapshot_id,
-            offset,
             max_bytes: 3,
+            offset,
+            snapshot_id: d.export.snapshot_id,
         });
         assert.equal(page.error, undefined);
         const part = Buffer.from(page.data_base64, "base64");
@@ -207,15 +208,15 @@ async function main() {
     assert.equal(
         (
             await call("begin", {
-                operation_id: "10000000-0000-4000-8000-000000000012",
-                mode: "replace",
-                expected_revision: d.revision,
-                expected_context_revision: d.context_revision,
-                document_sha256: hash(bytes),
-                size_bytes: 1048576,
-                chunk_count: 128,
                 budget_ms: 45000,
+                chunk_count: 128,
+                document_sha256: hash(bytes),
+                expected_context_revision: d.context_revision,
+                expected_revision: d.revision,
+                mode: "replace",
+                operation_id: "10000000-0000-4000-8000-000000000012",
                 required_kinds: ["channel"],
+                size_bytes: 1048576,
             })
         ).error,
         "invalid_request",
@@ -223,33 +224,33 @@ async function main() {
     );
     async function previewDocument(mode, entries) {
         const description = await call("describe"),
-            document = f.codec.document({ version: 1, entries }),
+            document = f.codec.document({ entries, version: 1 }),
             data = json.utf8Encode(JSON.stringify(document));
         const begin = await call("begin", {
-            operation_id: description.admission.operation_id,
-            mode,
-            expected_revision: description.revision,
-            expected_context_revision: description.context_revision,
-            document_sha256: hash(data),
-            size_bytes: data.length,
-            chunk_count: 1,
             budget_ms: 45000,
+            chunk_count: 1,
+            document_sha256: hash(data),
+            expected_context_revision: description.context_revision,
+            expected_revision: description.revision,
+            mode,
+            operation_id: description.admission.operation_id,
             required_kinds: ["channel"],
+            size_bytes: data.length,
         });
         assert.equal(begin.error, undefined);
         await call("append", {
-            transaction_id: begin.transaction_id,
-            seq: 0,
-            offset: 0,
             chunk_sha256: hash(data),
             data_base64: Buffer.from(data).toString("base64"),
+            offset: 0,
+            seq: 0,
+            transaction_id: begin.transaction_id,
         });
         return {
             begin,
             preview: await call("preview", {
-                transaction_id: begin.transaction_id,
-                page_offset: 0,
                 max_entries: 1,
+                page_offset: 0,
+                transaction_id: begin.transaction_id,
             }),
         };
     }
@@ -269,8 +270,8 @@ async function main() {
         (
             await call("commit", {
                 operation_id: conflict.begin.operation_id,
-                transaction_id: conflict.begin.transaction_id,
                 plan_digest: conflict.preview.plan_digest,
+                transaction_id: conflict.begin.transaction_id,
             })
         ).error,
         "not_ready"
@@ -294,15 +295,15 @@ async function main() {
     assert.equal(
         (
             await call("begin", {
-                operation_id: expiredGrant.admission.operation_id,
-                mode: "merge",
-                expected_revision: expiredGrant.revision,
-                expected_context_revision: expiredGrant.context_revision,
-                document_sha256: hash(bytes),
-                size_bytes: bytes.length,
-                chunk_count: 1,
                 budget_ms: 45000,
+                chunk_count: 1,
+                document_sha256: hash(bytes),
+                expected_context_revision: expiredGrant.context_revision,
+                expected_revision: expiredGrant.revision,
+                mode: "merge",
+                operation_id: expiredGrant.admission.operation_id,
                 required_kinds: ["channel"],
+                size_bytes: bytes.length,
             })
         ).error,
         "operation_conflict"

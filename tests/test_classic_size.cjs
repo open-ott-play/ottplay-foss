@@ -127,7 +127,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1623851, gzipBytes: 499758 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1633139, gzipBytes: 502201 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -140,11 +140,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1628331, gzipBytes: 502062 });
-    assert.deepEqual(BUDGET, { bytes: 1125677, gzipBytes: 344722 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1637619, gzipBytes: 504505 });
+    assert.deepEqual(BUDGET, { bytes: 1133273, gzipBytes: 346691 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1270513,
-        gzipBytes: 397412,
+        bytes: 1278109,
+        gzipBytes: 399381,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -164,12 +164,12 @@ try {
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
     assert.deepEqual(MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE, {
-        bytes: 27143,
-        gzipBytes: 6516,
+        bytes: 34739,
+        gzipBytes: 8485,
     });
     assert.deepEqual(MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE, {
-        bytes: 130438,
-        gzipBytes: 32418,
+        bytes: 132130,
+        gzipBytes: 32892,
     });
     assert.deepEqual(MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE, {
         bytes: 1536,
@@ -211,9 +211,9 @@ try {
             ? MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
             : 0);
     for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
         BUDGET,
         LEGACY_TOTAL_BUDGET,
-        BASE_TOTAL_BUDGET,
         TOTAL_BUDGET,
     }))
         for (const metric of ["bytes", "gzipBytes"])
@@ -269,6 +269,14 @@ try {
                 mode.total_delta[metric],
                 "all component growth accounted"
             );
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                mode.components
+                    .filter((row) => row.family !== "optionalAssets")
+                    .reduce((sum, row) => sum + row.delta[metric], 0),
+                mode.legacy_delta[metric],
+                "legacy growth includes entry and provider components once"
+            );
         for (const component of mode.components) {
             for (const metric of ["bytes", "gzipBytes"])
                 assert.equal(
@@ -304,6 +312,33 @@ try {
         );
         assert.equal(unchanged.length, 19);
         for (const row of unchanged) assert.deepEqual(row.after, row.before);
+    }
+    for (const mode of mixedEvidence.latest_versus_b377_modes) {
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                mode.components.reduce(
+                    (sum, row) => sum + row.delta[metric],
+                    0
+                ),
+                mode.total_delta[metric],
+                "final callback and ownership corrections are counted exactly once"
+            );
+        for (const [kind, cap] of [
+            ["entry", BUDGET],
+            ["legacy", LEGACY_TOTAL_BUDGET],
+            ["complete", TOTAL_BUDGET],
+        ])
+            for (const metric of ["bytes", "gzipBytes"])
+                assert(mode.actual[kind][metric] <= cap[metric]);
+        for (const component of mode.components)
+            if (component.family === "optionalAssets")
+                for (const metric of ["bytes", "gzipBytes"])
+                    assert(
+                        component.after[metric] <=
+                            OPTIONAL_BUDGETS[
+                                component.name.replace(/\.js$/, "")
+                            ][metric]
+                    );
     }
     const retirementEvidence = require("../docs/evidence/shaka-retirement-size-20261028.json");
     assert.deepEqual(SHAKA_RETIREMENT_ENTRY_ALLOWANCE, {

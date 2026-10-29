@@ -174,6 +174,7 @@ var keyStrings = {
         "Xidhiidhka seerfarka Plex ayaa la hubinayaa…",
     "Choose a folder in the browser window":
         "Ka dooro gal daaqadda biraawsarka",
+    "Choose a profile": "Dooro astaanta isticmaalaha",
     "Choose files in the browser window":
         "Ka dooro faylal daaqadda biraawsarka",
     "Choose from": "Ka dooro",
@@ -1127,6 +1128,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Dejinta ULTIFL1X",
     "Unable to load playlist": "Liiska daarista waa la soo rari waayey",
+    Unavailable: "Lama heli karo",
     "Unlock the player's settings before changing its playlist.":
         "Fur qufulka dejinta daaraha ka hor intaadan beddelin liiskiisa daarista.",
     Untitled: "Aan magac lahayn",

@@ -1,12 +1,12 @@
 import {
+    globalFavoriteChannelId,
+    globalFavoriteProviderId,
+} from "./global-favorites-identities";
+import {
     globalFavoriteBuiltin,
     globalFavoriteBuiltinSlot,
     globalFavoriteProviderName,
 } from "./global-favorites-providers";
-import {
-    globalFavoriteChannelId,
-    globalFavoriteProviderId,
-} from "./global-favorites-identities";
 /** Capture only current, provider-owned identities; no stream URLs enter global Favorites. */
 export async function captureGlobalFavorite(
     w: any,
@@ -55,10 +55,10 @@ export async function captureGlobalFavorite(
               : profile?.name || builtin?.title;
     if (!profileName || typeof profileName !== "string") return null;
     var origin: any = {
-        provider: globalFavoriteProviderName(provider),
         profile: profileName,
-        subprofile: null,
+        provider: globalFavoriteProviderName(provider),
         sourceAlias: profileName,
+        subprofile: null,
     };
     var locator: any = null,
         root: any = null,
@@ -114,11 +114,11 @@ export async function captureGlobalFavorite(
                   });
         if (roots.length !== 1 || roots[0].kind !== "folder") return null;
         origin.sourceAlias = roots[0].name;
-        root = { alias: roots[0].name, key: keys[0], id: item.sourceId };
+        root = { alias: roots[0].name, id: item.sourceId, key: keys[0] };
         locator = {
             kind: "local-media",
-            rootAlias: root.alias,
             relativePath: item.name,
+            rootAlias: root.alias,
         };
         title = item.name;
     } else if (provider === "plex") {
@@ -140,8 +140,8 @@ export async function captureGlobalFavorite(
         origin.sourceAlias = proof.serverId;
         locator = {
             kind: "plex-media",
-            serverId: proof.serverId,
             ratingKey: match[1],
+            serverId: proof.serverId,
         };
         title = payload.title;
     } else if (
@@ -157,9 +157,9 @@ export async function captureGlobalFavorite(
             return null;
         origin.subprofile = payload.__ottMediaCategory?.name || null;
         locator = {
-            kind: "vportal-media",
-            idField: attested.field,
             id: globalFavoriteProviderId(attested.value),
+            idField: attested.field,
+            kind: "vportal-media",
         };
         title = payload.title;
     } else if (provider === "vportal") {
@@ -197,9 +197,9 @@ export async function captureGlobalFavorite(
             });
             if (matches.length === 1)
                 locator = {
-                    kind: "vportal-media",
-                    idField: attested.field,
                     id: providerItemId,
+                    idField: attested.field,
+                    kind: "vportal-media",
                 };
         }
         title = payload.title;
@@ -242,7 +242,7 @@ export async function captureGlobalFavorite(
                 );
             }).length === 1
         )
-            locator = { kind: "channel", channelId: stable };
+            locator = { channelId: stable, kind: "channel" };
         else {
             if (
                 !channel ||
@@ -254,9 +254,9 @@ export async function captureGlobalFavorite(
                 return w.channels[id]?.channel_name === channel.channel_name;
             });
             locator = {
+                group: null,
                 kind: "channel-name",
                 name: channel.channel_name,
-                group: null,
             };
             if (names.length !== 1) {
                 var group = channel.category?.name;
@@ -274,19 +274,19 @@ export async function captureGlobalFavorite(
         title = channel.channel_name;
     }
     var value = codec.normalize({
-        title: title,
-        origin: origin,
         locator: locator,
+        origin: origin,
+        title: title,
     });
     if (!value || !current()) return null;
     var selector = await player.captureSelector(value.origin, slot, root);
     if (!selector || !current()) return null;
     var captured = {
-        value: value,
+        current: current,
+        root: root,
         selector: selector,
         slot: slot,
-        root: root,
-        current: current,
+        value: value,
     };
     return player.canonicalizeFavorite
         ? player.canonicalizeFavorite(captured)

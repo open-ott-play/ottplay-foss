@@ -6,13 +6,13 @@ async function plan(f, entries = [row()]) {
     f.authorize(operation);
     const view = await f.store.snapshot();
     return f.committer.prepare({
-        operation_id: operation,
-        transaction_id: transaction,
-        runtime: "runtime-one",
-        expected_revision: view.revision,
+        change: { entries, op: "put" },
         expected_context_revision: f.context,
+        expected_revision: view.revision,
         input_document_sha256: hash(JSON.stringify(entries)),
-        change: { op: "put", entries },
+        operation_id: operation,
+        runtime: "runtime-one",
+        transaction_id: transaction,
     });
 }
 async function main() {
@@ -37,19 +37,19 @@ async function main() {
     const restarted = load(
         "src/settings/global-favorites-receipts.ts"
     ).createGlobalFavoritesCommitter({
-        store: f.store,
-        codec: f.codec,
-        capture: () => f.grant,
-        current: () => true,
-        sha256: async (x) => hash(x),
-        contextRevision: async () => f.context,
-        captureContext: async () => ({
-            revision: f.context,
-            current: () => true,
-        }),
-        now: () => 1000001,
-        freshAdmission: async () => false,
         authorizedOperation: async () => true,
+        capture: () => f.grant,
+        captureContext: async () => ({
+            current: () => true,
+            revision: f.context,
+        }),
+        codec: f.codec,
+        contextRevision: async () => f.context,
+        current: () => true,
+        freshAdmission: async () => false,
+        now: () => 1000001,
+        sha256: async (x) => hash(x),
+        store: f.store,
     });
     assert.equal(
         (await restarted.status(operation)).outcome,
@@ -77,8 +77,8 @@ async function main() {
     );
     await assert.rejects(
         uncertain.store.mutate((await uncertain.store.snapshot()).revision, {
-            op: "put",
             entries: [row("other")],
+            op: "put",
         })
     );
     assert.equal(
@@ -94,13 +94,13 @@ async function main() {
     const view = await noAuthority.store.snapshot();
     await assert.rejects(
         noAuthority.committer.prepare({
-            operation_id: operation,
-            transaction_id: transaction,
-            runtime: "r",
-            expected_revision: view.revision,
+            change: { entries: [row()], op: "put" },
             expected_context_revision: noAuthority.context,
+            expected_revision: view.revision,
             input_document_sha256: hash("x"),
-            change: { op: "put", entries: [row()] },
+            operation_id: operation,
+            runtime: "r",
+            transaction_id: transaction,
         }),
         /operation_exists/
     );
@@ -119,21 +119,21 @@ async function main() {
             snapshot = await pressure.store.snapshot();
         pressure.authorize(id);
         const planned = await pressure.committer.prepare({
-            operation_id: id,
-            transaction_id: transaction,
-            runtime: "runtime-one",
-            expected_revision: snapshot.revision,
-            expected_context_revision: pressure.context,
-            input_document_sha256: hash(String(index)),
             change: {
-                op: "put",
                 entries: [
                     {
                         ...row("Item " + index),
-                        locator: { kind: "channel", channelId: String(index) },
+                        locator: { channelId: String(index), kind: "channel" },
                     },
                 ],
+                op: "put",
             },
+            expected_context_revision: pressure.context,
+            expected_revision: snapshot.revision,
+            input_document_sha256: hash(String(index)),
+            operation_id: id,
+            runtime: "runtime-one",
+            transaction_id: transaction,
         });
         assert.equal(
             (await pressure.committer.commit(id, planned.plan_digest)).outcome,
@@ -158,33 +158,34 @@ async function main() {
     const reorder = fixture();
     let view2 = await reorder.store.snapshot();
     await reorder.store.mutate(view2.revision, {
-        op: "put",
         entries: [
             row("A"),
-            { ...row("B"), locator: { kind: "channel", channelId: "002" } },
+            { ...row("B"), locator: { channelId: "002", kind: "channel" } },
         ],
+        op: "put",
     });
     view2 = await reorder.store.snapshot();
     reorder.authorize(operation);
     const reordered = await reorder.committer.prepare({
-        operation_id: operation,
-        transaction_id: transaction,
-        runtime: "runtime-one",
-        expected_revision: view2.revision,
-        expected_context_revision: reorder.context,
-        input_document_sha256: hash("reorder"),
         change: {
-            op: "replace",
             entries: [
-                { ...row("B"), locator: { kind: "channel", channelId: "002" } },
+                { ...row("B"), locator: { channelId: "002", kind: "channel" } },
                 row("A"),
             ],
+            op: "replace",
         },
+        expected_context_revision: reorder.context,
+        expected_revision: view2.revision,
+        input_document_sha256: hash("reorder"),
+        operation_id: operation,
+        runtime: "runtime-one",
+        transaction_id: transaction,
     });
     assert.equal(reordered.counts.moved, 2);
     assert.equal(reordered.counts.added, 0);
     assert.equal(reordered.counts.removed, 0);
     const linked = fixture(),
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy input bytes for receipt migration.
         old = (id) => ({
             id,
             name: id,
@@ -198,6 +199,7 @@ async function main() {
         });
     linked.data.set(
         "remoteFavorites.v1",
+        // biome-ignore assist/source/useSortedKeys: Preserve the legacy input bytes for receipt migration.
         JSON.stringify({
             version: 1,
             entries: [old("fav-linked"), old("fav-unmapped")],
@@ -205,20 +207,20 @@ async function main() {
     );
     let linkedView = await linked.store.snapshot();
     await linked.store.mutate(linkedView.revision, {
-        op: "legacy-put",
         entry: old("fav-linked"),
+        op: "legacy-put",
         portable: row(),
     });
     linkedView = await linked.store.snapshot();
     linked.authorize(operation);
     const removal = await linked.committer.prepare({
-        operation_id: operation,
-        transaction_id: transaction,
-        runtime: "runtime-one",
-        expected_revision: linkedView.revision,
+        change: { entries: [], op: "replace" },
         expected_context_revision: linked.context,
+        expected_revision: linkedView.revision,
         input_document_sha256: hash("clear"),
-        change: { op: "replace", entries: [] },
+        operation_id: operation,
+        runtime: "runtime-one",
+        transaction_id: transaction,
     });
     assert.equal(removal.legacy_effects.linked_removed, 1);
     assert.equal(removal.legacy_effects.unmapped_retained, 1);

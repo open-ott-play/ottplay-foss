@@ -8,13 +8,13 @@ async function interrupted() {
     f.authorize(operation);
     const before = await f.store.snapshot(),
         p = await f.committer.prepare({
-            operation_id: operation,
-            transaction_id: "20000000-0000-4000-8000-000000000021",
-            runtime: "original-runtime",
-            expected_revision: before.revision,
+            change: { entries: [row()], op: "put" },
             expected_context_revision: f.context,
+            expected_revision: before.revision,
             input_document_sha256: hash("document"),
-            change: { op: "put", entries: [row()] },
+            operation_id: operation,
+            runtime: "original-runtime",
+            transaction_id: "20000000-0000-4000-8000-000000000021",
         });
     f.hooks.unknown = STORE;
     assert.equal(
@@ -28,39 +28,39 @@ function recovery(f, runtime = "inspection-runtime") {
     return load(
         "src/settings/global-favorites-recovery.ts"
     ).createGlobalFavoritesRecovery({
-        capture: () => f.grant,
-        current: () => true,
-        runtime: () => runtime,
-        now: () => 1000000,
         authorized: () => true,
-        sha256: async (x) => hash(x),
+        capture: () => f.grant,
         captureContext: async () => ({
-            revision: f.context,
             current: () => true,
+            revision: f.context,
         }),
+        current: () => true,
+        now: () => 1000000,
+        runtime: () => runtime,
+        sha256: async (x) => hash(x),
     });
 }
 function request(params, runtime = "inspection-runtime") {
     return {
-        params: { runtime, subject: "global", ...params },
         expires_at: 1030,
+        params: { runtime, subject: "global", ...params },
     };
 }
 function ack(inspected) {
     return request({
+        accept_unknown: true,
+        acknowledgement_id: inspected.acknowledgement_id,
+        after_ledger_sha256: inspected.after_ledger_sha256,
+        backend_proof: inspected.backend_proof,
+        expected_context_revision: inspected.context_revision,
+        expected_ledger_revision: inspected.ledger_revision,
+        expected_store_revision: inspected.store_revision,
         op: "acknowledge",
         operation_id: inspected.operation_id,
         operation_runtime: inspected.record.operation_runtime,
         original_entry_sha256: inspected.record.original_entry_sha256,
-        expected_ledger_revision: inspected.ledger_revision,
-        expected_store_revision: inspected.store_revision,
-        expected_context_revision: inspected.context_revision,
-        backend_proof: inspected.backend_proof,
-        reason: "accept-unknown-no-replay",
-        acknowledgement_id: inspected.acknowledgement_id,
-        after_ledger_sha256: inspected.after_ledger_sha256,
         plan_sha256: inspected.plan_sha256,
-        accept_unknown: true,
+        reason: "accept-unknown-no-replay",
     });
 }
 async function main() {
@@ -121,7 +121,7 @@ async function main() {
     assert.equal(f.committer.canWrite(), true);
     const empty = fixture(),
         read = await recovery(empty).execute(
-            request({ op: "inspect", cursor: null })
+            request({ cursor: null, op: "inspect" })
         );
     assert.equal(read.total, 0);
     assert.equal(empty.events.length, 0);
@@ -133,11 +133,11 @@ async function main() {
     }));
     pageFixture.f.data.set(KEY, JSON.stringify({ entries: rows, version: 1 }));
     const pages = recovery(pageFixture.f),
-        first = await pages.execute(request({ op: "inspect", cursor: null }));
+        first = await pages.execute(request({ cursor: null, op: "inspect" }));
     assert.equal(first.records.length, 16);
     assert(first.next_cursor);
     const second = await pages.execute(
-        request({ op: "inspect", cursor: first.next_cursor })
+        request({ cursor: first.next_cursor, op: "inspect" })
     );
     assert.equal(second.records.length, 1);
     assert.equal(second.next_cursor, null);
@@ -146,7 +146,7 @@ async function main() {
         after_operation_id: rows[0].operationId,
     };
     await assert.rejects(
-        pages.execute(request({ op: "inspect", cursor: badCursor })),
+        pages.execute(request({ cursor: badCursor, op: "inspect" })),
         /invalid_cursor/
     );
     const originalBytes = Buffer.byteLength(pageFixture.f.data.get(KEY));

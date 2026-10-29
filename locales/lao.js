@@ -160,6 +160,7 @@ var keyStrings = {
     "Checking folder permission": "ກຳລັງກວດສອບສິດເຂົ້າເຖິງໂຟນເດີ",
     "Checking the Plex server connection…": "ກຳລັງກວດສອບການເຊື່ອມຕໍ່ເຊີບເວີ Plex…",
     "Choose a folder in the browser window": "ເລືອກໂຟນເດີໃນໜ້າຕ່າງບຣາວເຊີ",
+    "Choose a profile": "ເລືອກໂປຣໄຟລ໌",
     "Choose files in the browser window": "ເລືອກໄຟລ໌ໃນໜ້າຕ່າງບຣາວເຊີ",
     "Choose from": "ເລືອກຈາກ",
     "Choose language": "ເລືອກພາສາ",
@@ -1054,6 +1055,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ການຕັ້ງຄ່າ ULTIFL1X",
     "Unable to load playlist": "ບໍ່ສາມາດໂຫຼດລາຍການຫຼິ້ນ",
+    Unavailable: "ບໍ່ພ້ອມໃຊ້ງານ",
     "Unlock the player's settings before changing its playlist.":
         "ປົດລັອກການຕັ້ງຄ່າໂປຣແກຣມຫຼິ້ນກ່ອນປ່ຽນລາຍການຫຼິ້ນ.",
     Untitled: "ບໍ່ມີຊື່",

@@ -49,14 +49,11 @@ const w = {
             throw Error("capability must not write");
         },
     },
-    result = { status: "ok", data: {} };
+    result = { data: {}, status: "ok" };
 assert.equal(core.globalFavoritesCapability(w), null);
 assert(currentGuard); // Use the actual enclosing admission closure, not a permissive stub.
 const context = {
-    w,
-    result,
     Date: { now: () => 1000 },
-    remotePlayerInfo: () => ({ runtime: "current-owner" }),
     done: (v) => {
         delivered = v;
     },
@@ -65,6 +62,9 @@ const context = {
     globalFavoritesRecoveryCapability:
         recovery.globalFavoritesRecoveryCapability,
     legacyFavoritesCapability: core.legacyFavoritesCapability,
+    remotePlayerInfo: () => ({ runtime: "current-owner" }),
+    result,
+    w,
 };
 vm.runInNewContext(
     ts.transpileModule(
@@ -84,8 +84,8 @@ w.__ottGlobalFavoritesFacade = {};
 w.__ottGlobalFavoritesPorts = {};
 w.__ottGlobalFavoritesRecovery = {};
 w.__ottGlobalFavorites = {
-    createItems() {},
     committer: { canWrite: () => true },
+    createItems() {},
 };
 run(null, null);
 assert.equal(delivered, result);

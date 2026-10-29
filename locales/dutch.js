@@ -175,6 +175,7 @@ var keyStrings = {
         "De Plex-serververbinding controleren…",
     "Choose a folder in the browser window":
         "Kies een map in het browservenster",
+    "Choose a profile": "Profiel kiezen",
     "Choose files in the browser window":
         "Kies bestanden in het browservenster",
     "Choose from": "Kiezen uit",
@@ -1121,6 +1122,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Instellingen voor ULTIFL1X",
     "Unable to load playlist": "Kan afspeellijst niet laden",
+    Unavailable: "Niet beschikbaar",
     "Unlock the player's settings before changing its playlist.":
         "Ontgrendel de instellingen van de speler voordat u de afspeellijst wijzigt.",
     Untitled: "Zonder titel",

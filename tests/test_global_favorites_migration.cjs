@@ -4,19 +4,22 @@ const assert = require("node:assert/strict"),
     vm = require("node:vm"),
     ts = require("typescript");
 const load = require("./helpers/private-runtime.cjs");
-const context = vm.createContext({ JSON, console });
+const context = vm.createContext({ console, JSON });
 context.window = context;
 load(context, "src/media/journal.ts");
 load(context, "src/channels/channel-references.ts");
+// biome-ignore assist/source/useSortedKeys: Preserve the exact raw journal baseline in the no-write test.
 const original = JSON.stringify({
     version: 1,
     sourceId: "owned",
     history: [],
     favorites: [
+        // biome-ignore assist/source/useSortedKeys: Preserve the exact raw journal baseline in the no-write test.
         {
             sourceId: "owned",
             itemId: "provider:42",
             position: 0,
+            // biome-ignore assist/source/useSortedKeys: Preserve the exact raw journal baseline in the no-write test.
             payload: { title: "Film", id: "42" },
         },
     ],
@@ -25,16 +28,16 @@ let raw = original,
     writes = 0,
     alive = true;
 const journal = context.__ottMediaJournal.create({
-    sourceId: "owned",
+    core: {},
     current: () => alive,
     enabled: () => false,
+    importRows: () => [],
+    limit: () => 20,
     read: (key) => (key === "mediaJournal.v1:owned" ? raw : null),
+    sourceId: "owned",
     write() {
         writes++;
     },
-    limit: () => 20,
-    importRows: () => [],
-    core: {},
 });
 const captured = journal.captureFavorites();
 assert(
@@ -44,6 +47,7 @@ assert(
 assert.equal(captured.favorites.length, 1);
 assert.equal(writes, 0);
 assert.equal(raw, original);
+// biome-ignore assist/source/useSortedKeys: Preserve the exact raw journal replacement used by the drift test.
 raw = JSON.stringify({
     version: 1,
     sourceId: "foreign",
@@ -66,21 +70,21 @@ function moduleAt(file, deps) {
             },
         }).outputText,
         {
+            Array,
+            Error,
             exports,
+            isFinite,
+            JSON,
+            Math,
+            Number,
+            Object,
+            Promise,
             require: (name) =>
                 name === "./global-favorites-providers"
                     ? moduleAt("src/media/global-favorites-providers.ts", {})
                     : deps[name],
-            window: {},
-            Promise,
-            Object,
-            Array,
-            JSON,
-            Math,
-            Number,
             String,
-            Error,
-            isFinite,
+            window: {},
         }
     );
     return exports;
@@ -100,46 +104,46 @@ async function main() {
     let current = true;
     const w = {
         __ottActiveProviderDriver: {
-            id: "m3u",
             configuration: () => ({ active: 0 }),
+            id: "m3u",
         },
-        commandChannelsReady: true,
-        __ottCommandChannelLoad: {},
+        __ottChannelReferences: context.__ottChannelReferences,
         __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
-        __ottSourceIdentity: { current: () => "m3u:source" },
+        __ottCommandChannelLoad: {},
         __ottFavoritesLibrary: {
             captureGlobal: () => ({
-                raw: "exact-tv",
+                current: () => current,
                 document: {
-                    sourceId: "m3u:source",
                     lists: {
-                        order: ["Favorites"],
                         lists: {
                             Favorites: [
                                 { itemId: "stable" },
                                 { itemId: "missing" },
                             ],
                         },
+                        order: ["Favorites"],
                     },
+                    sourceId: "m3u:source",
                 },
-                current: () => current,
+                raw: "exact-tv",
             }),
         },
-        __ottChannelReferences: context.__ottChannelReferences,
-        cList: [7],
+        __ottSourceIdentity: { current: () => "m3u:source" },
         channels: {
             7: {
-                itemId: "stable",
                 __ottFavoriteTvgId: "stable",
-                channel_name: "News",
                 category: { name: "TV" },
+                channel_name: "News",
+                itemId: "stable",
             },
         },
+        cList: [7],
+        commandChannelsReady: true,
     };
     const player = {
         allowed: () => current,
-        selected: () => ({ name: "Profile" }),
         captureSelector: async () => ({ bound: true }),
+        selected: () => ({ name: "Profile" }),
     };
     const result = await migration(w, player, codec);
     assert.equal(result.entries.length, 1);

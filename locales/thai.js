@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์ Plex...",
     "Choose a folder in the browser window": "เลือกโฟลเดอร์ในหน้าต่างเบราว์เซอร์",
+    "Choose a profile": "เลือกโปรไฟล์",
     "Choose files in the browser window": "เลือกไฟล์ในหน้าต่างเบราว์เซอร์",
     "Choose from": "เลือกจาก",
     "Choose language": "เลือกภาษา",
@@ -1074,6 +1075,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "การตั้งค่า ULTIFL1X",
     "Unable to load playlist": "ไม่สามารถโหลดเพลย์ลิสต์ได้",
+    Unavailable: "ไม่พร้อมใช้งาน",
     "Unlock the player's settings before changing its playlist.":
         "ปลดล็อกการตั้งค่าโปรแกรมเล่นก่อนเปลี่ยนเพลย์ลิสต์",
     Untitled: "ไม่มีชื่อ",

@@ -26,16 +26,16 @@ function setup(pin = false) {
         pinContinue;
     c.p_pref = "plex";
     c.__ottActiveProviderDriver = {
-        id: "plex",
         capabilities: { mediaPlaylist: true },
+        id: "plex",
     };
     c.channels = {
         "plex-row-0": {
             __ottMediaItem: {
-                id: 42,
-                title: "Movie",
                 adult: pin ? 1 : 0,
+                id: 42,
                 request: { path: "/library/metadata/42" },
+                title: "Movie",
             },
             channel_name: "Movie",
             logo: "",
@@ -56,8 +56,8 @@ function setup(pin = false) {
             category: () => 0,
             members: () => c.cats.All.slice(),
         }),
-        index: () => 0,
         group: () => "system:all",
+        index: () => 0,
         select() {},
     };
     if (process.env.OTT_TEST_DROP_CALLBACK === "1") {
@@ -78,18 +78,18 @@ function setup(pin = false) {
     c.providerMediaClient = {
         cancel() {},
         cancelAutomatic() {},
-        stableRequests: true,
         resolve(item, done) {
-            pending.push({ item, done });
+            pending.push({ done, item });
         },
+        stableRequests: true,
     };
     const scope = vm.createContext({
-        w: c,
-        Promise,
-        same: () => admitted,
-        pendingOperations: cancels,
         expectedDispatch: null,
+        Promise,
+        pendingOperations: cancels,
         playbackItem: null,
+        same: () => admitted,
+        w: c,
     });
     vm.runInContext(
         ts.transpileModule(play.getText(ast), {
@@ -98,31 +98,31 @@ function setup(pin = false) {
         scope
     );
     return {
-        c,
-        pending,
-        cancels,
-        play: () =>
-            scope.play(
-                {
-                    id: "plex-row-0",
-                    group: 0,
-                    index: 0,
-                    locator: {
-                        kind: "plex-media",
-                        serverId: "fixture-pms",
-                        ratingKey: "42",
-                    },
-                },
-                () => admitted
-            ),
         authorize() {
             c.parentAccess = true;
             pinContinue();
         },
+        c,
         cancel() {
             admitted = false;
             cancels.forEach((fn) => fn());
         },
+        cancels,
+        pending,
+        play: () =>
+            scope.play(
+                {
+                    group: 0,
+                    id: "plex-row-0",
+                    index: 0,
+                    locator: {
+                        kind: "plex-media",
+                        ratingKey: "42",
+                        serverId: "fixture-pms",
+                    },
+                },
+                () => admitted
+            ),
         resolve() {
             const p = pending[0];
             p.done({ ...p.item, stream_url: "film42.mp4" });

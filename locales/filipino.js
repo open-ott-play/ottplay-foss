@@ -177,6 +177,7 @@ var keyStrings = {
         "Sinusuri ang koneksyon ng Plex server…",
     "Choose a folder in the browser window":
         "Pumili ng folder sa window ng browser",
+    "Choose a profile": "Pumili ng profile",
     "Choose files in the browser window":
         "Pumili ng mga file sa window ng browser",
     "Choose from": "Pumili mula sa",
@@ -1134,6 +1135,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X na mga setting",
     "Unable to load playlist": "Hindi ma-load ang playlist",
+    Unavailable: "Hindi available",
     "Unlock the player's settings before changing its playlist.":
         "I-unlock ang mga setting ng player bago palitan ang playlist nito.",
     Untitled: "Walang pamagat",

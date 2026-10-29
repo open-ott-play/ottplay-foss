@@ -125,6 +125,9 @@ const ctx = {
             : name === "./remote-feature" ||
                 name === "./remote-perf" ||
                 name === "./remote-favorites" ||
+                name === "./remote-favorites-global" ||
+                name === "./remote-favorites-global-items" ||
+                name === "./remote-favorites-global-recovery" ||
                 name === "./remote-favorites-transfer" ||
                 name === "./remote-favorites-contract" ||
                 name === "./random-channel"

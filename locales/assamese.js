@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking folder permission": "ফোল্ডাৰৰ অনুমতি পৰীক্ষা কৰি থকা হৈছে",
     "Checking the Plex server connection…": "Plex ছাৰ্ভাৰৰ সংযোগ পৰীক্ষা হৈ আছে…",
     "Choose a folder in the browser window": "ব্ৰাউজাৰৰ উইণ্ড’ত এটা ফোল্ডাৰ বাছক",
+    "Choose a profile": "প্ৰফাইল বাছক",
     "Choose files in the browser window": "ব্ৰাউজাৰৰ উইণ্ড’ত ফাইলসমূহ বাছক",
     "Choose from": "ইয়াৰ পৰা বাছক",
     "Choose language": "ভাষা বাছক",
@@ -1078,6 +1079,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ছেটিংছ",
     "Unable to load playlist": "প্লেলিষ্ট লোড কৰিব পৰা নগ’ল",
+    Unavailable: "উপলব্ধ নহয়",
     "Unlock the player's settings before changing its playlist.":
         "প্লেলিষ্ট সলনি কৰাৰ আগতে প্লেয়াৰৰ ছেটিংছৰ লক খুলক।",
     Untitled: "শিৰোনামহীন",

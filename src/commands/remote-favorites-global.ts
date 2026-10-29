@@ -47,9 +47,9 @@ export function legacyFavoritesCapability(w: any): any {
         }
     }
     return {
-        version: 1,
         max_items: remoteFavoritesCapability.max_items,
         operations: operations,
+        version: 1,
     };
 }
 export function globalFavoritesCapability(w: any): any {
@@ -77,15 +77,15 @@ export function executeGlobalFavorites(
         )
             data.runtime = request.params.runtime;
         finished = true;
-        done({ status: data.error ? "rejected" : "ok", data: data });
+        done({ data: data, status: data.error ? "rejected" : "ok" });
     }
     if (request.params && request.params.runtime !== runtime) {
         reply({
-            version: 1,
-            runtime: request.params.runtime,
-            op: request.params.op,
-            subject: "global",
             error: "runtime_changed",
+            op: request.params.op,
+            runtime: request.params.runtime,
+            subject: "global",
+            version: 1,
         });
         return function () {};
     }
@@ -97,11 +97,11 @@ export function executeGlobalFavorites(
             if (finished) return;
             if (error || !w.__ottGlobalFavoritesProtocol) {
                 reply({
-                    version: 1,
-                    runtime: runtime,
-                    op: request.params && request.params.op,
-                    subject: "global",
                     error: "unsupported",
+                    op: request.params && request.params.op,
+                    runtime: runtime,
+                    subject: "global",
+                    version: 1,
                 });
                 return;
             }
@@ -125,11 +125,11 @@ export function executeGlobalFavorites(
                 )
                 .then(reply, function () {
                     reply({
-                        version: 1,
-                        runtime: runtime,
-                        op: request.params.op,
-                        subject: "global",
                         error: "storage_unavailable",
+                        op: request.params.op,
+                        runtime: runtime,
+                        subject: "global",
+                        version: 1,
                     });
                 });
         }
@@ -138,14 +138,41 @@ export function executeGlobalFavorites(
         if (cancel) cancel();
         if (!finished)
             reply({
-                version: 1,
-                runtime: runtime,
-                op: request.params && request.params.op,
-                subject: "global",
                 error: "expired",
+                op: request.params && request.params.op,
+                runtime: runtime,
+                subject: "global",
+                version: 1,
             });
     };
 }
+// Keep the legacy public error vocabulary stable across the shared-store bridge.
+function legacySharedFavoriteError(error: any): string {
+    var code = error && error.message;
+    var allowed = [
+        "invalid_request",
+        "unsupported",
+        "no_current_item",
+        "unsupported_item",
+        "profile_unavailable",
+        "profile_changed",
+        "item_unavailable",
+        "ambiguous_favorite",
+        "favorite_not_found",
+        "too_many_favorites",
+        "storage_unavailable",
+        "policy_denied",
+        "busy",
+        "timeout",
+        "cancelled",
+        "context_changed",
+        "playback_failed",
+    ];
+    return typeof code === "string" && allowed.indexOf(code) >= 0
+        ? code
+        : "storage_unavailable";
+}
+
 export function executeLegacySharedFavorites(
     w: any,
     runtime: string,
@@ -176,20 +203,20 @@ export function executeLegacySharedFavorites(
         if (stopped) return;
         stopped = true;
         done({
-            status: error ? "rejected" : "ok",
             data: Object.assign(
                 {
-                    version: 1,
-                    runtime: runtime,
                     op: request.params.op,
+                    runtime: runtime,
                     state: error
                         ? "error"
                         : request.params.op === "play"
                           ? "dispatched"
                           : "ready",
+                    version: 1,
                 },
                 error ? { error: error } : data
             ),
+            status: error ? "rejected" : "ok",
         });
     }
     Promise.resolve()
@@ -207,10 +234,7 @@ export function executeLegacySharedFavorites(
                 reply(data);
             },
             function (error) {
-                reply(
-                    undefined,
-                    (error && error.message) || "storage_unavailable"
-                );
+                reply(undefined, legacySharedFavoriteError(error));
             }
         );
     return function () {

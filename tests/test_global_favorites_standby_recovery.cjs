@@ -96,17 +96,17 @@ const create = vm.runInNewContext(
     }).outputText,
     {
         assert,
-        fs,
-        path,
-        vm,
-        ts,
-        crypto,
-        Map,
         Buffer,
-        Promise,
-        Uint8Array,
         console,
         createMainPorts,
+        crypto,
+        fs,
+        Map,
+        Promise,
+        path,
+        ts,
+        Uint8Array,
+        vm,
     }
 );
 async function main() {
@@ -126,34 +126,34 @@ async function main() {
         1030
     );
     const document = host.codec.document({
-            version: 1,
             entries: [
                 {
-                    title: "News",
+                    locator: { channelId: "news", kind: "channel" },
                     origin: {
-                        provider: "m3u",
                         profile: "Profile",
-                        subprofile: null,
+                        provider: "m3u",
                         sourceAlias: "News",
+                        subprofile: null,
                     },
-                    locator: { kind: "channel", channelId: "news" },
+                    title: "News",
                 },
             ],
+            version: 1,
         }),
         bytes = Buffer.from(JSON.stringify(document));
     const begin = await host.protocol.execute(
         {
-            op: "begin",
-            runtime,
-            operation_id: description.admission.operation_id,
-            mode: "merge",
-            expected_revision: description.revision,
-            expected_context_revision: description.context_revision,
-            document_sha256: f.hash(bytes),
-            size_bytes: bytes.length,
-            chunk_count: 1,
             budget_ms: 45000,
+            chunk_count: 1,
+            document_sha256: f.hash(bytes),
+            expected_context_revision: description.context_revision,
+            expected_revision: description.revision,
+            mode: "merge",
+            op: "begin",
+            operation_id: description.admission.operation_id,
             required_kinds: ["channel"],
+            runtime,
+            size_bytes: bytes.length,
         },
         512,
         1030
@@ -161,24 +161,24 @@ async function main() {
     assert.equal(begin.error, undefined);
     await host.protocol.execute(
         {
-            op: "append",
-            runtime,
-            transaction_id: begin.transaction_id,
-            seq: 0,
-            offset: 0,
             chunk_sha256: f.hash(bytes),
             data_base64: bytes.toString("base64"),
+            offset: 0,
+            op: "append",
+            runtime,
+            seq: 0,
+            transaction_id: begin.transaction_id,
         },
         1024,
         1030
     );
     const preview = await host.protocol.execute(
         {
+            max_entries: 64,
             op: "preview",
+            page_offset: 0,
             runtime,
             transaction_id: begin.transaction_id,
-            page_offset: 0,
-            max_entries: 64,
         },
         256,
         1030
@@ -197,18 +197,18 @@ async function main() {
     const committed = await host.protocol.execute(
         {
             op: "commit",
-            runtime,
-            transaction_id: begin.transaction_id,
             operation_id: begin.operation_id,
             plan_digest: preview.plan_digest,
+            runtime,
+            transaction_id: begin.transaction_id,
         },
         256,
         1030
     );
     assert(committed.error);
     const request = (params) => ({
-        params: { runtime, subject: "global", ...params },
         expires_at: 1030,
+        params: { runtime, subject: "global", ...params },
     });
     const prior = await host.recovery.execute(
         request({ op: "inspect", operation_id: begin.operation_id })
@@ -223,7 +223,7 @@ async function main() {
     assert.equal(inspected.acknowledge_allowed, false);
     assert.equal(inspected.plan_sha256, null);
     const status = await host.protocol.execute(
-        { op: "status", runtime, operation_id: begin.operation_id },
+        { op: "status", operation_id: begin.operation_id, runtime },
         128,
         1030
     );

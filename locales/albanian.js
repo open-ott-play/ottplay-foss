@@ -172,6 +172,7 @@ var keyStrings = {
         "Po kontrollon lidhjen e serverit Plex…",
     "Choose a folder in the browser window":
         "Zgjidhni një dosje në dritaren e shfletuesit",
+    "Choose a profile": "Zgjidhni një profil",
     "Choose files in the browser window":
         "Zgjidhni skedarët në dritaren e shfletuesit",
     "Choose from": "Zgjidhni nga",
@@ -1126,6 +1127,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cilësimet e ULTIFL1X",
     "Unable to load playlist": "Nuk mund të ngarkohet lista e riprodhimit",
+    Unavailable: "I padisponueshëm",
     "Unlock the player's settings before changing its playlist.":
         "Zhbllokoni cilësimet e luajtësit përpara se të ndryshoni listën e tij të luajtjes.",
     Untitled: "Pa titull",

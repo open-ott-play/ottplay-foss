@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Ana duba haɗin sabar Plex…",
     "Choose a folder in the browser window":
         "Zaɓi babban fayil a tagar burauza",
+    "Choose a profile": "Zaɓi bayanin martaba",
     "Choose files in the browser window": "Zaɓi fayiloli a tagar burauza",
     "Choose from": "Zaɓa daga",
     "Choose language": "Zaɓi harshe",
@@ -1106,6 +1107,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Saitunan ULTIFL1X",
     "Unable to load playlist": "Ba a iya loda jerin kunnawa ba",
+    Unavailable: "Ba a samu ba",
     "Unlock the player's settings before changing its playlist.":
         "Buɗe makullin saitunan manhajar kunnawa kafin sauya jerin kunnawarta.",
     Untitled: "Ba a ba da suna ba",

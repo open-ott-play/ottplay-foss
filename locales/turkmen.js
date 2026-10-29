@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex serwerine birikme barlanýar…",
     "Choose a folder in the browser window":
         "Brauzer penjiresinde bukja saýlaň",
+    "Choose a profile": "Profili saýlaň",
     "Choose files in the browser window":
         "Brauzer penjiresinde faýllary saýlaň",
     "Choose from": "Şundan saýla",
@@ -1099,6 +1100,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sazlamalary",
     "Unable to load playlist": "Oýnatma sanawyny ýükläp bolmady",
+    Unavailable: "Elýeterli däl",
     "Unlock the player's settings before changing its playlist.":
         "Oýnatma sanawyny üýtgetmezden öň pleýeriň sazlamalarynyň gulpuny açyň.",
     Untitled: "Atsyz",

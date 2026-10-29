@@ -6,29 +6,29 @@ import {
 import type { FavoritesPhysicalStorageGrant } from "../storage/favorites-physical-storage";
 
 export interface GlobalFavoriteValue {
-    title: string;
-    origin: any;
     locator: any;
+    origin: any;
+    title: string;
 }
 export interface GlobalFavorite extends GlobalFavoriteValue {
     id: string;
 }
 export interface GlobalFavoritesPorts {
-    capture(): FavoritesPhysicalStorageGrant | null;
-    current(): boolean;
     /** Shared global receipt admission; every writer must consult this. */
     canWrite?(): boolean;
-    sha256(text: string): Promise<string>;
-    /** Cryptographically random UUIDv4, with no timestamp/Math.random fallback. */
-    uuid(): string;
-    /** Trusted complete-source capture, retained through its one-time migration. */
-    migrationCurrent?(id: string): boolean;
+    capture(): FavoritesPhysicalStorageGrant | null;
     codec: {
         normalize(value: GlobalFavoriteValue): GlobalFavoriteValue | null;
         identity(value: GlobalFavoriteValue): string;
         /** Only an explicit verified mapping may retire a local legacy row. */
         migrateLegacy?(row: any): GlobalFavoriteValue | null;
     };
+    current(): boolean;
+    /** Trusted complete-source capture, retained through its one-time migration. */
+    migrationCurrent?(id: string): boolean;
+    sha256(text: string): Promise<string>;
+    /** Cryptographically random UUIDv4, with no timestamp/Math.random fallback. */
+    uuid(): string;
 }
 export type GlobalFavoritesChange =
     | { op: "put" | "replace"; entries: GlobalFavoriteValue[] }
@@ -75,7 +75,7 @@ function clone(value: any): any {
     return parseFavoritesDocumentJson(encodeFavoritesDocumentJson(value));
 }
 function empty(): any {
-    return {
+    return /* biome-ignore assist/source/useSortedKeys: Preserve the physical empty-store envelope byte order. */ {
         version: 2,
         entries: [],
         legacy: [],
@@ -130,9 +130,9 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
     function identity(value: GlobalFavoriteValue): string {
         var key = ports.codec.identity(
             clone({
-                title: value.title,
-                origin: value.origin,
                 locator: value.locator,
+                origin: value.origin,
+                title: value.title,
             })
         );
         if (!text(key, 8192)) globalFavoritesStoreFail("invalid_identity");
@@ -199,9 +199,9 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 globalFavoritesStoreFail("invalid_store");
             ids[row.id] = true;
             var entry = normalized({
-                title: row.title,
-                origin: row.origin,
                 locator: row.locator,
+                origin: row.origin,
+                title: row.title,
             });
             if (
                 entry.title !== row.title ||
@@ -270,9 +270,16 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
         if (!current()) globalFavoritesStoreFail("revision_conflict");
         return {
             current: current,
-            revision: rev,
             entries: clone(value.entries),
             legacyCount: value.legacy.length,
+            privateLegacy: function () {
+                if (!current()) globalFavoritesStoreFail("revision_conflict");
+                return {
+                    aliases: clone(value.legacyAliases),
+                    entries: clone(value.legacy),
+                };
+            },
+            revision: rev,
             unresolvedLegacy: value.legacy
                 .filter(function (row: any) {
                     return !value.legacyAliases[row.id];
@@ -280,18 +287,11 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 .map(function (row: any) {
                     return {
                         id: row.id,
-                        title: row.title,
-                        provider: row.provider,
                         profile: row.profile_name,
+                        provider: row.provider,
+                        title: row.title,
                     };
                 }),
-            privateLegacy: function () {
-                if (!current()) globalFavoritesStoreFail("revision_conflict");
-                return {
-                    entries: clone(value.legacy),
-                    aliases: clone(value.legacyAliases),
-                };
-            },
         };
     }
     function apply(
@@ -341,12 +341,14 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     globalFavoritesStoreFail("invalid_uuid");
                 ids[id] = true;
                 known[key] = id;
-                value.entries.push({
-                    id: id,
-                    title: entry.title,
-                    origin: entry.origin,
-                    locator: entry.locator,
-                });
+                value.entries.push(
+                    /* biome-ignore assist/source/useSortedKeys: Preserve persisted new-entry byte order used by physical store revisions. */ {
+                        id: id,
+                        title: entry.title,
+                        origin: entry.origin,
+                        locator: entry.locator,
+                    }
+                );
                 return id;
             });
         }
@@ -402,12 +404,14 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     globalFavoritesStoreFail("invalid_uuid");
                 ids[id] = true;
                 retained[id] = true;
-                replacement.push({
-                    id: id,
-                    title: entry.title,
-                    origin: entry.origin,
-                    locator: entry.locator,
-                });
+                replacement.push(
+                    /* biome-ignore assist/source/useSortedKeys: Preserve persisted replacement-entry byte order used by physical store revisions. */ {
+                        id: id,
+                        title: entry.title,
+                        origin: entry.origin,
+                        locator: entry.locator,
+                    }
+                );
             });
             removeGlobals(
                 value.entries
@@ -623,9 +627,9 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                           request.ids.indexOf(row.id) >= 0)
                 )
                     pending.push({
-                        title: row.title,
-                        origin: row.origin,
                         locator: row.locator,
+                        origin: row.origin,
+                        title: row.title,
                     });
             });
         }
@@ -700,8 +704,8 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                             !value.migrations.length)
                     )
                         return {
-                            outcome: "verified",
                             changed: false,
+                            outcome: "verified",
                             revision: expectedRevision,
                         };
                     try {
@@ -713,8 +717,8 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                         );
                         if (result === "conflict")
                             return {
-                                outcome: "not_applied",
                                 changed: false,
+                                outcome: "not_applied",
                                 revision: expectedRevision,
                             };
                         if (
@@ -724,19 +728,19 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                             !admitted()
                         )
                             return {
-                                outcome: "unknown",
                                 changed: null,
+                                outcome: "unknown",
                                 revision: null,
                             };
                         return {
-                            outcome: "verified",
                             changed: true,
+                            outcome: "verified",
                             revision: nextRevision,
                         };
                     } catch (_) {
                         return {
-                            outcome: "unknown",
                             changed: null,
+                            outcome: "unknown",
                             revision: null,
                         };
                     }
@@ -745,12 +749,12 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             });
         }
         return Object.freeze({
-            physical: grant,
-            beforeRaw: before,
             afterRaw: after,
+            beforeRaw: before,
+            current: current,
             expectedRevision: expectedRevision,
             newRevision: nextRevision,
-            current: current,
+            physical: grant,
             underLock: underLock,
         });
     }
@@ -769,20 +773,20 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
         if (value.unresolvedLegacy.length)
             globalFavoritesStoreFail("unportable_export");
         return {
-            version: 1,
             entries: value.entries.map(function (row: GlobalFavorite) {
                 return {
-                    title: row.title,
-                    origin: row.origin,
                     locator: row.locator,
+                    origin: row.origin,
+                    title: row.title,
                 };
             }),
+            version: 1,
         };
     }
     return {
-        snapshot: snapshot,
-        prepare: prepare,
         mutate: mutate,
         portableSnapshot: portableSnapshot,
+        prepare: prepare,
+        snapshot: snapshot,
     };
 }

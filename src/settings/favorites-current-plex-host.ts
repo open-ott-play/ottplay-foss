@@ -1,4 +1,3 @@
-import { isGlobalFavoriteSelector } from "./global-favorites-bindings";
 import { createPlexFavoriteReferences } from "../channels/favorites-plex-references";
 import {
     encodeFavoritesDocumentJson,
@@ -14,6 +13,7 @@ import type {
 import { createFavoritesBindings } from "./favorites-bindings";
 import { createFavoritesOperationReceipts } from "./favorites-operation-receipts";
 import { createFavoritesRecoveryCodec } from "./favorites-recovery-codec";
+import { isGlobalFavoriteSelector } from "./global-favorites-bindings";
 
 /** Current, verified Plex only. Reads never initialize stores, claim legacy data or connect a provider. */
 export function createFavoritesCurrentPlexHost(

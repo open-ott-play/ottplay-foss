@@ -162,6 +162,7 @@ var keyStrings = {
     "Checking folder permission": "正在检查文件夹权限",
     "Checking the Plex server connection…": "检查Plex服务器连接...",
     "Choose a folder in the browser window": "在浏览器窗口中选择文件夹",
+    "Choose a profile": "选择配置文件",
     "Choose files in the browser window": "在浏览器窗口中选择文件",
     "Choose from": "选择",
     "Choose language": "选择语言",
@@ -1048,6 +1049,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X设定",
     "Unable to load playlist": "无法加载播放列表",
+    Unavailable: "不可用",
     "Unlock the player's settings before changing its playlist.":
         "更改播放列表前，请先解锁播放器设置。",
     Untitled: "无标题",
