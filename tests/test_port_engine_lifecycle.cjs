@@ -3251,6 +3251,77 @@ for (const nativeIds of [true, false]) {
     );
 }
 
+test("relative engine seek samples actual media, preserves pause and rejects retired/nonseekable owners", () => {
+    for (const paused of [false, true]) {
+        const { w } = fixture();
+        w.playerMode = 0;
+        const lease = w.openCoreEngineLease({ url: "relative.mp4" }, () => {});
+        Object.assign(w.video, {
+            currentTime: 15,
+            duration: 90,
+            paused,
+            readyState: 3,
+            seekable: { end: () => 90, length: 1, start: () => 0 },
+        });
+        w._corePendingSeekPosition = 60;
+        assert.equal(
+            lease.sample().position,
+            60,
+            "existing pending-cursor observation is unchanged"
+        );
+        assert.equal(
+            lease.relativeSample().position,
+            15,
+            "relative path reads the actual decoder"
+        );
+        assert.equal(lease.relativeSeek(25, paused), true);
+        assert.equal(w.video.currentTime, 25);
+        assert.equal(w.video.paused, paused);
+        assert.equal(w.forcePlay, !paused);
+        assert.equal(lease.relativeSeek(91, paused), false);
+        w.video.seeking = true;
+        assert.equal(lease.relativeSample(), null);
+        assert.equal(lease.relativeSeek(30, paused), false);
+        w.video.seeking = false;
+        w._corePendingSeek = () => {};
+        assert.equal(lease.relativeSeek(30, paused), false);
+        w._corePendingSeek = null;
+        const next = w.openCoreEngineLease({ url: "next.mp4" }, () => {});
+        assert.equal(lease.relativeSample(), null);
+        assert.equal(lease.relativeSeek(30, paused), false);
+        next.dispose();
+    }
+});
+
+test("relative seek keeps paused compatibility playback paused after asynchronous restart", async () => {
+    const { w, players } = fixture();
+    w.playerMode = 0;
+    const lease = w.openCoreEngineLease({ url: "relative.mp4" }, () => {});
+    Object.assign(w.video, {
+        currentTime: 15,
+        duration: 90,
+        paused: true,
+        readyState: 3,
+        seekable: { end: () => 90, length: 1, start: () => 0 },
+    });
+    const prepared = deferred();
+    w.__ottCoreCompatibilityUrl = "compatibility-owner";
+    w.__ottLocalMedia = {
+        cancelPlayback() {},
+        compatibilityPlayback: () => true,
+        playbackSourceUrl: () => "original-file",
+        preparePlayback: () => prepared.promise,
+    };
+    assert.equal(lease.relativeSeek(25, true), true);
+    prepared.resolve("next.m3u8");
+    await tick();
+    players.at(-1).events.manifest();
+    assert.equal(w.forcePlay, false);
+    assert.equal(w.video.paused, true);
+    assert.equal(w.video.playCalls, 1, "only initial playback called play");
+    lease.dispose();
+});
+
 (async () => {
     let failures = 0;
     for (const [name, fn] of cases) {

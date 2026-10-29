@@ -443,6 +443,14 @@ const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 1152,
     gzipBytes: 0,
 });
+// Atomic relative VOD seeking adds 2613 raw / 768 gzip bytes in each entry
+// on Node22.23.4/zlib1.3.1-e00f703. Count the measured entry cost once in
+// each complete total; preserve prior release headroom and all provider/
+// optional caps. See docs/evidence/relative-seek-size-20261029.json.
+const RELATIVE_SEEK_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 2613,
+    gzipBytes: 768,
+});
 // Mixed global favorites: measured against the production-equivalent a480
 // baseline using Node22.23.4/zlib1.3.1-e00f703. These bounded named allowances
 // use exact a822/6234 canonical deltas, preserving pre-feature headroom.
@@ -479,7 +487,8 @@ const BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
@@ -489,7 +498,8 @@ const BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -682,7 +692,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -694,7 +705,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -774,7 +786,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
         OPTIONAL_BUDGETS["shaka-tracks"].bytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -790,7 +803,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
         OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes +
-        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -981,6 +995,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
             )
         ),
         providerBundles: sets,
+        relativeSeekEntryAllowance: RELATIVE_SEEK_ENTRY_ALLOWANCE,
         schema: 1,
         shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
         shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
@@ -1280,6 +1295,7 @@ function writeBuildBundleReport(
             optionalBudgets: OPTIONAL_BUDGETS,
             providerBudget: PROVIDER_BUDGET,
             providerBundles: sets,
+            relativeSeekEntryAllowance: RELATIVE_SEEK_ENTRY_ALLOWANCE,
             run: label(process.env.GITHUB_RUN_ID),
             runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
             schema: 1,
@@ -1361,6 +1377,7 @@ module.exports = {
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
+    RELATIVE_SEEK_ENTRY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
     SHAKA_TRACKS_ENTRY_ALLOWANCE,
     TOTAL_BUDGET,

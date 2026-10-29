@@ -612,6 +612,28 @@ assert.equal(
     80,
     "A missing library retains PC keyboard navigation"
 );
+for (const paused of [false, true]) {
+    const f = fixture();
+    const lease = f.openRequest({ url: "relative.mp4" }, () => {});
+    f.ready.shift()();
+    Object.assign(f.engineMedia, {
+        currentTime: 7.5,
+        duration: 30,
+        paused,
+        readyState: 3,
+        seekable: { end: () => 30, length: 1, start: () => 0 },
+    });
+    f.players[0].position = 20; // The public player cache is not decoder time.
+    assert.equal(lease.relativeSample().position, 7.5);
+    assert.equal(lease.relativeSeek(12.5, paused), true);
+    assert.equal(f.players[0].position, 12.5);
+    assert.equal(f.w.forcePlay, !paused);
+    assert.equal(f.engineMedia.paused, paused);
+    assert.equal(lease.relativeSeek(31, paused), false);
+    lease.dispose();
+    assert.equal(lease.relativeSample(), null);
+    assert.equal(lease.relativeSeek(1, paused), false);
+}
 console.log(
     "PASS pc2 engine: ES5, request cancellation, pause/seek, tracks, PiP, formats and missing-vendor fallback"
 );
