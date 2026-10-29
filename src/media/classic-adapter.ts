@@ -1918,13 +1918,30 @@ function classicMediaRuntime(): any {
             authorize(item, proceed);
         },
         favorite: function (payload: any, toggle = false) {
+            if (payload.__ottMediaFilter || payload.__ottMediaNext) return;
+            var admitted = api.capture(),
+                frame = library.snapshot("none").frame;
             if (
-                typeof w.toggleGlobalFavorite === "function" &&
-                w.toggleGlobalFavorite(payload, api.capture()) !== false
+                !admitted() ||
+                w.sFavorites === -1 ||
+                (Number(payload.adult) === 1 &&
+                    w.__ottParental?.needs("channels"))
+            )
+                return false;
+            var globalChange = toggle
+                ? w.toggleGlobalFavorite
+                : w.setGlobalFavorite;
+            if (
+                typeof globalChange === "function" &&
+                (toggle
+                    ? globalChange(payload, admitted)
+                    : globalChange(
+                          payload,
+                          !(frame && frame.route.kind === "favorites"),
+                          admitted
+                      )) !== false
             )
                 return true;
-            if (payload.__ottMediaFilter || payload.__ottMediaNext) return;
-            var admitted = api.capture();
             if (
                 !admitted() ||
                 (toggle &&
@@ -1938,7 +1955,6 @@ function classicMediaRuntime(): any {
                 w.__ottParental?.needs("channels")
             )
                 return false;
-            var frame = library.snapshot("none").frame;
             var item = describe(
                 [payload],
                 frame ? frame.route : { kind: "catalog", target: "", title: "" }
@@ -2639,6 +2655,12 @@ function classicMediaRuntime(): any {
                 if (!admitted()) return;
                 var payload = item.payload;
                 if (payload.__ottMediaFilter) api.filter();
+                else if (
+                    payload.__ottMediaRoute === "favorites" &&
+                    typeof w.openGlobalFavorites === "function" &&
+                    w.openGlobalFavorites() !== false
+                )
+                    return;
                 else if (payload.__ottMediaRoute)
                     navigate({
                         kind: payload.__ottMediaRoute,

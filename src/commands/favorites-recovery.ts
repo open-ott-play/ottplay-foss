@@ -6,7 +6,7 @@ export const FAVORITES_RECOVERY_ERRORS =
     );
 const REASON = "accept-unknown-no-replay",
     KEY = "favorites-receipts.v1";
-function fail(code: string): never {
+function favoritesRecoveryDispatcherFail(code: string): never {
     throw new Error(code);
 }
 function exact(value: any, fields: string[]): boolean {
@@ -235,8 +235,10 @@ export function createFavoritesRecoveryDispatcher(ports: {
 }) {
     var codec = createFavoritesRecoveryCodec({ sha256: ports.sha256 });
     function check(current: () => boolean, deadline: number): void {
-        if (!ports.current() || !current()) fail("runtime_changed");
-        if (!(ports.now() < deadline)) fail("expired");
+        if (!ports.current() || !current())
+            favoritesRecoveryDispatcherFail("runtime_changed");
+        if (!(ports.now() < deadline))
+            favoritesRecoveryDispatcherFail("expired");
     }
     function raw(
         reader: any,
@@ -244,15 +246,17 @@ export function createFavoritesRecoveryDispatcher(ports: {
         deadline: number
     ): string | null {
         check(current, deadline);
-        if (!reader || !reader.current()) fail("unsupported_persistence");
+        if (!reader || !reader.current())
+            favoritesRecoveryDispatcherFail("unsupported_persistence");
         var value = reader.read(KEY);
         if (
             value !== null &&
             (typeof value !== "string" || ports.utf8(value).length > 65536)
         )
-            fail("storage_unavailable");
+            favoritesRecoveryDispatcherFail("storage_unavailable");
         check(current, deadline);
-        if (!reader.current()) fail("storage_unavailable");
+        if (!reader.current())
+            favoritesRecoveryDispatcherFail("storage_unavailable");
         return value;
     }
     async function read(
@@ -266,13 +270,14 @@ export function createFavoritesRecoveryDispatcher(ports: {
             var before = raw(reader, current, deadline),
                 result = await work(before, proof);
             if (raw(reader, current, deadline) !== before)
-                fail("revision_conflict");
+                favoritesRecoveryDispatcherFail("revision_conflict");
             return result;
         }
         if (!grant) return owned(ports.host.recoveryStorage(), null);
         return grant.exclusive(async function (held: any) {
             check(current, deadline);
-            if (held !== grant || !grant.current()) fail("storage_unavailable");
+            if (held !== grant || !grant.current())
+                favoritesRecoveryDispatcherFail("storage_unavailable");
             return owned(grant, await codec.backendProof(grant));
         });
     }
@@ -281,8 +286,10 @@ export function createFavoritesRecoveryDispatcher(ports: {
         current: () => boolean,
         deadline: number
     ): Promise<any> {
-        if (!validFavoritesRecoveryRequest(p)) fail("invalid_request");
-        if (p.runtime !== ports.runtime()) fail("runtime_changed");
+        if (!validFavoritesRecoveryRequest(p))
+            favoritesRecoveryDispatcherFail("invalid_request");
+        if (p.runtime !== ports.runtime())
+            favoritesRecoveryDispatcherFail("runtime_changed");
         check(current, deadline);
         var result: any;
         if (p.mode !== "acknowledge")
@@ -319,11 +326,13 @@ export function createFavoritesRecoveryDispatcher(ports: {
             );
         else {
             var grant = ports.host.physicalStorage();
-            if (!grant) fail("unsupported_persistence");
+            if (!grant)
+                favoritesRecoveryDispatcherFail("unsupported_persistence");
             result = await grant.exclusive(async function (held: any) {
                 var possibleWrite = false;
                 try {
-                    if (held !== grant) fail("storage_unavailable");
+                    if (held !== grant)
+                        favoritesRecoveryDispatcherFail("storage_unavailable");
                     var before = raw(grant, current, deadline),
                         proof = await codec.backendProof(grant);
                     var view = await codec.inspect(before, {
@@ -335,7 +344,7 @@ export function createFavoritesRecoveryDispatcher(ports: {
                         raw(grant, current, deadline) !== before ||
                         view.ledgerRevision !== p.expected_ledger_revision
                     )
-                        fail("revision_conflict");
+                        favoritesRecoveryDispatcherFail("revision_conflict");
                     if (
                         !view.acknowledgeAllowed ||
                         !view.record ||
@@ -347,7 +356,7 @@ export function createFavoritesRecoveryDispatcher(ports: {
                         view.acknowledgementId !== p.acknowledgement_id ||
                         view.afterLedgerSha256 !== p.after_ledger_sha256
                     )
-                        fail("revision_conflict");
+                        favoritesRecoveryDispatcherFail("revision_conflict");
                     check(current, deadline);
                     possibleWrite = true;
                     if (
@@ -356,13 +365,13 @@ export function createFavoritesRecoveryDispatcher(ports: {
                             return true;
                         }) !== "confirmed"
                     )
-                        fail("storage_unavailable");
+                        favoritesRecoveryDispatcherFail("storage_unavailable");
                     if (
                         raw(grant, current, deadline) !== view.afterRaw ||
                         (await ports.sha256(view.afterRaw)) !==
                             p.after_ledger_sha256
                     )
-                        fail("storage_unavailable");
+                        favoritesRecoveryDispatcherFail("storage_unavailable");
                     var after = await codec.inspect(view.afterRaw, {
                         backendProof: proof,
                         operationId: p.operation_id,
@@ -373,7 +382,7 @@ export function createFavoritesRecoveryDispatcher(ports: {
                         !after.record.acknowledgement ||
                         raw(grant, current, deadline) !== view.afterRaw
                     )
-                        fail("storage_unavailable");
+                        favoritesRecoveryDispatcherFail("storage_unavailable");
                     return {
                         acknowledged: true,
                         acknowledgement_id: p.acknowledgement_id,
@@ -384,7 +393,8 @@ export function createFavoritesRecoveryDispatcher(ports: {
                         record: after.record,
                     };
                 } catch (error) {
-                    if (possibleWrite) fail("storage_unavailable");
+                    if (possibleWrite)
+                        favoritesRecoveryDispatcherFail("storage_unavailable");
                     throw error;
                 }
             });
@@ -398,7 +408,7 @@ export function createFavoritesRecoveryDispatcher(ports: {
             !validFavoritesRecoveryResponse(result, p) ||
             ports.utf8(JSON.stringify(result)).length > 131072
         )
-            fail("storage_unavailable");
+            favoritesRecoveryDispatcherFail("storage_unavailable");
         return result;
     }
     return {

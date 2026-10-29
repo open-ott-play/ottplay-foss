@@ -1,5 +1,5 @@
-import { ensureGlobalFavorites } from "./remote-favorites-global";
-const ERRORS = [
+import { ensureRemoteGlobalFavorites } from "./remote-favorites-global";
+const REMOTE_GLOBAL_RECOVERY_ERRORS = [
     "invalid_request",
     "envelope_too_large",
     "runtime_changed",
@@ -44,7 +44,7 @@ export function executeGlobalFavoritesRecovery(
         });
         return function () {};
     }
-    var cancel = ensureGlobalFavorites(
+    var cancel = ensureRemoteGlobalFavorites(
         w,
         runtime,
         request.expires_at,
@@ -81,7 +81,9 @@ export function executeGlobalFavoritesRecovery(
                     if (code === "invalid_cursor") code = "invalid_request";
                     if (code === "capacity") code = "limits_exceeded";
                     reject(
-                        ERRORS.indexOf(code) >= 0 ? code : "storage_unavailable"
+                        REMOTE_GLOBAL_RECOVERY_ERRORS.indexOf(code) >= 0
+                            ? code
+                            : "storage_unavailable"
                     );
                 });
         }

@@ -113,6 +113,11 @@ export function createGlobalFavoritesView(ports: any): any {
             id: "system:global-favorites",
             title: ports.translate("Favorites"),
             rows: rows,
+            remove: function (): boolean {
+                return (
+                    generation === owner && shown && !!favorite && favorite()
+                );
+            },
             selected: ports.navigation.currentId(snapshot.entries),
             playing: function (id: string) {
                 return ports.navigation.isPlaying(id, snapshot.entries);

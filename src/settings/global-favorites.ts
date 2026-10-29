@@ -35,6 +35,7 @@ export type GlobalFavoritesChange =
     | { op: "legacy-put"; entry: any; portable?: GlobalFavoriteValue }
     | { op: "legacy-remove"; id: string }
     | { op: "remove" | "reorder"; ids: string[] }
+    | { op: "forget-membership"; ids: string[]; tokens: string[] }
     | {
           op: "migrate-source";
           migrationId: string;
@@ -46,17 +47,17 @@ export type GlobalFavoritesChange =
           entries: { token: string; entry: GlobalFavoriteValue }[];
       }
     | { op: "migrate-legacy" };
-const KEY = "remoteFavorites.v1";
-const UUID =
+const GLOBAL_FAVORITES_KEY = "remoteFavorites.v1";
+const GLOBAL_FAVORITES_UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
-const SHA = /^[0-9a-f]{64}(?![\s\S])/;
-function fail(code: string): never {
+const GLOBAL_FAVORITES_SHA = /^[0-9a-f]{64}(?![\s\S])/;
+function globalFavoritesStoreFail(code: string): never {
     throw new Error(code);
 }
 function object(value: any): boolean {
     return !!value && typeof value === "object" && !Array.isArray(value);
 }
-function keys(value: any, names: string[]): boolean {
+function globalFavoritesStoreKeys(value: any, names: string[]): boolean {
     return (
         object(value) &&
         Object.keys(value).sort().join(",") === names.sort().join(",")
@@ -106,16 +107,24 @@ function legacy(row: any): boolean {
 /** One installation-wide ordered list, reusing the existing physical key. No routing or scans. */
 export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
     function normalized(value: any): GlobalFavoriteValue {
-        if (!keys(value, ["title", "origin", "locator"])) fail("invalid_entry");
+        if (!globalFavoritesStoreKeys(value, ["title", "origin", "locator"]))
+            globalFavoritesStoreFail("invalid_entry");
         const normalized = ports.codec.normalize(clone(value));
-        if (!normalized || !keys(normalized, ["title", "origin", "locator"]))
-            fail("unsupported_entry");
+        if (
+            !normalized ||
+            !globalFavoritesStoreKeys(normalized, [
+                "title",
+                "origin",
+                "locator",
+            ])
+        )
+            globalFavoritesStoreFail("unsupported_entry");
         const result: GlobalFavoriteValue = clone(normalized);
         if (
             JSON.stringify(ports.codec.normalize(clone(result))) !==
             JSON.stringify(result)
         )
-            fail("unstable_codec");
+            globalFavoritesStoreFail("unstable_codec");
         return result;
     }
     function identity(value: GlobalFavoriteValue): string {
@@ -126,30 +135,38 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 locator: value.locator,
             })
         );
-        if (!text(key, 8192)) fail("invalid_identity");
+        if (!text(key, 8192)) globalFavoritesStoreFail("invalid_identity");
         return key;
     }
     function document(raw: string | null): any {
         if (raw === null) return empty();
         var value = parseFavoritesDocumentJson(utf8Encode(raw));
-        if (keys(value, ["version", "entries"]) && value.version === 1) {
+        if (
+            globalFavoritesStoreKeys(value, ["version", "entries"]) &&
+            value.version === 1
+        ) {
             if (
                 !Array.isArray(value.entries) ||
                 value.entries.length > 100 ||
                 !value.entries.every(legacy)
             )
-                fail("invalid_legacy");
+                globalFavoritesStoreFail("invalid_legacy");
             var result = empty();
             result.legacy = value.entries;
             value = result;
         }
         if (
-            keys(value, ["version", "entries", "legacy", "migrations"]) &&
+            globalFavoritesStoreKeys(value, [
+                "version",
+                "entries",
+                "legacy",
+                "migrations",
+            ]) &&
             value.version === 2
         )
             value.legacyAliases = {};
         if (
-            !keys(value, [
+            !globalFavoritesStoreKeys(value, [
                 "version",
                 "entries",
                 "legacy",
@@ -165,16 +182,21 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             !Array.isArray(value.migrations) ||
             value.migrations.length > 8192
         )
-            fail("invalid_store");
+            globalFavoritesStoreFail("invalid_store");
         var ids: any = Object.create(null),
             identities: any = Object.create(null);
         value.entries.forEach(function (row: any) {
             if (
-                !keys(row, ["id", "title", "origin", "locator"]) ||
-                !UUID.test(row.id) ||
+                !globalFavoritesStoreKeys(row, [
+                    "id",
+                    "title",
+                    "origin",
+                    "locator",
+                ]) ||
+                !GLOBAL_FAVORITES_UUID.test(row.id) ||
                 ids[row.id]
             )
-                fail("invalid_store");
+                globalFavoritesStoreFail("invalid_store");
             ids[row.id] = true;
             var entry = normalized({
                 title: row.title,
@@ -186,22 +208,24 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 JSON.stringify(entry.origin) !== JSON.stringify(row.origin) ||
                 JSON.stringify(entry.locator) !== JSON.stringify(row.locator)
             )
-                fail("noncanonical_store");
+                globalFavoritesStoreFail("noncanonical_store");
             var key = identity(entry);
-            if (identities[key]) fail("duplicate_identity");
+            if (identities[key]) globalFavoritesStoreFail("duplicate_identity");
             identities[key] = true;
         });
         ids = Object.create(null);
         value.legacy.forEach(function (row: any) {
-            if (ids[row.id]) fail("invalid_legacy");
+            if (ids[row.id]) globalFavoritesStoreFail("invalid_legacy");
             ids[row.id] = true;
         });
         ids = Object.create(null);
         value.migrations.forEach(function (id: any) {
-            if (!SHA.test(id) || ids[id]) fail("invalid_migration");
+            if (!GLOBAL_FAVORITES_SHA.test(id) || ids[id])
+                globalFavoritesStoreFail("invalid_migration");
             ids[id] = true;
         });
-        if (!object(value.legacyAliases)) fail("invalid_aliases");
+        if (!object(value.legacyAliases))
+            globalFavoritesStoreFail("invalid_aliases");
         Object.keys(value.legacyAliases).forEach(function (id) {
             if (
                 !value.legacy.some(function (row: any) {
@@ -211,7 +235,7 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     return row.id === value.legacyAliases[id];
                 })
             )
-                fail("invalid_aliases");
+                globalFavoritesStoreFail("invalid_aliases");
         });
         return value;
     }
@@ -220,24 +244,30 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
     }
     async function revision(raw: string | null): Promise<string> {
         var value = await ports.sha256(raw === null ? "null" : raw);
-        if (!SHA.test(value)) fail("invalid_digest");
+        if (!GLOBAL_FAVORITES_SHA.test(value))
+            globalFavoritesStoreFail("invalid_digest");
         return value;
     }
     async function snapshot() {
         const captured = ports.capture();
-        if (!captured || !alive(captured)) fail("unsupported_storage");
+        if (!captured || !alive(captured))
+            globalFavoritesStoreFail("unsupported_storage");
         const grant: FavoritesPhysicalStorageGrant = captured;
-        var raw = grant.read(KEY),
+        var raw = grant.read(GLOBAL_FAVORITES_KEY),
             value = document(raw),
             rev = await revision(raw);
         function current(): boolean {
             try {
-                return alive(grant) && grant.read(KEY) === raw && alive(grant);
+                return (
+                    alive(grant) &&
+                    grant.read(GLOBAL_FAVORITES_KEY) === raw &&
+                    alive(grant)
+                );
             } catch (_) {
                 return false;
             }
         }
-        if (!current()) fail("revision_conflict");
+        if (!current()) globalFavoritesStoreFail("revision_conflict");
         return {
             current: current,
             revision: rev,
@@ -256,7 +286,7 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     };
                 }),
             privateLegacy: function () {
-                if (!current()) fail("revision_conflict");
+                if (!current()) globalFavoritesStoreFail("revision_conflict");
                 return {
                     entries: clone(value.legacy),
                     aliases: clone(value.legacyAliases),
@@ -264,11 +294,30 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             },
         };
     }
-    function apply(value: any, change: GlobalFavoritesChange): void {
-        if (!object(change)) fail("invalid_change");
-        function put(entries: GlobalFavoriteValue[]) {
+    function apply(
+        value: any,
+        change: GlobalFavoritesChange,
+        identityTokens: any,
+        mappedLegacy: any
+    ): void {
+        if (!object(change)) globalFavoritesStoreFail("invalid_change");
+        function suppress(entry: GlobalFavoriteValue, removed: boolean): void {
+            var token = identityTokens[identity(entry)];
+            if (!GLOBAL_FAVORITES_SHA.test(token))
+                globalFavoritesStoreFail("invalid_digest");
+            var at = value.migrations.indexOf(token);
+            if (!removed) {
+                if (at >= 0) value.migrations.splice(at, 1);
+                return;
+            }
+            if (at >= 0) return;
+            if (value.migrations.length === 8192)
+                globalFavoritesStoreFail("limits_exceeded");
+            value.migrations.push(token);
+        }
+        function put(entries: GlobalFavoriteValue[], migrating = false) {
             if (!Array.isArray(entries) || entries.length > 1000)
-                fail("limits_exceeded");
+                globalFavoritesStoreFail("limits_exceeded");
             var known: any = Object.create(null),
                 ids: any = Object.create(null);
             value.entries.forEach(function (row: GlobalFavorite) {
@@ -278,10 +327,18 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             return entries.map(function (input) {
                 var entry = normalized(input),
                     key = identity(entry);
+                if (
+                    migrating &&
+                    value.migrations.indexOf(identityTokens[key]) >= 0
+                )
+                    return null;
+                if (!migrating) suppress(entry, false);
                 if (known[key]) return known[key];
-                if (value.entries.length === 1000) fail("limits_exceeded");
+                if (value.entries.length === 1000)
+                    globalFavoritesStoreFail("limits_exceeded");
                 var id = ports.uuid();
-                if (!UUID.test(id) || ids[id]) fail("invalid_uuid");
+                if (!GLOBAL_FAVORITES_UUID.test(id) || ids[id])
+                    globalFavoritesStoreFail("invalid_uuid");
                 ids[id] = true;
                 known[key] = id;
                 value.entries.push({
@@ -301,7 +358,9 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             value.entries = value.entries.filter(function (
                 row: GlobalFavorite
             ) {
-                return !removed[row.id];
+                if (!removed[row.id]) return true;
+                suppress(row, true);
+                return false;
             });
             value.legacy = value.legacy.filter(function (row: any) {
                 return !removed[value.legacyAliases[row.id]];
@@ -311,11 +370,17 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     delete value.legacyAliases[id];
             });
         }
-        if (change.op === "put" && keys(change, ["op", "entries"]))
+        if (
+            change.op === "put" &&
+            globalFavoritesStoreKeys(change, ["op", "entries"])
+        )
             put(change.entries);
-        else if (change.op === "replace" && keys(change, ["op", "entries"])) {
+        else if (
+            change.op === "replace" &&
+            globalFavoritesStoreKeys(change, ["op", "entries"])
+        ) {
             if (!Array.isArray(change.entries) || change.entries.length > 1000)
-                fail("limits_exceeded");
+                globalFavoritesStoreFail("limits_exceeded");
             var existing: any = Object.create(null),
                 ids: any = Object.create(null),
                 seen: any = Object.create(null),
@@ -329,11 +394,12 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 var entry = normalized(input),
                     key = identity(entry);
                 if (seen[key]) return;
+                suppress(entry, false);
                 seen[key] = true;
                 var previous = existing[key],
                     id = previous ? previous.id : ports.uuid();
-                if (!UUID.test(id) || (!previous && ids[id]))
-                    fail("invalid_uuid");
+                if (!GLOBAL_FAVORITES_UUID.test(id) || (!previous && ids[id]))
+                    globalFavoritesStoreFail("invalid_uuid");
                 ids[id] = true;
                 retained[id] = true;
                 replacement.push({
@@ -355,15 +421,16 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             value.entries = replacement;
         } else if (
             change.op === "legacy-put" &&
-            (keys(change, ["op", "entry"]) ||
-                keys(change, ["op", "entry", "portable"]))
+            (globalFavoritesStoreKeys(change, ["op", "entry"]) ||
+                globalFavoritesStoreKeys(change, ["op", "entry", "portable"]))
         ) {
-            if (!legacy(change.entry)) fail("invalid_legacy");
+            if (!legacy(change.entry))
+                globalFavoritesStoreFail("invalid_legacy");
             var index = value.legacy.findIndex(function (row: any) {
                 return row.id === change.entry.id;
             });
             if (index < 0 && value.legacy.length >= 100)
-                fail("limits_exceeded");
+                globalFavoritesStoreFail("limits_exceeded");
             if (index < 0) value.legacy.push(clone(change.entry));
             else value.legacy[index] = clone(change.entry);
             if (change.portable)
@@ -372,14 +439,14 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 ])[0];
         } else if (
             change.op === "legacy-remove" &&
-            keys(change, ["op", "id"])
+            globalFavoritesStoreKeys(change, ["op", "id"])
         ) {
             if (
                 !value.legacy.some(function (row: any) {
                     return row.id === change.id;
                 })
             )
-                fail("favorite_not_found");
+                globalFavoritesStoreFail("favorite_not_found");
             if (value.legacyAliases[change.id])
                 removeGlobals([value.legacyAliases[change.id]]);
             else
@@ -388,79 +455,118 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                 });
         } else if (
             change.op === "migrate-source" &&
-            keys(change, ["op", "migrationId", "entries"])
+            globalFavoritesStoreKeys(change, ["op", "migrationId", "entries"])
         ) {
-            if (!SHA.test(change.migrationId)) fail("invalid_migration");
+            if (!GLOBAL_FAVORITES_SHA.test(change.migrationId))
+                globalFavoritesStoreFail("invalid_migration");
             if (value.migrations.indexOf(change.migrationId) >= 0) return;
-            if (value.migrations.length === 8192) fail("limits_exceeded");
-            put(change.entries);
+            if (value.migrations.length === 8192)
+                globalFavoritesStoreFail("limits_exceeded");
+            put(change.entries, true);
             value.migrations.push(change.migrationId);
         } else if (
             change.op === "migrate-membership" &&
-            keys(change, ["op", "migrationId", "entries"])
+            globalFavoritesStoreKeys(change, ["op", "migrationId", "entries"])
         ) {
             if (
-                !SHA.test(change.migrationId) ||
+                !GLOBAL_FAVORITES_SHA.test(change.migrationId) ||
                 !Array.isArray(change.entries) ||
                 change.entries.length > 1000
             )
-                fail("invalid_migration");
+                globalFavoritesStoreFail("invalid_migration");
             var tokens: any = Object.create(null),
                 incoming: GlobalFavoriteValue[] = [];
             value.migrations.forEach(function (token: string) {
                 tokens[token] = true;
             });
             change.entries.forEach(function (item) {
-                if (!keys(item, ["token", "entry"]) || !SHA.test(item.token))
-                    fail("invalid_migration");
+                if (
+                    !globalFavoritesStoreKeys(item, ["token", "entry"]) ||
+                    !GLOBAL_FAVORITES_SHA.test(item.token)
+                )
+                    globalFavoritesStoreFail("invalid_migration");
                 var entry = normalized(item.entry);
                 if (tokens[item.token]) return;
-                if (value.migrations.length === 8192) fail("limits_exceeded");
+                if (value.migrations.length === 8192)
+                    globalFavoritesStoreFail("limits_exceeded");
                 tokens[item.token] = true;
                 value.migrations.push(item.token);
                 incoming.push(entry);
             });
-            put(incoming);
-        } else if (change.op === "migrate-legacy" && keys(change, ["op"])) {
-            if (!ports.codec.migrateLegacy) fail("unsupported_migration");
+            put(incoming, true);
+        } else if (
+            change.op === "migrate-legacy" &&
+            globalFavoritesStoreKeys(change, ["op"])
+        ) {
+            if (!ports.codec.migrateLegacy)
+                globalFavoritesStoreFail("unsupported_migration");
             value.legacy.forEach(function (row: any) {
                 if (value.legacyAliases[row.id]) return;
-                var mapped = ports.codec.migrateLegacy!(clone(row));
-                if (mapped) value.legacyAliases[row.id] = put([mapped])[0];
+                var mapped = mappedLegacy[row.id];
+                if (mapped) {
+                    var migrated = put([mapped], true)[0];
+                    if (migrated) value.legacyAliases[row.id] = migrated;
+                }
             });
         } else if (
-            (change.op === "remove" || change.op === "reorder") &&
-            keys(change, ["op", "ids"])
+            ((change.op === "remove" || change.op === "reorder") &&
+                globalFavoritesStoreKeys(change, ["op", "ids"])) ||
+            (change.op === "forget-membership" &&
+                globalFavoritesStoreKeys(change, ["op", "ids", "tokens"]))
         ) {
             if (!Array.isArray(change.ids) || change.ids.length > 1000)
-                fail("invalid_ids");
+                globalFavoritesStoreFail("invalid_ids");
             var selected: any = Object.create(null),
                 seen: any = Object.create(null);
             value.entries.forEach(function (row: GlobalFavorite) {
                 selected[row.id] = row;
             });
             var ordered = change.ids.map(function (id) {
-                if (!UUID.test(id) || !selected[id] || seen[id])
-                    fail("invalid_ids");
+                if (
+                    !GLOBAL_FAVORITES_UUID.test(id) ||
+                    !selected[id] ||
+                    seen[id]
+                )
+                    globalFavoritesStoreFail("invalid_ids");
                 seen[id] = true;
                 return selected[id];
             });
             if (change.op === "reorder") {
                 if (ordered.length !== value.entries.length)
-                    fail("invalid_ids");
+                    globalFavoritesStoreFail("invalid_ids");
                 value.entries = ordered;
-            } else removeGlobals(change.ids);
-        } else fail("invalid_change");
+            } else {
+                if (change.op === "forget-membership") {
+                    if (
+                        !Array.isArray(change.tokens) ||
+                        change.tokens.length > 2 ||
+                        change.tokens.some(function (token) {
+                            return !GLOBAL_FAVORITES_SHA.test(token);
+                        })
+                    )
+                        globalFavoritesStoreFail("invalid_migration");
+                    change.tokens.forEach(function (token) {
+                        if (value.migrations.indexOf(token) >= 0) return;
+                        if (value.migrations.length === 8192)
+                            globalFavoritesStoreFail("limits_exceeded");
+                        value.migrations.push(token);
+                    });
+                }
+                removeGlobals(change.ids);
+            }
+        } else globalFavoritesStoreFail("invalid_change");
     }
     async function prepare(
         expectedRevision: string,
         change: GlobalFavoritesChange,
         admission?: () => boolean
     ) {
-        if (!SHA.test(expectedRevision)) fail("invalid_revision");
+        if (!GLOBAL_FAVORITES_SHA.test(expectedRevision))
+            globalFavoritesStoreFail("invalid_revision");
         var request = clone(change);
         const captured = ports.capture();
-        if (!captured || !alive(captured)) fail("unsupported_storage");
+        if (!captured || !alive(captured))
+            globalFavoritesStoreFail("unsupported_storage");
         const grant: FavoritesPhysicalStorageGrant = captured;
         function admitted(): boolean {
             return (
@@ -475,28 +581,98 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                     ))
             );
         }
-        var before = grant.read(KEY),
+        var before = grant.read(GLOBAL_FAVORITES_KEY),
             value = document(before);
         if (
             (await revision(before)) !== expectedRevision ||
             !admitted() ||
-            grant.read(KEY) !== before
+            grant.read(GLOBAL_FAVORITES_KEY) !== before
         )
-            fail("revision_conflict");
-        apply(value, request);
+            globalFavoritesStoreFail("revision_conflict");
+        var pending: GlobalFavoriteValue[] = [],
+            mappedLegacy: any = Object.create(null),
+            identityTokens: any = Object.create(null);
+        if (
+            request.op === "put" ||
+            request.op === "replace" ||
+            request.op === "migrate-source"
+        )
+            pending = Array.isArray(request.entries)
+                ? request.entries.slice()
+                : [];
+        if (request.op === "migrate-membership")
+            pending = Array.isArray(request.entries)
+                ? request.entries.map(function (row) {
+                      return row && row.entry;
+                  })
+                : [];
+        if (request.op === "legacy-put" && request.portable)
+            pending.push(request.portable);
+        if (
+            request.op === "replace" ||
+            request.op === "remove" ||
+            request.op === "forget-membership" ||
+            request.op === "legacy-remove"
+        ) {
+            value.entries.forEach(function (row: GlobalFavorite) {
+                if (
+                    request.op === "replace" ||
+                    (request.op === "legacy-remove"
+                        ? value.legacyAliases[request.id] === row.id
+                        : Array.isArray(request.ids) &&
+                          request.ids.indexOf(row.id) >= 0)
+                )
+                    pending.push({
+                        title: row.title,
+                        origin: row.origin,
+                        locator: row.locator,
+                    });
+            });
+        }
+        if (request.op === "migrate-legacy" && ports.codec.migrateLegacy) {
+            value.legacy.forEach(function (row: any) {
+                if (value.legacyAliases[row.id]) return;
+                var mapped = ports.codec.migrateLegacy!(clone(row));
+                if (mapped) {
+                    mappedLegacy[row.id] = normalized(mapped);
+                    pending.push(mappedLegacy[row.id]);
+                }
+            });
+        }
+        if (pending.length > 2000) globalFavoritesStoreFail("limits_exceeded");
+        for (var tokenIndex = 0; tokenIndex < pending.length; tokenIndex++) {
+            var canonical = identity(normalized(pending[tokenIndex]));
+            if (identityTokens[canonical]) continue;
+            var token = await ports.sha256(
+                JSON.stringify([
+                    "global-favorites-removed-identity-v1",
+                    canonical,
+                ])
+            );
+            if (!GLOBAL_FAVORITES_SHA.test(token))
+                globalFavoritesStoreFail("invalid_digest");
+            identityTokens[canonical] = token;
+        }
+        if (!admitted() || grant.read(GLOBAL_FAVORITES_KEY) !== before)
+            globalFavoritesStoreFail("revision_conflict");
+        apply(value, request, identityTokens, mappedLegacy);
         var after = JSON.stringify(value);
         document(after);
         utf8Encode(after);
         var nextRevision = await revision(after);
-        if (!admitted() || grant.read(KEY) !== before || !admitted())
-            fail("revision_conflict");
+        if (
+            !admitted() ||
+            grant.read(GLOBAL_FAVORITES_KEY) !== before ||
+            !admitted()
+        )
+            globalFavoritesStoreFail("revision_conflict");
         var used = false;
         function current(): boolean {
             try {
                 return (
                     !used &&
                     admitted() &&
-                    grant.read(KEY) === before &&
+                    grant.read(GLOBAL_FAVORITES_KEY) === before &&
                     admitted()
                 );
             } catch (_) {
@@ -510,9 +686,11 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
             ) => Promise<any>
         ): Promise<any> {
             return grant.exclusive(async function (held) {
-                if (held !== grant || !current()) fail("revision_conflict");
+                if (held !== grant || !current())
+                    globalFavoritesStoreFail("revision_conflict");
                 async function commit() {
-                    if (!current()) fail("revision_conflict");
+                    if (!current())
+                        globalFavoritesStoreFail("revision_conflict");
                     used = true;
                     if (
                         after === before ||
@@ -528,7 +706,7 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                         };
                     try {
                         var result = grant.compareAndSwap(
-                            KEY,
+                            GLOBAL_FAVORITES_KEY,
                             before,
                             after,
                             admitted
@@ -542,7 +720,7 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
                         if (
                             result !== "confirmed" ||
                             !admitted() ||
-                            grant.read(KEY) !== after ||
+                            grant.read(GLOBAL_FAVORITES_KEY) !== after ||
                             !admitted()
                         )
                             return {
@@ -588,7 +766,8 @@ export function createGlobalFavoritesStore(ports: GlobalFavoritesPorts) {
     }
     async function portableSnapshot() {
         var value = await snapshot();
-        if (value.unresolvedLegacy.length) fail("unportable_export");
+        if (value.unresolvedLegacy.length)
+            globalFavoritesStoreFail("unportable_export");
         return {
             version: 1,
             entries: value.entries.map(function (row: GlobalFavorite) {

@@ -16,6 +16,8 @@ export async function captureGlobalFavoriteMigration(
     var tv = w.__ottFavoritesLibrary?.captureGlobal(),
         media = w.__ottMedia?.captureGlobalFavorites();
     if (!tv && !media) return null;
+    var capturedGuards: (() => boolean)[] = [],
+        complete = false;
     function current() {
         return (
             driver === w.__ottActiveProviderDriver &&
@@ -24,7 +26,11 @@ export async function captureGlobalFavoriteMigration(
             !driver.catalogLoading?.() &&
             player.allowed() &&
             (!tv || tv.current()) &&
-            (!media || media.current())
+            (!media || media.current()) &&
+            (!complete ||
+                capturedGuards.every(function (guard) {
+                    return guard();
+                }))
         );
     }
     if (!current()) return null;
@@ -104,21 +110,28 @@ export async function captureGlobalFavoriteMigration(
             });
             continue;
         }
+        capturedGuards.push(captured.current);
         var id = codec.identity(captured.value);
         if (!identities[id]) {
             identities[id] = true;
             entries.push(captured.value);
         }
     }
+    complete = true;
     return current()
         ? {
               entries: entries,
               pending: pending,
               current: current,
-              identity: JSON.stringify([
-                  "global-favorites-source-membership-v1",
-                  w.__ottSourceIdentity.current(w),
-              ]),
+              identity: globalFavoriteMigrationSource(w),
           }
         : null;
+}
+
+/** Stable private namespace shared by migration and explicit removal tombstones. */
+export function globalFavoriteMigrationSource(w: any): string {
+    return JSON.stringify([
+        "global-favorites-source-membership-v1",
+        w.__ottSourceIdentity.current(w),
+    ]);
 }

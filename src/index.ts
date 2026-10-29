@@ -5343,9 +5343,18 @@ window.addChannel2bucket = function (): void {
     var idx = w.selIndex;
     var chId = w.listArray[idx];
     if (w.sFavorites) {
+        if (
+            typeof w.setGlobalChannelFavorite === "function" &&
+            w.setGlobalChannelFavorite(chId, true) !== false
+        )
+            return;
         if (!w.listCatIndex) return;
         addToFavorites(chId);
-        if (typeof w.saveChannelsCats === "function") w.saveChannelsCats();
+        if (
+            typeof w.saveChannelsCats !== "function" ||
+            w.saveChannelsCats() !== true
+        )
+            return;
         if (typeof w.showShift === "function")
             w.showShift(
                 (w._("Channel ") || "Channel ") +

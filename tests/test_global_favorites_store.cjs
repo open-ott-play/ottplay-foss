@@ -106,6 +106,217 @@ function fixture(initial = null, actualCodec = null) {
     };
 }
 async function main() {
+    const identityRemoval = fixture(),
+        original = entry("m3u", "A", "one");
+    let identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "put",
+        entries: [original],
+    });
+    identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "remove",
+        ids: [identityView.entries[0].id],
+    });
+    identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "migrate-membership",
+        migrationId: "c".repeat(64),
+        entries: [
+            { token: "d".repeat(64), entry: { ...original, title: "Renamed" } },
+        ],
+    });
+    assert.equal(
+        (await identityRemoval.store.snapshot()).entries.length,
+        0,
+        "different source token and title cannot resurrect removed portable identity"
+    );
+    identityView = await identityRemoval.store.snapshot();
+    const different = entry("m3u", "B", "one");
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "migrate-source",
+        migrationId: "e".repeat(64),
+        entries: [different],
+    });
+    assert.equal(
+        (await identityRemoval.store.snapshot()).entries.length,
+        1,
+        "another profile is not suppressed"
+    );
+    identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "replace",
+        entries: [original],
+    });
+    identityView = await identityRemoval.store.snapshot();
+    assert.equal(
+        identityView.entries[0].origin.profile,
+        "A",
+        "explicit import/replace re-adds A"
+    );
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "migrate-source",
+        migrationId: "f".repeat(64),
+        entries: [different],
+    });
+    assert.equal(
+        (await identityRemoval.store.snapshot()).entries.length,
+        1,
+        "replace omission suppresses B migration"
+    );
+    identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "remove",
+        ids: [identityView.entries[0].id],
+    });
+    identityView = await identityRemoval.store.snapshot();
+    await identityRemoval.store.mutate(identityView.revision, {
+        op: "put",
+        entries: [original],
+    });
+    assert.equal(
+        (await identityRemoval.store.snapshot()).entries.length,
+        1,
+        "explicit Add clears only its own suppression"
+    );
+    const pressureRaw = JSON.parse(identityRemoval.raw());
+    pressureRaw.migrations = Array.from({ length: 8192 }, (_, index) =>
+        index.toString(16).padStart(64, "0")
+    );
+    identityRemoval.replace(JSON.stringify(pressureRaw));
+    identityView = await identityRemoval.store.snapshot();
+    const pressureBefore = identityRemoval.raw(),
+        pressureWrites = identityRemoval.writes.length;
+    await assert.rejects(
+        identityRemoval.store.mutate(identityView.revision, {
+            op: "remove",
+            ids: [identityView.entries[0].id],
+        }),
+        /limits_exceeded/
+    );
+    assert.equal(identityRemoval.raw(), pressureBefore);
+    assert.equal(
+        identityRemoval.writes.length,
+        pressureWrites,
+        "suppression pressure refuses the entire CAS"
+    );
+
+    const forgotten = fixture(),
+        token = "a".repeat(64),
+        forgottenEntry = entry("m3u", "Profile", "one");
+    let forgetView = await forgotten.store.snapshot();
+    await forgotten.store.mutate(forgetView.revision, {
+        op: "forget-membership",
+        ids: [],
+        tokens: [token],
+    });
+    forgetView = await forgotten.store.snapshot();
+    await forgotten.store.mutate(forgetView.revision, {
+        op: "migrate-membership",
+        migrationId: "b".repeat(64),
+        entries: [{ token, entry: forgottenEntry }],
+    });
+    assert.equal(
+        (await forgotten.store.snapshot()).entries.length,
+        0,
+        "durable removal prevents deferred legacy migration"
+    );
+    forgetView = await forgotten.store.snapshot();
+    assert.equal(
+        (
+            await forgotten.store.mutate(forgetView.revision, {
+                op: "forget-membership",
+                ids: [],
+                tokens: [token],
+            })
+        ).changed,
+        false
+    );
+    await forgotten.store.mutate(forgetView.revision, {
+        op: "put",
+        entries: [forgottenEntry],
+    });
+    forgetView = await forgotten.store.snapshot();
+    assert.equal(
+        forgetView.entries.length,
+        1,
+        "explicit add is not blocked by migration tombstone"
+    );
+    await forgotten.store.mutate(forgetView.revision, {
+        op: "forget-membership",
+        ids: [forgetView.entries[0].id],
+        tokens: [token],
+    });
+    assert.equal((await forgotten.store.snapshot()).entries.length, 0);
+
+    const release = fixture(),
+        releaseEntry = entry("m3u", "A", "re-add"),
+        removedEntry = entry("m3u", "B", "removed");
+    let releaseView = await release.store.snapshot();
+    await release.store.mutate(releaseView.revision, {
+        op: "put",
+        entries: [removedEntry],
+    });
+    const releaseRaw = JSON.parse(release.raw());
+    const releaseToken = crypto
+        .createHash("sha256")
+        .update(
+            JSON.stringify([
+                "global-favorites-removed-identity-v1",
+                JSON.stringify([releaseEntry.origin, releaseEntry.locator]),
+            ])
+        )
+        .digest("hex");
+    releaseRaw.migrations = [
+        releaseToken,
+        ...Array.from({ length: 8191 }, (_, index) =>
+            (index + 1).toString(16).padStart(64, "0")
+        ),
+    ];
+    release.replace(JSON.stringify(releaseRaw));
+    releaseView = await release.store.snapshot();
+    await release.store.mutate(releaseView.revision, {
+        op: "replace",
+        entries: [releaseEntry],
+    });
+    assert.equal(
+        (await release.store.snapshot()).entries[0].origin.profile,
+        "A"
+    );
+    assert.equal(
+        JSON.parse(release.raw()).migrations.length,
+        8192,
+        "clear explicit re-add marker before reserving omission marker"
+    );
+    const drift = fixture();
+    let driftView = await drift.store.snapshot();
+    await drift.store.mutate(driftView.revision, {
+        op: "put",
+        entries: [removedEntry],
+    });
+    driftView = await drift.store.snapshot();
+    const driftWrites = drift.writes.length;
+    let hashCalls = 0,
+        changedRaw;
+    drift.hooks.hash = () => {
+        if (++hashCalls === 2) {
+            changedRaw = drift.raw() + " ";
+            drift.replace(changedRaw);
+        }
+    };
+    await assert.rejects(
+        drift.store.mutate(driftView.revision, {
+            op: "remove",
+            ids: [driftView.entries[0].id],
+        }),
+        /revision_conflict/
+    );
+    assert.equal(drift.raw(), changedRaw);
+    assert.equal(
+        drift.writes.length,
+        driftWrites,
+        "async identity hash cannot overwrite a concurrent revision"
+    );
     const f = fixture(),
         first = await f.store.snapshot();
     assert.equal(f.raw(), null);

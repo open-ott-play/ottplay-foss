@@ -6,6 +6,12 @@ different profiles, VPortal videos and Plex videos. **Category → Favorites**
 opens the collection. On PC and PC2, plain **F** adds or removes the focused or
 currently playing item and shows a confirmation after persistence succeeds.
 
+The existing Add and Remove menu actions are idempotent: adding an existing
+entry does not remove it, and removing an absent entry does not add it. F remains
+a toggle. In the global list, the **Favorites: −** action removes only the selected
+Favorites entry; it never deletes the channel or media file. Confirmation appears
+only after a persisted change succeeds.
+
 Each portable entry contains its display title, provider, profile, subprofile,
 source alias and a typed content locator. The locator identifies a channel or
 video; its current channel number is not used as a permanent identity. Local

@@ -1,4 +1,4 @@
-import { ensureGlobalFavorites } from "./remote-favorites-global";
+import { ensureRemoteGlobalFavorites } from "./remote-favorites-global";
 export function globalFavoritesItemsCapability(w: any): any {
     if (w.__ottInitializeGlobalFavorites) w.__ottInitializeGlobalFavorites();
     var host = w.__ottGlobalFavorites;
@@ -35,7 +35,7 @@ export function executeGlobalFavoritesItems(
         });
         return function () {};
     }
-    var cancel = ensureGlobalFavorites(
+    var cancel = ensureRemoteGlobalFavorites(
         w,
         runtime,
         request.expires_at,

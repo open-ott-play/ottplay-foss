@@ -5,6 +5,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -124,7 +127,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1464734, gzipBytes: 460184 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1623851, gzipBytes: 499758 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -137,11 +140,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1469214, gzipBytes: 462488 });
-    assert.deepEqual(BUDGET, { bytes: 1098534, gzipBytes: 338206 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1628331, gzipBytes: 502062 });
+    assert.deepEqual(BUDGET, { bytes: 1125677, gzipBytes: 344722 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1241834,
-        gzipBytes: 390256,
+        bytes: 1270513,
+        gzipBytes: 397412,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -160,6 +163,148 @@ try {
         gzipBytes: 2560,
     });
     assert(Object.isFrozen(LOCAL_STARTUP_PREVIEW_ALLOWANCE));
+    assert.deepEqual(MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE, {
+        bytes: 27143,
+        gzipBytes: 6516,
+    });
+    assert.deepEqual(MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE, {
+        bytes: 130438,
+        gzipBytes: 32418,
+    });
+    assert.deepEqual(MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE, {
+        bytes: 1536,
+        gzipBytes: 640,
+    });
+    // Exact raw boundaries still pass; one byte beyond each named asset fails.
+    for (const [name, cap] of [
+        ["entry", BUDGET],
+        ["favorites-transfer", OPTIONAL_BUDGETS["favorites-transfer"]],
+    ]) {
+        const atBoundary = "a".repeat(cap.bytes);
+        assert.equal(measureBundle(atBoundary, name, cap).bytes, cap.bytes);
+        assert.throws(
+            () => measureBundle(atBoundary + "a", name, cap),
+            /bytes .* exceeds budget/
+        );
+        const actualGzip = measureBundle(atBoundary, name).gzipBytes;
+        assert.equal(
+            measureBundle(atBoundary, name, { ...cap, gzipBytes: actualGzip })
+                .gzipBytes,
+            actualGzip
+        );
+        assert.throws(
+            () =>
+                measureBundle(atBoundary, name, {
+                    ...cap,
+                    gzipBytes: actualGzip - 1,
+                }),
+            /gzipBytes .* exceeds budget/
+        );
+    }
+    const mixedEvidence = require("../docs/evidence/mixed-global-favorites-size-20261028.json");
+    const mixedDelta = (budget, metric) =>
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE[metric] +
+        (budget === BUDGET
+            ? 0
+            : MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE[metric]) +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
+            : 0);
+    for (const [name, budget] of Object.entries({
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        BASE_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] - mixedEvidence.previousCaps[name][metric],
+                mixedDelta(budget, metric),
+                name + " counts each mixed component once"
+            );
+    for (const [name, allowance] of Object.entries({
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+        MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
+    })) {
+        assert(Object.isFrozen(allowance));
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                allowance[metric],
+                mixedEvidence.allowances[name][metric]
+            );
+            assert.equal(
+                allowance[metric] -
+                    mixedEvidence.allowances[name].observed[metric],
+                mixedEvidence.allowances[name].rounding[metric]
+            );
+        }
+    }
+    assert.deepEqual(PROVIDER_BUDGET, { bytes: 863400, gzipBytes: 268490 });
+    for (const [name, budget] of Object.entries(
+        mixedEvidence.unchangedOptionalCaps
+    ))
+        assert.deepEqual(
+            OPTIONAL_BUDGETS[name],
+            budget,
+            name + " cap unchanged"
+        );
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+                (metric === "bytes" ? 109300 : 29300),
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
+        );
+    assert.deepEqual(
+        mixedEvidence.toolchains.baseline,
+        mixedEvidence.toolchains.candidate
+    );
+    for (const mode of mixedEvidence.modes) {
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                mode.components.reduce(
+                    (total, component) => total + component.delta[metric],
+                    0
+                ),
+                mode.total_delta[metric],
+                "all component growth accounted"
+            );
+        for (const component of mode.components) {
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    component.after[metric] - component.before[metric],
+                    component.delta[metric]
+                );
+            if (
+                component.family === "optionalAssets" &&
+                component.name !== "favorites-transfer.js"
+            )
+                assert.deepEqual(
+                    component.after,
+                    component.before,
+                    "unrelated optional bytes unchanged"
+                );
+        }
+    }
+    for (const mode of mixedEvidence.modes) {
+        for (const [kind, cap] of [
+            ["entry", BUDGET],
+            ["legacy", LEGACY_TOTAL_BUDGET],
+            ["complete", TOTAL_BUDGET],
+        ])
+            for (const metric of ["bytes", "gzipBytes"])
+                assert(mode.actual[kind][metric] <= cap[metric]);
+    }
+    for (const mode of mixedEvidence.versus_prior_modes) {
+        const unchanged = mode.components.filter(
+            (row) =>
+                row.family === "providers" ||
+                (row.family === "optionalAssets" &&
+                    row.name !== "favorites-transfer.js")
+        );
+        assert.equal(unchanged.length, 19);
+        for (const row of unchanged) assert.deepEqual(row.after, row.before);
+    }
     const retirementEvidence = require("../docs/evidence/shaka-retirement-size-20261028.json");
     assert.deepEqual(SHAKA_RETIREMENT_ENTRY_ALLOWANCE, {
         bytes: 1152,
@@ -181,12 +326,14 @@ try {
         TOTAL_BUDGET,
     })) {
         assert.equal(
-            budget.bytes - retirementEvidence.previousCaps[name].bytes,
+            budget.bytes -
+                mixedDelta(budget, "bytes") -
+                retirementEvidence.previousCaps[name].bytes,
             1152,
             name + " counts retirement once"
         );
         assert.equal(
-            budget.gzipBytes,
+            budget.gzipBytes - mixedDelta(budget, "gzipBytes"),
             retirementEvidence.previousCaps[name].gzipBytes,
             name + " gzip unchanged"
         );
@@ -196,7 +343,21 @@ try {
         retirementEvidence.previousCaps.PROVIDER_BUDGET
     );
     assert.deepEqual(
-        OPTIONAL_BUDGETS,
+        Object.fromEntries(
+            Object.entries(OPTIONAL_BUDGETS).map(([name, value]) => [
+                name,
+                name === "favorites-transfer"
+                    ? {
+                          bytes:
+                              value.bytes -
+                              MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
+                          gzipBytes:
+                              value.gzipBytes -
+                              MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
+                      }
+                    : value,
+            ])
+        ),
         retirementEvidence.previousCaps.OPTIONAL_BUDGETS
     );
     for (const candidate of Object.values(retirementEvidence.candidates)) {
@@ -256,6 +417,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    mixedDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     recoveryEvidence.previousCaps[name][metric],
                 recoveryDelta(budget, metric),
@@ -289,7 +451,11 @@ try {
     ))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                OPTIONAL_BUDGETS[name][metric] - old[metric],
+                OPTIONAL_BUDGETS[name][metric] -
+                    (name === "favorites-transfer"
+                        ? MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
+                        : 0) -
+                    old[metric],
                 name === "favorites-transfer"
                     ? FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric]
                     : 0,
@@ -375,6 +541,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    mixedDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
                     recoveryDelta(budget, metric) -
@@ -409,6 +576,7 @@ try {
     for (const metric of ["bytes", "gzipBytes"])
         assert.equal(
             OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+                MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric] -
                 FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric],
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE[metric]
         );
@@ -432,6 +600,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    mixedDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
@@ -480,6 +649,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    mixedDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
@@ -513,6 +683,7 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
+                        mixedDelta(TOTAL_BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(TOTAL_BUDGET, metric) -
                         recoveryDelta(TOTAL_BUDGET, metric) -
@@ -526,6 +697,7 @@ try {
                 (item) =>
                     item[metric] <=
                     BUDGET[metric] -
+                        mixedDelta(BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(BUDGET, metric) -
                         recoveryDelta(BUDGET, metric) -

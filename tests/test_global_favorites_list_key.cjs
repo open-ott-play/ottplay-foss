@@ -258,9 +258,30 @@ function notificationBoundary() {
     );
     notify("<A> & B");
     assert.deepEqual(banners, ["Favorites: − &lt;A&gt; &amp; B"]);
+    const toggle = fn(
+        extract(
+            "src/commands/global-favorites.ts",
+            (n) =>
+                ts.isPropertyAssignment(n) &&
+                n.name.getText() === "favoriteToggled"
+        ).replace(/^favoriteToggled:\s*/, ""),
+        {
+            metadataText,
+            remotePlayerInfo: () => ({ runtime: active }),
+            runtime: "a",
+            w,
+        }
+    );
+    toggle("<b>A & B</b> &amp;", true);
+    toggle("<b>A & B</b> &amp;", false);
+    assert.deepEqual(banners.slice(1), [
+        "Favorites: + &lt;b&gt;A &amp; B&lt;/b&gt; &amp;amp;",
+        "Favorites: − &lt;b&gt;A &amp; B&lt;/b&gt; &amp;amp;",
+    ]);
     active = "b";
     notify("stale");
-    assert.equal(banners.length, 1);
+    toggle("stale", true);
+    assert.equal(banners.length, 3);
     console.log(
         "PASS MAIN-owned escaped notification port and stale-runtime suppression; no optional helper import"
     );

@@ -49,6 +49,15 @@ export function initializeGlobalFavorites(): any {
             if (runtime === remotePlayerInfo(w).runtime)
                 w.showShift(w._("Favorites") + ": − " + metadataText(title));
         },
+        favoriteToggled: function (title: string, added: boolean) {
+            if (runtime === remotePlayerInfo(w).runtime)
+                w.showShift(
+                    w._("Favorites") +
+                        ": " +
+                        (added ? "+ " : "− ") +
+                        metadataText(title)
+                );
+        },
         selectMediaProfile: selectGlobalMediaProfile,
         caselessKey: caselessKey,
         remoteCheckpoint: remoteCheckpoint,
@@ -238,7 +247,7 @@ export function ensureGlobalFavorites(
     };
 }
 function globalFavoriteAction(
-    action: "open" | "toggle",
+    action: "open" | "toggle" | "add" | "remove",
     payload?: any,
     current?: () => boolean
 ): boolean {
@@ -297,6 +306,71 @@ export function toggleGlobalFavorite(
 ): boolean {
     return globalFavoriteAction("toggle", payload, current);
 }
+/** Explicit menu intent; repeating add/remove cannot invert membership. */
+export function setGlobalFavorite(
+    payload: any,
+    present: boolean,
+    current?: () => boolean
+): boolean {
+    return globalFavoriteAction(present ? "add" : "remove", payload, current);
+}
+/** Capture the exact TV row and keep PIN/source ownership through persistence. */
+export function setGlobalChannelFavorite(
+    channelId: any,
+    present: boolean
+): boolean {
+    if (!captureFavoritesPhysicalStorage()) return false;
+    var w = window as any,
+        channels = w.channels,
+        channel = channels && channels[channelId];
+    if (!channel || w.sFavorites === -1) return true;
+    if (!channel.__ottMediaItem) {
+        var numeric = Number(channelId);
+        if (
+            String(numeric) !== String(channelId) ||
+            !isFinite(numeric) ||
+            Math.floor(numeric) !== numeric ||
+            Math.abs(numeric) > 9007199254740991
+        )
+            return true;
+        channelId = numeric;
+    }
+    var source = w.__ottSourceIdentity.current(w),
+        driver = w.__ottActiveProviderDriver,
+        load = w.__ottCommandChannelLoad,
+        list = w.listArray,
+        index = w.selIndex;
+    function current(): boolean {
+        return (
+            channels === w.channels &&
+            channel === channels[channelId] &&
+            source === w.__ottSourceIdentity.current(w) &&
+            driver === w.__ottActiveProviderDriver &&
+            load === w.__ottCommandChannelLoad &&
+            list === w.listArray &&
+            index === w.selIndex &&
+            w.sFavorites !== -1 &&
+            !(
+                w.hasParentalLock?.(channelId) &&
+                (!w.__ottParental || w.__ottParental.needs("channels"))
+            )
+        );
+    }
+    if (!current()) return true;
+    if (
+        !setGlobalFavorite(
+            channel.__ottMediaItem || { __ottGlobalChannel: channelId },
+            present,
+            current
+        ) &&
+        current()
+    )
+        w.showShift(w._("Favorites") + ": " + w._("Unavailable"));
+    // A qualified global intent never falls back after backend loss.
+    return true;
+}
+(window as any).setGlobalFavorite = setGlobalFavorite;
+(window as any).setGlobalChannelFavorite = setGlobalChannelFavorite;
 (window as any).openGlobalFavorites = openGlobalFavorites;
 (window as any).toggleGlobalFavorite = toggleGlobalFavorite;
 (window as any).__ottInitializeGlobalFavorites = initializeGlobalFavorites;

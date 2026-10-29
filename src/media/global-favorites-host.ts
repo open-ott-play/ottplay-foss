@@ -1,6 +1,9 @@
 import { utf8Encode } from "../commands/favorites-document-json";
 import { createGlobalFavoritesNavigation } from "./global-favorites-navigation";
-import { captureGlobalFavoriteMigration } from "./global-favorites-migration";
+import {
+    captureGlobalFavoriteMigration,
+    globalFavoriteMigrationSource,
+} from "./global-favorites-migration";
 import { createGlobalFavoritesItems } from "../commands/global-favorites-items";
 import { createGlobalFavoritesRecovery } from "../settings/global-favorites-recovery";
 import { createGlobalFavoritesProtocol } from "../commands/global-favorites-protocol";
@@ -212,6 +215,78 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             return mainCall("selectProviderByIndex", [index], false);
         },
     });
+    var canonicalBindings: any = null;
+    player.canonicalizeFavorite = async function (captured: any): Promise<any> {
+        var selector = captured.selector,
+            raw = readRegistry();
+        var key = globalFavoriteCanonical([
+            selector.provider,
+            selector.slot,
+            selector.configurationDigest,
+        ]);
+        if (
+            !canonicalBindings ||
+            canonicalBindings.raw !== raw ||
+            canonicalBindings.key !== key
+        ) {
+            var listed = await bindings.list(),
+                rows: any[] = [];
+            listed.entries.forEach(function (row: any) {
+                if (row.kind !== "source") return;
+                try {
+                    var selected = bindings.resolve(row.id).binding.selector;
+                    if (isGlobalFavoriteSelector(selected)) rows.push(selected);
+                } catch (_) {}
+            });
+            if (!captured.current() || readRegistry() !== raw) return null;
+            canonicalBindings = { raw: raw, key: key, rows: rows };
+        }
+        var matches = canonicalBindings.rows.filter(function (bound: any) {
+            return (
+                bound.provider === selector.provider &&
+                bound.slot === selector.slot &&
+                bound.configurationDigest === selector.configurationDigest &&
+                bound.origin.subprofile === selector.origin.subprofile &&
+                (bound.root || selector.root
+                    ? !!bound.root &&
+                      !!selector.root &&
+                      bound.root.id === selector.root.id &&
+                      bound.root.key === selector.root.key
+                    : true) &&
+                isPrepared(bound)
+            );
+        });
+        var unique: any = Object.create(null);
+        matches = matches.filter(function (bound: any) {
+            var id = globalFavoriteCanonical(bound.origin);
+            if (unique[id]) return false;
+            unique[id] = true;
+            return true;
+        });
+        if (matches.length > 1) return null;
+        var previous = captured.current;
+        captured.pairCurrent = previous;
+        captured.registryBefore = raw;
+        captured.current = function () {
+            return previous() && readRegistry() === raw;
+        };
+        if (!matches.length) return captured;
+        var bound = matches[0];
+        var value = JSON.parse(JSON.stringify(captured.value));
+        value.origin = bound.origin;
+        if (value.locator.kind === "local-media")
+            value.locator.rootAlias = bound.root.alias;
+        value = codec.normalize(value);
+        if (!value) return null;
+        captured.value = value;
+        captured.selector = bound;
+        captured.root = bound.root;
+        captured.bound = true;
+        captured.current = function () {
+            return previous() && readRegistry() === raw && isPrepared(bound);
+        };
+        return captured.current() ? captured : null;
+    };
     var store = createGlobalFavoritesStore({
         capture: ports.capture,
         current: current,
@@ -423,6 +498,10 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     return row.id;
                 }),
                 categoryName: list.title,
+                actions:
+                    permitted() && w.sFavorites !== -1
+                        ? w._("Favorites") + ": −"
+                        : false,
                 selected: Math.max(
                     0,
                     list.rows
@@ -443,6 +522,12 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 },
                 detail: function () {},
                 key: function (key: number) {
+                    if (
+                        key === w.keys.YELLOW ||
+                        key === w.keys.TOOLS ||
+                        key === w.keys.N0
+                    )
+                        return list.remove();
                     if (key === w.keys.ENTER || key === w.keys.PLAY) {
                         var row = list.rows[w.selIndex];
                         if (row) list.select(row.id);
@@ -505,7 +590,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         origin: any,
         slot: number | null,
         root?: any,
-        admission?: () => boolean
+        admission?: () => boolean,
+        expectedRegistry?: { raw: string | null }
     ): Promise<any> {
         if (!committer || !committer.canWrite())
             throw new Error("reconciliation_required");
@@ -515,6 +601,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         await prepareSelector(selector);
         var before = readRegistry(),
             revision = registry.list().revision;
+        if (expectedRegistry && expectedRegistry.raw !== before)
+            throw new Error("changed");
         return grant.exclusive(async function (locked: any) {
             function admitted(): boolean {
                 return (
@@ -564,9 +652,19 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             }
         });
     }
+    function membershipToken(source: string, entry: any): Promise<string> {
+        return ports.sha256(
+            JSON.stringify([
+                "global-favorites-membership-entry-v1",
+                source,
+                codec.identity(entry),
+            ])
+        );
+    }
     async function toggle(
         payload?: any,
-        externalCurrent?: () => boolean
+        externalCurrent?: () => boolean,
+        present?: boolean
     ): Promise<any> {
         if (toggleCurrent) throw new Error("busy");
         toggleCurrent =
@@ -586,13 +684,24 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 router.captureCurrent(payload) ||
                 (await captureGlobalFavorite(w, player, codec, payload));
             if (!capture) throw new Error("unavailable");
-            if (!capture.bound)
+            if (!capture.bound) {
                 await pair(
                     capture.value.origin,
                     capture.slot,
                     capture.root,
-                    capture.current
+                    capture.pairCurrent || capture.current,
+                    capture.registryBefore !== undefined
+                        ? { raw: capture.registryBefore }
+                        : undefined
                 );
+                capture = await captureGlobalFavorite(
+                    w,
+                    player,
+                    codec,
+                    payload
+                );
+                if (!capture) throw new Error("changed");
+            }
             if (!capture.current()) throw new Error("changed");
             var before = await store.snapshot(),
                 identity = codec.identity(capture.value);
@@ -618,11 +727,35 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 })
             )
                 throw new Error("reconciliation_required");
+            var removing = present === undefined ? found.length > 0 : !present;
+            if (!removing && found.length) {
+                if (!before.current()) throw new Error("revision_conflict");
+                return {
+                    outcome: "verified",
+                    changed: false,
+                    revision: before.revision,
+                };
+            }
+            var local = removing
+                ? await captureGlobalFavorite(w, player, codec, payload)
+                : null;
+            if (removing && (!local || !local.current()))
+                throw new Error("unavailable");
+            var tokens: string[] = [];
+            if (removing) {
+                var namespace = globalFavoriteMigrationSource(w);
+                tokens.push(await membershipToken(namespace, capture.value));
+                var localToken = await membershipToken(namespace, local.value);
+                if (tokens.indexOf(localToken) < 0) tokens.push(localToken);
+                if (!capture.current() || !local.current())
+                    throw new Error("changed");
+            }
             var result = await store.mutate(
                 before.revision,
-                found.length
+                removing
                     ? {
-                          op: "remove",
+                          op: "forget-membership",
+                          tokens: tokens,
                           ids: found.map(function (entry: any) {
                               return entry.id;
                           }),
@@ -631,18 +764,15 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 function () {
                     return (
                         capture.current() &&
+                        (!local || local.current()) &&
                         grant.read("favorites-receipts.v1") === receiptRaw
                     );
                 }
             );
             if (result.outcome !== "verified")
                 throw new Error("storage_unavailable");
-            w.showShift(
-                w._("Favorites") +
-                    ": " +
-                    (found.length ? "− " : "+ ") +
-                    capture.value.title
-            );
+            if (result.changed && (!removing || found.length))
+                ports.favoriteToggled(capture.value.title, !removing);
             return result;
         } finally {
             toggleCurrent = null;
@@ -900,13 +1030,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     entries: any[] = [];
                 for (var index = 0; index < captured.entries.length; index++) {
                     var entry = captured.entries[index];
-                    var token = await ports.sha256(
-                        JSON.stringify([
-                            "global-favorites-membership-entry-v1",
-                            captured.identity,
-                            codec.identity(entry),
-                        ])
-                    );
+                    var token = await membershipToken(captured.identity, entry);
                     if (!captured.current() || !admitted())
                         throw new Error("context_changed");
                     entries.push({ token: token, entry: entry });
@@ -986,6 +1110,12 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         store: store,
         router: router,
         toggle: toggle,
+        add: function (payload: any, current?: () => boolean) {
+            return toggle(payload, current, true);
+        },
+        remove: function (payload: any, current?: () => boolean) {
+            return toggle(payload, current, false);
+        },
         facade: facade,
         codec: codec,
         protocol: protocol,

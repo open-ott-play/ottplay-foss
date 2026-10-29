@@ -4,7 +4,7 @@ import {
     validateFavoritesReceiptFence,
 } from "./favorites-recovery-codec";
 /** Strict private schema adapter. The old scoped receipt parser/wire is unchanged. */
-function scope(value: any): boolean {
+function globalFavoritesReceiptScope(value: any): boolean {
     return (
         base.exact(value, ["kind", "store"]) &&
         value.kind === "global" &&
@@ -75,7 +75,7 @@ function row(value: any): boolean {
         ) ||
         !base.uuid(value.operationId) ||
         !base.hash(value.payloadHash) ||
-        !scope(value.scope) ||
+        !globalFavoritesReceiptScope(value.scope) ||
         !base.refs(value.refs) ||
         !base.integer(value.createdAt) ||
         !base.integer(value.expiresAt) ||
@@ -86,7 +86,10 @@ function row(value: any): boolean {
         ) < 0
     )
         return false;
-    if (value.recovery_ack !== undefined && !audit(value.recovery_ack))
+    if (
+        value.recovery_ack !== undefined &&
+        !globalFavoritesReceiptAudit(value.recovery_ack)
+    )
         return false;
     if (
         value.recovery_ack !== undefined &&
@@ -110,7 +113,7 @@ function row(value: any): boolean {
             "global",
         ]) &&
         r.operation_id === value.operationId &&
-        scope(r.scope) &&
+        globalFavoritesReceiptScope(r.scope) &&
         r.document_sha256 === value.payloadHash &&
         base.hash(r.plan_digest) &&
         base.hash(r.new_revision) &&
@@ -123,7 +126,7 @@ function row(value: any): boolean {
         (value.state !== "not_applied" || value.meta.appliedStores === 0)
     );
 }
-function audit(value: any): boolean {
+function globalFavoritesReceiptAudit(value: any): boolean {
     return (
         base.exact(value, [
             "acknowledgement_id",
@@ -166,7 +169,10 @@ function parse(raw: string | null): any {
 }
 export const globalFavoritesReceiptSchema = Object.freeze({
     version: 1,
-    validators: Object.assign({}, base, { scope: scope, counts: counts }),
+    validators: Object.assign({}, base, {
+        scope: globalFavoritesReceiptScope,
+        counts: counts,
+    }),
     row: row,
     parse: parse,
     capacity: function (raw: string) {

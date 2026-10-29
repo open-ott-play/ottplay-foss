@@ -156,21 +156,6 @@ export function toggleKeyboardFavorite(w: any): boolean {
     )
         return false;
     var channel = channels && channels[id];
-    if (channel && typeof w.toggleGlobalFavorite === "function" && current()) {
-        if (
-            w.hasParentalLock &&
-            w.hasParentalLock(id) &&
-            (!w.__ottParental || w.__ottParental.needs("channels"))
-        )
-            return false;
-        if (
-            w.toggleGlobalFavorite(
-                channel.__ottMediaItem || { __ottGlobalChannel: id },
-                current
-            ) !== false
-        )
-            return true;
-    }
     // TV PIN membership uses numeric catalog IDs; validate before converting.
     // Provider-media keys stay opaque and are never cast for TV policy.
     if (channel && !channel.__ottMediaItem) {
@@ -194,6 +179,21 @@ export function toggleKeyboardFavorite(w: any): boolean {
             Math.abs(id) > 9007199254740991
         )
             return false;
+    }
+    if (channel && typeof w.toggleGlobalFavorite === "function" && current()) {
+        if (
+            w.hasParentalLock &&
+            w.hasParentalLock(id) &&
+            (!w.__ottParental || w.__ottParental.needs("channels"))
+        )
+            return false;
+        if (
+            w.toggleGlobalFavorite(
+                channel.__ottMediaItem || { __ottGlobalChannel: id },
+                current
+            ) !== false
+        )
+            return true;
     }
     function current(): boolean {
         return (

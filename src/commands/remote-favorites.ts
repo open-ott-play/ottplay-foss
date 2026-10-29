@@ -1,6 +1,6 @@
 import {
     executeLegacySharedFavorites,
-    ensureGlobalFavorites,
+    ensureRemoteGlobalFavorites,
 } from "./remote-favorites-global";
 import {
     checkProviderUrl,
@@ -215,7 +215,7 @@ export function executeRemoteFavorites(
         !w.__ottGlobalFavoritesFacade &&
         (storedGlobal || op === "add" || op === "remove")
     ) {
-        var loading = ensureGlobalFavorites(
+        var loading = ensureRemoteGlobalFavorites(
             w,
             runtime,
             request.expires_at,

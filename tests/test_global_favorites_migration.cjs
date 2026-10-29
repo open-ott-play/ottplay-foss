@@ -149,6 +149,20 @@ async function main() {
         "unmapped source favorite remains pending, preventing complete migration marker"
     );
     assert(result.current());
+    let registryCurrent = true;
+    player.canonicalizeFavorite = async (value) => ({
+        ...value,
+        current: () => value.current() && registryCurrent,
+    });
+    const mappedCapture = await migration(w, player, codec);
+    assert(mappedCapture.current());
+    registryCurrent = false;
+    assert.equal(
+        mappedCapture.current(),
+        false,
+        "aggregate migration retains each verified binding guard through later hashing/CAS"
+    );
+    delete player.canonicalizeFavorite;
     current = false;
     assert.equal(result.current(), false);
     current = true;

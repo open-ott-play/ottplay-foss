@@ -3922,6 +3922,11 @@ function removeSelectedChannelFromCategory(): void {
     var groupId = w.__ottChannels.group(w.listCatIndex);
     if (!groupId || selected === undefined) return;
     if (groupId === "system:favorites") {
+        if (
+            typeof w.setGlobalChannelFavorite === "function" &&
+            w.setGlobalChannelFavorite(selected, false) !== false
+        )
+            return;
         removeFromFavorites(selected);
         saveChannelsCats();
     } else if (

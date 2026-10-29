@@ -12,6 +12,62 @@ const {
     CLASSIC_OPTIONAL_BUNDLES,
     CLASSIC_MAIN_MODULES,
 } = require("../scripts/classic-bundle.cjs");
+function assertUniqueBindings(source, selected) {
+    const tree = require("acorn").parse(source, { ecmaVersion: 5 });
+    const counts = new Map();
+    function record(name) {
+        if (
+            name === "__awaiter" ||
+            name === "__generator" ||
+            name === "__spreadArray"
+        )
+            return;
+        if (!selected || selected.includes(name))
+            counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    function visit(node) {
+        if (!node || typeof node !== "object") return;
+        if (node.type === "FunctionDeclaration") {
+            record(node.id.name);
+            return;
+        }
+        if (node.type === "FunctionExpression") return;
+        if (node.type === "VariableDeclaration")
+            for (const declaration of node.declarations)
+                record(declaration.id.name);
+        for (const key of Object.keys(node)) {
+            const child = node[key];
+            if (Array.isArray(child)) child.forEach(visit);
+            else if (child && typeof child === "object") visit(child);
+        }
+    }
+    visit(tree);
+    for (const [name, count] of counts)
+        assert.equal(count, 1, "Shared classic binding: " + name);
+    if (selected)
+        for (const name of selected)
+            assert.equal(
+                counts.get(name),
+                1,
+                "Missing classic binding: " + name
+            );
+}
+test("shared-scope guard rejects function and storage-key collisions", () => {
+    assert.throws(
+        () =>
+            assertUniqueBindings(
+                "function canonical() {} function canonical() {}"
+            ),
+        /Shared classic binding: canonical/
+    );
+    assert.throws(
+        () => assertUniqueBindings('var KEY = "first"; var KEY = "second";'),
+        /Shared classic binding: KEY/
+    );
+    assertUniqueBindings(
+        "function first() { var local; } function second() { var local; }"
+    );
+});
 const modules = [
     "commands/favorites-document-json",
     "commands/favorites-transfer",
@@ -64,7 +120,7 @@ test("production registration keeps exact optional graph and main-owned dispatch
     ])
         assert(CLASSIC_MAIN_MODULES.includes(name));
 });
-test("optional favorites asset links without entry storage and loads without touching player state", () => {
+test("optional favorites asset links without entry storage and loads without touching player state", async () => {
     const temporary = fs.mkdtempSync(
         path.join(os.tmpdir(), "ott-favorites-bundle-")
     );
@@ -91,7 +147,7 @@ test("optional favorites asset links without entry storage and loads without tou
             temporary,
             CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"]
         );
-        require("acorn").parse(assembled, { ecmaVersion: 5 });
+        assertUniqueBindings(assembled);
         const published = {};
         const player = new Proxy(published, {
             get(_target, key) {
@@ -107,11 +163,8 @@ test("optional favorites asset links without entry storage and loads without tou
                 return true;
             },
         });
-        vm.runInNewContext(
-            assembled,
-            { Promise, Uint8Array, window: player },
-            { timeout: 1000 }
-        );
+        const realm = { Promise, Uint8Array, window: player };
+        vm.runInNewContext(assembled, realm, { timeout: 1000 });
         assert.equal(
             typeof published.__ottFavoritesTransferRuntime.create,
             "function"
@@ -132,6 +185,125 @@ test("optional favorites asset links without entry storage and loads without tou
             fs.existsSync(path.join(temporary, "build/utils/lzstring.js")),
             false
         );
+        // Exercise the actual flattened factories after every module initialized.
+        // These keys and validators used to be overwritten by unrelated modules.
+        const raw = new Map([
+            ["favorites-receipts.v1", "scoped-receipt-sentinel"],
+            ["favorites-global-receipts.v1", "global-receipt-sentinel"],
+        ]);
+        const writes = [];
+        const grant = {
+            current: () => true,
+            read: (key) => raw.get(key) ?? null,
+            exclusive: async (work) => work(grant),
+            compareAndSwap(key, before, after, current) {
+                if (!current() || (raw.get(key) ?? null) !== before)
+                    return "conflict";
+                writes.push(key);
+                raw.set(key, after);
+                return "confirmed";
+            },
+        };
+        const sha256 = async (value) =>
+            require("node:crypto")
+                .createHash("sha256")
+                .update(value)
+                .digest("hex");
+        const codec = realm.createGlobalFavoritesPortableCodec();
+        const store = realm.createGlobalFavoritesStore({
+            capture: () => grant,
+            current: () => true,
+            canWrite: () => true,
+            sha256,
+            uuid: () => "11111111-1111-4111-8111-111111111111",
+            codec,
+        });
+        const before = await store.snapshot();
+        const entry = {
+            title: "Shared scope",
+            origin: {
+                provider: "m3u",
+                profile: "Profile",
+                subprofile: null,
+                sourceAlias: "Source",
+            },
+            locator: { kind: "channel", channelId: "channel-1" },
+        };
+        assert.equal(
+            (
+                await store.mutate(before.revision, {
+                    op: "put",
+                    entries: [entry],
+                })
+            ).outcome,
+            "verified"
+        );
+        assert.deepEqual(writes, ["remoteFavorites.v1"]);
+        assert.equal(
+            raw.get("favorites-receipts.v1"),
+            "scoped-receipt-sentinel"
+        );
+        assert.equal(
+            raw.get("favorites-global-receipts.v1"),
+            "global-receipt-sentinel"
+        );
+        const protocol = realm.createGlobalFavoritesProtocol({
+            runtime: () => "runtime-1",
+            current: () => true,
+            now: () => 1000,
+            authorized: () => true,
+            codec,
+            store,
+            sha256,
+            uuid: () => "22222222-2222-4222-8222-222222222222",
+            locatorKinds: ["channel"],
+            captureContext: async () => ({
+                revision: await sha256("context"),
+                current: () => true,
+            }),
+            committer: {
+                qualify: async () => {},
+                canWrite: () => false,
+                blocker: () => "policy_denied",
+            },
+            facade: {
+                exportSnapshot: async () => ({
+                    document: await store.portableSnapshot(),
+                    current: () => true,
+                }),
+            },
+            base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
+        });
+        const described = await protocol.execute(
+            { op: "describe", runtime: "runtime-1" },
+            100,
+            60
+        );
+        assert.equal(described.export.entries, 1);
+        assert.equal(described.write_ready, false);
+        const exported = await protocol.execute(
+            {
+                op: "export",
+                runtime: "runtime-1",
+                snapshot_id: described.export.snapshot_id,
+                offset: 0,
+                max_bytes: 65536,
+            },
+            200,
+            60
+        );
+        assert.deepEqual(
+            JSON.parse(
+                Buffer.from(exported.data_base64, "base64").toString("utf8")
+            ),
+            { version: 1, entries: [entry] }
+        );
+        const invalid = await protocol.execute(
+            { op: "describe", runtime: "runtime-1" },
+            0,
+            60
+        );
+        assert.equal(invalid.error, "envelope_too_large");
     } finally {
         fs.rmSync(temporary, { force: true, recursive: true });
     }
@@ -221,7 +393,34 @@ test("actual MAIN assembly rejects every optional UTF-8 edge without adding opti
         // Assembly membership remains the real production MAIN allowlist.
         for (const name of CLASSIC_MODULES) emit(name);
         const output = assembleClassic(temporary, CLASSIC_MAIN_MODULES);
-        require("acorn").parse(output, { ecmaVersion: 5 });
+        const optional = assembleClassic(
+            temporary,
+            CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"]
+        );
+        const optionalTree = require("acorn").parse(optional, {
+            ecmaVersion: 5,
+        });
+        const optionalNames = optionalTree.body
+            .flatMap((node) =>
+                node.type === "FunctionDeclaration"
+                    ? [node.id.name]
+                    : node.type === "VariableDeclaration"
+                      ? node.declarations.map((entry) => entry.id.name)
+                      : []
+            )
+            .filter(
+                (name) =>
+                    name !== "__awaiter" &&
+                    name !== "__generator" &&
+                    name !== "__spreadArray"
+            );
+        assertUniqueBindings(output + "\n" + optional, [
+            ...new Set([
+                "ensureGlobalFavorites",
+                "ensureRemoteGlobalFavorites",
+                ...optionalNames,
+            ]),
+        ]);
         for (const wrapper of [
             "remote-favorites-global",
             "remote-favorites-global-items",

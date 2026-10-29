@@ -4,7 +4,7 @@ import {
 } from "./global-favorites-recovery";
 import { createFavoritesOperationReceipts } from "./favorites-operation-receipts";
 import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
-const KEY = "favorites-global-receipts.v1";
+const GLOBAL_FAVORITES_RECEIPTS_KEY = "favorites-global-receipts.v1";
 /** Same proven receipt algorithm and real Web Lock, separate strict global ledger. */
 export function createGlobalFavoritesCommitter(ports: any) {
     var plans: any = Object.create(null),
@@ -38,10 +38,10 @@ export function createGlobalFavoritesCommitter(ports: any) {
         return createFavoritesOperationReceipts(
             {
                 read: function () {
-                    return grant.read(KEY);
+                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
                 },
                 persistedRead: function () {
-                    return grant.read(KEY);
+                    return grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
                 },
                 now: ports.now,
                 current: function (scope: any, refs: any) {
@@ -76,9 +76,16 @@ export function createGlobalFavoritesCommitter(ports: any) {
                     after: string
                 ) {
                     return active()
-                        ? grant.compareAndSwap(KEY, before, after, function () {
-                              return current() && (!admission || admission());
-                          })
+                        ? grant.compareAndSwap(
+                              GLOBAL_FAVORITES_RECEIPTS_KEY,
+                              before,
+                              after,
+                              function () {
+                                  return (
+                                      current() && (!admission || admission())
+                                  );
+                              }
+                          )
                         : "conflict";
                 },
             },
@@ -113,7 +120,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
     async function qualify() {
         var grant = ports.capture(),
             backend = await proof(grant),
-            raw = grant.read(KEY),
+            raw = grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY),
             rows = schema.parse(raw).entries;
         for (var i = 0; i < rows.length; i++)
             if (rows[i].recovery_ack) {
@@ -125,7 +132,8 @@ export function createGlobalFavoritesCommitter(ports: any) {
                 auditProofs[rows[i].operationId] = JSON.stringify(rows[i]);
                 delete plans[rows[i].operationId];
             }
-        if (!current() || grant.read(KEY) !== raw) fail("revision_conflict");
+        if (!current() || grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw)
+            fail("revision_conflict");
         auditGrant = grant;
         return canWrite();
     }
@@ -159,7 +167,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
             context = captured.revision;
         if (context !== args.expected_context_revision || !plan.current())
             fail("context_changed");
-        var raw = grant.read(KEY);
+        var raw = grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
         if (uncertain(raw, grant)) fail("reconciliation_required");
         var held = false,
             refs = { stageId: args.transaction_id, runtimeId: args.runtime };
@@ -298,7 +306,11 @@ export function createGlobalFavoritesCommitter(ports: any) {
                 reservation: reservation,
             })
         );
-        if (!current() || !plan.current() || grant.read(KEY) !== raw)
+        if (
+            !current() ||
+            !plan.current() ||
+            grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw
+        )
             fail("revision_conflict");
         plans[args.operation_id] = {
             plan: plan,
@@ -351,7 +363,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
                     item.digest
                 );
                 item.ledger.commitCompletion(completion);
-                var raw = held.read(KEY),
+                var raw = held.read(GLOBAL_FAVORITES_RECEIPTS_KEY),
                     row = schema.parse(raw).entries.filter(function (row: any) {
                         return row.operationId === operationId;
                     })[0];
@@ -359,7 +371,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
                     !row ||
                     row.state !== "verified" ||
                     !current() ||
-                    held.read(KEY) !== raw
+                    held.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw
                 )
                     return { outcome: "unknown", receipt: null };
                 delete plans[operationId];
@@ -391,7 +403,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
             fail("policy_denied");
         var grant = ports.capture(),
             backend = await proof(grant),
-            raw = grant.read(KEY);
+            raw = grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY);
         var row = schema.parse(raw).entries.filter(function (row: any) {
             return row.operationId === operationId;
         })[0];
@@ -401,7 +413,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
             !row.fence ||
             row.fence.backendProof !== backend ||
             !current() ||
-            grant.read(KEY) !== raw
+            grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw
         )
             return { state: "unknown", outcome: "unknown", receipt: null };
         if (row.state !== "verified" || !row.receipt)
@@ -410,7 +422,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
             revision = await ports.sha256(target === null ? "null" : target);
         if (
             !current() ||
-            grant.read(KEY) !== raw ||
+            grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY) !== raw ||
             grant.read("remoteFavorites.v1") !== target ||
             revision !== row.receipt.new_revision
         )
@@ -425,7 +437,7 @@ export function createGlobalFavoritesCommitter(ports: any) {
     function blocker() {
         try {
             var grant = ports.capture(),
-                raw = grant.read(KEY),
+                raw = grant.read(GLOBAL_FAVORITES_RECEIPTS_KEY),
                 value = schema.parse(raw);
             if (!current() || !grant.current())
                 return "unsupported_persistence";

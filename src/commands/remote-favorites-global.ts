@@ -1,5 +1,5 @@
 import { remoteFavoritesCapability } from "./remote-favorites-contract";
-export function ensureGlobalFavorites(
+export function ensureRemoteGlobalFavorites(
     w: any,
     runtime: string,
     expiresAt: any,
@@ -89,7 +89,7 @@ export function executeGlobalFavorites(
         });
         return function () {};
     }
-    cancel = ensureGlobalFavorites(
+    cancel = ensureRemoteGlobalFavorites(
         w,
         runtime,
         request.expires_at,

@@ -2447,7 +2447,13 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
                     : ""
         ) +
         (!view || view.actions
-            ? renderButtonHint(keys.YELLOW, "", "Actions", strTools, "0")
+            ? renderButtonHint(
+                  keys.YELLOW,
+                  "",
+                  typeof view?.actions === "string" ? view.actions : "Actions",
+                  strTools,
+                  "0"
+              )
             : "") +
         renderButtonHint(keys.N2, strInfo, "Description", "2") +
         (!view && typeof stbPlayPip === "function"

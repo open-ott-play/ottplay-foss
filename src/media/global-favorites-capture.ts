@@ -281,11 +281,14 @@ export async function captureGlobalFavorite(
     if (!value || !current()) return null;
     var selector = await player.captureSelector(value.origin, slot, root);
     if (!selector || !current()) return null;
-    return {
+    var captured = {
         value: value,
         selector: selector,
         slot: slot,
         root: root,
         current: current,
     };
+    return player.canonicalizeFavorite
+        ? player.canonicalizeFavorite(captured)
+        : captured;
 }

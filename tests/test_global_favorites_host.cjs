@@ -19,7 +19,9 @@ function fixture(partial = false) {
         active = true,
         runtimeCurrent = true,
         handler = {},
-        shown = [];
+        shown = [],
+        toggles = [];
+    let writeFailure = null;
     const hash = (value) =>
         crypto
             .createHash("sha256")
@@ -52,6 +54,7 @@ function fixture(partial = false) {
         closeList() {},
         __ottChannelListView: {
             show(view) {
+                w.selIndex = view.selected;
                 shown.push(view);
             },
         },
@@ -197,9 +200,13 @@ function fixture(partial = false) {
                 w.stbGetItem(key) !== before
             )
                 return "conflict";
+            if (key === "remoteFavorites.v1" && writeFailure === "conflict")
+                return "conflict";
             writes.push(key);
             data.set(key, after);
-            return "confirmed";
+            return key === "remoteFavorites.v1" && writeFailure === "unknown"
+                ? "unknown"
+                : "confirmed";
         },
     };
     const mainCalls = [],
@@ -221,6 +228,7 @@ function fixture(partial = false) {
     const hostPorts = {
         ...main,
         favoriteRemoved: (title) => w.showShift("Favorites: − " + title),
+        favoriteToggled: (title, added) => toggles.push([title, added]),
         capture: () => grant,
         current: () => active && runtimeCurrent,
         runtime: () => "runtime-one",
@@ -254,6 +262,10 @@ function fixture(partial = false) {
         makeHost,
         hostPorts,
         mainCalls,
+        toggles,
+        failWrites(mode) {
+            writeFailure = mode;
+        },
         deactivate() {
             active = false;
         },
@@ -262,7 +274,7 @@ function fixture(partial = false) {
         },
     };
 }
-async function seededPlayableFixture() {
+async function seededPlayableFixture(title = "Seeded playable") {
     const f = fixture(),
         w = f.w;
     let state = {
@@ -292,7 +304,7 @@ async function seededPlayableFixture() {
         return true;
     };
     const entry = {
-        title: "Seeded playable",
+        title,
         origin: {
             provider: "m3u",
             profile: "Paired Profile",
@@ -323,6 +335,279 @@ function assertRawUnchanged(f, before) {
         assert.equal(f.data.get(key), value, key);
 }
 async function main() {
+    const localA = fixture();
+    await localA.host.committer.qualify();
+    const foreign = {
+        title: "Foreign binding",
+        origin: {
+            provider: "m3u",
+            profile: "Foreign",
+            sourceAlias: "Foreign alias",
+            subprofile: null,
+        },
+        locator: { kind: "channel", channelId: "m3u-epg:News" },
+    };
+    let aliasView = await localA.host.store.snapshot();
+    await localA.host.store.mutate(aliasView.revision, {
+        op: "put",
+        entries: [foreign],
+    });
+    await localA.host.pair(foreign.origin, 0, undefined, () => true);
+    const awayB = fixture();
+    awayB.data.set("remoteFavorites.v1", localA.data.get("remoteFavorites.v1"));
+    awayB.data.set(
+        "favorites-bindings.v1",
+        localA.data.get("favorites-bindings.v1")
+    );
+    const awayConfig = JSON.parse(awayB.data.get("m3um3uArr"));
+    awayConfig.M3Us[0].name = "B";
+    awayB.data.set("m3um3uArr", JSON.stringify(awayConfig));
+    awayB.w.__ottSourceIdentity.current = () => "m3u:away-B";
+    awayB.w.keys.YELLOW = 405;
+    awayB.w.keys.TOOLS = 84;
+    awayB.w.keys.N0 = 48;
+    await awayB.host.open();
+    const awayView = awayB.shown.at(-1),
+        foreignId = (await awayB.host.store.snapshot()).entries.find(
+            (row) => row.title === "Foreign binding"
+        ).id;
+    awayB.w.selIndex = awayView.rows.indexOf(foreignId);
+    assert(awayView.key(405));
+    for (let turn = 0; turn < 20; turn++) await new Promise(setImmediate);
+    localA.data.set("remoteFavorites.v1", awayB.data.get("remoteFavorites.v1"));
+    await localA.host.open();
+    assert(
+        !(await localA.host.store.snapshot()).entries.some(
+            (row) =>
+                row.locator.channelId === "m3u-epg:News" &&
+                row.origin.profile !== "B"
+        ),
+        "verified Foreign-to-Local mapping cannot resurrect under Local alias"
+    );
+    await localA.host.add({ __ottGlobalChannel: 7 });
+    aliasView = await localA.host.store.snapshot();
+    assert.equal(
+        aliasView.entries.filter((row) => row.origin.profile === "Foreign")
+            .length,
+        1,
+        "manual explicit Add retains paired Foreign identity"
+    );
+    assert.equal(
+        aliasView.entries.filter((row) => row.origin.profile === "Profile")
+            .length,
+        0,
+        "no duplicate Local identity"
+    );
+    assert.equal(
+        (await localA.host.add({ __ottGlobalChannel: 7 })).changed,
+        false
+    );
+    await localA.host.toggle({ __ottGlobalChannel: 7 });
+    assert(
+        !(await localA.host.store.snapshot()).entries.some(
+            (row) => row.origin.profile === "Foreign"
+        ),
+        "manual F toggles mapped identity"
+    );
+    await localA.host.pair(
+        {
+            ...foreign.origin,
+            profile: "Other imported",
+            sourceAlias: "Other imported",
+        },
+        0,
+        undefined,
+        () => true
+    );
+    const ambiguousRaw = new Map(localA.data);
+    await assert.rejects(
+        localA.host.add({ __ottGlobalChannel: 7 }),
+        /unavailable/
+    );
+    assertRawUnchanged(localA, ambiguousRaw);
+    localA.host.dispose();
+    awayB.host.dispose();
+    const sourceB = fixture();
+    await sourceB.host.committer.qualify();
+    const importedA = {
+        title: "Imported A",
+        origin: {
+            provider: "m3u",
+            profile: "A",
+            sourceAlias: "A",
+            subprofile: null,
+        },
+        locator: { kind: "channel", channelId: "m3u-epg:News" },
+    };
+    let importedView = await sourceB.host.store.snapshot();
+    await sourceB.host.store.mutate(importedView.revision, {
+        op: "put",
+        entries: [importedA],
+    });
+    sourceB.w.keys.YELLOW = 405;
+    sourceB.w.keys.TOOLS = 84;
+    sourceB.w.keys.N0 = 48;
+    await sourceB.host.open();
+    const viewB = sourceB.shown.at(-1),
+        idA = (await sourceB.host.store.snapshot()).entries.find(
+            (row) => row.title === "Imported A"
+        ).id;
+    sourceB.w.selIndex = viewB.rows.indexOf(idA);
+    assert(viewB.key(sourceB.w.keys.YELLOW));
+    for (let turn = 0; turn < 20; turn++) await new Promise(setImmediate);
+    assert(
+        !(await sourceB.host.store.snapshot()).entries.some(
+            (row) => row.id === idA
+        )
+    );
+    const sourceA = fixture();
+    sourceA.data.set(
+        "remoteFavorites.v1",
+        sourceB.data.get("remoteFavorites.v1")
+    );
+    const profileA = JSON.parse(sourceA.data.get("m3um3uArr"));
+    profileA.M3Us[0].name = "A";
+    sourceA.data.set("m3um3uArr", JSON.stringify(profileA));
+    sourceA.w.__ottSourceIdentity.current = () => "m3u:unvisited-A";
+    sourceA.hostPorts.uuid = () => "99999999-9999-4999-8999-999999999999";
+    await sourceA.host.open();
+    assert(
+        !(await sourceA.host.store.snapshot()).entries.some(
+            (row) => row.origin.profile === "A"
+        ),
+        "first visit A does not resurrect row removed by UUID while B was current"
+    );
+    await sourceA.host.add({ __ottGlobalChannel: 7 });
+    assert(
+        (await sourceA.host.store.snapshot()).entries.some(
+            (row) => row.origin.profile === "A"
+        ),
+        "explicit re-add on A works after durable suppression"
+    );
+    sourceA.host.dispose();
+    sourceB.host.dispose();
+    const deferred = fixture();
+    await deferred.host.committer.qualify();
+    assert.equal((await deferred.host.store.snapshot()).entries.length, 0);
+    await deferred.host.remove({ __ottGlobalChannel: 7 });
+    await deferred.host.open();
+    assert.equal(
+        (await deferred.host.store.snapshot()).entries.filter(
+            (row) => row.locator.channelId === "m3u-epg:News"
+        ).length,
+        0,
+        "remove before first migration must not resurrect the legacy favorite"
+    );
+    await deferred.host.add({ __ottGlobalChannel: 7 });
+    assert.equal(
+        (await deferred.host.store.snapshot()).entries.filter(
+            (row) => row.locator.channelId === "m3u-epg:News"
+        ).length,
+        1,
+        "explicit add after removal remains available"
+    );
+    assert.equal(
+        (await deferred.host.add({ __ottGlobalChannel: 7 })).changed,
+        false
+    );
+    deferred.host.dispose();
+    const menus = await seededPlayableFixture("Explicit menu item");
+    const item = { __ottGlobalChannel: 7 };
+    assert.equal(
+        (await menus.host.add(item)).changed,
+        false,
+        "add existing is a no-op"
+    );
+    assert.equal((await menus.host.remove(item)).changed, true);
+    assert.equal(
+        (await menus.host.remove(item)).changed,
+        false,
+        "remove absent never adds"
+    );
+    assert.equal((await menus.host.add(item)).changed, true);
+    assert.equal(
+        (await menus.host.add(item)).changed,
+        false,
+        "repeat add never removes"
+    );
+    assert.equal((await menus.host.store.snapshot()).entries.length, 1);
+    assert.deepEqual(
+        menus.toggles,
+        [
+            ["Explicit menu item", false],
+            ["Explicit menu item", true],
+        ],
+        "only persisted changes emit one confirmation each"
+    );
+    const protectedRaw = new Map(menus.data);
+    await assert.rejects(menus.host.remove(item, () => false));
+    assertRawUnchanged(menus, protectedRaw);
+    menus.w.keys.YELLOW = 405;
+    menus.w.keys.TOOLS = 84;
+    menus.w.keys.N0 = 48;
+    await menus.host.open();
+    const shown = menus.shown.at(-1);
+    assert.equal(shown.actions, "Favorites: −");
+    const beforeMenuRemove = (await menus.host.store.snapshot()).entries;
+    const selectedMenuId = shown.rows[shown.selected];
+    assert(beforeMenuRemove.some((row) => row.id === selectedMenuId));
+    assert.equal(shown.key(menus.w.keys.YELLOW), true);
+    for (let turn = 0; turn < 20; turn++) await new Promise(setImmediate);
+    assert.deepEqual(
+        Array.from(
+            (await menus.host.store.snapshot()).entries,
+            (row) => row.id
+        ),
+        Array.from(
+            beforeMenuRemove.filter((row) => row.id !== selectedMenuId),
+            (row) => row.id
+        ),
+        "global view action removes only the selected UUID, preserving migrated entries"
+    );
+    assert.equal(
+        shown.key(menus.w.keys.YELLOW),
+        false,
+        "stale repeated remove cannot affect another row"
+    );
+    menus.w.sFavorites = -1;
+    await menus.host.open();
+    assert.equal(
+        menus.shown.at(-1).actions,
+        false,
+        "editing-disabled list does not advertise remove"
+    );
+    menus.host.dispose();
+    const literal = "<b>A & B</b> &amp;";
+    const toggleFixture = await seededPlayableFixture(literal);
+    await toggleFixture.host.toggle();
+    await toggleFixture.host.toggle();
+    assert.deepEqual(
+        toggleFixture.toggles,
+        [
+            [literal, false],
+            [literal, true],
+        ],
+        "one confirmed removal/addition notification with the unmodified title"
+    );
+    const refusedBefore = new Map(toggleFixture.data),
+        refusedWrites = toggleFixture.writes.length;
+    toggleFixture.failWrites("conflict");
+    await assert.rejects(toggleFixture.host.toggle(), /storage_unavailable/);
+    assertRawUnchanged(toggleFixture, refusedBefore);
+    assert.equal(toggleFixture.writes.length, refusedWrites);
+    assert.equal(
+        toggleFixture.toggles.length,
+        2,
+        "refused persistence emits no success"
+    );
+    toggleFixture.failWrites("unknown");
+    await assert.rejects(toggleFixture.host.toggle(), /storage_unavailable/);
+    assert.equal(
+        toggleFixture.toggles.length,
+        2,
+        "uncertain persistence emits no success or rollback claim"
+    );
+    toggleFixture.host.dispose();
     const byteFixture = fixture();
     for (const request of [
         { text: "ASCII" },
@@ -703,9 +988,16 @@ async function main() {
         null,
         "manual channel switch retires the imported identity"
     );
-    assert.notEqual(
-        (await f.host.currentItem()).entry.origin.sourceAlias,
-        imported.origin.sourceAlias
+    const manualItem = (await f.host.currentItem()).entry;
+    assert.equal(
+        manualItem.origin.sourceAlias,
+        imported.origin.sourceAlias,
+        "manual entry uses the verified profile binding, not prior playback provenance"
+    );
+    assert.equal(
+        manualItem.locator.channelId,
+        "m3u-epg:Other",
+        "manual switch still captures the newly selected content"
     );
     f.host.dispose();
     const g = fixture(),

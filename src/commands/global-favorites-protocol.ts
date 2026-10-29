@@ -12,7 +12,7 @@ const OPS = [
     "status",
     "abort",
 ];
-const ERRORS = [
+const GLOBAL_PROTOCOL_ERRORS = [
     "invalid_request",
     "envelope_too_large",
     "unsupported",
@@ -52,18 +52,22 @@ const LIMITS = {
     max_receipts: 32,
     max_receipt_ledger_bytes: 65536,
 };
-const UUID =
+const GLOBAL_PROTOCOL_UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
-const HASH = /^[0-9a-f]{64}(?![\s\S])/;
-function fail(code: string): never {
+const GLOBAL_PROTOCOL_HASH = /^[0-9a-f]{64}(?![\s\S])/;
+function globalFavoritesProtocolFail(code: string): never {
     throw new Error(code);
 }
-function exact(value: any, keys: string[]): boolean {
+function globalFavoritesProtocolExact(value: any, keys: string[]): boolean {
     return (
         !!value && Object.keys(value).sort().join(",") === keys.sort().join(",")
     );
 }
-function integer(value: any, min: number, max: number): boolean {
+function globalFavoritesProtocolInteger(
+    value: any,
+    min: number,
+    max: number
+): boolean {
     return (
         typeof value === "number" &&
         isFinite(value) &&
@@ -121,25 +125,27 @@ export function createGlobalFavoritesProtocol(ports: any) {
     function check(value: any, runtime: string) {
         expire();
         if (disposed || !ports.current() || ports.runtime() !== runtime)
-            fail("runtime_changed");
+            globalFavoritesProtocolFail("runtime_changed");
         if (
             stage !== value ||
             ports.now() >= value.absolute ||
             ports.now() >= value.idle
         )
-            fail("expired");
-        if (!value.grant.current()) fail("context_changed");
-        if (!value.started && !value.view.current()) fail("revision_conflict");
+            globalFavoritesProtocolFail("expired");
+        if (!value.grant.current())
+            globalFavoritesProtocolFail("context_changed");
+        if (!value.started && !value.view.current())
+            globalFavoritesProtocolFail("revision_conflict");
     }
     async function context() {
         var value = await ports.captureContext();
         if (
             !value ||
-            !HASH.test(value.revision) ||
+            !GLOBAL_PROTOCOL_HASH.test(value.revision) ||
             typeof value.current !== "function" ||
             !value.current()
         )
-            fail("context_changed");
+            globalFavoritesProtocolFail("context_changed");
         return value;
     }
     function current(runtime: string, deadline: number) {
@@ -149,14 +155,14 @@ export function createGlobalFavoritesProtocol(ports: any) {
             ports.runtime() !== runtime ||
             (requestAdmission && !requestAdmission())
         )
-            fail("runtime_changed");
-        if (ports.now() >= deadline) fail("expired");
+            globalFavoritesProtocolFail("runtime_changed");
+        if (ports.now() >= deadline) globalFavoritesProtocolFail("expired");
     }
     function metadata(value: any) {
         if (
             utf8Encode(JSON.stringify(value)).length > LIMITS.max_metadata_bytes
         )
-            fail("limits_exceeded");
+            globalFavoritesProtocolFail("limits_exceeded");
         return value;
     }
     async function execute(
@@ -187,17 +193,24 @@ export function createGlobalFavoritesProtocol(ports: any) {
         requestAdmission = admission;
         try {
             expire();
-            if (!integer(envelopeBytes, 1, LIMITS.max_envelope_bytes))
-                fail("envelope_too_large");
+            if (
+                !globalFavoritesProtocolInteger(
+                    envelopeBytes,
+                    1,
+                    LIMITS.max_envelope_bytes
+                )
+            )
+                globalFavoritesProtocolFail("envelope_too_large");
             if (
                 !params ||
                 params.runtime !== runtime ||
                 OPS.indexOf(op) < 0 ||
                 !isFinite(deadline)
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             current(runtime, deadline);
-            if (!ports.authorized(op)) fail("policy_denied");
+            if (!ports.authorized(op))
+                globalFavoritesProtocolFail("policy_denied");
             var data = await operation(params, runtime, deadline);
             current(runtime, deadline);
             return metadata(
@@ -218,7 +231,10 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 runtime: replyRuntime,
                 op: op,
                 subject: "global",
-                error: ERRORS.indexOf(code) >= 0 ? code : "storage_unavailable",
+                error:
+                    GLOBAL_PROTOCOL_ERRORS.indexOf(code) >= 0
+                        ? code
+                        : "storage_unavailable",
             };
         } finally {
             busy = false;
@@ -230,23 +246,27 @@ export function createGlobalFavoritesProtocol(ports: any) {
         runtime: string,
         deadline: number
     ): Promise<any> {
-        if (p.op === "describe" && exact(p, ["op", "runtime"])) {
+        if (
+            p.op === "describe" &&
+            globalFavoritesProtocolExact(p, ["op", "runtime"])
+        ) {
             var view = await ports.store.snapshot(),
                 contextSnapshot = await context(),
                 contextRevision = contextSnapshot.revision;
             current(runtime, deadline);
             if (!view.current() || !contextSnapshot.current())
-                fail("revision_conflict");
+                globalFavoritesProtocolFail("revision_conflict");
             var descriptor: any = null,
                 error: any = null;
             try {
                 var exported = await ports.facade.exportSnapshot(),
                     doc = ports.codec.document(exported.document);
-                if (!doc) fail("unportable_export");
+                if (!doc) globalFavoritesProtocolFail("unportable_export");
                 var bytes = utf8Encode(JSON.stringify(doc)),
                     hash = await ports.sha256(bytes);
                 current(runtime, deadline);
-                if (!exported.current()) fail("revision_conflict");
+                if (!exported.current())
+                    globalFavoritesProtocolFail("revision_conflict");
                 clearBytes(snapshot);
                 snapshot = {
                     id: ports.uuid(),
@@ -255,7 +275,8 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     revision: view.revision,
                     expires: ports.now() + 600000,
                 };
-                if (!UUID.test(snapshot.id)) fail("invalid_request");
+                if (!GLOBAL_PROTOCOL_UUID.test(snapshot.id))
+                    globalFavoritesProtocolFail("invalid_request");
                 descriptor = {
                     snapshot_id: snapshot.id,
                     document_sha256: hash,
@@ -270,11 +291,13 @@ export function createGlobalFavoritesProtocol(ports: any) {
                         : "storage_unavailable";
             }
             if (!view.current() || !contextSnapshot.current())
-                fail("revision_conflict");
+                globalFavoritesProtocolFail("revision_conflict");
             await ports.committer.qualify();
             current(runtime, deadline);
-            if (!view.current()) fail("revision_conflict");
-            if (!contextSnapshot.current()) fail("context_changed");
+            if (!view.current())
+                globalFavoritesProtocolFail("revision_conflict");
+            if (!contextSnapshot.current())
+                globalFavoritesProtocolFail("context_changed");
             var ready =
                 !stage &&
                 ports.committer.canWrite() &&
@@ -282,7 +305,8 @@ export function createGlobalFavoritesProtocol(ports: any) {
             admission = null;
             if (ready) {
                 var id = ports.uuid();
-                if (!UUID.test(id)) fail("unsupported");
+                if (!GLOBAL_PROTOCOL_UUID.test(id))
+                    globalFavoritesProtocolFail("unsupported");
                 admission = {
                     id: id,
                     runtime: runtime,
@@ -313,15 +337,25 @@ export function createGlobalFavoritesProtocol(ports: any) {
         }
         if (
             p.op === "export" &&
-            exact(p, ["op", "runtime", "snapshot_id", "offset", "max_bytes"])
+            globalFavoritesProtocolExact(p, [
+                "op",
+                "runtime",
+                "snapshot_id",
+                "offset",
+                "max_bytes",
+            ])
         ) {
             if (!snapshot || snapshot.id !== p.snapshot_id)
-                fail("snapshot_not_found");
+                globalFavoritesProtocolFail("snapshot_not_found");
             if (
-                !integer(p.offset, 0, snapshot.bytes.length - 1) ||
-                !integer(p.max_bytes, 1, 65536)
+                !globalFavoritesProtocolInteger(
+                    p.offset,
+                    0,
+                    snapshot.bytes.length - 1
+                ) ||
+                !globalFavoritesProtocolInteger(p.max_bytes, 1, 65536)
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             var end = Math.min(snapshot.bytes.length, p.offset + p.max_bytes),
                 exportBytes = snapshot.bytes.slice(p.offset, end),
                 hash = await ports.sha256(exportBytes);
@@ -340,7 +374,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
         }
         if (
             p.op === "begin" &&
-            exact(p, [
+            globalFavoritesProtocolExact(p, [
                 "op",
                 "runtime",
                 "operation_id",
@@ -378,22 +412,23 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     return stage.beginResult;
                 }
                 if (stage.args.operation_id === p.operation_id)
-                    fail("operation_conflict");
-                fail("busy");
+                    globalFavoritesProtocolFail("operation_conflict");
+                globalFavoritesProtocolFail("busy");
             }
-            if (!ports.committer.canWrite()) fail("reconciliation_required");
+            if (!ports.committer.canWrite())
+                globalFavoritesProtocolFail("reconciliation_required");
             if (
-                !UUID.test(p.operation_id) ||
+                !GLOBAL_PROTOCOL_UUID.test(p.operation_id) ||
                 !["merge", "replace"].includes(p.mode) ||
-                !HASH.test(p.expected_revision) ||
-                !HASH.test(p.expected_context_revision) ||
-                !HASH.test(p.document_sha256) ||
-                !integer(p.size_bytes, 1, 1048576) ||
-                !integer(p.chunk_count, 1, 256) ||
+                !GLOBAL_PROTOCOL_HASH.test(p.expected_revision) ||
+                !GLOBAL_PROTOCOL_HASH.test(p.expected_context_revision) ||
+                !GLOBAL_PROTOCOL_HASH.test(p.document_sha256) ||
+                !globalFavoritesProtocolInteger(p.size_bytes, 1, 1048576) ||
+                !globalFavoritesProtocolInteger(p.chunk_count, 1, 256) ||
                 p.size_bytes > p.chunk_count * 8192 ||
-                !integer(p.budget_ms, 1, 600000)
+                !globalFavoritesProtocolInteger(p.budget_ms, 1, 600000)
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             if (
                 !Array.isArray(p.required_kinds) ||
                 p.required_kinds.length > 5 ||
@@ -405,9 +440,9 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     );
                 })
             )
-                fail("unsupported");
+                globalFavoritesProtocolFail("unsupported");
             if (p.budget_ms < 1500 * (p.chunk_count + 5) + 10000)
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             if (
                 !admission ||
                 admission.id !== p.operation_id ||
@@ -416,17 +451,17 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 admission.revision !== p.expected_revision ||
                 admission.context !== p.expected_context_revision
             )
-                fail("operation_conflict");
+                globalFavoritesProtocolFail("operation_conflict");
             var view = await ports.store.snapshot(),
                 contextSnapshot = await context(),
                 revision = contextSnapshot.revision;
             current(runtime, deadline);
             if (!view.current() || view.revision !== p.expected_revision)
-                fail("revision_conflict");
+                globalFavoritesProtocolFail("revision_conflict");
             if (revision !== p.expected_context_revision)
-                fail("context_changed");
+                globalFavoritesProtocolFail("context_changed");
             if (!admission || ports.now() >= admission.expires)
-                fail("operation_conflict");
+                globalFavoritesProtocolFail("operation_conflict");
             admission = null;
             var grant = {
                 current: function () {
@@ -457,7 +492,8 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 absolute: ports.now() + p.budget_ms,
                 timer: null,
             };
-            if (!UUID.test(stage.id)) fail("invalid_request");
+            if (!GLOBAL_PROTOCOL_UUID.test(stage.id))
+                globalFavoritesProtocolFail("invalid_request");
             arm(stage);
             stage.beginResult = {
                 operation_id: p.operation_id,
@@ -476,8 +512,12 @@ export function createGlobalFavoritesProtocol(ports: any) {
             return stage.beginResult;
         }
         var value = stage;
-        if (p.op === "status" && exact(p, ["op", "runtime", "operation_id"])) {
-            if (!UUID.test(p.operation_id)) fail("invalid_request");
+        if (
+            p.op === "status" &&
+            globalFavoritesProtocolExact(p, ["op", "runtime", "operation_id"])
+        ) {
+            if (!GLOBAL_PROTOCOL_UUID.test(p.operation_id))
+                globalFavoritesProtocolFail("invalid_request");
             if (
                 value &&
                 value.runtime === runtime &&
@@ -516,13 +556,13 @@ export function createGlobalFavoritesProtocol(ports: any) {
             };
         }
         if (!value || p.transaction_id !== value.id)
-            fail("transaction_not_found");
+            globalFavoritesProtocolFail("transaction_not_found");
         check(value, runtime);
         value.idle = Math.min(value.absolute, ports.now() + 120000);
         arm(value);
         if (
             p.op === "append" &&
-            exact(p, [
+            globalFavoritesProtocolExact(p, [
                 "op",
                 "runtime",
                 "transaction_id",
@@ -533,11 +573,11 @@ export function createGlobalFavoritesProtocol(ports: any) {
             ])
         ) {
             if (
-                !integer(p.seq, 0, 255) ||
-                !integer(p.offset, 0, 1048575) ||
-                !HASH.test(p.chunk_sha256)
+                !globalFavoritesProtocolInteger(p.seq, 0, 255) ||
+                !globalFavoritesProtocolInteger(p.offset, 0, 1048575) ||
+                !GLOBAL_PROTOCOL_HASH.test(p.chunk_sha256)
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             var appendBytes = ports.base64Decode(p.data_base64);
             if (
                 !(appendBytes instanceof Uint8Array) ||
@@ -545,11 +585,12 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 appendBytes.length > 8192 ||
                 ports.base64Encode(appendBytes) !== p.data_base64
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             var hash = await ports.sha256(appendBytes);
             current(runtime, deadline);
             check(value, runtime);
-            if (hash !== p.chunk_sha256) fail("hash_mismatch");
+            if (hash !== p.chunk_sha256)
+                globalFavoritesProtocolFail("hash_mismatch");
             if (p.seq < value.next) {
                 var prior = value.chunks[p.seq];
                 if (
@@ -558,7 +599,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     prior.hash !== hash ||
                     prior.size !== appendBytes.length
                 )
-                    fail("chunk_conflict");
+                    globalFavoritesProtocolFail("chunk_conflict");
                 return {
                     operation_id: value.args.operation_id,
                     transaction_id: value.id,
@@ -571,14 +612,14 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 };
             }
             if (p.seq !== value.next || p.offset !== value.received)
-                fail("out_of_order");
+                globalFavoritesProtocolFail("out_of_order");
             if (
                 value.started ||
                 value.plan ||
                 value.next >= value.args.chunk_count ||
                 value.received + appendBytes.length > value.bytes.length
             )
-                fail("limits_exceeded");
+                globalFavoritesProtocolFail("limits_exceeded");
             value.bytes.set(appendBytes, value.received);
             value.chunks.push({
                 offset: p.offset,
@@ -600,7 +641,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
         }
         if (
             p.op === "preview" &&
-            exact(p, [
+            globalFavoritesProtocolExact(p, [
                 "op",
                 "runtime",
                 "transaction_id",
@@ -609,27 +650,27 @@ export function createGlobalFavoritesProtocol(ports: any) {
             ])
         ) {
             if (
-                !integer(p.page_offset, 0, 1000) ||
-                !integer(p.max_entries, 1, 64)
+                !globalFavoritesProtocolInteger(p.page_offset, 0, 1000) ||
+                !globalFavoritesProtocolInteger(p.max_entries, 1, 64)
             )
-                fail("invalid_request");
+                globalFavoritesProtocolFail("invalid_request");
             if (
                 value.next !== value.args.chunk_count ||
                 value.received !== value.bytes.length
             )
-                fail("incomplete");
+                globalFavoritesProtocolFail("incomplete");
             if (!value.plan) {
                 if (
                     (await ports.sha256(value.bytes)) !==
                     value.args.document_sha256
                 )
-                    fail("hash_mismatch");
+                    globalFavoritesProtocolFail("hash_mismatch");
                 current(runtime, deadline);
                 check(value, runtime);
                 var doc = ports.codec.document(
                     parseFavoritesDocumentJson(value.bytes)
                 );
-                if (!doc) fail("invalid_document");
+                if (!doc) globalFavoritesProtocolFail("invalid_document");
                 if (
                     !ports.codec.supports(doc, ports.locatorKinds) ||
                     JSON.stringify(
@@ -637,10 +678,10 @@ export function createGlobalFavoritesProtocol(ports: any) {
                     ) !==
                         JSON.stringify(value.args.required_kinds.slice().sort())
                 )
-                    fail("unsupported");
+                    globalFavoritesProtocolFail("unsupported");
                 var before = await ports.store.snapshot();
                 if (before.revision !== value.args.expected_revision)
-                    fail("revision_conflict");
+                    globalFavoritesProtocolFail("revision_conflict");
                 var known: any = Object.create(null),
                     conflicts: any = Object.create(null),
                     conflict = false;
@@ -706,7 +747,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
                         );
                     })
                 )
-                    fail("context_changed");
+                    globalFavoritesProtocolFail("context_changed");
                 value.ready = !(value.args.mode === "merge" && conflict);
                 value.rows = statuses.map(function (
                     state: string,
@@ -732,7 +773,8 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 value.ready = !(value.args.mode === "merge" && conflict);
                 value.blocker = value.ready ? null : "metadata_conflict";
             }
-            if (p.page_offset > value.rows.length) fail("invalid_request");
+            if (p.page_offset > value.rows.length)
+                globalFavoritesProtocolFail("invalid_request");
             var end = Math.min(
                 value.rows.length,
                 p.page_offset + p.max_entries
@@ -758,7 +800,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
         }
         if (
             p.op === "commit" &&
-            exact(p, [
+            globalFavoritesProtocolExact(p, [
                 "op",
                 "runtime",
                 "transaction_id",
@@ -772,8 +814,9 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 !value.ready ||
                 p.plan_digest !== value.plan.plan_digest
             )
-                fail("not_ready");
-            if (value.started) fail("reconciliation_required");
+                globalFavoritesProtocolFail("not_ready");
+            if (value.started)
+                globalFavoritesProtocolFail("reconciliation_required");
             var admitted = requestAdmission;
             value.commitAdmission = function () {
                 return ports.now() < deadline && (!admitted || admitted());
@@ -805,7 +848,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
             clearBytes(value);
             stage = null;
             if (result.outcome !== "verified")
-                fail(
+                globalFavoritesProtocolFail(
                     result.outcome === "not_applied"
                         ? "revision_conflict"
                         : "reconciliation_required"
@@ -818,11 +861,17 @@ export function createGlobalFavoritesProtocol(ports: any) {
         }
         if (
             p.op === "abort" &&
-            exact(p, ["op", "runtime", "transaction_id", "operation_id"])
+            globalFavoritesProtocolExact(p, [
+                "op",
+                "runtime",
+                "transaction_id",
+                "operation_id",
+            ])
         ) {
             if (p.operation_id !== value.args.operation_id)
-                fail("operation_conflict");
-            if (value.started) fail("reconciliation_required");
+                globalFavoritesProtocolFail("operation_conflict");
+            if (value.started)
+                globalFavoritesProtocolFail("reconciliation_required");
             ports.committer.discard(p.operation_id);
             terminal = {
                 operation_id: p.operation_id,
@@ -842,7 +891,7 @@ export function createGlobalFavoritesProtocol(ports: any) {
                 outcome: "not_applied",
             };
         }
-        fail("invalid_request");
+        globalFavoritesProtocolFail("invalid_request");
     }
     return {
         execute: execute,

@@ -1,23 +1,30 @@
 import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
 const LEDGER = "favorites-global-receipts.v1",
     STORE = "remoteFavorites.v1",
-    REASON = "accept-unknown-no-replay";
-const UUID =
+    GLOBAL_RECOVERY_REASON = "accept-unknown-no-replay";
+const GLOBAL_RECOVERY_UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
-const HASH = /^[0-9a-f]{64}(?![\s\S])/;
-function fail(code: string): never {
+const GLOBAL_RECOVERY_HASH = /^[0-9a-f]{64}(?![\s\S])/;
+function globalFavoritesRecoveryFail(code: string): never {
     throw new Error(code);
 }
-function canonical(value: any): string {
+function globalFavoritesRecoveryCanonical(value: any): string {
     if (value === null || typeof value !== "object")
         return JSON.stringify(value);
-    if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+    if (Array.isArray(value))
+        return (
+            "[" + value.map(globalFavoritesRecoveryCanonical).join(",") + "]"
+        );
     return (
         "{" +
         Object.keys(value)
             .sort()
             .map(function (key) {
-                return JSON.stringify(key) + ":" + canonical(value[key]);
+                return (
+                    JSON.stringify(key) +
+                    ":" +
+                    globalFavoritesRecoveryCanonical(value[key])
+                );
             })
             .join(",") +
         "}"
@@ -52,7 +59,7 @@ export async function verifyGlobalFavoritesAudit(
     Object.keys(row).forEach(function (key) {
         if (key !== "recovery_ack") copy[key] = row[key];
     });
-    var original = await sha256(canonical(copy)),
+    var original = await sha256(globalFavoritesRecoveryCanonical(copy)),
         audit = row.recovery_ack;
     var expected = await sha256(
         JSON.stringify([
@@ -79,7 +86,8 @@ export async function verifyGlobalFavoritesAudit(
 export function createGlobalFavoritesRecovery(ports: any) {
     async function hash(value: string) {
         var result = await ports.sha256(value);
-        if (!HASH.test(result)) fail("hash_unavailable");
+        if (!GLOBAL_RECOVERY_HASH.test(result))
+            globalFavoritesRecoveryFail("hash_unavailable");
         return result;
     }
     async function original(row: any) {
@@ -87,7 +95,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
         Object.keys(row).forEach(function (key) {
             if (key !== "recovery_ack") copy[key] = row[key];
         });
-        return hash(canonical(copy));
+        return hash(globalFavoritesRecoveryCanonical(copy));
     }
     async function record(row: any) {
         var digest = await original(row),
@@ -108,7 +116,8 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     audit.reason,
                 ])
             );
-            if (expected !== audit.acknowledgement_id) fail("invalid_ledger");
+            if (expected !== audit.acknowledgement_id)
+                globalFavoritesRecoveryFail("invalid_ledger");
         }
         return {
             operation_id: row.operationId,
@@ -138,7 +147,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
             grant.read(STORE) !== store ||
             !current()
         )
-            fail("revision_conflict");
+            globalFavoritesRecoveryFail("revision_conflict");
         var rows = parsed.entries.filter(protectedRow).sort(function (
             a: any,
             b: any
@@ -157,7 +166,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
             grant.read(LEDGER) !== raw ||
             grant.read(STORE) !== store
         )
-            fail("revision_conflict");
+            globalFavoritesRecoveryFail("revision_conflict");
         return {
             raw: raw,
             store: store,
@@ -211,7 +220,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                 state.meta.store_revision,
                 state.meta.context_revision,
                 state.meta.backend_proof,
-                REASON,
+                GLOBAL_RECOVERY_REASON,
             ])
         );
         var after = JSON.parse(state.raw),
@@ -225,12 +234,13 @@ export function createGlobalFavoritesRecovery(ports: any) {
             store_revision: state.meta.store_revision,
             context_revision: state.meta.context_revision,
             backend_proof: state.meta.backend_proof,
-            reason: REASON,
+            reason: GLOBAL_RECOVERY_REASON,
         };
         var afterRaw = JSON.stringify(after);
         if (!schema.capacity(afterRaw) || afterRaw === state.raw)
-            fail("capacity");
-        if (utf8Size(afterRaw) - utf8Size(state.raw) > 1024) fail("capacity");
+            globalFavoritesRecoveryFail("capacity");
+        if (utf8Size(afterRaw) - utf8Size(state.raw) > 1024)
+            globalFavoritesRecoveryFail("capacity");
         var afterHash = await hash(afterRaw),
             plan = await hash(
                 JSON.stringify([
@@ -244,7 +254,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     state.meta.store_revision,
                     state.meta.context_revision,
                     state.meta.backend_proof,
-                    REASON,
+                    GLOBAL_RECOVERY_REASON,
                     acknowledgement,
                     afterHash,
                 ])
@@ -270,19 +280,23 @@ export function createGlobalFavoritesRecovery(ports: any) {
             p.subject !== "global" ||
             ["inspect", "acknowledge"].indexOf(p.op) < 0
         )
-            fail("invalid_request");
-        if (!ports.authorized(p.op)) fail("policy_denied");
-        if (p.operation_id !== undefined && !UUID.test(p.operation_id))
-            fail("invalid_request");
+            globalFavoritesRecoveryFail("invalid_request");
+        if (!ports.authorized(p.op))
+            globalFavoritesRecoveryFail("policy_denied");
+        if (
+            p.operation_id !== undefined &&
+            !GLOBAL_RECOVERY_UUID.test(p.operation_id)
+        )
+            globalFavoritesRecoveryFail("invalid_request");
         var grant = ports.capture(),
             context = await ports.captureContext();
         if (
             !grant ||
             !context ||
-            !HASH.test(context.revision) ||
+            !GLOBAL_RECOVERY_HASH.test(context.revision) ||
             typeof context.current !== "function"
         )
-            fail("unsupported_persistence");
+            globalFavoritesRecoveryFail("unsupported_persistence");
         function current() {
             return (
                 ports.current() &&
@@ -294,9 +308,10 @@ export function createGlobalFavoritesRecovery(ports: any) {
                 ports.authorized(p.op)
             );
         }
-        if (!current()) fail("context_changed");
+        if (!current()) globalFavoritesRecoveryFail("context_changed");
         return grant.exclusive(async function (held: any) {
-            if (held !== grant || !current()) fail("context_changed");
+            if (held !== grant || !current())
+                globalFavoritesRecoveryFail("context_changed");
             var state = await view(grant, runtime, context, current);
             if (
                 p.op === "inspect" &&
@@ -306,7 +321,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     Object.keys(p).sort().join(",") !==
                     "cursor,op,runtime,subject"
                 )
-                    fail("invalid_request");
+                    globalFavoritesRecoveryFail("invalid_request");
                 var offset = 0;
                 if (p.cursor !== null) {
                     var cursor = p.cursor;
@@ -314,7 +329,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                         Object.keys(cursor).sort().join(",") !==
                         "after_operation_id,backend_proof,context_revision,ledger_revision,store_revision"
                     )
-                        fail("invalid_request");
+                        globalFavoritesRecoveryFail("invalid_request");
                     for (var name of [
                         "backend_proof",
                         "context_revision",
@@ -322,7 +337,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                         "store_revision",
                     ])
                         if (cursor[name] !== state.meta[name])
-                            fail("revision_conflict");
+                            globalFavoritesRecoveryFail("revision_conflict");
                     var at = state.rows.findIndex(function (row: any) {
                         return row.operationId === cursor.after_operation_id;
                     });
@@ -331,7 +346,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                         (at + 1) % 16 !== 0 ||
                         at >= state.rows.length - 1
                     )
-                        fail("invalid_cursor");
+                        globalFavoritesRecoveryFail("invalid_cursor");
                     offset = at + 1;
                 }
                 var end = Math.min(state.records.length, offset + 16),
@@ -364,23 +379,23 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     Object.keys(p).sort().join(",") !==
                     "op,operation_id,runtime,subject"
                 )
-                    fail("invalid_request");
+                    globalFavoritesRecoveryFail("invalid_request");
                 if (
                     !current() ||
                     grant.read(LEDGER) !== state.raw ||
                     grant.read(STORE) !== state.store
                 )
-                    fail("revision_conflict");
+                    globalFavoritesRecoveryFail("revision_conflict");
                 return planned.result;
             }
             if (
                 Object.keys(p).sort().join(",") !==
                     "accept_unknown,acknowledgement_id,after_ledger_sha256,backend_proof,expected_context_revision,expected_ledger_revision,expected_store_revision,op,operation_id,operation_runtime,original_entry_sha256,plan_sha256,reason,runtime,subject" ||
                 p.accept_unknown !== true ||
-                p.reason !== REASON ||
+                p.reason !== GLOBAL_RECOVERY_REASON ||
                 !planned.result.acknowledge_allowed
             )
-                fail("invalid_request");
+                globalFavoritesRecoveryFail("invalid_request");
             var expected = {
                 operation_runtime: planned.result.record.operation_runtime,
                 original_entry_sha256:
@@ -394,14 +409,15 @@ export function createGlobalFavoritesRecovery(ports: any) {
                 plan_sha256: planned.result.plan_sha256,
             };
             for (var key of Object.keys(expected))
-                if (p[key] !== expected[key]) fail("revision_conflict");
+                if (p[key] !== expected[key])
+                    globalFavoritesRecoveryFail("revision_conflict");
             if (
                 !current() ||
                 grant.read(LEDGER) !== state.raw ||
                 grant.read(STORE) !== state.store ||
                 !current()
             )
-                fail("revision_conflict");
+                globalFavoritesRecoveryFail("revision_conflict");
             var conditional = function () {
                 return current() && grant.read(STORE) === state.store;
             };
@@ -414,9 +430,10 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     conditional
                 );
             } catch (_) {
-                fail("outcome_unknown");
+                globalFavoritesRecoveryFail("outcome_unknown");
             }
-            if (outcome === "conflict") fail("revision_conflict");
+            if (outcome === "conflict")
+                globalFavoritesRecoveryFail("revision_conflict");
             try {
                 if (
                     outcome !== "confirmed" ||
@@ -424,7 +441,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     grant.read(LEDGER) !== planned.after ||
                     grant.read(STORE) !== state.store
                 )
-                    fail("outcome_unknown");
+                    globalFavoritesRecoveryFail("outcome_unknown");
                 var afterState = await view(grant, runtime, context, current),
                     row = afterState.records.filter(function (row: any) {
                         return row.operation_id === p.operation_id;
@@ -434,7 +451,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     afterState.store !== state.store ||
                     !current()
                 )
-                    fail("outcome_unknown");
+                    globalFavoritesRecoveryFail("outcome_unknown");
                 return {
                     version: 1,
                     runtime: runtime,
@@ -452,7 +469,7 @@ export function createGlobalFavoritesRecovery(ports: any) {
                     record: row,
                 };
             } catch (_) {
-                fail("outcome_unknown");
+                globalFavoritesRecoveryFail("outcome_unknown");
             }
         });
     }

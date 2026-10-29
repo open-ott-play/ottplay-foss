@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { fixture, row } = require("./global-favorites-fixture.cjs");
+const { fixture, row, hash } = require("./global-favorites-fixture.cjs");
 async function main() {
     const f = fixture(),
         full = Array.from({ length: 1000 }, (_, i) => ({
@@ -91,7 +91,16 @@ async function main() {
     );
     assert.deepEqual(
         JSON.parse(mappedOnly.data.get("remoteFavorites.v1")).migrations,
-        ["b".repeat(64)]
+        [
+            "b".repeat(64),
+            hash(
+                JSON.stringify([
+                    "global-favorites-removed-identity-v1",
+                    mappedOnly.codec.identity(row("Mapped")),
+                ])
+            ),
+        ],
+        "replace preserves source markers and adds removed identity suppression"
     );
     const titles = fixture(),
         longTitle = "界".repeat(1024);
