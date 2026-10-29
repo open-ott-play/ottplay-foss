@@ -745,7 +745,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
-    // Measured 1062 raw / 559 gzip bytes; fetched only when Shaka is requested.
+    // Measured 1144 raw / 596 gzip bytes; fetched only when Shaka is requested.
     "shaka-tracks": Object.freeze({ bytes: 1200, gzipBytes: 640 }),
     // Two live-recovery choices add 239 raw / 73 gzip bytes on Node 26.12.1.
     // Keep the existing lazy editor and its original measurement headroom.
