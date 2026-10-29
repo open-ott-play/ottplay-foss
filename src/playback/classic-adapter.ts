@@ -1212,9 +1212,9 @@ function classicPlaybackProgramme(): any {
 }
 
 (window as any).__ottClassicPlayback = {
-    beforeSeek: function (value: number): void {
+    beforeSeek: function (value: number): (() => void) | void {
         classicPlaybackCapture();
-        classicPlaybackRuntime().beforeSeek(value);
+        return classicPlaybackRuntime().beforeSeek(value);
     },
     bookmark: classicPlaybackBookmark,
     cancel: function (): void {

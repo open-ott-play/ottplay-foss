@@ -104,7 +104,7 @@ function validateHlsInit(bytes) {
         assert.equal(bytes[avcC.start + 13] & 0xe0, 0xe0);
     }
 }
-function createHlsAspectFixture(tsBytes) {
+function createHlsAspectFixture(tsBytes, decodeTime = 0) {
     // Separate fMP4 renditions exercise real HLS audio/video decoding without
     // relying on GStreamer's multiplexed SourceBuffer path or re-encoding.
     const fixture = {};
@@ -122,6 +122,8 @@ function createHlsAspectFixture(tsBytes) {
         fixture[type + "-init.mp4"] = normalizeHlsInit(segment.initSegment);
         fixture[type + "-segment.m4s"] = Buffer.from(segment.data);
     });
+    // Optional 90 kHz offset lets longer tests join real consecutive fragments.
+    transmuxer.setBaseMediaDecodeTime(decodeTime);
     transmuxer.push(new Uint8Array(tsBytes));
     transmuxer.flush();
     assert.equal(

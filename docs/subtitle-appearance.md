@@ -32,3 +32,21 @@ The build measures the optional asset separately and includes it in complete
 payload totals for web, server and native distributions. The eager player and
 existing provider budgets are unchanged. Existing interface settings move into
 this same optional asset to keep the startup budget intact.
+
+## Shaka audio and subtitle tracks
+
+When Shaka is the selected playback engine, **Menu → Audio track** lists audio
+renditions and **Menu → Subtitles** lists text tracks with **Off**. This works in
+both the current native runtime and the bundled legacy web runtime. Selecting an
+audio language uses Shaka's audio adaptation API and leaves automatic video
+quality enabled. A source that offers a language only at another video quality
+may still require Shaka to change quality.
+
+An explicit selection, including **Off**, survives late track-list updates in the
+same playback session. Stored channel preferences continue to apply when a new
+session starts. Shaka-rendered native captions retain the cue's own position and
+use the same appearance settings as other HTML-video captions.
+
+The track adapter downloads only when Shaka is requested, after the engine and
+before its playback-ready callback. A missing adapter fails that attempt and can
+be retried; it does not block the initial player interface or HLS playback.

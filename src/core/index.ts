@@ -2139,7 +2139,23 @@ function startCorePlayback(
                 },
                 streaming: bufferPolicy.shaka,
             });
+        var restoringTracks = false;
+        var restoreTracks = function (): void {
+            if (
+                restoringTracks ||
+                session !== _playSession ||
+                window.player !== playbackShaka
+            )
+                return;
+            restoringTracks = true;
+            setSubtitleTrack(undefined, true);
+            setSubtitleTrack();
+            restoringTracks = false;
+            if (typeof (window as any).refreshAudioBadge === "function")
+                (window as any).refreshAudioBadge();
+        };
         var loaded = function (): void {
+            restoreTracks();
             if (
                 session === _playSession &&
                 window.player === playbackShaka &&
@@ -2170,11 +2186,20 @@ function startCorePlayback(
                 status
             );
         };
-        if (typeof playbackShaka.addEventListener === "function")
+        if (typeof playbackShaka.addEventListener === "function") {
             playbackShaka.addEventListener("error", function (event: any) {
                 if (event.detail && event.detail.severity === 2)
                     failed(event.detail);
             });
+            [
+                "trackschanged",
+                "variantchanged",
+                "textchanged",
+                "texttrackvisibility",
+            ].forEach(function (name) {
+                playbackShaka.addEventListener(name, restoreTracks);
+            });
+        }
         var loadShaka = function (): void {
             // attach() in current Shaka is asynchronous. A stop/channel switch
             // during attachment must not load an obsolete stream afterwards.
@@ -2788,7 +2813,7 @@ export function stbToggleAspectRatio(): void {
 }
 
 /**
- * Check whether more than one audio track is available (hls.js or native).
+ * Check whether more than one audio track is available (HLS, Shaka, or native).
  * @returns `true` if multiple audio tracks exist.
  */
 export function stbAudioTracksExists(): boolean {
@@ -2815,6 +2840,8 @@ function avTracks(
     selected?: number,
     audio?: boolean
 ): any[] {
+    if (media === video && window.player && (window as any).__ottShakaTracks)
+        return (window as any).__ottShakaTracks(window.player, selected, audio);
     var hls =
             media === video
                 ? hlsInstance
@@ -2895,18 +2922,31 @@ function avTracks(
     return rows;
 }
 
-function setSubtitleTrack(index?: number): void {
-    if (index === undefined) {
+function setSubtitleTrack(index?: number, audio?: boolean): void {
+    var session = _playSession;
+    var apply = function (value: number): void {
+        if (session !== _playSession) return;
         var owner: any = getCoreMediaBackend().current();
         var choice =
             owner &&
             owner.active() &&
             owner.__ottExplicitTracks &&
-            owner.__ottExplicitTracks.subtitle;
-        if (!choice) return applyChannelPreference("aSubs", setSubtitleTrack);
-        index = choice - 1;
-    }
-    avTracks(video, index);
+            owner.__ottExplicitTracks[audio ? "audio" : "subtitle"];
+        avTracks(
+            video,
+            index !== undefined ? index : choice ? choice - 1 : value,
+            audio
+        );
+    };
+    var owner: any = getCoreMediaBackend().current();
+    if (
+        index !== undefined ||
+        (owner &&
+            owner.__ottExplicitTracks &&
+            owner.__ottExplicitTracks[audio ? "audio" : "subtitle"])
+    )
+        apply(0);
+    else applyChannelPreference(audio ? "aAudios" : "aSubs", apply);
 }
 
 /** The menu and picker use the same engine-aware track discovery. */
@@ -3359,7 +3399,7 @@ export function stbInit(): void {
                     applyChannelPreference("aAspects", setAspect);
                     applyChannelPreference("aZooms", setZoom);
                     setSubtitleTrack();
-                    applyChannelPreference("aAudios", setAudioTrack);
+                    setSubtitleTrack(undefined, true);
                 }
             });
             video!.addEventListener("playing", function () {
@@ -3938,9 +3978,10 @@ export function getCoreMediaBackend(): any {
                 driver === (window as any).__ottActiveProviderDriver
             );
         },
-        beforeSeek: function (position: number): void {
+        beforeSeek: function (position: number): (() => void) | void {
             var playback = (window as any).__ottClassicPlayback;
-            if (playback && playback.beforeSeek) playback.beforeSeek(position);
+            if (playback && playback.beforeSeek)
+                return playback.beforeSeek(position);
         },
         clearInterval: function (timer: any) {
             clearInterval(timer);
@@ -4176,7 +4217,7 @@ function openCoreEngineLease(
             var callback = function () {
                 if (!active()) return;
                 if (kind === "subtitle") setSubtitleTrack();
-                else applyChannelPreference("aAudios", setAudioTrack);
+                else setSubtitleTrack(undefined, true);
             };
             list.addEventListener("addtrack", callback);
             if (kind === "subtitle") list.addEventListener("change", callback);
@@ -4249,6 +4290,47 @@ function openCoreEngineLease(
                 if (coreField(hlsInstance, "stopLoad")) hlsInstance.stopLoad();
                 cancelCoreCompat((window as any).__ottCoreCompatibilityUrl);
             }
+        },
+        relativeSample: function () {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                media.seekable.length === 0
+            )
+                return null;
+            return {
+                duration: media.duration,
+                paused: media.paused,
+                position: media.currentTime,
+                ready: media.readyState,
+            };
+        },
+        relativeSeek: function (position: number, paused: boolean) {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                _corePendingSeek !== null
+            )
+                return false;
+            var inRange = false;
+            for (var i = 0; i < media.seekable.length; i++)
+                if (
+                    position >= media.seekable.start(i) &&
+                    position <= media.seekable.end(i)
+                )
+                    inRange = true;
+            if (!inRange || !active()) return false;
+            (window as any).forcePlay = !paused;
+            seekCoreMedia(position, session);
+            return true;
         },
         resume: function () {
             if (!active() || !media) return;

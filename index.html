@@ -1092,7 +1092,7 @@
                             Hls.DefaultConfig.workerPath = host + "/js/hls.worker.js?v=" + window.__ottMediaRuntimeVersion;
                         return true;
                     }
-                    return typeof shaka !== "undefined" && typeof shaka.Player === "function";
+                    return typeof shaka !== "undefined" && typeof shaka.Player === "function" && typeof window.__ottShakaTracks === "function";
                 }
                 if (available()) { callback(true); return; }
                 if (engine !== "hls" && engine !== "shaka") { callback(false); return; }
@@ -1120,9 +1120,14 @@
                     for (var i = 0; i < callbacks.length; i++) callbacks[i](ready);
                 }
                 timer = setTimeout(finish, 15000);
+                function loaded() {
+                    if (settled) return;
+                    if (engine === "shaka") loadJS(host + "/dist/shaka-tracks.js?" + __av, finish, _head, finish);
+                    else finish();
+                }
                 loadJS(host + (engine === "hls"
                     ? "/js/hls.min.js?v=" + window.__ottMediaRuntimeVersion
-                    : "/js/shaka-player.compiled.js"), finish, _head, finish);
+                    : "/js/shaka-player.compiled.js"), loaded, _head, finish);
             }
             window.__ottLoadMediaEngine = loadMediaEngine;
 

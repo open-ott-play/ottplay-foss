@@ -211,7 +211,7 @@ function createPlaybackSessionController(
     }
 
     return {
-        beforeSeek: function (value: number): void {
+        beforeSeek: function (value: number): (() => void) | void {
             if (applying) return;
             var ticket = reset(true);
             if (!accepts(ticket)) return;
@@ -223,12 +223,17 @@ function createPlaybackSessionController(
                 typeof observed.position === "number" &&
                 isFinite(value) &&
                 value >= 0
-            )
-                applied = {
+            ) {
+                var record = {
                     before: observed.position,
                     observation: observed,
                     position: value,
                 };
+                applied = record;
+                return function (): void {
+                    if (applied === record) applied = null;
+                };
+            }
         },
         cancel: cancel,
         cancelAndCapture: function (): () => boolean {

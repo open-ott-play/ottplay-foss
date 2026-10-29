@@ -63,6 +63,7 @@ const CLASSIC_MODULES = [
     "build/device/media-session.js",
     "build/device/native-pip.js",
     "build/core/index.js",
+    "build/core/shaka-tracks.js",
     "build/swop/herenow.js",
     "build/swop/herenow-ui.js",
     "build/swop/index.js",
@@ -282,6 +283,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
         "build/plugins/remote-settings-lifecycle.js",
     ],
     "runtime-debug-details": ["build/plugins/runtime-debug-details.js"],
+    "shaka-tracks": ["build/core/shaka-tracks.js"],
     "subtitle-appearance": ["build/ui/subtitle-appearance.js"],
 });
 const providerModules = new Set([
@@ -311,6 +313,7 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/commands/remote-local-runner.js": Object.freeze([
         "window.__ottRemoteLocalMediaRun",
     ]),
+    "build/core/shaka-tracks.js": Object.freeze(["window.__ottShakaTracks"]),
     "build/debug/playback-debug.js": Object.freeze(["window.__ottDebug"]),
     "build/device/adapter.js": Object.freeze(["window.__ottDeviceAdapter"]),
     "build/device/media-backend.js": Object.freeze([

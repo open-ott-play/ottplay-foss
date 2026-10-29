@@ -93,8 +93,11 @@ function fixture() {
             return timerId;
         },
         setSleepTimeout() {},
-        // This helper owns subtitle preference restoration and explicit Off.
-        setSubtitleTrack: () => preferences.push("aSubs"),
+        // The shared helper restores both track preferences, including explicit Off.
+        setSubtitleTrack(index, audio) {
+            assert.equal(index, undefined);
+            preferences.push(audio ? "aAudios" : "aSubs");
+        },
         setZoom() {},
         showViewportSizeIndicator: () => calls.resize++,
         stbBindKeyHandler: () => calls.binds++,
