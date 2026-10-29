@@ -115,9 +115,28 @@ for (const language of ["_eng", "_rus"]) {
                 language === "_rus"
                     ? "Подключение к Plex…"
                     : "Connecting to Plex…";
+            const retryText =
+                language === "_rus"
+                    ? "Сервер недоступен. Повторяем автоматически; проверьте адрес и доступ к сети."
+                    : "Server unavailable. Retrying automatically; check its address and network access.";
+            const phase = dialog.locator("[data-load-phase]");
+            async function expectSinglePhase(text) {
+                await expect(phase).toHaveCount(1);
+                await expect(phase).toHaveText(text);
+                await expect(dialog).not.toContainText(waitText);
+                await expect(
+                    dialog.locator("[data-provider-loading-detail]")
+                ).toHaveCount(0);
+                expect(
+                    await dialog.evaluate(
+                        (element, value) =>
+                            element.textContent.split(value).length - 1,
+                        text
+                    )
+                ).toBe(1);
+            }
             await expect(dialog).toBeVisible();
-            await expect(dialog).toContainText(waitText);
-            await expect(dialog).toContainText(connectionText);
+            await expectSinglePhase(connectionText);
             await expect(spinner).toBeVisible();
             await expect(page.locator("#launch")).toBeHidden();
             const transform = await spinner.evaluate(
@@ -142,7 +161,7 @@ for (const language of ["_eng", "_rus"]) {
                 status: 503,
             });
             await expect(spinner).toBeVisible();
-            await expect(dialog).toContainText(waitText);
+            await expectSinglePhase(retryText);
             await expect.poll(() => pending.length).toBe(2);
             await expect(spinner).toBeVisible();
             await pending[1].fulfill({
@@ -170,8 +189,7 @@ for (const language of ["_eng", "_rus"]) {
             await page.evaluate(() => window.loadChannels());
             await expect.poll(() => pending.length).toBe(4);
             await expect(spinner).toBeVisible();
-            await expect(dialog).toContainText(waitText);
-            await expect(dialog).toContainText(connectionText);
+            await expectSinglePhase(connectionText);
             await page.waitForTimeout(3500);
             await expect(spinner).toBeVisible();
             await pending[3].fulfill({

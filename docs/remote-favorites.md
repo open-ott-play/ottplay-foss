@@ -1,4 +1,9 @@
-# Remote favorites across profiles
+# Legacy remote favorites across profiles
+
+This page describes the legacy `favorites` protocol and its separate bookmarks.
+The current CLI uses [Global Favorites](mixed-favorites.md) for ordinary `fav`
+commands when the player advertises global support. Use `fav legacy` below to
+access the older store explicitly.
 
 Remote favorites save what the target player is actually playing, together with
 its provider and profile. You do not need to enter a profile number, channel
@@ -8,22 +13,24 @@ waits for the catalog and resolves the item again through its provider.
 Update the player, control server and `ott` CLI to versions that support the
 `favorites` capability. `ott NAME caps` reports support; `ott NAME` shows the
 available commands. The existing remote-control connection authorizes these
-operations. Provider restrictions and parental controls still apply.
+operations. Check the advertised operations: some hosts support only legacy
+list/play, without add/remove. Provider restrictions and parental controls still
+apply.
 
 ## Save and play
 
 Start the channel or film on the target player, then run:
 
 ```sh
-ott l fav add
-ott l fav
+ott l fav legacy add
+ott l fav legacy list
 ```
 
 The first command saves the current item using its title. To choose a label:
 
 ```sh
-ott l fav add "Evening film"
-ott l fav play "Evening film"
+ott l fav legacy add "Evening film"
+ott l fav legacy play "Evening film"
 ```
 
 Adding the same item in the same profile again keeps its ID. An explicit new
@@ -39,13 +46,14 @@ List entries to obtain their stable `fav-…` IDs. Use an ID when labels are
 ambiguous, or use a unique case-insensitive name:
 
 ```sh
-ott l favorites
-ott l favorites play "Evening film"
-ott l fav remove "Evening film"
+ott l favorites legacy list
+ott l favorites legacy play "Evening film"
+ott l fav legacy remove "Evening film"
 ```
 
 `fav`, `favs`, `favorite`, `favorites`, `favourite` and `favourites` are aliases.
-`current` aliases `add`, `rm` aliases `remove`, and `ott l fav "Evening film"`
+Within `fav legacy`, `current` aliases `add`, `rm` aliases `remove`, and
+`ott l fav legacy "Evening film"`
 is shorthand for `play`. Up to 100 entries can be saved per installation.
 The list is stored on the target installation and survives a player restart.
 Another device has its own list. Clearing the player's local data removes it.

@@ -443,8 +443,27 @@ const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 1152,
     gzipBytes: 0,
 });
+// Mixed global favorites: measured against the production-equivalent a480
+// baseline using Node22.23.4/zlib1.3.1-e00f703. These bounded named allowances
+// use exact a822/6234 canonical deltas, preserving pre-feature headroom.
+// Count entry/provider/optional cost once in their applicable complete totals.
+// Individual provider and unrelated optional limits remain unchanged.
+// See docs/evidence/mixed-global-favorites-size-20261028.json.
+const MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 34739,
+    gzipBytes: 8485,
+});
+const MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 132130,
+    gzipBytes: 32892,
+});
+const MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE = Object.freeze({
+    bytes: 1536,
+    gzipBytes: 640,
+});
 const BUDGET = Object.freeze({
     bytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -454,6 +473,7 @@ const BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
@@ -642,6 +662,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         1205560 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -652,6 +674,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
@@ -669,10 +693,12 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "favorites-transfer": Object.freeze({
         bytes:
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
-            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes,
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
-            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
     }),
     // Compatibility is net-new; Local UI and the admitted command runner move
     // existing code off startup. Every emitted asset remains counted once.
@@ -720,6 +746,9 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes +
         1319160 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -732,6 +761,9 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes +
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
@@ -916,6 +948,12 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
         localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+        mixedGlobalFavoritesEntryAllowance:
+            MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+        mixedGlobalFavoritesOptionalAllowance:
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+        mixedGlobalFavoritesProviderAllowance:
+            MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -1210,6 +1248,12 @@ function writeBuildBundleReport(
             favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+            mixedGlobalFavoritesEntryAllowance:
+                MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+            mixedGlobalFavoritesOptionalAllowance:
+                MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+            mixedGlobalFavoritesProviderAllowance:
+                MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             mode: label(context.mode || "standard"),
             optimizerBinding: {
                 outputSha256: optimizer.outputSha256,
@@ -1291,6 +1335,9 @@ module.exports = {
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

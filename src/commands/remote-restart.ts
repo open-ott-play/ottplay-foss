@@ -238,7 +238,7 @@ function remoteInputAllowed(w: any, key: string): boolean {
         /^(volume_up|volume_down|mute)$/.test(key)
     );
 }
-function remoteChannelStepAllowed(w: any): boolean {
+function remoteChannelStepAllowed(w: any, loadingOwner?: any): boolean {
     if (remoteProtectedInput(w) || remoteKiosk(w) || remoteSettingsLocked(w))
         return false;
     if (typeof w.stbIsStandby === "function" && w.stbIsStandby()) return false;
@@ -246,10 +246,24 @@ function remoteChannelStepAllowed(w: any): boolean {
     if (!port || !port.screens || typeof port.screens.current !== "function")
         return false;
     var owner = port.screens.current();
-    // A channel change must not answer, dismiss or bypass a modal interaction.
-    if (owner && owner.kind !== "list") return false;
+    var ownedLoading =
+        !!loadingOwner &&
+        owner === loadingOwner &&
+        loadingOwner.kind === "dialog" &&
+        loadingOwner.active() &&
+        loadingOwner.foreground() &&
+        typeof port.owner === "function" &&
+        port.owner("dialog") === loadingOwner;
+    // Only the exact internally supplied loading owner can coexist with resolution.
+    if (owner && owner.kind !== "list" && !ownedLoading) return false;
     return !(
-        w.$ && w.$("#dialogbox, #listAbout, #listEdit, #numprog").is(":visible")
+        w.$ &&
+        w
+            .$(
+                (ownedLoading ? "" : "#dialogbox, ") +
+                    "#listAbout, #listEdit, #numprog"
+            )
+            .is(":visible")
     );
 }
 
@@ -338,11 +352,11 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
         var name = row.channel_name;
         var order = catalogue.slice();
         var categoryName = categories[category];
-        var current = function (): boolean {
+        var current = function (selected = false, loadingOwner?: any): boolean {
             try {
                 // Admission is read-only: never queue a PIN continuation for a step.
                 if (
-                    !remoteChannelStepAllowed(w) ||
+                    !remoteChannelStepAllowed(w, loadingOwner) ||
                     !Array.isArray(w.parentalArray) ||
                     !w.__ottParental ||
                     (w.parentalArray.some(function (value: any) {
@@ -363,7 +377,7 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
                     categories[category] === categoryName &&
                     groups[categoryName] === list &&
                     w.catIndex === category &&
-                    w.primaryIndex === position &&
+                    w.primaryIndex === (selected ? index : position) &&
                     list[position] === oldId &&
                     list[index] === id &&
                     list.length === listOrder.length &&
@@ -391,6 +405,12 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
                   current: current,
                   index: index,
                   play: play,
+                  postSelection: function (
+                      loadingOwner?: any,
+                      selected = true
+                  ) {
+                      return current(selected, loadingOwner);
+                  },
               }
             : null;
     } catch (_) {
@@ -979,14 +999,33 @@ export function executeRemoteControl(
                 );
                 return;
             }
+            var withinDeadline = function (): boolean {
+                return (
+                    expiresAt === undefined ||
+                    (typeof expiresAt === "number" &&
+                        isFinite(expiresAt) &&
+                        Date.now() / 1000 < expiresAt)
+                );
+            };
             if (
+                !withinDeadline() ||
                 !selected.current() ||
                 selected.play.call(
                     w,
                     selected.category,
                     selected.index,
                     true,
-                    selected.current
+                    selected.current,
+                    undefined,
+                    false,
+                    false,
+                    undefined,
+                    function (loadingOwner?: any, committed = true) {
+                        return (
+                            withinDeadline() &&
+                            selected.postSelection(loadingOwner, committed)
+                        );
+                    }
                 ) !== true
             ) {
                 fail(

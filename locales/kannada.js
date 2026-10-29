@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Plex ಸರ್ವರ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
     "Choose a folder in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Choose a profile": "ಪ್ರೊಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
     "Choose files in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೈಲ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Choose from": "ಆಯ್ಕೆ ಮಾಡಿ",
     "Choose language": "ಭಾಷೆಯನ್ನು ಆರಿಸಿ",
@@ -1079,6 +1080,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Unable to load playlist": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ",
+    Unavailable: "ಲಭ್ಯವಿಲ್ಲ",
     "Unlock the player's settings before changing its playlist.":
         "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸುವ ಮೊದಲು ಪ್ಲೇಯರ್‌ನ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ.",
     Untitled: "ಶೀರ್ಷಿಕೆಯಿಲ್ಲ",

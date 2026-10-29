@@ -165,6 +165,7 @@ var keyStrings = {
     "Checking folder permission": "ဖိုင်တွဲအသုံးပြုခွင့်ကို စစ်ဆေးနေသည်",
     "Checking the Plex server connection…": "Plex ဆာဗာချိတ်ဆက်မှုကို စစ်ဆေးနေသည်...",
     "Choose a folder in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်တွဲတစ်ခု ရွေးပါ",
+    "Choose a profile": "ပရိုဖိုင်ကို ရွေးပါ။",
     "Choose files in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်များ ရွေးပါ",
     "Choose from": "ရွေးချယ်ပါ။",
     "Choose language": "ဘာသာစကားကို ရွေးပါ။",
@@ -1082,6 +1083,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ဆက်တင်များ",
     "Unable to load playlist": "အစီအစဉ်ကို ဖွင့်၍မရပါ။",
+    Unavailable: "မရရှိနိုင်ပါ",
     "Unlock the player's settings before changing its playlist.":
         "ဖွင့်စာရင်းကို မပြောင်းမီ ပလေယာဆက်တင်များ၏ လော့ခ်ကို ဖွင့်ပါ။",
     Untitled: "ခေါင်းစဉ်မဲ့",

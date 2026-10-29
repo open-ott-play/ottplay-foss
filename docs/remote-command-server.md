@@ -444,8 +444,11 @@ anything is saved. Other fields and slots are preserved. Editing an inactive
 slot does not select it or reload the active playlist. Responses contain only
 the slot number, name, active state, archive hours and `playlist_configured`;
 they never return playlist URLs. VPortal settings belong to the standalone
-VPortal provider. M3U rejects `vportal` updates and ignores previously stored
-portal links without deleting device configuration.
+VPortal provider. M3U rejects `vportal` updates and preserves hidden legacy
+portal fields. A valid link already stored in an M3U slot remains available to
+Favorites through a lazy embedded VPortal client. Starting, refreshing or
+selecting that slot does not itself fetch the portal catalog. See
+[existing M3U portal links](m3u-vportal.md#moving-from-an-old-m3u-profile).
 
 `ott PLAYER restart` reloads the complete player page, as do
 `ott PLAYER restart player` and `ott PLAYER restart p`.

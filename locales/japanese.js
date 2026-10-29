@@ -170,6 +170,7 @@ var keyStrings = {
         "Plex サーバー接続を確認しています…",
     "Choose a folder in the browser window":
         "ブラウザーのウィンドウでフォルダーを選択してください",
+    "Choose a profile": "プロフィールを選択してください",
     "Choose files in the browser window":
         "ブラウザーのウィンドウでファイルを選択してください",
     "Choose from": "からお選びください",
@@ -1107,6 +1108,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1Xの設定",
     "Unable to load playlist": "プレイリストを読み込めません",
+    Unavailable: "利用できません",
     "Unlock the player's settings before changing its playlist.":
         "プレイリストを変更する前に、プレーヤーの設定のロックを解除してください。",
     Untitled: "無題",

@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Ń ṣàyẹ̀wò ìsopọ̀ sáfà Plex…",
     "Choose a folder in the browser window":
         "Yan àpò fáìlì nínú fèrèsé aṣàwákiri",
+    "Choose a profile": "Yan prófáìlì",
     "Choose files in the browser window":
         "Yan àwọn fáìlì nínú fèrèsé aṣàwákiri",
     "Choose from": "Yan láti",
@@ -1089,6 +1090,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ètò ULTIFL1X",
     "Unable to load playlist": "A kò lè gbé àkójọ ìṣeré wọlé",
+    Unavailable: "Kò sí lárọ̀ọ́wọ́tó",
     "Unlock the player's settings before changing its playlist.":
         "Ṣí títìpa ètò ẹ̀rọ ìṣeré kí o tó yí àkójọ ìṣeré rẹ̀ padà.",
     Untitled: "Kò ní àkọlé",

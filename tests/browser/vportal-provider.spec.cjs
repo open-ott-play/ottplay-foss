@@ -43,7 +43,7 @@ async function installPortal(context, baseURL, attemptStart = 0) {
         if (url.pathname === "/fixture/poster.png")
             return route.fulfill({
                 body: Buffer.from(
-                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9uoAAAAASUVORK5CYII=",
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
                     "base64"
                 ),
                 contentType: "image/png",
@@ -125,10 +125,16 @@ test("VPortal flat channel playlist locks playback and restores after reload", a
     await expect(
         page.locator("#listDetail .ott-channel-detail-time")
     ).toHaveCount(0);
-    await expect(page.locator("#listDetail .ott-channel-thumbnail")).toHaveCSS(
-        "background-image",
-        /poster\.png/
-    );
+    await expect(
+        page.locator("#listDetail .ott-channel-thumbnail")
+    ).toHaveAttribute("src", /poster\.png/);
+    await expect
+        .poll(() =>
+            page
+                .locator("#listDetail .ott-channel-thumbnail")
+                .evaluate((image) => image.complete && image.naturalWidth > 0)
+        )
+        .toBe(true);
     await expect(page.locator("#listIn")).not.toContainText(
         /no epg|нет программы/i
     );
@@ -453,3 +459,138 @@ for (const device of ["pc", ""]) {
         });
     });
 }
+
+test("VPortal full selected metadata, real artwork errors and single shared loading heading", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    await installPortal(context, baseURL);
+    let releaseFolder;
+    const held = new Promise((resolve) => {
+        releaseFolder = resolve;
+    });
+    const fullDescription =
+        "О владельцах не слишком успешного ирландского паба в южной Филадельфии. " +
+        "Полное описание выбранного фильма. ".repeat(24) +
+        "КОНЕЦ ПОЛНОГО ОПИСАНИЯ";
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.endsWith("/vportal/api")) {
+            const { params } = route.request().postDataJSON();
+            if (params.cmd === "play") return route.fallback();
+            if (params.cmd !== "metadata-folder")
+                return route.fulfill({
+                    json: {
+                        items: [
+                            {
+                                request: { cmd: "metadata-folder" },
+                                title: "Series",
+                                type: "category",
+                            },
+                        ],
+                        type: "videoportal",
+                    },
+                });
+            await held;
+            return route.fulfill({
+                json: {
+                    items: [
+                        {
+                            description: fullDescription,
+                            img: "../posters/full.png?image=1",
+                            request: { cmd: "play", id: 42 },
+                            title: "Full metadata film",
+                            type: "stream",
+                        },
+                        {
+                            description: fullDescription,
+                            img: "../posters/missing.png",
+                            request: { cmd: "play", id: 43 },
+                            title: "Broken poster film",
+                            type: "stream",
+                        },
+                    ],
+                    type: "category",
+                },
+            });
+        }
+        if (
+            url.origin === "https://portal.fixture" &&
+            url.pathname === "/posters/full.png"
+        )
+            return route.fulfill({
+                body: Buffer.from(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+                    "base64"
+                ),
+                contentType: "image/png",
+            });
+        if (
+            url.origin === "https://portal.fixture" &&
+            url.pathname === "/posters/missing.png"
+        )
+            return route.fulfill({
+                body: "missing fixture image",
+                status: 404,
+            });
+        return route.fallback();
+    });
+    try {
+        await page.goto("/f/pc/");
+        await expect(page.locator("[data-load-phase]")).toHaveCount(1);
+        await expect(
+            page.locator("[data-provider-loading-detail]")
+        ).toHaveCount(0);
+        await expect(page.locator("[data-catalog-progress]")).toContainText(
+            /1/
+        );
+        const heading = await page.locator("[data-load-phase]").textContent();
+        expect(
+            await page
+                .locator("[data-load-phase]")
+                .evaluate(
+                    (node, text) =>
+                        node.parentElement.textContent.split(text).length - 1,
+                    heading
+                )
+        ).toBe(1);
+        releaseFolder();
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.commandChannelsReady && window.cList.length
+                )
+            )
+            .toBe(2);
+        await page.evaluate(() => window.channelsList(0, 0));
+        await expect(page.locator("#listDetail")).toContainText(
+            "КОНЕЦ ПОЛНОГО ОПИСАНИЯ"
+        );
+        const image = page.locator("#listDetail img.ott-channel-thumbnail");
+        await expect(image).toHaveAttribute(
+            "src",
+            "https://portal.fixture/posters/full.png?image=1"
+        );
+        await expect
+            .poll(() =>
+                image.evaluate((node) => node.complete && node.naturalWidth > 0)
+            )
+            .toBe(true);
+        await page.evaluate(() => window.channelsList(0, 1));
+        await expect(page.locator("#listDetail")).toContainText(
+            "Broken poster film"
+        );
+        await expect(page.locator("#listDetail")).toContainText(
+            "КОНЕЦ ПОЛНОГО ОПИСАНИЯ"
+        );
+        await expect(
+            page.locator("#listDetail img.ott-channel-thumbnail")
+        ).toHaveCSS("display", "none");
+        expect(
+            await page.evaluate(() => localStorage.getItem("m3um3uArr"))
+        ).toBe("M3U_MUST_NOT_CHANGE");
+    } finally {
+        releaseFolder();
+    }
+});

@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -15,24 +16,29 @@ function functions(file, names) {
         ts.ScriptTarget.Latest,
         true
     );
-    return ts
-        .transpileModule(
-            source.statements
-                .filter(
-                    (n) =>
-                        ts.isFunctionDeclaration(n) &&
-                        names.includes(n.name?.text)
-                )
-                .map((n) => n.getText(source))
-                .join("\n"),
-            {
-                compilerOptions: {
-                    module: ts.ModuleKind.ES2015,
-                    target: ts.ScriptTarget.ES5,
-                },
-            }
-        )
-        .outputText.replace(/^export /gm, "");
+    return (
+        (file === "src/key-handler/index.ts" && names.includes("handleMainKey")
+            ? numericKeyState()
+            : "") +
+        ts
+            .transpileModule(
+                source.statements
+                    .filter(
+                        (n) =>
+                            ts.isFunctionDeclaration(n) &&
+                            names.includes(n.name?.text)
+                    )
+                    .map((n) => n.getText(source))
+                    .join("\n"),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.ES2015,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            )
+            .outputText.replace(/^export /gm, "")
+    );
 }
 function fixture() {
     const dom = new JSDOM(

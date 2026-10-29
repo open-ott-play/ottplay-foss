@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
 import ts from "typescript";
+import numericKeyState from "./helpers/numeric-key-state.cjs";
 import sharedCoreRuntime from "./helpers/shared-core-runtime.cjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -106,7 +107,6 @@ function fixture() {
         },
         nativeListInertia: null,
         nativeListTouch: null,
-        nProg: "",
         playTime: 0,
         playType: 0,
         primaryIndex: 2,
@@ -137,6 +137,7 @@ function fixture() {
     };
     w.window = w;
     vm.createContext(w);
+    vm.runInContext(numericKeyState(), w);
     sharedCoreRuntime(w);
     vm.runInContext(
         source("core/buffer-policy.ts") +

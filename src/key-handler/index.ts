@@ -13,6 +13,7 @@ import {
 } from "../core";
 import { translate as _, formatLocaleNumber } from "../localization";
 import { settings } from "../settings";
+import { metadataText } from "../utils/helpers";
 
 declare var $: any;
 
@@ -105,6 +106,7 @@ export function toggleKeyboardFavorite(w: any): boolean {
         return false;
     var owner = port && port.screens.current();
     if (owner && owner.kind !== "list") return false;
+    if (owner && w.__ottGlobalFavorites?.favoriteSelected?.(owner)) return true;
     var media = w.__ottMedia;
     var mediaList =
         typeof w.mediaKeyHandler === "function" &&
@@ -178,6 +180,21 @@ export function toggleKeyboardFavorite(w: any): boolean {
         )
             return false;
     }
+    if (channel && typeof w.toggleGlobalFavorite === "function" && current()) {
+        if (
+            w.hasParentalLock &&
+            w.hasParentalLock(id) &&
+            (!w.__ottParental || w.__ottParental.needs("channels"))
+        )
+            return false;
+        if (
+            w.toggleGlobalFavorite(
+                channel.__ottMediaItem || { __ottGlobalChannel: id },
+                current
+            ) !== false
+        )
+            return true;
+    }
     function current(): boolean {
         return (
             identity === w.__ottSourceIdentity &&
@@ -214,7 +231,15 @@ export function toggleKeyboardFavorite(w: any): boolean {
     if (typeof action !== "function" || !current()) return false;
     action(id);
     if (!current()) return false;
-    return w.saveChannelsCats() === true;
+    if (w.saveChannelsCats() !== true || !current()) return false;
+    if (w.showShift)
+        w.showShift(
+            w._("Favorites") +
+                ": " +
+                (removing ? "− " : "+ ") +
+                metadataText(channel.channel_name || "")
+        );
+    return true;
 }
 
 /** Plain desktop F owns one favorite toggle; browser find/text/IME remain native. */
@@ -726,7 +751,9 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     var digit = /^digit-([0-9])$/.exec(command.id);
     if (digit) {
         var value = Number(digit[1]);
-        if (w.playType) {
+        if (w.__ottGlobalFavorites?.navigation?.active?.()) {
+            call("numberProg", value);
+        } else if (w.playType) {
             var seeks: any = {
                 1: -w.s13dur,
                 3: w.s13dur,
@@ -743,6 +770,12 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
         } else if (value === 0 && w.nProg === "") call("liveStop");
         else call("numberProg", value);
         return;
+    }
+    if (globalNumber) {
+        clearTimeout(numTimeout);
+        globalNumber = null;
+        nProg = "";
+        if (numProgEl) numProgEl.style.display = "none";
     }
     if (w.playType < 0 && /^(up|down|left|right)$/.test(command.id)) {
         var media = w.__ottMedia && w.__ottMedia.current();
@@ -798,6 +831,10 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
     }
     var actions: { [id: string]: () => void } = {
         accept: function () {
+            if (w.__ottGlobalFavorites?.navigation?.active?.()) {
+                call("openGlobalFavorites");
+                return;
+            }
             if (w.playType && w.forcePlay === false) toggleMainPlayback();
             else if (w.playType === -1e11) call("mediaList", null);
             else if (w.playType > 0 && !settings.okFun) guide();
@@ -824,6 +861,10 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             call("plusProg");
         },
         channels: function () {
+            if (w.__ottGlobalFavorites?.navigation?.active?.()) {
+                call("openGlobalFavorites");
+                return;
+            }
             call("channelsList", w.catIndex, w.primaryIndex);
         },
         exit: function () {
@@ -1159,6 +1200,7 @@ export function getDirection(
 // Number input state
 var nProg = "";
 var numTimeout: any = null;
+var globalNumber: any = null;
 var numProgEl: HTMLElement | null = null;
 
 /**
@@ -1176,6 +1218,76 @@ var numProgEl: HTMLElement | null = null;
  *             Timeout of 2000ms resets the input if no further digit arrives.
  */
 export function numberProg(digit: number): void {
+    if (!Number.isInteger(digit) || digit < 0 || digit > 9) return;
+    var navigation = (window as any).__ottGlobalFavorites?.navigation;
+    if (globalNumber || navigation?.active?.()) {
+        if (!globalNumber) {
+            nProg = "";
+            if (!digit) return;
+            var capturedNumber = navigation.captureNumber();
+            var screenPort = (window as any).__ottClassicScreenPort;
+            var screenRevision = screenPort?.revision?.();
+            var handler = (window as any).listKeyHandlerFn;
+            globalNumber = capturedNumber && {
+                current: function () {
+                    var focused = document.activeElement as HTMLElement | null;
+                    return (
+                        capturedNumber.current() &&
+                        screenPort === (window as any).__ottClassicScreenPort &&
+                        screenRevision === screenPort?.revision?.() &&
+                        handler === (window as any).listKeyHandlerFn &&
+                        !(
+                            focused &&
+                            (/^(INPUT|TEXTAREA)$/.test(focused.tagName) ||
+                                focused.isContentEditable)
+                        )
+                    );
+                },
+                select: capturedNumber.select,
+                title: capturedNumber.title,
+            };
+        }
+        var owner = globalNumber;
+        if (!owner || !owner.current()) {
+            clearTimeout(numTimeout);
+            globalNumber = null;
+            nProg = "";
+            if (numProgEl) numProgEl.style.display = "none";
+            return;
+        }
+        if ((!nProg && !digit) || nProg.length >= 4) return;
+        nProg += String(digit);
+        var digits = nProg,
+            index = Number(digits) - 1;
+        if (!numProgEl) numProgEl = document.getElementById("numprog");
+        if (numProgEl) {
+            numProgEl.textContent = digits;
+            numProgEl.style.display = "";
+        }
+        owner
+            .title(index)
+            .then(function (title: string) {
+                if (
+                    owner === globalNumber &&
+                    owner.current() &&
+                    nProg === digits &&
+                    numProgEl
+                )
+                    numProgEl.innerHTML =
+                        digits + (title ? "<br/>" + metadataText(title) : "");
+            })
+            .catch(function () {});
+        clearTimeout(numTimeout);
+        numTimeout = setTimeout(function () {
+            if (owner !== globalNumber) return;
+            globalNumber = null;
+            nProg = "";
+            if (numProgEl) numProgEl.style.display = "none";
+            if (owner.current())
+                owner.select(index, owner.current).catch(function () {});
+        }, 2000);
+        return;
+    }
     if (nProg === "" && !digit) return;
     if (nProg.length === 4) {
         if (nProg === "9999") {
@@ -1237,6 +1349,7 @@ export function numberProg(digit: number): void {
  *             wraps to 0. Uses curList.length as the upper bound.
  */
 export function plusProg(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(1)) return;
     var e = ((window as any).primaryIndex || 0) + 1;
     var len = (window as any).curList ? (window as any).curList.length : 0;
     if (e >= len) e = 0;
@@ -1252,6 +1365,7 @@ export function plusProg(): void {
  * @analysis If primaryIndex is undefined/falsy, defaults to 0. If decremented below 0, wraps to len - 1.
  */
 export function minusProg(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(-1)) return;
     var e = ((window as any).primaryIndex || 0) - 1;
     var len = (window as any).curList ? (window as any).curList.length : 0;
     if (e < 0) e = len - 1;

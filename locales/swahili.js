@@ -173,6 +173,7 @@ var keyStrings = {
         "Inakagua Plex muunganisho wa seva...",
     "Choose a folder in the browser window":
         "Chagua folda katika dirisha la kivinjari",
+    "Choose a profile": "Chagua wasifu",
     "Choose files in the browser window":
         "Chagua faili katika dirisha la kivinjari",
     "Choose from": "Chagua kutoka",
@@ -1121,6 +1122,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X mipangilio",
     "Unable to load playlist": "Imeshindwa kupakia orodha ya kucheza",
+    Unavailable: "Haipatikani",
     "Unlock the player's settings before changing its playlist.":
         "Fungua kufuli ya mipangilio ya kichezaji kabla ya kubadilisha orodha yake ya kucheza.",
     Untitled: "Bila kichwa",

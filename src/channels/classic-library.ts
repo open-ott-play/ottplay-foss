@@ -20,15 +20,46 @@ function channelLibraryPublish(host: any): void {
     if (!channelLibraryInstance || !channelLibraryInstance.active()) return;
     var previousId = host.curList && host.curList[host.primaryIndex];
     var previousGroup = channelLibraryView[host.catIndex];
-    var snapshot = channelLibraryInstance.snapshot();
+    var library = channelLibraryInstance;
+    var snapshot = library.snapshot();
     var all = { id: "system:all", label: host._("All"), members: snapshot.all };
     channelLibraryView = [all].concat(snapshot.groups);
-    if (host.sFavorites)
-        channelLibraryView.unshift({
+    {
+        // Global Favorites remains accessible independently of per-source edit mode.
+        var available: any = Object.create(null);
+        var added: any = Object.create(null);
+        var members: any[] = [];
+        function key(id: any): string | null {
+            return typeof id === "string" ||
+                (typeof id === "number" && id === id)
+                ? typeof id + ":" + String(id)
+                : null;
+        }
+        snapshot.all.forEach(function (id: any) {
+            var value = key(id);
+            if (value !== null) available[value] = true;
+        });
+        function include(id: any): void {
+            var value = key(id);
+            if (value !== null && available[value] && !added[value]) {
+                added[value] = true;
+                members.push(id);
+            }
+        }
+        (host.favoritesArray || []).forEach(include);
+        var media =
+            host.__ottMedia?.categoryMembers?.(snapshot.all, host.channels) ||
+            [];
+        media.forEach(include);
+        if (channelLibraryInstance !== library || !library.active()) return;
+        var favorites = {
             id: "system:favorites",
             label: host._("Favorites"),
-            members: host.favoritesArray,
-        });
+            members: members,
+        };
+        if (host.sFavorites === 1) channelLibraryView.unshift(favorites);
+        else channelLibraryView.push(favorites);
+    }
     var categories: Record<string, number[]> = Object.create(null);
     var labels: string[] = [];
     channelLibraryView.forEach(function (group) {
@@ -67,7 +98,7 @@ function channelLibraryPublish(host: any): void {
         ? selected.groupId
         : previousGroup && previousGroup.id;
     var category = channelLibraryIndex(wantedGroup);
-    if (category < 0) category = host.sFavorites ? 1 : 0;
+    if (category < 0) category = host.sFavorites === 1 ? 1 : 0;
     var list = categories[labels[category]] || [];
     var index = -1;
     if (selected) {

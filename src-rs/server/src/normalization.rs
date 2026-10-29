@@ -2108,6 +2108,61 @@ mod tests {
         for file in [&probe, &mux] {
             std::fs::set_permissions(file, std::fs::Permissions::from_mode(0o700)).unwrap();
         }
+        // A parallel Unix spawn can inherit a briefly writable fixture fd before
+        // close-on-exec. Wait for Linux ETXTBSY to clear here, not in production.
+        // These private files are never rewritten after this publication check.
+        for (file, name) in [(&probe, "ffprobe"), (&mux, "ffmpeg")] {
+            use tokio::io::AsyncReadExt;
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+            let mut child = tokio::time::timeout_at(deadline, async {
+                loop {
+                    match tokio::process::Command::new(file)
+                        .arg("-version")
+                        .stdin(std::process::Stdio::null())
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::null())
+                        .kill_on_drop(true)
+                        .spawn()
+                    {
+                        Ok(child) => break child,
+                        Err(error)
+                            if cfg!(target_os = "linux") && error.raw_os_error() == Some(26) =>
+                        {
+                            tokio::time::sleep(Duration::from_millis(10)).await;
+                        }
+                        Err(error) => panic!("fixture executable publication failed: {error}"),
+                    }
+                }
+            })
+            .await
+            .expect("fixture executable remained busy");
+            let result = tokio::time::timeout_at(deadline, async {
+                let mut version = Vec::new();
+                child
+                    .stdout
+                    .take()
+                    .unwrap()
+                    .take(128)
+                    .read_to_end(&mut version)
+                    .await?;
+                let status = child.wait().await?;
+                Ok::<_, std::io::Error>((status, version))
+            })
+            .await;
+            if !matches!(&result, Ok(Ok(_))) {
+                // Reap a failed or timed-out version probe before failing the test.
+                let _ = child.start_kill();
+                tokio::time::timeout(Duration::from_secs(1), child.wait())
+                    .await
+                    .expect("fixture version probe cleanup timed out")
+                    .expect("fixture version probe could not be reaped");
+            }
+            let (status, version) = result
+                .expect("fixture version probe timed out")
+                .expect("fixture version probe failed");
+            assert!(status.success());
+            assert_eq!(version, format!("{name} version test\n").into_bytes());
+        }
         let mut source = sample_source();
         source.url = "http://127.0.0.1:9/source.m3u8".into();
         source.allowed_origins = vec!["http://127.0.0.1:9".into()];

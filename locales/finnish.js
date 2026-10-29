@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Tarkistetaan Plex palvelinyhteyttä…",
     "Choose a folder in the browser window": "Valitse kansio selainikkunassa",
+    "Choose a profile": "Valitse profiili",
     "Choose files in the browser window": "Valitse tiedostot selainikkunassa",
     "Choose from": "Valitse",
     "Choose language": "Valitse kieli",
@@ -1105,6 +1106,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X asetukset",
     "Unable to load playlist": "Soittolistan lataaminen epäonnistui",
+    Unavailable: "Ei käytettävissä",
     "Unlock the player's settings before changing its playlist.":
         "Avaa soittimen asetusten lukitus ennen toistolistan muuttamista.",
     Untitled: "Nimetön",

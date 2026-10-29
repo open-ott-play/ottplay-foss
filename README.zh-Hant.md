@@ -64,7 +64,7 @@
 
 - **播放**：HLS、DASH和普通HTTP流，支援託管HLS.js/Shaka畫質上限、有界恢復，以及每個直播頻道最多三個顯式備用URL。回看/VOD絕不會切換到直播備用源；參見[畫質與恢復](docs/playback-stream-policy.zh-Hant.md)。
 - **節目指南**：XMLTV匹配、時移/回看、節目標題搜尋（EPG中的N5）、提醒，以及託管/原生XMLTV路徑中針對準確頻道的手動節目來源/ID綁定。參見[綁定與無障礙](docs/guide-binding-accessibility.zh-Hant.md)。
-- **收藏**：多收藏列表（透過操作 → 收藏列表切換/新增/重新命名/刪除）；家長控制PIN。
+- **收藏**：在支援的裝置上，跨已設定的提供商和設定檔使用一個有序的[混合收藏集](docs/mixed-favorites.md)，支援透過CLI進行可移轉的匯出/匯入；保留家長控制PIN。備援模式下仍可使用各來源的收藏清單。
 - **設定**：設定和收藏的JSON匯入/匯出、支援的localStorage批次操作撤銷日誌、區分來源的回看續播，以及控制器工作流程所用的已存設定精確比較。恢復假定只有一個寫入者；自訂儲存適配器仍為盡力回復。參見[設定恢復](docs/settings-recovery.zh-Hant.md)。
 - **共享介面**：OTT Server、Tauri和Capacitor使用相同的頻道列表主題與可見性設定。介面設定控制醒目提示和選中色；頻道列表設定控制頻道名稱、圖示、目前節目、進度及回看標記。
 - **提供商**：M3U/M3U8、Xtream直播及[點播電影/劇集目錄](docs/xtream-media.zh-Hant.md)、Stalker/Ministra、Plex和VPortal。可用回看與媒體庫功能取決於提供商能力和帳號權限。

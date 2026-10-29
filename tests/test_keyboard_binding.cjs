@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 // Samsung Simulator 10.0.6 replaces the app iframe's onkeydown on focus/blur.
 // Use real DOM event delivery to check that remote input survives those writes.
 const assert = require("node:assert/strict");
@@ -642,11 +643,16 @@ for (const testCase of shortcutCases) {
                 },
             });
             w.eval(
-                declarations(
-                    testCase.code,
-                    ["cancelNativeListInertia", "keyHandler", "handleMainKey"],
-                    testCase.name
-                )
+                numericKeyState() +
+                    declarations(
+                        testCase.code,
+                        [
+                            "cancelNativeListInertia",
+                            "keyHandler",
+                            "handleMainKey",
+                        ],
+                        testCase.name
+                    )
             );
             w.__ottClassicScreenPort.reconcile();
             assert.equal(

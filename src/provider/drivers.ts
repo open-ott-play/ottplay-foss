@@ -449,6 +449,7 @@ function createOfflineDriver(
                 var storage = host.ottpStorage;
                 if (
                     imported ||
+                    host.__ottGlobalFavoritesHandoff?.blocks() ||
                     host.__ottKiosk?.enabled?.() ||
                     host.__ottParental?.needs?.("channels") ||
                     !storage?.localPlayback?.preview ||
@@ -2445,6 +2446,22 @@ function mountProviderDriver(
         };
     }
     var store = storageFor(profile.prefix);
+    function loadingProgress(message: string): void {
+        var translated = host._(message);
+        var doc = host.document;
+        var panel =
+            doc && doc.querySelector && doc.querySelector(host.launch_id);
+        var heading =
+            panel &&
+            panel.querySelector &&
+            panel.querySelector("[data-load-phase]");
+        if (heading) {
+            if (translated) heading.textContent = translated;
+        } else {
+            host.$(host.launch_id).append(translated);
+        }
+    }
+
     var driver = providerDriverRegistry.create(
         id,
         {
@@ -2460,9 +2477,11 @@ function mountProviderDriver(
                     counter.setAttribute("data-catalog-progress", "");
                     panel.appendChild(counter);
                 }
+                var hasHeading = panel.querySelector("[data-load-phase]");
                 counter.textContent =
-                    host._("Loading. Please wait...") +
-                    " " +
+                    (hasHeading
+                        ? ""
+                        : host._("Loading. Please wait...") + " ") +
                     scanned +
                     (total !== undefined && total >= scanned
                         ? " / " + total
@@ -2619,9 +2638,7 @@ function mountProviderDriver(
             now: function () {
                 return Date.now() / 1000;
             },
-            progress: function (message) {
-                host.$(host.launch_id).append(host._(message));
-            },
+            progress: loadingProgress,
             relay: host.host || "",
             replaceLocation: function (value) {
                 host.location.href = value;
@@ -2896,9 +2913,7 @@ function mountProviderDriver(
     ) {
         if (!owner.active()) return;
         if (id === "xtream")
-            host.$(host.launch_id).append(
-                host._("Loading channels from Xtream API...")
-            );
+            loadingProgress("Loading channels from Xtream API...");
         driver.load(function (catalog, error, pending) {
             if (owner.active() && catalog && catalog.incremental) {
                 var added: any[] = [];

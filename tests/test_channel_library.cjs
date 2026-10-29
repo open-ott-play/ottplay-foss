@@ -1028,9 +1028,6 @@ for (const view of ["search", "replacement", "closed", "category"]) {
         "publication reentry keeps the replacement view untouched"
     );
 }
-console.log(
-    "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"
-);
 {
     const f = progressiveListFixture("offline");
     const list = f.adapter.capture(0);
@@ -1173,7 +1170,7 @@ console.log(
     );
     assert.deepEqual(
         plain(first.groups).map((g) => g.id),
-        ["system:all", "section:a", "show:a"]
+        ["system:all", "section:a", "show:a", "system:favorites"]
     );
     const playing = [w.catIndex, w.primaryIndex, w.curList];
     assert(w.__ottChannels.browse("show:a"));
@@ -1244,3 +1241,146 @@ console.log(
         "later protected ancestry must lock existing video"
     );
 }
+
+// Category visibility is independent from the legacy editing-style setting.
+// Exercise the real editing gate independently of category projection.
+const favoriteGateTs = require("typescript"),
+    favoriteGateFs = require("node:fs");
+const favoriteGateSource = favoriteGateTs.createSourceFile(
+    "keys.ts",
+    favoriteGateFs.readFileSync("src/key-handler/index.ts", "utf8"),
+    favoriteGateTs.ScriptTarget.Latest,
+    true
+);
+const favoriteGateNode = favoriteGateSource.statements.find(
+    (node) =>
+        favoriteGateTs.isFunctionDeclaration(node) &&
+        node.name?.text === "toggleKeyboardFavorite"
+);
+assert(favoriteGateNode);
+const favoriteGateContext = vm.createContext({});
+vm.runInContext(
+    favoriteGateTs.transpileModule(
+        favoriteGateNode.getText(favoriteGateSource).replace(/^export /, ""),
+        { compilerOptions: { target: favoriteGateTs.ScriptTarget.ES5 } }
+    ).outputText,
+    favoriteGateContext
+);
+for (const provider of ["m3u", "plex", "vportal", "offline"]) {
+    for (const style of [0, 1, -1]) {
+        for (const saved of [[], [2, 99]]) {
+            const context = vm.createContext({ window: {} });
+            runtime(context, "src/channels/library.ts");
+            runtime(context, "src/channels/classic-library.ts");
+            const w = context.window;
+            Object.assign(w, {
+                _: (text) => (text === "Favorites" ? "Избранное" : text),
+                __ottSourceIdentity: { current: () => provider + "@one" },
+                catIndex: 0,
+                channels: {
+                    1: { channel_name: "One" },
+                    2: { channel_name: "Two" },
+                },
+                cList: [1, 2],
+                curList: [],
+                favoritesArray: saved,
+                primaryIndex: 0,
+                providerGetItem: () => null,
+                providerSetItem() {},
+                sFavorites: style,
+            });
+            w.__ottChannels.mount(w);
+            const catalog = w.__ottChannels.remoteCatalog();
+            const favorite = catalog.groups.find(
+                (group) => group.id === "system:favorites"
+            );
+            assert(
+                favorite,
+                "Favorites category remains available with editing disabled"
+            );
+            assert.equal(favorite.name, "Избранное");
+            assert.deepEqual(plain(favorite.members), saved.length ? [2] : []);
+            assert.equal(
+                catalog.groups[style === 1 ? 0 : catalog.groups.length - 1].id,
+                "system:favorites"
+            );
+            if (style === -1) {
+                let editCalls = 0;
+                const beforeFavorites = saved.slice();
+                Object.assign(w, {
+                    __ottClassicScreenPort: {
+                        screens: { current: () => ({ kind: "list" }) },
+                    },
+                    __ottGlobalFavorites: {
+                        favoriteSelected() {
+                            editCalls++;
+                            return true;
+                        },
+                    },
+                    addToFavorites() {
+                        editCalls++;
+                    },
+                    ott_device: "pc",
+                    removeFromFavorites() {
+                        editCalls++;
+                    },
+                    saveChannelsCats() {
+                        editCalls++;
+                    },
+                });
+                assert.equal(
+                    favoriteGateContext.toggleKeyboardFavorite(w),
+                    false,
+                    "disabled editing refuses the actual F handler"
+                );
+                assert.equal(
+                    editCalls,
+                    0,
+                    "visible category cannot reach a favorite mutation"
+                );
+                assert.deepEqual(saved, beforeFavorites);
+            }
+        }
+    }
+}
+
+// The projection preserves strict ID types and deduplicates without large-array searches.
+{
+    const context = vm.createContext({ window: {} });
+    runtime(context, "src/channels/classic-library.ts");
+    const all = [1, "1", 2];
+    all.indexOf = () =>
+        assert.fail("Do not scan the full catalog per favorite");
+    const w = context.window;
+    w.__ottChannelLibrary = {
+        create: (ports) => ({
+            active: ports.current,
+            persist() {},
+            snapshot: () => ({ all, groups: [], locks: [], selected: null }),
+        }),
+    };
+    Object.assign(w, {
+        _: (text) => text,
+        __ottMedia: { categoryMembers: () => ["1", 1, 2, 2] },
+        __ottSourceIdentity: { current: () => "projection@typed-ids" },
+        catIndex: 0,
+        channels: {},
+        cList: [1, "1", 2],
+        curList: [],
+        favoritesArray: [1, 1, "1", NaN],
+        primaryIndex: 0,
+        providerGetItem: () => null,
+        providerSetItem() {},
+        sFavorites: 0,
+    });
+    w.__ottChannels.mount(w);
+    w.__ottChannels.refresh();
+    const favorite = w.__ottChannels
+        .remoteCatalog()
+        .groups.find((group) => group.id === "system:favorites");
+    assert.deepEqual(plain(favorite.members), [1, "1", 2]);
+}
+
+console.log(
+    "Channel library: stable identity, catalog/user separation, migration, account isolation, storage failures PASS"
+);

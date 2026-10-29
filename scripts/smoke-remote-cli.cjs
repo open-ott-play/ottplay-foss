@@ -179,6 +179,12 @@ testRequestPacing();
 if (process.argv.includes("--test-pacing")) process.exit(0);
 
 const offlineProfilesOnly = process.argv.includes("--offline-profiles-only");
+const globalFavoritesOnly = process.argv.includes("--global-favorites-only");
+assert(
+    !(offlineProfilesOnly && globalFavoritesOnly),
+    "select only one smoke mode"
+);
+const globalFixture = require("./global-favorites-smoke.cjs");
 assert(
     [undefined, "unsupported-controller"].includes(
         process.env.OTT_OFFLINE_PROFILES
@@ -213,6 +219,40 @@ function moduleOf(file, requireFn, window) {
     return context.exports;
 }
 (async () => {
+    if (globalFavoritesOnly) {
+        const expected = process.env.OTT_GLOBAL_CONTROL_REVISION;
+        assert.match(expected || "", /^[0-9a-f]{40}$/);
+        const checkout = path.resolve(path.dirname(cli), "..");
+        const revision = (
+            await execFile("git", ["-C", checkout, "rev-parse", "HEAD"])
+        ).stdout.trim();
+        assert.equal(
+            revision,
+            expected,
+            "global smoke must use the explicitly pinned control checkout"
+        );
+        await execFile("git", [
+            "-C",
+            checkout,
+            "diff",
+            "--exit-code",
+            "HEAD",
+            "--",
+            "cli",
+        ]);
+        const hash = (file) =>
+            require("node:crypto")
+                .createHash("sha256")
+                .update(fs.readFileSync(file))
+                .digest("hex");
+        console.log(
+            JSON.stringify({
+                cli_sha256: hash(cli),
+                control_revision: revision,
+                server_sha256: hash(binary),
+            })
+        );
+    }
     // Exercise actual project compiler output, not independent unchecked
     // transpileModule fragments. Keep it private so concurrent builds are safe.
     await execFile(process.execPath, [
@@ -250,6 +290,13 @@ function moduleOf(file, requireFn, window) {
         { stdio: "ignore" }
     );
     const controllers = [];
+    const globalHosts = [];
+    const globalFault = {
+        armed: false,
+        corrupted: 0,
+        original: null,
+        requestId: null,
+    };
     const prefix = "/ott-control";
     const submissions = [];
     let lostStepSubmission = null;
@@ -287,10 +334,40 @@ function moduleOf(file, requireFn, window) {
                                 addressForProxy()
                             ).searchParams.get("device_id"),
                             operation: body.params.operation,
+                            ...(globalFavoritesOnly
+                                ? { op: body.params.op }
+                                : {}),
                             ...(body.params.offset === undefined
                                 ? {}
                                 : { offset: body.params.offset }),
                         });
+                        if (
+                            globalFavoritesOnly &&
+                            globalFault.armed &&
+                            body.action === "favorites_global" &&
+                            body.params.op === "commit"
+                        ) {
+                            assert.equal(incoming.statusCode, 202);
+                            globalFault.armed = false;
+                            const chunks = [];
+                            incoming.on("data", (chunk) => chunks.push(chunk));
+                            incoming.on("end", () => {
+                                const queued = Buffer.concat(chunks);
+                                assert(queued.length < 2048);
+                                globalFault.requestId = JSON.parse(queued).id;
+                                assert.match(
+                                    globalFault.requestId,
+                                    /^[0-9a-f]{32}$/
+                                );
+                                response
+                                    .writeHead(
+                                        incoming.statusCode,
+                                        incoming.headers
+                                    )
+                                    .end(queued);
+                            });
+                            return;
+                        }
                         if (
                             lostStepSubmission &&
                             !lostStepSubmission.dropped &&
@@ -304,6 +381,36 @@ function moduleOf(file, requireFn, window) {
                             response.destroy();
                             return;
                         }
+                    }
+                    if (
+                        globalFavoritesOnly &&
+                        globalFault.requestId &&
+                        !globalFault.corrupted &&
+                        request.method === "GET" &&
+                        incoming.statusCode === 200 &&
+                        new URL(
+                            request.url,
+                            addressForProxy()
+                        ).searchParams.get("id") === globalFault.requestId
+                    ) {
+                        const chunks = [];
+                        incoming.on("data", (chunk) => chunks.push(chunk));
+                        incoming.on("end", () => {
+                            const complete = Buffer.concat(chunks);
+                            assert(complete.length <= 2 * 1024 * 1024);
+                            globalFault.original = JSON.parse(complete);
+                            globalFault.corrupted++;
+                            // The server accepted the real player receipt. Only
+                            // this client's first completed HTTP response is
+                            // damaged; the next RPC must be status, not commit.
+                            response
+                                .writeHead(200, {
+                                    "content-length": 1,
+                                    "content-type": "application/json",
+                                })
+                                .end("{");
+                        });
+                        return;
                     }
                     response.writeHead(incoming.statusCode, incoming.headers);
                     incoming.pipe(response);
@@ -327,7 +434,8 @@ function moduleOf(file, requireFn, window) {
                 players: { mac: "dev_second", tv: "dev_test" },
                 server: address,
                 server_config: path.join(dir, "server.json"),
-            })
+            }),
+            { mode: 0o600 }
         );
         for (let i = 0; i < 40; i++) {
             try {
@@ -706,6 +814,9 @@ function moduleOf(file, requireFn, window) {
                             host
                         )
                       : name === "./remote-favorites-transfer" ||
+                          name === "./remote-favorites-global" ||
+                          name === "./remote-favorites-global-items" ||
+                          name === "./remote-favorites-global-recovery" ||
                           name === "./remote-feature" ||
                           name === "./remote-favorites" ||
                           name === "./remote-local-media" ||
@@ -772,7 +883,7 @@ function moduleOf(file, requireFn, window) {
                                         : name === "../utils/caseless"
                                           ? caseless
                                           : { handleCommand: dispatch };
-            let execute, inspection;
+            let execute, inspection, globalHost;
             let offlineLoaded = [];
             function activateOffline(initialIndex = 0) {
                 offlineLoaded = [];
@@ -843,6 +954,65 @@ function moduleOf(file, requireFn, window) {
                 ).installRemoteInspection(host);
             }
             loadRuntime();
+            function enableLegacyFavorites() {
+                assert(
+                    favoritesMode,
+                    "legacy persistence is an explicit fixture"
+                );
+                if (globalHost) return globalHost;
+                const legacy = dependencies("./remote-favorites");
+                const runtime = () =>
+                    dependencies("./remote-restart").remotePlayerInfo(host)
+                        .runtime;
+                globalHost = globalFixture.install(
+                    host,
+                    emitted,
+                    runtime,
+                    clone(configuration),
+                    {
+                        capture: () =>
+                            legacy.captureLegacyCurrentFavorite(host),
+                        play(entry, current) {
+                            let cancel;
+                            const result = new Promise((done, reject) => {
+                                if (!current()) {
+                                    reject(new Error("context_changed"));
+                                    return;
+                                }
+                                const capturedRuntime = runtime();
+                                cancel = legacy.executeLegacyFavoriteTarget(
+                                    host,
+                                    capturedRuntime,
+                                    {
+                                        action: "favorites",
+                                        expires_at: (Date.now() + 30000) / 1000,
+                                        params: {
+                                            id: entry.id,
+                                            op: "play",
+                                            runtime: capturedRuntime,
+                                        },
+                                    },
+                                    done,
+                                    entry
+                                );
+                            });
+                            return {
+                                cancel: () => {
+                                    if (cancel) cancel();
+                                },
+                                result,
+                            };
+                        },
+                        storage: kioskStorage,
+                    }
+                );
+                globalHosts.push(globalHost);
+                assert.equal(
+                    host.__ottGlobalFavorites.committer.canWrite(),
+                    true
+                );
+                return globalHost;
+            }
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 (name) =>
@@ -1023,7 +1193,24 @@ function moduleOf(file, requireFn, window) {
                 dropped,
                 droppedReload,
                 droppedStepReceipt,
+                enableLegacyFavorites,
                 favoritePlays: clone(favoritePlays),
+                global: () => {
+                    assert(globalFavoritesOnly && globalFixture);
+                    if (!globalHost) {
+                        globalHost = globalFixture.install(
+                            host,
+                            emitted,
+                            () =>
+                                dependencies(
+                                    "./remote-restart"
+                                ).remotePlayerInfo(host).runtime,
+                            clone(configuration)
+                        );
+                        globalHosts.push(globalHost);
+                    }
+                    return globalHost;
+                },
                 keysReceived: keysReceived.slice(),
                 kiosk: host.__ottKiosk.snapshot(),
                 nativeExits,
@@ -1064,12 +1251,14 @@ function moduleOf(file, requireFn, window) {
                     host.curList = host.cats.steps;
                     host.primaryIndex = 0;
                 },
-                stop: () =>
+                stop: () => {
                     controller.configure({
                         address: "",
                         enabled: false,
                         token: "",
-                    }),
+                    });
+                    if (globalHost) globalHost.dispose();
+                },
                 streamRestarts,
                 volume,
             });
@@ -1089,16 +1278,22 @@ function moduleOf(file, requireFn, window) {
         }
         const run = (...args) => runOn("tv", ...args);
         async function jsonOn(name, ...args) {
-            const result = await execFile("python3", [
-                cli,
-                "--config",
-                path.join(dir, "cli.json"),
-                "--timeout",
-                "8",
-                "--json",
-                name,
-                ...args,
-            ]);
+            const result = await execFile(
+                "python3",
+                [
+                    cli,
+                    "--config",
+                    path.join(dir, "cli.json"),
+                    "--timeout",
+                    globalFavoritesOnly ? "45" : "8",
+                    "--json",
+                    name,
+                    ...args,
+                ],
+                globalFavoritesOnly
+                    ? { maxBuffer: 2 * 1024 * 1024, timeout: 60000 }
+                    : {}
+            );
             assert.equal(result.stderr, "");
             return JSON.parse(result.stdout);
         }
@@ -1247,6 +1442,17 @@ function moduleOf(file, requireFn, window) {
             console.log(
                 "PASS Local videos profiles through real Go + compiled TS store/transport + Python CLI: save/export/import/load, private binding exclusion, no overwrite, same-device restart and cross-device binding requirement"
             );
+        }
+        if (globalFavoritesOnly) {
+            await globalFixture.exercise({
+                desktop,
+                dir,
+                fault: globalFault,
+                jsonOn,
+                submissions,
+                television,
+            });
+            return;
         }
         if (offlineProfilesOnly) {
             await checkOfflineProfiles();
@@ -2015,6 +2221,48 @@ function moduleOf(file, requireFn, window) {
         television = player("dev_test", "b".repeat(32), 30, false, true);
         const emptyFavorites = await jsonOn("tv", "fav");
         assert.deepEqual(emptyFavorites.entries, []);
+        assert.deepEqual((await jsonOn("tv", "caps")).favorites.operations, [
+            "list",
+            "play",
+        ]);
+        const beforeUnsupported = television().controlsReceived.filter(
+            (request) => request.action === "favorites"
+        ).length;
+        const beforeSharedStore = JSON.stringify(
+            favoriteStores.get("dev_test")
+        );
+        await assert.rejects(
+            run("fav", "add", "Unsupported write"),
+            (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /No favorites command was sent/);
+                return true;
+            }
+        );
+        assert.equal(
+            television().controlsReceived.filter(
+                (request) => request.action === "favorites"
+            ).length,
+            beforeUnsupported,
+            "unqualified add must not dispatch a favorites command"
+        );
+        assert.equal(
+            JSON.stringify(favoriteStores.get("dev_test")),
+            beforeSharedStore,
+            "unqualified add leaves the persisted backend unchanged"
+        );
+        television().enableLegacyFavorites();
+        assert.deepEqual((await jsonOn("tv", "caps")).favorites.operations, [
+            "list",
+            "add",
+            "play",
+            "remove",
+        ]);
+        assert.equal(
+            JSON.stringify(favoriteStores.get("dev_test")),
+            beforeSharedStore,
+            "host construction and capability discovery do not write favorites"
+        );
         const firstFavorite = await jsonOn("tv", "fav", "add", "First profile");
         assert.equal(firstFavorite.created, true);
         assert.equal(firstFavorite.entry.profile_number, 1);
@@ -2074,6 +2322,7 @@ function moduleOf(file, requireFn, window) {
         const priorFavoriteRuntime = firstPlay.runtime;
         television().stop();
         television = player("dev_test", "b".repeat(32), 30, false, true);
+        television().enableLegacyFavorites();
         const restoredFavorites = await jsonOn("tv", "fav");
         assert.notEqual(restoredFavorites.runtime, priorFavoriteRuntime);
         assert.deepEqual(
@@ -2126,6 +2375,7 @@ function moduleOf(file, requireFn, window) {
         );
     } finally {
         pace.close();
+        for (const host of globalHosts) host.dispose();
         for (const controller of controllers)
             controller.configure({ address: "", enabled: false, token: "" });
         proxy.closeAllConnections();

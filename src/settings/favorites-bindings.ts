@@ -508,6 +508,71 @@ export function createFavoritesBindings(ports: FavoritesBindingPorts) {
                 revision: state.revision,
             };
         },
+        /** Internal UI pairing; both private rows share one registry CAS. No transfer wire route. */
+        provisionPlayback: function (value: any, expectedRevision: number) {
+            return mutate(
+                expectedRevision,
+                function (rows) {
+                    if (
+                        !keys(value, ["provider", "profile", "source"]) ||
+                        !/^(m3u|vportal|plex|offline)$/.test(value.provider)
+                    )
+                        fail("invalid_binding");
+                    var profileBinding = binding("profile", value.profile);
+                    var sourceBinding = binding("source", value.source);
+                    if (
+                        profileBinding.selector.kind !==
+                            "global-playback-target" ||
+                        sourceBinding.selector.kind !== "global-playback-target"
+                    )
+                        fail("invalid_binding");
+                    var profile = rows.filter(function (entry) {
+                        return (
+                            entry.kind === "profile" &&
+                            entry.provider === value.provider &&
+                            JSON.stringify(entry.binding) ===
+                                JSON.stringify(profileBinding)
+                        );
+                    })[0];
+                    if (!profile)
+                        profile =
+                            /* biome-ignore assist/source/useSortedKeys: Preserve private profile registry row byte order and freshId initializer position. */ {
+                                id: freshId(rows),
+                                kind: "profile",
+                                provider: value.provider,
+                                binding: profileBinding,
+                            };
+                    requireCurrent(profile);
+                    if (rows.indexOf(profile) < 0) rows.push(profile);
+                    var source = rows.filter(function (entry) {
+                        return (
+                            entry.kind === "source" &&
+                            entry.provider === value.provider &&
+                            entry.profile_id === profile.id &&
+                            JSON.stringify(entry.binding) ===
+                                JSON.stringify(sourceBinding)
+                        );
+                    })[0];
+                    if (!source)
+                        source =
+                            /* biome-ignore assist/source/useSortedKeys: Preserve private source registry row byte order and freshId initializer position. */ {
+                                id: freshId(rows),
+                                kind: "source",
+                                provider: value.provider,
+                                profile_id: profile.id,
+                                binding: sourceBinding,
+                            };
+                    requireCurrent(source);
+                    if (rows.indexOf(source) < 0) rows.push(source);
+                    return {
+                        profile: publicEntry(profile),
+                        source: publicEntry(source),
+                    };
+                },
+                undefined,
+                true
+            );
+        },
         /** Separate bootstrap packet, not a favorites-transfer operation. */
         provisionPlex: function (value: any, expectedRevision: number) {
             var captured: any,

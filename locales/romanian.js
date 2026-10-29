@@ -176,6 +176,7 @@ var keyStrings = {
         "Se verifică conexiunea la serverul Plex...",
     "Choose a folder in the browser window":
         "Alegeți un dosar în fereastra browserului",
+    "Choose a profile": "Alege un profil",
     "Choose files in the browser window":
         "Alegeți fișiere în fereastra browserului",
     "Choose from": "Alege din",
@@ -1129,6 +1130,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Setări ULTIFL1X",
     "Unable to load playlist": "Nu s-a putut încărca lista de redare",
+    Unavailable: "Indisponibil",
     "Unlock the player's settings before changing its playlist.":
         "Deblocați setările playerului înainte de a-i modifica lista de redare.",
     Untitled: "Fără titlu",

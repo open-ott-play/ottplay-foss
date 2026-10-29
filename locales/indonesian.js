@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking folder permission": "Memeriksa izin folder",
     "Checking the Plex server connection…": "Memeriksa koneksi server Plex…",
     "Choose a folder in the browser window": "Pilih folder di jendela browser",
+    "Choose a profile": "Pilih profil",
     "Choose files in the browser window": "Pilih file di jendela browser",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
@@ -1107,6 +1108,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Pengaturan ULTIFL1X",
     "Unable to load playlist": "Gagal memuat daftar putar",
+    Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci pengaturan pemutar sebelum mengubah daftar putarnya.",
     Untitled: "Tanpa judul",

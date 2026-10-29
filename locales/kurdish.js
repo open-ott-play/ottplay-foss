@@ -173,6 +173,7 @@ var keyStrings = {
         "Kontrolkirina girêdana servera Plex…",
     "Choose a folder in the browser window":
         "Di pencereya gerokê de peldankekê hilbijêre",
+    "Choose a profile": "Profîl hilbijêre",
     "Choose files in the browser window":
         "Di pencereya gerokê de pelan hilbijêre",
     "Choose from": "Hilbijêre",
@@ -1115,6 +1116,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Mîhengên ULTIFL1X",
     "Unable to load playlist": "Lîsteya lêdanê nehat barkirin",
+    Unavailable: "Ne berdest e",
     "Unlock the player's settings before changing its playlist.":
         "Berî guherandina lîsteya lêdanê kilîda mîhengên lêkerê veke.",
     Untitled: "Bênav",

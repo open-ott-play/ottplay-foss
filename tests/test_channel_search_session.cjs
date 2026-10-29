@@ -802,6 +802,7 @@ for (const [profile, code] of profiles) {
         check(
             "Actions category picker remains usable through " + finish,
             async (f) => {
+                const favorites = Array.from(f.host.cats.Favorites);
                 f.host.showActionsDialog();
                 const dialog = f.port.owner("dialog");
                 f.key("ENTER");
@@ -810,14 +811,20 @@ for (const [profile, code] of profiles) {
                 assert.deepEqual(Array.from(f.host.listArray), [
                     "News",
                     "Sport",
+                    "Favorites",
                 ]);
                 f.key("DOWN");
                 assert(f.port.listOwner().foreground());
-                f.host.selIndex = 1;
+                f.host.selIndex = f.host.listArray.indexOf("Sport");
                 f.key(finish);
                 assert.equal(
                     f.host.cats.Sport.includes(11),
                     finish === "ENTER"
+                );
+                assert.deepEqual(
+                    Array.from(f.host.cats.Favorites),
+                    favorites,
+                    "provider category action does not edit Favorites"
                 );
                 assert.deepEqual(Array.from(f.host.listArray), [11, 22]);
                 assert(f.port.listOwner().foreground());

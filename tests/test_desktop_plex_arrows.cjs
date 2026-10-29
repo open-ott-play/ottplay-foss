@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 // Desktop keys must keep their PC meaning when OTT starts a remote Plex queue.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -26,23 +27,26 @@ const names = new Set([
     "plusProg",
     "minusProg",
 ]);
-const code = ts
-    .transpileModule(
-        source.statements
-            .filter(
-                (node) =>
-                    ts.isFunctionDeclaration(node) && names.has(node.name?.text)
-            )
-            .map((node) => node.getText(source))
-            .join("\n"),
-        {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES5,
-            },
-        }
-    )
-    .outputText.replace(/^export /gm, "");
+const code =
+    numericKeyState() +
+    ts
+        .transpileModule(
+            source.statements
+                .filter(
+                    (node) =>
+                        ts.isFunctionDeclaration(node) &&
+                        names.has(node.name?.text)
+                )
+                .map((node) => node.getText(source))
+                .join("\n"),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        )
+        .outputText.replace(/^export /gm, "");
 
 function fixture(platform = "pc", phase = "playing", target = true) {
     const dom = new JSDOM('<body><video tabindex="0"></video><input></body>', {

@@ -1,0 +1,132 @@
+{
+  "contract": "explicit-channel-name-kind-v1",
+  "requires_locator_kind_advertisement": true,
+  "cases": [
+    {
+      "id": "name-only",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD",
+          "group": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "id": "with-group",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD",
+          "group": "World"
+        }
+      },
+      "valid": true
+    },
+    {
+      "id": "missing-group",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD"
+        }
+      },
+      "valid": false
+    },
+    {
+      "id": "empty-group",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD",
+          "group": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "id": "lone-surrogate",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "\ud800",
+          "group": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "id": "private-index",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "m3u",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD",
+          "group": null,
+          "index": 42
+        }
+      },
+      "valid": false
+    },
+    {
+      "id": "plex-no-name-fallback",
+      "entry": {
+        "title": "Favorite",
+        "origin": {
+          "provider": "plex",
+          "profile": "Family",
+          "subprofile": null,
+          "sourceAlias": "TV"
+        },
+        "locator": {
+          "kind": "channel-name",
+          "name": "News HD",
+          "group": null
+        }
+      },
+      "valid": false
+    }
+  ]
+}

@@ -66,6 +66,9 @@ export function installStandby(w: any, read: any, write: any): any {
             });
     }
     function suspend(): void {
+        attempt(function () {
+            w.__ottGlobalFavorites?.navigation?.retire();
+        });
         // Invalidate owners before abort: transports may synchronously call back.
         invoke("__ottRemoteNotifications", "suspend");
         var timers = w.__ottUiTimers;

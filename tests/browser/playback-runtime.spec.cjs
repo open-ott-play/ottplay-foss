@@ -606,7 +606,9 @@ async function episodeFixture(
         window.sFavorites = 1;
         window.sMedCount = 2;
         window.parentPIN = "";
-        window.settings.stopPlay = true;
+        window.settings.stopPlay = 1;
+        if (window.settings.stopPlay !== 1)
+            throw new Error("Episode fixture must enable numeric stopPlay");
         const saved = {};
         window.providerGetItem = (key) => saved[key] || null;
         window.providerSetItem = (key, value) => {

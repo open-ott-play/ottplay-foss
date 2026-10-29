@@ -58,7 +58,8 @@ interface MediaBackendPorts {
         context: MediaBackendContext,
         type: string,
         position?: number,
-        duration?: number
+        duration?: number,
+        sourceStop?: any
     ): void;
     observedPosition?(position: number): void;
     open(
@@ -795,11 +796,20 @@ function createMediaBackend(ports: MediaBackendPorts) {
             if (operation && operation.handle === lanes.main)
                 operation.run(value, true);
         },
-        stop: function (lane?: string) {
+        stop: function (lane?: string, sourceStop?: any) {
             var handle = lanes[lane || "main"];
             var context = ports.context();
-            if ((!lane || lane === "main") && context)
-                ports.emit(context, "stop");
+            if ((!lane || lane === "main") && context) {
+                if (sourceStop)
+                    ports.emit(
+                        context,
+                        "stop",
+                        undefined,
+                        undefined,
+                        sourceStop
+                    );
+                else ports.emit(context, "stop");
+            }
             if (handle) handle.dispose();
         },
         subscribe: function (callback: (event: any) => void) {

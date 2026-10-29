@@ -172,6 +172,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Menyemak sambungan pelayan Plex…",
     "Choose a folder in the browser window":
         "Pilih folder dalam tetingkap pelayar",
+    "Choose a profile": "Pilih profil",
     "Choose files in the browser window": "Pilih fail dalam tetingkap pelayar",
     "Choose from": "Pilih daripada",
     "Choose language": "Pilih bahasa",
@@ -1103,6 +1104,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Tetapan ULTIFL1X",
     "Unable to load playlist": "Tidak dapat memuatkan senarai main",
+    Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci tetapan pemain media sebelum menukar senarai mainnya.",
     Untitled: "Tanpa tajuk",

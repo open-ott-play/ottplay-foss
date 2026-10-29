@@ -170,6 +170,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Provjera veze poslužitelja Plex…",
     "Choose a folder in the browser window":
         "Odaberite mapu u prozoru preglednika",
+    "Choose a profile": "Odaberite profil",
     "Choose files in the browser window":
         "Odaberite datoteke u prozoru preglednika",
     "Choose from": "Odaberite između",
@@ -1113,6 +1114,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X postavke",
     "Unable to load playlist": "Nije moguće učitati popis za reprodukciju",
+    Unavailable: "Nije dostupno",
     "Unlock the player's settings before changing its playlist.":
         "Otključajte postavke reproduktora prije promjene popisa za reprodukciju.",
     Untitled: "Bez naslova",

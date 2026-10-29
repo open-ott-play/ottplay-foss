@@ -174,6 +174,7 @@ var keyStrings = {
         "Plex zerbitzariaren konexioa egiaztatzen…",
     "Choose a folder in the browser window":
         "Aukeratu karpeta bat arakatzailearen leihoan",
+    "Choose a profile": "Aukeratu profila",
     "Choose files in the browser window":
         "Aukeratu fitxategiak arakatzailearen leihoan",
     "Choose from": "Aukeratu hauen artean",
@@ -1120,6 +1121,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ezarpenak",
     "Unable to load playlist": "Ezin da erreprodukzio-zerrenda kargatu",
+    Unavailable: "Ez dago erabilgarri",
     "Unlock the player's settings before changing its playlist.":
         "Desblokeatu erreproduzitzailearen ezarpenak erreprodukzio-zerrenda aldatu aurretik.",
     Untitled: "Izenbururik gabe",

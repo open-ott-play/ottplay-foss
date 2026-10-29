@@ -108,6 +108,11 @@ for (const provider of ["m3u", "offline"]) {
         0,
         "playing identity survives reorder"
     );
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + One", "Favorites: − One"],
+        provider + " emits exactly one named success per TV toggle"
+    );
 }
 for (const provider of ["m3u", "offline", "plex", "vportal"]) {
     const c = fixture();
@@ -187,6 +192,28 @@ for (const provider of ["m3u", "offline", "plex", "vportal"]) {
         c.documentState().favorites.length,
         0,
         provider + " fullscreen remove"
+    );
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        [
+            "Favorites: + Same title",
+            "Favorites: − Same title",
+            "Favorites: + Same title",
+            "Favorites: − Same title",
+        ],
+        provider +
+            " focused/fullscreen media feedback is named and never doubled"
+    );
+    const captured = c.__ottMedia.captureFavorite();
+    assert(
+        captured,
+        provider + " non-toggle capture still returns the reference"
+    );
+    assert.equal(c.documentState().favorites.length, 1);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        4,
+        provider + " internal non-toggle capture stays silent"
     );
 }
 {
@@ -394,6 +421,217 @@ for (const id of [
     press();
     assert.equal(c.favoritesArray.length, 0);
 }
+// The global path must use the same real numeric PIN membership as legacy F.
+{
+    const c = television(),
+        press = keyboard(c),
+        toggles = [];
+    vm.runInContext(
+        sourceFunctions("src/channels/index.ts", ["hasParentalLock"]),
+        c
+    );
+    c.parentalArray = [101];
+    let locked = true;
+    c.__ottParental.needs = (section) => section === "channels" && locked;
+    c.toggleGlobalFavorite = (payload, current) => {
+        assert(current());
+        toggles.push(payload.__ottGlobalChannel);
+        return true;
+    };
+    press();
+    assert.deepEqual(
+        toggles,
+        [],
+        "locked global F cannot bypass numeric PIN membership"
+    );
+    locked = false;
+    press();
+    assert.deepEqual(
+        toggles,
+        [101],
+        "global F receives the exact normalized TV identity"
+    );
+    locked = true;
+    press();
+    assert.deepEqual(toggles, [101], "locked global removal is blocked too");
+}
+// The actual media Green action preserves add/remove semantics; F remains toggle.
+{
+    const c = fixture(),
+        calls = [];
+    c.mediaList(null);
+    c.selectMedia(1);
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.setGlobalFavorite = (payload, present, current) => {
+        assert(current());
+        calls.push(present);
+        return true;
+    };
+    c.toggleGlobalFavorite = (payload, current) => {
+        assert(current());
+        calls.push("toggle");
+        return true;
+    };
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.mediaKeyHandler(c.keys.RETURN);
+    c.selectMedia(
+        c.listArray.findIndex((item) => item.__ottMediaRoute === "favorites")
+    );
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.__ottMedia.toggleFavorite(c.listArray[0]);
+    assert.deepEqual(calls, [true, true, false, false, "toggle"]);
+    c.__ottParental.needs = (section) => section === "channels";
+    c.__ottMedia.favorite({ ...c.listArray[0], adult: 1 });
+    assert.equal(
+        calls.length,
+        5,
+        "PIN rejects the menu before global dispatch"
+    );
+}
+// The media Favorites tile opens the unified view when available.
+{
+    const c = fixture();
+    let opened = 0;
+    c.mediaList(null);
+    const target = c.listArray.findIndex(
+        (item) => item.__ottMediaRoute === "favorites"
+    );
+    c.openGlobalFavorites = () => {
+        opened++;
+        return true;
+    };
+    const depth = c.__ottMedia.snapshot().frames.length;
+    c.selectMedia(target);
+    assert.equal(opened, 1);
+    assert.equal(
+        c.__ottMedia.snapshot().frames.length,
+        depth,
+        "no second per-source Favorites view"
+    );
+    c.openGlobalFavorites = () => false;
+    c.selectMedia(target);
+    assert.equal(
+        c.__ottMedia.snapshot().frame.route.kind,
+        "favorites",
+        "unsupported host retains legacy view"
+    );
+}
+// TV menu ingress uses explicit global intent, with real MAIN guards.
+{
+    const c = television(),
+        calls = [];
+    c.listArray = [101];
+    c.selIndex = 0;
+    c.listCatIndex = 1;
+    c.sFavorites = 1;
+    c.globalFavoriteIntent = 0;
+    let available = true,
+        stale = false;
+    c.captureFavoritesPhysicalStorage = () => (available ? {} : null);
+    c.remotePlayerInfo = () => ({ runtime: "fixture-runtime" });
+    c.__ottGlobalFavoritesFactory = {};
+    c.initializeGlobalFavorites = () => {
+        if (stale) c.__ottCommandChannelLoad = {};
+        return {
+            add(payload, current) {
+                assert(current());
+                calls.push(["add", payload.__ottGlobalChannel]);
+            },
+            remove(payload, current) {
+                assert(current());
+                calls.push(["remove", payload.__ottGlobalChannel]);
+            },
+        };
+    };
+    vm.runInContext(
+        sourceFunctions("src/commands/global-favorites.ts", [
+            "globalFavoriteAction",
+            "setGlobalFavorite",
+            "setGlobalChannelFavorite",
+        ]),
+        c
+    );
+    const file = "src/index.ts",
+        text = fs.readFileSync(file, "utf8"),
+        ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const statement = ast.statements.find(
+        (n) =>
+            ts.isExpressionStatement(n) &&
+            ts.isBinaryExpression(n.expression) &&
+            n.expression.left.getText(ast) === "window.addChannel2bucket"
+    );
+    assert(statement);
+    vm.runInContext(
+        ts.transpileModule(statement.getText(ast), {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText,
+        c
+    );
+    vm.runInContext(
+        sourceFunctions("src/channels/index.ts", [
+            "removeSelectedChannelFromCategory",
+            "hasParentalLock",
+        ]),
+        c
+    );
+    c.__ottChannels.group = () => "system:favorites";
+    c.parentalArray = [];
+    c.addChannel2bucket();
+    c.addChannel2bucket();
+    c.removeSelectedChannelFromCategory();
+    c.removeSelectedChannelFromCategory();
+    assert.deepEqual(calls, [
+        ["add", 101],
+        ["add", 101],
+        ["remove", 101],
+        ["remove", 101],
+    ]);
+    c.parentalArray = [101];
+    c.__ottParental.needs = (section) => section === "channels";
+    c.addChannel2bucket();
+    c.removeSelectedChannelFromCategory();
+    assert.equal(
+        calls.length,
+        4,
+        "PIN blocks both global menu operations without fallback"
+    );
+    c.parentalArray = [];
+    stale = true;
+    c.addChannel2bucket();
+    assert.equal(
+        calls.length,
+        4,
+        "source change during initialization suppresses mutation"
+    );
+    stale = false;
+    let checks = 0;
+    c.captureFavoritesPhysicalStorage = () => (++checks === 1 ? {} : null);
+    const prior = Array.from(c.favoritesArray);
+    c.addChannel2bucket();
+    assert.deepEqual(
+        Array.from(c.favoritesArray),
+        prior,
+        "backend loss after global admission never falls back"
+    );
+    c.captureFavoritesPhysicalStorage = () => (available ? {} : null);
+    available = false;
+    c.addChannel2bucket();
+    assert.deepEqual(
+        Array.from(c.favoritesArray),
+        [101],
+        "unsupported backend retains legacy add"
+    );
+    const notices = c.calls.filter((row) => row[0] === "shift").length;
+    c.saveChannelsCats = () => false;
+    c.addChannel2bucket();
+    assert.equal(
+        c.calls.filter((row) => row[0] === "shift").length,
+        notices,
+        "failed legacy save cannot confirm success"
+    );
+}
 // Opaque provider keys are resolved exactly, before ordinary-TV numeric handling.
 {
     const c = fixture();
@@ -485,6 +723,118 @@ for (const mode of [
         Array.from(c.favoritesArray),
         [101],
         "no blind RAM rollback after potentially uncertain writes"
+    );
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        0,
+        "failed or uncertain TV persistence never shows success: " + mode
+    );
+}
+// Removing in the favorites view still acknowledges the persisted item,
+// before its row is removed from the active selection.
+{
+    const c = fixture();
+    c.mediaList(null);
+    c.selectMedia(1);
+    c.mediaKeyHandler(c.keys.GREEN);
+    c.mediaKeyHandler(c.keys.RETURN);
+    c.selectMedia(
+        c.listArray.findIndex((item) => item.__ottMediaRoute === "favorites")
+    );
+    c.mediaKeyHandler(c.keys.GREEN);
+    assert.equal(c.documentState().favorites.length, 0);
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + Nested movie", "Favorites: − Nested movie"]
+    );
+}
+// Feedback uses the current display name and the existing localized label.
+{
+    const c = television(),
+        press = keyboard(c);
+    c._ = (text) => (text === "Favorites" ? "Избранное" : text);
+    press();
+    c.channels[101].channel_name = "Renamed channel";
+    press();
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Избранное: + One", "Избранное: − Renamed channel"]
+    );
+}
+// showShift accepts safe HTML: inserted names must be escaped exactly once.
+{
+    const title = "<b>A & B</b> &amp;",
+        escaped = "&lt;b&gt;A &amp; B&lt;/b&gt; &amp;amp;";
+    const c = television(),
+        press = keyboard(c);
+    c.channels[101].channel_name = title;
+    press();
+    press();
+    assert.deepEqual(
+        c.calls.filter((call) => call[0] === "shift").map((call) => call[1]),
+        ["Favorites: + " + escaped, "Favorites: − " + escaped],
+        "TV name is literal text, including literal entity syntax"
+    );
+    const media = fixture();
+    media.mediaList(-1);
+    const item = {
+        __ottMediaRef: {
+            itemId: "provider:literal-title",
+            sourceId: media.__ottMedia.sourceId(),
+        },
+        request: { path: "/library/metadata/42" },
+        title,
+    };
+    media.__ottMedia.toggleFavorite(item);
+    media.__ottMedia.toggleFavorite(item);
+    assert.deepEqual(
+        media.calls
+            .filter((call) => call[0] === "shift")
+            .map((call) => call[1]),
+        ["Favorites: + " + escaped, "Favorites: − " + escaped],
+        "media name is escaped once before the shared HTML notification renderer"
+    );
+}
+// A source replaced after a successful write cannot receive the old toast.
+{
+    const c = television(),
+        save = c.saveChannelsCats;
+    keyboard(c);
+    c.saveChannelsCats = () => {
+        const saved = save();
+        c.__ottActiveProviderDriver = { id: "new-owner" };
+        return saved;
+    };
+    assert.equal(c.__ottToggleKeyboardFavorite(), false);
+    assert.equal(c.calls.filter((call) => call[0] === "shift").length, 0);
+}
+// The media journal must confirm persistence before any success indication.
+for (const failure of ["refuse", "throw", "write-then-throw"]) {
+    const c = fixture();
+    let enabled = false;
+    const write = c.providerSetItem;
+    c.providerSetItem = (key, value) => {
+        if (!enabled || !key.startsWith("mediaJournal.v1:"))
+            return write(key, value);
+        if (failure === "refuse") return;
+        if (failure === "write-then-throw") write(key, value);
+        throw Error("synthetic media persistence failure");
+    };
+    c.mediaList(-1);
+    const item = {
+        __ottMediaRef: {
+            itemId: "provider:failure",
+            sourceId: c.__ottMedia.sourceId(),
+        },
+        request: { path: "/library/metadata/42" },
+        title: "Failed item",
+    };
+    enabled = true;
+    assert.equal(c.__ottMedia.toggleFavorite(item), undefined);
+    assert.equal(
+        c.calls.filter((call) => call[0] === "shift").length,
+        0,
+        failure
     );
 }
 for (const device of ["pc", "pc2"])

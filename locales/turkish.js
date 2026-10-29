@@ -173,6 +173,7 @@ var keyStrings = {
         "Plex sunucu bağlantısı kontrol ediliyor…",
     "Choose a folder in the browser window":
         "Tarayıcı penceresinde bir klasör seçin",
+    "Choose a profile": "Profil seç",
     "Choose files in the browser window":
         "Tarayıcı penceresinde dosyaları seçin",
     "Choose from": "Şuradan seç",
@@ -1105,6 +1106,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
     "Unable to load playlist": "Oynatma listesi yüklenemedi",
+    Unavailable: "Kullanılamıyor",
     "Unlock the player's settings before changing its playlist.":
         "Oynatma listesini değiştirmeden önce oynatıcı ayarlarının kilidini açın.",
     Untitled: "Başlıksız",

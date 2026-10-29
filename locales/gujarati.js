@@ -161,6 +161,7 @@ var keyStrings = {
     "Checking folder permission": "ફોલ્ડરની પરવાનગી તપાસી રહ્યું છે",
     "Checking the Plex server connection…": "Plex સર્વર કનેક્શન તપાસી રહ્યું છે...",
     "Choose a folder in the browser window": "બ્રાઉઝરની વિન્ડોમાં ફોલ્ડર પસંદ કરો",
+    "Choose a profile": "પ્રોફાઇલ પસંદ કરો",
     "Choose files in the browser window": "બ્રાઉઝરની વિન્ડોમાં ફાઇલો પસંદ કરો",
     "Choose from": "આમાંથી પસંદ કરો",
     "Choose language": "ભાષા પસંદ કરો",
@@ -1074,6 +1075,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X સેટિંગ્સ",
     "Unable to load playlist": "પ્લેલિસ્ટ લોડ કરવામાં અસમર્થ",
+    Unavailable: "ઉપલબ્ધ નથી",
     "Unlock the player's settings before changing its playlist.":
         "પ્લેલિસ્ટ બદલતાં પહેલાં પ્લેયરનાં સેટિંગ્સ અનલૉક કરો.",
     Untitled: "શીર્ષક વિનાનું",

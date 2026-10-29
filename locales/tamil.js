@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex சர்வர் இணைப்பைச் சரிபார்க்கிறது…",
     "Choose a folder in the browser window":
         "உலாவி சாளரத்தில் ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்",
+    "Choose a profile": "சுயவிவரத்தைத் தேர்வு செய்யவும்",
     "Choose files in the browser window":
         "உலாவி சாளரத்தில் கோப்புகளைத் தேர்ந்தெடுக்கவும்",
     "Choose from": "இதிலிருந்து தேர்வு செய்யவும்",
@@ -1096,6 +1097,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X அமைப்புகள்",
     "Unable to load playlist": "பிளேலிஸ்ட்டை ஏற்ற முடியவில்லை",
+    Unavailable: "கிடைக்கவில்லை",
     "Unlock the player's settings before changing its playlist.":
         "இயக்கப்பட்டியலை மாற்றும் முன் இயக்கியின் அமைப்புகளின் பூட்டை நீக்கவும்.",
     Untitled: "தலைப்பு இல்லை",

@@ -173,6 +173,7 @@ var keyStrings = {
         "Qed tiġi ċċekkjata l-konnessjoni mas-server Plex…",
     "Choose a folder in the browser window":
         "Agħżel fowlder fit-tieqa tal-brawżer",
+    "Choose a profile": "Agħżel profil",
     "Choose files in the browser window": "Agħżel fajls fit-tieqa tal-brawżer",
     "Choose from": "Agħżel minn",
     "Choose language": "Agħżel il-lingwa",
@@ -1125,6 +1126,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Issettjar ta’ ULTIFL1X",
     "Unable to load playlist": "Il-lista tad-daqq ma setgħetx titgħabba",
+    Unavailable: "Mhux disponibbli",
     "Unlock the player's settings before changing its playlist.":
         "Neħħi l-imblukkar tal-issettjar tal-plejer qabel tibdel il-lista tad-daqq tiegħu.",
     Untitled: "Bla titlu",

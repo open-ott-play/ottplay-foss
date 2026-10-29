@@ -281,7 +281,11 @@ function fixture() {
                 "initBackgroundIntervals",
                 "_t2",
             ]) +
-            sourceFunctions("src/index.ts", ["_playMedia", "_playChannel"]),
+            sourceFunctions("src/index.ts", [
+                "stopSourcePlayback",
+                "_playMedia",
+                "_playChannel",
+            ]),
         context
     );
     c.__ottRenderMedia = c.showMediaList1;

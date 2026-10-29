@@ -163,6 +163,7 @@ var keyStrings = {
     "Checking folder permission": "फोल्डरची परवानगी तपासत आहे",
     "Checking the Plex server connection…": "Plex सर्व्हर कनेक्शन तपासत आहे...",
     "Choose a folder in the browser window": "ब्राउझर विंडोमध्ये फोल्डर निवडा",
+    "Choose a profile": "प्रोफाइल निवडा",
     "Choose files in the browser window": "ब्राउझर विंडोमध्ये फायली निवडा",
     "Choose from": "यातून निवडा",
     "Choose language": "भाषा निवडा",
@@ -1078,6 +1079,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X सेटिंग्ज",
     "Unable to load playlist": "प्लेलिस्ट लोड करण्यात अक्षम",
+    Unavailable: "उपलब्ध नाही",
     "Unlock the player's settings before changing its playlist.":
         "प्लेलिस्ट बदलण्यापूर्वी प्लेयरची सेटिंग्ज अनलॉक करा.",
     Untitled: "शीर्षकहीन",

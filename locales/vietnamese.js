@@ -172,6 +172,7 @@ var keyStrings = {
         "Đang kiểm tra kết nối máy chủ Plex…",
     "Choose a folder in the browser window":
         "Chọn một thư mục trong cửa sổ trình duyệt",
+    "Choose a profile": "Chọn hồ sơ",
     "Choose files in the browser window":
         "Chọn các tệp trong cửa sổ trình duyệt",
     "Choose from": "Chọn từ",
@@ -1096,6 +1097,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cài đặt ULTIFL1X",
     "Unable to load playlist": "Không thể tải danh sách phát",
+    Unavailable: "Không khả dụng",
     "Unlock the player's settings before changing its playlist.":
         "Mở khóa cài đặt của trình phát trước khi thay đổi danh sách phát.",
     Untitled: "Không có tiêu đề",

@@ -175,6 +175,7 @@ var keyStrings = {
         "Kujongwa uqhagamshelo lweseva ye-Plex…",
     "Choose a folder in the browser window":
         "Khetha ifolda kwifestile yesikhangeli",
+    "Choose a profile": "Khetha iprofayile",
     "Choose files in the browser window":
         "Khetha iifayile kwifestile yesikhangeli",
     "Choose from": "Khetha phakathi kwe",
@@ -1132,6 +1133,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Iisetingi ze-ULTIFL1X",
     "Unable to load playlist": "Akukwazekanga ukulayisha uluhlu lokudlala",
+    Unavailable: "Ayifumaneki",
     "Unlock the player's settings before changing its playlist.":
         "Vula isitshixo seesetingi zomdlali wemidiya ngaphambi kokutshintsha uluhlu lwakhe lokudlala.",
     Untitled: "Ayinasihloko",

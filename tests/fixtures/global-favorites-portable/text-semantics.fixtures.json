@@ -1,0 +1,122 @@
+{
+  "contract": "portable-v1-text-semantic-fixtures",
+  "unicode": "Well-formed UTF16 only; limits count UTF16 code units, not Unicode code points.",
+  "trim_codepoints": [
+    9, 10, 11, 12, 13, 32, 160, 5760, 8192, 8193, 8194, 8195, 8196, 8197, 8198,
+    8199, 8200, 8201, 8202, 8232, 8233, 8239, 8287, 12288, 65279
+  ],
+  "cases": [
+    {
+      "id": "ascii",
+      "value": "Profile",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 7
+    },
+    {
+      "id": "astral_pair",
+      "value": "A\ud83d\ude00B",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 4
+    },
+    {
+      "id": "lone_high",
+      "value": "\ud800",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 1
+    },
+    {
+      "id": "lone_low",
+      "value": "\udfff",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 1
+    },
+    {
+      "id": "high_then_ascii",
+      "value": "\ud800A",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 2
+    },
+    {
+      "id": "nested_high",
+      "value": "\ud800\ud800",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 2
+    },
+    {
+      "id": "high_at_end",
+      "value": "A\udbff",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 2
+    },
+    {
+      "id": "null",
+      "value": "A\u0000B",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 3
+    },
+    {
+      "id": "trim_bom",
+      "value": "\ufeffName",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 5
+    },
+    {
+      "id": "trim_nbsp",
+      "value": "Name\u00a0",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 5
+    },
+    {
+      "id": "trim_line_separator",
+      "value": "\u2028Name",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 5
+    },
+    {
+      "id": "not_js_trim_nel",
+      "value": "\u0085Name\u0085",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 6
+    },
+    {
+      "id": "not_js_trim_mongolian",
+      "value": "\u180eName",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 5
+    },
+    {
+      "id": "internal_space",
+      "value": "A B",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 3
+    },
+    {
+      "id": "limit_astral_valid",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83d\ude00",
+      "max_utf16_units": 256,
+      "expected": true,
+      "utf16_units": 256
+    },
+    {
+      "id": "limit_astral_invalid",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83d\ude00",
+      "max_utf16_units": 256,
+      "expected": false,
+      "utf16_units": 257
+    }
+  ]
+}

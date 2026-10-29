@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "title": "TV favorite",
+      "origin": {
+        "provider": "m3u",
+        "profile": "TV",
+        "subprofile": null,
+        "sourceAlias": "Family channels"
+      },
+      "locator": {
+        "kind": "channel",
+        "channelId": "001"
+      }
+    },
+    {
+      "title": "Portal favorite",
+      "origin": {
+        "provider": "stalker",
+        "profile": "Portal",
+        "subprofile": null,
+        "sourceAlias": "TV subscription"
+      },
+      "locator": {
+        "kind": "channel",
+        "channelId": "723"
+      }
+    },
+    {
+      "title": "Cinema favorite",
+      "origin": {
+        "provider": "plex",
+        "profile": "Cinema",
+        "subprofile": null,
+        "sourceAlias": "Home PMS"
+      },
+      "locator": {
+        "kind": "plex-media",
+        "serverId": "PMS_1",
+        "ratingKey": "42"
+      }
+    },
+    {
+      "title": "Movies favorite",
+      "origin": {
+        "provider": "local",
+        "profile": "Movies",
+        "subprofile": null,
+        "sourceAlias": "Home files"
+      },
+      "locator": {
+        "kind": "local-media",
+        "rootAlias": "Movies",
+        "relativePath": "Comedy/Film.mkv"
+      }
+    },
+    {
+      "title": "Portal cinema favorite",
+      "origin": {
+        "provider": "vportal",
+        "profile": "Portal cinema",
+        "subprofile": "Series",
+        "sourceAlias": "Cinema subscription"
+      },
+      "locator": {
+        "kind": "vportal-media",
+        "idField": "episode_id",
+        "id": "s18-e1"
+      }
+    },
+    {
+      "title": "News favorite",
+      "origin": {
+        "provider": "m3u",
+        "profile": "TV",
+        "subprofile": null,
+        "sourceAlias": "Family channels"
+      },
+      "locator": {
+        "kind": "channel-name",
+        "name": "News HD",
+        "group": "News"
+      }
+    }
+  ]
+}

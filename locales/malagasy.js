@@ -181,6 +181,7 @@ var keyStrings = {
         "Manamarina ny fifandraisana amin'ny lohamilina Plex…",
     "Choose a folder in the browser window":
         "Misafidiana lahatahiry ao amin’ny varavarankelin’ny mpitety",
+    "Choose a profile": "Safidio ny mombamomba",
     "Choose files in the browser window":
         "Misafidiana rakitra ao amin’ny varavarankelin’ny mpitety",
     "Choose from": "Misafidiana amin'ny",
@@ -1154,6 +1155,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Fikirakirana ULTIFL1X",
     "Unable to load playlist": "Tsy afaka naka ny lisitra fandefasana",
+    Unavailable: "Tsy misy",
     "Unlock the player's settings before changing its playlist.":
         "Vohay ny hidin’ny fikirakiran’ny mpilalao haino aman-jery alohan’ny hanovana ny lisitra fandefasany.",
     Untitled: "Tsy misy lohateny",

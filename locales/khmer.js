@@ -165,6 +165,7 @@ var keyStrings = {
     "Checking folder permission": "កំពុងពិនិត្យសិទ្ធិចូលប្រើថត",
     "Checking the Plex server connection…": "កំពុងពិនិត្យមើលការភ្ជាប់ម៉ាស៊ីនមេ Plex…",
     "Choose a folder in the browser window": "ជ្រើសរើសថតនៅក្នុងបង្អួចកម្មវិធីរុករក",
+    "Choose a profile": "ជ្រើសរើសប្រវត្តិរូប",
     "Choose files in the browser window": "ជ្រើសរើសឯកសារនៅក្នុងបង្អួចកម្មវិធីរុករក",
     "Choose from": "ជ្រើសរើសពី",
     "Choose language": "ជ្រើសរើសភាសា",
@@ -1086,6 +1087,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ការកំណត់ ULTIFL1X",
     "Unable to load playlist": "មិនអាចផ្ទុកបញ្ជីចាក់បានទេ។",
+    Unavailable: "មិនអាចប្រើបាន",
     "Unlock the player's settings before changing its playlist.":
         "សូមដោះសោការកំណត់កម្មវិធីចាក់ មុនពេលប្តូរបញ្ជីចាក់។",
     Untitled: "គ្មានចំណងជើង",

@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Tikrinamas Plex serverio ryšys...",
     "Choose a folder in the browser window":
         "Naršyklės lange pasirinkite aplanką",
+    "Choose a profile": "Pasirinkti profilį",
     "Choose files in the browser window": "Naršyklės lange pasirinkite failus",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
@@ -1105,6 +1106,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X nustatymai",
     "Unable to load playlist": "Nepavyko įkelti grojaraščio",
+    Unavailable: "Nepasiekiama",
     "Unlock the player's settings before changing its playlist.":
         "Prieš keisdami grojaraštį atrakinkite leistuvo nustatymus.",
     Untitled: "Be pavadinimo",

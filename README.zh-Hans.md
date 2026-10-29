@@ -64,7 +64,7 @@
 
 - **播放**：HLS、DASH和普通HTTP流，支持托管HLS.js/Shaka画质上限、有界恢复，以及每个直播频道最多三个显式备用URL。回看/VOD绝不会切换到直播备用源；参见[画质与恢复](docs/playback-stream-policy.zh-Hans.md)。
 - **节目指南**：XMLTV匹配、时移/回看、节目标题搜索（EPG中的N5）、提醒，以及托管/原生XMLTV路径中针对准确频道的手动节目源/ID绑定。参见[绑定与无障碍](docs/guide-binding-accessibility.zh-Hans.md)。
-- **收藏**：多收藏列表（通过操作 → 收藏列表切换/添加/重命名/删除）；家长控制PIN。
+- **收藏**：在支持的设备上，跨已配置的提供商和配置档案使用一个有序的[混合收藏集](docs/mixed-favorites.md)，支持通过CLI进行可迁移的导出/导入；保留家长控制PIN。回退模式下仍可使用各来源的收藏列表。
 - **设置**：设置和收藏的JSON导入/导出、支持的localStorage批量操作撤销日志、区分来源的回看续播，以及控制器工作流所用的已存设置精确比较。恢复假定只有一个写入者；自定义存储适配器仍为尽力回滚。参见[设置恢复](docs/settings-recovery.zh-Hans.md)。
 - **共享界面**：OTT Server、Tauri和Capacitor使用相同的频道列表主题与可见性设置。界面设置控制高亮和选中色；频道列表设置控制频道名称、图标、当前节目、进度及回看标记。
 - **提供商**：M3U/M3U8、Xtream直播及[点播电影/剧集目录](docs/xtream-media.zh-Hans.md)、Stalker/Ministra、Plex和VPortal。可用回看与媒体库功能取决于提供商能力和账户权限。

@@ -173,6 +173,7 @@ var keyStrings = {
         "Kontroluje sa pripojenie k serveru Plex…",
     "Choose a folder in the browser window":
         "Vyberte priečinok v okne prehliadača",
+    "Choose a profile": "Vyberte profil",
     "Choose files in the browser window": "Vyberte súbory v okne prehliadača",
     "Choose from": "Vyberte si z",
     "Choose language": "Vyberte jazyk",
@@ -1119,6 +1120,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X nastavenia",
     "Unable to load playlist": "Nie je možné načítať zoznam skladieb",
+    Unavailable: "Nedostupné",
     "Unlock the player's settings before changing its playlist.":
         "Pred zmenou zoznamu skladieb odomknite nastavenia prehrávača.",
     Untitled: "Bez názvu",

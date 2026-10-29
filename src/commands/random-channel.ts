@@ -142,7 +142,7 @@ export var randomChannels = (function () {
         ids: any[],
         options: any,
         include: (id: any) => boolean,
-        current: () => boolean,
+        current: (loadingOwner?: any) => boolean,
         media = false,
         preferred = -1
     ): any {
@@ -177,9 +177,9 @@ export var randomChannels = (function () {
             }
             if (preferred >= 0) break;
         }
-        function admitted(): boolean {
+        function admitted(loadingOwner?: any): boolean {
             return (
-                current() &&
+                current(loadingOwner) &&
                 w.channels === channels &&
                 channels[id] === channel &&
                 include(id) &&
@@ -204,7 +204,18 @@ export var randomChannels = (function () {
             member < 0 ||
             typeof play !== "function" ||
             !admitted() ||
-            play.call(w, category, member, true, admitted) !== true
+            play.call(
+                w,
+                category,
+                member,
+                true,
+                admitted,
+                undefined,
+                false,
+                false,
+                undefined,
+                admitted
+            ) !== true
         )
             return null;
         return { id: publicId, name: title, number: index + 1 };

@@ -161,6 +161,7 @@ var keyStrings = {
     "Checking folder permission": "בודק הרשאת גישה לתיקייה",
     "Checking the Plex server connection…": "בודק את חיבור השרת Plex...",
     "Choose a folder in the browser window": "בחר תיקייה בחלון הדפדפן",
+    "Choose a profile": "בחר פרופיל",
     "Choose files in the browser window": "בחר קבצים בחלון הדפדפן",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
@@ -1067,6 +1068,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "הגדרות ULTIFL1X",
     "Unable to load playlist": "לא ניתן לטעון את רשימת ההשמעה",
+    Unavailable: "לא זמין",
     "Unlock the player's settings before changing its playlist.":
         "יש לבטל את נעילת הגדרות הנגן לפני שינוי רשימת ההשמעה.",
     Untitled: "ללא כותרת",
