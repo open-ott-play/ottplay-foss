@@ -1,4 +1,3 @@
-import { utf8Encode } from "./favorites-document-json";
 import { ensureGlobalFavorites } from "./remote-favorites-global";
 export function globalFavoritesItemsCapability(w: any): any {
     if (w.__ottInitializeGlobalFavorites) w.__ottInitializeGlobalFavorites();
@@ -57,7 +56,7 @@ export function executeGlobalFavoritesItems(
             items = host.createItems();
             var bytes: number;
             try {
-                bytes = utf8Encode(JSON.stringify(request)).length;
+                bytes = w.__ottGlobalFavorites.requestBytes(request);
             } catch (_) {
                 bytes = 16385;
             }

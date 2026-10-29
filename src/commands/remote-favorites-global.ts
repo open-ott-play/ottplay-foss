@@ -1,5 +1,4 @@
 import { remoteFavoritesCapability } from "./remote-favorites-contract";
-import { utf8Encode } from "./favorites-document-json";
 export function ensureGlobalFavorites(
     w: any,
     runtime: string,
@@ -108,7 +107,7 @@ export function executeGlobalFavorites(
             }
             var bytes: number;
             try {
-                bytes = utf8Encode(JSON.stringify(request)).length;
+                bytes = w.__ottGlobalFavorites.requestBytes(request);
             } catch (_) {
                 bytes = 16385;
             }

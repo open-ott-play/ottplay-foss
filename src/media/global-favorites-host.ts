@@ -1,3 +1,4 @@
+import { utf8Encode } from "../commands/favorites-document-json";
 import { createGlobalFavoritesNavigation } from "./global-favorites-navigation";
 import { captureGlobalFavoriteMigration } from "./global-favorites-migration";
 import { createGlobalFavoritesItems } from "../commands/global-favorites-items";
@@ -950,6 +951,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         authorized: ports.authorized,
     });
     return {
+        requestBytes: function (request: any): number {
+            return utf8Encode(JSON.stringify(request)).length;
+        },
         navigation: navigation,
         favoriteSelected: function (owner: any) {
             return (

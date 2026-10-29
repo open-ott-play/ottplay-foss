@@ -1,4 +1,3 @@
-import { utf8Encode } from "./favorites-document-json";
 import { ensureGlobalFavorites } from "./remote-favorites-global";
 const ERRORS = [
     "invalid_request",
@@ -65,7 +64,7 @@ export function executeGlobalFavoritesRecovery(
                 return;
             }
             try {
-                if (utf8Encode(JSON.stringify(request)).length > 16384) {
+                if (w.__ottGlobalFavorites.requestBytes(request) > 16384) {
                     reject("envelope_too_large");
                     return;
                 }

@@ -244,6 +244,7 @@ function fixture(partial = false) {
         host = makeHost(w, hostPorts);
     return {
         host,
+        load,
         w,
         data,
         writes,
@@ -322,6 +323,125 @@ function assertRawUnchanged(f, before) {
         assert.equal(f.data.get(key), value, key);
 }
 async function main() {
+    const byteFixture = fixture();
+    for (const request of [
+        { text: "ASCII" },
+        { text: "Привет 世界 😀" },
+        { text: "\ud800" },
+    ]) {
+        assert.equal(
+            byteFixture.host.requestBytes(request),
+            Buffer.byteLength(JSON.stringify(request), "utf8")
+        );
+    }
+    assert.equal(byteFixture.host.requestBytes("a".repeat(16382)), 16384);
+    assert.equal(byteFixture.host.requestBytes("a".repeat(16383)), 16385);
+    const circular = {};
+    circular.self = circular;
+    assert.throws(() => byteFixture.host.requestBytes(circular));
+    assert.throws(() => byteFixture.host.requestBytes(undefined));
+    assert.throws(() => byteFixture.host.requestBytes("a".repeat(1048576)));
+    const originalRequestBytes = byteFixture.host.requestBytes;
+    const originalCreateItems = byteFixture.host.createItems;
+    async function invokeByteWrapper(kind, request, missingMethod = false) {
+        const seen = [];
+        const execute = (_params, count) => {
+            seen.push(count);
+            return Promise.resolve(
+                count > 16384
+                    ? { error: "envelope_too_large" }
+                    : { accepted: true }
+            );
+        };
+        byteFixture.host.requestBytes = missingMethod
+            ? undefined
+            : originalRequestBytes;
+        byteFixture.host.createItems = () => ({ execute, cancel() {} });
+        const w = {
+            __ottGlobalFavorites: byteFixture.host,
+            __ottGlobalFavoritesFacade: byteFixture.host.facade,
+            __ottGlobalFavoritesPorts: byteFixture.hostPorts,
+            __ottGlobalFavoritesProtocol: { execute },
+            __ottGlobalFavoritesRecovery: {
+                execute(value) {
+                    seen.push(value);
+                    return Promise.resolve({ accepted: true });
+                },
+            },
+        };
+        const module = byteFixture.load(
+            "src/commands/remote-favorites-global" +
+                (kind === "core" ? "" : "-" + kind) +
+                ".ts"
+        );
+        const dispatch =
+            kind === "core"
+                ? module.executeGlobalFavorites
+                : kind === "items"
+                  ? module.executeGlobalFavoritesItems
+                  : module.executeGlobalFavoritesRecovery;
+        const reply = await new Promise((resolve, reject) => {
+            let settled = false;
+            const timer = setTimeout(() => {
+                settled = true;
+                reject(new Error("wrapper callback was not delivered"));
+            }, 2000);
+            try {
+                dispatch(w, "runtime-one", request, (value) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(value);
+                });
+            } catch (error) {
+                settled = true;
+                clearTimeout(timer);
+                reject(error);
+            }
+        });
+        return { reply, seen };
+    }
+    function byteRequest(size) {
+        const request = {
+            params: { op: "describe", runtime: "runtime-one" },
+            expires_at: Date.now() / 1000 + 60,
+            padding: "😀界",
+        };
+        request.padding += "a".repeat(
+            size - Buffer.byteLength(JSON.stringify(request), "utf8")
+        );
+        assert.equal(Buffer.byteLength(JSON.stringify(request), "utf8"), size);
+        return request;
+    }
+    for (const kind of ["core", "items", "recovery"]) {
+        const exact = await invokeByteWrapper(kind, byteRequest(16384));
+        assert.equal(exact.reply.status, "ok");
+        assert.equal(exact.seen.length, 1);
+        if (kind !== "recovery") assert.equal(exact.seen[0], 16384);
+        const over = await invokeByteWrapper(kind, byteRequest(16385));
+        assert.equal(over.reply.data.error, "envelope_too_large");
+        assert.equal(over.seen.length, kind === "recovery" ? 0 : 1);
+        if (kind !== "recovery") assert.equal(over.seen[0], 16385);
+        for (const invalid of ["cycle", "undefined", "missing"]) {
+            const request = byteRequest(256);
+            if (invalid === "cycle") request.cycle = request;
+            if (invalid === "undefined") request.toJSON = () => undefined;
+            const bad = await invokeByteWrapper(
+                kind,
+                request,
+                invalid === "missing"
+            );
+            assert.equal(
+                bad.reply.data.error,
+                kind === "recovery" ? "invalid_request" : "envelope_too_large"
+            );
+            assert.equal(bad.seen.length, kind === "recovery" ? 0 : 1);
+            if (kind !== "recovery") assert.equal(bad.seen[0], 16385);
+        }
+    }
+    byteFixture.host.requestBytes = originalRequestBytes;
+    byteFixture.host.createItems = originalCreateItems;
+    byteFixture.host.dispose();
     const required = [
         "current",
         "caselessKey",

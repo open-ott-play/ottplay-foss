@@ -8,6 +8,7 @@ const test = require("node:test");
 const ts = require("typescript");
 const {
     assembleClassic,
+    CLASSIC_MODULES,
     CLASSIC_OPTIONAL_BUNDLES,
     CLASSIC_MAIN_MODULES,
 } = require("../scripts/classic-bundle.cjs");
@@ -131,6 +132,122 @@ test("optional favorites asset links without entry storage and loads without tou
             fs.existsSync(path.join(temporary, "build/utils/lzstring.js")),
             false
         );
+    } finally {
+        fs.rmSync(temporary, { force: true, recursive: true });
+    }
+});
+
+test("actual MAIN assembly rejects every optional UTF-8 edge without adding optional code to MAIN", () => {
+    const temporary = fs.mkdtempSync(
+        path.join(os.tmpdir(), "ott-favorites-main-")
+    );
+    const root = path.resolve(__dirname, "..");
+    const emitted = new Set();
+    function emit(relative, resolvedInput) {
+        if (emitted.has(relative)) return;
+        emitted.add(relative);
+        const input =
+            resolvedInput ||
+            (relative.startsWith("build/")
+                ? path.join(
+                      root,
+                      "src",
+                      relative.slice(6).replace(/\.js$/, ".ts")
+                  )
+                : path.join(root, relative));
+        const raw = fs.readFileSync(input, "utf8");
+        const output = input.endsWith(".ts")
+            ? ts.transpileModule(raw, {
+                  compilerOptions: {
+                      module: ts.ModuleKind.ES2015,
+                      removeComments: true,
+                      target: ts.ScriptTarget.ES5,
+                  },
+              }).outputText
+            : raw;
+        const file = path.join(temporary, relative);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, output);
+        const parsed = ts.createSourceFile(
+            file,
+            output,
+            ts.ScriptTarget.Latest,
+            true
+        );
+        for (const statement of parsed.statements) {
+            const specifier = statement.moduleSpecifier;
+            if (
+                !specifier ||
+                !ts.isStringLiteral(specifier) ||
+                !specifier.text.startsWith(".")
+            )
+                continue;
+            const resolved = ts.resolveModuleName(
+                specifier.text,
+                input,
+                {
+                    allowJs: true,
+                    moduleResolution: ts.ModuleResolutionKind.Node10,
+                },
+                ts.sys
+            ).resolvedModule;
+            assert(
+                resolved,
+                "Unresolved actual runtime import: " +
+                    input +
+                    " -> " +
+                    specifier.text
+            );
+            const resolvedSource = path.resolve(resolved.resolvedFileName);
+            const nativeRelative = path.relative(root, resolvedSource);
+            assert(
+                !nativeRelative.startsWith("..") &&
+                    !path.isAbsolute(nativeRelative),
+                "Runtime dependency outside repository"
+            );
+            const sourceRelative = nativeRelative.split(path.sep).join("/");
+            assert(
+                !sourceRelative.endsWith(".d.ts"),
+                "Runtime dependency resolved to declaration only"
+            );
+            const target = sourceRelative.startsWith("src/")
+                ? "build/" + sourceRelative.slice(4).replace(/\.tsx?$/, ".js")
+                : sourceRelative;
+            emit(target, resolvedSource);
+        }
+    }
+    try {
+        // Materialize actual source modules, including resolution-only bridge targets.
+        // Assembly membership remains the real production MAIN allowlist.
+        for (const name of CLASSIC_MODULES) emit(name);
+        const output = assembleClassic(temporary, CLASSIC_MAIN_MODULES);
+        require("acorn").parse(output, { ecmaVersion: 5 });
+        for (const wrapper of [
+            "remote-favorites-global",
+            "remote-favorites-global-items",
+            "remote-favorites-global-recovery",
+        ]) {
+            const file = path.join(
+                temporary,
+                "build/commands",
+                wrapper + ".js"
+            );
+            const original = fs.readFileSync(file, "utf8");
+            try {
+                fs.writeFileSync(
+                    file,
+                    'import { utf8Encode } from "./favorites-document-json";\n' +
+                        original +
+                        '\nutf8Encode("{}");\n'
+                );
+                assert.throws(
+                    () => assembleClassic(temporary, CLASSIC_MAIN_MODULES),
+                    /runtime import is not in CLASSIC_MODULES: \.\/favorites-document-json/
+                );
+            } finally {
+                fs.writeFileSync(file, original);
+            }
+        }
     } finally {
         fs.rmSync(temporary, { force: true, recursive: true });
     }
