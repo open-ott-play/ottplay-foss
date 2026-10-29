@@ -184,9 +184,7 @@ assert(
     !(offlineProfilesOnly && globalFavoritesOnly),
     "select only one smoke mode"
 );
-const globalFixture = globalFavoritesOnly
-    ? require("./global-favorites-smoke.cjs")
-    : null;
+const globalFixture = require("./global-favorites-smoke.cjs");
 assert(
     [undefined, "unsupported-controller"].includes(
         process.env.OTT_OFFLINE_PROFILES
@@ -956,6 +954,65 @@ function moduleOf(file, requireFn, window) {
                 ).installRemoteInspection(host);
             }
             loadRuntime();
+            function enableLegacyFavorites() {
+                assert(
+                    favoritesMode,
+                    "legacy persistence is an explicit fixture"
+                );
+                if (globalHost) return globalHost;
+                const legacy = dependencies("./remote-favorites");
+                const runtime = () =>
+                    dependencies("./remote-restart").remotePlayerInfo(host)
+                        .runtime;
+                globalHost = globalFixture.install(
+                    host,
+                    emitted,
+                    runtime,
+                    clone(configuration),
+                    {
+                        capture: () =>
+                            legacy.captureLegacyCurrentFavorite(host),
+                        play(entry, current) {
+                            let cancel;
+                            const result = new Promise((done, reject) => {
+                                if (!current()) {
+                                    reject(new Error("context_changed"));
+                                    return;
+                                }
+                                const capturedRuntime = runtime();
+                                cancel = legacy.executeLegacyFavoriteTarget(
+                                    host,
+                                    capturedRuntime,
+                                    {
+                                        action: "favorites",
+                                        expires_at: (Date.now() + 30000) / 1000,
+                                        params: {
+                                            id: entry.id,
+                                            op: "play",
+                                            runtime: capturedRuntime,
+                                        },
+                                    },
+                                    done,
+                                    entry
+                                );
+                            });
+                            return {
+                                cancel: () => {
+                                    if (cancel) cancel();
+                                },
+                                result,
+                            };
+                        },
+                        storage: kioskStorage,
+                    }
+                );
+                globalHosts.push(globalHost);
+                assert.equal(
+                    host.__ottGlobalFavorites.committer.canWrite(),
+                    true
+                );
+                return globalHost;
+            }
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 (name) =>
@@ -1136,6 +1193,7 @@ function moduleOf(file, requireFn, window) {
                 dropped,
                 droppedReload,
                 droppedStepReceipt,
+                enableLegacyFavorites,
                 favoritePlays: clone(favoritePlays),
                 global: () => {
                     assert(globalFavoritesOnly && globalFixture);
@@ -1193,12 +1251,14 @@ function moduleOf(file, requireFn, window) {
                     host.curList = host.cats.steps;
                     host.primaryIndex = 0;
                 },
-                stop: () =>
+                stop: () => {
                     controller.configure({
                         address: "",
                         enabled: false,
                         token: "",
-                    }),
+                    });
+                    if (globalHost) globalHost.dispose();
+                },
                 streamRestarts,
                 volume,
             });
@@ -2161,6 +2221,48 @@ function moduleOf(file, requireFn, window) {
         television = player("dev_test", "b".repeat(32), 30, false, true);
         const emptyFavorites = await jsonOn("tv", "fav");
         assert.deepEqual(emptyFavorites.entries, []);
+        assert.deepEqual((await jsonOn("tv", "caps")).favorites.operations, [
+            "list",
+            "play",
+        ]);
+        const beforeUnsupported = television().controlsReceived.filter(
+            (request) => request.action === "favorites"
+        ).length;
+        const beforeSharedStore = JSON.stringify(
+            favoriteStores.get("dev_test")
+        );
+        await assert.rejects(
+            run("fav", "add", "Unsupported write"),
+            (error) => {
+                assert.equal(error.stdout, "");
+                assert.match(error.stderr, /No favorites command was sent/);
+                return true;
+            }
+        );
+        assert.equal(
+            television().controlsReceived.filter(
+                (request) => request.action === "favorites"
+            ).length,
+            beforeUnsupported,
+            "unqualified add must not dispatch a favorites command"
+        );
+        assert.equal(
+            JSON.stringify(favoriteStores.get("dev_test")),
+            beforeSharedStore,
+            "unqualified add leaves the persisted backend unchanged"
+        );
+        television().enableLegacyFavorites();
+        assert.deepEqual((await jsonOn("tv", "caps")).favorites.operations, [
+            "list",
+            "add",
+            "play",
+            "remove",
+        ]);
+        assert.equal(
+            JSON.stringify(favoriteStores.get("dev_test")),
+            beforeSharedStore,
+            "host construction and capability discovery do not write favorites"
+        );
         const firstFavorite = await jsonOn("tv", "fav", "add", "First profile");
         assert.equal(firstFavorite.created, true);
         assert.equal(firstFavorite.entry.profile_number, 1);
@@ -2220,6 +2322,7 @@ function moduleOf(file, requireFn, window) {
         const priorFavoriteRuntime = firstPlay.runtime;
         television().stop();
         television = player("dev_test", "b".repeat(32), 30, false, true);
+        television().enableLegacyFavorites();
         const restoredFavorites = await jsonOn("tv", "fav");
         assert.notEqual(restoredFavorites.runtime, priorFavoriteRuntime);
         assert.deepEqual(

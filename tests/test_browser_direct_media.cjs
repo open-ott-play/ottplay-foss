@@ -239,6 +239,25 @@ deadline.unref();
         assert.deepEqual(resume.recovered, ["granted", "granted"]);
         checkpoint("profile context");
         const profileContext = await browser.newContext();
+        // Keep real OPFS handles, IndexedDB, and page closure. Only model the
+        // external-folder permission policy, as in the built-UI fixture.
+        await profileContext.addInitScript(() => {
+            const permission = { queries: 0, requests: 0, state: "granted" };
+            window.__directMediaProfilePermission = permission;
+            FileSystemHandle.prototype.queryPermission = function (options) {
+                if (!options || options.mode !== "read")
+                    throw new Error("Profile fixture requires read permission");
+                permission.queries++;
+                return Promise.resolve(permission.state);
+            };
+            FileSystemHandle.prototype.requestPermission = function (options) {
+                if (!options || options.mode !== "read")
+                    throw new Error("Profile fixture requires read permission");
+                permission.requests++;
+                permission.state = "granted";
+                return Promise.resolve(permission.state);
+            };
+        });
         let profilePage = await profileContext.newPage();
         const address = "http://127.0.0.1:" + server.address().port;
         await profilePage.goto(address);
@@ -394,7 +413,13 @@ deadline.unref();
             console.log("[direct-media-profile] blob body");
             const body = await response.text();
             console.log("[direct-media-profile] complete");
-            return { body, count: catalog.items.length, imported, loaded };
+            return {
+                body,
+                count: catalog.items.length,
+                imported,
+                loaded,
+                permission: window.__directMediaProfilePermission,
+            };
         }, portable);
         profilePage.off("console", profileConsole);
         profilePage.off("pageerror", profilePageError);
@@ -403,6 +428,12 @@ deadline.unref();
         assert.equal(restoredProfile.loaded.status, "ok");
         assert.equal(restoredProfile.body, "second.mp4");
         assert.equal(restoredProfile.count, 2);
+        assert(
+            restoredProfile.permission.queries > 0,
+            "reopened profile reads permission through the modeled policy"
+        );
+        assert.equal(restoredProfile.permission.requests, 0);
+        assert.equal(restoredProfile.permission.state, "granted");
         checkpoint("foreign profile context");
         const foreignContext = await browser.newContext();
         const foreignPage = await foreignContext.newPage();

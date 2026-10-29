@@ -9,14 +9,23 @@ const {
     createMainPorts,
 } = require("../tests/helpers/global-favorites-main-ports.cjs");
 
-function install(w, emitted, runtime, configuration) {
+function install(w, emitted, runtime, configuration, legacy = null) {
     const data = new Map([["m3um3uArr", JSON.stringify(configuration)]]);
     const writes = [];
     const modules = new Map();
     let active = true;
     let held = false;
     let tail = Promise.resolve();
-    const read = (key) => (data.has(key) ? data.get(key) : null);
+    const read = (key) => {
+        if (!legacy) return data.has(key) ? data.get(key) : null;
+        const persisted = w.stbGetPersistedItem(key);
+        assert.equal(
+            persisted,
+            w.stbGetItem(key),
+            "legacy storage views agree"
+        );
+        return persisted;
+    };
     // Only the physical persistence/environment ports are synthetic. The
     // actual host, portable codec, facade, transaction and receipt stores run
     // from the same project-compiled output as remote-requests.ts.
@@ -30,7 +39,8 @@ function install(w, emitted, runtime, configuration) {
                 return "conflict";
             assert.equal(typeof after, "string");
             writes.push(key);
-            data.set(key, after);
+            if (legacy) legacy.storage[key] = after;
+            else data.set(key, after);
             return "confirmed";
         },
         current: () => active,
@@ -59,8 +69,10 @@ function install(w, emitted, runtime, configuration) {
     });
     w._ = (text) => text;
     w.p_pref = "m3u";
-    w.stbGetItem = read;
-    w.stbGetPersistedItem = read;
+    if (!legacy) {
+        w.stbGetItem = read;
+        w.stbGetPersistedItem = read;
+    }
     function load(relative) {
         const file = path.resolve(emitted, relative);
         assert(file.startsWith(path.resolve(emitted) + path.sep));
@@ -100,11 +112,13 @@ function install(w, emitted, runtime, configuration) {
         base64Encode: (bytes) => Buffer.from(bytes).toString("base64"),
         capture: () => grant,
         captureLegacy: async () => {
+            if (legacy) return legacy.capture();
             throw Error("unexpected legacy capture");
         },
         current: () => active,
         now: Date.now,
-        playLegacy: () => {
+        playLegacy: (entry, current) => {
+            if (legacy) return legacy.play(entry, current);
             throw Error("unexpected legacy playback");
         },
         runtime,
@@ -125,10 +139,12 @@ function install(w, emitted, runtime, configuration) {
     w.__ottGlobalFavoritesRecovery = host.recovery;
     return {
         dispose() {
-            host.dispose();
+            if (!active) return;
             active = false;
+            host.dispose();
         },
-        snapshot: () => Array.from(data),
+        snapshot: () =>
+            legacy ? Object.entries(legacy.storage) : Array.from(data),
         writes: () => writes.slice(),
     };
 }
