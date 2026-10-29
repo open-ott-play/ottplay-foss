@@ -1,9 +1,10 @@
 # Legacy remote favorites across profiles
 
-This page describes the legacy `favorites` protocol and its separate bookmarks.
+This page describes the legacy `favorites` protocol and its `fav-…` bookmarks.
 The current CLI uses [Global Favorites](mixed-favorites.md) for ordinary `fav`
 commands when the player advertises global support. Use `fav legacy` below to
-access the older store explicitly.
+select the legacy protocol explicitly; mapped bookmarks can share entries with
+Global Favorites.
 
 Remote favorites save what the target player is actually playing, together with
 its provider and profile. You do not need to enter a profile number, channel
@@ -57,8 +58,11 @@ Within `fav legacy`, `current` aliases `add`, `rm` aliases `remove`, and
 is shorthand for `play`. Up to 100 entries can be saved per installation.
 The list is stored on the target installation and survives a player restart.
 Another device has its own list. Clearing the player's local data removes it.
-Removing a remote entry removes its cross-profile shortcut; it does not remove
-the item from the provider's own favorites list.
+On older players, or for an unmapped legacy bookmark, removing it deletes only
+its cross-profile shortcut and leaves provider-local favorites unchanged. On a
+player with the shared Global Favorites store, removing a legacy alias mapped
+to a global entry also removes that global entry and all legacy aliases linked
+to it. Neither path deletes the underlying channel or media file.
 
 ## Identity and storage
 
