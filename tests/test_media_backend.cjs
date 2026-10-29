@@ -1842,6 +1842,92 @@ test("admitted external seeks replace pending keyboard offsets despite decoder l
     );
 });
 
+for (const result of [
+    "refuse",
+    "throw",
+    "stale-before",
+    "stale-after",
+    "newer-marker",
+    "accept",
+]) {
+    test("relative seek marker rollback: " + result, (f) => {
+        const core = require("./helpers/shared-core-runtime.cjs")(f.context, {
+            vendorOnly: true,
+        });
+        load(f.context, "src/playback/session.ts");
+        const jobs = new Map(),
+            applied = [],
+            failure = new Error("decoder refused with an exception");
+        let serial = 0,
+            admitted = true,
+            decoderCalls = 0,
+            rollbacks = 0;
+        const target = { channelId: "one", kind: "vod", sourceId: "source" };
+        const controller = f.context.__ottPlaybackSession.create(core, {
+            apply: (plan) => applied.push(plan.position),
+            // Model an unchanged/lagging decoder after the attempted seek.
+            observe: () => ({
+                archiveAvailable: false,
+                duration: 500,
+                now: 1000,
+                position: 100,
+                target,
+            }),
+            preview() {},
+            schedule(callback) {
+                jobs.set(++serial, callback);
+                return serial;
+            },
+            unschedule(id) {
+                jobs.delete(id);
+            },
+        });
+        f.ports.beforeSeek = (position) => {
+            assert.equal(position, 150);
+            const rollback = controller.beforeSeek(position);
+            if (result === "stale-before") admitted = false;
+            return () => {
+                rollbacks++;
+                rollback();
+            };
+        };
+        const open = f.ports.open;
+        f.ports.open = (request, event) => {
+            const engine = open(request, event);
+            engine.relativeSeek = () => {
+                decoderCalls++;
+                if (result === "throw") throw failure;
+                if (result === "newer-marker") controller.beforeSeek(70);
+                if (result === "stale-after") admitted = false;
+                return result === "accept" || result === "stale-after";
+            };
+            return engine;
+        };
+        const handle = f.backend.open({ url: "fixture" });
+        f.playing(0, 100);
+        if (result === "throw")
+            assert.throws(
+                () => handle.seekRelative(50, () => admitted),
+                (error) => error === failure,
+                "rollback preserves the original decoder exception"
+            );
+        else {
+            const receipt = handle.seekRelative(50, () => admitted);
+            if (result === "accept") assert.equal(receipt.position, 150);
+            else assert.equal(receipt, null);
+        }
+        assert.equal(decoderCalls, result === "stale-before" ? 0 : 1);
+        assert.equal(rollbacks, result === "accept" ? 0 : 1);
+        controller.request({ intent: "offset", value: 10 });
+        for (const callback of [...jobs.values()]) callback();
+        assert.deepEqual(
+            applied,
+            [result === "accept" ? 160 : result === "newer-marker" ? 80 : 110],
+            "only a successfully submitted or newer seek can replace decoder time"
+        );
+    });
+}
+
 test("PIP observations and seeks never retire main keyboard gestures", (f) => {
     const main = f.backend.open({ url: "main" });
     f.playing(0, 100);

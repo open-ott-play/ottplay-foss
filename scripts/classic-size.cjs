@@ -443,13 +443,15 @@ const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 1152,
     gzipBytes: 0,
 });
-// Atomic relative VOD seeking adds 2613 raw / 768 gzip bytes in each entry
-// on Node22.23.4/zlib1.3.1-e00f703. Count the measured entry cost once in
+// Atomic relative VOD seeking adds 2613 raw / 768 gzip bytes; rejected-seek
+// marker rollback adds another 124 raw / 35 gzip on Node22.23.4.
+// Count the measured entry cost once in
 // each complete total; preserve prior release headroom and all provider/
-// optional caps. See docs/evidence/relative-seek-size-20261029.json.
+// optional caps. See docs/evidence/relative-seek-size-20261029.json and
+// docs/evidence/relative-seek-rollback-size-20261029.json.
 const RELATIVE_SEEK_ENTRY_ALLOWANCE = Object.freeze({
-    bytes: 2613,
-    gzipBytes: 768,
+    bytes: 2737,
+    gzipBytes: 803,
 });
 // Selected-only Plex queue metadata adds 308 raw / 70 gzip bytes to its lazy
 // provider on Node22.23.4. Count it once in the complete payload; entry,

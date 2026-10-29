@@ -57,6 +57,7 @@ try {
             ? PLEX_QUEUE_STEP_TOTAL_ALLOWANCE[metric]
             : 0;
     const plexEvidence = require("../docs/evidence/plex-queue-step-size-20261029.json");
+    const rollbackEvidence = require("../docs/evidence/relative-seek-rollback-size-20261029.json");
     assert(Object.isFrozen(PLEX_QUEUE_STEP_TOTAL_ALLOWANCE));
     assert.deepEqual(PLEX_QUEUE_STEP_TOTAL_ALLOWANCE, {
         bytes: 308,
@@ -71,6 +72,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    rollbackEvidence.increment[metric] -
                     shakaTrackDelta(budget, metric) -
                     plexEvidence.previousCaps[name][metric],
                 plexStepDelta(budget, metric),
@@ -102,6 +104,7 @@ try {
             );
             assert.equal(
                 TOTAL_BUDGET[metric] -
+                    rollbackEvidence.increment[metric] -
                     shakaTrackDelta(TOTAL_BUDGET, metric) -
                     variant.completeAfter[metric],
                 plexEvidence.previousCaps.totalBudget[metric] -
@@ -197,7 +200,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1637836, gzipBytes: 503807 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1637960, gzipBytes: 503842 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -210,11 +213,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1642316, gzipBytes: 506111 });
-    assert.deepEqual(BUDGET, { bytes: 1136462, gzipBytes: 347587 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1642440, gzipBytes: 506146 });
+    assert.deepEqual(BUDGET, { bytes: 1136586, gzipBytes: 347622 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1281298,
-        gzipBytes: 400277,
+        bytes: 1281422,
+        gzipBytes: 400312,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,

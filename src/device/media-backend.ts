@@ -54,7 +54,7 @@ interface MediaEngineLease {
 interface MediaBackendPorts {
     admitted?(): boolean;
     beforeIntent?(): boolean | void;
-    beforeSeek?(position: number): void;
+    beforeSeek?(position: number): (() => void) | void;
     clearInterval(timer: any): void;
     context(): MediaBackendContext | null;
     emit(
@@ -450,13 +450,19 @@ function createMediaBackend(ports: MediaBackendPorts) {
             );
             var requested = sample.position + value;
             var target = Math.max(0, Math.min(end, requested));
-            if (ports.beforeSeek) ports.beforeSeek(target);
-            if (
-                !valid() ||
-                captured.relativeSeek(target, sample.paused) !== true
-            )
-                return null;
-            if (!valid()) return null;
+            var rollback = ports.beforeSeek && ports.beforeSeek(target);
+            var accepted = false;
+            try {
+                if (
+                    !valid() ||
+                    captured.relativeSeek(target, sample.paused) !== true ||
+                    !valid()
+                )
+                    return null;
+                accepted = true;
+            } finally {
+                if (!accepted && typeof rollback === "function") rollback();
+            }
             desired = position = target;
             offset = 0;
             command("position");

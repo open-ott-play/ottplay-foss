@@ -3978,9 +3978,10 @@ export function getCoreMediaBackend(): any {
                 driver === (window as any).__ottActiveProviderDriver
             );
         },
-        beforeSeek: function (position: number): void {
+        beforeSeek: function (position: number): (() => void) | void {
             var playback = (window as any).__ottClassicPlayback;
-            if (playback && playback.beforeSeek) playback.beforeSeek(position);
+            if (playback && playback.beforeSeek)
+                return playback.beforeSeek(position);
         },
         clearInterval: function (timer: any) {
             clearInterval(timer);

@@ -141,10 +141,10 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 1,136,462 UTF-8 bytes and 347,587
+Each final classic entry bundle is limited to 1,136,586 UTF-8 bytes and 347,622
 bytes compressed with gzip level 9. The entry plus all eight provider families
-must fit within 1,281,298 bytes and 400,277 gzip bytes. Including all optional
-bundles, the complete total is limited to 1,642,316 bytes and 506,111 gzip bytes,
+must fit within 1,281,422 bytes and 400,312 gzip bytes. Including all optional
+bundles, the complete total is limited to 1,642,440 bytes and 506,146 gzip bytes,
 summed per file. These limits apply independently to server, Tauri and
 Capacitor artifacts. The complete-total limit includes the measured
 [308-byte / 70-gzip-byte Plex selected-metadata allowance](evidence/plex-queue-step-size-20261029.json);
@@ -162,6 +162,13 @@ total, preserving previous release-identity headroom; provider and optional
 limits do not change. The [measurement record](evidence/relative-seek-size-20261029.json)
 distinguishes the retained baseline from the new CI measurement and does not
 claim successful browser qualification for the size-rejected build.
+
+Rejected-seek marker rollback adds another 124 raw / 35 gzip bytes, bringing
+the relative-seek allowance to 2,737 raw / 803 gzip bytes per entry and each
+applicable total. Its [paired measurement](evidence/relative-seek-rollback-size-20261029.json)
+uses the same empty embedded source revision in both archive builds. This
+measures the code delta; final stamped CI and release artifacts must still
+pass their actual size gates. The existing identity allowance is unchanged.
 
 Shaka audio and subtitle controls separately allocate 576 raw / 128 gzip
 bytes to each entry, plus 1,200 raw / 640 gzip bytes for the lazy track adapter.
