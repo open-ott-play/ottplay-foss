@@ -574,7 +574,35 @@ function createRemotePlexQueue(
                         return;
                     }
                     if (!libraryRequest) {
-                        client.queue(ids, prepare);
+                        if (!stepping) {
+                            client.queue(ids, prepare);
+                            return;
+                        }
+                        // A step retains its already validated source and order.
+                        // Refresh the selected row (including access/playability),
+                        // not every unrelated item in a potentially large queue.
+                        var retained =
+                            prior &&
+                            prior.source &&
+                            prior.source.sourceId === sourceId &&
+                            prior.source.catalog();
+                        if (!retained || retained.length !== ids.length) {
+                            finish(
+                                "Player context changed before Plex playback."
+                            );
+                            return;
+                        }
+                        selectedLibrary = prior.source.library || null;
+                        client.queue([ids[index]], function (records: any[]) {
+                            if (!current()) return;
+                            if (!records || records.length !== 1) {
+                                prepare([]);
+                                return;
+                            }
+                            var next = retained.slice();
+                            next[index] = records[0];
+                            prepare(next);
+                        });
                         return;
                     }
                     function normalized(value: string): string {
