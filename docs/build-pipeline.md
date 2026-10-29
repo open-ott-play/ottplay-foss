@@ -165,9 +165,9 @@ Shaka audio and subtitle controls separately allocate 576 raw / 128 gzip
 bytes to each entry, plus 1,200 raw / 640 gzip bytes for the lazy track adapter.
 Each applicable total counts both feature allowances once; other provider and
 optional caps stay unchanged. The [Shaka measurement](evidence/shaka-track-controls-size-20261029.json)
-retains its original toolchain and scope. Combined measurements are recorded
-separately after integration; the limits above are allocation caps, not measured
-output sizes.
+retains its original toolchain and scope. The [integrated Node 22 measurement](evidence/shaka-relative-integration-size-20261029.json)
+records actual output and the targeted browser results; the limits above are
+allocation caps, not measured output sizes.
 
 Historically, Debug-v3 attempt history added 1,867 raw and 564 gzip bytes over `1e8973`,
 measured with Node 22.23.3 / zlib 1.3.1-e00f703, the production compiler and
