@@ -1,0 +1,293 @@
+{
+  "schema": 1,
+  "feature": "Selected-item metadata refresh for Plex queue next/previous",
+  "status": "Measured size allocation; successor CI qualification required",
+  "allocation": {
+    "name": "PLEX_QUEUE_STEP_TOTAL_ALLOWANCE",
+    "bytes": 308,
+    "gzipBytes": 70,
+    "counting": "Once in BASE_TOTAL_BUDGET and its derived TOTAL_BUDGET. Entry, legacy total, provider and optional caps are unchanged. Existing complete-total headroom is preserved; Shaka and relative-seek allowances remain independent."
+  },
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703"
+  },
+  "baseline": {
+    "source": "2f8c046d27880cdfeb73376129c84a3e7fa8d454",
+    "tree": "d281addd327b4292323f03cc3595d21e4abf015b",
+    "report": {
+      "path": "local-browser-check/source/build/reports/classic-bundle.json",
+      "sha256": "d1f981211afa026b71c3981871eed7abe674da609b8cea3a60c2b2ec35fe0867"
+    },
+    "execution": {
+      "path": "local-browser-check/result.json",
+      "sha256": "a93819f8ceefe883568ef74c3021cb8652e037ba0dc451277951db7ec32c01bd"
+    },
+    "buildExitCode": 0
+  },
+  "candidate": {
+    "source": "2699e8cb9d2e2d110c3bc3a1cf46a2fbc3f25074",
+    "tree": "81ddfe4c2170ba826a321a9209feb8a807c366de",
+    "report": {
+      "path": "plex-queue-step/size-after-2699e8cb/source/build/reports/classic-size-diagnostics.json",
+      "sha256": "6d1274065a27c4c5f00d96e13611ae1a439c31260b7fe8667ff7db7b6ba018bd"
+    },
+    "execution": {
+      "path": "plex-queue-step/size-after-2699e8cb/result.json",
+      "sha256": "a12c5bf04df408b12dfcfce5c06c4e320636eb28c45cf3e2c7b1688cb2af588f"
+    },
+    "buildExitCode": 1,
+    "reportComplete": true,
+    "inputErrors": [],
+    "violations": [
+      {
+        "actual": 1640412,
+        "budget": 1640232,
+        "metric": "bytes",
+        "path": "dist/player.js",
+        "scope": "total"
+      },
+      {
+        "actual": 1640370,
+        "budget": 1640232,
+        "metric": "bytes",
+        "path": "src-tauri/frontend/dist/player.js",
+        "scope": "total"
+      },
+      {
+        "actual": 1640370,
+        "budget": 1640232,
+        "metric": "bytes",
+        "path": "dist-mobile/dist/player.js",
+        "scope": "total"
+      }
+    ],
+    "interpretation": "Expected rejection by the old complete-total raw caps; this measurement is not a successful build or runtime qualification."
+  },
+  "previousCaps": {
+    "budget": {
+      "bytes": 1135886,
+      "gzipBytes": 347459
+    },
+    "legacyTotalBudget": {
+      "bytes": 1280722,
+      "gzipBytes": 400149
+    },
+    "baseTotalBudget": {
+      "bytes": 1635752,
+      "gzipBytes": 502969
+    },
+    "totalBudget": {
+      "bytes": 1640232,
+      "gzipBytes": 505273
+    },
+    "optionalBudget": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "optionalBudgets": {
+      "control-transport": {
+        "bytes": 6000,
+        "gzipBytes": 2000
+      },
+      "favorites-transfer": {
+        "bytes": 241430,
+        "gzipBytes": 62192
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "newCompleteCaps": {
+    "baseTotalBudget": {
+      "bytes": 1636060,
+      "gzipBytes": 503039
+    },
+    "totalBudget": {
+      "bytes": 1640540,
+      "gzipBytes": 505343
+    }
+  },
+  "variants": [
+    {
+      "path": "dist/player.js",
+      "entry": {
+        "bytes": 1135788,
+        "gzipBytes": 347270,
+        "path": "dist/player.js",
+        "sha256": "dbffa98f7bd895b7c736cd99720d0aca339c64166c33f08178b053ff82a92f5e"
+      },
+      "plexBefore": {
+        "bytes": 61376,
+        "gzipBytes": 21026,
+        "path": "dist/provider-plex.js",
+        "sha256": "88d32a8646f9aac28dd6afe1efea2ddf7c41313ada29b9d280516257f9b99a6d"
+      },
+      "plexAfter": {
+        "bytes": 61684,
+        "gzipBytes": 21096,
+        "path": "dist/provider-plex.js",
+        "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+      },
+      "legacyBefore": {
+        "bytes": 1279850,
+        "gzipBytes": 399836
+      },
+      "legacyAfter": {
+        "bytes": 1280158,
+        "gzipBytes": 399906
+      },
+      "completeBefore": {
+        "bytes": 1640104,
+        "gzipBytes": 504962
+      },
+      "completeAfter": {
+        "bytes": 1640412,
+        "gzipBytes": 505032
+      },
+      "unchangedAssets": {
+        "otherProviders": 7,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, bytes and gzipBytes equality."
+      }
+    },
+    {
+      "path": "src-tauri/frontend/dist/player.js",
+      "entry": {
+        "bytes": 1135746,
+        "gzipBytes": 347325,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "d2bce4fbf6d166edff99854ae5a1e0207e9bddbf9ed0a7094f81bb7900f2cfb7"
+      },
+      "plexBefore": {
+        "bytes": 61376,
+        "gzipBytes": 21026,
+        "path": "src-tauri/frontend/dist/provider-plex.js",
+        "sha256": "88d32a8646f9aac28dd6afe1efea2ddf7c41313ada29b9d280516257f9b99a6d"
+      },
+      "plexAfter": {
+        "bytes": 61684,
+        "gzipBytes": 21096,
+        "path": "src-tauri/frontend/dist/provider-plex.js",
+        "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+      },
+      "legacyBefore": {
+        "bytes": 1279808,
+        "gzipBytes": 399891
+      },
+      "legacyAfter": {
+        "bytes": 1280116,
+        "gzipBytes": 399961
+      },
+      "completeBefore": {
+        "bytes": 1640062,
+        "gzipBytes": 505017
+      },
+      "completeAfter": {
+        "bytes": 1640370,
+        "gzipBytes": 505087
+      },
+      "unchangedAssets": {
+        "otherProviders": 7,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, bytes and gzipBytes equality."
+      }
+    },
+    {
+      "path": "dist-mobile/dist/player.js",
+      "entry": {
+        "bytes": 1135746,
+        "gzipBytes": 347325,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "d2bce4fbf6d166edff99854ae5a1e0207e9bddbf9ed0a7094f81bb7900f2cfb7"
+      },
+      "plexBefore": {
+        "bytes": 61376,
+        "gzipBytes": 21026,
+        "path": "dist-mobile/dist/provider-plex.js",
+        "sha256": "88d32a8646f9aac28dd6afe1efea2ddf7c41313ada29b9d280516257f9b99a6d"
+      },
+      "plexAfter": {
+        "bytes": 61684,
+        "gzipBytes": 21096,
+        "path": "dist-mobile/dist/provider-plex.js",
+        "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+      },
+      "legacyBefore": {
+        "bytes": 1279808,
+        "gzipBytes": 399891
+      },
+      "legacyAfter": {
+        "bytes": 1280116,
+        "gzipBytes": 399961
+      },
+      "completeBefore": {
+        "bytes": 1640062,
+        "gzipBytes": 505017
+      },
+      "completeAfter": {
+        "bytes": 1640370,
+        "gzipBytes": 505087
+      },
+      "unchangedAssets": {
+        "otherProviders": 7,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, bytes and gzipBytes equality."
+      }
+    }
+  ],
+  "limitations": [
+    "Both exported-source measurements use the same version identity without a Git checkout. Their entries and every non-Plex asset are byte-identical. Hosted/release source stamping still consumes the existing independent identity headroom.",
+    "No new browser/native runtime test was run for this allocation; the next exact-head CI must pass."
+  ],
+  "sourceDifferences": [
+    "src/plugins/plex-queue.ts",
+    "tests/test_remote_plex.cjs"
+  ],
+  "unchangedBuildInputs": [
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "scripts",
+    "src/media",
+    "src/classic"
+  ]
+}
