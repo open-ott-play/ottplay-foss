@@ -141,17 +141,27 @@ manifest hash together cannot authorize another import or a removed guard.
 The loader recipe lives in the already-fingerprinted builder. Both runtime and
 worker remain staged together, with their licenses, in every web/native root.
 
-Each final classic entry bundle is limited to 897,023 UTF-8 bytes and 278,582
+Each final classic entry bundle is limited to 1,135,886 UTF-8 bytes and 347,459
 bytes compressed with gzip level 9. The entry plus all eight provider families
-must also fit within 1,017,923 bytes and 323,482 gzip bytes, summed per file.
-Both limits apply independently to server, Tauri and Capacitor artifacts.
+must fit within 1,280,722 bytes and 400,149 gzip bytes. Including all optional
+bundles, the complete total is limited to 1,640,232 bytes and 505,273 gzip bytes,
+summed per file. These limits apply independently to server, Tauri and
+Capacitor artifacts.
 Native transformations are measured after staging.
 `npm run check:size` reads the actual artifacts; it does not trust a prior report.
-These budgets cover `player.js`, not external media libraries or the complete
-application download. Raise a budget only with a reviewed feature/size tradeoff.
+These budgets cover the classic entry, providers and optional bundles, not
+external media libraries or the complete application download. Raise a budget
+only with a reviewed feature/size tradeoff.
 The authoritative limits and measurement history are in `scripts/classic-size.cjs`.
 
-Debug-v3 attempt history adds 1,867 raw and 564 gzip bytes over `1e8973`,
+Atomic relative VOD seeking adds a measured 2,613 raw and 768 gzip bytes per
+entry on Node 22.23.4. The same increment is counted once in each complete
+total, preserving previous release-identity headroom; provider and optional
+limits do not change. The [measurement record](evidence/relative-seek-size-20261029.json)
+distinguishes the retained baseline from the new CI measurement and does not
+claim successful browser qualification for the size-rejected build.
+
+Historically, Debug-v3 attempt history added 1,867 raw and 564 gzip bytes over `1e8973`,
 measured with Node 22.23.3 / zlib 1.3.1-e00f703, the production compiler and
 optimizer, the same 1.1.56 version and a nonempty 40-hex source identity.
 The baseline is 894,773 / 277,766 raw/gzip bytes for web and

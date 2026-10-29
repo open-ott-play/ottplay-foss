@@ -12,6 +12,7 @@ const {
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+    RELATIVE_SEEK_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -127,7 +128,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1633139, gzipBytes: 502201 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1635752, gzipBytes: 502969 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -140,11 +141,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1637619, gzipBytes: 504505 });
-    assert.deepEqual(BUDGET, { bytes: 1133273, gzipBytes: 346691 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1640232, gzipBytes: 505273 });
+    assert.deepEqual(BUDGET, { bytes: 1135886, gzipBytes: 347459 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1278109,
-        gzipBytes: 399381,
+        bytes: 1280722,
+        gzipBytes: 400149,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -218,7 +219,9 @@ try {
     }))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                budget[metric] - mixedEvidence.previousCaps[name][metric],
+                budget[metric] -
+                    RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
+                    mixedEvidence.previousCaps[name][metric],
                 mixedDelta(budget, metric),
                 name + " counts each mixed component once"
             );
@@ -362,13 +365,16 @@ try {
     })) {
         assert.equal(
             budget.bytes -
+                RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes -
                 mixedDelta(budget, "bytes") -
                 retirementEvidence.previousCaps[name].bytes,
             1152,
             name + " counts retirement once"
         );
         assert.equal(
-            budget.gzipBytes - mixedDelta(budget, "gzipBytes"),
+            budget.gzipBytes -
+                RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes -
+                mixedDelta(budget, "gzipBytes"),
             retirementEvidence.previousCaps[name].gzipBytes,
             name + " gzip unchanged"
         );
@@ -452,6 +458,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     mixedDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     recoveryEvidence.previousCaps[name][metric],
@@ -576,6 +583,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     mixedDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
@@ -635,6 +643,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     mixedDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
@@ -684,6 +693,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     mixedDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
@@ -718,6 +728,7 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
+                        RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         mixedDelta(TOTAL_BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(TOTAL_BUDGET, metric) -
@@ -732,6 +743,7 @@ try {
                 (item) =>
                     item[metric] <=
                     BUDGET[metric] -
+                        RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         mixedDelta(BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(BUDGET, metric) -
