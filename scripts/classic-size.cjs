@@ -734,6 +734,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
+    // Shaka track controls load with the engine and retain an independent cap.
+    "shaka-tracks": Object.freeze({ bytes: 1200, gzipBytes: 640 }),
     // Two live-recovery choices add 239 raw / 73 gzip bytes on Node 26.12.1.
     // Keep the existing lazy editor and its original measurement headroom.
     "subtitle-appearance": Object.freeze({ bytes: 8100, gzipBytes: 3400 }),
@@ -759,7 +761,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        OPTIONAL_BUDGETS["shaka-tracks"].bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -773,7 +776,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
+        OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.

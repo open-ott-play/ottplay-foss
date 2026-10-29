@@ -12,6 +12,7 @@ const source = [
     "src/core/native-hls.ts",
     "src/playback/stream-policy.ts",
     "src/core/index.ts",
+    "src/core/shaka-tracks.ts",
 ]
     .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
     .join("\n");
@@ -3005,6 +3006,177 @@ test("released Shaka rejects a foreign reported URL after reset", async () => {
     assert(w._coreShakaTeardown);
     assert.equal(media.currentSrc, "blob:foreign");
 });
+function installShakaTracks(player, modern = true) {
+    player.audios = [
+        { active: true, id: 10, label: "English", language: "en", roles: [] },
+        { active: false, id: 20, label: "French", language: "fr", roles: [] },
+    ];
+    player.texts = [
+        { active: true, id: 50, label: "English", language: "en" },
+        { active: false, id: 60, label: "French", language: "fr" },
+    ];
+    player.trackWrites = [];
+    player.visible = true;
+    player.getTextTracks = () => player.texts;
+    player.selectTextTrack = (track) => {
+        player.trackWrites.push(["text", track?.id ?? null]);
+        player.texts.forEach((item) => {
+            item.active = item === track;
+        });
+        player.events.textchanged?.();
+    };
+    const selectAudio = (track) => {
+        player.trackWrites.push(["audio", track.language]);
+        player.audios.forEach((item) => {
+            item.active = item.language === track.language;
+        });
+        // Shaka may automatically enable forced subtitles on an audio change.
+        player.texts[0].active = true;
+        player.events.variantchanged?.();
+    };
+    if (modern) {
+        player.getAudioTracks = () => player.audios;
+        player.selectAudioTrack = selectAudio;
+    } else {
+        player.getVariantTracks = () => player.audios;
+        player.selectAudioLanguage = (language) =>
+            selectAudio(
+                player.audios.find((track) => track.language === language)
+            );
+        player.isTextTrackVisible = () => player.visible;
+        player.setTextTrackVisibility = (value) => {
+            player.visible = value;
+            player.trackWrites.push(["visible", value]);
+            player.events.texttrackvisibility?.();
+        };
+    }
+    player.selectVariantTrack = () => {
+        throw new Error("must preserve video quality and ABR");
+    };
+}
+for (const modern of [true, false]) {
+    test(
+        "Shaka tracks preserve explicit Off/audio and owner lifetime: modern=" +
+            modern,
+        async () => {
+            const { w, shakas, boxes } = fixture();
+            const preferences = [];
+            w.applyChannelPreference = (key, callback) => {
+                if (key === "aAudios" || key === "aSubs")
+                    preferences.push([key, callback]);
+            };
+            w.playerMode = 2;
+            w.__ottNativeRuntime = modern;
+            w.stbPlay("tracks.mpd");
+            const player = shakas[0];
+            installShakaTracks(player, modern);
+            if (modern) {
+                player.attached.resolve();
+                await tick();
+            }
+            if (!modern) {
+                // The first quality is inactive; the active duplicate must still select English.
+                player.audios.unshift({
+                    ...player.audios[0],
+                    active: false,
+                    height: 360,
+                    id: 11,
+                });
+            }
+            player.loaded.resolve();
+            await tick();
+            const owner = w.getCoreMediaBackend().current();
+            assert.equal(owner.tracks("audio").length, 2);
+            assert.equal(
+                owner.tracks("audio").filter((track) => track.selected).length,
+                1
+            );
+            assert.equal(w.stbAudioTracksExists(), true);
+            w.stbToggleSubtitle();
+            boxes.at(-1)[2](0);
+            assert.equal(
+                modern
+                    ? player.texts.some((track) => track.active)
+                    : player.visible,
+                false
+            );
+            w.stbToggleAudioTrack();
+            boxes.at(-1)[2](1);
+            assert.equal(owner.__ottExplicitTracks.audio, 2);
+            assert.equal(
+                player.audios.find((track) => track.language === "fr").active,
+                true
+            );
+            assert.equal(
+                modern
+                    ? player.texts.some((track) => track.active)
+                    : player.visible,
+                false
+            );
+            // Reordering/late additions retain stable menu IDs and an explicit audio index of 1.
+            player.audios.reverse();
+            player.events.trackschanged();
+            for (const [key, callback] of preferences)
+                callback(key === "aAudios" ? 0 : 1);
+            assert.equal(
+                player.audios.find((track) => track.language === "fr").active,
+                true
+            );
+            assert.equal(
+                modern
+                    ? player.texts.some((track) => track.active)
+                    : player.visible,
+                false
+            );
+            const writes = player.trackWrites.length;
+            player.events.trackschanged();
+            assert.equal(
+                player.trackWrites.length,
+                writes,
+                "restoration is idempotent"
+            );
+            w.stbToggleSubtitle();
+            boxes.at(-1)[2](2);
+            assert.equal(player.texts[1].active, true);
+            if (!modern) assert.equal(player.visible, true);
+            player.texts.reverse();
+            player.events.trackschanged();
+            assert.equal(
+                player.texts.find((track) => track.language === "fr").active,
+                true,
+                "text IDs survive track-list reordering"
+            );
+            w.stbToggleAudioTrack();
+            const audioRows = owner.tracks("audio");
+            const englishRow = audioRows.findIndex(
+                (track) => track.language === "en"
+            );
+            boxes.at(-1)[2](englishRow);
+            assert.equal(
+                owner.__ottExplicitTracks.audio,
+                1,
+                "audio zero remains an explicit choice"
+            );
+            assert.equal(
+                player.audios.find((track) => track.language === "en").active,
+                true
+            );
+            const oldRestore = player.events.trackschanged;
+            const finalWrites = player.trackWrites.length;
+            w.stbStop();
+            oldRestore();
+            for (const [, callback] of preferences) callback(0);
+            assert.equal(player.trackWrites.length, finalWrites);
+            oldRestore();
+            assert.equal(
+                player.trackWrites.length,
+                finalWrites,
+                "stale callbacks have no authority"
+            );
+            player.destroyed.resolve();
+        }
+    );
+}
 
 (async () => {
     let failures = 0;

@@ -127,7 +127,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1633139, gzipBytes: 502201 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1634339, gzipBytes: 502841 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -140,7 +140,7 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1637619, gzipBytes: 504505 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1638819, gzipBytes: 505145 });
     assert.deepEqual(BUDGET, { bytes: 1133273, gzipBytes: 346691 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
         bytes: 1278109,
@@ -201,6 +201,14 @@ try {
             /gzipBytes .* exceeds budget/
         );
     }
+    const shakaTrackDelta = (budget, metric) =>
+        budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? OPTIONAL_BUDGETS["shaka-tracks"][metric]
+            : 0;
+    assert.deepEqual(OPTIONAL_BUDGETS["shaka-tracks"], {
+        bytes: 1200,
+        gzipBytes: 640,
+    });
     const mixedEvidence = require("../docs/evidence/mixed-global-favorites-size-20261028.json");
     const mixedDelta = (budget, metric) =>
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE[metric] +
@@ -218,7 +226,9 @@ try {
     }))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                budget[metric] - mixedEvidence.previousCaps[name][metric],
+                budget[metric] -
+                    shakaTrackDelta(budget, metric) -
+                    mixedEvidence.previousCaps[name][metric],
                 mixedDelta(budget, metric),
                 name + " counts each mixed component once"
             );
@@ -363,12 +373,15 @@ try {
         assert.equal(
             budget.bytes -
                 mixedDelta(budget, "bytes") -
+                shakaTrackDelta(budget, "bytes") -
                 retirementEvidence.previousCaps[name].bytes,
             1152,
             name + " counts retirement once"
         );
         assert.equal(
-            budget.gzipBytes - mixedDelta(budget, "gzipBytes"),
+            budget.gzipBytes -
+                mixedDelta(budget, "gzipBytes") -
+                shakaTrackDelta(budget, "gzipBytes"),
             retirementEvidence.previousCaps[name].gzipBytes,
             name + " gzip unchanged"
         );
@@ -379,19 +392,21 @@ try {
     );
     assert.deepEqual(
         Object.fromEntries(
-            Object.entries(OPTIONAL_BUDGETS).map(([name, value]) => [
-                name,
-                name === "favorites-transfer"
-                    ? {
-                          bytes:
-                              value.bytes -
-                              MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
-                          gzipBytes:
-                              value.gzipBytes -
-                              MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
-                      }
-                    : value,
-            ])
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(([name]) => name !== "shaka-tracks")
+                .map(([name, value]) => [
+                    name,
+                    name === "favorites-transfer"
+                        ? {
+                              bytes:
+                                  value.bytes -
+                                  MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
+                              gzipBytes:
+                                  value.gzipBytes -
+                                  MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
+                          }
+                        : value,
+                ])
         ),
         retirementEvidence.previousCaps.OPTIONAL_BUDGETS
     );
@@ -453,6 +468,7 @@ try {
             assert.equal(
                 budget[metric] -
                     mixedDelta(budget, metric) -
+                    shakaTrackDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     recoveryEvidence.previousCaps[name][metric],
                 recoveryDelta(budget, metric),
@@ -577,6 +593,7 @@ try {
             assert.equal(
                 budget[metric] -
                     mixedDelta(budget, metric) -
+                    shakaTrackDelta(budget, metric) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                     DESKTOP_FAVORITES_KEY_ALLOWANCE[metric] -
                     recoveryDelta(budget, metric) -
@@ -636,6 +653,7 @@ try {
             assert.equal(
                 actual[key] -
                     mixedDelta(actual, key) -
+                    shakaTrackDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
@@ -685,6 +703,7 @@ try {
             assert.equal(
                 actual[key] -
                     mixedDelta(actual, key) -
+                    shakaTrackDelta(actual, key) -
                     SHAKA_RETIREMENT_ENTRY_ALLOWANCE[key] -
                     favoritesDelta(actual, key) -
                     recoveryDelta(actual, key) -
@@ -719,6 +738,7 @@ try {
                     (item) =>
                         TOTAL_BUDGET[metric] -
                         mixedDelta(TOTAL_BUDGET, metric) -
+                        shakaTrackDelta(TOTAL_BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(TOTAL_BUDGET, metric) -
                         recoveryDelta(TOTAL_BUDGET, metric) -
@@ -733,6 +753,7 @@ try {
                     item[metric] <=
                     BUDGET[metric] -
                         mixedDelta(BUDGET, metric) -
+                        shakaTrackDelta(BUDGET, metric) -
                         SHAKA_RETIREMENT_ENTRY_ALLOWANCE[metric] -
                         favoritesDelta(BUDGET, metric) -
                         recoveryDelta(BUDGET, metric) -

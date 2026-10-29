@@ -166,6 +166,10 @@ function boot(options = {}) {
                 tag.onerror(new Error("Local library unavailable"));
                 return;
             }
+            if (options.stalledTracks && name === "shaka-tracks.js") {
+                pendingMedia.push(tag);
+                return;
+            }
             if (
                 options.stalledMedia &&
                 /^(hls.min.js|shaka-player.compiled.js)$/.test(name)
@@ -197,6 +201,8 @@ function boot(options = {}) {
                 }
             } else if (tag.src.indexOf("shaka-player.compiled.js") !== -1)
                 context.shaka = { Player() {} };
+            else if (tag.src.indexOf("/dist/shaka-tracks.js?") !== -1)
+                context.__ottShakaTracks = function () {};
             else if (tag.src.indexOf("/dist/player.js?") !== -1)
                 context.startPlayer = function () {
                     starts++;
@@ -1381,3 +1387,45 @@ console.log(
 console.log(
     "OK: UI boot uses zero engine downloads; demand is shared, bounded and retryable"
 );
+
+// The Shaka adapter is part of engine readiness, never part of default UI boot.
+{
+    const result = boot({ stalledTracks: true });
+    const completed = [];
+    assert.equal(
+        result.requests.some((url) => url.includes("shaka-tracks")),
+        false
+    );
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        completed.push(ready)
+    );
+    assert.equal(typeof result.context.shaka.Player, "function");
+    assert.deepEqual(
+        completed,
+        [],
+        "engine cannot play before its track adapter is ready"
+    );
+    assert.equal(result.pendingMedia.length, 1);
+    result.context.__ottShakaTracks = function () {};
+    result.pendingMedia[0].onload();
+    assert.deepEqual(completed, [true]);
+}
+{
+    const result = boot({ libraryFailures: ["shaka-tracks.js"] });
+    const completed = [];
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        completed.push(ready)
+    );
+    result.context.__ottLoadMediaEngine("shaka", (ready) =>
+        completed.push(ready)
+    );
+    assert.deepEqual(completed, [false, false]);
+    assert.equal(
+        result.requests.filter((url) => url.includes("shaka-tracks.js")).length,
+        2,
+        "a failed adapter download remains retryable"
+    );
+    result.context.__ottLoadMediaEngine("hls", (ready) =>
+        assert.equal(ready, true)
+    );
+}
