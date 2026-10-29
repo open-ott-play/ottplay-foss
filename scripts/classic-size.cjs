@@ -461,6 +461,13 @@ const MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE = Object.freeze({
     bytes: 1536,
     gzipBytes: 640,
 });
+// Same-toolchain Shaka track controls add 550 raw / 91 gzip bytes to the
+// entry. Keep its previous headroom; the lazy adapter has its own cap below.
+// Evidence: docs/evidence/shaka-track-controls-size-20261029.json.
+const SHAKA_TRACKS_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 576,
+    gzipBytes: 128,
+});
 const BUDGET = Object.freeze({
     bytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
@@ -471,7 +478,8 @@ const BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
@@ -480,7 +488,8 @@ const BUDGET = Object.freeze({
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -672,7 +681,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -683,7 +693,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
@@ -734,7 +745,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
-    // Shaka track controls load with the engine and retain an independent cap.
+    // Measured 1062 raw / 559 gzip bytes; fetched only when Shaka is requested.
     "shaka-tracks": Object.freeze({ bytes: 1200, gzipBytes: 640 }),
     // Two live-recovery choices add 239 raw / 73 gzip bytes on Node 26.12.1.
     // Keep the existing lazy editor and its original measurement headroom.
@@ -762,7 +773,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
-        OPTIONAL_BUDGETS["shaka-tracks"].bytes,
+        OPTIONAL_BUDGETS["shaka-tracks"].bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -777,7 +789,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
-        OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes,
+        OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -970,6 +983,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         providerBundles: sets,
         schema: 1,
         shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+        shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1270,6 +1284,7 @@ function writeBuildBundleReport(
             runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
             schema: 1,
             shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+            shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
             source: label(context.source || process.env.GITHUB_SHA),
             toolchain: {
                 node: process.versions.node,
@@ -1347,6 +1362,7 @@ module.exports = {
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+    SHAKA_TRACKS_ENTRY_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,

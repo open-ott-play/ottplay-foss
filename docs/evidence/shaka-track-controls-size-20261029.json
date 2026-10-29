@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "baselineSource": "b1f8871421f3c573024f1654922e2ac525e18a4f",
+  "candidateSource": "c48ac1177700d231dc071fe0483c1b21a1e28827",
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "typescript": "5.9.3",
+    "terser": "5.51.2"
+  },
+  "baseline": [
+    {
+      "entry": {
+        "bytes": 1133215,
+        "gzipBytes": 345301,
+        "path": "dist/player.js",
+        "sha256": "b8a8985618ad1d0bb46dc4e0cde1ea2ec52586fdcbd7400f760bc513141507cf"
+      },
+      "total": {
+        "bytes": 1637531,
+        "gzipBytes": 502856
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1133173,
+        "gzipBytes": 345358,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "a8cfdca09c68ca01a3697e933f0a08c48ab15e41ba623d80fadcc8c664791967"
+      },
+      "total": {
+        "bytes": 1637489,
+        "gzipBytes": 502913
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1133173,
+        "gzipBytes": 345358,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "a8cfdca09c68ca01a3697e933f0a08c48ab15e41ba623d80fadcc8c664791967"
+      },
+      "total": {
+        "bytes": 1637489,
+        "gzipBytes": 502913
+      }
+    }
+  ],
+  "candidate": [
+    {
+      "entry": {
+        "bytes": 1133765,
+        "gzipBytes": 345392,
+        "path": "dist/player.js",
+        "sha256": "bcb6934674d9fce0891194268a82f6fb57e65aa46c6ec547f220fbf77f4ff569"
+      },
+      "total": {
+        "bytes": 1639143,
+        "gzipBytes": 503506
+      },
+      "optional": {
+        "bytes": 1062,
+        "gzipBytes": 559,
+        "path": "dist/shaka-tracks.js",
+        "sha256": "9e9bf30caaad63e807066fc04362517daa81e8b1d08f1d25fca00fab1e70616b"
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1133723,
+        "gzipBytes": 345449,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "87009f518f29896042718aa2735e3db526ac7fbcef69dd41997872cf54890f6c"
+      },
+      "total": {
+        "bytes": 1639101,
+        "gzipBytes": 503563
+      },
+      "optional": {
+        "bytes": 1062,
+        "gzipBytes": 559,
+        "path": "src-tauri/frontend/dist/shaka-tracks.js",
+        "sha256": "9e9bf30caaad63e807066fc04362517daa81e8b1d08f1d25fca00fab1e70616b"
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1133723,
+        "gzipBytes": 345449,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "87009f518f29896042718aa2735e3db526ac7fbcef69dd41997872cf54890f6c"
+      },
+      "total": {
+        "bytes": 1639101,
+        "gzipBytes": 503563
+      },
+      "optional": {
+        "bytes": 1062,
+        "gzipBytes": 559,
+        "path": "dist-mobile/dist/shaka-tracks.js",
+        "sha256": "9e9bf30caaad63e807066fc04362517daa81e8b1d08f1d25fca00fab1e70616b"
+      }
+    }
+  ],
+  "entryAllowance": {
+    "bytes": 576,
+    "gzipBytes": 128
+  },
+  "optionalAllowance": {
+    "bytes": 1200,
+    "gzipBytes": 640
+  },
+  "notes": [
+    "Same workspace, package-lock and Node toolchain; standard frontend build, not desktop compilation.",
+    "Entry allowance rounds measured +550 raw and at most +91 gzip; optional adapter measured 1062 raw/559 gzip.",
+    "Existing provider/other optional budgets remain unchanged. Complete payload counts each allowance once."
+  ],
+  "candidateBuildIdentity": "b1f8871421f3c573024f1654922e2ac525e18a4f"
+}

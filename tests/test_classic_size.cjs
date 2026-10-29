@@ -12,6 +12,7 @@ const {
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+    SHAKA_TRACKS_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -127,7 +128,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1634339, gzipBytes: 502841 });
+    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1634915, gzipBytes: 502969 });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -140,11 +141,11 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1638819, gzipBytes: 505145 });
-    assert.deepEqual(BUDGET, { bytes: 1133273, gzipBytes: 346691 });
+    assert.deepEqual(TOTAL_BUDGET, { bytes: 1639395, gzipBytes: 505273 });
+    assert.deepEqual(BUDGET, { bytes: 1133849, gzipBytes: 346819 });
     assert.deepEqual(LEGACY_TOTAL_BUDGET, {
-        bytes: 1278109,
-        gzipBytes: 399381,
+        bytes: 1278685,
+        gzipBytes: 399509,
     });
     assert.deepEqual(OPTIONAL_BUDGETS["local-media-ui"], {
         bytes: 8500,
@@ -202,13 +203,39 @@ try {
         );
     }
     const shakaTrackDelta = (budget, metric) =>
-        budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+        SHAKA_TRACKS_ENTRY_ALLOWANCE[metric] +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
             ? OPTIONAL_BUDGETS["shaka-tracks"][metric]
-            : 0;
+            : 0);
     assert.deepEqual(OPTIONAL_BUDGETS["shaka-tracks"], {
         bytes: 1200,
         gzipBytes: 640,
     });
+    const shakaEvidence = require("../docs/evidence/shaka-track-controls-size-20261029.json");
+    assert.deepEqual(
+        SHAKA_TRACKS_ENTRY_ALLOWANCE,
+        shakaEvidence.entryAllowance
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGETS["shaka-tracks"],
+        shakaEvidence.optionalAllowance
+    );
+    for (let index = 0; index < 3; index++) {
+        const before = shakaEvidence.baseline[index];
+        const after = shakaEvidence.candidate[index];
+        for (const metric of ["bytes", "gzipBytes"]) {
+            const delta = after.entry[metric] - before.entry[metric];
+            assert(delta > 0 && delta <= SHAKA_TRACKS_ENTRY_ALLOWANCE[metric]);
+            assert(
+                after.optional[metric] <=
+                    OPTIONAL_BUDGETS["shaka-tracks"][metric]
+            );
+            assert.equal(
+                after.total[metric] - before.total[metric],
+                delta + after.optional[metric]
+            );
+        }
+    }
     const mixedEvidence = require("../docs/evidence/mixed-global-favorites-size-20261028.json");
     const mixedDelta = (budget, metric) =>
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE[metric] +
