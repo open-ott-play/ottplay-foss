@@ -1296,7 +1296,19 @@ function moduleOf(file, requireFn, window) {
                     ? { maxBuffer: 2 * 1024 * 1024, timeout: 60000 }
                     : {}
             );
-            assert.equal(result.stderr, "");
+            if (
+                !globalFavoritesOnly &&
+                ["fav", "favorites", "favourite"].includes(args[0]) &&
+                args[1]?.toLowerCase() !== "global" &&
+                result.stderr
+            )
+                assert.ok(
+                    [
+                        "Legacy favorites: this player does not advertise global favorites items.\n",
+                        "Legacy favorites: this player does not advertise global favorites items.\r\n",
+                    ].includes(result.stderr)
+                );
+            else assert.equal(result.stderr, "");
             return JSON.parse(result.stdout);
         }
         async function eventually(read, predicate, message) {
