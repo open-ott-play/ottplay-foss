@@ -1088,6 +1088,7 @@ for (const platform of Object.keys(nativeSources)) {
         _coreNativeAttempt: 0,
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
+        _corePauseRevision: 0,
         _corePendingSeek: null,
         _corePendingSeekPosition: null,
         _corePipSession: 0,

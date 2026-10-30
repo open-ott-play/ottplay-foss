@@ -69,7 +69,7 @@ Syntetyczną planszę testową można odtworzyć przez `scripts/generate-demo-me
 - **Ulubione**: jedna uporządkowana [kolekcja mieszana](docs/mixed-favorites.md) obejmująca skonfigurowanych dostawców i profile na obsługiwanych urządzeniach, z przenośnym eksportem/importem przez CLI; PIN rodzicielski. W trybie zastępczym nadal dostępne są listy ulubionych poszczególnych źródeł.
 - **Ustawienia**: eksport/import JSON ustawień i ulubionych, dziennik cofania obsługiwanych partii localStorage, wznawianie archiwum uwzględniające źródło i dokładne porównywanie zapisanych ustawień dla procedur kontrolera. Odzyskiwanie zakłada jednego zapisującego; niestandardowe adaptery pamięci zachowują wycofywanie na zasadzie best effort. Zobacz [odzyskiwanie ustawień](docs/settings-recovery.pl.md).
 - **Wspólny interfejs**: OTT Server, Tauri i Capacitor używają tego samego motywu i ustawień widoczności listy kanałów. Ustawienia interfejsu kontrolują kolory wyróżnienia i zaznaczenia; ustawienia listy kontrolują nazwy, picony, bieżące programy, postęp i znaczniki archiwum.
-- **Dostawcy**: M3U/M3U8, telewizja Xtream na żywo oraz [katalogi filmów/seriali na żądanie](docs/xtream-media.pl.md), Stalker/Ministra, Plex i VPortal. Możliwości dostawcy i dostęp konta określają dostępne funkcje archiwum i biblioteki mediów.
+- **Dostawcy**: M3U/M3U8, telewizja Xtream na żywo oraz [katalogi filmów/seriali na żądanie](docs/xtream-media.pl.md), Stalker/Ministra z [filmami i zagnieżdżonymi odcinkami](docs/stalker-media.md), Plex i VPortal. Możliwości dostawcy i dostęp konta określają dostępne funkcje archiwum i biblioteki mediów.
 - **Polecenia push**: sterowanie przez webhook — zmiana kanału, dostawcy, listy i wyświetlanie komunikatów
 - **Zdalne wpisywanie tekstu (swop)**: klawiatura telefonu przez Cloudflare Worker, gdy telewizor i telefon są w różnych sieciach (sesje autoryzowane dla instalacji; ♥™ na klawiaturze ekranowej)
 - **Kierowanie do urządzeń**: adresowanie UUID w instalacjach wielourządzeniowych
@@ -82,6 +82,8 @@ Syntetyczną planszę testową można odtworzyć przez `scripts/generate-demo-me
 - **88 języków interfejsu**: zgodne katalogi, [zlokalizowane przewodniki startowe](docs/readme/README.md) i [alfabety klawiatur sprawdzone według CLDR](docs/localization.md). Główna instrukcja i powiązane przewodniki funkcji są dostępne w [24 językach dokumentacji](docs/manual-translations.md); pozostałe materiały inżynierskie zachowują istniejące języki.
 
 [Przewodnik dostarczenia](docs/roadmap-delivery.pl.md) opisuje funkcje wdrożone w tej rewizji źródeł, granice platform, diagramy i weryfikację. Zainstalowane wydania lub wdrożenia hostowane mogą używać starszej rewizji. Niezależna natywna [aplikacja Android](https://github.com/open-ott-play/ottplay-android) zachowuje również wybory audio/napisów według języka, roli i etykiety zamiast indeksów manifestu; jej implementacja i wydania są niezależne od tego frontendu.
+
+[Przegląd kodu źródłowego STB](docs/stb-player-improvements.md) opisuje ulepszenia dotyczące multimediów, zasobów i odzyskiwania, porównania źródeł oraz aktualne ograniczenia.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Kontrole znajdują się w `scripts/modea-smoke-checks.json`. Bez sekretów. Kole
 
 ## Klasyczne portale Stalker / Ministra
 
-Wybierz **Portale Stalker** i wpisz MAC nadany przez dostawcę oraz pełny URL portalu, np. `http://provider.example/stalker_portal/c/`. Adresy `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` i `/portal.php` wybierają klasyczny protokół MAG. Dotychczasowe konfiguracje samego serwera zachowują JSON-RPC. Dostawca ładuje profil, gatunki i stronicowane kanały na żywo przez wspólny rdzeń Stalker. Żądania przeglądarki przechodzą przez endpoint `/stalker/api` companion; aplikacje natywne używają istniejącego transportu HTTP. Pliki przeglądarki i companion trzeba aktualizować razem.
+Wybierz **Portale Stalker** i wpisz MAC nadany przez dostawcę oraz pełny URL portalu, np. `http://provider.example/stalker_portal/c/`. Adresy `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` i `/portal.php` wybierają klasyczny protokół MAG. Dotychczasowe konfiguracje samego serwera zachowują JSON-RPC. Dostawca ładuje profil, gatunki i stronicowane kanały na żywo przez wspólny rdzeń Stalker, a następnie w tle wykrywa filmy klasycznego protokołu `type=vod` i zagnieżdżone odcinki. Ścieżki folderów stają się kategoriami na standardowej liście kanałów; dostępne opisy, plakaty i trwałe globalne Ulubione korzystają z tego samego interfejsu multimediów. Zobacz [działanie i ograniczenia katalogu](docs/stalker-media.md).
 
-Odtwarzanie na żywo rozwiązuje tymczasowe polecenia kanału przy otwieraniu strumienia; zmiany kanałów, zatrzymanie, PiP i zmiana dostawcy anulują nieaktualne rozwiązywanie. Jawne nietymczasowe polecenia HTTP(S) odtwarzają się bezpośrednio. Krótkie EPG jest obsługiwane; archiwum i VOD klasycznego portalu nie są jeszcze udostępnione przez tego dostawcę. Zachowanie istniejącego archiwum/przewodnika JSON-RPC nie zmienia się. Prywatne portale LAN wymagają dokładnego wpisu `OTTPLAY_PROXY_LAN_ORIGINS`, podobnie jak inne trasy proxy companion.
+Żądania samodzielnie hostowanej wersji przeglądarkowej przechodzą przez endpoint `/stalker/api` companion; aplikacje natywne używają istniejącego transportu HTTP. Hostowane wersje przeglądarkowe wymagają jawnie skonfigurowanych tras przez [dedykowany serwer pośredniczący](docs/stalker-relay.md). Pliki przeglądarki i serwera trzeba aktualizować razem.
+
+Odtwarzanie na żywo rozwiązuje tymczasowe polecenia kanału przy otwieraniu strumienia; zmiany kanałów, zatrzymanie, PiP i zmiana dostawcy anulują nieaktualne rozwiązywanie. Jawne nietymczasowe polecenia HTTP(S) odtwarzają się bezpośrednio. Krótkie EPG jest obsługiwane. Archiwum klasycznego portalu i odrębny dialekt `type=series` nie są udostępnione przez tego dostawcę. Zachowanie istniejącego archiwum/przewodnika JSON-RPC nie zmienia się. Prywatne portale LAN korzystające z trasy companion wymagają dokładnego wpisu `OTTPLAY_PROXY_LAN_ORIGINS`, podobnie jak inne trasy proxy companion.
 
 Publiczne demo Infomir to `http://middleware-stalker.com/stalker_portal/c/`. Zwróciło trzy pozycje katalogu na żywo 2026-09-26, ale endpointy mediów były niedostępne; do regresji odtwarzania użyj kontrolowanych danych portalu/mediów.
 

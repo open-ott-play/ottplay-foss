@@ -515,7 +515,10 @@ export function createFavoritesBindings(ports: FavoritesBindingPorts) {
                 function (rows) {
                     if (
                         !keys(value, ["provider", "profile", "source"]) ||
-                        !/^(m3u|vportal|plex|offline)$/.test(value.provider)
+                        typeof value.provider !== "string" ||
+                        !/^[a-z0-9][a-z0-9_.\/-]{0,63}(?![\s\S])/.test(
+                            value.provider
+                        )
                     )
                         fail("invalid_binding");
                     var profileBinding = binding("profile", value.profile);
@@ -523,7 +526,10 @@ export function createFavoritesBindings(ports: FavoritesBindingPorts) {
                     if (
                         profileBinding.selector.kind !==
                             "global-playback-target" ||
-                        sourceBinding.selector.kind !== "global-playback-target"
+                        sourceBinding.selector.kind !==
+                            "global-playback-target" ||
+                        profileBinding.selector.provider !== value.provider ||
+                        sourceBinding.selector.provider !== value.provider
                     )
                         fail("invalid_binding");
                     var profile = rows.filter(function (entry) {

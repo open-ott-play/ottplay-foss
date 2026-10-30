@@ -90,6 +90,8 @@ assert.equal(delivered, 2);
 assert.equal(context.mediaRecords.length, 1);
 const movie = context.mediaRecords[0];
 assert(movie.stream_url.endsWith("/movie/name/secret/42.mp4"));
+assert.equal(movie.description, "", "Absent movie metadata stays empty");
+assert.equal(movie.logo_30x30, "");
 assert(!requests.some((url) => /get_live|get_series/.test(url)));
 const saved = context.providerMediaClient.persist(movie);
 assert(
@@ -149,7 +151,8 @@ console.log(
 );
 
 // Exercise the real UI/library/PIN/journal handshake, not only the provider codec.
-const { fixture } = require("./test_port_vod.cjs");
+const { JSDOM } = require("jsdom");
+const { fixture, sourceFunctions } = require("./test_port_vod.cjs");
 function integrated() {
     const host = fixture(),
         pending = [],
@@ -233,6 +236,112 @@ function integrated() {
         requests,
         series,
     };
+}
+for (const kind of ["movie", "series", "episode"]) {
+    const f = integrated(),
+        c = f.host,
+        dom = new JSDOM("");
+    c.document.implementation = dom.window.document.implementation;
+    vm.runInContext(
+        sourceFunctions("src/utils/helpers.ts", ["getThumbnail"]),
+        c
+    );
+    c.sThumbnail = 1;
+    const plot =
+        kind + ' <b data-provider="format">description</b> &amp; detail';
+    const poster = "https://art.invalid/" + kind + ".jpg?size=large&crop=fit";
+    c.mediaList(null);
+    c.selectMedia(kind === "movie" ? 0 : 1);
+    f.catalog([
+        kind === "movie"
+            ? { ...f.movie(), plot, stream_icon: poster }
+            : { ...f.series(), cover: poster, plot },
+    ]);
+    if (kind === "episode") {
+        c.selectMedia(0);
+        f.catalog([
+            {
+                ...f.series(),
+                cover: "https://art.invalid/series.jpg",
+                plot: "Parent plot",
+            },
+        ]);
+        const response = f.episodes();
+        response.episodes[1][0].info = { movie_image: poster, plot };
+        f.reply(response);
+    }
+    const item = c.listArray[0];
+    assert.equal(
+        item.description,
+        plot,
+        kind + " keeps the bundled core description"
+    );
+    assert.equal(
+        item.logo_30x30,
+        poster,
+        kind + " keeps the bundled core poster"
+    );
+    const requestsBeforeDetails = f.requests.length;
+    c.detailListActionFn();
+    const rendered = dom.window.document.createElement("div");
+    rendered.innerHTML = c.elements["#listDetail"].innerHTML;
+    assert(rendered.textContent.includes(kind + " description & detail"));
+    assert.equal(
+        rendered.querySelector("b").getAttribute("data-provider"),
+        null
+    );
+    assert(
+        rendered.querySelector(".img").style.backgroundImage.includes(poster)
+    );
+    assert.equal(
+        f.requests.length,
+        requestsBeforeDetails,
+        "Details use already loaded metadata"
+    );
+    const persisted = c.providerMediaClient.persist(item);
+    assert.equal(persisted.description, undefined);
+    assert.equal(persisted.logo_30x30, undefined);
+    dom.window.close();
+}
+{
+    const f = integrated(),
+        c = f.host;
+    const prototype = c.OttPlayCore.XtreamClient.prototype,
+        series = prototype.series;
+    let seasonDescription;
+    prototype.series = function (data, parent) {
+        const result = series.call(this, data, parent);
+        seasonDescription = result.folders[0].description;
+        return result;
+    };
+    c.mediaList(null);
+    c.selectMedia(1);
+    f.catalog([{ ...f.series(), plot: "Cached parent plot" }]);
+    c.selectMedia(0);
+    f.catalog([
+        {
+            ...f.series(),
+            cover: "https://art.invalid/parent.jpg",
+            plot: "Fresh parent plot",
+        },
+    ]);
+    f.reply(f.episodes());
+    prototype.series = series;
+    assert.equal(
+        seasonDescription,
+        "Fresh parent plot",
+        "Core receives the refreshed series description"
+    );
+    assert.equal(
+        c.listArray[0].description,
+        "",
+        "A missing episode plot stays empty"
+    );
+    assert.equal(
+        c.listArray[0].logo_30x30,
+        "https://art.invalid/parent.jpg",
+        "Core owns parent poster fallback"
+    );
 }
 {
     const f = integrated(),
@@ -392,5 +501,5 @@ for (const action of ["cancel", "account"]) {
     assert(fresh.calls.some((call) => call[0] === "seek" && call[1] === 120));
 }
 console.log(
-    "PASS Xtream integration: folder favorites, secret-free persistence, fresh parental policy, stale PIN cancellation, removed series and resume"
+    "PASS Xtream integration: escaped movie/series/episode metadata, parent artwork, folder favorites, secret-free persistence, fresh parental policy, stale PIN cancellation, removed series and resume"
 );

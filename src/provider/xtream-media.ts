@@ -92,6 +92,7 @@ function mountXtreamMedia(host: any, driver: any, owner: DriverLifetime): void {
     function present(item: any, kind: string, series?: string): any {
         var row: any = {
             adult: item.adult ? 1 : 0,
+            description: item.description || "",
             itemId: item.id,
             logo_30x30: item.logo || "",
             request: { id: item.id, kind: kind, series: series || "" },
@@ -139,7 +140,7 @@ function mountXtreamMedia(host: any, driver: any, owner: DriverLifetime): void {
                     if (parents.length !== 1) return fail();
                     var parent = {
                         adult: parents[0].adult === 1,
-                        description: "",
+                        description: parents[0].description || "",
                         folderType: "series",
                         logo: parents[0].logo_30x30,
                         name: parents[0].title,

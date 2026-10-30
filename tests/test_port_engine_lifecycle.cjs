@@ -2486,7 +2486,9 @@ test("repeated Play on ready media does not create a feedback deadline; pause an
     const timers = new Map();
     let serial = 0;
     const label = {
+            addEventListener() {},
             removeAttribute() {},
+            removeEventListener() {},
             setAttribute() {},
             style: {},
             textContent: "",
@@ -3320,6 +3322,164 @@ test("relative seek keeps paused compatibility playback paused after asynchronou
     assert.equal(w.video.paused, true);
     assert.equal(w.video.playCalls, 1, "only initial playback called play");
     lease.dispose();
+});
+
+test("local retry budget requires ten continuous wall-clock seconds of healthy playback", () => {
+    for (const mode of [
+        "brief",
+        "healthy",
+        "fast",
+        "pause",
+        "seek",
+        "clock-gap",
+        "short-pause",
+        "short-seek",
+        "native-pause",
+        "native-seek",
+        "native-waiting",
+        "native-waiting-stall",
+        "resumed-healthy",
+    ]) {
+        const { w } = fixture();
+        const timers = new Map();
+        let now = 100000,
+            serial = 0;
+        w.Date = class extends Date {
+            static now() {
+                return now;
+            }
+        };
+        w.setTimeout = (fn, delay) => {
+            timers.set(++serial, { at: now + delay, fn });
+            return serial;
+        };
+        w.clearTimeout = (id) => timers.delete(id);
+        w.setInterval = () => 0;
+        w.clearInterval = () => {};
+        w.__ottLocalMedia = {
+            isPlaybackUrl: (url) => url === "https://local.invalid/movie.mp4",
+        };
+        w.playerMode = 0;
+        w.stbPlay("https://local.invalid/movie.mp4");
+        const observedEvents = [
+            "play",
+            "seeking",
+            "seeked",
+            "waiting",
+            "stalled",
+        ];
+        const listenerCounts = observedEvents.map(
+            (name) => (w.video.listeners[name] || []).length
+        );
+        function ready() {
+            w.video.readyState = 4;
+            w.video.paused = false;
+            w.video.seeking = false;
+        }
+        function advance(ms, movement = 0) {
+            now += ms;
+            w.video.currentTime += movement;
+            const due = [...timers.entries()].filter(
+                ([, job]) => job.at <= now
+            );
+            for (const [id, job] of due) {
+                if (!timers.delete(id)) continue;
+                job.fn();
+            }
+        }
+        function play(seconds, rate = 1) {
+            w.video.playbackRate = rate;
+            for (let i = 0; i < seconds; i++) advance(1000, rate);
+        }
+        function emit(name) {
+            for (const fn of [...(w.video.listeners[name] || [])]) fn();
+        }
+        function retry() {
+            w.coreStreamFailure("network", 503);
+            assert.equal(w.coreStreamAttempt.state().pending, true, mode);
+            advance(2000);
+            ready();
+        }
+        ready();
+        retry();
+        retry();
+        assert.deepEqual(
+            observedEvents.map(
+                (name) => (w.video.listeners[name] || []).length
+            ),
+            listenerCounts,
+            "transport retries replace the local interruption listeners"
+        );
+        if (mode === "healthy") play(10);
+        else if (mode === "fast") play(5, 2);
+        else if (mode === "brief") play(2);
+        else {
+            play(9);
+            if (mode === "pause") {
+                w.video.paused = true;
+                advance(1000);
+                ready();
+            }
+            if (mode === "seek") advance(1000, 120);
+            if (mode === "clock-gap") advance(60000, 60);
+            if (mode === "short-pause" || mode === "resumed-healthy") {
+                advance(100);
+                w.stbPause();
+                advance(100);
+                w.stbResume();
+            }
+            if (mode === "short-seek") {
+                advance(100);
+                w.stbSetPosTime(w.video.currentTime + 0.1);
+            }
+            if (mode === "native-pause") {
+                advance(100);
+                w.video.pause();
+                emit("pause");
+                advance(100);
+                w.video.play();
+                emit("play");
+            }
+            if (mode === "native-seek") {
+                advance(100);
+                w.video.seeking = true;
+                emit("seeking");
+                w.video.currentTime += 0.1;
+                advance(100);
+                w.video.seeking = false;
+                emit("seeked");
+            }
+            if (mode === "native-waiting") {
+                advance(100);
+                emit("waiting");
+            }
+            if (mode === "native-waiting-stall") {
+                for (let i = 0; i < 30; i++) {
+                    emit("waiting");
+                    advance(1000);
+                }
+                assert.equal(
+                    w.coreStreamAttempt.state().terminal,
+                    true,
+                    "waiting events cannot postpone the stall deadline"
+                );
+            }
+            play(1);
+            if (mode === "resumed-healthy") play(10);
+        }
+        w.coreStreamFailure("network", 503);
+        const recovered = mode === "healthy" || mode === "resumed-healthy";
+        assert.equal(w.coreStreamAttempt.state().terminal, !recovered, mode);
+        assert.equal(w.coreStreamAttempt.state().pending, recovered, mode);
+        w.stbStop();
+        assert.deepEqual(
+            observedEvents.map(
+                (name) => (w.video.listeners[name] || []).length
+            ),
+            observedEvents.map(() => 0),
+            "Stop removes the local interruption listeners"
+        );
+    }
 });
 
 (async () => {

@@ -875,6 +875,12 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
             if (w.playType > -1) guide();
         },
         info: function () {
+            if (
+                w.__ottPlaybackFeedback &&
+                typeof w.__ottPlaybackFeedback.details === "function" &&
+                w.__ottPlaybackFeedback.details()
+            )
+                return;
             call("showChannelInfo", settings.infoTimeout);
         },
         language: function () {

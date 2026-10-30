@@ -969,6 +969,7 @@ var keyStrings = {
     "Sleep timer": "ตัวตั้งเวลาปิดเครื่อง",
     "Sort channels": "จัดเรียงช่อง",
     "Source access": "การเข้าถึงแหล่งที่มา",
+    "Source is busy. Try again later.": "แหล่งสัญญาณไม่ว่าง โปรดลองอีกครั้งภายหลัง",
     "Source sign-in required": "จำเป็นต้องลงชื่อเข้าใช้แหล่งที่มา",
     "Source sign-in was cancelled": "การลงชื่อเข้าใช้แหล่งที่มาถูกยกเลิก",
     "Stalker Portal Provider": "ผู้ให้บริการพอร์ทัล Stalker",
@@ -1021,6 +1022,8 @@ var keyStrings = {
         "การค้นพบเซิร์ฟเวอร์คำสั่ง URL ไม่ถูกต้อง",
     "The device ID in the address is invalid.": "อุปกรณ์ ID ในที่อยู่ไม่ถูกต้อง",
     "The discovery response is invalid.": "การตอบสนองการค้นพบไม่ถูกต้อง",
+    "The stream connection failed": "เชื่อมต่อกับสตรีมไม่สำเร็จ",
+    "The stream format could not be played": "ไม่สามารถเล่นสตรีมรูปแบบนี้ได้",
     "This browser cannot identify the selected screenshot source.":
         "เบราว์เซอร์นี้ไม่สามารถระบุแหล่งที่มาของภาพหน้าจอที่เลือกได้",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1033,6 +1036,7 @@ var keyStrings = {
         "แอป Play นี้ต้องใช้ HTTPS สอบถามผู้ให้บริการของคุณเกี่ยวกับเพลย์ลิสต์ HTTPS หรือเซิร์ฟเวอร์ URL",
     "This pairing link has expired. Open a new session on your TV.":
         "ลิงก์การจับคู่นี้หมดอายุแล้ว เปิดเซสชันใหม่บนทีวีของคุณ",
+    "This protected stream could not be played": "ไม่สามารถเล่นสตรีมที่มีการป้องกันนี้ได้",
     "This remote command is not supported by the player.":
         "โปรแกรมเล่นไม่รองรับคำสั่งควบคุมระยะไกลนี้",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

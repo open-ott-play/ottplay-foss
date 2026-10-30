@@ -1024,6 +1024,8 @@ var keyStrings = {
     "Sleep timer": "Igihe cyo gusinzira",
     "Sort channels": "Tondeka shene",
     "Source access": "Uburenganzira bwo kugera ku isoko",
+    "Source is busy. Try again later.":
+        "Inkomoko irahuze. Ongera ugerageze nyuma.",
     "Source sign-in required": "Kwinjira ku isoko birakenewe",
     "Source sign-in was cancelled": "Kwinjira ku isoko byahagaritswe",
     "Stalker Portal Provider": "Utanga serivisi y'urubuga rwa Stalker",
@@ -1079,6 +1081,9 @@ var keyStrings = {
         "Indangamuntu y'igikoresho iri muri aderesi ntiyemewe.",
     "The discovery response is invalid.":
         "Igisubizo cyo gushakisha nticyemewe.",
+    "The stream connection failed": "Guhuza n’isakaza byanze",
+    "The stream format could not be played":
+        "Gukina isakaza muri iyi miterere byanze",
     "This browser cannot identify the selected screenshot source.":
         "Iyi mushakisha ntishobora kumenya inkomoko y’amafoto ya ecran yahiswemo.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1091,6 +1096,8 @@ var keyStrings = {
         "Iyi porogaramu ya Play isaba HTTPS. Saba utanga serivisi URL y'urutonde rwo gukina cyangwa ya seriveri ikoresha HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Igihe cy’iri huza ryo guhuza ibikoresho cyarangiye. Fungura icyiciro gishya kuri TV yawe.",
+    "This protected stream could not be played":
+        "Gukina iri sakaza ririnzwe byanze",
     "This remote command is not supported by the player.":
         "Porogaramu ntishyigikira iri tegeko ry’igenzura ryo kure.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

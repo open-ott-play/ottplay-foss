@@ -10,6 +10,11 @@ Temporary playback commands such as `ott t1 local shuffle ~/Videos/` do not
 replace or filter the collection: opening Favorites still shows its entries
 from every configured provider and profile.
 
+In the mixed list, **Category** (Blue, or **V** on PC/PC2) and **Play/Pause**
+open the current provider's category picker, even when Favorites is empty.
+Configured category shortcuts retain their usual navigation. **Enter/OK** plays
+the selected Favorite; **Back** closes the list without changing playback.
+
 While a Global Favorites sequence is active in fullscreen, **Enter/OK** or
 **Channels** reopens the mixed list. Number keys select its one-based mixed
 order, rather than channel numbers in the currently loaded provider. Enter the

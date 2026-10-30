@@ -1006,6 +1006,8 @@ var keyStrings = {
     "Sleep timer": "Քնի ժամանակաչափ",
     "Sort channels": "Դասավորել ալիքները",
     "Source access": "Մուտք դեպի մեդիա աղբյուր",
+    "Source is busy. Try again later.":
+        "Աղբյուրը զբաղված է։ Փորձեք կրկին ավելի ուշ։",
     "Source sign-in required": "Աղբյուրի մուտքը պարտադիր է",
     "Source sign-in was cancelled": "Մուտքը աղբյուր չեղարկվել է",
     "Stalker Portal Provider": "Stalker պորտալի մատակարար",
@@ -1060,6 +1062,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Հասցեում սարքի ID-ն անվավեր է։",
     "The discovery response is invalid.": "Որոնման պատասխանը անվավեր է։",
+    "The stream connection failed": "Հոսքին միանալը չհաջողվեց",
+    "The stream format could not be played":
+        "Չհաջողվեց նվագարկել հոսքի ձևաչափը",
     "This browser cannot identify the selected screenshot source.":
         "Այս դիտարկիչը չի կարող նույնականացնել ընտրված սքրինշոթի աղբյուրը:",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1072,6 +1077,8 @@ var keyStrings = {
         "Այս Play հավելվածը պահանջում է HTTPS։ Խնդրեք մատակարարին տրամադրել HTTPS նվագարկման ցուցակ կամ սերվերի URL։",
     "This pairing link has expired. Open a new session on your TV.":
         "Այս զուգավորման հղումը ժամկետանց է: Բացեք նոր նիստ ձեր հեռուստացույցով:",
+    "This protected stream could not be played":
+        "Չհաջողվեց նվագարկել այս պաշտպանված հոսքը",
     "This remote command is not supported by the player.":
         "Նվագարկիչը չի աջակցում հեռակառավարման այս հրամանը։",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

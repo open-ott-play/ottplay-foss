@@ -162,6 +162,7 @@ const CLASSIC_MODULES = [
     "build/app/device.js",
     "build/settings/sleep-timer.js",
     "build/plugins/native-bridge.js",
+    "build/plugins/native-memory.js",
     "build/plugins/web-fallback.js",
     "build/plugins/jquery-bridge.js",
     "build/plugins/native-http.js",

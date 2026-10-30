@@ -691,6 +691,52 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         ? channel("local-" + rows[0].id, locator)
                         : null;
                 }
+                // Stalker keys include the whole folder route, so a published leaf
+                // can resolve immediately while unrelated branches keep loading.
+                if (
+                    driver.id === "stalker" &&
+                    locator.kind === "channel" &&
+                    /^stalker-media:/.test(locator.channelId)
+                ) {
+                    if (driver.startMedia) driver.startMedia();
+                    var foundStalker = await new Promise<boolean>(
+                        function (done) {
+                            var wait: any = null,
+                                deadline: any = null,
+                                finished = false;
+                            var expires = Date.now() + 120000;
+                            function finish(value: boolean) {
+                                if (finished) return;
+                                finished = true;
+                                if (wait !== null) w.clearTimeout(wait);
+                                if (deadline !== null) w.clearTimeout(deadline);
+                                done(value);
+                            }
+                            pendingOperations.push(function () {
+                                finish(false);
+                            });
+                            function poll() {
+                                wait = null;
+                                if (
+                                    !same() ||
+                                    !guard() ||
+                                    Date.now() >= expires
+                                )
+                                    return finish(false);
+                                if (driver.hasMediaKey?.(locator.channelId))
+                                    return finish(true);
+                                if (!driver.catalogLoading?.())
+                                    return finish(false);
+                                wait = w.setTimeout(poll, 50);
+                            }
+                            deadline = w.setTimeout(function () {
+                                finish(false);
+                            }, 120000);
+                            poll();
+                        }
+                    );
+                    if (!foundStalker || !same() || !guard()) return null;
+                }
                 // The provider collector traverses nested folders and publishes prefixes.
                 // Only its completed source catalog proves that an ID is unique.
                 if (
@@ -734,7 +780,11 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     if (locator.kind === "channel")
                         return (
                             globalFavoriteChannelId(driver.id, value) ===
-                            locator.channelId
+                                locator.channelId &&
+                            (driver.id !== "stalker" ||
+                                !/^stalker-media:/.test(locator.channelId) ||
+                                payload?.stalkerSource ===
+                                    w.__ottSourceIdentity.media(w))
                         );
                     if (locator.kind === "channel-name")
                         return (
@@ -899,7 +949,10 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                 var mediaCatalog =
                     !hasItems &&
                     (locator.kind === "plex-media" ||
-                        locator.kind === "vportal-media");
+                        locator.kind === "vportal-media" ||
+                        (driver.id === "stalker" &&
+                            locator.kind === "channel" &&
+                            /^stalker-media:/.test(locator.channelId)));
                 // Catalog records may precede describe(), which adds a ref only
                 // to its copy. Bind the actual committed media, never a row index.
                 var catalogMedia = mediaCatalog
@@ -955,7 +1008,14 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                         if (locator.kind === "channel")
                             return (
                                 globalFavoriteChannelId(driver.id, row) ===
-                                locator.channelId
+                                    locator.channelId &&
+                                (driver.id !== "stalker" ||
+                                    !mediaCatalog ||
+                                    (row.__ottMediaItem?.stalkerSource ===
+                                        w.__ottSourceIdentity.media(w) &&
+                                        w.__ottMedia?.current()?.payload
+                                            ?.stalkerSource ===
+                                            w.__ottSourceIdentity.media(w)))
                             );
                         if (locator.kind === "channel-name")
                             return (

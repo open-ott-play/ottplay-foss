@@ -991,6 +991,7 @@ var keyStrings = {
     "Sleep timer": "Hẹn giờ ngủ",
     "Sort channels": "Sắp xếp kênh",
     "Source access": "Truy cập vào nguồn phương tiện",
+    "Source is busy. Try again later.": "Nguồn đang bận. Hãy thử lại sau.",
     "Source sign-in required": "Yêu cầu đăng nhập nguồn",
     "Source sign-in was cancelled": "Đăng nhập vào nguồn đã bị hủy",
     "Stalker Portal Provider": "Nhà cung cấp cổng Stalker",
@@ -1043,6 +1044,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID thiết bị trong địa chỉ không hợp lệ.",
     "The discovery response is invalid.": "Phản hồi tìm kiếm không hợp lệ.",
+    "The stream connection failed": "Kết nối tới luồng thất bại",
+    "The stream format could not be played":
+        "Không thể phát luồng ở định dạng này",
     "This browser cannot identify the selected screenshot source.":
         "Trình duyệt này không thể xác định nguồn ảnh chụp màn hình đã chọn.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1055,6 +1059,8 @@ var keyStrings = {
         "Ứng dụng Play này yêu cầu HTTPS. Hãy yêu cầu nhà cung cấp cung cấp danh sách phát hoặc URL máy chủ HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Liên kết ghép nối này đã hết hạn. Mở một phiên mới trên TV của bạn.",
+    "This protected stream could not be played":
+        "Không thể phát luồng được bảo vệ này",
     "This remote command is not supported by the player.":
         "Trình phát không hỗ trợ lệnh điều khiển từ xa này.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

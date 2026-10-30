@@ -530,13 +530,58 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     },
                     detail: function () {},
                     key: function (key: number) {
+                        var backward = key === w.keys.RW || key === w.keys.PREV;
+                        var forward = key === w.keys.FF || key === w.keys.NEXT;
+                        var mode =
+                            key === w.keys.RW || key === w.keys.FF
+                                ? w.sRewFun
+                                : backward || forward
+                                  ? w.sPNFun
+                                  : 0;
+                        var categories =
+                            key === w.keys.BLUE ||
+                            key === w.keys.PLAY ||
+                            key === w.keys.PAUSE ||
+                            (key === w.keys.LEFT && w.sArrowFun === 2) ||
+                            (backward && mode === 1);
+                        if (
+                            categories ||
+                            ((backward || forward) && mode === 2)
+                        ) {
+                            // Global row UUIDs are not provider channel IDs. Only
+                            // share category navigation with the ordinary list.
+                            var category =
+                                w.__ottChannels?.index("system:favorites");
+                            if (!(category >= 0)) category = 0;
+                            if (categories) {
+                                if (typeof w.bucketsList === "function") {
+                                    list.close();
+                                    w.bucketsList(category);
+                                }
+                            } else if (
+                                w.catsArray?.length &&
+                                typeof w.channelsList === "function"
+                            ) {
+                                category =
+                                    (category +
+                                        (backward ? -1 : 1) +
+                                        w.catsArray.length) %
+                                    w.catsArray.length;
+                                list.close();
+                                w.channelsList(
+                                    category,
+                                    w.catIndex === category ? w.primaryIndex : 0
+                                );
+                            }
+                            return true;
+                        }
                         if (
                             key === w.keys.YELLOW ||
                             key === w.keys.TOOLS ||
                             key === w.keys.N0
                         )
                             return list.remove();
-                        if (key === w.keys.ENTER || key === w.keys.PLAY) {
+                        if (key === w.keys.ENTER) {
                             var row = list.rows[w.selIndex];
                             if (row) list.select(row.id);
                             return true;

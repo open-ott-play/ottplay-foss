@@ -392,26 +392,40 @@ test("Local native startup stall retries twice at its retained position then sto
         3
     );
 });
-test("Local playing stalls preserve position and meaningful progress renews the retry budget", () => {
-    const f = localStallFixture();
-    ready(f.w.video, true);
-    f.w.video.currentTime = 240;
-    f.advance(30000);
-    f.advance(2000);
-    ready(f.w.video, true);
-    assert.equal(f.w.video.currentTime, 240);
-    for (let i = 0; i < 3; i++) {
-        f.w.video.currentTime += 1;
-        f.advance(1000);
-    }
-    for (let i = 0; i < 2; i++) {
+test("Local playing stalls retain position and renew the budget only after ten continuous wallseconds", () => {
+    for (const seconds of [3, 9, 10]) {
+        const f = localStallFixture();
+        ready(f.w.video, true);
+        f.w.video.currentTime = 240;
         f.advance(30000);
         f.advance(2000);
         ready(f.w.video, true);
+        assert.equal(f.w.video.currentTime, 240);
+        // Observe the restored position before counting one-second intervals.
+        // A resume seek is not healthy playback time.
+        f.advance(1000);
+        for (let i = 0; i < seconds; i++) {
+            f.w.video.currentTime += 1;
+            f.advance(1000);
+        }
+        for (let i = 0; i < 2; i++) {
+            f.advance(30000);
+            f.advance(2000);
+            ready(f.w.video, true);
+        }
+        assert.equal(
+            f.w.coreStreamAttempt.state().terminal,
+            seconds < 10,
+            seconds + " observed seconds before the next stalls"
+        );
+        assert.equal(
+            f.w.video.sourceHistory.filter((url) => url === "local.mp4").length,
+            seconds < 10 ? 3 : 4,
+            "Short progress cannot admit an extra retry"
+        );
+        f.advance(30000);
+        assert.equal(f.w.coreStreamAttempt.state().terminal, true);
     }
-    assert.equal(f.w.coreStreamAttempt.state().terminal, false);
-    f.advance(30000);
-    assert.equal(f.w.coreStreamAttempt.state().terminal, true);
 });
 test("Local watchdog ignores focus but suspends paused time and is cancelled by stop or replacement", () => {
     for (const action of ["stop", "replace"]) {

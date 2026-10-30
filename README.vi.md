@@ -69,7 +69,7 @@ Có thể tạo lại hình thử tổng hợp bằng `scripts/generate-demo-med
 - **Yêu thích**: một [bộ sưu tập hỗn hợp](docs/mixed-favorites.md) có thứ tự giữa các nhà cung cấp và hồ sơ đã cấu hình trên thiết bị được hỗ trợ, với xuất/nhập có thể chuyển sang thiết bị khác qua CLI; PIN phụ huynh. Danh sách yêu thích theo nguồn vẫn có trong chế độ dự phòng.
 - **Cài đặt**: xuất/nhập JSON cài đặt và mục yêu thích, nhật ký hoàn tác cho các lô localStorage được hỗ trợ, tiếp tục kho lưu trữ theo nguồn và so sánh chính xác cài đặt đã lưu cho quy trình bộ điều khiển. Khôi phục giả định chỉ một bên ghi; bộ chuyển đổi lưu trữ tùy chỉnh vẫn hoàn tác theo khả năng. Xem [khôi phục cài đặt](docs/settings-recovery.vi.md).
 - **Giao diện chung**: OTT Server, Tauri và Capacitor dùng cùng chủ đề danh sách kênh và cài đặt hiển thị. Cài đặt giao diện kiểm soát màu làm nổi bật và lựa chọn; cài đặt danh sách kiểm soát tên kênh, picon, chương trình hiện tại, tiến độ và dấu kho lưu trữ.
-- **Nhà cung cấp**: M3U/M3U8, TV trực tiếp Xtream cùng [danh mục phim/phim bộ theo yêu cầu](docs/xtream-media.vi.md), Stalker/Ministra, Plex và VPortal. Khả năng nhà cung cấp và quyền tài khoản quyết định các chức năng kho lưu trữ, thư viện nội dung khả dụng.
+- **Nhà cung cấp**: M3U/M3U8, TV trực tiếp Xtream cùng [danh mục phim/phim bộ theo yêu cầu](docs/xtream-media.vi.md), Stalker/Ministra với [phim và các tập trong thư mục lồng nhau](docs/stalker-media.md), Plex và VPortal. Khả năng nhà cung cấp và quyền tài khoản quyết định các chức năng kho lưu trữ, thư viện nội dung khả dụng.
 - **Lệnh push**: điều khiển qua webhook — đổi kênh, nhà cung cấp, danh sách, hiện thông báo bật lên
 - **Nhập văn bản từ xa (swop)**: bàn phím điện thoại qua Cloudflare Worker khi TV và điện thoại ở mạng khác nhau (phiên được cấp quyền theo cài đặt; ♥™ trên bàn phím ảo)
 - **Định tuyến theo thiết bị**: địa chỉ UUID cho cấu hình nhiều thiết bị
@@ -82,6 +82,8 @@ Có thể tạo lại hình thử tổng hợp bằng `scripts/generate-demo-med
 - **88 ngôn ngữ giao diện**: danh mục tương ứng, [hướng dẫn nhanh bản địa hóa](docs/readme/README.md) và [bảng chữ cái bàn phím được kiểm tra bằng CLDR](docs/localization.md). Sổ tay chính và các hướng dẫn tính năng theo cặp có [24 ngôn ngữ tài liệu](docs/manual-translations.md); các tài liệu kỹ thuật khác giữ nguyên ngôn ngữ hiện có.
 
 [Hướng dẫn bàn giao](docs/roadmap-delivery.vi.md) mô tả các tính năng thực hiện trong bản nguồn này, ranh giới nền tảng, sơ đồ và xác minh. Bản phát hành đã cài hoặc triển khai lưu trữ có thể dùng bản nguồn cũ hơn. [Ứng dụng Android](https://github.com/open-ott-play/ottplay-android) gốc độc lập cũng giữ lựa chọn âm thanh/phụ đề theo ngôn ngữ, vai trò và nhãn thay vì chỉ số manifest; triển khai và phát hành của nó tách biệt frontend này.
+
+[Bài đánh giá mã nguồn STB](docs/stb-player-improvements.md) giải thích các cải tiến về nội dung, sử dụng tài nguyên và khôi phục, cùng các so sánh mã nguồn và giới hạn hiện tại.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Các kiểm tra nằm trong `scripts/modea-smoke-checks.json`. Không có bí m�
 
 ## Cổng Stalker / Ministra cổ điển
 
-Chọn **Cổng Stalker** và nhập MAC do nhà cung cấp cấp cùng URL cổng đầy đủ, ví dụ `http://provider.example/stalker_portal/c/`. Các URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` và `/portal.php` chọn giao thức MAG cổ điển. Cấu hình chỉ địa chỉ máy chủ hiện có giữ JSON-RPC. Nhà cung cấp tải hồ sơ, thể loại và các trang kênh trực tiếp bằng lõi Stalker chung. Yêu cầu trình duyệt đi qua endpoint `/stalker/api` của companion; ứng dụng gốc dùng giao vận HTTP hiện có. Tài nguyên trình duyệt và companion phải được cập nhật cùng nhau.
+Chọn **Cổng Stalker** và nhập MAC do nhà cung cấp cấp cùng URL cổng đầy đủ, ví dụ `http://provider.example/stalker_portal/c/`. Các URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` và `/portal.php` chọn giao thức MAG cổ điển. Cấu hình chỉ địa chỉ máy chủ hiện có giữ JSON-RPC. Nhà cung cấp tải hồ sơ, thể loại và các trang kênh trực tiếp bằng lõi Stalker chung, sau đó tìm phim và các tập trong thư mục lồng nhau qua giao thức `type=vod` cổ điển ở chế độ nền. Đường dẫn thư mục trở thành thể loại trong danh sách kênh thông thường; mô tả, áp phích có sẵn và Mục yêu thích toàn cục ổn định dùng chung giao diện nội dung. Xem [cách hoạt động và giới hạn của danh mục](docs/stalker-media.md).
 
-Phát trực tiếp giải quyết lệnh kênh tạm thời khi mở luồng; đổi kênh, dừng, PiP và thay nhà cung cấp hủy việc giải quyết đã cũ. Lệnh HTTP(S) rõ ràng, không tạm thời, phát trực tiếp. EPG ngắn được hỗ trợ; nhà cung cấp này chưa cung cấp kho lưu trữ và VOD của cổng cổ điển. Hành vi kho lưu trữ/lịch JSON-RPC hiện có không đổi. Cổng LAN riêng cần mục `OTTPLAY_PROXY_LAN_ORIGINS` chính xác, như các tuyến proxy companion khác.
+Yêu cầu từ phiên bản trình duyệt tự lưu trữ đi qua endpoint `/stalker/api` của companion; ứng dụng gốc dùng giao vận HTTP hiện có. Phiên bản trình duyệt trên dịch vụ lưu trữ cần các tuyến được cấu hình rõ ràng qua [relay chuyên dụng](docs/stalker-relay.md). Tài nguyên trình duyệt và máy chủ phải được cập nhật cùng nhau.
+
+Phát trực tiếp giải quyết lệnh kênh tạm thời khi mở luồng; đổi kênh, dừng, PiP và thay nhà cung cấp hủy việc giải quyết đã cũ. Lệnh HTTP(S) rõ ràng, không tạm thời, phát trực tiếp. EPG ngắn được hỗ trợ. Nhà cung cấp này không cung cấp kho lưu trữ của cổng cổ điển hoặc biến thể giao thức `type=series` riêng biệt. Hành vi kho lưu trữ/lịch JSON-RPC hiện có không đổi. Cổng LAN riêng dùng tuyến companion cần mục `OTTPLAY_PROXY_LAN_ORIGINS` chính xác, như các tuyến proxy companion khác.
 
 Demo Infomir công khai ở `http://middleware-stalker.com/stalker_portal/c/`. Nó trả ba mục danh mục trực tiếp ngày 2026-09-26 nhưng endpoint nội dung không khả dụng; dùng dữ liệu cổng/nội dung có kiểm soát để kiểm thử hồi quy phát.
 

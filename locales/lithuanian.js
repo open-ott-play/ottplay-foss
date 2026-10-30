@@ -998,6 +998,8 @@ var keyStrings = {
     "Sleep timer": "Miego laikmatis",
     "Sort channels": "Rikiuoti kanalus",
     "Source access": "Prieiga prie medijos šaltinio",
+    "Source is busy. Try again later.":
+        "Šaltinis užimtas. Bandykite dar kartą vėliau.",
     "Source sign-in required": "Būtina prisijungti prie šaltinio",
     "Source sign-in was cancelled": "Prisijungimas prie šaltinio atšauktas",
     "Stalker Portal Provider": "Stalker portalo teikėjas",
@@ -1052,6 +1054,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Įrenginio ID adrese netinkamas.",
     "The discovery response is invalid.": "Paieškos atsakymas netinkamas.",
+    "The stream connection failed": "Nepavyko prisijungti prie srauto",
+    "The stream format could not be played":
+        "Nepavyko paleisti šio formato srauto",
     "This browser cannot identify the selected screenshot source.":
         "Ši naršyklė negali nustatyti pasirinkto ekrano kopijos šaltinio.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1064,6 +1069,8 @@ var keyStrings = {
         "Šiai Play programėlei būtinas HTTPS. Paprašykite teikėjo HTTPS grojaraščio arba serverio URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ši poravimo nuoroda nebegalioja. Atidarykite naują seansą televizoriuje.",
+    "This protected stream could not be played":
+        "Nepavyko paleisti šio apsaugoto srauto",
     "This remote command is not supported by the player.":
         "Leistuvas nepalaiko šios nuotolinės komandos.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

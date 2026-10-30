@@ -999,6 +999,7 @@ var keyStrings = {
     "Sleep timer": "Pengatur waktu tidur",
     "Sort channels": "Urutkan saluran",
     "Source access": "Akses ke sumber media",
+    "Source is busy. Try again later.": "Sumber sedang sibuk. Coba lagi nanti.",
     "Source sign-in required": "Diperlukan proses masuk sumber",
     "Source sign-in was cancelled": "Proses masuk ke sumber dibatalkan",
     "Stalker Portal Provider": "Penyedia portal Stalker",
@@ -1053,6 +1054,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID perangkat di alamat tidak valid.",
     "The discovery response is invalid.": "Respons pencarian tidak valid.",
+    "The stream connection failed": "Koneksi ke aliran gagal",
+    "The stream format could not be played":
+        "Format aliran tidak dapat diputar",
     "This browser cannot identify the selected screenshot source.":
         "Browser ini tidak dapat mengidentifikasi sumber tangkapan layar yang dipilih.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1065,6 +1069,8 @@ var keyStrings = {
         "Aplikasi Play ini memerlukan HTTPS. Minta URL daftar putar atau server HTTPS kepada penyedia.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tautan penyandingan ini telah kedaluwarsa. Buka sesi baru di TV Anda.",
+    "This protected stream could not be played":
+        "Aliran yang dilindungi ini tidak dapat diputar",
     "This remote command is not supported by the player.":
         "Perintah jarak jauh ini tidak didukung oleh pemutar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

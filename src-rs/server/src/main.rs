@@ -111,8 +111,18 @@ fn epg_urls() -> Vec<String> {
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(long, default_value = "0.0.0.0")]
+    #[arg(
+        long,
+        default_value = "0.0.0.0",
+        default_value_if("stalker_relay_only", "true", "127.0.0.1")
+    )]
     host: String,
+    /// Serve only health and explicitly configured, authenticated Stalker routes.
+    #[arg(long, requires = "stalker_relay_config")]
+    stalker_relay_only: bool,
+    /// Private JSON configuration for --stalker-relay-only.
+    #[arg(long, requires = "stalker_relay_only")]
+    stalker_relay_config: Option<std::path::PathBuf>,
     /// HTTP listen ports. Repeat --port; defaults to 8080 only when omitted.
     #[arg(long, action = clap::ArgAction::Append, default_value = "8080")]
     port: Vec<u16>,
@@ -276,6 +286,22 @@ async fn serve_listeners(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let stalker_relay = if cli.stalker_relay_only {
+        anyhow::ensure!(
+            std::env::var_os("OTT_OFFLINE_MEDIA_READONLY_PATHS").is_none()
+                && std::env::var_os("OTT_NORMALIZATION_CONFIG").is_none()
+                && std::env::var("OTT_NORMALIZATION_ONLY").as_deref() != Ok("1")
+                && !hosted_epg::enabled()?,
+            "Stalker relay mode cannot be combined with another service mode"
+        );
+        Some(stalker_api::relay_routes(
+            cli.stalker_relay_config
+                .as_deref()
+                .expect("required relay config"),
+        )?)
+    } else {
+        None
+    };
     let readonly_paths = match std::env::var("OTT_OFFLINE_MEDIA_READONLY_PATHS") {
         Ok(value) => Some(parse_readonly_paths(&value, &cli.host)?),
         Err(std::env::VarError::NotPresent) => None,
@@ -294,6 +320,9 @@ async fn main() -> anyhow::Result<()> {
         _ => None,
     };
     let listeners = bind_listeners(&cli.host, &http_ports, &https_ports).await?;
+    if let Some(app) = stalker_relay {
+        return serve_listeners(listeners, app, tls_config).await;
+    }
     if readonly_paths.is_some() {
         // A local media bridge exposes no proxy, player assets, import or
         // control endpoints. Its capability token scopes every media request.
@@ -535,6 +564,44 @@ fn player_asset_routes(directory: &std::path::Path) -> Router {
 #[cfg(test)]
 mod listener_tests {
     use super::*;
+
+    #[test]
+    fn stalker_relay_requires_config_and_defaults_to_loopback() {
+        for args in [
+            vec!["ottplay-server", "--stalker-relay-only"],
+            vec!["ottplay-server", "--stalker-relay-config", "config.json"],
+        ] {
+            assert!(Cli::try_parse_from(args).is_err());
+        }
+        let relay = Cli::try_parse_from([
+            "ottplay-server",
+            "--stalker-relay-only",
+            "--stalker-relay-config",
+            "config.json",
+        ])
+        .unwrap();
+        assert_eq!(relay.host, "127.0.0.1");
+        assert_eq!(relay.listen_ports().unwrap(), (vec![8080], vec![]));
+        let explicit = Cli::try_parse_from([
+            "ottplay-server",
+            "--stalker-relay-only",
+            "--stalker-relay-config",
+            "config.json",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8443",
+            "--port",
+            "8444",
+        ])
+        .unwrap();
+        assert_eq!(explicit.host, "0.0.0.0");
+        assert_eq!(explicit.listen_ports().unwrap(), (vec![8443, 8444], vec![]));
+        assert_eq!(
+            Cli::try_parse_from(["ottplay-server"]).unwrap().host,
+            "0.0.0.0"
+        );
+    }
 
     #[test]
     fn readonly_library_requires_explicit_loopback_and_absolute_folder_list() {

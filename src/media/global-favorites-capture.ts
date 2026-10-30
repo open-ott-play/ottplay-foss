@@ -1,4 +1,5 @@
 import {
+    globalFavoriteCanonical,
     globalFavoriteChannelId,
     globalFavoriteProviderId,
 } from "./global-favorites-identities";
@@ -212,7 +213,35 @@ export async function captureGlobalFavorite(
         if (builtin?.kind === "edem" || provider === "kb-team")
             origin.subprofile = "Playlist " + (slot + 1);
 
+        var stalkerRow: any = null;
         if (
+            provider === "stalker" &&
+            payload?.request?.kind === "stalker-media"
+        ) {
+            var playingStalker = w.__ottMedia?.current();
+            var candidates = (w.cList || []).filter(function (id: any) {
+                var row = w.channels[id];
+                return (
+                    row?.__ottMediaItem &&
+                    (row?.__ottMediaItem === payload ||
+                        (playingStalker?.payload === payload &&
+                            playingStalker.ref.sourceId ===
+                                w.__ottSourceIdentity.media(w) &&
+                            playingStalker.ref.itemId ===
+                                "provider:" + payload.itemId)) &&
+                    payload.stalkerSource === w.__ottSourceIdentity.media(w) &&
+                    row.__ottMediaItem.stalkerSource ===
+                        payload.stalkerSource &&
+                    globalFavoriteChannelId(provider, row) === payload.itemId &&
+                    globalFavoriteCanonical(row.__ottMediaItem.request) ===
+                        globalFavoriteCanonical(payload.request)
+                );
+            });
+            if (candidates.length !== 1) return null;
+            stalkerRow = candidates[0];
+        }
+        if (
+            stalkerRow === null &&
             payload?.__ottGlobalChannel === undefined &&
             (!state?.target ||
                 state.target.sourceId !== source ||
@@ -225,15 +254,25 @@ export async function captureGlobalFavorite(
             w.__ottLegacyChannelAliases
         );
         var channelId =
-            payload?.__ottGlobalChannel === undefined
-                ? state.target.channelId
-                : payload.__ottGlobalChannel;
+            stalkerRow !== null
+                ? stalkerRow
+                : payload?.__ottGlobalChannel === undefined
+                  ? state.target.channelId
+                  : payload.__ottGlobalChannel;
         var reference = /^-?\d+$/.test(String(channelId))
             ? references.resolve(channelId, "canonical")
             : { itemId: channelId };
         var projected = references.project(reference),
             channel = projected !== null && w.channels[projected];
         var stable = globalFavoriteChannelId(provider, channel);
+        if (
+            provider === "stalker" &&
+            channel?.__ottMediaItem &&
+            (!stable ||
+                channel.__ottMediaItem.stalkerSource !==
+                    w.__ottSourceIdentity.media(w))
+        )
+            return null;
         if (
             stable &&
             (w.cList || []).filter(function (id: any) {

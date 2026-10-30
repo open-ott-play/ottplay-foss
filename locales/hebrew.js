@@ -964,6 +964,7 @@ var keyStrings = {
     "Sleep timer": "טיימר שינה",
     "Sort channels": "מיין ערוצים",
     "Source access": "גישה למקור המדיה",
+    "Source is busy. Try again later.": "המקור תפוס. נסו שוב מאוחר יותר.",
     "Source sign-in required": "נדרשת כניסה למקור",
     "Source sign-in was cancelled": "הכניסה למקור בוטלה",
     "Stalker Portal Provider": "ספק פורטל Stalker",
@@ -1015,6 +1016,9 @@ var keyStrings = {
         "כתובת ה־URL לחיפוש שרת הפקודות אינה תקינה.",
     "The device ID in the address is invalid.": "מזהה המכשיר בכתובת אינו תקין.",
     "The discovery response is invalid.": "תשובת החיפוש אינה תקינה.",
+    "The stream connection failed": "החיבור לזרם נכשל",
+    "The stream format could not be played":
+        "לא ניתן היה להפעיל את הזרם בפורמט הזה",
     "This browser cannot identify the selected screenshot source.":
         "דפדפן זה אינו יכול לזהות את מקור צילום המסך שנבחר.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1027,6 +1031,8 @@ var keyStrings = {
         "יישום Play זה דורש HTTPS. בקש מהספק פלייליסט או כתובת שרת ב-HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "פג תוקף קישור ההתאמה הזה. פתח הפעלה חדשה בטלוויזיה שלך.",
+    "This protected stream could not be played":
+        "לא ניתן היה להפעיל את הזרם המוגן הזה",
     "This remote command is not supported by the player.":
         "פקודת שליטה מרחוק זו אינה נתמכת בנגן.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

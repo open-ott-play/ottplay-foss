@@ -3,6 +3,7 @@ export interface BufferPolicyInput {
     android?: boolean;
     deviceMemory?: number;
     live?: boolean;
+    lowMemoryDevice?: boolean;
     originalUrl?: string;
     pip?: boolean;
     seconds?: any;
@@ -21,7 +22,9 @@ export function isAceStreamSource(value: string = ""): boolean {
 
 export function createBufferPolicy(input: BufferPolicyInput): any {
     var memory = Number(input.deviceMemory);
-    var lowMemory = isFinite(memory) && memory > 0 && memory <= 2;
+    var lowMemory =
+        input.lowMemoryDevice === true ||
+        (isFinite(memory) && memory > 0 && memory <= 2);
     var mobile = !!input.android;
     var ace =
         isAceStreamSource(input.originalUrl) || isAceStreamSource(input.url);
@@ -77,12 +80,14 @@ export function coreBufferPolicy(
     pip = false
 ): any {
     var navigator = w.navigator || {};
+    var android =
+        w.ott_device === "android" ||
+        /\bAndroid\b/i.test(navigator.userAgent || "");
     return createBufferPolicy({
-        android:
-            w.ott_device === "android" ||
-            /\bAndroid\b/i.test(navigator.userAgent || ""),
+        android: android,
         deviceMemory: navigator.deviceMemory,
         live: live,
+        lowMemoryDevice: android && w.__ottNativeLowMemoryDevice === true,
         originalUrl: originalUrl,
         pip: pip,
         seconds: seconds,

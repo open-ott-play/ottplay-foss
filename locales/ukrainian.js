@@ -996,6 +996,8 @@ var keyStrings = {
     "Sleep timer": "Таймер сну",
     "Sort channels": "Сортувати канали",
     "Source access": "Доступ до медіаджерела",
+    "Source is busy. Try again later.":
+        "Джерело зайняте. Спробуйте ще раз пізніше.",
     "Source sign-in required": "Необхідно ввійти в систему джерела",
     "Source sign-in was cancelled": "Вхід до джерела скасовано",
     "Stalker Portal Provider": "Провайдер порталу Stalker",
@@ -1051,6 +1053,9 @@ var keyStrings = {
         "В адресі вказано неправильний ID пристрою.",
     "The discovery response is invalid.":
         "Отримано недійсну відповідь на запит пошуку.",
+    "The stream connection failed": "Не вдалося підключитися до потоку",
+    "The stream format could not be played":
+        "Не вдалося відтворити потік у цьому форматі",
     "This browser cannot identify the selected screenshot source.":
         "Цей браузер не може визначити вибране джерело знімка екрана.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1063,6 +1068,8 @@ var keyStrings = {
         "Для цієї версії з Play потрібен HTTPS. Попросіть у провайдера HTTPS-адресу списку або сервера.",
     "This pairing link has expired. Open a new session on your TV.":
         "Термін дії цього посилання для створення пари закінчився. Відкрийте новий сеанс на телевізорі.",
+    "This protected stream could not be played":
+        "Не вдалося відтворити цей захищений потік",
     "This remote command is not supported by the player.":
         "Плеєр не підтримує цю віддалену команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

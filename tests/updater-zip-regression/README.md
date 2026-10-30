@@ -1,7 +1,9 @@
 # Updater ZIP compatibility regression
 
 This standalone workspace exercises the exact `Update::extract_zip` method
-from the vendored Tauri updater against ZIP 9.0.0. `build.rs` reads the method
+from the vendored Tauri updater against ZIP 9.1.3. The exact dev-dependency pin,
+both Cargo locks and the reviewed checksum in `check-updater-backport.py` must
+advance together. `build.rs` reads the method
 from the production source at compile time; it does not maintain a second copy.
 The small test adapter supplies a temporary directory, error conversions and
 installer result types. It never downloads or launches an installer.

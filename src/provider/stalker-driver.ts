@@ -39,6 +39,478 @@ function classicStalkerUrl(url: string): string {
 
 var classicStalkerSequence = 0;
 
+interface StalkerProviderDriver extends ProviderDriver {
+    catalogError(): boolean;
+    catalogLoading(): boolean;
+    hasMediaKey(key: string): boolean;
+    mediaClient(): any;
+    startMedia(): void;
+}
+
+/** Collect only core-returned folders; the visible surface remains the channel list. */
+function createStalkerMedia(
+    ports: ProviderDriverPorts,
+    owner: DriverLifetime,
+    current: () => boolean,
+    client: any,
+    root: any,
+    send: (request: any, scope: DriverLifetime, done: any, fail: any) => void,
+    publish: (items: any[]) => void
+) {
+    var discovery = ports.createLifetime();
+    var resolution = ports.createLifetime();
+    var state = "idle",
+        host: any = null;
+    var timer: any = null,
+        deadline: any = null;
+    var queue: any[] = [],
+        cursor = 0,
+        records: any[] = [];
+    var recordsByKey: Record<string, any> = Object.create(null);
+    var seen: Record<string, boolean> = Object.create(null);
+    var folders = 0,
+        bytes = 0;
+    var source = ports.sourceIdentity ? ports.sourceIdentity() : "stalker";
+    function active() {
+        return current() && owner.active();
+    }
+    function escape(value: any): string {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+    function key(path: any[], id: string): string {
+        var codes: Record<string, string> = {
+            "portal-category": "c",
+            "portal-episode": "e",
+            "portal-movie": "m",
+            "portal-season": "s",
+        };
+        try {
+            var compact = path.map(function (part) {
+                if (!codes[part.type]) throw new Error();
+                return [
+                    codes[part.type],
+                    decodeURIComponent(
+                        part.id.slice(part.id.lastIndexOf(":") + 1)
+                    ),
+                ];
+            });
+            compact.push([
+                "v",
+                decodeURIComponent(id.slice(id.lastIndexOf(":") + 1)),
+            ]);
+            var input = encodeURIComponent(JSON.stringify(compact)).replace(
+                /%([0-9A-F]{2})/g,
+                function (_, hex) {
+                    return String.fromCharCode(parseInt(hex, 16));
+                }
+            );
+            var alphabet =
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+                output = "";
+            for (var i = 0; i < input.length; i += 3) {
+                var value =
+                    (input.charCodeAt(i) << 16) |
+                    ((input.charCodeAt(i + 1) || 0) << 8) |
+                    (input.charCodeAt(i + 2) || 0);
+                output +=
+                    alphabet[(value >>> 18) & 63] +
+                    alphabet[(value >>> 12) & 63];
+                if (i + 1 < input.length)
+                    output += alphabet[(value >>> 6) & 63];
+                if (i + 2 < input.length) output += alphabet[value & 63];
+            }
+            return output.length <= 242 ? "stalker-media:" + output : "";
+        } catch (_) {
+            return "";
+        }
+    }
+    function record(item: any, path: any[], categories: any[]): any {
+        var identity = key(path, item.id);
+        if (!identity) throw new Error("identity_limit");
+        return {
+            __ottMediaCategories: categories,
+            __ottMediaCollection: categories
+                .map(function (part) {
+                    return part.name;
+                })
+                .join(" / "),
+            adult: item.adult ? 1 : 0,
+            description:
+                "<b>" +
+                escape(item.name) +
+                "</b>" +
+                (item.description ? "<br>" + escape(item.description) : ""),
+            itemId: identity,
+            logo_30x30: item.logo || "",
+            request: {
+                id: item.id,
+                key: identity,
+                kind: "stalker-media",
+                path: path.map(function (part) {
+                    return { id: part.id, type: part.type };
+                }),
+            },
+            stalkerSource: source,
+            title: String(item.name || "").slice(0, 512),
+        };
+    }
+    function run(
+        operation: any,
+        scope: DriverLifetime,
+        budget: any,
+        done: any,
+        fail: any
+    ) {
+        if (!active() || !scope.active()) return;
+        if (ports.now() >= budget.deadline) return fail();
+        if (!operation || operation.failure) return fail();
+        var request: any;
+        try {
+            request = operation.request();
+        } catch (_) {
+            return fail();
+        }
+        if (!request) {
+            try {
+                done(operation.result());
+            } catch (_) {
+                fail();
+            }
+            return;
+        }
+        if (++budget.requests > 5000) return fail();
+        send(
+            request,
+            scope,
+            function (data: any) {
+                if (!active() || !scope.active()) return;
+                if (ports.now() >= budget.deadline) return fail();
+                var error: any;
+                try {
+                    error = operation.accept(data);
+                } catch (_) {
+                    return fail();
+                }
+                if (error) return fail();
+                run(operation, scope, budget, done, fail);
+            },
+            fail
+        );
+    }
+    function finish(failed: boolean) {
+        if (state !== "loading") return;
+        state = failed ? "partial" : "complete";
+        if (timer !== null) window.clearTimeout(timer);
+        if (deadline !== null) window.clearTimeout(deadline);
+        timer = deadline = null;
+        queue = [];
+        discovery.dispose();
+        if (failed && active() && host && typeof host.showShift === "function")
+            host.showShift(
+                host._("Media Library") + ": " + host._("Failed to load!")
+            );
+    }
+    function start() {
+        if (!active() || state !== "idle" || !root) return;
+        state = "loading";
+        var scope = discovery.activate("stalker-media-catalog");
+        var budget = { deadline: ports.now() + 120, requests: 0 };
+        queue = [{ categories: [], node: root, path: [] }];
+        cursor = 0;
+        deadline = window.setTimeout(function () {
+            finish(true);
+        }, 120000);
+        function next() {
+            timer = null;
+            if (!active() || !scope.active()) return;
+            var job = queue[cursor];
+            queue[cursor++] = null;
+            if (!job) return finish(false);
+            run(
+                client.browse(job.node),
+                scope,
+                budget,
+                function (result: any) {
+                    if (!Array.isArray(result.items)) return finish(true);
+                    var batch: any[] = [];
+                    try {
+                        result.items.forEach(function (item: any) {
+                            if (item.kind === "folder") {
+                                if (
+                                    job.path.length >= 8 ||
+                                    ++folders > 5000 ||
+                                    job.path.some(function (part: any) {
+                                        return (
+                                            part.id === item.id &&
+                                            part.type === item.folderType
+                                        );
+                                    })
+                                )
+                                    throw new Error("folder_limit");
+                                var path = job.path.concat([
+                                    { id: item.id, type: item.folderType },
+                                ]);
+                                var signature = JSON.stringify(path);
+                                if (seen[signature]) return;
+                                seen[signature] = true;
+                                queue.push({
+                                    categories: job.categories.concat([
+                                        {
+                                            id: "stalker-category:" + signature,
+                                            name: item.name,
+                                        },
+                                    ]),
+                                    node: item,
+                                    path: path,
+                                });
+                            } else if (item.kind === "vod") {
+                                var entry = record(
+                                    item,
+                                    job.path,
+                                    job.categories
+                                );
+                                if (seen[entry.itemId]) return;
+                                if (records.length + batch.length >= 50000)
+                                    throw new Error("item_limit");
+                                bytes += JSON.stringify(entry).length * 2;
+                                if (bytes > 67108864)
+                                    throw new Error("metadata_limit");
+                                seen[entry.itemId] = true;
+                                batch.push(entry);
+                            }
+                        });
+                    } catch (_) {
+                        return finish(true);
+                    }
+                    if (ports.now() >= budget.deadline) return finish(true);
+                    if (batch.length) {
+                        publish(batch);
+                        if (!active() || !scope.active()) return;
+                        batch.forEach(function (entry) {
+                            records.push(entry);
+                            recordsByKey[entry.itemId] = entry;
+                        });
+                    }
+                    if (active() && scope.active())
+                        timer = window.setTimeout(next, 0);
+                },
+                function () {
+                    finish(true);
+                }
+            );
+        }
+        next();
+    }
+    function cancel() {
+        resolution.dispose();
+    }
+    var api = {
+        attach: function (value: any) {
+            host = value;
+        },
+        cancel: cancel,
+        catalogError: function () {
+            return state === "partial";
+        },
+        catalogLoading: function () {
+            return active() && state === "loading";
+        },
+        dispose: function () {
+            finish(false);
+            state = "cancelled";
+            discovery.dispose();
+            resolution.dispose();
+            records = [];
+            queue = [];
+            recordsByKey = Object.create(null);
+        },
+        hasMediaKey: function (key: string) {
+            return active() && !!recordsByKey[key];
+        },
+        load: function (_: any, done: any) {
+            if (!host || !active()) return;
+            host.mediaRecords = records.slice();
+            host.mediaName = host._("Stalker Portal Provider");
+            done();
+        },
+        persist: function (item: any) {
+            return {
+                adult: item.adult,
+                itemId: item.itemId,
+                request: JSON.parse(JSON.stringify(item.request)),
+                title: item.title,
+            };
+        },
+        resolve: function (saved: any, done: any, automatic?: boolean) {
+            cancel();
+            var request = saved && saved.request;
+            if (
+                !active() ||
+                !request ||
+                request.kind !== "stalker-media" ||
+                typeof request.id !== "string" ||
+                request.id.length > 2048 ||
+                !Array.isArray(request.path) ||
+                request.path.length < 1 ||
+                request.path.length > 8 ||
+                request.path.some(function (part: any) {
+                    return (
+                        !part ||
+                        typeof part.id !== "string" ||
+                        part.id.length > 2048 ||
+                        typeof part.type !== "string"
+                    );
+                }) ||
+                key(request.path, request.id) !== request.key ||
+                !request.key
+            )
+                return done(null);
+            // The media host attaches this launch identity before resolution.
+            // Retain only its current source/key pair when replacing metadata.
+            var reference = saved.__ottMediaRef;
+            if (
+                reference &&
+                (reference.sourceId !== source ||
+                    reference.itemId !== "provider:" + request.key)
+            )
+                return done(null);
+            reference = reference
+                ? { itemId: reference.itemId, sourceId: reference.sourceId }
+                : null;
+            request = {
+                id: request.id,
+                key: request.key,
+                kind: request.kind,
+                path: request.path.map(function (part: any) {
+                    return { id: part.id, type: part.type };
+                }),
+            };
+            var scope = resolution.activate("stalker-media-playback"),
+                settled = false;
+            var budget = { deadline: ports.now() + 60, requests: 0 },
+                timeout: any = null;
+            function valid() {
+                return (
+                    active() &&
+                    scope.active() &&
+                    (!done.isCurrent || done.isCurrent())
+                );
+            }
+            function finishResolve(value: any) {
+                if (settled || !valid()) return;
+                settled = true;
+                if (timeout !== null) window.clearTimeout(timeout);
+                scope.dispose();
+                done(ports.now() >= budget.deadline ? null : value);
+            }
+            timeout = window.setTimeout(function () {
+                finishResolve(null);
+                scope.dispose();
+            }, 60000);
+            scope.own(function () {
+                if (timeout !== null) window.clearTimeout(timeout);
+            });
+            function walk(node: any, index: number, categories: any[]) {
+                run(
+                    client.browse(node),
+                    scope,
+                    budget,
+                    function (result: any) {
+                        if (!valid()) return;
+                        var part = request.path[index];
+                        var matches = (result.items || []).filter(function (
+                            item: any
+                        ) {
+                            return part
+                                ? item.id === part.id &&
+                                      item.folderType === part.type
+                                : item.id === request.id && item.kind === "vod";
+                        });
+                        if (matches.length !== 1) return finishResolve(null);
+                        var item = matches[0];
+                        if (part)
+                            return walk(
+                                item,
+                                index + 1,
+                                categories.concat([
+                                    {
+                                        id:
+                                            "stalker-category:" +
+                                            JSON.stringify(
+                                                request.path.slice(0, index + 1)
+                                            ),
+                                        name: item.name,
+                                    },
+                                ])
+                            );
+                        // Capture the core operation before a PIN dialog yields: another
+                        // catalog branch may reuse the same provider-local leaf ID.
+                        var playback = client.playback(item);
+                        function play() {
+                            if (!valid()) return;
+                            var entry = record(item, request.path, categories);
+                            if (reference) entry.__ottMediaRef = reference;
+                            run(
+                                playback,
+                                scope,
+                                budget,
+                                function (result: any) {
+                                    if (!result.url) return finishResolve(null);
+                                    entry.stream_url = result.url;
+                                    finishResolve(entry);
+                                },
+                                function () {
+                                    finishResolve(null);
+                                }
+                            );
+                        }
+                        function locked() {
+                            return (
+                                host &&
+                                (host.__ottParental
+                                    ? host.__ottParental.needs("channels")
+                                    : host.sPSchannels &&
+                                      host.parentPIN !== "*" &&
+                                      !host.parentAccess)
+                            );
+                        }
+                        if (item.adult && locked()) {
+                            if (
+                                automatic ||
+                                typeof host.enterPinAndSetAccess !== "function"
+                            )
+                                return finishResolve(null);
+                            host.enterPinAndSetAccess(
+                                function () {
+                                    if (locked()) finishResolve(null);
+                                    else play();
+                                },
+                                function () {
+                                    finishResolve(null);
+                                }
+                            );
+                        } else play();
+                    },
+                    function () {
+                        finishResolve(null);
+                    }
+                );
+            }
+            walk(root, 0, []);
+        },
+        stableRequests: true,
+        stalker: true,
+        start: start,
+    };
+    owner.own(api.dispose);
+    return api;
+}
+
 /** HTTP/JSON and classic-view codecs; handshake, paging and link policy stay in core. */
 function createClassicStalkerDriver(
     ports: ProviderDriverPorts,
@@ -46,7 +518,7 @@ function createClassicStalkerDriver(
     helpers: StalkerDriverHelpers,
     credentials: ProviderCredentials,
     current: () => boolean
-): ProviderDriver {
+): StalkerProviderDriver {
     var alive = true;
     var lifetime = ports.createLifetime();
     var scope = lifetime.activate("classic-stalker");
@@ -55,6 +527,7 @@ function createClassicStalkerDriver(
     var nodes: Record<string, any> = Object.create(null);
     var rawRows: Record<string, any> = Object.create(null);
     var headers: Record<string, string> = {};
+    var media: any = null;
     var config: any = {
         bulkCatalog: true,
         id: "classic-stalker",
@@ -101,7 +574,21 @@ function createClassicStalkerDriver(
         done: (data: any) => void,
         fail: (...args: any[]) => void
     ) {
+        if (!active() || !current.active()) return;
         var native = ports.m3u && ports.m3u.native();
+        var relay: string | null =
+            (ports.relay || "").replace(/\/+$/, "") + "/stalker/api";
+        if (!native && ports.hostedStalkerRoute) {
+            try {
+                relay = ports.hostedStalkerRoute(config.endpoint);
+            } catch (_) {
+                relay = null;
+            }
+            if (!relay) {
+                fail();
+                return;
+            }
+        }
         transport.send(
             current,
             native
@@ -121,9 +608,7 @@ function createClassicStalkerDriver(
                       dataType: "json",
                       timeout: 20000,
                       type: "POST",
-                      url:
-                          (ports.relay || "").replace(/\/+$/, "") +
-                          "/stalker/api",
+                      url: relay,
                   },
             done,
             fail
@@ -152,7 +637,14 @@ function createClassicStalkerDriver(
             current,
             function (data) {
                 var response = data && data.js;
-                if (response && Array.isArray(response.data))
+                if (
+                    /[?&]type=itv(?:&|$)/.test(request.url) &&
+                    /[?&]action=get_(?:all_channels|ordered_list)(?:&|$)/.test(
+                        request.url
+                    ) &&
+                    response &&
+                    Array.isArray(response.data)
+                )
                     response.data.forEach(function (row: any) {
                         if (row && row.id != null)
                             rawRows[String(row.id)] = row;
@@ -215,6 +707,7 @@ function createClassicStalkerDriver(
     }
     function dispose() {
         alive = false;
+        if (media) media.dispose();
         lifetime.dispose();
         transport.dispose();
         nodes = Object.create(null);
@@ -230,8 +723,15 @@ function createClassicStalkerDriver(
         capabilities: {
             archive: false,
             guide: true,
-            media: false,
+            media: true,
+            mediaPlaylist: true,
             settings: true,
+        },
+        catalogError: function () {
+            return !!media && media.catalogError();
+        },
+        catalogLoading: function () {
+            return !!media && media.catalogLoading();
         },
         credentials: function () {
             return credentials;
@@ -280,6 +780,9 @@ function createClassicStalkerDriver(
                 }
             );
         },
+        hasMediaKey: function (key) {
+            return !!media && media.hasMediaKey(key);
+        },
         id: "stalker",
         load: function (done) {
             if (!client) {
@@ -292,6 +795,66 @@ function createClassicStalkerDriver(
                 scope,
                 function (result) {
                     build(result);
+                    var roots = result.channels.filter(function (item: any) {
+                        return item.folderType === "portal-vod";
+                    });
+                    if (roots.length === 1)
+                        media = createStalkerMedia(
+                            ports,
+                            scope,
+                            active,
+                            client,
+                            roots[0],
+                            send,
+                            function (items) {
+                                var projected = ports.channelCatalog!(
+                                    items.map(function (item) {
+                                        var category =
+                                            item.__ottMediaCategories[
+                                                item.__ottMediaCategories
+                                                    .length - 1
+                                            ];
+                                        return {
+                                            groupId: category
+                                                ? category.id
+                                                : "stalker-vod",
+                                            groupName:
+                                                item.__ottMediaCollection ||
+                                                "Movies",
+                                            itemId: item.itemId,
+                                            logo: item.logo_30x30,
+                                            name: item.title,
+                                            providerId: "",
+                                            url: "stalker:media",
+                                        };
+                                    }),
+                                    ports.hash,
+                                    "stalker"
+                                );
+                                projected.ids.forEach(function (id) {
+                                    if (catalog.channels[id])
+                                        throw new Error(
+                                            "Stalker media identity collision"
+                                        );
+                                });
+                                projected.ids.forEach(function (id, index) {
+                                    var row = projected.channels[id],
+                                        item = items[index];
+                                    row.adult = item.adult;
+                                    row.__ottMediaItem = item;
+                                    row.__ottMediaProvider = "stalker";
+                                    row.__ottMediaCollection =
+                                        item.__ottMediaCollection;
+                                    row.__ottMediaCategories =
+                                        item.__ottMediaCategories;
+                                    row.__ottStalkerMediaKey = item.itemId;
+                                    catalog.channels[id] = row;
+                                    catalog.ids.push(id);
+                                });
+                                projected.incremental = true;
+                                done(projected);
+                            }
+                        );
                     done(helpers.snapshot(catalog));
                 },
                 function () {
@@ -304,6 +867,9 @@ function createClassicStalkerDriver(
             return active() && catalog.channels[id]
                 ? catalog.channels[id].logo
                 : "";
+        },
+        mediaClient: function () {
+            return active() ? media : null;
         },
         resolveStream: function (url, done) {
             var requestLife = ports.createLifetime();
@@ -362,6 +928,9 @@ function createClassicStalkerDriver(
             };
         },
         saveCredentials: function () {},
+        startMedia: function () {
+            if (active() && media) media.start();
+        },
         stream: function (id) {
             return active() && catalog.channels[id]
                 ? catalog.channels[id].url
@@ -392,17 +961,19 @@ function createStalkerProviderDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime,
     helpers: StalkerDriverHelpers
-): ProviderDriver {
+): StalkerProviderDriver {
     var disposed = false;
     var revision = 0;
     var catalogs = ports.createLifetime();
     var catalog = helpers.emptyCatalog();
     var loaded: ProviderCredentials | null = null;
-    var classic: ProviderDriver | null = null;
+    var classic: StalkerProviderDriver | null = null;
     function retireClassic() {
         var previous = classic;
         classic = null;
         if (previous) previous.dispose();
+        driver.capabilities.media = false;
+        driver.capabilities.mediaPlaylist = false;
     }
     function active(): boolean {
         return !disposed && owner.active();
@@ -469,7 +1040,7 @@ function createStalkerProviderDriver(
     function row(id: string | number): any {
         return loaded && matches(loaded) ? catalog.channels[id] : null;
     }
-    var driver: ProviderDriver = {
+    var driver: StalkerProviderDriver = {
         archive: function (id, start, end) {
             if (classic) return classic.archive(id, start, end);
             var channel = row(id);
@@ -492,6 +1063,12 @@ function createStalkerProviderDriver(
             guide: true,
             media: false,
             settings: true,
+        },
+        catalogError: function () {
+            return !!classic && classic.catalogError();
+        },
+        catalogLoading: function () {
+            return !!classic && classic.catalogLoading();
         },
         configuration: configuration,
         credentials: credentials,
@@ -527,6 +1104,9 @@ function createStalkerProviderDriver(
                 }
             );
         },
+        hasMediaKey: function (key) {
+            return !!classic && classic.hasMediaKey(key);
+        },
         id: "stalker",
         load: function (callback) {
             if (!active()) return;
@@ -556,6 +1136,8 @@ function createStalkerProviderDriver(
                         return matches(config);
                     }
                 );
+                driver.capabilities.media = true;
+                driver.capabilities.mediaPlaylist = true;
                 classic.load(callback);
                 return;
             }
@@ -604,6 +1186,9 @@ function createStalkerProviderDriver(
             if (classic) return classic.logo(id);
             var channel = row(id);
             return channel ? channel.logo || "" : "";
+        },
+        mediaClient: function () {
+            return classic && classic.mediaClient();
         },
         resolveStream: function (url, callback) {
             if (classic) return classic.resolveStream!(url, callback);
@@ -659,6 +1244,9 @@ function createStalkerProviderDriver(
             slot.portal = value.server;
             slot.mac = value.username;
             return driver.saveConfiguration!(config);
+        },
+        startMedia: function () {
+            if (classic) classic.startMedia();
         },
         storageKey: function (key) {
             var slot = configuration().active;
@@ -928,8 +1516,34 @@ function mountStalkerProviderSettings(
     };
 }
 
+function mountStalkerMedia(
+    host: any,
+    driver: StalkerProviderDriver,
+    owner: DriverLifetime
+) {
+    var media = driver.mediaClient();
+    if (!media || !owner.active()) return;
+    media.attach(host);
+    host.providerMediaClient = media;
+    host.getMediaArray = media.load;
+    owner.own(function () {
+        if (host.providerMediaClient === media) {
+            host.providerMediaClient = null;
+            host.getMediaArray = null;
+        }
+    });
+    // Yield until the caller has published the initial live catalog.
+    var timer = window.setTimeout(function () {
+        if (owner.active()) driver.startMedia();
+    }, 0);
+    owner.own(function () {
+        window.clearTimeout(timer);
+    });
+}
+
 if (typeof window !== "undefined")
     (window as any).__ottStalkerDriver = {
         create: createStalkerProviderDriver,
+        mountMedia: mountStalkerMedia,
         mountSettings: mountStalkerProviderSettings,
     };

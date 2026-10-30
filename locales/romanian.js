@@ -1021,6 +1021,8 @@ var keyStrings = {
     "Sleep timer": "Temporizator de oprire",
     "Sort channels": "Sortează canalele",
     "Source access": "Acces la sursa media",
+    "Source is busy. Try again later.":
+        "Sursa este ocupată. Încearcă din nou mai târziu.",
     "Source sign-in required": "Este necesară conectarea la sursă",
     "Source sign-in was cancelled": "Autentificarea la sursă a fost anulată",
     "Stalker Portal Provider": "Furnizor de portal Stalker",
@@ -1075,6 +1077,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID-ul dispozitivului din adresă este nevalid.",
     "The discovery response is invalid.": "Răspunsul la căutare nu este valid.",
+    "The stream connection failed": "Conectarea la flux a eșuat",
+    "The stream format could not be played":
+        "Formatul fluxului nu a putut fi redat",
     "This browser cannot identify the selected screenshot source.":
         "Acest browser nu poate identifica sursa capturii de ecran selectată.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1087,6 +1092,8 @@ var keyStrings = {
         "Această aplicație Play necesită HTTPS. Solicitați furnizorului o listă de redare sau un URL de server HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Acest link de asociere a expirat. Deschideți o nouă sesiune pe televizor.",
+    "This protected stream could not be played":
+        "Acest flux protejat nu a putut fi redat",
     "This remote command is not supported by the player.":
         "Playerul nu acceptă această comandă de la distanță.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

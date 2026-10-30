@@ -72,6 +72,21 @@ assert.equal(
     "missing memory is not proof of low RAM"
 );
 assert.equal(policy({ android: true }).hls.maxBufferSize, 64000000);
+assert.equal(
+    policy({ android: true, deviceMemory: 8, lowMemoryDevice: true }).profile,
+    "low-memory/live",
+    "a native low-RAM signal must not be overridden by a larger browser hint"
+);
+assert.equal(
+    policy({ android: true, deviceMemory: 2, lowMemoryDevice: false }).profile,
+    "low-memory/live",
+    "a native standard-device hint must not raise the browser's memory budget"
+);
+assert.equal(
+    policy({ android: true, lowMemoryDevice: "true" }).profile,
+    "android/live",
+    "the native classification must be a boolean"
+);
 for (const memory of [undefined, NaN, -1, 0, Infinity])
     assert.equal(policy({ deviceMemory: memory }).profile, "standard/live");
 for (const url of [

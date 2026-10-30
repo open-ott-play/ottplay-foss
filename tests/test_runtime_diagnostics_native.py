@@ -81,6 +81,7 @@ class Context {
 package android.app
 class ActivityManager {
     var fail = false
+    var isLowRamDevice = false
     class MemoryInfo { var availMem = 0L; var totalMem = 0L; var lowMemory = false }
     fun getMemoryInfo(info: MemoryInfo) {
         if (fail) throw IllegalStateException("unavailable")
@@ -132,6 +133,9 @@ fun main() {
     check(metrics["pssBytes"] == 42L * 1024 && !metrics.containsKey("residentBytes"))
     check(metrics["systemAvailableBytes"] == 1024L && metrics["systemTotalBytes"] == 4096L)
     check(metrics["lowMemory"] == true && metrics["lowPower"] == true && metrics["thermalState"] == 3L)
+    check(metrics["isLowRamDevice"] == false)
+    (context.services[Context.ACTIVITY_SERVICE] as ActivityManager).isLowRamDevice = true
+    check((read(plugin).values["metrics"] as JSObject).values["isLowRamDevice"] == true)
     check(!metrics.containsKey("foreground"))
     plugin.handleOnResume()
     check(((read(plugin).values["metrics"] as JSObject).values)["foreground"] == true)
@@ -143,10 +147,12 @@ fun main() {
     val old = read(plugin)
     check(old.values["webviewVersion"] === JSONObject.NULL)
     check(!(old.values["metrics"] as JSObject).values.containsKey("thermalState"))
+    check((old.values["metrics"] as JSObject).values["isLowRamDevice"] == true)
     Debug.fail = true; context.services.clear()
     val unavailable = (read(plugin).values["metrics"] as JSObject).values
     check(!unavailable.containsKey("pssBytes") && !unavailable.containsKey("lowMemory"))
     check(!unavailable.containsKey("systemAvailableBytes") && !unavailable.containsKey("lowPower"))
+    check(!unavailable.containsKey("isLowRamDevice"))
 
     for (value in listOf("", "v 1", "https://private/secret", "v1\n", "x".repeat(65)))
         check(RuntimeDiagnosticsPlugin.version(value) === JSONObject.NULL)

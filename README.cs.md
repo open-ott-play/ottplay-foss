@@ -69,7 +69,7 @@ Syntetický testovací obraz lze vytvořit znovu pomocí `scripts/generate-demo-
 - **Oblíbené**: jedna seřazená [smíšená kolekce](docs/mixed-favorites.md) napříč nastavenými poskytovateli a profily na podporovaných zařízeních, s přenositelným exportem/importem přes CLI; rodičovský PIN. V záložním režimu zůstávají dostupné seznamy oblíbených pro jednotlivé zdroje.
 - **Nastavení**: export/import JSON nastavení a oblíbených, deník vrácení pro podporované dávky localStorage, obnovení archivu se zohledněním zdroje a přesné porovnání uložených nastavení pro postupy kontroleru. Obnova předpokládá jediného zapisujícího; vlastní úložné adaptéry zachovávají vrácení změn podle možností. Viz [obnova nastavení](docs/settings-recovery.cs.md).
 - **Sdílené rozhraní**: OTT Server, Tauri a Capacitor používají stejný motiv a nastavení viditelnosti seznamu kanálů. Nastavení rozhraní určuje barvy zvýraznění a výběru; nastavení seznamu určuje názvy kanálů, picony, aktuální pořady, průběh a značky archivu.
-- **Poskytovatelé**: M3U/M3U8, živá televize Xtream a [katalogy filmů/seriálů na vyžádání](docs/xtream-media.cs.md), Stalker/Ministra, Plex a VPortal. Možnosti poskytovatele a přístup účtu určují dostupné funkce archivu a knihovny médií.
+- **Poskytovatelé**: M3U/M3U8, živá televize Xtream a [katalogy filmů/seriálů na vyžádání](docs/xtream-media.cs.md), Stalker/Ministra s [filmy a vnořenými epizodami](docs/stalker-media.md), Plex a VPortal. Možnosti poskytovatele a přístup účtu určují dostupné funkce archivu a knihovny médií.
 - **Push příkazy**: dálkové ovládání webhookem — změna kanálu, poskytovatele, seznamu a zobrazení zpráv
 - **Vzdálené zadávání textu (swop)**: klávesnice telefonu přes Cloudflare Worker, když jsou TV a telefon v různých sítích (relace autorizované pro instalaci; ♥™ na virtuální klávesnici)
 - **Směrování podle zařízení**: adresování UUID pro více zařízení
@@ -82,6 +82,8 @@ Syntetický testovací obraz lze vytvořit znovu pomocí `scripts/generate-demo-
 - **88 jazyků rozhraní**: odpovídající katalogy, [lokalizované rychlé návody](docs/readme/README.md) a [abecedy klávesnic ověřené podle CLDR](docs/localization.md). Hlavní příručka a spárované průvodce funkcemi jsou dostupné ve [24 jazycích dokumentace](docs/manual-translations.md); ostatní technické reference zachovávají své dosavadní jazyky.
 
 [Průvodce dodáním](docs/roadmap-delivery.cs.md) popisuje funkce implementované v této revizi zdrojů, hranice platforem, diagramy a ověření. Nainstalovaná vydání nebo hostovaná nasazení mohou používat starší revizi. Samostatná nativní [aplikace Android](https://github.com/open-ott-play/ottplay-android) také uchovává volby zvuku/titulků podle jazyka, role a popisku místo indexů manifestu; její implementace a vydávání jsou oddělené od tohoto frontendu.
+
+[Přehled zdrojů STB](docs/stb-player-improvements.md) vysvětluje vylepšení médií, využití prostředků a obnovy, porovnání zdrojů a současná omezení.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Kontroly jsou v `scripts/modea-smoke-checks.json`. Bez tajných údajů. Frontu 
 
 ## Klasické portály Stalker / Ministra
 
-Zvolte **Portály Stalker** a zadejte MAC poskytnutou poskytovatelem a úplné URL portálu, například `http://provider.example/stalker_portal/c/`. URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` a `/portal.php` vybírají klasický protokol MAG. Dosavadní konfigurace pouze serveru zachovávají JSON-RPC. Poskytovatel načítá profil, žánry a stránkované živé kanály sdíleným jádrem Stalker. Požadavky prohlížeče procházejí endpointem `/stalker/api` companionu; nativní aplikace používají dosavadní transport HTTP. Soubory prohlížeče a companionu se musí aktualizovat společně.
+Zvolte **Portály Stalker** a zadejte MAC poskytnutou poskytovatelem a úplné URL portálu, například `http://provider.example/stalker_portal/c/`. URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` a `/portal.php` vybírají klasický protokol MAG. Dosavadní konfigurace pouze serveru zachovávají JSON-RPC. Poskytovatel načítá profil, žánry a stránkované živé kanály sdíleným jádrem Stalker a potom na pozadí vyhledává filmy a vnořené epizody klasického protokolu `type=vod`. Cesty složek se stávají kategoriemi v běžném seznamu kanálů; dostupné popisy, plakáty a globální oblíbené se stabilními odkazy používají stejné mediální rozhraní. Viz [chování a limity katalogu](docs/stalker-media.md).
 
-Živé přehrávání při otevírání streamu vyhodnotí dočasné příkazy kanálů; změny kanálu, zastavení, PiP a změna poskytovatele ruší zastaralé vyhodnocování. Výslovné trvalé příkazy HTTP(S) hrají přímo. Krátké EPG je podporované; archiv a VOD klasického portálu tento poskytovatel zatím nezpřístupňuje. Dosavadní chování archivu/průvodce JSON-RPC se nemění. Soukromé LAN portály vyžadují přesný záznam `OTTPLAY_PROXY_LAN_ORIGINS`, stejně jako ostatní proxy trasy companionu.
+Požadavky prohlížeče na vlastní instalaci procházejí endpointem `/stalker/api` companionu; nativní aplikace používají dosavadní transport HTTP. Hostované prohlížeče vyžadují výslovně nastavené trasy přes [vyhrazený relay](docs/stalker-relay.md). Soubory prohlížeče a serveru se musí aktualizovat společně.
+
+Živé přehrávání při otevírání streamu vyhodnotí dočasné příkazy kanálů; změny kanálu, zastavení, PiP a změna poskytovatele ruší zastaralé vyhodnocování. Výslovné trvalé příkazy HTTP(S) hrají přímo. Krátké EPG je podporované. Archiv klasického portálu a samostatný protokol `type=series` tento poskytovatel nezpřístupňuje. Dosavadní chování archivu/průvodce JSON-RPC se nemění. Soukromé LAN portály na trase companionu vyžadují přesný záznam `OTTPLAY_PROXY_LAN_ORIGINS`, stejně jako ostatní proxy trasy companionu.
 
 Veřejné demo Infomir je `http://middleware-stalker.com/stalker_portal/c/`. Dne 2026-09-26 vrátilo tři živé položky katalogu, ale mediální endpointy byly nedostupné; pro regresi přehrávání použijte řízená testovací data portálu/médií.
 

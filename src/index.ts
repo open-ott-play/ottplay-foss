@@ -61,6 +61,7 @@ import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { resolveNativePlugin, tauriInvoke } from "./plugins/native-bridge";
+import { captureNativeMemoryHint } from "./plugins/native-memory";
 import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
 import { installRemoteScreenshot } from "./plugins/remote-screenshot";
 import { installRuntimeDebug } from "./plugins/runtime-debug";
@@ -5517,7 +5518,10 @@ window.addChannel2bucket = function (): void {
                 )
             );
         };
+        // Retain the serialized panel across replacement of its list owner.
         if (typeof w.saveListPanelState === "function") w.saveListPanelState();
+        var panels = w.__ottClassicScreenPort;
+        var savedPanel = panels.savedPanel();
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
@@ -5599,24 +5603,22 @@ window.addChannel2bucket = function (): void {
                     return false;
             }
             if (!admitted()) return true;
-            if (resume) {
-                w.getListItem = savedGetListItem;
-                w.detailListAction = savedDetailListAction;
-                resume(admitted);
-                if (pickedFavorite) addPickedFavorite();
-                return true;
-            }
-            if (typeof w.restoreListPanelState === "function")
-                w.restoreListPanelState();
-            w.selIndex = savedIdx;
-            w.listArray = savedList;
-            w.listDataArray = savedData;
             w.getListItem = savedGetListItem;
             w.detailListAction = savedDetailListAction;
-            w.listKeyHandlerFn = savedListKeyHandler;
-            if (typeof w.showPage === "function") w.showPage();
-            if (popupVisible && typeof $ !== "undefined")
-                $("#listPopUp").show();
+            if (resume) {
+                resume(admitted);
+            } else {
+                panels.savePanel(savedPanel);
+                if (typeof w.restoreListPanelState === "function")
+                    w.restoreListPanelState();
+                w.selIndex = savedIdx;
+                w.listArray = savedList;
+                w.listDataArray = savedData;
+                w.listKeyHandlerFn = savedListKeyHandler;
+                if (typeof w.showPage === "function") w.showPage();
+                if (popupVisible && typeof $ !== "undefined")
+                    $("#listPopUp").show();
+            }
             if (pickedFavorite) addPickedFavorite();
             return true;
         };
@@ -6495,6 +6497,9 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
         };
     }
 );
+captureNativeMemoryHint(window, function () {
+    return runtimeDiagnostics.snapshot();
+});
 (window as any).__ottRuntimeDebug = installRuntimeDebug(window, {
     getConfig: remoteControlConfig,
     native: function () {

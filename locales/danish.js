@@ -999,6 +999,7 @@ var keyStrings = {
     "Sleep timer": "Slumretimer",
     "Sort channels": "Sorter kanaler",
     "Source access": "Kildeadgang",
+    "Source is busy. Try again later.": "Kilden er optaget. Prøv igen senere.",
     "Source sign-in required": "Kildelogin påkrævet",
     "Source sign-in was cancelled": "Kildelogin blev annulleret",
     "Stalker Portal Provider": "Stalker portal udbyder",
@@ -1052,6 +1053,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Enheden ID i adressen er ugyldig.",
     "The discovery response is invalid.": "Opdagelsessvaret er ugyldigt.",
+    "The stream connection failed": "Forbindelsen til streamen mislykkedes",
+    "The stream format could not be played":
+        "Streamformatet kunne ikke afspilles",
     "This browser cannot identify the selected screenshot source.":
         "Denne browser kan ikke identificere den valgte skærmbilledekilde.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1064,6 +1068,8 @@ var keyStrings = {
         "Denne Play-app kræver HTTPS. Spørg din udbyder om en HTTPS afspilningsliste eller server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Dette parringslink er udløbet. Åbn en ny session på dit tv.",
+    "This protected stream could not be played":
+        "Denne beskyttede stream kunne ikke afspilles",
     "This remote command is not supported by the player.":
         "Afspilleren understøtter ikke denne fjernkommando.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

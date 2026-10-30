@@ -992,6 +992,8 @@ var keyStrings = {
     "Sleep timer": "Uky taýmeri",
     "Sort channels": "Kanallary tertiple",
     "Source access": "Çeşmä giriş",
+    "Source is busy. Try again later.":
+        "Çeşme meşgul. Soňrak gaýtadan synanyşyň.",
     "Source sign-in required": "Çeşmä girmek gerek",
     "Source sign-in was cancelled": "Çeşmä giriş ýatyryldy",
     "Stalker Portal Provider": "Stalker portal üpjün edijisi",
@@ -1045,6 +1047,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Salgydaky enjam ID-si nädogry.",
     "The discovery response is invalid.": "Gözlegiň jogaby nädogry.",
+    "The stream connection failed": "Ýaýlyma birigip bolmady",
+    "The stream format could not be played":
+        "Ýaýlymy şu formatda oýnadyp bolmady",
     "This browser cannot identify the selected screenshot source.":
         "Bu brauzer saýlanan skrinshot çeşmesini kesgitläp bilmeýär.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1057,6 +1062,8 @@ var keyStrings = {
         "Bu Play programmasyna HTTPS gerek. Üpçün edijiňizden HTTPS oýnatma sanawyny ýa-da serwer URL salgysyny soraň.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu jübütleşigiň möhleti gutardy. Telewizoryňyzda täze sessiýa açyň.",
+    "This protected stream could not be played":
+        "Bu goragly ýaýlymy oýnadyp bolmady",
     "This remote command is not supported by the player.":
         "Pleýer bu uzakdan dolandyryş buýrugyny goldamaýar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

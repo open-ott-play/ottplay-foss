@@ -1011,6 +1011,8 @@ var keyStrings = {
     "Sleep timer": "Уйку таймери",
     "Sort channels": "Каналдарды иреттөө",
     "Source access": "Булакка кирүү",
+    "Source is busy. Try again later.":
+        "Булак бош эмес. Кийинчерээк кайра аракет кылыңыз.",
     "Source sign-in required": "Булакка кирүү талап кылынат",
     "Source sign-in was cancelled": "Булакка кирүү жокко чыгарылды",
     "Stalker Portal Provider": "Stalker портал провайдери",
@@ -1064,6 +1066,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Даректеги түзмөктүн ID коду жараксыз.",
     "The discovery response is invalid.": "Издөө жообу жараксыз.",
+    "The stream connection failed": "Агымга туташуу ишке ашкан жок",
+    "The stream format could not be played":
+        "Агымдын бул форматын ойнотуу мүмкүн болгон жок",
     "This browser cannot identify the selected screenshot source.":
         "Бул браузер тандалган скриншот булагын аныктай албайт.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1076,6 +1081,8 @@ var keyStrings = {
         "Бул Play тиркемесине HTTPS керек. Провайдериңизден HTTPS ойнотуу тизмесин же сервердин URL дарегин сураңыз.",
     "This pairing link has expired. Open a new session on your TV.":
         "Бул жупташтыруу шилтемесинин мөөнөтү бүттү. Сыналгыңызда жаңы сеансты ачыңыз.",
+    "This protected stream could not be played":
+        "Бул корголгон агымды ойнотуу мүмкүн болгон жок",
     "This remote command is not supported by the player.":
         "Ойноткуч бул алыстан башкаруу буйругун колдобойт.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

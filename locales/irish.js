@@ -1014,6 +1014,8 @@ var keyStrings = {
     "Sleep timer": "Amadóir codlata",
     "Sort channels": "Sórtáil cainéil",
     "Source access": "Rochtain ar fhoinsí",
+    "Source is busy. Try again later.":
+        "Tá an fhoinse gnóthach. Bain triail eile as ar ball.",
     "Source sign-in required": "Tá síniú isteach san fhoinse de dhíth",
     "Source sign-in was cancelled": "Cealaíodh síniú isteach san fhoinse",
     "Stalker Portal Provider": "Soláthraí tairsí Stalker",
@@ -1069,6 +1071,9 @@ var keyStrings = {
         "Tá an t-aitheantas gléis sa seoladh neamhbhailí.",
     "The discovery response is invalid.":
         "Tá an freagra aimsiúcháin neamhbhailí.",
+    "The stream connection failed": "Theip ar an nasc leis an sruth",
+    "The stream format could not be played":
+        "Níorbh fhéidir formáid an tsrutha a sheinm",
     "This browser cannot identify the selected screenshot source.":
         "Ní féidir leis an mbrabhsálaí seo foinse an scáileáin roghnaithe a shainaithint.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1081,6 +1086,8 @@ var keyStrings = {
         "Tá HTTPS de dhíth ar an aip Play seo. Iarr URL seinmliosta nó freastalaí HTTPS ar do sholáthraí.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tá an nasc péireála seo imithe in éag. Oscail seisiún nua ar do theilifíseán.",
+    "This protected stream could not be played":
+        "Níorbh fhéidir an sruth cosanta seo a sheinm",
     "This remote command is not supported by the player.":
         "Ní thacaíonn an seinnteoir leis an gcianordú seo.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

@@ -41,6 +41,8 @@ The target's schema is authoritative. Demo and local-file providers do not have 
 
 The normal driver codec performs each save, verifies storage, then invalidates affected caches. Remote saves invalidate already-open local settings drafts after successful persistence. A rejected write does not cancel an existing catalogue request.
 
+Classic Stalker profiles expose supported movies and nested episodes in the normal Channel list and Category selection after live channels load. See [Stalker media and Favorites](stalker-media.md) for protocol scope and relay requirements, and [the player improvements review](stb-player-improvements.md) for the shared playback changes.
+
 ## Plex folder collection
 
 `plexFolderPaths` is a collection, not a scalar string array. The separate `plex_folders` capability supports all 1000 saved selections without enlarging general settings payloads. Reads use pages of at most ten entries under one revision.

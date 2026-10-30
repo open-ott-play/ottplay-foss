@@ -1023,6 +1023,8 @@ var keyStrings = {
     "Sleep timer": "Isibali-xesha sokulala",
     "Sort channels": "Hlela amajelo ngokulandelelana",
     "Source access": "Ukufikelela kumthombo",
+    "Source is busy. Try again later.":
+        "Umthombo uxakekile. Zama kwakhona kamva.",
     "Source sign-in required": "Kufuneka ungene kumthombo",
     "Source sign-in was cancelled": "Ukungena kumthombo kurhoxisiwe",
     "Stalker Portal Provider": "Umboneleli wephothali ye-Stalker",
@@ -1078,6 +1080,9 @@ var keyStrings = {
         "Isazisi sesixhobo esikwidilesi asisebenzi.",
     "The discovery response is invalid.":
         "Impendulo yokufunyanwa kweseva ayisebenzi.",
+    "The stream connection failed": "Uqhagamshelwano kusasazo aluphumelelanga",
+    "The stream format could not be played":
+        "Usasazo olukule fomati alukwazanga ukudlalwa",
     "This browser cannot identify the selected screenshot source.":
         "Lo mkhangeli zincwadi akakwazi ukuchonga umthombo weskrini okhethiweyo.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1090,6 +1095,8 @@ var keyStrings = {
         "Le app ye-Play ifuna i-HTTPS. Cela umboneleli wakho akunike uluhlu lokudlala okanye i-URL yeseva ye-HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Olu nxulumaniso lokubhangqa luphelelwe lixesha. Vula iseshini entsha kumabonakude wakho.",
+    "This protected stream could not be played":
+        "Olu sasazo lukhuselweyo alukwazanga ukudlalwa",
     "This remote command is not supported by the player.":
         "Umdlali wemidiya akawuxhasi lo myalelo wolawulo olukude.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

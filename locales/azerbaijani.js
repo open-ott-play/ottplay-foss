@@ -1000,6 +1000,8 @@ var keyStrings = {
     "Sleep timer": "Yuxu taymeri",
     "Sort channels": "Kanalları sırala",
     "Source access": "Media mənbəyinə giriş",
+    "Source is busy. Try again later.":
+        "Mənbə məşğuldur. Daha sonra yenidən cəhd edin.",
     "Source sign-in required": "Mənbəyə daxil olmaq tələb olunur",
     "Source sign-in was cancelled": "Mənbəyə giriş ləğv edildi",
     "Stalker Portal Provider": "Stalker portal provayderi",
@@ -1055,6 +1057,9 @@ var keyStrings = {
         "Ünvandakı cihaz ID-si etibarsızdır.",
     "The discovery response is invalid.":
         "Axtarış sorğusunun cavabı etibarsızdır.",
+    "The stream connection failed": "Axına qoşulmaq mümkün olmadı",
+    "The stream format could not be played":
+        "Axının formatını oxutmaq mümkün olmadı",
     "This browser cannot identify the selected screenshot source.":
         "Bu brauzer seçilmiş ekran görüntüsü mənbəyini müəyyən edə bilmir.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1067,6 +1072,8 @@ var keyStrings = {
         "Bu Play tətbiqi HTTPS tələb edir. Provayderdən HTTPS pleylist və ya server URL-i istəyin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu cütləşmə linkinin vaxtı keçib. Televizorunuzda yeni sessiya açın.",
+    "This protected stream could not be played":
+        "Bu qorunan axını oxutmaq mümkün olmadı",
     "This remote command is not supported by the player.":
         "Bu uzaqdan idarəetmə əmri pleyer tərəfindən dəstəklənmir.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

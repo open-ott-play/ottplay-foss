@@ -58,6 +58,8 @@ interface ProviderDriverPorts {
     deviceMac?(): string;
     guideNext(): number;
     hash(value: string): number;
+    /** Null refuses a hosted request; absence keeps the device/self-host transport. */
+    hostedStalkerRoute?(endpoint: string): string | null;
     intercept?: (url: string) => void;
     isDune(): boolean;
     language?(): string;
@@ -2581,6 +2583,45 @@ function mountProviderDriver(
             hash: function (name) {
                 return host.xxHash32S(name, true);
             },
+            hostedStalkerRoute:
+                !host.Capacitor &&
+                !host.__TAURI__ &&
+                host.__OTTPLAY_HOSTED__ !== undefined
+                    ? function (endpoint) {
+                          var deployment = host.__OTTPLAY_HOSTED__;
+                          var routes =
+                              deployment &&
+                              deployment.version === 1 &&
+                              deployment.stalker &&
+                              deployment.stalker.routes;
+                          if (
+                              !Array.isArray(routes) ||
+                              !routes.length ||
+                              routes.length > 32
+                          )
+                              return null;
+                          var selected: string | null = null;
+                          for (var index = 0; index < routes.length; index++) {
+                              var route = routes[index];
+                              if (
+                                  !route ||
+                                  typeof route.upstream !== "string" ||
+                                  typeof route.path !== "string" ||
+                                  route.path.length > 73 ||
+                                  route.path === "/stalker/api" ||
+                                  route.path.trim() !== route.path ||
+                                  !/^\/stalker\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(
+                                      route.path
+                                  )
+                              )
+                                  return null;
+                              if (route.upstream !== endpoint) continue;
+                              if (selected !== null) return null;
+                              selected = route.path;
+                          }
+                          return selected;
+                      }
+                    : undefined,
             intercept:
                 typeof host.stbInterceptRequest === "function"
                     ? function (url) {
@@ -2914,6 +2955,7 @@ function mountProviderDriver(
         if (!owner.active()) return;
         if (id === "xtream")
             loadingProgress("Loading channels from Xtream API...");
+        var stalkerEmptyCatalog = false;
         driver.load(function (catalog, error, pending) {
             if (owner.active() && catalog && catalog.incremental) {
                 var added: any[] = [];
@@ -2951,16 +2993,34 @@ function mountProviderDriver(
                 });
                 if (
                     added.length &&
+                    stalkerEmptyCatalog &&
+                    host.__ottChannels?.mount
+                ) {
+                    // Empty live results do not mount the channel library in
+                    // startup. Initialize it when the first VOD leaves arrive,
+                    // without replaying startup over a user's open editor.
+                    stalkerEmptyCatalog = false;
+                    host.__ottChannels.mount(host);
+                } else if (
+                    added.length &&
                     host.__ottChannels &&
                     host.__ottChannels.append
                 )
                     host.__ottChannels.append(added);
                 return;
             }
+            if (id === "stalker" && catalog)
+                stalkerEmptyCatalog = catalog.ids.length === 0;
             if (owner.active() && !pending && settled) settled();
             if (!owner.active()) return;
             if (id === "xtream" && catalog)
                 host.__ottXtreamMedia.mount(host, driver, owner);
+            if (
+                id === "stalker" &&
+                catalog &&
+                host.__ottStalkerDriver.mountMedia
+            )
+                host.__ottStalkerDriver.mountMedia(host, driver, owner);
             if (error === "credentials" && !specialized) {
                 if (stalkerSettings) stalkerSettings.edit();
                 else editSettings();

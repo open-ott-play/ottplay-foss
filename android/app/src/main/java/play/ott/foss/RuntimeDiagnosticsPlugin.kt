@@ -63,6 +63,7 @@ class RuntimeDiagnosticsPlugin : Plugin() {
             try {
                 val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
                 if (manager != null) {
+                    metrics.put("isLowRamDevice", manager.isLowRamDevice)
                     val memory = ActivityManager.MemoryInfo()
                     manager.getMemoryInfo(memory)
                     number(metrics, "systemAvailableBytes", memory.availMem)
