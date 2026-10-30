@@ -100,7 +100,7 @@ test("M3U Local remembers a browsed Favorites category after quit and relaunch",
     await page.keyboard.press("v");
     await expect(page.locator("#listCaption")).toHaveText("Category selection");
     await expect(page.locator("#list .item.ott-selected")).toHaveText(
-        "Favorites"
+        /^\s*3\s*Favorites\s*$/
     );
     expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
         initialPlaying
@@ -144,7 +144,7 @@ test("M3U Local remembers a browsed Favorites category after quit and relaunch",
     await page.keyboard.press("v");
     await expect(page.locator("#listCaption")).toHaveText("Category selection");
     await expect(page.locator("#list .item.ott-selected")).toHaveText(
-        "Favorites"
+        /^\s*3\s*Favorites\s*$/
     );
     await page.keyboard.press("Enter");
     await expect(page.locator("#listCaption")).toContainText("Favorites");
