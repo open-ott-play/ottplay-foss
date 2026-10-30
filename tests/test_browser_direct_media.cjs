@@ -345,12 +345,91 @@ deadline.unref();
                 action: "profile",
                 params: { number: 2 },
             });
+            // Observe the real browser boundary without replacing its iterator,
+            // promises, fulfillment values, or rejection reasons.
+            const directoryPrototype = FileSystemDirectoryHandle.prototype;
+            const nativeValues = directoryPrototype.values;
+            const started = performance.now();
+            const reads = {
+                nextCalls: 0,
+                nextRejected: 0,
+                nextResolved: 0,
+                nextThrown: 0,
+                valuesCalls: 0,
+                valuesThrown: 0,
+            };
+            let diagnosticLines = 0;
+            function diagnostic(event, eventLoopMs = 0) {
+                if (!eventLoopMs && diagnosticLines >= 16) return;
+                if (!eventLoopMs) diagnosticLines++;
+                try {
+                    console.log(
+                        "[direct-media-profile] diagnostic " +
+                            JSON.stringify({
+                                ...reads,
+                                elapsedMs: Math.floor(
+                                    performance.now() - started
+                                ),
+                                event,
+                                eventLoopMs,
+                            })
+                    );
+                } catch (_) {
+                    // Diagnostic reporting cannot reject the native operation.
+                }
+            }
+            directoryPrototype.values = function () {
+                reads.valuesCalls++;
+                diagnostic("values-call");
+                let iterator;
+                try {
+                    iterator = nativeValues.apply(this, arguments);
+                } catch (error) {
+                    reads.valuesThrown++;
+                    diagnostic("values-throw");
+                    throw error;
+                }
+                const nativeNext = iterator.next;
+                iterator.next = function () {
+                    reads.nextCalls++;
+                    diagnostic("next-call");
+                    let pending;
+                    try {
+                        pending = nativeNext.apply(this, arguments);
+                    } catch (error) {
+                        reads.nextThrown++;
+                        diagnostic("next-throw");
+                        throw error;
+                    }
+                    // Observe settlement on a separate branch; return the exact
+                    // native promise to the production consumer below.
+                    Promise.prototype.then.call(
+                        pending,
+                        () => {
+                            reads.nextResolved++;
+                            diagnostic("next-resolved");
+                        },
+                        () => {
+                            reads.nextRejected++;
+                            diagnostic("next-rejected");
+                        }
+                    );
+                    return pending;
+                };
+                diagnostic("values-return");
+                return iterator;
+            };
+            // Four one-shot checkpoints prove whether page timers can still run
+            // while a native read is pending. They never retry or cancel a read.
+            const responsiveness = [1000, 10000, 30000, 60000].map((delay) =>
+                setTimeout(() => diagnostic("event-loop", delay), delay)
+            );
             console.log("[direct-media-profile] list");
             let lastProgress = "",
                 progressLines = 0,
                 progressBytes = 0,
                 progressCapped = false;
-            const rawCatalog = await media.list((value) => {
+            const catalogRead = media.list((value) => {
                 // Diagnostics must never cancel or alter the catalog operation.
                 try {
                     const phases = [
@@ -400,6 +479,10 @@ deadline.unref();
                 } catch (_) {
                     // A malformed diagnostic field cannot reject the real scan.
                 }
+            });
+            const rawCatalog = await catalogRead.finally(() => {
+                directoryPrototype.values = nativeValues;
+                responsiveness.forEach((timer) => clearTimeout(timer));
             });
             console.log("[direct-media-profile] list-resolved");
             if (rawCatalog.scanning !== false || rawCatalog.cancelled !== false)
