@@ -2914,6 +2914,7 @@ function mountProviderDriver(
         if (!owner.active()) return;
         if (id === "xtream")
             loadingProgress("Loading channels from Xtream API...");
+        var stalkerEmptyCatalog = false;
         driver.load(function (catalog, error, pending) {
             if (owner.active() && catalog && catalog.incremental) {
                 var added: any[] = [];
@@ -2951,16 +2952,34 @@ function mountProviderDriver(
                 });
                 if (
                     added.length &&
+                    stalkerEmptyCatalog &&
+                    host.__ottChannels?.mount
+                ) {
+                    // Empty live results do not mount the channel library in
+                    // startup. Initialize it when the first VOD leaves arrive,
+                    // without replaying startup over a user's open editor.
+                    stalkerEmptyCatalog = false;
+                    host.__ottChannels.mount(host);
+                } else if (
+                    added.length &&
                     host.__ottChannels &&
                     host.__ottChannels.append
                 )
                     host.__ottChannels.append(added);
                 return;
             }
+            if (id === "stalker" && catalog)
+                stalkerEmptyCatalog = catalog.ids.length === 0;
             if (owner.active() && !pending && settled) settled();
             if (!owner.active()) return;
             if (id === "xtream" && catalog)
                 host.__ottXtreamMedia.mount(host, driver, owner);
+            if (
+                id === "stalker" &&
+                catalog &&
+                host.__ottStalkerDriver.mountMedia
+            )
+                host.__ottStalkerDriver.mountMedia(host, driver, owner);
             if (error === "credentials" && !specialized) {
                 if (stalkerSettings) stalkerSettings.edit();
                 else editSettings();

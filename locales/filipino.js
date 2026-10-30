@@ -1026,6 +1026,8 @@ var keyStrings = {
     "Sleep timer": "Timer ng pagtulog",
     "Sort channels": "Pagbukud-bukurin ang mga channel",
     "Source access": "Access sa pinagmulan",
+    "Source is busy. Try again later.":
+        "Abala ang pinagmulan. Subukan muli sa ibang pagkakataon.",
     "Source sign-in required": "Kinakailangan ang pag-sign in sa pinagmulan",
     "Source sign-in was cancelled": "Kinansela ang source sign-in",
     "Stalker Portal Provider": "Provider ng Stalker portal",
@@ -1080,6 +1082,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Ang device na ID sa address ay hindi wasto.",
     "The discovery response is invalid.": "Di-wasto ang tugon sa pagtuklas.",
+    "The stream connection failed": "Nabigong kumonekta sa stream",
+    "The stream format could not be played":
+        "Hindi ma-play ang format ng stream",
     "This browser cannot identify the selected screenshot source.":
         "Hindi matukoy ng browser na ito ang napiling pinagmulan ng screenshot.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1092,6 +1097,8 @@ var keyStrings = {
         "Ang Play app na ito ay nangangailangan ng HTTPS. Humingi sa iyong provider ng HTTPS playlist o server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ang link ng pagpapares na ito ay nag-expire na. Magbukas ng bagong session sa iyong TV.",
+    "This protected stream could not be played":
+        "Hindi ma-play ang protektadong stream na ito",
     "This remote command is not supported by the player.":
         "Hindi sinusuportahan ng player ang utos na ito mula sa remote control.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

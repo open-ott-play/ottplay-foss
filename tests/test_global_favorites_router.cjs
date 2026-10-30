@@ -490,28 +490,33 @@ test("global empty category is localized and a stale async open cannot reopen UI
     assert.equal(shown, 1);
     assert.equal(descriptor.rows.length, 0);
 });
-test("generic private profile/source pair uses one actual registry CAS", () => {
+function playbackBindingFixture(provider) {
     const valid = load(
         "src/settings/global-favorites-bindings.ts"
     ).isGlobalFavoriteSelector;
     const make = load(
         "src/settings/favorites-bindings.ts"
     ).createFavoritesBindings;
-    let raw = null,
-        writes = 0,
-        next = 1;
+    const state = {
+        next: 1,
+        raw: null,
+        stale: false,
+        staleSource: false,
+        writes: 0,
+    };
     const registry = make({
         compareAndSwap: (before, after) => {
-            assert.equal(before, raw);
-            raw = after;
-            writes++;
+            assert.equal(before, state.raw);
+            state.raw = after;
+            state.writes++;
             return "confirmed";
         },
-        current: () => true,
-        persistedRead: () => raw,
-        read: () => raw,
+        current: (entry) =>
+            !state.stale && !(state.staleSource && entry.kind === "source"),
+        persistedRead: () => state.raw,
+        read: () => state.raw,
         uuid: () =>
-            "00000000-0000-4000-8000-" + String(next++).padStart(12, "0"),
+            "00000000-0000-4000-8000-" + String(state.next++).padStart(12, "0"),
         validateSelector: (_kind, value) => valid(value),
     });
     const selector = {
@@ -519,30 +524,88 @@ test("generic private profile/source pair uses one actual registry CAS", () => {
         kind: "global-playback-target",
         origin: {
             profile: "Two",
-            provider: "m3u",
+            provider,
             sourceAlias: "Two",
             subprofile: null,
         },
-        provider: "m3u",
+        provider,
         slot: 1,
     };
     const binding = {
         owner: "global:" + selector.configurationDigest,
         selector,
     };
-    const result = registry.provisionPlayback(
-        { profile: binding, provider: "m3u", source: binding },
-        0
+    return {
+        binding,
+        registry,
+        state,
+        value: { profile: binding, provider, source: binding },
+    };
+}
+for (const provider of ["m3u", "stalker", "xtream", "bestlist/stalker"]) {
+    test(
+        provider + " private profile/source pair uses one actual registry CAS",
+        () => {
+            const f = playbackBindingFixture(provider);
+            const result = f.registry.provisionPlayback(f.value, 0);
+            assert.equal(f.state.writes, 1);
+            assert.equal(JSON.parse(f.state.raw).entries.length, 2);
+            assert.equal(result.result.profile.provider, provider);
+            assert.equal(result.result.source.provider, provider);
+            assert.equal(
+                result.result.source.profile_id,
+                result.result.profile.id
+            );
+            assert.equal(
+                f.registry.resolve(result.result.source.id).binding.selector
+                    .provider,
+                provider
+            );
+            f.registry.provisionPlayback(f.value, result.revision);
+            assert.equal(
+                f.state.writes,
+                1,
+                "existing exact pair is idempotent"
+            );
+        }
     );
-    assert.equal(writes, 1);
-    assert.equal(JSON.parse(raw).entries.length, 2);
-    assert.equal(result.result.source.profile_id, result.result.profile.id);
-    registry.provisionPlayback(
-        { profile: binding, provider: "m3u", source: binding },
-        result.revision
-    );
-    assert.equal(writes, 1, "existing exact pair is idempotent");
+}
+test("playback pairing rejects mismatched providers and stale profile/source grants before writing", () => {
+    const rejects = (f, code) => {
+        assert.throws(
+            () => f.registry.provisionPlayback(f.value, 0),
+            (error) => error.code === code
+        );
+        assert.equal(f.state.writes, 0);
+        assert.equal(f.state.raw, null);
+    };
+    let f = playbackBindingFixture("stalker");
+    f.value.provider = "m3u";
+    rejects(f, "invalid_binding");
+    f = playbackBindingFixture("m3u");
+    f.value.source = playbackBindingFixture("stalker").binding;
+    rejects(f, "invalid_binding");
+    f = playbackBindingFixture("stalker");
+    f.value.profile = playbackBindingFixture("xtream").binding;
+    rejects(f, "invalid_binding");
+    for (const invalid of [
+        "Stalker",
+        "stalker\n",
+        "https://portal.test",
+        123,
+    ]) {
+        f = playbackBindingFixture("stalker");
+        f.value.provider = invalid;
+        rejects(f, "invalid_binding");
+    }
+    f = playbackBindingFixture("stalker");
+    f.state.stale = true;
+    rejects(f, "stale_context");
+    f = playbackBindingFixture("stalker");
+    f.state.staleSource = true;
+    rejects(f, "stale_context");
 });
+
 (async () => {
     for (const [name, run] of cases) {
         await run();

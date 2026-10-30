@@ -1,0 +1,1794 @@
+{
+  "schema": 1,
+  "scope": "Measured STB player improvements: memory hint, bounded local recovery, actionable failure details, Stalker media/favorites and Xtream metadata.",
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703"
+  },
+  "version": "1.1.61",
+  "lockSha256": "b686c059c9a8408fd6c13248dd88cec9015a0223c90b948098ec2038e54fabe1",
+  "baseline": {
+    "head": "1a22adb1139c72933080a8a2ce544a6350404791",
+    "report": "build/reports/classic-bundle.json",
+    "reportSha256": "180c9a4eeee19c51483d4e7a9a4fdd3dbc880a2afc07c11fcbb4b371295b2b7d",
+    "buildExitCode": 0,
+    "sourceRevisionAtBuild": null,
+    "untrackedDependencySymlink": "node_modules",
+    "trackedSourceClean": true,
+    "allArtifactHashesAndSizesReverified": true
+  },
+  "candidate": {
+    "head": "1a22adb1139c72933080a8a2ce544a6350404791",
+    "report": "build/reports/classic-bundle.json",
+    "reportSha256": "bb9816f2098122eeea380b402fb3fbd9503a15daf5e23b818ce643ab80e4cfc9",
+    "buildExitCode": 0,
+    "sourceRevisionAtBuild": null,
+    "trackedSourceClean": false,
+    "allArtifactHashesAndSizesReverified": true,
+    "sizeViolations": 0,
+    "inputErrors": [],
+    "dependencySymlink": "node_modules",
+    "dependencySymlinkExcludedFromStatus": true,
+    "changesSinceResolver": [
+      {
+        "path": "dist/favorites-transfer.js",
+        "before": {
+          "bytes": 243717,
+          "gzipBytes": 62430,
+          "path": "dist/favorites-transfer.js",
+          "sha256": "152574b91fda6df8465b024e769872ccdf409cc89d901e0d10babd03f8df1e00"
+        },
+        "after": {
+          "bytes": 243824,
+          "gzipBytes": 62420,
+          "path": "dist/favorites-transfer.js",
+          "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+        },
+        "delta": {
+          "bytes": 107,
+          "gzipBytes": -10
+        }
+      },
+      {
+        "path": "src-tauri/frontend/dist/favorites-transfer.js",
+        "before": {
+          "bytes": 243717,
+          "gzipBytes": 62430,
+          "path": "src-tauri/frontend/dist/favorites-transfer.js",
+          "sha256": "152574b91fda6df8465b024e769872ccdf409cc89d901e0d10babd03f8df1e00"
+        },
+        "after": {
+          "bytes": 243824,
+          "gzipBytes": 62420,
+          "path": "src-tauri/frontend/dist/favorites-transfer.js",
+          "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+        },
+        "delta": {
+          "bytes": 107,
+          "gzipBytes": -10
+        }
+      },
+      {
+        "path": "dist-mobile/dist/favorites-transfer.js",
+        "before": {
+          "bytes": 243717,
+          "gzipBytes": 62430,
+          "path": "dist-mobile/dist/favorites-transfer.js",
+          "sha256": "152574b91fda6df8465b024e769872ccdf409cc89d901e0d10babd03f8df1e00"
+        },
+        "after": {
+          "bytes": 243824,
+          "gzipBytes": 62420,
+          "path": "dist-mobile/dist/favorites-transfer.js",
+          "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+        },
+        "delta": {
+          "bytes": 107,
+          "gzipBytes": -10
+        }
+      }
+    ]
+  },
+  "observedEntryMaximum": {
+    "bytes": 4821,
+    "gzipBytes": 1463
+  },
+  "sourceIdentityReserve": {
+    "bytes": 0,
+    "gzipBytes": 20
+  },
+  "allowances": {
+    "entry": {
+      "bytes": 4821,
+      "gzipBytes": 1483
+    },
+    "stalker": {
+      "bytes": 7672,
+      "gzipBytes": 2547
+    },
+    "xtream": {
+      "bytes": 48,
+      "gzipBytes": 8
+    },
+    "favoritesTransfer": {
+      "bytes": 2433,
+      "gzipBytes": 511
+    }
+  },
+  "previousCaps": {
+    "BUDGET": {
+      "bytes": 1147159,
+      "gzipBytes": 351039
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1648769,
+      "gzipBytes": 507334
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1291995,
+      "gzipBytes": 403729
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1653249,
+      "gzipBytes": 509638
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 241639,
+        "gzipBytes": 62257
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "nextCaps": {
+    "BUDGET": {
+      "bytes": 1151980,
+      "gzipBytes": 352522
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1663743,
+      "gzipBytes": 511883
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1304536,
+      "gzipBytes": 407767
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1668223,
+      "gzipBytes": 514187
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 244072,
+        "gzipBytes": 62768
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31000,
+        "gzipBytes": 10000
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8100,
+        "gzipBytes": 3400
+      }
+    }
+  },
+  "modes": [
+    {
+      "path": "dist/player.js",
+      "components": [
+        {
+          "family": "entry",
+          "name": "player.js",
+          "before": {
+            "bytes": 1147075,
+            "gzipBytes": 350809,
+            "path": "dist/player.js",
+            "sha256": "14c6c54a2d072bf1b05d7cb75323ab4b64ed105bbf9335a13e3e1a8491daf6bc"
+          },
+          "after": {
+            "bytes": 1151896,
+            "gzipBytes": 352271,
+            "path": "dist/player.js",
+            "sha256": "e3efabb7151882d4d57e48745cc468b76c13b50e6dd248f15cfb1019d1754d3e"
+          },
+          "delta": {
+            "bytes": 4821,
+            "gzipBytes": 1462
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-catalog.js",
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-edem.js",
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-m3u.js",
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-playlist.js",
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-plex.js",
+          "before": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "after": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-stalker.js",
+          "before": {
+            "bytes": 10934,
+            "gzipBytes": 4277,
+            "path": "dist/provider-stalker.js",
+            "sha256": "6561eec1ec9592d869c966ab6b296c305435dc45b645c5bc822a59d6d258016a"
+          },
+          "after": {
+            "bytes": 18606,
+            "gzipBytes": 6824,
+            "path": "dist/provider-stalker.js",
+            "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+          },
+          "delta": {
+            "bytes": 7672,
+            "gzipBytes": 2547
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-vportal.js",
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-xtream.js",
+          "before": {
+            "bytes": 4110,
+            "gzipBytes": 1740,
+            "path": "dist/provider-xtream.js",
+            "sha256": "657295d8a7272fcb914af1516ce7afd3d8117af8d376964e2f3f73da280916ce"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1748,
+            "path": "dist/provider-xtream.js",
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 48,
+            "gzipBytes": 8
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "control-transport.js",
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "favorites-transfer.js",
+          "before": {
+            "bytes": 241391,
+            "gzipBytes": 61909,
+            "path": "dist/favorites-transfer.js",
+            "sha256": "26d060ea639185b17b170da960886784b9fb4dc6c1846ddc1ee0e8bddb7bb8c0"
+          },
+          "after": {
+            "bytes": 243824,
+            "gzipBytes": 62420,
+            "path": "dist/favorites-transfer.js",
+            "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+          },
+          "delta": {
+            "bytes": 2433,
+            "gzipBytes": 511
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-compatibility.js",
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-media-ui.js",
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "perf-capture.js",
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-local-runner.js",
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-provider-fields.js",
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings.js",
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-extras.js",
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-lifecycle.js",
+          "before": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "after": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "runtime-debug-details.js",
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "shaka-tracks.js",
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "subtitle-appearance.js",
+          "before": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "after": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      ],
+      "before": {
+        "legacyTotal": {
+          "bytes": 1291445,
+          "gzipBytes": 403445
+        },
+        "completeTotal": {
+          "bytes": 1653079,
+          "gzipBytes": 509245
+        }
+      },
+      "after": {
+        "legacyTotal": {
+          "bytes": 1303986,
+          "gzipBytes": 407462
+        },
+        "completeTotal": {
+          "bytes": 1668053,
+          "gzipBytes": 513773
+        }
+      },
+      "delta": {
+        "legacyTotal": {
+          "bytes": 12541,
+          "gzipBytes": 4017
+        },
+        "completeTotal": {
+          "bytes": 14974,
+          "gzipBytes": 4528
+        }
+      }
+    },
+    {
+      "path": "src-tauri/frontend/dist/player.js",
+      "components": [
+        {
+          "family": "entry",
+          "name": "player.js",
+          "before": {
+            "bytes": 1147033,
+            "gzipBytes": 350866,
+            "path": "src-tauri/frontend/dist/player.js",
+            "sha256": "96aa6adcc3f9a0f7a3a7d44e226f4f9dc5ec18aea404c41fac530c196dff0394"
+          },
+          "after": {
+            "bytes": 1151854,
+            "gzipBytes": 352329,
+            "path": "src-tauri/frontend/dist/player.js",
+            "sha256": "ce22b66e24c508f5e8a0856f5541ac5c3a52ff2f186e643f5b4444342ebc66db"
+          },
+          "delta": {
+            "bytes": 4821,
+            "gzipBytes": 1463
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-catalog.js",
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "src-tauri/frontend/dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "src-tauri/frontend/dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-edem.js",
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "src-tauri/frontend/dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "src-tauri/frontend/dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-m3u.js",
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "src-tauri/frontend/dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "src-tauri/frontend/dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-playlist.js",
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "src-tauri/frontend/dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "src-tauri/frontend/dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-plex.js",
+          "before": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "src-tauri/frontend/dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "after": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "src-tauri/frontend/dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-stalker.js",
+          "before": {
+            "bytes": 10934,
+            "gzipBytes": 4277,
+            "path": "src-tauri/frontend/dist/provider-stalker.js",
+            "sha256": "6561eec1ec9592d869c966ab6b296c305435dc45b645c5bc822a59d6d258016a"
+          },
+          "after": {
+            "bytes": 18606,
+            "gzipBytes": 6824,
+            "path": "src-tauri/frontend/dist/provider-stalker.js",
+            "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+          },
+          "delta": {
+            "bytes": 7672,
+            "gzipBytes": 2547
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-vportal.js",
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "src-tauri/frontend/dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "src-tauri/frontend/dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-xtream.js",
+          "before": {
+            "bytes": 4110,
+            "gzipBytes": 1740,
+            "path": "src-tauri/frontend/dist/provider-xtream.js",
+            "sha256": "657295d8a7272fcb914af1516ce7afd3d8117af8d376964e2f3f73da280916ce"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1748,
+            "path": "src-tauri/frontend/dist/provider-xtream.js",
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 48,
+            "gzipBytes": 8
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "control-transport.js",
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "src-tauri/frontend/dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "src-tauri/frontend/dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "favorites-transfer.js",
+          "before": {
+            "bytes": 241391,
+            "gzipBytes": 61909,
+            "path": "src-tauri/frontend/dist/favorites-transfer.js",
+            "sha256": "26d060ea639185b17b170da960886784b9fb4dc6c1846ddc1ee0e8bddb7bb8c0"
+          },
+          "after": {
+            "bytes": 243824,
+            "gzipBytes": 62420,
+            "path": "src-tauri/frontend/dist/favorites-transfer.js",
+            "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+          },
+          "delta": {
+            "bytes": 2433,
+            "gzipBytes": 511
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-compatibility.js",
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "src-tauri/frontend/dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "src-tauri/frontend/dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-media-ui.js",
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "src-tauri/frontend/dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "src-tauri/frontend/dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "perf-capture.js",
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "src-tauri/frontend/dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "src-tauri/frontend/dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-local-runner.js",
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "src-tauri/frontend/dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "src-tauri/frontend/dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-provider-fields.js",
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "src-tauri/frontend/dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "src-tauri/frontend/dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings.js",
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "src-tauri/frontend/dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "src-tauri/frontend/dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-extras.js",
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "src-tauri/frontend/dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "src-tauri/frontend/dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-lifecycle.js",
+          "before": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "src-tauri/frontend/dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "after": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "src-tauri/frontend/dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "runtime-debug-details.js",
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "src-tauri/frontend/dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "src-tauri/frontend/dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "shaka-tracks.js",
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "src-tauri/frontend/dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "src-tauri/frontend/dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "subtitle-appearance.js",
+          "before": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "src-tauri/frontend/dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "after": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "src-tauri/frontend/dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      ],
+      "before": {
+        "legacyTotal": {
+          "bytes": 1291403,
+          "gzipBytes": 403502
+        },
+        "completeTotal": {
+          "bytes": 1653037,
+          "gzipBytes": 509302
+        }
+      },
+      "after": {
+        "legacyTotal": {
+          "bytes": 1303944,
+          "gzipBytes": 407520
+        },
+        "completeTotal": {
+          "bytes": 1668011,
+          "gzipBytes": 513831
+        }
+      },
+      "delta": {
+        "legacyTotal": {
+          "bytes": 12541,
+          "gzipBytes": 4018
+        },
+        "completeTotal": {
+          "bytes": 14974,
+          "gzipBytes": 4529
+        }
+      }
+    },
+    {
+      "path": "dist-mobile/dist/player.js",
+      "components": [
+        {
+          "family": "entry",
+          "name": "player.js",
+          "before": {
+            "bytes": 1147033,
+            "gzipBytes": 350866,
+            "path": "dist-mobile/dist/player.js",
+            "sha256": "96aa6adcc3f9a0f7a3a7d44e226f4f9dc5ec18aea404c41fac530c196dff0394"
+          },
+          "after": {
+            "bytes": 1151854,
+            "gzipBytes": 352329,
+            "path": "dist-mobile/dist/player.js",
+            "sha256": "ce22b66e24c508f5e8a0856f5541ac5c3a52ff2f186e643f5b4444342ebc66db"
+          },
+          "delta": {
+            "bytes": 4821,
+            "gzipBytes": 1463
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-catalog.js",
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "dist-mobile/dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3591,
+            "path": "dist-mobile/dist/provider-catalog.js",
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-edem.js",
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "dist-mobile/dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6100,
+            "path": "dist-mobile/dist/provider-edem.js",
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-m3u.js",
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "dist-mobile/dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7077,
+            "path": "dist-mobile/dist/provider-m3u.js",
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-playlist.js",
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "dist-mobile/dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4395,
+            "path": "dist-mobile/dist/provider-playlist.js",
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-plex.js",
+          "before": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "dist-mobile/dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "after": {
+            "bytes": 61684,
+            "gzipBytes": 21096,
+            "path": "dist-mobile/dist/provider-plex.js",
+            "sha256": "24809caf3b1ed14425149afa1d5f4434f61db3d38162a3b43222580c40793f70"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-stalker.js",
+          "before": {
+            "bytes": 10934,
+            "gzipBytes": 4277,
+            "path": "dist-mobile/dist/provider-stalker.js",
+            "sha256": "6561eec1ec9592d869c966ab6b296c305435dc45b645c5bc822a59d6d258016a"
+          },
+          "after": {
+            "bytes": 18606,
+            "gzipBytes": 6824,
+            "path": "dist-mobile/dist/provider-stalker.js",
+            "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+          },
+          "delta": {
+            "bytes": 7672,
+            "gzipBytes": 2547
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-vportal.js",
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "dist-mobile/dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4360,
+            "path": "dist-mobile/dist/provider-vportal.js",
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "providers",
+          "name": "provider-xtream.js",
+          "before": {
+            "bytes": 4110,
+            "gzipBytes": 1740,
+            "path": "dist-mobile/dist/provider-xtream.js",
+            "sha256": "657295d8a7272fcb914af1516ce7afd3d8117af8d376964e2f3f73da280916ce"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1748,
+            "path": "dist-mobile/dist/provider-xtream.js",
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 48,
+            "gzipBytes": 8
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "control-transport.js",
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "dist-mobile/dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1354,
+            "path": "dist-mobile/dist/control-transport.js",
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "favorites-transfer.js",
+          "before": {
+            "bytes": 241391,
+            "gzipBytes": 61909,
+            "path": "dist-mobile/dist/favorites-transfer.js",
+            "sha256": "26d060ea639185b17b170da960886784b9fb4dc6c1846ddc1ee0e8bddb7bb8c0"
+          },
+          "after": {
+            "bytes": 243824,
+            "gzipBytes": 62420,
+            "path": "dist-mobile/dist/favorites-transfer.js",
+            "sha256": "492f0ffcd133ee99760a6ef7c137a62d2c03e9aa5ea5fc36eb3e884561bc1036"
+          },
+          "delta": {
+            "bytes": 2433,
+            "gzipBytes": 511
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-compatibility.js",
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "dist-mobile/dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1737,
+            "path": "dist-mobile/dist/local-compatibility.js",
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "local-media-ui.js",
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "dist-mobile/dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3336,
+            "path": "dist-mobile/dist/local-media-ui.js",
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "perf-capture.js",
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "dist-mobile/dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7970,
+            "path": "dist-mobile/dist/perf-capture.js",
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-local-runner.js",
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "dist-mobile/dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1177,
+            "path": "dist-mobile/dist/remote-local-runner.js",
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-provider-fields.js",
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "dist-mobile/dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5518,
+            "path": "dist-mobile/dist/remote-provider-fields.js",
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings.js",
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "dist-mobile/dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5205,
+            "path": "dist-mobile/dist/remote-settings.js",
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-extras.js",
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "dist-mobile/dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2503,
+            "path": "dist-mobile/dist/remote-settings-extras.js",
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "remote-settings-lifecycle.js",
+          "before": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "dist-mobile/dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "after": {
+            "bytes": 30444,
+            "gzipBytes": 9585,
+            "path": "dist-mobile/dist/remote-settings-lifecycle.js",
+            "sha256": "cace84ca235bb46ce72e2e7944669ae66877e3d20da794517e57e02ca3dc4be6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "runtime-debug-details.js",
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "dist-mobile/dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1545,
+            "path": "dist-mobile/dist/runtime-debug-details.js",
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "shaka-tracks.js",
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "dist-mobile/dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 599,
+            "path": "dist-mobile/dist/shaka-tracks.js",
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        {
+          "family": "optionalAssets",
+          "name": "subtitle-appearance.js",
+          "before": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "dist-mobile/dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "after": {
+            "bytes": 7732,
+            "gzipBytes": 3362,
+            "path": "dist-mobile/dist/subtitle-appearance.js",
+            "sha256": "fcd020d7c4bbe261689616c6306637451920ff1e3a3ff482fb5cc393ee189f10"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      ],
+      "before": {
+        "legacyTotal": {
+          "bytes": 1291403,
+          "gzipBytes": 403502
+        },
+        "completeTotal": {
+          "bytes": 1653037,
+          "gzipBytes": 509302
+        }
+      },
+      "after": {
+        "legacyTotal": {
+          "bytes": 1303944,
+          "gzipBytes": 407520
+        },
+        "completeTotal": {
+          "bytes": 1668011,
+          "gzipBytes": 513831
+        }
+      },
+      "delta": {
+        "legacyTotal": {
+          "bytes": 12541,
+          "gzipBytes": 4018
+        },
+        "completeTotal": {
+          "bytes": 14974,
+          "gzipBytes": 4529
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Both builds have null sourceRevision: the baseline has an untracked node_modules symlink; the final candidate excludes that local dependency symlink from status but still contains uncommitted feature edits. Neither measurement attests a clean release source.",
+    "No rebuild was performed for this measurement. Initial and resolver-correction diagnostics are preserved. The successful third candidate changes only favorites-transfer.js after the resolver candidate. Every final emitted entry/provider/optional file was rehashed and recompressed against the same baseline using Node 22.23.4.",
+    "Allowances add the measured component deltas once; only entry compression has 20 additional bytes for source-identity variation. Final source-stamped artifacts must pass their own build gate."
+  ],
+  "initialCandidate": {
+    "head": "1a22adb1139c72933080a8a2ce544a6350404791",
+    "report": "../candidate-initial-size.json",
+    "reportSha256": "6da275b87b42b4cee63f646e88da8e4be944bd1e7a6ea4d94a721c7057cf21a3",
+    "buildExitCode": 1,
+    "sourceRevisionAtBuild": null,
+    "untrackedDependencySymlink": "node_modules",
+    "trackedSourceClean": false,
+    "allArtifactHashesAndSizesReverified": true,
+    "sizeViolations": 24,
+    "inputErrors": []
+  },
+  "resolverCandidate": {
+    "head": "1a22adb1139c72933080a8a2ce544a6350404791",
+    "report": "../candidate-resolver-size.json",
+    "reportSha256": "7e6547c2a3609d02c8c993d458eeb97e68413914669075844dc02a29f5da9f22",
+    "buildExitCode": 1,
+    "sourceRevisionAtBuild": null,
+    "trackedSourceClean": false,
+    "allArtifactHashesAndSizesReverified": true,
+    "sizeViolations": 3,
+    "inputErrors": [],
+    "dependencySymlink": "node_modules",
+    "dependencySymlinkExcludedFromStatus": true,
+    "changesSinceInitial": [
+      {
+        "path": "dist/provider-stalker.js",
+        "before": {
+          "bytes": 18354,
+          "gzipBytes": 6735,
+          "path": "dist/provider-stalker.js",
+          "sha256": "3e1af8ff72a4cda4cf406cb0f3565ca117eb8754167ce20bd372c1fa9b332cb3"
+        },
+        "after": {
+          "bytes": 18606,
+          "gzipBytes": 6824,
+          "path": "dist/provider-stalker.js",
+          "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+        },
+        "delta": {
+          "bytes": 252,
+          "gzipBytes": 89
+        }
+      },
+      {
+        "path": "src-tauri/frontend/dist/provider-stalker.js",
+        "before": {
+          "bytes": 18354,
+          "gzipBytes": 6735,
+          "path": "src-tauri/frontend/dist/provider-stalker.js",
+          "sha256": "3e1af8ff72a4cda4cf406cb0f3565ca117eb8754167ce20bd372c1fa9b332cb3"
+        },
+        "after": {
+          "bytes": 18606,
+          "gzipBytes": 6824,
+          "path": "src-tauri/frontend/dist/provider-stalker.js",
+          "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+        },
+        "delta": {
+          "bytes": 252,
+          "gzipBytes": 89
+        }
+      },
+      {
+        "path": "dist-mobile/dist/provider-stalker.js",
+        "before": {
+          "bytes": 18354,
+          "gzipBytes": 6735,
+          "path": "dist-mobile/dist/provider-stalker.js",
+          "sha256": "3e1af8ff72a4cda4cf406cb0f3565ca117eb8754167ce20bd372c1fa9b332cb3"
+        },
+        "after": {
+          "bytes": 18606,
+          "gzipBytes": 6824,
+          "path": "dist-mobile/dist/provider-stalker.js",
+          "sha256": "25a8649ebcdc74584e1b40d106511d2d06b119af5cffdb5b8a277de0589056b3"
+        },
+        "delta": {
+          "bytes": 252,
+          "gzipBytes": 89
+        }
+      }
+    ]
+  }
+}

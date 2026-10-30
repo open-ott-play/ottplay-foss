@@ -1006,6 +1006,8 @@ var keyStrings = {
     "Sleep timer": "Таймери хоб",
     "Sort channels": "Каналҳоро мураттаб кунед",
     "Source access": "Дастрасӣ ба манбаъ",
+    "Source is busy. Try again later.":
+        "Манбаъ банд аст. Баъдтар дубора кӯшиш кунед.",
     "Source sign-in required": "Воридшавӣ ба манбаъ зарур аст",
     "Source sign-in was cancelled": "Воридшавӣ ба манбаъ бекор шуд",
     "Stalker Portal Provider": "Таъминкунандаи портали Stalker",
@@ -1060,6 +1062,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID-и дастгоҳ дар суроға нодуруст аст.",
     "The discovery response is invalid.": "Ҷавоби ҷустуҷӯ нодуруст аст.",
+    "The stream connection failed": "Пайвастшавӣ ба пахш ноком шуд",
+    "The stream format could not be played": "Пахш дар ин формат иҷро нашуд",
     "This browser cannot identify the selected screenshot source.":
         "Ин браузер манбаи скриншоти интихобшударо муайян карда наметавонад.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1072,6 +1076,7 @@ var keyStrings = {
         "Барномаи Play ба HTTPS ниёз дорад. Аз таъминкунанда URL-и рӯйхати пахш ё сервери HTTPS-ро талаб кунед.",
     "This pairing link has expired. Open a new session on your TV.":
         "Мӯҳлати ин пайванди ҷуфткунӣ гузаштааст. Дар телевизиони худ сессияи нав кушоед.",
+    "This protected stream could not be played": "Ин пахши ҳифзшуда иҷро нашуд",
     "This remote command is not supported by the player.":
         "Плеер ин фармони идоракунии дурдастро дастгирӣ намекунад.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

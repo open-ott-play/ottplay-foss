@@ -967,6 +967,7 @@ var keyStrings = {
     "Sleep timer": "స్లీప్ టైమర్",
     "Sort channels": "ఛానెల్‌లను క్రమబద్ధీకరించండి",
     "Source access": "సోర్స్ యాక్సెస్",
+    "Source is busy. Try again later.": "మూలం బిజీగా ఉంది. తర్వాత మళ్లీ ప్రయత్నించండి.",
     "Source sign-in required": "సోర్స్ సైన్-ఇన్ అవసరం",
     "Source sign-in was cancelled": "సోర్స్ సైన్-ఇన్ రద్దు చేయబడింది",
     "Stalker Portal Provider": "Stalker పోర్టల్ ప్రొవైడర్",
@@ -1017,6 +1018,8 @@ var keyStrings = {
         "కమాండ్ సర్వర్ ఆవిష్కరణ URL చెల్లదు.",
     "The device ID in the address is invalid.": "చిరునామాలోని ID పరికరం చెల్లదు.",
     "The discovery response is invalid.": "ఆవిష్కరణ ప్రతిస్పందన చెల్లదు.",
+    "The stream connection failed": "స్ట్రీమ్‌కు కనెక్షన్ విఫలమైంది",
+    "The stream format could not be played": "ఈ ఫార్మాట్‌లో స్ట్రీమ్‌ను ప్లే చేయడం సాధ్యపడలేదు",
     "This browser cannot identify the selected screenshot source.":
         "ఈ బ్రౌజర్ ఎంచుకున్న స్క్రీన్‌షాట్ మూలాన్ని గుర్తించలేదు.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1029,6 +1032,8 @@ var keyStrings = {
         "ఈ Play యాప్‌కి HTTPS అవసరం. HTTPS ప్లేజాబితా లేదా సర్వర్ URL కోసం మీ ప్రొవైడర్‌ను అడగండి.",
     "This pairing link has expired. Open a new session on your TV.":
         "ఈ జత చేసే లింక్ గడువు ముగిసింది. మీ టీవీలో కొత్త సెషన్‌ను తెరవండి.",
+    "This protected stream could not be played":
+        "ఈ రక్షిత స్ట్రీమ్‌ను ప్లే చేయడం సాధ్యపడలేదు",
     "This remote command is not supported by the player.":
         "ప్లేయర్ ఈ రిమోట్ కంట్రోల్ ఆదేశానికి మద్దతు ఇవ్వదు.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

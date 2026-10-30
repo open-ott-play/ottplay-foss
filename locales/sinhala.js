@@ -977,6 +977,7 @@ var keyStrings = {
     "Sleep timer": "නින්ද ටයිමරය",
     "Sort channels": "නාලිකා වර්ග කරන්න",
     "Source access": "මූලාශ්‍ර ප්‍රවේශය",
+    "Source is busy. Try again later.": "මූලාශ්‍රය කාර්යබහුලයි. පසුව නැවත උත්සාහ කරන්න.",
     "Source sign-in required": "මූලාශ්‍ර පුරනය වීම අවශ්‍යයි",
     "Source sign-in was cancelled": "මූලාශ්‍ර පුරනය වීම අවලංගු කරන ලදී",
     "Stalker Portal Provider": "Stalker ද්වාර සපයන්නා",
@@ -1027,6 +1028,9 @@ var keyStrings = {
         "විධාන සේවාදායක සොයාගැනීම URL වලංගු නොවේ.",
     "The device ID in the address is invalid.": "ලිපිනයෙහි ඇති ID උපාංගය වලංගු නොවේ.",
     "The discovery response is invalid.": "සොයාගැනීමේ ප්‍රතිචාරය වලංගු නැත.",
+    "The stream connection failed": "ප්‍රවාහයට සම්බන්ධ වීම අසාර්ථක විය",
+    "The stream format could not be played":
+        "මෙම ආකෘතියේ ප්‍රවාහය වාදනය කළ නොහැකි විය",
     "This browser cannot identify the selected screenshot source.":
         "මෙම බ්‍රවුසරයට තෝරාගත් තිරපිටපත් මූලාශ්‍රය හඳුනාගත නොහැක.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1039,6 +1043,8 @@ var keyStrings = {
         "මෙම Play යෙදුමට HTTPS අවශ්‍ය වේ. HTTPS ධාවන ලැයිස්තුවක් හෝ සේවාදායකය URL සඳහා ඔබේ සැපයුම්කරුගෙන් විමසන්න.",
     "This pairing link has expired. Open a new session on your TV.":
         "මෙම යුගල සබැඳිය කල් ඉකුත් වී ඇත. ඔබගේ රූපවාහිනියේ නව සැසියක් විවෘත කරන්න.",
+    "This protected stream could not be played":
+        "මෙම ආරක්ෂිත ප්‍රවාහය වාදනය කළ නොහැකි විය",
     "This remote command is not supported by the player.":
         "වාදකය මෙම දුරස්ථ පාලන විධානයට සහාය නොදක්වයි.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

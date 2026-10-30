@@ -958,6 +958,7 @@ var keyStrings = {
     "Sleep timer": "የእንቅልፍ ሰዓት ቆጣሪ",
     "Sort channels": "ሰርጦችን ደርድር",
     "Source access": "የምንጭ መዳረሻ",
+    "Source is busy. Try again later.": "ምንጩ በሥራ ላይ ነው። ቆይተው እንደገና ይሞክሩ።",
     "Source sign-in required": "ወደ ምንጩ መግባት ያስፈልጋል",
     "Source sign-in was cancelled": "ወደ ምንጩ መግባት ተሰርዟል",
     "Stalker Portal Provider": "የStalker ፖርታል አቅራቢ",
@@ -1008,6 +1009,8 @@ var keyStrings = {
         "የትእዛዝ አገልጋይ ፍለጋ URL ልክ አይደለም።",
     "The device ID in the address is invalid.": "በአድራሻው ያለው የመሣሪያ ID ልክ አይደለም።",
     "The discovery response is invalid.": "የፍለጋው ምላሽ ልክ አይደለም።",
+    "The stream connection failed": "ከዥረቱ ጋር መገናኘት አልተቻለም",
+    "The stream format could not be played": "የዥረቱን ቅርጸት ማጫወት አልተቻለም",
     "This browser cannot identify the selected screenshot source.":
         "ይህ አሳሽ የተመረጠውን የቅጽበታዊ ገጽ እይታ ምንጭ መለየት አይችልም።",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1020,6 +1023,7 @@ var keyStrings = {
         "ይህ የPlay መተግበሪያ HTTPS ይፈልጋል። የHTTPS አጫዋች ዝርዝር ወይም የአገልጋይ URL ከአቅራቢዎ ይጠይቁ።",
     "This pairing link has expired. Open a new session on your TV.":
         "ይህ የማጣመሪያ ማገናኛ ጊዜው አልፎበታል። በቲቪዎ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "This protected stream could not be played": "ይህን የተጠበቀ ዥረት ማጫወት አልተቻለም",
     "This remote command is not supported by the player.":
         "ይህ የርቀት መቆጣጠሪያ ትዕዛዝ በአጫዋቹ አይደገፍም።",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

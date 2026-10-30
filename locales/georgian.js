@@ -1001,6 +1001,8 @@ var keyStrings = {
     "Sleep timer": "ძილის ტაიმერი",
     "Sort channels": "არხების დახარისხება",
     "Source access": "წყაროს წვდომა",
+    "Source is busy. Try again later.":
+        "წყარო დაკავებულია. სცადეთ მოგვიანებით.",
     "Source sign-in required": "საჭიროა წყაროში შესვლა",
     "Source sign-in was cancelled": "წყაროდან შესვლა გაუქმდა",
     "Stalker Portal Provider": "Stalker პორტალის პროვაიდერი",
@@ -1055,6 +1057,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "მისამართში მოწყობილობის ID არასწორია.",
     "The discovery response is invalid.": "აღმოჩენის პასუხი არასწორია.",
+    "The stream connection failed": "ნაკადთან დაკავშირება ვერ მოხერხდა",
+    "The stream format could not be played":
+        "ნაკადის ამ ფორმატის დაკვრა ვერ მოხერხდა",
     "This browser cannot identify the selected screenshot source.":
         "ამ ბრაუზერს არ შეუძლია სკრინშოტის არჩეული წყაროს ამოცნობა.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1067,6 +1072,8 @@ var keyStrings = {
         "ამ Play აპლიკაციას სჭირდება HTTPS. სთხოვეთ პროვაიდერს HTTPS დასაკრავი სიის ან სერვერის URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "ამ დაწყვილების ბმულს ვადა გაუვიდა. გახსენით ახალი სესია თქვენს ტელევიზორზე.",
+    "This protected stream could not be played":
+        "ამ დაცული ნაკადის დაკვრა ვერ მოხერხდა",
     "This remote command is not supported by the player.":
         "პლეერი დისტანციური მართვის ამ ბრძანებას არ უჭერს მხარს.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

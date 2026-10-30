@@ -996,6 +996,8 @@ var keyStrings = {
     "Sleep timer": "تایمر خواب",
     "Sort channels": "مرتب سازی کانال ها",
     "Source access": "دسترسی به منبع",
+    "Source is busy. Try again later.":
+        "منبع مشغول است. بعداً دوباره تلاش کنید.",
     "Source sign-in required": "ورود به سیستم منبع مورد نیاز است",
     "Source sign-in was cancelled": "ورود به سیستم منبع لغو شد",
     "Stalker Portal Provider": "ارائه دهنده پورتال Stalker",
@@ -1050,6 +1052,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "دستگاه ID در آدرس نامعتبر است.",
     "The discovery response is invalid.": "پاسخ کشف نامعتبر است.",
+    "The stream connection failed": "اتصال به جریان ناموفق بود",
+    "The stream format could not be played": "جریان با این قالب پخش نشد",
     "This browser cannot identify the selected screenshot source.":
         "این مرورگر نمی تواند منبع اسکرین شات انتخاب شده را شناسایی کند.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1062,6 +1066,7 @@ var keyStrings = {
         "این برنامه Play به HTTPS نیاز دارد. از ارائه دهنده خود یک لیست پخش HTTPS یا سرور URL بخواهید.",
     "This pairing link has expired. Open a new session on your TV.":
         "این پیوند جفت شدن منقضی شده است. یک جلسه جدید در تلویزیون خود باز کنید.",
+    "This protected stream could not be played": "این جریان محافظت‌شده پخش نشد",
     "This remote command is not supported by the player.":
         "پخش‌کننده از این فرمان کنترل از راه دور پشتیبانی نمی‌کند.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

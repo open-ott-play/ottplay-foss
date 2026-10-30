@@ -974,6 +974,7 @@ var keyStrings = {
     "Sleep timer": "स्लीप टाइमर",
     "Sort channels": "चैनल क्रमित करें",
     "Source access": "स्रोत पहुंच",
+    "Source is busy. Try again later.": "स्रोत व्यस्त है। बाद में फिर प्रयास करें।",
     "Source sign-in required": "स्रोत साइन-इन आवश्यक है",
     "Source sign-in was cancelled": "स्रोत साइन-इन रद्द कर दिया गया",
     "Stalker Portal Provider": "Stalker पोर्टल प्रदाता",
@@ -1024,6 +1025,8 @@ var keyStrings = {
         "कमांड सर्वर डिस्कवरी URL अमान्य है।",
     "The device ID in the address is invalid.": "पते में डिवाइस ID अमान्य है।",
     "The discovery response is invalid.": "खोज प्रतिक्रिया अमान्य है।",
+    "The stream connection failed": "स्ट्रीम से कनेक्शन विफल रहा",
+    "The stream format could not be played": "इस प्रारूप में स्ट्रीम नहीं चलाई जा सकी",
     "This browser cannot identify the selected screenshot source.":
         "यह ब्राउज़र चयनित स्क्रीनशॉट स्रोत की पहचान नहीं कर सकता।",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1036,6 +1039,8 @@ var keyStrings = {
         "इस प्ले ऐप के लिए HTTPS की आवश्यकता है। अपने प्रदाता से HTTPS प्लेलिस्ट या सर्वर URL के लिए पूछें।",
     "This pairing link has expired. Open a new session on your TV.":
         "यह युग्मन लिंक समाप्त हो गया है। अपने टीवी पर एक नया सत्र खोलें.",
+    "This protected stream could not be played":
+        "यह सुरक्षित स्ट्रीम नहीं चलाई जा सकी",
     "This remote command is not supported by the player.":
         "प्लेयर इस रिमोट कंट्रोल कमांड का समर्थन नहीं करता।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

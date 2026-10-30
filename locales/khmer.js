@@ -980,6 +980,7 @@ var keyStrings = {
     "Sleep timer": "កម្មវិធីកំណត់ម៉ោងគេង",
     "Sort channels": "តម្រៀបឆានែល",
     "Source access": "ការចូលប្រើប្រភព",
+    "Source is busy. Try again later.": "ប្រភពកំពុងរវល់។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ។",
     "Source sign-in required": "ទាមទារការចូលប្រភព",
     "Source sign-in was cancelled": "ការចូលប្រភពត្រូវបានលុបចោល",
     "Stalker Portal Provider": "អ្នកផ្តល់វិបផតថល Stalker",
@@ -1033,6 +1034,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ឧបករណ៍ ID នៅក្នុងអាសយដ្ឋានមិនត្រឹមត្រូវទេ។",
     "The discovery response is invalid.": "ការឆ្លើយតបនៃការរកឃើញមិនត្រឹមត្រូវទេ។",
+    "The stream connection failed": "ការតភ្ជាប់ទៅការស្ទ្រីមបានបរាជ័យ",
+    "The stream format could not be played": "មិនអាចចាក់ការស្ទ្រីមក្នុងទម្រង់នេះបានទេ",
     "This browser cannot identify the selected screenshot source.":
         "កម្មវិធីរុករកនេះមិនអាចកំណត់អត្តសញ្ញាណប្រភពរូបថតអេក្រង់ដែលបានជ្រើសរើសទេ។",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1045,6 +1048,8 @@ var keyStrings = {
         "កម្មវិធី Play នេះទាមទារ HTTPS ។ សួរអ្នកផ្តល់សេវារបស់អ្នកសម្រាប់បញ្ជីចាក់ HTTPS ឬម៉ាស៊ីនមេ URL ។",
     "This pairing link has expired. Open a new session on your TV.":
         "តំណផ្គូផ្គងនេះបានផុតកំណត់ហើយ។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍របស់អ្នក។",
+    "This protected stream could not be played":
+        "មិនអាចចាក់ការស្ទ្រីមដែលបានការពារនេះបានទេ",
     "This remote command is not supported by the player.":
         "កម្មវិធីចាក់មិនគាំទ្រពាក្យបញ្ជាពីចម្ងាយនេះទេ។",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

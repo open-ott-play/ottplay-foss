@@ -1012,6 +1012,8 @@ var keyStrings = {
     "Sleep timer": "Časovač vypnutia",
     "Sort channels": "Zoradiť kanály",
     "Source access": "Prístup k zdroju",
+    "Source is busy. Try again later.":
+        "Zdroj je zaneprázdnený. Skúste to znova neskôr.",
     "Source sign-in required": "Vyžaduje sa prihlásenie zdroja",
     "Source sign-in was cancelled": "Prihlásenie zdroja bolo zrušené",
     "Stalker Portal Provider": "Poskytovateľ portálu Stalker",
@@ -1066,6 +1068,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Zariadenie ID v adrese je neplatné.",
     "The discovery response is invalid.": "Odpoveď na zistenie je neplatná.",
+    "The stream connection failed": "Pripojenie k streamu zlyhalo",
+    "The stream format could not be played":
+        "Stream v tomto formáte sa nepodarilo prehrať",
     "This browser cannot identify the selected screenshot source.":
         "Tento prehliadač nedokáže identifikovať vybratý zdroj snímky obrazovky.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1078,6 +1083,8 @@ var keyStrings = {
         "Táto aplikácia Play vyžaduje HTTPS. Požiadajte svojho poskytovateľa o zoznam skladieb HTTPS alebo server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Platnosť tohto párovacieho odkazu vypršala. Otvorte novú reláciu na vašom televízore.",
+    "This protected stream could not be played":
+        "Tento chránený stream sa nepodarilo prehrať",
     "This remote command is not supported by the player.":
         "Prehrávač tento vzdialený príkaz nepodporuje.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

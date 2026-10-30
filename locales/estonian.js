@@ -996,6 +996,8 @@ var keyStrings = {
     "Sleep timer": "Unetaimer",
     "Sort channels": "Sorteeri kanaleid",
     "Source access": "Juurdepääs allikale",
+    "Source is busy. Try again later.":
+        "Allikas on hõivatud. Proovi hiljem uuesti.",
     "Source sign-in required": "Nõutav allika sisselogimine",
     "Source sign-in was cancelled": "Allikaga sisselogimine tühistati",
     "Stalker Portal Provider": "Stalkeri portaali pakkuja",
@@ -1050,6 +1052,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Aadressis olev seade ID on kehtetu.",
     "The discovery response is invalid.": "Avastusvastus on kehtetu.",
+    "The stream connection failed": "Vooga ühenduse loomine nurjus",
+    "The stream format could not be played": "Voo vormingut ei saanud esitada",
     "This browser cannot identify the selected screenshot source.":
         "See brauser ei suuda tuvastada valitud ekraanipildi allikat.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1062,6 +1066,8 @@ var keyStrings = {
         "See Play rakendus nõuab HTTPS. Küsige oma teenusepakkujalt esitusloendit HTTPS või serverit URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "See sidumislink on aegunud. Avage oma teleris uus seanss.",
+    "This protected stream could not be played":
+        "Seda kaitstud voogu ei saanud esitada",
     "This remote command is not supported by the player.":
         "Mängija ei toeta seda kaugkäsku.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

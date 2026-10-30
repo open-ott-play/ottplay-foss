@@ -1006,6 +1006,8 @@ var keyStrings = {
     "Sleep timer": "Унтах цаглуур",
     "Sort channels": "Сувгуудыг эрэмбэлэх",
     "Source access": "Эх сурвалжийн хандалт",
+    "Source is busy. Try again later.":
+        "Эх сурвалж завгүй байна. Дараа дахин оролдоно уу.",
     "Source sign-in required": "Эх сурвалжид нэвтрэх шаардлагатай",
     "Source sign-in was cancelled": "Эх сурвалжид нэвтрэхийг цуцалсан",
     "Stalker Portal Provider": "Stalker порталын үйлчилгээ үзүүлэгч",
@@ -1060,6 +1062,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Хаяг дахь төхөөрөмжийн ID буруу байна.",
     "The discovery response is invalid.": "Хайлтын хариу буруу байна.",
+    "The stream connection failed": "Урсгалд холбогдож чадсангүй",
+    "The stream format could not be played":
+        "Урсгалыг энэ форматаар тоглуулж чадсангүй",
     "This browser cannot identify the selected screenshot source.":
         "Энэ хөтөч сонгосон дэлгэцийн зургийн эх сурвалжийг тодорхойлж чадахгүй байна.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1072,6 +1077,8 @@ var keyStrings = {
         "Энэ Play апп HTTPS шаарддаг. Үйлчилгээ үзүүлэгчээс HTTPS тоглуулах жагсаалт эсвэл серверийн URL авна уу.",
     "This pairing link has expired. Open a new session on your TV.":
         "Энэ холболтын хугацаа дууссан. ТВ дээрээ шинэ сесс нээнэ үү.",
+    "This protected stream could not be played":
+        "Энэ хамгаалагдсан урсгалыг тоглуулж чадсангүй",
     "This remote command is not supported by the player.":
         "Тоглуулагч энэ алсын удирдлагын командыг дэмждэггүй.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

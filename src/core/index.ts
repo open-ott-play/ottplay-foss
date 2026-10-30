@@ -209,6 +209,7 @@ var _coreShakaTeardown: CoreShakaRetirement | null = null;
 var _corePendingSeek: (() => void) | null = null;
 var _corePendingSeekPosition: number | null = null;
 var _coreSeekRevision = 0;
+var _corePauseRevision = 0;
 var _coreAutoCancel: ReturnType<typeof watchAutoNativePlayback> | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
@@ -1346,7 +1347,7 @@ function createCoreStreamAttempt(
                 ended = true;
                 report(denied ? "access-denied" : "failed");
                 if ((window as any).__ottPlaybackFeedback)
-                    (window as any).__ottPlaybackFeedback.fail();
+                    (window as any).__ottPlaybackFeedback.fail(kind, status);
                 $("#buffering").hide();
                 showShift(
                     denied
@@ -1365,7 +1366,7 @@ function createCoreStreamAttempt(
         },
         pause: clear,
         progress: function () {
-            if (!pending && !ended) retries = 0;
+            if (active() && !pending && !ended) retries = 0;
         },
         resume: function () {
             if (ended) return true;
@@ -1496,11 +1497,31 @@ function startCoreEngine(
         var sampled = Date.now(),
             last = media.currentTime,
             progress = 0,
+            seekRevision = _coreSeekRevision,
+            pauseRevision = _corePauseRevision,
+            interrupted = false,
             cancelled = false;
         var stalled = sampled;
+        var interruptions = [
+            "pause",
+            "play",
+            "seeking",
+            "seeked",
+            "waiting",
+            "stalled",
+        ];
+        function interrupt(): void {
+            if (!cancelled) interrupted = true;
+        }
+        interruptions.forEach(function (name) {
+            media.addEventListener(name, interrupt);
+        });
         function cancel(): void {
             cancelled = true;
             clearTimeout(timer);
+            interruptions.forEach(function (name) {
+                media.removeEventListener(name, interrupt);
+            });
         }
         cancel.pending = function (): boolean {
             return false;
@@ -1520,12 +1541,18 @@ function startCoreEngine(
                 next = media.currentTime;
             var elapsed = (now - sampled) / 1000,
                 delta = next - last;
+            var discontinuity =
+                interrupted ||
+                seekRevision !== _coreSeekRevision ||
+                pauseRevision !== _corePauseRevision;
             sampled = now;
             last = next;
             if (
                 (window as any).forcePlay === false ||
                 media.paused ||
-                media.seeking
+                media.seeking ||
+                elapsed <= 0 ||
+                elapsed > 2.5
             ) {
                 stalled = now;
                 progress = 0;
@@ -1535,8 +1562,10 @@ function startCoreEngine(
                 delta <= elapsed * (media.playbackRate || 1) + 0.5
             ) {
                 stalled = now;
-                progress += delta;
-                if (progress >= 2 && coreStreamAttempt)
+                // Brief reads from an unstable mount must not renew the retry
+                // budget. Count observed wall time, not seek/rate advancement.
+                progress = discontinuity ? 0 : progress + elapsed;
+                if (progress >= 10 && coreStreamAttempt)
                     coreStreamAttempt.progress();
             } else {
                 progress = 0;
@@ -1555,6 +1584,11 @@ function startCoreEngine(
                     stalled = now;
                 }
             }
+            // Commands and native events can begin and end between samples.
+            // Credit resumes only after observing a fresh uninterrupted interval.
+            interrupted = false;
+            seekRevision = _coreSeekRevision;
+            pauseRevision = _corePauseRevision;
             if (
                 !cancelled &&
                 session === _playSession &&
@@ -4282,6 +4316,7 @@ function openCoreEngineLease(
         },
         pause: function () {
             if (!active() || !media) return;
+            if (!pip) _corePauseRevision++;
             (window as any).forcePlay = false;
             if (!pip && coreStreamAttempt) coreStreamAttempt.pause();
             if (!pip && (window as any).__ottPlaybackFeedback)
@@ -4339,6 +4374,7 @@ function openCoreEngineLease(
                 media.paused ||
                 media.readyState < 3 ||
                 (window as any).forcePlay === false;
+            if (!pip && waitingForPlayback) _corePauseRevision++;
             (window as any).forcePlay = true;
             if (
                 !pip &&

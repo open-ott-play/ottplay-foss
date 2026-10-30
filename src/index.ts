@@ -61,6 +61,7 @@ import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { resolveNativePlugin, tauriInvoke } from "./plugins/native-bridge";
+import { captureNativeMemoryHint } from "./plugins/native-memory";
 import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
 import { installRemoteScreenshot } from "./plugins/remote-screenshot";
 import { installRuntimeDebug } from "./plugins/runtime-debug";
@@ -6495,6 +6496,9 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
         };
     }
 );
+captureNativeMemoryHint(window, function () {
+    return runtimeDiagnostics.snapshot();
+});
 (window as any).__ottRuntimeDebug = installRuntimeDebug(window, {
     getConfig: remoteControlConfig,
     native: function () {

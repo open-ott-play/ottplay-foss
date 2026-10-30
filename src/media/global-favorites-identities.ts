@@ -21,6 +21,20 @@ export function globalFavoriteChannelId(
     row: any
 ): string | null {
     if (!row) return null;
+    var media = row.__ottMediaItem;
+    var stalker = globalFavoriteProviderId(row.__ottStalkerMediaKey);
+    if (
+        provider === "stalker" &&
+        stalker &&
+        /^stalker-media:[A-Za-z0-9_-]+$/.test(stalker) &&
+        row.__ottMediaProvider === "stalker" &&
+        media &&
+        row.itemId === stalker &&
+        media.itemId === stalker &&
+        media.request?.kind === "stalker-media" &&
+        media.request.key === stalker
+    )
+        return stalker;
     var epg =
         provider === "m3u" && globalFavoriteProviderId(row.__ottFavoriteTvgId);
     return epg ? "m3u-epg:" + epg : null;

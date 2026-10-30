@@ -987,6 +987,8 @@ var keyStrings = {
     "Sleep timer": "Svefntímastillir",
     "Sort channels": "Raða rásum",
     "Source access": "Aðgangur að uppsprettum",
+    "Source is busy. Try again later.":
+        "Uppsprettan er upptekin. Reyndu aftur síðar.",
     "Source sign-in required": "Innskráningar á uppsprettu krafist",
     "Source sign-in was cancelled": "Hætt var við innskráningu á uppsprettu",
     "Stalker Portal Provider": "Þjónustuaðili Stalker-gáttar",
@@ -1041,6 +1043,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Tækisauðkennið í vistfanginu er ógilt.",
     "The discovery response is invalid.": "Svar við leit er ógilt.",
+    "The stream connection failed": "Tenging við strauminn mistókst",
+    "The stream format could not be played":
+        "Ekki tókst að spila snið straumsins",
     "This browser cannot identify the selected screenshot source.":
         "Þessi vafri getur ekki borið kennsl á valda skjámyndauppsprettu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1053,6 +1058,8 @@ var keyStrings = {
         "Þetta Play-forrit krefst HTTPS. Biddu þjónustuaðilann um HTTPS-spilunarlista eða vefslóð þjóns.",
     "This pairing link has expired. Open a new session on your TV.":
         "Þessi pörunartengill er útrunninn. Opnaðu nýja lotu í sjónvarpinu þínu.",
+    "This protected stream could not be played":
+        "Ekki tókst að spila þennan varða straum",
     "This remote command is not supported by the player.":
         "Spilarinn styður ekki þessa fjarstýringarskipun.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

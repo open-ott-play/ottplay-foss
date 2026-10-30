@@ -974,6 +974,7 @@ var keyStrings = {
     "Sleep timer": "নিদ্ৰা টাইমাৰ",
     "Sort channels": "চেনেল সজাওক",
     "Source access": "উৎসত প্ৰৱেশাধিকাৰ",
+    "Source is busy. Try again later.": "উৎসটো ব্যস্ত। পিছত পুনৰ চেষ্টা কৰক।",
     "Source sign-in required": "উৎসত প্ৰৱেশ কৰা প্ৰয়োজন",
     "Source sign-in was cancelled": "উৎসত প্ৰৱেশ কৰা বাতিল কৰা হ’ল",
     "Stalker Portal Provider": "Stalker প’ৰ্টেল প্ৰদানকাৰী",
@@ -1025,6 +1026,8 @@ var keyStrings = {
         "আদেশ ছাৰ্ভাৰ সন্ধানৰ URL বৈধ নহয়।",
     "The device ID in the address is invalid.": "ঠিকনাত থকা ডিভাইচ ID বৈধ নহয়।",
     "The discovery response is invalid.": "সন্ধানৰ সঁহাৰি বৈধ নহয়।",
+    "The stream connection failed": "ষ্ট্ৰিমৰ সৈতে সংযোগ বিফল হ’ল",
+    "The stream format could not be played": "ষ্ট্ৰিমৰ এই ফৰ্মেটটো চলাব পৰা নগ’ল",
     "This browser cannot identify the selected screenshot source.":
         "এই ব্ৰাউজাৰে নিৰ্বাচিত স্ক্ৰীণশ্বট উৎস চিনাক্ত কৰিব নোৱাৰে।",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1037,6 +1040,8 @@ var keyStrings = {
         "এই Play এপৰ বাবে HTTPS প্ৰয়োজন। আপোনাৰ প্ৰদানকাৰীৰ পৰা HTTPS প্লেলিষ্ট বা ছাৰ্ভাৰৰ URL বিচাৰক।",
     "This pairing link has expired. Open a new session on your TV.":
         "এই যোৰা সংযোগৰ ম্যাদ উকলি গৈছে। আপোনাৰ টিভিত এটা নতুন অধিবেশন খোলক।",
+    "This protected stream could not be played":
+        "এই সুৰক্ষিত ষ্ট্ৰিমটো চলাব পৰা নগ’ল",
     "This remote command is not supported by the player.":
         "এই দূৰনিয়ন্ত্ৰণ নিৰ্দেশ প্লেয়াৰে সমৰ্থন নকৰে।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

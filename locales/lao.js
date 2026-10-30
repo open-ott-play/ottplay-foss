@@ -953,6 +953,7 @@ var keyStrings = {
     "Sleep timer": "ຕັ້ງເວລານອນ",
     "Sort channels": "ຈັດລຽງຊ່ອງ",
     "Source access": "ການເຂົ້າໃຊ້ແຫຼ່ງ",
+    "Source is busy. Try again later.": "ແຫຼ່ງຂໍ້ມູນບໍ່ຫວ່າງ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
     "Source sign-in required": "ຕ້ອງເຂົ້າລະບົບແຫຼ່ງ",
     "Source sign-in was cancelled": "ຍົກເລີກການເຂົ້າລະບົບແຫຼ່ງແລ້ວ",
     "Stalker Portal Provider": "ຜູ້ໃຫ້ບໍລິການພອດທັນ Stalker",
@@ -1002,6 +1003,8 @@ var keyStrings = {
     "The command server discovery URL is invalid.": "URL ຄົ້ນຫາເຊີບເວີຄຳສັ່ງບໍ່ຖືກຕ້ອງ.",
     "The device ID in the address is invalid.": "ID ອຸປະກອນໃນທີ່ຢູ່ບໍ່ຖືກຕ້ອງ.",
     "The discovery response is invalid.": "ຄຳຕອບການຄົ້ນຫາບໍ່ຖືກຕ້ອງ.",
+    "The stream connection failed": "ການເຊື່ອມຕໍ່ກັບສະຕຣີມລົ້ມເຫຼວ",
+    "The stream format could not be played": "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມໃນຮູບແບບນີ້ໄດ້",
     "This browser cannot identify the selected screenshot source.":
         "ບຣາວເຊີນີ້ບໍ່ສາມາດລະບຸແຫຼ່ງທີ່ມາຂອງພາບໜ້າຈໍທີ່ເລືອກໄດ້.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1014,6 +1017,7 @@ var keyStrings = {
         "ແອັບ Play ນີ້ຕ້ອງໃຊ້ HTTPS. ຂໍລາຍການຫຼິ້ນ ຫຼື URL ເຊີບເວີແບບ HTTPS ຈາກຜູ້ໃຫ້ບໍລິການ.",
     "This pairing link has expired. Open a new session on your TV.":
         "ລິ້ງການຈັບຄູ່ນີ້ໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ຢູ່ໂທລະທັດຂອງເຈົ້າ.",
+    "This protected stream could not be played": "ບໍ່ສາມາດຫຼິ້ນສະຕຣີມທີ່ມີການປ້ອງກັນນີ້ໄດ້",
     "This remote command is not supported by the player.":
         "ໂປຣແກຣມຫຼິ້ນບໍ່ຮອງຮັບຄຳສັ່ງຄວບຄຸມທາງໄກນີ້.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

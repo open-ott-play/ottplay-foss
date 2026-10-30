@@ -985,6 +985,7 @@ var keyStrings = {
     "Sleep timer": "Sleep timer",
     "Sort channels": "Sort channels",
     "Source access": "Source access",
+    "Source is busy. Try again later.": "Source is busy. Try again later.",
     "Source sign-in required": "Source sign-in required",
     "Source sign-in was cancelled": "Source sign-in was cancelled",
     "Stalker Portal Provider": "Stalker portal provider",
@@ -1037,6 +1038,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "The device ID in the address is invalid.",
     "The discovery response is invalid.": "The discovery response is invalid.",
+    "The stream connection failed": "The stream connection failed",
+    "The stream format could not be played":
+        "The stream format could not be played",
     "This browser cannot identify the selected screenshot source.":
         "This browser cannot identify the selected screenshot source.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1049,6 +1053,8 @@ var keyStrings = {
         "This Play app requires HTTPS. Ask your provider for an HTTPS playlist or server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "This pairing link has expired. Open a new session on your TV.",
+    "This protected stream could not be played":
+        "This protected stream could not be played",
     "This remote command is not supported by the player.":
         "This remote command is not supported by the player.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

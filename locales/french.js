@@ -1032,6 +1032,8 @@ var keyStrings = {
     "Sleep timer": "Minuterie de veille",
     "Sort channels": "Trier les chaînes",
     "Source access": "Accès à la source multimédia",
+    "Source is busy. Try again later.":
+        "La source est occupée. Réessayez plus tard.",
     "Source sign-in required": "Connexion à la source requise",
     "Source sign-in was cancelled": "Connexion à la source annulée",
     "Stalker Portal Provider": "Fournisseur de portail Stalker",
@@ -1087,6 +1089,9 @@ var keyStrings = {
         "L'identifiant d'appareil dans l'adresse est invalide.",
     "The discovery response is invalid.":
         "La réponse à la recherche est invalide.",
+    "The stream connection failed": "La connexion au flux a échoué",
+    "The stream format could not be played":
+        "Impossible de lire le format du flux",
     "This browser cannot identify the selected screenshot source.":
         "Ce navigateur ne peut pas identifier la source de capture d'écran sélectionnée.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1099,6 +1104,8 @@ var keyStrings = {
         "Cette application Play nécessite HTTPS. Demandez au fournisseur une liste ou une URL de serveur HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ce lien d'appairage a expiré. Ouvrez une nouvelle session sur votre téléviseur.",
+    "This protected stream could not be played":
+        "Impossible de lire ce flux protégé",
     "This remote command is not supported by the player.":
         "Le lecteur ne prend pas en charge cette commande à distance.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

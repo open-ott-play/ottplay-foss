@@ -1006,6 +1006,8 @@ var keyStrings = {
     "Sleep timer": "Mjerač vremena za spavanje",
     "Sort channels": "Poredaj kanale",
     "Source access": "Pristup izvoru",
+    "Source is busy. Try again later.":
+        "Izvor je zauzet. Pokušajte ponovno kasnije.",
     "Source sign-in required": "Potrebna je prijava na izvor",
     "Source sign-in was cancelled": "Izvorna prijava je otkazana",
     "Stalker Portal Provider": "Pružatelj portala Stalker",
@@ -1059,6 +1061,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Uređaj ID u adresi je nevažeći.",
     "The discovery response is invalid.": "Odgovor otkrića je nevažeći.",
+    "The stream connection failed": "Povezivanje sa streamom nije uspjelo",
+    "The stream format could not be played":
+        "Format streama nije se mogao reproducirati",
     "This browser cannot identify the selected screenshot source.":
         "Ovaj preglednik ne može identificirati odabrani izvor snimke zaslona.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1071,6 +1076,8 @@ var keyStrings = {
         "Ova Play aplikacija zahtijeva HTTPS. Zatražite od svog pružatelja usluga HTTPS popis za reprodukciju ili poslužitelj URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ova veza za uparivanje je istekla. Otvorite novu sesiju na TV-u.",
+    "This protected stream could not be played":
+        "Ovaj zaštićeni stream nije se mogao reproducirati",
     "This remote command is not supported by the player.":
         "Reproduktor ne podržava ovu daljinsku naredbu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

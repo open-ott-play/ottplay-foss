@@ -984,6 +984,8 @@ var keyStrings = {
     "Sleep timer": "സ്ലീപ്പ് ടൈമർ",
     "Sort channels": "ചാനലുകൾ അടുക്കുക",
     "Source access": "ഉറവിട പ്രവേശനം",
+    "Source is busy. Try again later.":
+        "ഉറവിടം തിരക്കിലാണ്. പിന്നീട് വീണ്ടും ശ്രമിക്കുക.",
     "Source sign-in required": "ഉറവിട സൈൻ-ഇൻ ആവശ്യമാണ്",
     "Source sign-in was cancelled": "ഉറവിട സൈൻ-ഇൻ റദ്ദാക്കി",
     "Stalker Portal Provider": "Stalker പോർട്ടൽ ദാതാവ്",
@@ -1034,6 +1036,9 @@ var keyStrings = {
         "കമാൻഡ് സെർവർ കണ്ടെത്തൽ URL അസാധുവാണ്.",
     "The device ID in the address is invalid.": "വിലാസത്തിലെ ID ഉപകരണം അസാധുവാണ്.",
     "The discovery response is invalid.": "കണ്ടെത്തൽ പ്രതികരണം അസാധുവാണ്.",
+    "The stream connection failed": "സ്ട്രീമിലേക്കുള്ള കണക്ഷൻ പരാജയപ്പെട്ടു",
+    "The stream format could not be played":
+        "ഈ ഫോർമാറ്റിലുള്ള സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
     "This browser cannot identify the selected screenshot source.":
         "ഈ ബ്രൗസറിന് തിരഞ്ഞെടുത്ത സ്ക്രീൻഷോട്ട് ഉറവിടം തിരിച്ചറിയാൻ കഴിയില്ല.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1046,6 +1051,8 @@ var keyStrings = {
         "ഈ പ്ലേ ആപ്പിന് HTTPS ആവശ്യമാണ്. HTTPS പ്ലേലിസ്റ്റ് അല്ലെങ്കിൽ സെർവർ URL നിങ്ങളുടെ ദാതാവിനോട് ആവശ്യപ്പെടുക.",
     "This pairing link has expired. Open a new session on your TV.":
         "ഈ ജോടിയാക്കൽ ലിങ്ക് കാലഹരണപ്പെട്ടു. നിങ്ങളുടെ ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറക്കുക.",
+    "This protected stream could not be played":
+        "ഈ സംരക്ഷിത സ്ട്രീം പ്ലേ ചെയ്യാൻ കഴിഞ്ഞില്ല",
     "This remote command is not supported by the player.":
         "ഈ വിദൂര നിയന്ത്രണ കമാൻഡ് പ്ലേയർ പിന്തുണയ്ക്കുന്നില്ല.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

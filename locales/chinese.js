@@ -948,6 +948,7 @@ var keyStrings = {
     "Sleep timer": "睡眠定时器",
     "Sort channels": "频道排序",
     "Source access": "源访问",
+    "Source is busy. Try again later.": "来源繁忙，请稍后重试。",
     "Source sign-in required": "需要源登录",
     "Source sign-in was cancelled": "源登录已取消",
     "Stalker Portal Provider": "Stalker 门户提供商",
@@ -997,6 +998,8 @@ var keyStrings = {
     "The command server discovery URL is invalid.": "命令服务器发现URL 无效。",
     "The device ID in the address is invalid.": "地址中的设备ID 无效。",
     "The discovery response is invalid.": "发现响应无效。",
+    "The stream connection failed": "流连接失败",
+    "The stream format could not be played": "无法播放此流格式",
     "This browser cannot identify the selected screenshot source.":
         "该浏览器无法识别所选的屏幕截图源。",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1009,6 +1012,7 @@ var keyStrings = {
         "此Play 应用程序需要HTTPS。向您的提供商询问 HTTPS 播放列表或服务器 URL。",
     "This pairing link has expired. Open a new session on your TV.":
         "该配对链接已过期。在电视上打开一个新会话。",
+    "This protected stream could not be played": "无法播放此受保护的流",
     "This remote command is not supported by the player.":
         "播放器不支持此远程控制命令。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

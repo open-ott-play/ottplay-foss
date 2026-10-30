@@ -1030,6 +1030,8 @@ var keyStrings = {
     "Sleep timer": "Χρονοδιακόπτης ύπνου",
     "Sort channels": "Ταξινόμηση καναλιών",
     "Source access": "Πρόσβαση στην πηγή πολυμέσων",
+    "Source is busy. Try again later.":
+        "Η πηγή είναι απασχολημένη. Δοκιμάστε ξανά αργότερα.",
     "Source sign-in required": "Απαιτείται σύνδεση πηγής",
     "Source sign-in was cancelled": "Η σύνδεση στην πηγή ακυρώθηκε",
     "Stalker Portal Provider": "Πάροχος πύλης Stalker",
@@ -1085,6 +1087,9 @@ var keyStrings = {
         "Το αναγνωριστικό συσκευής στη διεύθυνση δεν είναι έγκυρο.",
     "The discovery response is invalid.":
         "Η απόκριση της αναζήτησης δεν είναι έγκυρη.",
+    "The stream connection failed": "Η σύνδεση με τη ροή απέτυχε",
+    "The stream format could not be played":
+        "Δεν ήταν δυνατή η αναπαραγωγή της μορφής της ροής",
     "This browser cannot identify the selected screenshot source.":
         "Αυτό το πρόγραμμα περιήγησης δεν μπορεί να αναγνωρίσει την επιλεγμένη πηγή στιγμιότυπου οθόνης.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1097,6 +1102,8 @@ var keyStrings = {
         "Αυτή η εφαρμογή Play απαιτεί HTTPS. Ζητήστε από τον πάροχό σας λίστα αναπαραγωγής ή URL διακομιστή HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Αυτός ο σύνδεσμος σύζευξης έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόρασή σας.",
+    "This protected stream could not be played":
+        "Δεν ήταν δυνατή η αναπαραγωγή αυτής της προστατευμένης ροής",
     "This remote command is not supported by the player.":
         "Η συσκευή αναπαραγωγής δεν υποστηρίζει αυτή την απομακρυσμένη εντολή.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":

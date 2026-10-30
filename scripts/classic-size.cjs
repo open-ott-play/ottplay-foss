@@ -523,8 +523,30 @@ const CATEGORY_PICKER_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 45,
     gzipBytes: 8,
 });
+// Paired 1.1.61 / Node22.23.4 builds measure four changed asset families.
+// Preserve prior headroom and add only 20 entry gzip bytes for source-identity
+// variation. Both measured builds have null sourceRevision; final stamped
+// artifacts still require validation. Providers retain their existing cap.
+// Evidence: docs/evidence/stb-player-improvements-size-20261029.json.
+const STB_PLAYER_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 4821,
+    gzipBytes: 1483,
+});
+const STB_PLAYER_STALKER_ALLOWANCE = Object.freeze({
+    bytes: 7672,
+    gzipBytes: 2547,
+});
+const STB_PLAYER_XTREAM_ALLOWANCE = Object.freeze({
+    bytes: 48,
+    gzipBytes: 8,
+});
+const STB_PLAYER_FAVORITES_ALLOWANCE = Object.freeze({
+    bytes: 2433,
+    gzipBytes: 511,
+});
 const BUDGET = Object.freeze({
     bytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
@@ -540,6 +562,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
@@ -734,6 +757,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_STALKER_ALLOWANCE.bytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
@@ -751,6 +777,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
@@ -777,11 +806,13 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
@@ -835,6 +866,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_STALKER_ALLOWANCE.bytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.bytes +
+        STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
@@ -859,6 +894,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes +
+        STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
@@ -1082,6 +1121,10 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         schema: 1,
         shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
         shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
+        stbPlayerEntryAllowance: STB_PLAYER_ENTRY_ALLOWANCE,
+        stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
+        stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
+        stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1393,6 +1436,10 @@ function writeBuildBundleReport(
             shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
             shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
             source: label(context.source || process.env.GITHUB_SHA),
+            stbPlayerEntryAllowance: STB_PLAYER_ENTRY_ALLOWANCE,
+            stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
+            stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
+            stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
             toolchain: {
                 node: process.versions.node,
                 zlib: process.versions.zlib,
@@ -1477,6 +1524,10 @@ module.exports = {
     RELATIVE_SEEK_ENTRY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
     SHAKA_TRACKS_ENTRY_ALLOWANCE,
+    STB_PLAYER_ENTRY_ALLOWANCE,
+    STB_PLAYER_FAVORITES_ALLOWANCE,
+    STB_PLAYER_STALKER_ALLOWANCE,
+    STB_PLAYER_XTREAM_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,
