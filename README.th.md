@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## การผูกปุ่ม STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, สี 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, สี 403-406
 - **Samsung Maple**: dpad 4/5/6/8, รหัส SDK เดิม
 - **LG WebOS**: `RETURN=461`, สีเข้ากันได้กับ HbbTV
 - **LG NetCast**: `RETURN=8`, รหัส HbbTV

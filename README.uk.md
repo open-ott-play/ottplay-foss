@@ -1041,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Призначення клавіш STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, кольори 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, кольори 403-406
 - **Samsung Maple**: dpad 4/5/6/8, початкові коди SDK
 - **LG WebOS**: `RETURN=461`, кольори сумісні з HbbTV
 - **LG NetCast**: `RETURN=8`, коди HbbTV

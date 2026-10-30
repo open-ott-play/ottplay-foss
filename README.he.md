@@ -1313,7 +1313,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## מיפויי מקשים ל־STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, צבעים 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, צבעים 403-406
 - **Samsung Maple**: dpad 4/5/6/8, קודי SDK מקוריים
 - **LG WebOS**: `RETURN=461`, צבעים תואמי HbbTV
 - **LG NetCast**: `RETURN=8`, קודי HbbTV

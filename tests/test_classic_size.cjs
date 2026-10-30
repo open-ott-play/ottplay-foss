@@ -43,6 +43,7 @@ const {
     OPTIONAL_BUDGETS,
     PROVIDER_BUDGET,
     TOTAL_BUDGET,
+    TIZEN_PACKAGE_BOOT_ALLOWANCE,
     LEGACY_TOTAL_BUDGET,
     inspectBundleSets,
     inspectBundles,
@@ -58,6 +59,199 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const tizenPackageBootDelta = (budget, metric) =>
+        [BUDGET, BASE_TOTAL_BUDGET, LEGACY_TOTAL_BUDGET, TOTAL_BUDGET].includes(
+            budget
+        )
+            ? TIZEN_PACKAGE_BOOT_ALLOWANCE[metric]
+            : 0;
+    const beforeTizenPackageBootBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - tizenPackageBootDelta(budget, metric),
+            ])
+        );
+    const tizenEvidence = require("../docs/evidence/tizen-package-boot-size-20261030.json");
+    assert(Object.isFrozen(TIZEN_PACKAGE_BOOT_ALLOWANCE));
+    assert.deepEqual(TIZEN_PACKAGE_BOOT_ALLOWANCE, tizenEvidence.allowance);
+    assert.deepEqual(tizenEvidence.sourceIdentityReserve, {
+        bytes: 0,
+        gzipBytes: 20,
+    });
+    assert.equal(tizenEvidence.version, "1.1.62");
+    assert.deepEqual(tizenEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.match(tizenEvidence.lockSha256, /^[a-f0-9]{64}$/);
+    const tizenComponentCount =
+        1 +
+        Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
+        Object.keys(CLASSIC_OPTIONAL_BUNDLES).length;
+    for (const source of [tizenEvidence.baseline, tizenEvidence.candidate]) {
+        assert.match(source.head, /^[a-f0-9]{40}$/);
+        assert.match(source.reportSha256, /^[a-f0-9]{64}$/);
+        assert.equal(source.sourceRevisionAtBuild, source.head);
+        assert.equal(source.trackedSourceClean, true);
+        assert.equal(source.allArtifactHashesAndSizesReverified, true);
+        assert.equal(
+            source.artifactCount,
+            ARTIFACTS.length * tizenComponentCount
+        );
+        assert.deepEqual(
+            source.sourceStamps,
+            ARTIFACTS.map((file) => ({
+                path: file,
+                sourceRevision: source.head,
+            }))
+        );
+    }
+    assert.notEqual(tizenEvidence.baseline.head, tizenEvidence.candidate.head);
+    assert.equal(tizenEvidence.baseline.buildExitCode, 0);
+    assert.equal(tizenEvidence.candidate.buildExitCode, 1);
+    assert.equal(tizenEvidence.candidate.complete, true);
+    assert.deepEqual(tizenEvidence.candidate.inputErrors, []);
+    assert.deepEqual(
+        tizenEvidence.candidate.sizeViolations,
+        tizenEvidence.modes.map((mode) => ({
+            actual: mode.components[0].after.bytes,
+            budget: tizenEvidence.previousCaps.BUDGET.bytes,
+            metric: "bytes",
+            path: mode.path,
+            scope: "asset",
+        }))
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(budget, tizenEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforeTizenPackageBootBudget(budget),
+            tizenEvidence.previousCaps[name],
+            name + " counts the Tizen entry allowance exactly once"
+        );
+    }
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        tizenEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(OPTIONAL_BUDGETS, tizenEvidence.nextCaps.OPTIONAL_BUDGETS);
+    assert.deepEqual(
+        tizenEvidence.modes.map((mode) => mode.path),
+        ARTIFACTS
+    );
+    for (const mode of tizenEvidence.modes) {
+        assert.equal(mode.components.length, tizenComponentCount);
+        assert.deepEqual(
+            mode.components.map((row) => [row.family, row.name]),
+            [
+                ["entry", "player.js"],
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map((name) => [
+                    "providers",
+                    "provider-" + name + ".js",
+                ]),
+                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map((name) => [
+                    "optionalAssets",
+                    name + ".js",
+                ]),
+            ]
+        );
+        assert.deepEqual(
+            mode.components
+                .filter((row) => row.before.sha256 !== row.after.sha256)
+                .map((row) => row.name),
+            ["player.js"]
+        );
+        for (const row of mode.components) {
+            assert.equal(
+                row.before.path,
+                path.posix.join(path.posix.dirname(mode.path), row.name)
+            );
+            assert.equal(row.after.path, row.before.path);
+            for (const value of [row.before, row.after]) {
+                assert.match(value.sha256, /^[a-f0-9]{64}$/);
+                assert(Number.isSafeInteger(value.bytes) && value.bytes > 0);
+                assert(
+                    Number.isSafeInteger(value.gzipBytes) && value.gzipBytes > 0
+                );
+            }
+            if (row.family !== "entry") assert.deepEqual(row.after, row.before);
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.after[metric] - row.before[metric],
+                    row.delta[metric]
+                );
+        }
+        for (const metric of ["bytes", "gzipBytes"]) {
+            for (const [name, rows] of [
+                [
+                    "legacyTotal",
+                    mode.components.filter(
+                        (row) => row.family !== "optionalAssets"
+                    ),
+                ],
+                ["completeTotal", mode.components],
+            ]) {
+                for (const version of ["before", "after"])
+                    assert.equal(
+                        rows.reduce(
+                            (sum, row) => sum + row[version][metric],
+                            0
+                        ),
+                        mode[version][name][metric]
+                    );
+                assert.equal(
+                    rows.reduce((sum, row) => sum + row.delta[metric], 0),
+                    mode.delta[name][metric]
+                );
+            }
+            for (const [name, before, after] of [
+                ["BUDGET", mode.components[0].before, mode.components[0].after],
+                [
+                    "LEGACY_TOTAL_BUDGET",
+                    mode.before.legacyTotal,
+                    mode.after.legacyTotal,
+                ],
+                [
+                    "BASE_TOTAL_BUDGET",
+                    mode.before.completeTotal,
+                    mode.after.completeTotal,
+                ],
+                [
+                    "TOTAL_BUDGET",
+                    mode.before.completeTotal,
+                    mode.after.completeTotal,
+                ],
+            ]) {
+                // BASE excludes the separately allocated local compatibility payload.
+                if (name !== "BASE_TOTAL_BUDGET")
+                    assert(
+                        after[metric] <= tizenEvidence.nextCaps[name][metric]
+                    );
+                assert(
+                    tizenEvidence.nextCaps[name][metric] - after[metric] >=
+                        tizenEvidence.previousCaps[name][metric] -
+                            before[metric],
+                    name + " preserves pre-Tizen headroom"
+                );
+            }
+        }
+    }
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            TIZEN_PACKAGE_BOOT_ALLOWANCE[metric],
+            Math.max(
+                ...tizenEvidence.modes.map(
+                    (mode) => mode.components[0].delta[metric]
+                )
+            ) + tizenEvidence.sourceIdentityReserve[metric]
+        );
     const categoryNavigationDelta = (budget, metric) =>
         budget === OPTIONAL_BUDGETS["favorites-transfer"]
             ? CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE[metric]
@@ -69,7 +263,8 @@ try {
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - categoryNavigationDelta(budget, metric),
+                beforeTizenPackageBootBudget(budget)[metric] -
+                    categoryNavigationDelta(budget, metric),
             ])
         );
     const navigationEvidence = require("../docs/evidence/category-navigation-size-20261029.json");
@@ -109,7 +304,10 @@ try {
         LEGACY_TOTAL_BUDGET,
         TOTAL_BUDGET,
     })) {
-        assert.deepEqual(budget, navigationEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforeTizenPackageBootBudget(budget),
+            navigationEvidence.nextCaps[name]
+        );
         assert.deepEqual(
             beforeCategoryNavigationBudget(budget),
             navigationEvidence.previousCaps[name],
@@ -224,7 +422,8 @@ try {
                 ],
             ])
                 assert(
-                    budget[metric] - after[metric] >=
+                    beforeTizenPackageBootBudget(budget)[metric] -
+                        after[metric] >=
                         navigationEvidence.previousCaps[name][metric] -
                             before[metric],
                     name + " preserves pre-navigation headroom"
@@ -256,6 +455,7 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
+                    tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric),
             ])
@@ -474,7 +674,8 @@ try {
                 ],
             ])
                 assert(
-                    budget[metric] - after[metric] >=
+                    beforeTizenPackageBootBudget(budget)[metric] -
+                        after[metric] >=
                         stbEvidence.previousCaps[name][metric] - before[metric],
                     name + " preserves prior headroom"
                 );
@@ -505,6 +706,7 @@ try {
             : 0);
     // Preserve historical evidence by subtracting each later entry delta once.
     const sharedFeatureDelta = (budget, metric) =>
+        tizenPackageBootDelta(budget, metric) +
         categoryNavigationDelta(budget, metric) +
         stbPlayerDelta(budget, metric) +
         presenceDelta(budget, metric) +
@@ -643,6 +845,7 @@ try {
                 );
                 assert(
                     budget[metric] -
+                        tizenPackageBootDelta(budget, metric) -
                         categoryNavigationDelta(budget, metric) -
                         stbPlayerDelta(budget, metric) -
                         categoryDelta(budget, metric) -
@@ -685,6 +888,7 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
+                    tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric) -
                     (name === "favorites_transfer"
@@ -770,6 +974,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric) -
                     pickerEvidence.previousBudgets[name][metric],
@@ -804,6 +1009,7 @@ try {
             ])
                 assert.equal(
                     budget[metric] -
+                        tizenPackageBootDelta(budget, metric) -
                         categoryNavigationDelta(budget, metric) -
                         stbPlayerDelta(budget, metric) -
                         after[metric],
@@ -2044,6 +2250,10 @@ try {
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
     assert.deepEqual(
+        failed.tizenPackageBootAllowance,
+        TIZEN_PACKAGE_BOOT_ALLOWANCE
+    );
+    assert.deepEqual(
         failed.categoryNavigationEntryAllowance,
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE
     );
@@ -2636,6 +2846,10 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.tizenPackageBootAllowance,
+        TIZEN_PACKAGE_BOOT_ALLOWANCE
+    );
     assert.deepEqual(
         report.categoryNavigationEntryAllowance,
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE

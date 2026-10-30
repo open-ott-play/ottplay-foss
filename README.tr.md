@@ -1041,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB tuş eşlemeleri
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, renkler 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, renkler 403-406
 - **Samsung Maple**: dpad 4/5/6/8, özgün SDK kodları
 - **LG WebOS**: `RETURN=461`, HbbTV uyumlu renkler
 - **LG NetCast**: `RETURN=8`, HbbTV kodları

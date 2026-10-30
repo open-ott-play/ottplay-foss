@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STBキー割り当て
 
-- **Samsung Tizen**：`RETURN=10009`、`ENTER=10008`、色10300–10303。
+- **Samsung Tizen**：`RETURN=10009`、`ENTER=13`、色403–406。
 - **Samsung Maple**：方向パッド4/5/6/8、元のSDKコード。
 - **LG WebOS**：`RETURN=461`、HbbTV互換の色。
 - **LG NetCast**：`RETURN=8`、HbbTVコード。

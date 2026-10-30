@@ -1041,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB कुंजी मानचित्रण
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, रंग 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, रंग 403-406
 - **Samsung Maple**: dpad 4/5/6/8, मूल SDK कोड
 - **LG WebOS**: `RETURN=461`, HbbTV-संगत रंग
 - **LG NetCast**: `RETURN=8`, HbbTV कोड

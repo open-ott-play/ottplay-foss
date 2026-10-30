@@ -558,8 +558,18 @@ const CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE = Object.freeze({
     bytes: 603,
     gzipBytes: 214,
 });
+// Packaged Tizen startup resolves shared-runtime and provider paths locally.
+// Clean, source-stamped 1.1.62 / Node22.23.4 builds add 95 raw bytes and at
+// most 65 gzip bytes to each entry. Preserve prior headroom and allow only
+// 20 additional gzip bytes for source-identity variation. Other caps stay fixed.
+// Evidence: docs/evidence/tizen-package-boot-size-20261030.json.
+const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
+    bytes: 95,
+    gzipBytes: 85,
+});
 const BUDGET = Object.freeze({
     bytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
@@ -577,6 +587,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
@@ -773,6 +784,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_STALKER_ALLOWANCE.bytes +
@@ -794,6 +806,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
@@ -886,6 +899,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_STALKER_ALLOWANCE.bytes +
@@ -916,6 +930,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
@@ -1152,6 +1167,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
         stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
         stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
+        tizenPackageBootAllowance: TIZEN_PACKAGE_BOOT_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1471,6 +1487,7 @@ function writeBuildBundleReport(
             stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
             stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
             stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
+            tizenPackageBootAllowance: TIZEN_PACKAGE_BOOT_ALLOWANCE,
             toolchain: {
                 node: process.versions.node,
                 zlib: process.versions.zlib,
@@ -1561,6 +1578,7 @@ module.exports = {
     STB_PLAYER_FAVORITES_ALLOWANCE,
     STB_PLAYER_STALKER_ALLOWANCE,
     STB_PLAYER_XTREAM_ALLOWANCE,
+    TIZEN_PACKAGE_BOOT_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,

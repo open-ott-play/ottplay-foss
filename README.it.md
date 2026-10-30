@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Mappature tasti STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, colori 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, colori 403–406.
 - **Samsung Maple**: croce direzionale 4/5/6/8, codici SDK originali.
 - **LG WebOS**: `RETURN=461`, colori compatibili HbbTV.
 - **LG NetCast**: `RETURN=8`, codici HbbTV.

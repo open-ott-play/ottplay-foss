@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## 机顶盒按键映射
 
-- **Samsung Tizen**：`RETURN=10009`、`ENTER=10008`，彩色键10300–10303。
+- **Samsung Tizen**：`RETURN=10009`、`ENTER=13`，彩色键403–406。
 - **Samsung Maple**：方向键4/5/6/8，原始SDK代码。
 - **LG WebOS**：`RETURN=461`，兼容HbbTV的彩色键。
 - **LG NetCast**：`RETURN=8`，HbbTV代码。

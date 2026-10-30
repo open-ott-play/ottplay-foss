@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB 키 매핑
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, 색상 키 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, 색상 키 403–406.
 - **Samsung Maple**: 방향 패드 4/5/6/8, 원래 SDK 코드.
 - **LG WebOS**: `RETURN=461`, HbbTV 호환 색상.
 - **LG NetCast**: `RETURN=8`, HbbTV 코드.

@@ -1042,7 +1042,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Associações de teclas STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, cores 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, cores 403-406
 - **Samsung Maple**: dpad 4/5/6/8, códigos SDK originais
 - **LG WebOS**: `RETURN=461`, cores compatíveis com HbbTV
 - **LG NetCast**: `RETURN=8`, códigos HbbTV

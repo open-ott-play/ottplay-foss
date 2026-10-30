@@ -1041,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Pemetaan tombol STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, warna 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, warna 403-406
 - **Samsung Maple**: dpad 4/5/6/8, kode SDK asli
 - **LG WebOS**: `RETURN=461`, warna kompatibel HbbTV
 - **LG NetCast**: `RETURN=8`, kode HbbTV

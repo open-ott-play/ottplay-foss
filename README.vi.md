@@ -1041,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Ánh xạ phím STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, màu 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, màu 403-406
 - **Samsung Maple**: dpad 4/5/6/8, mã SDK gốc
 - **LG WebOS**: `RETURN=461`, màu tương thích HbbTV
 - **LG NetCast**: `RETURN=8`, mã HbbTV

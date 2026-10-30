@@ -1313,7 +1313,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## تعيينات مفاتيح STB
 
-- **Samsung Tizen**: `RETURN=10009`، `ENTER=10008`، الألوان 10300-10303
+- **Samsung Tizen**: `RETURN=10009`، `ENTER=13`، الألوان 403-406
 - **Samsung Maple**: dpad 4/5/6/8، رموز SDK الأصلية
 - **LG WebOS**: `RETURN=461`، ألوان متوافقة مع HbbTV
 - **LG NetCast**: `RETURN=8`، رموز HbbTV

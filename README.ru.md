@@ -1039,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Назначения клавиш приставок
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, цвета 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, цвета 403–406.
 - **Samsung Maple**: крестовина 4/5/6/8, исходные коды SDK.
 - **LG WebOS**: `RETURN=461`, цвета, совместимые с HbbTV.
 - **LG NetCast**: `RETURN=8`, коды HbbTV.
