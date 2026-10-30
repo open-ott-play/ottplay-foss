@@ -36,9 +36,10 @@ not yet been verified for this candidate.
 Builds use the webOS ARM SDK directly on macOS or ARM Linux. The build creates
 a native ARM ELF executable, its storage service, a complete IPK and a matching
 source set. It performs no TV installation, global cache cleanup or
-platform privilege changes. A separate CI workflow builds the actual ARM IPK
-and matching source set for pull requests that change this native target;
-it can also be started manually. A newer run cancels the previous run for the
+platform privilege changes. A reusable workflow inside the required CI gate checks the native packaging
+contracts on every validated pull request. It builds the actual ARM IPK and
+matching source set when native build inputs change, and for non-PR runs.
+It can also be started manually. A newer run cancels the previous run for the
 same pull request. These candidate artifacts do not replace ordinary
 web-player releases.
 

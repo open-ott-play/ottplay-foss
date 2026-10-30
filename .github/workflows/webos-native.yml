@@ -2,12 +2,7 @@ name: Native webOS candidate
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - native/webos/**
-      - scripts/webos-runtime-sources*
-      - tests/test_webos_runtime_sources.py
-      - .github/workflows/webos-native.yml
+  workflow_call: {}
 
 permissions:
   contents: read
@@ -19,16 +14,30 @@ concurrency:
 jobs:
   contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.scope.outputs.build }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
+      - name: Classify native build inputs
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/webos-native-scope.py
       - run: python3 -m unittest discover -s native/webos -p 'test_*.py' -v
       - run: python3 -m unittest discover -s tests -p test_webos_runtime_sources.py -v
 
   native-candidate:
     needs: contracts
+    if: ${{ needs.contracts.outputs.build == 'true' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     env:
