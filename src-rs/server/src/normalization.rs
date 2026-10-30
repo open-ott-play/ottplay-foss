@@ -38,7 +38,11 @@ pub async fn stop_signal() {
     let _ = tokio::signal::ctrl_c().await;
 }
 pub async fn shutdown() {
-    let gateways = GATEWAYS
+    shutdown_gateways(registered_gateways()).await;
+}
+
+fn registered_gateways() -> Vec<Shared> {
+    GATEWAYS
         .get()
         .map(|gateways| {
             gateways
@@ -48,7 +52,10 @@ pub async fn shutdown() {
                 .filter_map(Weak::upgrade)
                 .collect::<Vec<_>>()
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+async fn shutdown_gateways(gateways: Vec<Shared>) {
     for gateway in gateways {
         let ids: Vec<_> = gateway.leases.lock().unwrap().keys().cloned().collect();
         for id in ids {
@@ -1859,6 +1866,99 @@ mod tests {
             done: tokio::sync::watch::channel(false).0,
         }
     }
+    async fn shutdown_test_gateways(directory: &std::path::Path) {
+        let gateways: Vec<_> = registered_gateways()
+            .into_iter()
+            .filter(|gateway| gateway.settings.directory.starts_with(directory))
+            .collect();
+        assert!(
+            !gateways.is_empty(),
+            "test teardown matched no owned gateways"
+        );
+        shutdown_gateways(gateways).await;
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn fixture_shutdown_preserves_another_gateways_existing_lease() {
+        use std::os::unix::fs::PermissionsExt;
+        use tower::ServiceExt;
+
+        let root =
+            std::env::temp_dir().join(format!("ott-shutdown-scope-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        for name in ["ffmpeg", "ffprobe"] {
+            let executable = root.join(name);
+            std::fs::write(
+                &executable,
+                format!("#!/bin/sh\nprintf '{name} version test\\n'\n"),
+            )
+            .unwrap();
+            std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let owned_root = root.join("owned");
+        // A textual prefix is not ownership: this sibling must remain available.
+        let other_root = root.join("owned-sibling");
+        let mut fixtures = Vec::new();
+        for directory in [&owned_root, &other_root] {
+            let mut source = sample_source();
+            source.url = "http://127.0.0.1:9/source.m3u8".into();
+            source.allowed_origins = vec!["http://127.0.0.1:9".into()];
+            let mut settings = sample_settings(source);
+            settings.ffmpeg = root.join("ffmpeg");
+            settings.ffprobe = root.join("ffprobe");
+            settings.directory = directory.join("state");
+            let app = configured_routes(settings).await.unwrap();
+            let gateway = registered_gateways()
+                .into_iter()
+                .find(|gateway| gateway.settings.directory == directory.join("state"))
+                .unwrap();
+            let lease = Arc::new(sample_lease(Duration::ZERO, Duration::ZERO));
+            // No producer is needed to prove lease ownership; its completion is immediate.
+            lease.done.send_replace(true);
+            let id = uuid::Uuid::new_v4().simple().to_string();
+            gateway
+                .leases
+                .lock()
+                .unwrap()
+                .insert(id.clone(), lease.clone());
+            fixtures.push((app, gateway, id, lease));
+        }
+        shutdown_test_gateways(&owned_root).await;
+        for (index, (app, gateway, id, lease)) in fixtures.iter().enumerate() {
+            let response = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("POST")
+                        .uri("/normalize/api")
+                        .header("authorization", format!("Bearer {}", "k".repeat(40)))
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            json!({"op":"status","lease":id}).to_string(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            if index == 0 {
+                assert_eq!(response.status(), StatusCode::GONE);
+                assert!(lease.state.lock().unwrap().closed);
+            } else {
+                assert_eq!(response.status(), StatusCode::OK);
+                assert!(!lease.state.lock().unwrap().closed);
+                assert!(Arc::ptr_eq(&gateway.lease(id).unwrap(), lease));
+                let body = axum::body::to_bytes(response.into_body(), 4096)
+                    .await
+                    .unwrap();
+                let status: Value = serde_json::from_slice(&body).unwrap();
+                assert_eq!(status["state"], "preparing");
+            }
+        }
+        shutdown_test_gateways(&other_root).await;
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn preparation_defaults_and_bounds_are_explicit() {
         let source = sample_source();
@@ -3221,7 +3321,7 @@ mod tests {
             .await
             .unwrap();
         }
-        shutdown().await;
+        shutdown_test_gateways(&directory).await;
         server.abort();
         tokio::fs::remove_dir_all(directory).await.unwrap();
     }

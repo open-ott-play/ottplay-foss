@@ -6,7 +6,6 @@ Exercises the production byte parser, queue calls, and an explicit loopback list
 """
 from pathlib import Path
 import os
-import socket
 import subprocess
 import tempfile
 
@@ -63,9 +62,16 @@ let post = CAPPluginCall(["data": ["text": "internal"]]); queue.post(post); post
 let get = CAPPluginCall(); queue.get(get); get.wait()
 precondition((get.result["commands"] as? [[String: Any]])?.first?["text"] as? String == "internal")
 let noToken = CAPPluginCall(["httpEnabled": true]); queue.start(noToken); noToken.wait(); precondition(noToken.error != nil)
-let start = CAPPluginCall(["httpEnabled": true, "token": token]); queue.start(start); start.wait(); precondition(start.error == nil)
+let start = CAPPluginCall(["httpEnabled": true, "token": token]); queue.start(start); start.wait()
+precondition(start.error == nil, "Listener startup failed: \(start.error ?? "unknown error")")
 precondition(start.result["httpEnabled"] as? Bool == true)
-let port = ProcessInfo.processInfo.environment["OTTPLAY_QUEUE_PORT"]!
+func listeningPort(_ call: CAPPluginCall) -> UInt16 {
+    guard let port = call.result["port"] as? UInt16, (18081...18090).contains(port) else {
+        fatalError("Listener did not return a port from its bounded default range")
+    }
+    return port
+}
+var port = listeningPort(start)
 func http(_ authorized: Bool, code: String = token) -> Int {
     let done = DispatchSemaphore(value: 0)
     var status = 0
@@ -99,7 +105,9 @@ precondition(status.result["httpEnabled"] as? Bool == false)
 precondition(http(true) == 0, "Stop must close the listening port")
 let rotatedToken = String(repeating: "b", count: 64)
 let rotated = CAPPluginCall(["httpEnabled": true, "token": rotatedToken])
-queue.start(rotated); rotated.wait(); precondition(rotated.error == nil)
+queue.start(rotated); rotated.wait()
+precondition(rotated.error == nil, "Rotated listener startup failed: \(rotated.error ?? "unknown error")")
+port = listeningPort(rotated)
 precondition(http(true) == 401, "Old code must be revoked")
 precondition(http(true, code: rotatedToken) == 200)
 let finalStop = CAPPluginCall(); queue.stop(finalStop); finalStop.wait()
@@ -113,6 +121,7 @@ with tempfile.TemporaryDirectory(prefix="ott-swift-queue-") as directory:
     (temp / "main.swift").write_text(MAIN)
     subprocess.run(["swiftc", "-swift-version", "5", "-emit-library", "-emit-module", "-module-name", "Capacitor", str(temp / "Capacitor.swift"), "-o", str(temp / "libCapacitor.dylib")], cwd=temp, check=True)
     subprocess.run(["swiftc", "-swift-version", "5", "-I", str(temp), "-L", str(temp), "-lCapacitor", "-Xlinker", "-rpath", "-Xlinker", str(temp), str(ROOT / "ios/App/App/Plugins/MobileCommandQueue.swift"), str(temp / "main.swift"), "-o", str(temp / "queue")], check=True)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0)); port = probe.getsockname()[1]
-    subprocess.run([str(temp / "queue")], env={**os.environ, "OTTPLAY_QUEUE_PORT": str(port)}, check=True, timeout=30)
+    # Let NWListener claim a port itself; probing and releasing one here races
+    # other socket users. Ignore operator overrides for this isolated test only.
+    env = {key: value for key, value in os.environ.items() if key != "OTTPLAY_QUEUE_PORT"}
+    subprocess.run([str(temp / "queue")], env=env, check=True, timeout=30)
