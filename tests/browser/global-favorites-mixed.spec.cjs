@@ -178,22 +178,41 @@ for (const membership of ["global", "category"])
             return id;
         }, membership);
         if (membership === "category") {
-            await page.evaluate(() => {
+            const categories = await page.evaluate(() => {
                 window.sFavorites = 0;
                 window.channelsList(window.catIndex, window.primaryIndex);
                 window.showActionsDialog();
+                return window.catsArray.slice(1);
             });
             await expect(page.locator("#dialogbox")).toBeVisible();
             await page.keyboard.press("Enter");
             await expect(page.locator("#listCaption")).toHaveText(
                 "Select a category to add the channel"
             );
-            await page.evaluate(() => {
-                window.selIndex = window.listArray.indexOf("Favorites");
-                if (window.selIndex < 0)
-                    throw Error("Favorites category absent");
-            });
+            const rows = page.locator("#list .item"),
+                selected = page.locator("#list .item.ott-selected");
+            expect(categories.length).toBeGreaterThan(1);
+            expect(categories).toContain("Favorites");
+            await expect(rows).toHaveText(categories);
+            await expect(selected).toHaveText(categories[0]);
+            await page.keyboard.press("ArrowDown");
+            await expect(selected).toHaveText(categories[1]);
+            await page.keyboard.press("ArrowUp");
+            await expect(selected).toHaveText(categories[0]);
+            await page.keyboard.press("Backspace");
+            await expect(rows).toContainText(["One channel"]);
+            await page.evaluate(() => window.showActionsDialog());
             await page.keyboard.press("Enter");
+            await expect(rows).toHaveText(categories);
+            for (
+                let index = 0;
+                index < categories.indexOf("Favorites");
+                index++
+            )
+                await page.keyboard.press("ArrowDown");
+            await expect(selected).toHaveText("Favorites");
+            await page.keyboard.press("Enter");
+            await expect(rows).toContainText(["One channel"]);
         }
         await expect
             .poll(() =>
