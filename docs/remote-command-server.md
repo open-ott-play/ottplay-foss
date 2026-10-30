@@ -584,6 +584,32 @@ do not change the existing provider-selection or active-playlist commands.
 
 ### Remote diagnostic snapshots
 
+Updated players include `status.playback` with the current playback state,
+media kind, safe title/provider, optional media ID and channel number, timeline
+position/duration, and volume. Unknown values are `null`. Titles describe the
+confirmed playback owner, not a highlighted row or a pending selection. Pause
+retains that owner; stop and standby clear the active media. Local labels expose
+only a basename. URLs, absolute paths, credentials and raw provider requests are
+excluded.
+Unicode control/private characters are removed for URL/path classification,
+while accepted display labels retain their original text. Older engines without
+Unicode property support use conservative ASCII classification and may omit
+ambiguous Unicode labels containing slashes.
+
+A controller can advertise `player_state` version 1 in an authenticated command
+poll response, with its `controller_epoch`, `/api/player-state` report path,
+15000 ms heartbeat, 45000 ms freshness window and 4096-byte body limit. The player
+then posts the same safe playback projection on connection and semantic changes,
+plus a 15-second heartbeat. This uses the existing device credential and transport,
+independently of notification settings. Older controllers receive no new requests.
+
+Reports include the page runtime and an increasing sequence. Only one report is
+in flight; subsequent changes coalesce. Retries preserve the exact body and
+sequence. Changing controller configuration or epoch discards queued old reports,
+and late replies cannot acknowledge a newer report. Disconnecting stops reporting;
+the controller's last observation can remain available as stale history. Presence
+does not establish physical power state or prove that video is visible.
+
 The existing `status` request (`ott NAME` or `ott --json NAME`) retains its
 `channels`, `provider`, `ready`, `uuid` and `volume` fields and adds an optional
 `diagnostics` object with `version: 1`. It uses the same authenticated request

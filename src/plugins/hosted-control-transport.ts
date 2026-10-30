@@ -5,6 +5,7 @@
         "/api/notifications": "GET",
         "/api/notifications/media": "GET",
         "/api/pairings": "GET POST DELETE",
+        "/api/player-state": "POST",
         "/api/responses": "POST",
         "/api/v2/diagnostics/events": "POST",
         "/api/v2/diagnostics/poll": "POST",

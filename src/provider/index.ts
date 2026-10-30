@@ -927,6 +927,7 @@ export function loadProv(
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     (window as any).__ottMissingCatalogSelection = false;
+    (window as any).__ottPlayerState?.changed();
     (window as any).__ottCatalogSelectedId = undefined;
     (window as any).__ottParental.revoke();
     if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
@@ -1406,6 +1407,7 @@ export function loadChannels(): void {
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
+    (window as any).__ottPlayerState?.changed();
     if (libraryLoading || !$("#launch").is(":visible")) {
         if (stbIsPlaying()) stopSourcePlayback();
         $("#dialogbox")
@@ -1491,6 +1493,7 @@ export function loadChannels(): void {
                 // Startup callbacks may synchronously switch provider or reload channels.
                 if ((window as any).__ottCommandChannelLoad === commandLoad) {
                     (window as any).commandChannelsReady = true;
+                    (window as any).__ottPlayerState?.changed();
                     var kiosk = (window as any).__ottKiosk;
                     if (kiosk && typeof kiosk.restoreMedia === "function")
                         kiosk.restoreMedia();

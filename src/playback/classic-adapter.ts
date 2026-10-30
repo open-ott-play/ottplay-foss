@@ -103,6 +103,7 @@ function classicPlaybackOwnedState(): any {
                 var api = classicPlaybackHost().__ottClassicPlayback;
                 if (api && typeof api.checkpoint === "function")
                     api.checkpoint(snapshot);
+                classicPlaybackHost().__ottPlayerState?.changed();
             });
     return classicPlaybackState;
 }

@@ -6,6 +6,7 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { readPlayerState } from "./player-state";
 import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
@@ -1146,9 +1147,11 @@ export function executeRemoteRequest(
         };
     }
     if (request.action === "status") {
+        var player = remotePlayerInfo(w);
         reply({
             channels: channels().length,
-            player: remotePlayerInfo(w),
+            playback: readPlayerState(w, player).playback,
+            player: player,
             ...(w.__ottKiosk ? { kiosk: w.__ottKiosk.snapshot() } : {}),
             diagnostics: {
                 epg: remoteSnapshot(

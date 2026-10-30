@@ -5,6 +5,7 @@ import {
     validDeviceToken,
     wire,
 } from "../shared/wire-contracts";
+import { createPlayerStateReporter } from "./player-state";
 import { createRemoteNotifications } from "./remote-notifications";
 
 /** Outbound command delivery. Independent of native HTTP listening and WebCrypto. */
@@ -112,9 +113,12 @@ export function createCommandServer(
         done: (result: any) => void,
         afterReply: (effect: () => void) => void
     ) => (() => void) | void,
-    acceptRequest?: (request: any) => boolean
+    acceptRequest?: (request: any) => boolean,
+    readPlayerState?: () => any
 ): any {
     var notifications = createRemoteNotifications(w, send);
+    var playerState = createPlayerStateReporter(w, send, readPlayerState);
+    w.__ottPlayerState = playerState;
     var config: CommandServerConfig = {
         address: "",
         enabled: false,
@@ -218,6 +222,7 @@ export function createCommandServer(
         if (listener) listener();
     }
     function stop(): void {
+        playerState.stop();
         notifications.stop();
         generation++;
         if (timer !== null) w.clearTimeout(timer);
@@ -269,6 +274,7 @@ export function createCommandServer(
         }, delay);
     }
     function failed(response?: CommandServerResponse): void {
+        playerState.disconnected();
         failures++;
         var denied =
             response && (response.status === 401 || response.status === 403);
@@ -370,6 +376,7 @@ export function createCommandServer(
                     failed();
                     return;
                 }
+                playerState.connected(data.player_state);
                 // Optional banner failures must not stop command delivery or retries.
                 try {
                     notifications.poll();
@@ -854,6 +861,7 @@ export function createCommandServer(
             config.enabled = true;
             persist(config, save);
             notifications.configure(config.address, config.token);
+            playerState.configure(config.address, config.token);
             update("connecting", "Connecting...");
             poll();
         } catch (error) {

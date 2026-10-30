@@ -15,6 +15,19 @@ const {
 } = require("../scripts/classic-function-names.cjs");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-linker-"));
 function testInventoryWithoutCompiler() {
+    for (const [moduleFile, consumer] of [
+        ["build/commands/player-state.js", "build/commands/remote-requests.js"],
+        ["build/plugins/player-state.js", "build/plugins/command-server.js"],
+    ]) {
+        assert.equal(
+            CLASSIC_MODULES.filter((file) => file === moduleFile).length,
+            1
+        );
+        assert.ok(
+            CLASSIC_MODULES.indexOf(moduleFile) <
+                CLASSIC_MODULES.indexOf(consumer)
+        );
+    }
     const isolated = { exports: {} };
     vm.runInNewContext(
         fs.readFileSync(

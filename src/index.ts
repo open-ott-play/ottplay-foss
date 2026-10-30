@@ -330,6 +330,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { readPlayerState } from "./commands/player-state";
 import { readNotificationsEnabled } from "./commands/remote-notifications";
 import { executeRemoteRequest } from "./commands/remote-requests";
 import { remotePlayerInfo } from "./commands/remote-restart";
@@ -6555,7 +6556,10 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
             }
         );
     },
-    remoteInspection.accept
+    remoteInspection.accept,
+    function () {
+        return readPlayerState(window, remotePlayerInfo(window));
+    }
 );
 
 (window as any).__ottRemoteLifecyclePorts = {
