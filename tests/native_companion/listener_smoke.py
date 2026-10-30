@@ -131,11 +131,11 @@ class CompanionListenerSmoke(unittest.TestCase):
                     except subprocess.TimeoutExpired:
                         self.fail("Server did not exit after SIGTERM within 10 seconds")
                     self.assertEqual(exit_code, 0, "SIGTERM must take the orderly shutdown path")
-                for host, port in (("0.0.0.0", main), ("127.0.0.1", companion)):
+                for port in (main, companion):
                     with socket.socket() as rebound:
                         # Match the server's listener behavior around TCP TIME_WAIT.
                         rebound.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        rebound.bind((host, port))
+                        rebound.bind(("127.0.0.1", port))
                         rebound.listen(1)
 
     def test_explicit_remote_host_requires_opt_in(self):
@@ -145,7 +145,7 @@ class CompanionListenerSmoke(unittest.TestCase):
             self.assertIn("OTT_COMPANION_ALLOW_REMOTE=1", log.read())
             self.assertFalse((self.directory / "media").exists())
             with socket.socket() as rebound:
-                rebound.bind(("0.0.0.0", main))
+                rebound.bind(("127.0.0.1", main))
 
     def test_explicit_remote_listener_stays_separate(self):
         with server(self.directory, {"OTT_COMPANION_HOST": "0.0.0.0", "OTT_COMPANION_ALLOW_REMOTE": "1"}) as (process, main, companion, log):

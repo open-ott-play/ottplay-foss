@@ -621,7 +621,7 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
 const TORRENT_PROVIDER_ALLOWANCE = Object.freeze({
     catalog: Object.freeze({ bytes: 8426, gzipBytes: 3348 }),
     companion: Object.freeze({ bytes: -3663, gzipBytes: -1439 }),
-    entry: Object.freeze({ bytes: 1781, gzipBytes: 440 }),
+    entry: Object.freeze({ bytes: 2286, gzipBytes: 548 }),
     favorites: Object.freeze({ bytes: 1194, gzipBytes: 270 }),
     settings: Object.freeze({ bytes: 263, gzipBytes: 102 }),
 });

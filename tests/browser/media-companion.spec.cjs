@@ -487,6 +487,7 @@ test("Torrent provider is hidden for external endpoints until native capability 
         const ready = window.__ottMediaCompanion.capabilities();
         if (window.isProviderAllowed("torrent"))
             throw Error("Optimistic native provider visibility");
+        await Promise.resolve();
         answer({
             available: true,
             local: true,

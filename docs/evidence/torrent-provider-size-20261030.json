@@ -25,8 +25,8 @@
       "gzipBytes": -1439
     },
     "entry": {
-      "bytes": 1781,
-      "gzipBytes": 440
+      "bytes": 2286,
+      "gzipBytes": 548
     },
     "favorites": {
       "bytes": 1194,
@@ -38,8 +38,8 @@
     }
   },
   "reserve": {
-    "entryGzipBytes": 32,
-    "explanation": "Same-runtime entry delta is 408 bytes compressed; 32 bytes accommodates native transform compression variation. Companion retains 3 bytes of compression headroom. Existing component headroom is preserved.",
+    "entryGzipBytes": 33,
+    "explanation": "Same-runtime entry delta is 515 bytes compressed; 33 bytes accommodates native transform compression variation. Includes cold-start static discovery and cancellable remote-provider capability waiting (+505 raw, +107 web/+108 native gzip over the first provider build). Companion retains 3 bytes of compression headroom. Existing component headroom is preserved.",
     "companionGzipBytes": 3
   },
   "beforeCaps": {
@@ -66,16 +66,16 @@
   },
   "afterCaps": {
     "entry": {
-      "bytes": 1160948,
-      "gzipBytes": 355434
+      "bytes": 1161453,
+      "gzipBytes": 355542
     },
     "legacyTotal": {
-      "bytes": 1322061,
-      "gzipBytes": 414081
+      "bytes": 1322566,
+      "gzipBytes": 414189
     },
     "total": {
-      "bytes": 1703913,
-      "gzipBytes": 527361
+      "bytes": 1704418,
+      "gzipBytes": 527469
     },
     "companion": {
       "bytes": 9009,
@@ -214,13 +214,13 @@
         "sha256": "af8e6962a4c816fb5b6f06e9c87aabe29449c880d2fe469eadae9b95328fdd9f"
       },
       "after": {
-        "bytes": 1160745,
-        "gzipBytes": 353779,
-        "sha256": "d490630cc2096b03ece03ea162f7d1212a7527a98d8d8e9d191de3ff1d3ff397"
+        "bytes": 1161250,
+        "gzipBytes": 353886,
+        "sha256": "2b84df376f77c5fe54207de27584681fee5693e0c572a317b50fbcdb3a78b632"
       },
       "delta": {
-        "bytes": 1781,
-        "gzipBytes": 408
+        "bytes": 2286,
+        "gzipBytes": 515
       }
     },
     {
@@ -514,7 +514,7 @@
     }
   ],
   "delta": {
-    "bytes": 8001,
-    "gzipBytes": 2686
+    "bytes": 8506,
+    "gzipBytes": 2793
   }
 }

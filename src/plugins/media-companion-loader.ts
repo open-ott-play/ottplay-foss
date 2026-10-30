@@ -10,22 +10,26 @@ export function installMediaCompanion(w: any): void {
     function capabilities(): Promise<any> {
         if (!w.__TAURI__) return Promise.resolve(null);
         if (!capabilityRequest)
-            capabilityRequest = tauriInvoke("companion_capabilities", {}).then(
-                function (value: any) {
-                    nativeAvailable = !!(
-                        value &&
-                        value.schema === 1 &&
-                        value.local === true &&
-                        value.available === true &&
-                        value.torrent === true
-                    );
-                    return nativeAvailable ? value : null;
-                },
-                function () {
-                    nativeAvailable = false;
-                    return null;
-                }
-            );
+            capabilityRequest = Promise.resolve()
+                .then(function () {
+                    return tauriInvoke("companion_capabilities", {});
+                })
+                .then(
+                    function (value: any) {
+                        nativeAvailable = !!(
+                            value &&
+                            value.schema === 1 &&
+                            value.local === true &&
+                            value.available === true &&
+                            value.torrent === true
+                        );
+                        return nativeAvailable ? value : null;
+                    },
+                    function () {
+                        nativeAvailable = false;
+                        return null;
+                    }
+                );
         return capabilityRequest;
     }
     function available(): boolean {
@@ -131,4 +135,5 @@ export function installMediaCompanion(w: any): void {
             };
         },
     };
+    if (w.__TAURI__) capabilities();
 }

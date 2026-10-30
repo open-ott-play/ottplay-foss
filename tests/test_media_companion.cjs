@@ -770,3 +770,131 @@ test("explicit file index in session creation never triggers first-file fallback
     );
     assert.deepEqual(f.outcomes, [base + "/sessions/s1/stream"]);
 });
+
+function coldNativeRemoteFixture() {
+    const calls = [],
+        switched = [],
+        replies = [];
+    let settle;
+    const probe = new Promise((resolve) => {
+        settle = resolve;
+    });
+    const w = {
+        __ottCommandChannelLoad: {},
+        __TAURI__: {},
+        fetch() {},
+        settings: {},
+        stbGetItem: () => "m3u",
+    };
+    const loader = {
+        exports: {},
+        Promise,
+        require: () => ({
+            tauriInvoke(command) {
+                calls.push(command);
+                return probe;
+            },
+        }),
+    };
+    vm.runInNewContext(
+        compile("src/plugins/media-companion-loader.ts"),
+        loader
+    );
+    loader.exports.installMediaCompanion(w);
+    const remote = {
+        Date,
+        exports: {},
+        require: (name) =>
+            name === "../provider"
+                ? {
+                      isProviderAllowed: (id) =>
+                          id !== "torrent" ||
+                          w.__ottMediaCompanion.providerAvailable(),
+                      providerIds: ["m3u", "torrent"],
+                      providerLabels: ["M3U", "Torrent"],
+                      selectProviderByIndex: (index) => {
+                          switched.push(index);
+                          return true;
+                      },
+                  }
+                : name === "../utils/caseless"
+                  ? { caselessKey: (value) => value.toLowerCase() }
+                  : {},
+        window: w,
+    };
+    vm.runInNewContext(compile("src/commands/remote-requests.ts"), remote);
+    return {
+        calls,
+        replies,
+        request(action, extra = {}) {
+            return remote.exports.executeRemoteRequest(
+                { action, params: { query: "torrent" }, ...extra },
+                (result) => replies.push(result)
+            );
+        },
+        settle,
+        switched,
+        w,
+    };
+}
+const nativeCapabilities = {
+    available: true,
+    local: true,
+    plugins: true,
+    schema: 1,
+    torrent: true,
+};
+
+test("native cold start discovers static capability without opening a menu or service", async () => {
+    const f = coldNativeRemoteFixture();
+    await flush();
+    assert.deepEqual(f.calls, ["companion_capabilities"]);
+    assert.equal(f.w.__ottMediaCompanion.providerAvailable(), false);
+    f.settle(nativeCapabilities);
+    await flush();
+    assert.equal(f.w.__ottMediaCompanion.providerAvailable(), true);
+    assert.deepEqual(f.calls, ["companion_capabilities"]);
+});
+
+test("cold remote provider listing and direct selection await the same static capability", async () => {
+    for (const action of ["providers", "provider"]) {
+        const f = coldNativeRemoteFixture();
+        f.request(action);
+        await flush();
+        assert.deepEqual(f.replies, []);
+        assert.deepEqual(f.switched, []);
+        f.settle(nativeCapabilities);
+        await flush();
+        assert.equal(f.replies[0].status, "ok");
+        if (action === "providers")
+            assert.equal(f.replies[0].data.providers[1].id, "torrent");
+        else assert.deepEqual(f.switched, [1]);
+        assert.deepEqual(f.calls, ["companion_capabilities"]);
+    }
+});
+
+test("cold remote provider requests reject expiration and source changes and honor cancellation", async () => {
+    for (const kind of [
+        "expired",
+        "replaced",
+        "cancelled",
+        "restricted",
+        "unavailable",
+    ]) {
+        const f = coldNativeRemoteFixture();
+        const cancel = f.request(
+            "provider",
+            kind === "expired" ? { expires_at: 1 } : {}
+        );
+        await flush();
+        if (kind === "replaced") f.w.__ottCommandChannelLoad = {};
+        if (kind === "cancelled") cancel();
+        if (kind === "restricted") f.w.__ottKiosk = { enabled: () => true };
+        f.settle(kind === "unavailable" ? null : nativeCapabilities);
+        await flush();
+        assert.deepEqual(f.switched, []);
+        assert.equal(f.replies.length, kind === "cancelled" ? 0 : 1);
+        if (kind !== "cancelled") assert.equal(f.replies[0].status, "rejected");
+        assert.deepEqual(f.calls, ["companion_capabilities"]);
+    }
+});
