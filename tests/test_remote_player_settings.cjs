@@ -18,7 +18,7 @@ function source(path) {
 const domain = { exports: {} };
 vm.runInNewContext(source("src/settings/store.ts"), domain);
 const plugin = source("src/plugins/remote-settings.ts");
-function fixture() {
+function fixture(extraSchema = []) {
     const data = new Map(),
         writes = [],
         effects = [];
@@ -54,6 +54,7 @@ function fixture() {
             validate: (v) => typeof v === "string",
         },
         ...Array.from({ length: 22 }, (_, i) => number("option" + i, 10)),
+        ...extraSchema,
     ];
     const store = domain.exports.createSettingsStore(schema, {
         context: () => f.scope,
@@ -196,6 +197,51 @@ check("players exposes stable aliases and LG effective automatic mode", () => {
     assert.equal(set.data.setting.effective_value, 3);
     assert.equal(set.data.application.reason, "next_stream");
 });
+check(
+    "interface mode distinguishes saved preference from active presentation",
+    () => {
+        const f = fixture([
+            {
+                defaultValue: 0,
+                effects: ["setInterfaceMode"],
+                id: "interfaceMode",
+                key: "sInterfaceMode",
+                rules: { range: [0, 1] },
+                scope: "application",
+                validate: (value) => value === 0 || value === 1,
+            },
+        ]);
+        f.w.setInterfaceMode = () => {};
+        f.w.__ottInterfaceModeState = { effective: 0, status: "classic" };
+        f.onEffect = () => {
+            f.w.__ottInterfaceModeState.status = "loading";
+        };
+        const get = f.get("interfaceMode");
+        assert.equal(get.data.descriptor.choices[1].aliases[0], "modern");
+        const saved = f.set(get, 1);
+        assert.equal(saved.status, "ok");
+        assert.equal(saved.data.setting.value, 1);
+        assert.equal(saved.data.setting.effective_value, 0);
+        assert.deepEqual(saved.data.application, {
+            reason: "view_loading",
+            state: "deferred",
+        });
+        f.w.__ottInterfaceModeState = { effective: 1, status: "modern" };
+        assert.equal(f.get("interfaceMode").data.setting.effective_value, 1);
+        f.onEffect = () => {
+            f.w.__ottInterfaceModeState = { effective: 0, status: "fallback" };
+        };
+        const failed = f.set(f.get("interfaceMode"), 1);
+        assert.equal(failed.data.application.state, "failed");
+        assert.equal(failed.data.setting.value, 1);
+        assert.equal(failed.data.setting.effective_value, 0);
+        f.onEffect = () => {
+            f.w.__ottInterfaceModeState = { effective: 0, status: "classic" };
+        };
+        const classic = f.set(f.get("interfaceMode"), 0);
+        assert.equal(classic.data.application.state, "completed");
+    }
+);
 check("strict types and ranges reject without saving", () => {
     for (const value of [-1, 3601, 1.5, "3", null, true, [], {}]) {
         const f = fixture();

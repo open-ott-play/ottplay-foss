@@ -549,6 +549,7 @@ var keyStrings = {
     "Infobar settings": "ಮಾಹಿತಿ ಪಟ್ಟಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     Information: "ಮಾಹಿತಿ",
     "Interface credits": "ಇಂಟರ್ಫೇಸ್‌ಗೆ ಕೊಡುಗೆ ನೀಡಿದವರು",
+    "Interface mode": "ಇಂಟರ್ಫೇಸ್ ಮೋಡ್",
     "Interface settings": "ಇಂಟರ್ಫೇಸ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Interface theme": "ಇಂಟರ್ಫೇಸ್ ಥೀಮ್",
     "Interface transparency": "ಇಂಟರ್ಫೇಸ್ ಪಾರದರ್ಶಕತೆ",
@@ -626,6 +627,9 @@ var keyStrings = {
     "Media Library URL": "ಮಾಧ್ಯಮ ಲೈಬ್ರರಿ URL",
     Menu: "ಮೆನು",
     "Menu items settings": "ಮೆನು ಐಟಂ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    Modern: "ಆಧುನಿಕ",
+    "Modern interface is unavailable. Classic remains active.":
+        "ಆಧುನಿಕ ಇಂಟರ್ಫೇಸ್ ಲಭ್ಯವಿಲ್ಲ. ಕ್ಲಾಸಿಕ್ ಸಕ್ರಿಯವಾಗಿರುತ್ತದೆ.",
     "Move category down": "ವರ್ಗವನ್ನು ಕೆಳಕ್ಕೆ ಸರಿಸಿ",
     "Move category up": "ವರ್ಗವನ್ನು ಮೇಲಕ್ಕೆ ಸರಿಸಿ",
     "Move channel down": "ಚಾನಲ್ ಅನ್ನು ಕೆಳಕ್ಕೆ ಸರಿಸಿ",

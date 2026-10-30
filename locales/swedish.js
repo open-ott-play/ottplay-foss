@@ -564,6 +564,7 @@ var keyStrings = {
     "Infobar settings": "Inställningar för informationsfält",
     Information: "Information",
     "Interface credits": "Gränssnittets upphovspersoner",
+    "Interface mode": "Gränssnittsläge",
     "Interface settings": "Gränssnittsinställningar",
     "Interface theme": "Gränssnittstema",
     "Interface transparency": "Gränssnittets genomskinlighet",
@@ -642,6 +643,9 @@ var keyStrings = {
     "Media Library URL": "Mediebibliotekets URL",
     Menu: "Meny",
     "Menu items settings": "Inställningar för menyalternativ",
+    Modern: "Modernt",
+    "Modern interface is unavailable. Classic remains active.":
+        "Det moderna gränssnittet är inte tillgängligt. Klassiskt förblir aktivt.",
     "Move category down": "Flytta kategori nedåt",
     "Move category up": "Flytta kategori uppåt",
     "Move channel down": "Flytta kanal nedåt",

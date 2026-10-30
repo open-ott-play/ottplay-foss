@@ -575,6 +575,7 @@ var keyStrings = {
     "Infobar settings": "Socruithe an bharra faisnéise",
     Information: "Eolas",
     "Interface credits": "Creidiúintí an chomhéadain",
+    "Interface mode": "Mód an chomhéadain",
     "Interface settings": "Socruithe an chomhéadain",
     "Interface theme": "Téama an chomhéadain",
     "Interface transparency": "Trédhearcacht an chomhéadain",
@@ -654,6 +655,9 @@ var keyStrings = {
     "Media Library URL": "URL na leabharlainne meán",
     Menu: "Roghchlár",
     "Menu items settings": "Socruithe míreanna roghchláir",
+    Modern: "Nua-aimseartha",
+    "Modern interface is unavailable. Classic remains active.":
+        "Níl an comhéadan nua-aimseartha ar fáil. Fanann an comhéadan clasaiceach gníomhach.",
     "Move category down": "Bog an chatagóir síos",
     "Move category up": "Bog an chatagóir suas",
     "Move channel down": "Bog an cainéal síos",

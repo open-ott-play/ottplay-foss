@@ -558,6 +558,7 @@ var keyStrings = {
     "Infobar settings": "تنظیمات نوار اطلاعات",
     Information: "اطلاعات",
     "Interface credits": "سازندگان رابط کاربری",
+    "Interface mode": "حالت رابط کاربری",
     "Interface settings": "تنظیمات رابط",
     "Interface theme": "تم رابط",
     "Interface transparency": "شفافیت رابط",
@@ -635,6 +636,9 @@ var keyStrings = {
     "Media Library URL": "کتابخانه رسانه URL",
     Menu: "منو",
     "Menu items settings": "تنظیمات آیتم منو",
+    Modern: "مدرن",
+    "Modern interface is unavailable. Classic remains active.":
+        "رابط کاربری مدرن در دسترس نیست. رابط کلاسیک فعال می‌ماند.",
     "Move category down": "دسته را به پایین منتقل کنید",
     "Move category up": "انتقال دسته به بالا",
     "Move channel down": "انتقال کانال به پایین",

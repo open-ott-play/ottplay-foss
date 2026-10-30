@@ -258,6 +258,10 @@
         ui.list(
             host,
             page.rows([
+                choice(label("Interface mode"), "interfaceMode", [
+                    label("Classic"),
+                    label("Modern"),
+                ]),
                 choice(host._("Interface theme"), "interfaceTheme", [
                     host._("Classic"),
                     "PLi-HD",

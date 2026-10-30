@@ -581,6 +581,7 @@ var keyStrings = {
     "Infobar settings": "Izilungiselelo zebha yolwazi",
     Information: "Ulwazi",
     "Interface credits": "Abanikele kusixhumi esibonakalayo",
+    "Interface mode": "Imodi yesixhumi esibonakalayo",
     "Interface settings": "Izilungiselelo zesixhumi esibonakalayo",
     "Interface theme": "Itimu yesixhumi esibonakalayo",
     "Interface transparency": "Ukubonakala ngale kwesixhumi esibonakalayo",
@@ -661,6 +662,9 @@ var keyStrings = {
     "Media Library URL": "I-URL yomtapo wemidiya",
     Menu: "Imenyu",
     "Menu items settings": "Izilungiselelo zezinto zemenyu",
+    Modern: "Yesimanje",
+    "Modern interface is unavailable. Classic remains active.":
+        "Isixhumi esibonakalayo sesimanje asitholakali. Esijwayelekile sihlala sisebenza.",
     "Move category down": "Hambisa isigaba phansi",
     "Move category up": "Hambisa isigaba phezulu",
     "Move channel down": "Hambisa isiteshi phansi",

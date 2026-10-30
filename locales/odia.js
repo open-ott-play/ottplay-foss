@@ -540,6 +540,7 @@ var keyStrings = {
     "Infobar settings": "ସୂଚନା ପଟି ସେଟିଂସ୍",
     Information: "ସୂଚନା",
     "Interface credits": "ଇଣ୍ଟରଫେସ୍ ନିର୍ମାତା",
+    "Interface mode": "ଇଣ୍ଟରଫେସ୍ ମୋଡ୍",
     "Interface settings": "ଇଣ୍ଟରଫେସ୍ ସେଟିଂସ୍",
     "Interface theme": "ଇଣ୍ଟରଫେସ୍ ଥିମ୍",
     "Interface transparency": "ଇଣ୍ଟରଫେସ୍ ସ୍ୱଚ୍ଛତା",
@@ -616,6 +617,9 @@ var keyStrings = {
     "Media Library URL": "ମିଡିଆ ଲାଇବ୍ରେରୀ URL",
     Menu: "ମେନୁ",
     "Menu items settings": "ମେନୁ ଆଇଟମ୍ ସେଟିଂସ୍",
+    Modern: "ଆଧୁନିକ",
+    "Modern interface is unavailable. Classic remains active.":
+        "ଆଧୁନିକ ଇଣ୍ଟରଫେସ୍ ଉପଲବ୍ଧ ନାହିଁ। କ୍ଲାସିକ୍ ସକ୍ରିୟ ରହିବ।",
     "Move category down": "ବର୍ଗକୁ ତଳକୁ ନିଅନ୍ତୁ",
     "Move category up": "ବର୍ଗକୁ ଉପରକୁ ନିଅନ୍ତୁ",
     "Move channel down": "ଚ୍ୟାନେଲ୍‌କୁ ତଳକୁ ନିଅନ୍ତୁ",

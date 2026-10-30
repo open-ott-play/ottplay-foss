@@ -547,6 +547,7 @@ var keyStrings = {
     "Infobar settings": "အင်ဖိုဘား ဆက်တင်များ",
     Information: "အချက်အလက်",
     "Interface credits": "အင်တာဖေ့စ် ဖန်တီးရာတွင် ပါဝင်သူများ",
+    "Interface mode": "အင်တာဖေ့စ် မုဒ်",
     "Interface settings": "အင်တာဖေ့စ်ဆက်တင်များ",
     "Interface theme": "အင်တာဖေ့စ် အပြင်အဆင်",
     "Interface transparency": "မျက်နှာပြင် ပွင့်လင်းမြင်သာမှု",
@@ -624,6 +625,9 @@ var keyStrings = {
     "Media Library URL": "မီဒီယာစာကြည့်တိုက် URL",
     Menu: "မီနူး",
     "Menu items settings": "မီနူးအကြောင်းအရာ ဆက်တင်များ",
+    Modern: "ခေတ်မီ",
+    "Modern interface is unavailable. Classic remains active.":
+        "ခေတ်မီ အင်တာဖေ့စ်ကို မရရှိနိုင်ပါ။ မူလပုံစံကို ဆက်လက်အသုံးပြုထားသည်။",
     "Move category down": "အမျိုးအစားကို အောက်သို့ရွှေ့ပါ။",
     "Move category up": "အမျိုးအစားအပေါ်သို့ ရွှေ့ပါ။",
     "Move channel down": "ချန်နယ်ကို အောက်သို့ရွှေ့ပါ။",

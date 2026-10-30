@@ -37,6 +37,7 @@ const touchCode = functions("src/key-handler/index.ts", [
     "resetNativeListTouch",
     "forwardNativeListTouch",
     "startNativeListTouch",
+    "nativeListLayoutMatches",
     "startNativeListInertia",
     "moveNativeListTouch",
     "updateTouchPosition",

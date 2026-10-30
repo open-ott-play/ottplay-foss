@@ -584,6 +584,7 @@ var keyStrings = {
     "Infobar settings": "Configuració de la barra d’informació",
     Information: "Informació",
     "Interface credits": "Crèdits de la interfície",
+    "Interface mode": "Mode de la interfície",
     "Interface settings": "Configuració de la interfície",
     "Interface theme": "Tema de la interfície",
     "Interface transparency": "Transparència de la interfície",
@@ -666,6 +667,9 @@ var keyStrings = {
     "Media Library URL": "URL de la biblioteca multimèdia",
     Menu: "Menú",
     "Menu items settings": "Configuració dels elements del menú",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "La interfície moderna no està disponible. La clàssica continua activa.",
     "Move category down": "Mou la categoria avall",
     "Move category up": "Mou la categoria amunt",
     "Move channel down": "Mou el canal avall",

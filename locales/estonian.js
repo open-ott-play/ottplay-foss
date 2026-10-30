@@ -562,6 +562,7 @@ var keyStrings = {
     "Infobar settings": "Inforiba seaded",
     Information: "Teave",
     "Interface credits": "Kasutajaliidese autorid",
+    "Interface mode": "Liidese režiim",
     "Interface settings": "Liidese sätted",
     "Interface theme": "Liidese teema",
     "Interface transparency": "Liidese läbipaistvus",
@@ -639,6 +640,9 @@ var keyStrings = {
     "Media Library URL": "Meediumiteek URL",
     Menu: "Menüü",
     "Menu items settings": "Menüüüksuse seaded",
+    Modern: "Moodne",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moodne liides pole saadaval. Klassikaline jääb aktiivseks.",
     "Move category down": "Liiguta kategooria alla",
     "Move category up": "Liigutage kategooria üles",
     "Move channel down": "Liigutage kanal alla",

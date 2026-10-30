@@ -1129,6 +1129,8 @@ var nativeListTouch: {
     startY: number;
     referenceY: number;
     rowHeight: number;
+    rowStride: number;
+    grid: boolean;
     axis: "" | "vertical" | "horizontal";
     moved: boolean;
     cancelled: boolean;
@@ -1628,6 +1630,19 @@ function cancelNativeListInertia(): void {
     if (coast) coast.release();
 }
 
+function nativeListLayoutMatches(
+    gesture: NonNullable<typeof nativeListTouch>
+): boolean {
+    var metrics = (window as any).__ottModernUi?.touchMetrics?.(gesture.owner);
+    return (
+        !!metrics === gesture.grid &&
+        (metrics
+            ? metrics.stride === gesture.rowStride &&
+              metrics.height === gesture.rowHeight
+            : gesture.rowStride === 1)
+    );
+}
+
 function startNativeListInertia(): void {
     var gesture = nativeListTouch;
     if (!gesture || gesture.cancelled || gesture.axis !== "vertical") return;
@@ -1639,7 +1654,7 @@ function startNativeListInertia(): void {
         return;
     cancelNativeListInertia();
     var w = window as any;
-    var limit = (w.listPageSize || 25) / 80;
+    var limit = (w.listPageSize || 25) / gesture.rowStride / 80;
     var velocity = Math.max(-limit, Math.min(limit, gesture.velocity));
     var initial = w.selIndex;
     var expected = initial;
@@ -1658,6 +1673,7 @@ function startNativeListInertia(): void {
             !w.isListVisible ||
             document.hidden ||
             rows !== gesture!.rows ||
+            !nativeListLayoutMatches(gesture!) ||
             w.selIndex !== expected ||
             now < previous ||
             now - previous > 160
@@ -1670,7 +1686,10 @@ function startNativeListInertia(): void {
         var decay = Math.exp(-elapsed / 500);
         var distance = velocity * 500 * (1 - decay);
         var steps = distance < 0 ? Math.ceil(distance) : Math.floor(distance);
-        var next = Math.max(0, Math.min(rows.length - 1, initial + steps));
+        var next = Math.max(
+            0,
+            Math.min(rows.length - 1, initial + steps * gesture!.rowStride)
+        );
         // Skip straight to the destination page: never render each crossed row.
         if (next !== expected) w.changeSelect(next - expected);
         if (nativeListInertia !== coast) return;
@@ -1703,7 +1722,8 @@ function startNativeListTouch(e: any): void {
     var list = document.getElementById("listIn");
     var owner = w.__ottClassicScreenPort?.listOwner();
     var rows = w.listDataArray?.length ? w.listDataArray : w.listArray;
-    var height = Number(w.__ottListRowH);
+    var metrics = w.__ottModernUi?.touchMetrics?.(owner);
+    var height = Number(metrics ? metrics.height : w.__ottListRowH);
     if (
         !target ||
         !list?.contains(target) ||
@@ -1718,10 +1738,12 @@ function startNativeListTouch(e: any): void {
     nativeListTouch = {
         axis: "",
         cancelled: false,
+        grid: !!metrics,
         moved: false,
         owner: owner,
         referenceY: touch.clientY,
         rowHeight: height,
+        rowStride: metrics ? metrics.stride : 1,
         rows: rows,
         samples: [[touch.clientY, performance.now()]],
         startX: touch.clientX,
@@ -1749,7 +1771,8 @@ function moveNativeListTouch(touch: any): boolean {
         gesture.cancelled ||
         !gesture.owner.foreground() ||
         !w.isListVisible ||
-        rows !== gesture.rows
+        rows !== gesture.rows ||
+        !nativeListLayoutMatches(gesture)
     ) {
         gesture.cancelled = gesture.moved = true;
         return true;
@@ -1792,10 +1815,14 @@ function moveNativeListTouch(touch: any): boolean {
     var steps = distance < 0 ? Math.ceil(distance) : Math.floor(distance);
     if (!steps) return true;
     var current = w.selIndex;
-    var next = Math.max(0, Math.min(rows.length - 1, current + steps));
+    var next = Math.max(
+        0,
+        Math.min(rows.length - 1, current + steps * gesture.rowStride)
+    );
     gesture.referenceY -= steps * gesture.rowHeight;
     // Discard overscroll so reversing at either end responds immediately.
-    if (next !== current + steps) gesture.referenceY = touch.clientY;
+    if (next !== current + steps * gesture.rowStride)
+        gesture.referenceY = touch.clientY;
     if (next !== current) w.changeSelect(next - current);
     return true;
 }

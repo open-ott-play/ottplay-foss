@@ -583,6 +583,7 @@ var keyStrings = {
     "Infobar settings": "Iisetingi zebha yolwazi",
     Information: "Ulwazi",
     "Interface credits": "Abanegalelo kujongano",
+    "Interface mode": "Imo yojongano",
     "Interface settings": "Iisetingi zojongano",
     "Interface theme": "Umxholo wojongano",
     "Interface transparency": "Ukubonakala ngaphaya kojongano",
@@ -662,6 +663,9 @@ var keyStrings = {
     "Media Library URL": "I-URL yethala lemidhiya",
     Menu: "Imenyu",
     "Menu items settings": "Iisetingi zezinto zemenyu",
+    Modern: "Yangoku",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ujongano lwangoku alufumaneki. Olwesiqhelo luhlala lusebenza.",
     "Move category down": "Hambisa udidi ezantsi",
     "Move category up": "Hambisa udidi phezulu",
     "Move channel down": "Hambisa ijelo ezantsi",

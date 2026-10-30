@@ -549,6 +549,7 @@ var keyStrings = {
     "Infobar settings": "إعدادات شريط المعلومات",
     Information: "المعلومات",
     "Interface credits": "المساهمون في الواجهة",
+    "Interface mode": "وضع الواجهة",
     "Interface settings": "إعدادات الواجهة",
     "Interface theme": "موضوع الواجهة",
     "Interface transparency": "شفافية الواجهة",
@@ -625,6 +626,9 @@ var keyStrings = {
     "Media Library URL": "مكتبة الوسائط URL",
     Menu: "القائمة",
     "Menu items settings": "إعدادات عنصر القائمة",
+    Modern: "حديث",
+    "Modern interface is unavailable. Classic remains active.":
+        "الواجهة الحديثة غير متاحة. تظل الواجهة الكلاسيكية نشطة.",
     "Move category down": "نقل الفئة إلى الأسفل",
     "Move category up": "نقل الفئة لأعلى",
     "Move channel down": "تحريك القناة للأسفل",

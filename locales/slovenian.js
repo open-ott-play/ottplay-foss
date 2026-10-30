@@ -573,6 +573,7 @@ var keyStrings = {
     "Infobar settings": "Nastavitve vrstice z informacijami",
     Information: "Informacije",
     "Interface credits": "Avtorji vmesnika",
+    "Interface mode": "Način vmesnika",
     "Interface settings": "Nastavitve vmesnika",
     "Interface theme": "Tema vmesnika",
     "Interface transparency": "Preglednost vmesnika",
@@ -650,6 +651,9 @@ var keyStrings = {
     "Media Library URL": "Medijska knjižnica URL",
     Menu: "meni",
     "Menu items settings": "Nastavitve elementov menija",
+    Modern: "Sodoben",
+    "Modern interface is unavailable. Classic remains active.":
+        "Sodobni vmesnik ni na voljo. Klasični ostaja aktiven.",
     "Move category down": "Premakni kategorijo navzdol",
     "Move category up": "Premakni kategorijo navzgor",
     "Move channel down": "Premakni kanal navzdol",

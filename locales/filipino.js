@@ -578,6 +578,7 @@ var keyStrings = {
     "Infobar settings": "Mga setting ng info bar",
     Information: "Impormasyon",
     "Interface credits": "Mga gumawa ng interface",
+    "Interface mode": "Mode ng interface",
     "Interface settings": "Mga setting ng interface",
     "Interface theme": "Tema ng interface",
     "Interface transparency": "Transparency ng interface",
@@ -658,6 +659,9 @@ var keyStrings = {
     "Media Library URL": "URL ng library ng media",
     Menu: "Menu",
     "Menu items settings": "Mga setting ng item sa menu",
+    Modern: "Moderno",
+    "Modern interface is unavailable. Classic remains active.":
+        "Hindi available ang modernong interface. Nananatiling aktibo ang klasiko.",
     "Move category down": "Ibaba ang kategorya",
     "Move category up": "Itaas ang kategorya",
     "Move channel down": "Ilipat ang channel pababa",

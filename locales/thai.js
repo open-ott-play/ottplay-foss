@@ -547,6 +547,7 @@ var keyStrings = {
     "Infobar settings": "การตั้งค่าแถบข้อมูล",
     Information: "ข้อมูล",
     "Interface credits": "เครดิตอินเทอร์เฟซ",
+    "Interface mode": "โหมดอินเทอร์เฟซ",
     "Interface settings": "การตั้งค่าอินเทอร์เฟซ",
     "Interface theme": "ธีมอินเทอร์เฟซ",
     "Interface transparency": "อินเตอร์เฟซที่โปร่งใส",
@@ -624,6 +625,9 @@ var keyStrings = {
     "Media Library URL": "ไลบรารีสื่อ URL",
     Menu: "เมนู",
     "Menu items settings": "การตั้งค่ารายการเมนู",
+    Modern: "ทันสมัย",
+    "Modern interface is unavailable. Classic remains active.":
+        "อินเทอร์เฟซทันสมัยไม่พร้อมใช้งาน แบบคลาสสิกยังคงทำงานอยู่",
     "Move category down": "ย้ายหมวดหมู่ลง",
     "Move category up": "ย้ายหมวดหมู่ขึ้น",
     "Move channel down": "เลื่อนช่องลง",

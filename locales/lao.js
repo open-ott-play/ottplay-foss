@@ -536,6 +536,7 @@ var keyStrings = {
     "Infobar settings": "ການຕັ້ງຄ່າແຖບຂໍ້ມູນ",
     Information: "ຂໍ້ມູນ",
     "Interface credits": "ຜູ້ສ້າງອິນເຕີເຟດ",
+    "Interface mode": "ໂໝດສ່ວນຕິດຕໍ່",
     "Interface settings": "ການຕັ້ງຄ່າອິນເຕີເຟດ",
     "Interface theme": "ຮູບແບບອິນເຕີເຟດ",
     "Interface transparency": "ຄວາມໂປ່ງໃສຂອງອິນເຕີເຟດ",
@@ -612,6 +613,9 @@ var keyStrings = {
     "Media Library URL": "URL ຄັງສື່",
     Menu: "ເມນູ",
     "Menu items settings": "ການຕັ້ງຄ່າລາຍການເມນູ",
+    Modern: "ທັນສະໄໝ",
+    "Modern interface is unavailable. Classic remains active.":
+        "ບໍ່ມີສ່ວນຕິດຕໍ່ທັນສະໄໝ. ສ່ວນຕິດຕໍ່ແບບຄລາສສິກຍັງເຮັດວຽກຢູ່.",
     "Move category down": "ຍ້າຍໝວດໝູ່ລົງ",
     "Move category up": "ຍ້າຍໝວດໝູ່ຂຶ້ນ",
     "Move channel down": "ຍ້າຍຊ່ອງລົງ",

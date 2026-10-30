@@ -577,6 +577,7 @@ var keyStrings = {
     "Infobar settings": "Ajustes de la barra de información",
     Information: "Información",
     "Interface credits": "Créditos de la interfaz",
+    "Interface mode": "Modo de interfaz",
     "Interface settings": "Ajustes de interfaz",
     "Interface theme": "Tema de interfaz",
     "Interface transparency": "Transparencia de interfaz",
@@ -656,6 +657,9 @@ var keyStrings = {
     "Media Library URL": "URL de la mediateca",
     Menu: "Menú",
     "Menu items settings": "Ajustes de elementos del menú",
+    Modern: "Moderno",
+    "Modern interface is unavailable. Classic remains active.":
+        "La interfaz moderna no está disponible. La clásica sigue activa.",
     "Move category down": "Bajar categoría",
     "Move category up": "Subir categoría",
     "Move channel down": "Mover canal abajo",

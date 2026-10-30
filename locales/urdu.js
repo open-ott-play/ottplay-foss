@@ -568,6 +568,7 @@ var keyStrings = {
     "Infobar settings": "معلومات بار کی ترتیبات",
     Information: "معلومات",
     "Interface credits": "انٹرفیس کے معاونین",
+    "Interface mode": "انٹرفیس موڈ",
     "Interface settings": "انٹرفیس کی ترتیبات",
     "Interface theme": "انٹرفیس تھیم",
     "Interface transparency": "انٹرفیس کی شفافیت",
@@ -645,6 +646,9 @@ var keyStrings = {
     "Media Library URL": "میڈیا لائبریری URL",
     Menu: "مینو",
     "Menu items settings": "مینو آئٹم کی ترتیبات",
+    Modern: "جدید",
+    "Modern interface is unavailable. Classic remains active.":
+        "جدید انٹرفیس دستیاب نہیں ہے۔ کلاسیکی فعال رہے گا۔",
     "Move category down": "زمرہ کو نیچے منتقل کریں۔",
     "Move category up": "زمرہ کو اوپر لے جائیں۔",
     "Move channel down": "چینل کو نیچے لے جائیں۔",

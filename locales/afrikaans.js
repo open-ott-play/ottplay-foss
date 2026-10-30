@@ -568,6 +568,7 @@ var keyStrings = {
     "Infobar settings": "Inligtingbalkinstellings",
     Information: "Inligting",
     "Interface credits": "Koppelvlakbydraers",
+    "Interface mode": "Koppelvlakmodus",
     "Interface settings": "Koppelvlakinstellings",
     "Interface theme": "Koppelvlaktema",
     "Interface transparency": "Koppelvlakdeursigtigheid",
@@ -646,6 +647,9 @@ var keyStrings = {
     "Media Library URL": "Mediabiblioteek-URL",
     Menu: "Kieslys",
     "Menu items settings": "Kieslysiteminstellings",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Die moderne koppelvlak is nie beskikbaar nie. Klassiek bly aktief.",
     "Move category down": "Skuif kategorie af",
     "Move category up": "Skuif kategorie op",
     "Move channel down": "Skuif kanaal af",

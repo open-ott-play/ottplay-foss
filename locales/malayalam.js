@@ -554,6 +554,7 @@ var keyStrings = {
     "Infobar settings": "വിവര ബാർ ക്രമീകരണങ്ങൾ",
     Information: "വിവരങ്ങൾ",
     "Interface credits": "ഇന്റർഫേസ് സംഭാവനക്കാർ",
+    "Interface mode": "ഇന്റർഫേസ് മോഡ്",
     "Interface settings": "ഇൻ്റർഫേസ് ക്രമീകരണങ്ങൾ",
     "Interface theme": "ഇൻ്റർഫേസ് തീം",
     "Interface transparency": "ഇൻ്റർഫേസ് സുതാര്യത",
@@ -630,6 +631,9 @@ var keyStrings = {
     "Media Library URL": "മീഡിയ ലൈബ്രറി URL",
     Menu: "മെനു",
     "Menu items settings": "മെനു ഇനം ക്രമീകരണങ്ങൾ",
+    Modern: "ആധുനികം",
+    "Modern interface is unavailable. Classic remains active.":
+        "ആധുനിക ഇന്റർഫേസ് ലഭ്യമല്ല. ക്ലാസിക് സജീവമായി തുടരും.",
     "Move category down": "വിഭാഗം താഴേക്ക് നീക്കുക",
     "Move category up": "വിഭാഗം മുകളിലേക്ക് നീക്കുക",
     "Move channel down": "ചാനൽ താഴേക്ക് നീക്കുക",

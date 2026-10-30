@@ -746,6 +746,23 @@
       "value": "Шаравоз",
       "locales": ["*"],
       "reason": "Provider or product name"
+    },
+    {
+      "key": "Modern",
+      "value": "Modern",
+      "locales": [
+        "afrikaans",
+        "albanian",
+        "catalan",
+        "dutch",
+        "german",
+        "hungarian",
+        "indonesian",
+        "maltese",
+        "romanian",
+        "turkish"
+      ],
+      "reason": "The established word for the modern interface mode is spelled Modern in these languages."
     }
   ]
 }

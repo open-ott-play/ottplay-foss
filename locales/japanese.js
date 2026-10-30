@@ -564,6 +564,7 @@ var keyStrings = {
     "Infobar settings": "情報バーの設定",
     Information: "お知らせ",
     "Interface credits": "インターフェースクレジット",
+    "Interface mode": "インターフェースモード",
     "Interface settings": "インターフェースの設定",
     "Interface theme": "インターフェーステーマ",
     "Interface transparency": "インターフェースの透明性",
@@ -642,6 +643,9 @@ var keyStrings = {
     "Media Library URL": "メディアライブラリー URL",
     Menu: "メニュー",
     "Menu items settings": "メニュー項目の設定",
+    Modern: "モダン",
+    "Modern interface is unavailable. Classic remains active.":
+        "モダンインターフェースは利用できません。クラシックを引き続き使用します。",
     "Move category down": "カテゴリを下に移動します",
     "Move category up": "カテゴリを上に移動します",
     "Move channel down": "チャンネルを下に移動します",

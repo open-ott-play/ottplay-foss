@@ -566,6 +566,7 @@ var keyStrings = {
     "Infobar settings": "Tietopalkin asetukset",
     Information: "Tiedot",
     "Interface credits": "Käyttöliittymän tekijät",
+    "Interface mode": "Käyttöliittymän tila",
     "Interface settings": "Käyttöliittymäasetukset",
     "Interface theme": "Käyttöliittymän teema",
     "Interface transparency": "Käyttöliittymän läpinäkyvyys",
@@ -643,6 +644,9 @@ var keyStrings = {
     "Media Library URL": "Mediakirjasto URL",
     Menu: "Valikko",
     "Menu items settings": "Valikkokohdan asetukset",
+    Modern: "Moderni",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moderni käyttöliittymä ei ole saatavilla. Perinteinen pysyy käytössä.",
     "Move category down": "Siirrä luokkaa alaspäin",
     "Move category up": "Siirrä luokkaa ylöspäin",
     "Move channel down": "Siirrä kanavaa alaspäin",

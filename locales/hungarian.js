@@ -571,6 +571,7 @@ var keyStrings = {
     "Infobar settings": "Információs sáv beállításai",
     Information: "Információ",
     "Interface credits": "Felület készítői",
+    "Interface mode": "Felület módja",
     "Interface settings": "Felület beállításai",
     "Interface theme": "Felület témája",
     "Interface transparency": "Felület átlátszósága",
@@ -649,6 +650,9 @@ var keyStrings = {
     "Media Library URL": "Médiatár URL",
     Menu: "Menü",
     "Menu items settings": "Menüelemek beállításai",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "A modern felület nem érhető el. A klasszikus marad aktív.",
     "Move category down": "Kategória lejjebb",
     "Move category up": "Kategória feljebb",
     "Move channel down": "Csatorna lejjebb",

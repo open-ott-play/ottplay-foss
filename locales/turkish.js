@@ -566,6 +566,7 @@ var keyStrings = {
     "Infobar settings": "Bilgi çubuğu ayarları",
     Information: "Bilgi",
     "Interface credits": "Arayüzü hazırlayanlar",
+    "Interface mode": "Arayüz modu",
     "Interface settings": "Arayüz ayarları",
     "Interface theme": "Arayüz teması",
     "Interface transparency": "Arayüz saydamlığı",
@@ -644,6 +645,9 @@ var keyStrings = {
     "Media Library URL": "Medya kütüphanesi URL'si",
     Menu: "Menü",
     "Menu items settings": "Menü öğesi ayarları",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Modern arayüz kullanılamıyor. Klasik etkin kalır.",
     "Move category down": "Kategoriyi aşağı taşı",
     "Move category up": "Kategoriyi yukarı taşı",
     "Move channel down": "Kanala aşağı taşı",

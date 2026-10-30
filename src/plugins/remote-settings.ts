@@ -271,6 +271,14 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (/^(autorun|hdmiSupport)$/.test(id))
             result.access = { read: true, reason: "unsupported", write: false };
         if (id === "uiFontScale") result.unit = "percent";
+        if (id === "interfaceMode") {
+            result.choices = [
+                { aliases: ["classic"], label: "Classic", value: 0 },
+                { aliases: ["modern"], label: "Modern", value: 1 },
+            ];
+            result.description =
+                "Selects this client's layout independently of provider and colour theme. Modern loads on demand; effective_value reports the active layout while loading or using the Classic fallback.";
+        }
         return result;
     }
     function remember(id: string, capture: any, descriptor: any): any {
@@ -322,6 +330,8 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 result.effective_value = capture.effective;
             if (id === "players" && w.ott_device === "lg/webos")
                 result.effective_value = 3;
+            if (id === "interfaceMode" && w.__ottInterfaceModeState)
+                result.effective_value = w.__ottInterfaceModeState.effective;
             if (
                 id === "bufSize" &&
                 (capture.value === 0 || capture.value > 120)
@@ -706,6 +716,15 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
                 application.reason = descriptor.apply;
             if (draft.error())
                 application = { reason: "effect_failed", state: "failed" };
+            if (params.id === "interfaceMode" && !draft.error()) {
+                var view = w.__ottInterfaceModeState;
+                application =
+                    view && view.status === "loading"
+                        ? { reason: "view_loading", state: "deferred" }
+                        : view && view.effective === after.value
+                          ? { state: "completed" }
+                          : { reason: "effect_failed", state: "failed" };
+            }
             savedReply(after, application);
         } catch (_) {
             fail("storage_failed");

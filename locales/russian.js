@@ -562,6 +562,7 @@ var keyStrings = {
     "Infobar settings": "Настройки инфопанели",
     Information: "Информация",
     "Interface credits": "Авторы интерфейса",
+    "Interface mode": "Режим интерфейса",
     "Interface settings": "Настройки интерфейса",
     "Interface theme": "Тема интерфейса",
     "Interface transparency": "Прозрачность интерфейса",
@@ -640,6 +641,9 @@ var keyStrings = {
     "Media Library URL": "Адрес медиатеки",
     Menu: "Меню",
     "Menu items settings": "Настройки пунктов меню",
+    Modern: "Современный",
+    "Modern interface is unavailable. Classic remains active.":
+        "Современный интерфейс недоступен. Классический остаётся активным.",
     "Move category down": "Переместить категорию вниз",
     "Move category up": "Переместить категорию вверх",
     "Move channel down": "Передвинуть канал вниз",

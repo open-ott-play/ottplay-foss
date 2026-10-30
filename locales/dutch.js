@@ -574,6 +574,7 @@ var keyStrings = {
     "Infobar settings": "Instellingen van informatiebalk",
     Information: "Informatie",
     "Interface credits": "Credits van de interface",
+    "Interface mode": "Interfacemodus",
     "Interface settings": "Interface-instellingen",
     "Interface theme": "Interfacethema",
     "Interface transparency": "Transparantie van interface",
@@ -651,6 +652,9 @@ var keyStrings = {
     "Media Library URL": "URL van mediabibliotheek",
     Menu: "Menu",
     "Menu items settings": "Instellingen voor menu-items",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "De moderne interface is niet beschikbaar. Klassiek blijft actief.",
     "Move category down": "Categorie omlaag verplaatsen",
     "Move category up": "Categorie omhoog verplaatsen",
     "Move channel down": "Zender omlaag verplaatsen",

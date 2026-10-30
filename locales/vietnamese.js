@@ -559,6 +559,7 @@ var keyStrings = {
     "Infobar settings": "Cài đặt thanh thông tin",
     Information: "Thông tin",
     "Interface credits": "Ghi công giao diện",
+    "Interface mode": "Chế độ giao diện",
     "Interface settings": "Cài đặt giao diện",
     "Interface theme": "Chủ đề giao diện",
     "Interface transparency": "Độ trong suốt giao diện",
@@ -637,6 +638,9 @@ var keyStrings = {
     "Media Library URL": "URL thư viện đa phương tiện",
     Menu: "Trình đơn",
     "Menu items settings": "Cài đặt mục menu",
+    Modern: "Hiện đại",
+    "Modern interface is unavailable. Classic remains active.":
+        "Giao diện hiện đại không khả dụng. Giao diện cổ điển vẫn hoạt động.",
     "Move category down": "Chuyển danh mục xuống",
     "Move category up": "Chuyển danh mục lên",
     "Move channel down": "Chuyển kênh xuống",

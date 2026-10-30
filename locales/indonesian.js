@@ -565,6 +565,7 @@ var keyStrings = {
     "Infobar settings": "Pengaturan bilah info",
     Information: "Informasi",
     "Interface credits": "Kredit antarmuka",
+    "Interface mode": "Mode antarmuka",
     "Interface settings": "Pengaturan antarmuka",
     "Interface theme": "Tema antarmuka",
     "Interface transparency": "Transparansi antarmuka",
@@ -642,6 +643,9 @@ var keyStrings = {
     "Media Library URL": "URL pustaka media",
     Menu: "Menu",
     "Menu items settings": "Pengaturan item menu",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Antarmuka modern tidak tersedia. Antarmuka klasik tetap aktif.",
     "Move category down": "Pindahkan kategori ke bawah",
     "Move category up": "Pindahkan kategori ke atas",
     "Move channel down": "Pindahkan saluran ke bawah",

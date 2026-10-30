@@ -562,6 +562,7 @@ var keyStrings = {
     "Infobar settings": "Налаштування інформаційної панелі",
     Information: "Інформація",
     "Interface credits": "Автори інтерфейсу",
+    "Interface mode": "Режим інтерфейсу",
     "Interface settings": "Налаштування інтерфейсу",
     "Interface theme": "Тема інтерфейсу",
     "Interface transparency": "Прозорість інтерфейсу",
@@ -640,6 +641,9 @@ var keyStrings = {
     "Media Library URL": "Адреса медіатеки",
     Menu: "Меню",
     "Menu items settings": "Налаштування пунктів меню",
+    Modern: "Сучасний",
+    "Modern interface is unavailable. Classic remains active.":
+        "Сучасний інтерфейс недоступний. Класичний залишається активним.",
     "Move category down": "Перемістити категорію вниз",
     "Move category up": "Перемістити категорію вгору",
     "Move channel down": "Перемістити канал вниз",

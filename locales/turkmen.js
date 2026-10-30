@@ -562,6 +562,7 @@ var keyStrings = {
     "Infobar settings": "Maglumat paneliniň sazlamalary",
     Information: "Maglumat",
     "Interface credits": "Interfeýsiň awtorlary",
+    "Interface mode": "Interfeýs tertibi",
     "Interface settings": "Interfeýs sazlamalary",
     "Interface theme": "Interfeýs temasy",
     "Interface transparency": "Interfeýsiň durulygy",
@@ -640,6 +641,9 @@ var keyStrings = {
     "Media Library URL": "Media kitaphanasynyň URL salgysy",
     Menu: "Menýu",
     "Menu items settings": "Menýu bölekleriniň sazlamalary",
+    Modern: "Döwrebap",
+    "Modern interface is unavailable. Classic remains active.":
+        "Döwrebap interfeýs elýeterli däl. Nusgawy interfeýs işjeň galýar.",
     "Move category down": "Kategoriýany aşak geçir",
     "Move category up": "Kategoriýany ýokary geçir",
     "Move channel down": "Kanaly aşak geçir",

@@ -557,6 +557,7 @@ var keyStrings = {
     "Infobar settings": "Info bar settings",
     Information: "Information",
     "Interface credits": "Interface credits",
+    "Interface mode": "Interface mode",
     "Interface settings": "Interface settings",
     "Interface theme": "Interface theme",
     "Interface transparency": "Interface transparency",
@@ -634,6 +635,9 @@ var keyStrings = {
     "Media Library URL": "Media library URL",
     Menu: "Menu",
     "Menu items settings": "Menu item settings",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Modern interface is unavailable. Classic remains active.",
     "Move category down": "Move category down",
     "Move category up": "Move category up",
     "Move channel down": "Move channel down",

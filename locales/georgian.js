@@ -568,6 +568,7 @@ var keyStrings = {
     "Infobar settings": "ინფორმაციის ზოლის პარამეტრები",
     Information: "ინფორმაცია",
     "Interface credits": "ინტერფეისის ავტორები",
+    "Interface mode": "ინტერფეისის რეჟიმი",
     "Interface settings": "ინტერფეისის პარამეტრები",
     "Interface theme": "ინტერფეისის თემა",
     "Interface transparency": "ინტერფეისის გამჭვირვალობა",
@@ -646,6 +647,9 @@ var keyStrings = {
     "Media Library URL": "მედია ბიბლიოთეკის URL",
     Menu: "მენიუ",
     "Menu items settings": "მენიუს ელემენტის პარამეტრები",
+    Modern: "თანამედროვე",
+    "Modern interface is unavailable. Classic remains active.":
+        "თანამედროვე ინტერფეისი მიუწვდომელია. კლასიკური აქტიური რჩება.",
     "Move category down": "გადაიტანეთ კატეგორია ქვემოთ",
     "Move category up": "კატეგორიის გადატანა ზემოთ",
     "Move channel down": "გადაიტანეთ არხი ქვემოთ",

@@ -549,6 +549,7 @@ var keyStrings = {
     "Infobar settings": "তথ্য বাৰৰ ছেটিংছ",
     Information: "তথ্য",
     "Interface credits": "ইণ্টাৰফেচৰ কৃতিত্ব",
+    "Interface mode": "ইণ্টাৰফেচৰ ধৰণ",
     "Interface settings": "ইণ্টাৰফেচৰ ছেটিংছ",
     "Interface theme": "ইণ্টাৰফেচৰ থীম",
     "Interface transparency": "ইণ্টাৰফেচৰ স্বচ্ছতা",
@@ -625,6 +626,9 @@ var keyStrings = {
     "Media Library URL": "মিডিয়া লাইব্ৰেৰীৰ URL",
     Menu: "মেনু",
     "Menu items settings": "মেনুৰ বস্তুৰ ছেটিংছ",
+    Modern: "আধুনিক",
+    "Modern interface is unavailable. Classic remains active.":
+        "আধুনিক ইণ্টাৰফেচ উপলব্ধ নহয়। ক্লাছিক সক্ৰিয় হৈ থাকিব।",
     "Move category down": "শ্ৰেণী তললৈ নিয়ক",
     "Move category up": "শ্ৰেণী ওপৰলৈ নিয়ক",
     "Move channel down": "চেনেল তললৈ নিয়ক",

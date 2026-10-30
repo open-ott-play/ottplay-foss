@@ -578,6 +578,7 @@ var keyStrings = {
     "Infobar settings": "Cilësimet e shiritit të informacionit",
     Information: "Informacion",
     "Interface credits": "Autorët e ndërfaqes",
+    "Interface mode": "Modaliteti i ndërfaqes",
     "Interface settings": "Cilësimet e ndërfaqes",
     "Interface theme": "Tema e ndërfaqes",
     "Interface transparency": "Transparenca e ndërfaqes",
@@ -656,6 +657,9 @@ var keyStrings = {
     "Media Library URL": "URL-ja e bibliotekës së mediave",
     Menu: "Menuja",
     "Menu items settings": "Cilësimet e artikullit të menysë",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ndërfaqja moderne nuk është e disponueshme. Klasikja mbetet aktive.",
     "Move category down": "Zhvendos kategorinë poshtë",
     "Move category up": "Zhvendos kategorinë lart",
     "Move channel down": "Zhvendosni kanalin poshtë",
