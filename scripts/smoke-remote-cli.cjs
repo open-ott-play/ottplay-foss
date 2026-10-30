@@ -1886,8 +1886,16 @@ function moduleOf(file, requireFn, window) {
         const staleAspectBefore = television();
         television().reloadOnAspect();
         await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+            assert.equal(error.code, 1);
             assert.equal(error.stdout, "");
-            assert.match(error.stderr, /did not respond/);
+            assert.match(
+                error.stderr,
+                /^Error: (?:The player did not respond\.|No player response was received before the deadline\.)/
+            );
+            assert.match(
+                error.stderr,
+                /do not repeat the change blindly\.\r?\n$/
+            );
             return true;
         });
         assert.equal(
