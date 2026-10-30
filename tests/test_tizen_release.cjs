@@ -148,6 +148,14 @@ assert.equal(
     "node scripts/package-tizen.cjs --verify"
 );
 assert(scripts["test:unified"].includes("npm run test:tizen"));
+const pythonSuites = JSON.parse(read("tests/python-suites.json"));
+assert.deepEqual(
+    pythonSuites.portable.filter(
+        (entry) => entry[0] === "tests/test_tizen_install.py"
+    ),
+    [["tests/test_tizen_install.py"]],
+    "The portable Python suite must register the installer tests exactly once"
+);
 for (const command of [
     "node tests/test_package_tizen.cjs",
     "python3 tests/test_tizen_install.py",
