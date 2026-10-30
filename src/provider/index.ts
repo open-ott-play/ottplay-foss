@@ -2155,6 +2155,10 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
     }
     selIndex = channelIdx;
     (window as any).selIndex = selIndex;
+    if (!view || view.id === "system:global-favorites")
+        (window as any).__ottChannels?.rememberCategory?.(
+            view ? "system:favorites" : catIdx
+        );
     listCatIndex = catIdx;
     listArray = view ? view.rows : cats[catsArray[listCatIndex]] || [];
     var wglob = window as any;

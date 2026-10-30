@@ -865,6 +865,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 call("openGlobalFavorites");
                 return;
             }
+            if (w.__ottChannels?.restoreBrowsing?.()) return;
             call("channelsList", w.catIndex, w.primaryIndex);
         },
         exit: function () {

@@ -307,8 +307,14 @@ function startupFixture(provider) {
     const plays = [];
     let writes = 0;
     const host = {
+        _: (value) => value,
         __ottActiveProviderDriver: { capabilities: {}, id: provider },
-        __ottChannels: { mount() {} },
+        __ottChannels: {
+            mount() {
+                host.catsArray = ["All"];
+                host.cats = { All: host.cList.slice() };
+            },
+        },
         __ottClassicPlayback: {
             hydrate() {
                 host.primaryIndex = saved.primaryIndex;
