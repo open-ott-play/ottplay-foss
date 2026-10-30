@@ -1079,6 +1079,9 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 [MIT](LICENSE) — bebas dan sumber terbuka. Konten penyedia dan dependensi pihak ketiga mempertahankan hak serta lisensinya sendiri.
 
+Aplikasi terpisah [OTTPlay Native webOS](docs/native-webos.md), yang diturunkan dari PlxNative, didistribusikan dengan lisensi **GPL-3.0-or-later** beserta kode sumber yang sesuai.
+Lisensi MIT di direktori utama proyek tidak mengubah lisensi aplikasi native ini atau patch-nya.
+
 <a id="desktop-updater--notarization-mode-b"></a>
 
 ## Pembaru desktop / notarisasi (Mode B)

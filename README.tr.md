@@ -1079,6 +1079,9 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 [MIT](LICENSE) — özgür ve açık kaynak. Sağlayıcı içeriği ve üçüncü taraf bağımlılıklar kendi haklarını ve lisanslarını korur.
 
+PlxNative’den türetilen ayrı [OTTPlay Native webOS](docs/native-webos.md) uygulaması, karşılık gelen kaynak koduyla birlikte **GPL-3.0-or-later** altında dağıtılır.
+Proje kökündeki MIT lisansı, bu yerel uygulamanın veya yamalarının lisansını değiştirmez.
+
 <a id="desktop-updater--notarization-mode-b"></a>
 
 ## Masaüstü güncelleyici / noter onayı (Mod B)

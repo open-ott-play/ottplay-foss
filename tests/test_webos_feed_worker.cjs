@@ -90,6 +90,11 @@ async function main() {
         "latest/" + file,
         "v01.2.3/" + file,
         "v1.2/" + file,
+        "native-webos-v0.1.0-beta.1/" + file,
+        "native-webos-latest/ottplay-native-webos-repository.json",
+        "native-webos-v01.1.0/ottplay-native-webos-repository.json",
+        "native-webos-v0.1.0-beta.1/ottplay-native-webos-0.1.0.ipk",
+        tag + "/ottplay-native-webos-repository.json",
         tag + "/ottplay-foss-webos.ipk",
         tag + "/video.mp4",
         tag + "/app.js",
@@ -165,6 +170,32 @@ async function main() {
         assert.equal(response.status, 200);
         assert.equal(response.headers.get("Content-Type"), ASSETS[name]);
         assert(Buffer.from(await response.arrayBuffer()).equals(bytes));
+    }
+    for (const nativeTag of [
+        "native-webos-v0.1.0-beta.1",
+        "native-webos-v0.1.0",
+    ]) {
+        for (const name of [
+            "ottplay-native-webos-repository.json",
+            "ottplay-native-webos-manifest.json",
+            "ottplay-native-webos-icon.png",
+        ]) {
+            const bytes = name.endsWith(".png") ? icon : json;
+            const h = createHandler({
+                fetchImpl: async (url) => {
+                    assert.equal(url, origin + nativeTag + "/" + name);
+                    return new Response(bytes);
+                },
+            });
+            response = await h(new Request(base + nativeTag + "/" + name));
+            assert.equal(response.status, 200);
+            assert.equal(
+                response.headers.get("Access-Control-Allow-Origin"),
+                "*"
+            );
+            assert.equal(response.headers.get("Content-Type"), ASSETS[name]);
+            assert(Buffer.from(await response.arrayBuffer()).equals(bytes));
+        }
     }
 
     for (const location of [

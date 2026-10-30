@@ -65,6 +65,7 @@ function setup() {
         requests.push(req);
         return req;
     };
+    vm.runInNewContext(compile("src/plugins/plex-playback-policy.ts"), c);
     vm.runInNewContext(compile("src/plugins/plex.ts"), c);
     vm.runInNewContext(compile("src/plugins/plex-queue.ts"), c);
     const queue = module_.remotePlexQueue(c, "runtime-fixture");

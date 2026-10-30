@@ -90,6 +90,7 @@ const CLASSIC_MODULES = [
     "build/provider/m3u-settings.js",
     "build/hosted/epg.js",
     "build/provider/m3u-driver.js",
+    "build/plugins/plex-playback-policy.js",
     "build/plugins/plex.js",
     "build/plugins/plex-auth.js",
     "build/plugins/plex-list.js",
@@ -221,6 +222,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
     m3u: ["build/provider/m3u-settings.js", "build/provider/m3u-driver.js"],
     playlist: ["build/provider/playlist-drivers.js"],
     plex: [
+        "build/plugins/plex-playback-policy.js",
         "build/plugins/plex.js",
         "build/plugins/plex-auth.js",
         "build/plugins/plex-list.js",
@@ -394,6 +396,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/plugins/perf-sensors.js": Object.freeze(["window.__ottPerfSensors"]),
     "build/plugins/plex-auth.js": Object.freeze(["window.__ottPlexAuth"]),
     "build/plugins/plex-list.js": Object.freeze(["window.__ottPlexList"]),
+    "build/plugins/plex-playback-policy.js": Object.freeze([
+        "window.__ottPlexPlaybackPolicy",
+    ]),
     "build/plugins/plex-queue.js": Object.freeze([
         "window.__ottPlexQueueFactory",
     ]),

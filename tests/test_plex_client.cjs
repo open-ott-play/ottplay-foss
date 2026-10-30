@@ -7,7 +7,11 @@ const ts = require("typescript");
 const { sourceFunctions } = require("./test_port_vod.cjs");
 const root = path.resolve(__dirname, "..");
 const compiled = ts.transpileModule(
-    fs.readFileSync(path.join(root, "src/plugins/plex.ts"), "utf8"),
+    ["plex-playback-policy.ts", "plex.ts"]
+        .map((file) =>
+            fs.readFileSync(path.join(root, "src/plugins", file), "utf8")
+        )
+        .join("\n"),
     {
         compilerOptions: {
             module: ts.ModuleKind.CommonJS,
@@ -1378,6 +1382,149 @@ test("native original admission resolves a fresh authenticated stream and persis
         new URL(played.stream_url).pathname,
         "/library/parts/2/renewed.mp4"
     );
+});
+
+test("Automatic picks a supported single-file version before starting a Plex encoder", () => {
+    const f = fixture(
+        {},
+        { native: (mime) => (mime.startsWith("video/mp4") ? "probably" : "") }
+    );
+    const response = metadata({ container: "mkv", videoCodec: "hevc" });
+    const alternate = metadata().MediaContainer.Metadata[0].Media[0];
+    alternate.Part[0].key = "/library/parts/2/compatible.mp4";
+    response.MediaContainer.Metadata[0].Media.push(alternate);
+    const before = JSON.stringify(response);
+    let played;
+    f.client.resolve(film, (value) => (played = value));
+    last(f).reply(response);
+    assert.equal(
+        f.requests.length,
+        1,
+        "no conversion needed for a supported version"
+    );
+    assert.equal(
+        new URL(played.stream_url).pathname,
+        "/library/parts/2/compatible.mp4"
+    );
+    assert.equal(played.__ottPlexPlayback.type, "file");
+    assert.equal(
+        JSON.stringify(response),
+        before,
+        "planning does not rewrite server metadata"
+    );
+});
+
+test("explicit playback modes keep the default version even when another version is playable", () => {
+    for (const playback of ["original", "compatible"]) {
+        const f = fixture({ playback }, { native: () => "probably" });
+        const response = metadata({ container: "mkv" });
+        response.MediaContainer.Metadata[0].Media.push(
+            metadata().MediaContainer.Metadata[0].Media[0]
+        );
+        let played;
+        f.client.resolve(film, (value) => (played = value));
+        last(f).reply(response);
+        if (playback === "compatible") {
+            assert.equal(parsed(f).searchParams.get("mediaIndex"), "0");
+            assert.equal(parsed(f).searchParams.get("partIndex"), "0");
+            last(f).reply({ MediaContainer: { transcodeDecisionCode: 1001 } });
+        }
+        assert.equal(
+            played.__ottPlexPlayback.type,
+            playback === "original" ? "file" : "hls"
+        );
+    }
+});
+
+test("unavailable first version negotiates the actual alternate index and never skips within a split movie", () => {
+    const f = fixture();
+    const response = metadata({ Part: [] });
+    response.MediaContainer.Metadata[0].Media.push(
+        metadata().MediaContainer.Metadata[0].Media[0]
+    );
+    let played;
+    f.client.resolve(film, (value) => (played = value));
+    last(f).reply(response);
+    assert.equal(parsed(f).searchParams.get("mediaIndex"), "1");
+    assert.equal(parsed(f).searchParams.get("partIndex"), "0");
+    last(f).reply({ MediaContainer: { transcodeDecisionCode: 1001 } });
+    const url = new URL(played.stream_url);
+    assert.equal(url.searchParams.get("mediaIndex"), "1");
+    assert.equal(url.searchParams.get("partIndex"), "0");
+
+    const split = fixture({ playback: "original" });
+    const splitResponse = metadata({
+        Part: [
+            { key: "https://foreign.invalid/part-one" },
+            { key: "/library/parts/2/part-two.mp4" },
+        ],
+    });
+    let rejected;
+    split.client.resolve(film, (value) => (rejected = value));
+    last(split).reply(splitResponse);
+    assert.equal(
+        rejected,
+        null,
+        "the second half of a movie is not an alternate version"
+    );
+    assert.equal(split.requests.length, 1);
+});
+
+test("version optimization does not replace or select a multipart presentation", () => {
+    for (const splitIndex of [0, 1]) {
+        const f = fixture({}, { native: () => "probably" });
+        const response = metadata({ container: "mkv" });
+        response.MediaContainer.Metadata[0].Media.push(
+            metadata().MediaContainer.Metadata[0].Media[0]
+        );
+        response.MediaContainer.Metadata[0].Media[splitIndex].Part.push({
+            key: "/library/parts/3/second-half.mp4",
+        });
+        f.client.resolve(film, () => {});
+        last(f).reply(response);
+        assert.equal(
+            parsed(f).pathname,
+            "/video/:/transcode/universal/decision"
+        );
+        assert.equal(parsed(f).searchParams.get("mediaIndex"), "0");
+        assert.equal(parsed(f).searchParams.get("partIndex"), "0");
+    }
+});
+
+test("pure playback policy stays conservative for unknown probes, incomplete alternates and large version lists", () => {
+    const f = fixture();
+    const policy = f.host.__ottPlexPlaybackPolicy;
+    const variant = metadata().MediaContainer.Metadata[0].Media[0];
+    const unsupported = { ...variant, container: "mkv" };
+    const ports = { canPlayType: () => "probably", path: (key) => key || "" };
+    assert.equal(
+        policy.plan([unsupported, { Part: variant.Part }], "auto", ports)
+            .mediaIndex,
+        0
+    );
+    assert.equal(
+        policy.plan(
+            [unsupported, { ...variant, videoProfile: "High 10" }],
+            "auto",
+            ports
+        ).mediaIndex,
+        0
+    );
+    assert.equal(
+        policy.plan([variant], "auto", {
+            ...ports,
+            canPlayType: () => {
+                throw new Error("unknown decoder");
+            },
+        }).direct,
+        false
+    );
+    assert.equal(
+        policy.plan(Array(32).fill(unsupported).concat(variant), "auto", ports)
+            .mediaIndex,
+        0
+    );
+    assert.equal(f.requests.length, 0, "policy makes no transport requests");
 });
 
 test("Automatic sends known high-bit-depth AVC through Plex compatibility negotiation", () => {
