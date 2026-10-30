@@ -2,25 +2,6 @@
 
 ## Unreleased
 
-- Add classic Stalker movies and nested episodes to the normal Channel list,
-  categories and global Favorites. Publish live channels first, then discover
-  media in the background with bounded requests and current-source validation.
-- Add configured hosted Stalker routes and a dedicated relay mode to the Rust
-  server. Hosted deployments require the matching server and web updates.
-- Preserve Xtream movie, series and episode descriptions in the media details.
-- Use optional Android memory classification for subsequent playback engines
-  without delaying startup. Show playback failure details on request through
-  the compact error indicator, with guarded live-stream retry.
-- Require ten continuous seconds of local playback before replenishing retry
-  attempts; pauses, seeks and scheduling gaps interrupt that recovery interval.
-- Align the updater ZIP dependency and its regression lockfile on 9.1.3.
-
-- Restore Category and Play/Pause navigation from empty and populated Global
-  Favorites lists. Preserve Enter selection, Back, configured category shortcuts
-  and the current playback while browsing categories.
-- Restore the channel list caption, footer and details after adding a channel
-  to a category or cancelling the category picker.
-
 - Avoid repeated network metadata checks while scanning native Local folders.
   Reuse validated legacy records and no-follow enumeration types for known
   files, retain unavailable IDs, and reject changed or incomplete directories.
@@ -148,6 +129,48 @@
 - Include tracks from selected Plex music libraries in the standard playlist.
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
+
+## [1.1.62] - 2026-10-30
+
+### Changes
+
+- Add classic Stalker movies and nested episodes to the normal Channel list,
+  categories and global Favorites. Publish live channels first, then discover
+  media in the background with bounded requests and current-source validation.
+- Add configured hosted Stalker routes and a dedicated relay mode to the Rust
+  server. Hosted deployments require the matching server and web updates.
+- Preserve Xtream movie, series and episode descriptions in the media details.
+- Use optional Android memory classification for subsequent playback engines
+  without delaying startup. Show playback failure details on request through
+  the compact error indicator, with guarded live-stream retry.
+- Require ten continuous seconds of local playback before replenishing retry
+  attempts; pauses, seeks and scheduling gaps interrupt that recovery interval.
+- Align the updater ZIP dependency and its regression lockfile on 9.1.3.
+
+- Restore Category and Play/Pause navigation from empty and populated Global
+  Favorites lists. Preserve Enter selection, Back, configured category shortcuts
+  and the current playback while browsing categories.
+- Restore the channel list caption, footer and details after adding a channel
+  to a category or cancelling the category picker.
+
+### Upgrade
+
+- Install the matching desktop or Android package, or reload the updated hosted
+  player. Existing profiles, global Favorites and playback settings are retained.
+- Update the Rust server together with the web player when using Stalker media.
+  Hosted Stalker playback requires explicitly configured fixed provider routes
+  and server-held relay credentials; a web-only deployment does not create them.
+- The Android memory hint is optional and requires the updated native package.
+  Existing bridges and browser players retain their current fallback behavior.
+
+### Security
+
+- Update the updater ZIP dependency and regression lockfile to 9.1.3.
+- The dedicated hosted relay accepts only configured provider endpoints and
+  protocol actions, validates per-route credentials and bounds concurrent
+  exchanges. Relay credentials remain on the server, outside browser assets.
+- Provider changes and retries retain existing access, pause, standby and kiosk
+  checks. The update does not enable automatic native package installation.
 
 ## [1.1.61] - 2026-10-26
 
