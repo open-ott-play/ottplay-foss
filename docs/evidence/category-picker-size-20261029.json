@@ -1,0 +1,201 @@
+{
+  "schema": 1,
+  "scope": "Category picker display escaping and restoration of listDataArray; entry-only measured allowance.",
+  "baseline": {
+    "sha256": "d7d5bc0329234d2a1f06e1b5759fe6b7f2f7c0d42f05a9440aadc63b85746608",
+    "member": "classic-bundle.json",
+    "member_sha256": "fbc60f9d34c0991e0baf0b236b8fbaadba269b86279ec5f74100e0b54ee6a94a",
+    "run": 40997012055,
+    "head": "3c5efb952bb8888086cbcc86ed21772c4b2c826b",
+    "merge": "0ddff25a099d17803e50918eaf6f7b95593008ee"
+  },
+  "candidate": {
+    "sha256": "ae8c7c51482bfbca380b1387edbd37a7c4914631f53437302d8c26deb33b3ddd",
+    "member": "classic-size-diagnostics.json",
+    "member_sha256": "8d7ec18c8a7dc9192b4609adde68e8104aa72cf526df8f0dd7aad7d1b9da97c5",
+    "run": 40998302079,
+    "head": "5d62e25d81511791f1e1dbff0cd5f4ccb9a8f4b6",
+    "merge": "e6696fc410ca8fdf91e45cc21b88b73908c0f92d"
+  },
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703"
+  },
+  "sourceStamp": "Both hosted builds embed their actual 40-character merge revision; the allowance includes the measured gzip variation between these identities.",
+  "allowance": {
+    "bytes": 45,
+    "gzipBytes": 8
+  },
+  "additionalReserve": {
+    "bytes": 0,
+    "gzipBytes": 0
+  },
+  "previousBudgets": {
+    "budget": {
+      "bytes": 1147114,
+      "gzipBytes": 351031
+    },
+    "legacyTotalBudget": {
+      "bytes": 1291950,
+      "gzipBytes": 403721
+    },
+    "baseTotalBudget": {
+      "bytes": 1648724,
+      "gzipBytes": 507326
+    },
+    "totalBudget": {
+      "bytes": 1653204,
+      "gzipBytes": 509630
+    }
+  },
+  "nextBudgets": {
+    "budget": {
+      "bytes": 1147159,
+      "gzipBytes": 351039
+    },
+    "legacyTotalBudget": {
+      "bytes": 1291995,
+      "gzipBytes": 403729
+    },
+    "baseTotalBudget": {
+      "bytes": 1648769,
+      "gzipBytes": 507334
+    },
+    "totalBudget": {
+      "bytes": 1653249,
+      "gzipBytes": 509638
+    }
+  },
+  "measurements": [
+    {
+      "path": "dist/player.js",
+      "before": {
+        "bytes": 1147070,
+        "gzipBytes": 350843,
+        "path": "dist/player.js",
+        "sha256": "9c3964c851ee19204450944d1349a76ed301a3b0d3d7b54326ec876e32bf8d0d"
+      },
+      "after": {
+        "bytes": 1147115,
+        "gzipBytes": 350851,
+        "path": "dist/player.js",
+        "sha256": "f92b4219325d7897d19fbec66aa5ecf046313e9e8096d70835a69b84bf7cc316"
+      },
+      "delta": {
+        "bytes": 45,
+        "gzipBytes": 8
+      },
+      "legacyBefore": {
+        "bytes": 1291440,
+        "gzipBytes": 403479
+      },
+      "legacyAfter": {
+        "bytes": 1291485,
+        "gzipBytes": 403487
+      },
+      "completeBefore": {
+        "bytes": 1653074,
+        "gzipBytes": 509279
+      },
+      "completeAfter": {
+        "bytes": 1653119,
+        "gzipBytes": 509287
+      },
+      "unchangedProviders": 8,
+      "unchangedOptionalAssets": 13
+    },
+    {
+      "path": "src-tauri/frontend/dist/player.js",
+      "before": {
+        "bytes": 1147028,
+        "gzipBytes": 350900,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "7e604a14ff19ad54886b46f914a4c8884bc8d30e23750a9b3d4b1b3f8b758460"
+      },
+      "after": {
+        "bytes": 1147073,
+        "gzipBytes": 350908,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "d9a51f60821d8b53a10ffa8fc9ff8c2f283d7c3e78fc3d3cb8b977dec3d61f45"
+      },
+      "delta": {
+        "bytes": 45,
+        "gzipBytes": 8
+      },
+      "legacyBefore": {
+        "bytes": 1291398,
+        "gzipBytes": 403536
+      },
+      "legacyAfter": {
+        "bytes": 1291443,
+        "gzipBytes": 403544
+      },
+      "completeBefore": {
+        "bytes": 1653032,
+        "gzipBytes": 509336
+      },
+      "completeAfter": {
+        "bytes": 1653077,
+        "gzipBytes": 509344
+      },
+      "unchangedProviders": 8,
+      "unchangedOptionalAssets": 13
+    },
+    {
+      "path": "dist-mobile/dist/player.js",
+      "before": {
+        "bytes": 1147028,
+        "gzipBytes": 350900,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "7e604a14ff19ad54886b46f914a4c8884bc8d30e23750a9b3d4b1b3f8b758460"
+      },
+      "after": {
+        "bytes": 1147073,
+        "gzipBytes": 350908,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "d9a51f60821d8b53a10ffa8fc9ff8c2f283d7c3e78fc3d3cb8b977dec3d61f45"
+      },
+      "delta": {
+        "bytes": 45,
+        "gzipBytes": 8
+      },
+      "legacyBefore": {
+        "bytes": 1291398,
+        "gzipBytes": 403536
+      },
+      "legacyAfter": {
+        "bytes": 1291443,
+        "gzipBytes": 403544
+      },
+      "completeBefore": {
+        "bytes": 1653032,
+        "gzipBytes": 509336
+      },
+      "completeAfter": {
+        "bytes": 1653077,
+        "gzipBytes": 509344
+      },
+      "unchangedProviders": 8,
+      "unchangedOptionalAssets": 13
+    }
+  ],
+  "unchangedCaps": ["providerBudget", "optionalBudget", "optionalBudgets"],
+  "candidateSizeGate": {
+    "complete": true,
+    "violations": [
+      {
+        "actual": 1147115,
+        "budget": 1147114,
+        "metric": "bytes",
+        "path": "dist/player.js",
+        "scope": "asset"
+      }
+    ],
+    "inputErrors": []
+  },
+  "limitations": [
+    "Saved hosted reports only; no new build was executed for this comparison.",
+    "The baseline Swift job was cancelled after its build completed; the candidate size gate failed by one raw entry byte. These measurements do not claim whole-job qualification.",
+    "Release builds must validate their own final stamped artifacts."
+  ]
+}

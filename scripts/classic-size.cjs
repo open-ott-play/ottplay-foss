@@ -515,8 +515,17 @@ const CATEGORY_SELECTION_FAVORITES_ALLOWANCE = Object.freeze({
     bytes: 209,
     gzipBytes: 65,
 });
+// Escaped category labels and picker data restoration add 45 raw / 8 gzip
+// entry bytes in paired full-width source-stamped CI builds. Count the entry
+// delta once in each complete total; preserve provider and optional caps.
+// Evidence: docs/evidence/category-picker-size-20261029.json.
+const CATEGORY_PICKER_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 45,
+    gzipBytes: 8,
+});
 const BUDGET = Object.freeze({
     bytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         1062760 +
@@ -531,6 +540,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
@@ -724,6 +734,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
@@ -740,6 +751,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -823,6 +835,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
@@ -846,6 +859,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
@@ -1028,6 +1042,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         artifacts: measured,
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
+        categoryPickerEntryAllowance: CATEGORY_PICKER_ENTRY_ALLOWANCE,
         categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
         categorySelectionFavoritesAllowance:
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
@@ -1336,6 +1351,7 @@ function writeBuildBundleReport(
             artifacts: measured,
             attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
             budget: BUDGET,
+            categoryPickerEntryAllowance: CATEGORY_PICKER_ENTRY_ALLOWANCE,
             categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
             categorySelectionFavoritesAllowance:
                 CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
@@ -1430,6 +1446,7 @@ module.exports = {
     ARTIFACTS,
     BASE_TOTAL_BUDGET,
     BUDGET,
+    CATEGORY_PICKER_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     clearBuildSizeReports,

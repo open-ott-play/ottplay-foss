@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    CATEGORY_PICKER_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
@@ -65,9 +66,11 @@ try {
         (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
             ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
             : 0);
-    // Both features were measured from 1d85. Subtract their independent costs once.
+    // Preserve historical evidence by subtracting each later entry delta once.
     const sharedFeatureDelta = (budget, metric) =>
-        presenceDelta(budget, metric) + categoryDelta(budget, metric);
+        presenceDelta(budget, metric) +
+        categoryDelta(budget, metric) +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE[metric];
     const beforeSharedFeatureBudget = (budget) =>
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
@@ -198,6 +201,7 @@ try {
                 assert(
                     budget[metric] -
                         categoryDelta(budget, metric) -
+                        CATEGORY_PICKER_ENTRY_ALLOWANCE[metric] -
                         mode.projection[kind][metric] >=
                         presenceEvidence.previousCaps[name][metric] -
                             mode.baseline[kind][metric],
@@ -238,7 +242,8 @@ try {
                 budget[metric] -
                     (name === "favorites_transfer"
                         ? 0
-                        : presenceDelta(budget, metric)),
+                        : presenceDelta(budget, metric) +
+                          CATEGORY_PICKER_ENTRY_ALLOWANCE[metric]),
             ])
         );
         assert.deepEqual(withoutPresence, categoryEvidence.budgetsAfter[name]);
@@ -288,6 +293,76 @@ try {
         assert.equal(
             mode.unchangedOptionalAssets,
             Object.keys(CLASSIC_OPTIONAL_BUNDLES).length - 1
+        );
+    }
+    const pickerEvidence = require("../docs/evidence/category-picker-size-20261029.json");
+    assert(Object.isFrozen(CATEGORY_PICKER_ENTRY_ALLOWANCE));
+    assert.deepEqual(CATEGORY_PICKER_ENTRY_ALLOWANCE, {
+        bytes: 45,
+        gzipBytes: 8,
+    });
+    assert.deepEqual(CATEGORY_PICKER_ENTRY_ALLOWANCE, pickerEvidence.allowance);
+    assert.deepEqual(pickerEvidence.additionalReserve, {
+        bytes: 0,
+        gzipBytes: 0,
+    });
+    assert.deepEqual(
+        pickerEvidence.measurements.map((row) => row.path),
+        ARTIFACTS
+    );
+    for (const [name, budget] of Object.entries({
+        baseTotalBudget: BASE_TOTAL_BUDGET,
+        budget: BUDGET,
+        legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+        totalBudget: TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(budget, pickerEvidence.nextBudgets[name]);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                budget[metric] - pickerEvidence.previousBudgets[name][metric],
+                CATEGORY_PICKER_ENTRY_ALLOWANCE[metric],
+                name + " counts the picker entry delta once"
+            );
+    }
+    for (const row of pickerEvidence.measurements) {
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                row.after[metric] - row.before[metric],
+                CATEGORY_PICKER_ENTRY_ALLOWANCE[metric]
+            );
+            assert.equal(
+                row.delta[metric],
+                CATEGORY_PICKER_ENTRY_ALLOWANCE[metric]
+            );
+            for (const [before, after, name, budget] of [
+                [row.before, row.after, "budget", BUDGET],
+                [
+                    row.legacyBefore,
+                    row.legacyAfter,
+                    "legacyTotalBudget",
+                    LEGACY_TOTAL_BUDGET,
+                ],
+                [
+                    row.completeBefore,
+                    row.completeAfter,
+                    "totalBudget",
+                    TOTAL_BUDGET,
+                ],
+            ])
+                assert.equal(
+                    budget[metric] - after[metric],
+                    pickerEvidence.previousBudgets[name][metric] -
+                        before[metric],
+                    row.path + " preserves previous " + name + " headroom"
+                );
+        }
+        assert.equal(
+            row.unchangedProviders,
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+        );
+        assert.equal(
+            row.unchangedOptionalAssets,
+            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length
         );
     }
     const shakaTrackDelta = (budget, metric) =>
@@ -1505,6 +1580,10 @@ try {
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
     assert.deepEqual(
+        failed.categoryPickerEntryAllowance,
+        CATEGORY_PICKER_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
         failed.categorySelectionEntryAllowance,
         CATEGORY_SELECTION_ENTRY_ALLOWANCE
     );
@@ -2085,6 +2164,10 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.categoryPickerEntryAllowance,
+        CATEGORY_PICKER_ENTRY_ALLOWANCE
+    );
     assert.deepEqual(
         report.categorySelectionEntryAllowance,
         CATEGORY_SELECTION_ENTRY_ALLOWANCE
