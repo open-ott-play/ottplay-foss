@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "feature": "Authenticated headless Torrent catalog RPC v1",
+  "baseline": {
+    "revision": "35a1598a",
+    "archiveSha256": "0a352587c6548864619671cf38d7e3da791ca9ea30464a653f9fca93065792dd",
+    "method": "Immutable pre-RPC Mode A production archive; existing headroom preserved component by component."
+  },
+  "candidate": {
+    "workingTree": true,
+    "sourceRevisionClaimed": false
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "allocation": "Main contains only authenticated dispatch, capability and owned storage/selection ports. Strict JSON/UTF-8 parser and catalog runtime stay in provider-torrent; favorites-transfer shares the strict catalog reader. Existing provider and transfer document limits remain unchanged.",
+  "components": [
+    {
+      "name": "player.js",
+      "before": {
+        "bytes": 1161250,
+        "gzipBytes": 353886,
+        "sha256": "2b84df376f77c5fe54207de27584681fee5693e0c572a317b50fbcdb3a78b632"
+      },
+      "after": {
+        "bytes": 1163494,
+        "gzipBytes": 354417,
+        "sha256": "e5b01b8f81ce6fcbebb321455680438135a7396b061085f010a2dddf46d35f8e"
+      },
+      "delta": {
+        "bytes": 2244,
+        "gzipBytes": 531
+      }
+    },
+    {
+      "name": "provider-torrent.js",
+      "before": {
+        "bytes": 8277,
+        "gzipBytes": 3302,
+        "sha256": "fcbd06e56a955ef5b17954a60496b5da660b425e341fd64d540d145f12106544"
+      },
+      "after": {
+        "bytes": 33028,
+        "gzipBytes": 11213,
+        "sha256": "50e64cf50cdd11430bba4f21812810a0852f1c87ce0d15ec5f8f955569e2851f"
+      },
+      "delta": {
+        "bytes": 24751,
+        "gzipBytes": 7911
+      }
+    },
+    {
+      "name": "favorites-transfer.js",
+      "before": {
+        "bytes": 245661,
+        "gzipBytes": 62956,
+        "sha256": "fcea0f86c27d5fc23e5054286dac848787b6bf1aff6abe46be571d128e9ccc1e"
+      },
+      "after": {
+        "bytes": 248624,
+        "gzipBytes": 63803,
+        "sha256": "576e71564e37d7d6a5659e93b4caa9cf9d3c4f0f6f61e136d56e2b2c6545b5f5"
+      },
+      "delta": {
+        "bytes": 2963,
+        "gzipBytes": 847
+      }
+    },
+    {
+      "name": "media-companion.js",
+      "before": {
+        "bytes": 8963,
+        "gzipBytes": 3189,
+        "sha256": "886192f702572cd3906949c158945f9955ce284dc10f1571650dbf14e4d3ec3b"
+      },
+      "after": {
+        "bytes": 9249,
+        "gzipBytes": 3270,
+        "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+      },
+      "delta": {
+        "bytes": 286,
+        "gzipBytes": 81
+      }
+    }
+  ]
+}

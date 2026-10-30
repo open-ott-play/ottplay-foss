@@ -321,6 +321,7 @@ function createClassicProviderAdapter(host: any) {
                     host[name] = scopedCallback(session, host[name]);
             });
         },
+        current: providers.current,
         // OTTPLAY_FULL_ONLY_END
         dispose: function () {
             replacementGeneration++;

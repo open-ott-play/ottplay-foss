@@ -618,11 +618,13 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
 // registry plumbing. Retired companion UI savings are deducted once, and the
 // existing global Favorites/remote-settings changes are accounted separately.
 // Evidence: docs/evidence/torrent-provider-size-20261030.json.
+// Catalog RPC deltas preserve existing headroom; parser and engine stay in lazy assets.
+// Evidence: docs/evidence/torrent-catalog-rpc-size-20261030.json.
 const TORRENT_PROVIDER_ALLOWANCE = Object.freeze({
-    catalog: Object.freeze({ bytes: 8426, gzipBytes: 3348 }),
-    companion: Object.freeze({ bytes: -3663, gzipBytes: -1439 }),
-    entry: Object.freeze({ bytes: 2286, gzipBytes: 548 }),
-    favorites: Object.freeze({ bytes: 1194, gzipBytes: 270 }),
+    catalog: Object.freeze({ bytes: 8426 + 24751, gzipBytes: 3348 + 7911 }),
+    companion: Object.freeze({ bytes: -3663 + 286, gzipBytes: -1439 + 81 }),
+    entry: Object.freeze({ bytes: 2286 + 2244, gzipBytes: 548 + 531 }),
+    favorites: Object.freeze({ bytes: 1194 + 2963, gzipBytes: 270 + 847 }),
     settings: Object.freeze({ bytes: 263, gzipBytes: 102 }),
 });
 const BUDGET = Object.freeze({

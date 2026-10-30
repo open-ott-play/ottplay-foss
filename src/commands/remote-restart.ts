@@ -951,6 +951,9 @@ export function executeRemoteControl(
             plex_library_truncation: { version: 1 },
             plex_queue: plexQueue.capability,
             screenshot: remoteScreenshotSnapshot(w),
+            torrent_catalog: w.__ottMediaCompanion?.providerAvailable()
+                ? { version: 1 }
+                : undefined,
             version: 1,
             vportal_settings: w.__ottPlayerSettingsHost
                 ? { version: 1 }

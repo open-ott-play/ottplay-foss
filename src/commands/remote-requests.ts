@@ -39,6 +39,7 @@ import {
 } from "./remote-restart";
 import { executeRemoteScreenshot } from "./remote-screenshot";
 import { executeRemoteSettings } from "./remote-settings";
+import { executeRemoteTorrentCatalog } from "./remote-torrent-catalog";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -394,7 +395,9 @@ export function executeRemoteRequest(
     var params = request.params || {};
     var companion = w.__ottMediaCompanion;
     if (
-        (request.action === "providers" || request.action === "provider") &&
+        (request.action === "providers" ||
+            request.action === "provider" ||
+            request.action === "capabilities") &&
         companion?.nativePending()
     ) {
         var pending = true,
@@ -427,6 +430,8 @@ export function executeRemoteRequest(
             if (cancelProviderRequest) cancelProviderRequest();
         };
     }
+    if (request.action === "torrent_catalog")
+        return executeRemoteTorrentCatalog(w, request, done);
     if (request.action === "favorites_transfer")
         return executeRemoteFavoritesTransfer(
             w,

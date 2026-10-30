@@ -1,3 +1,7 @@
+import {
+    parseTorrentCatalog,
+    torrentUtf8,
+} from "../provider/torrent-catalog-codec";
 /** Read-only projections of the built-in registry's existing physical settings. */
 export function globalFavoriteProviderName(id: string): string {
     return id === "offline" ? "local" : id;
@@ -47,7 +51,14 @@ export function globalFavoriteBuiltinConfiguration(
         prefix = row.prefix;
     if (row.kind === "xtream") keys = ["xtream_data"];
     else if (row.kind === "torrent") {
-        var catalog = parsed(w, row.prefix + "cfg");
+        var catalog;
+        try {
+            catalog = parseTorrentCatalog(
+                torrentUtf8(w.stbGetItem(row.prefix + "cfg"))
+            );
+        } catch (_) {
+            return null;
+        }
         return catalog &&
             catalog.schema === 1 &&
             typeof catalog.id === "string" &&

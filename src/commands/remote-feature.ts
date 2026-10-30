@@ -11,6 +11,7 @@ export function loadRemoteFeature(
         | "local-compatibility"
         | "local-media-ui"
         | "media-companion"
+        | "provider-torrent"
         | "remote-local-runner",
     done: (error?: string) => void,
     readOnly?: "favorites-recovery"

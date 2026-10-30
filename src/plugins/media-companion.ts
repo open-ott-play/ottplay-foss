@@ -266,6 +266,7 @@ function createMediaCompanion(
             if (error) {
                 lease.error = String(error.message || "companion_unavailable");
                 cleanup();
+                if (options && options.failed) options.failed(lease.error);
             }
             done(result || null, transport);
         }
@@ -331,8 +332,13 @@ function createMediaCompanion(
                 return;
             }
             lease.files = Array.isArray(value.files)
-                ? value.files.filter(playable).slice(0, 4096)
+                ? value.files.filter(playable)
                 : [];
+            if (options && options.metadataOnly && lease.files.length > 4096) {
+                finish(fail("companion_too_many_files"));
+                return;
+            }
+            lease.files = lease.files.slice(0, 4096);
             lease.selected = value.selected;
             progress(value);
             if (value.state === "error") {
@@ -353,10 +359,7 @@ function createMediaCompanion(
                 var files = lease.files.map(function (file: any) {
                     return {
                         index: file.index,
-                        length:
-                            Number.isFinite(file.length) && file.length >= 0
-                                ? file.length
-                                : 0,
+                        length: file.length,
                         name: file.name,
                     };
                 });
@@ -569,14 +572,27 @@ function createMediaCompanion(
         isSource: isSource,
         metadata: function (
             source: string,
-            done: (files: any[] | null) => void
+            done: (files: any[] | null, reason?: string) => void
         ): () => void {
+            var reason = "metadata_failed";
             return resolve(
                 source,
                 function (files) {
-                    done(Array.isArray(files) ? files : null);
+                    done(Array.isArray(files) ? files : null, reason);
                 },
-                { metadataOnly: true }
+                {
+                    failed: function (code: string) {
+                        reason =
+                            code === "companion_no_playable_files"
+                                ? "no_files"
+                                : code === "companion_too_many_files"
+                                  ? "document_too_large"
+                                  : /timeout/.test(code)
+                                    ? "metadata_timeout"
+                                    : "metadata_failed";
+                    },
+                    metadataOnly: true,
+                }
             );
         },
         plugins: function () {

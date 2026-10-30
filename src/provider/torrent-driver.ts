@@ -1,87 +1,6 @@
 /** Torrent catalog identities belong to the player, independently of service leases. */
 function normalizeTorrentConfiguration(value: any): any {
-    function token(input: any): boolean {
-        return typeof input === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(input);
-    }
-    function normalizeTitle(input: any, fallback: string): string {
-        return typeof input === "string" && input.trim()
-            ? input.trim().slice(0, 256)
-            : fallback;
-    }
-    if (
-        !value ||
-        value.schema !== 1 ||
-        !token(value.id) ||
-        !Array.isArray(value.entries) ||
-        value.entries.length > 256
-    )
-        return null;
-    var seen: any = Object.create(null),
-        entries: any[] = [],
-        total = 0;
-    for (var i = 0; i < value.entries.length; i++) {
-        var entry = value.entries[i];
-        if (
-            !entry ||
-            !token(entry.id) ||
-            seen[entry.id] ||
-            typeof entry.source !== "string" ||
-            entry.source.length > 8192 ||
-            !/^(?:magnet:\?|https?:\/\/[^?#]*\.torrent(?:[?#]|$))/i.test(
-                entry.source
-            ) ||
-            !Array.isArray(entry.files) ||
-            entry.files.length > 4096
-        )
-            return null;
-        seen[entry.id] = true;
-        var files: any[] = [],
-            indices: any = Object.create(null);
-        for (var j = 0; j < entry.files.length; j++) {
-            var file = entry.files[j];
-            if (
-                !file ||
-                !Number.isInteger(file.index) ||
-                file.index < 0 ||
-                file.index > 999999999 ||
-                indices[file.index] ||
-                typeof file.name !== "string" ||
-                !file.name ||
-                file.name.length > 4096 ||
-                !/\.(mp4|m4v|mkv|webm|mov|avi|ts|m2ts|mpg|mpeg|ogv)$/i.test(
-                    file.name
-                )
-            )
-                return null;
-            indices[file.index] = true;
-            files.push({
-                index: file.index,
-                length:
-                    Number.isFinite(file.length) && file.length >= 0
-                        ? file.length
-                        : 0,
-                name: file.name,
-            });
-        }
-        total += files.length;
-        if (total > 10000) return null;
-        entries.push({
-            category: normalizeTitle(
-                entry.category,
-                normalizeTitle(entry.title, "Torrent")
-            ),
-            files: files,
-            id: entry.id,
-            source: entry.source,
-            title: normalizeTitle(entry.title, "Torrent"),
-        });
-    }
-    return {
-        entries: entries,
-        id: value.id,
-        name: normalizeTitle(value.name, "Torrent"),
-        schema: 1,
-    };
+    return (window as any).__ottTorrentCodec.normalize(value);
 }
 
 function createTorrentProviderDriver(
@@ -97,8 +16,10 @@ function createTorrentProviderDriver(
     }
     function configuration(): any {
         try {
-            return normalizeTorrentConfiguration(
-                JSON.parse(ports.storage.get("cfg") || "null")
+            return (window as any).__ottTorrentCodec.parse(
+                (window as any).__ottTorrentCodec.utf8(
+                    ports.storage.get("cfg") || "null"
+                )
             );
         } catch (_) {
             return null;
@@ -239,6 +160,9 @@ function createTorrentProviderDriver(
             if (active()) done([]);
         },
         id: "torrent",
+        invalidateCatalog: function () {
+            catalog = helpers.emptyCatalog();
+        },
         libraryReady: function () {
             return active() && ready;
         },
@@ -292,7 +216,10 @@ function createTorrentProviderDriver(
             var next = normalizeTorrentConfiguration(value);
             if (!active() || !next) return false;
             try {
+                (window as any).__ottTorrentCodec.encode(next);
                 ports.storage.set("cfg", JSON.stringify(next));
+                if (ports.storage.get("cfg") !== JSON.stringify(next))
+                    return false;
             } catch (_) {
                 return false;
             }
@@ -354,7 +281,8 @@ function mountTorrentProvider(
         var session = revision,
             rows: any[] = [],
             busy = false,
-            renderItem: any;
+            renderItem: any,
+            originalRaw = host.stbGetItem("torrentcfg");
         function current(): boolean {
             return (
                 owner.active() &&
@@ -373,11 +301,28 @@ function mountTorrentProvider(
                 }
             );
         }
-        function save(value: any): boolean {
-            if (!current() || !driver.saveConfiguration(value)) return false;
-            stop();
-            host.loadChannels();
-            return true;
+        function save(value: any): void {
+            if (!current() || busy) return;
+            var service =
+                host.__ottTorrentCatalogAccess &&
+                host.__ottTorrentCatalogAccess();
+            if (!service) {
+                render(host._("Settings could not be saved"));
+                return;
+            }
+            busy = true;
+            service.save(value, originalRaw, current).then(function (
+                saved: boolean
+            ) {
+                busy = false;
+                if (!current()) return;
+                if (!saved) {
+                    render(host._("Settings could not be saved"));
+                    return;
+                }
+                stop();
+                host.loadChannels();
+            });
         }
         function input(
             caption: string,
@@ -423,8 +368,7 @@ function mountTorrentProvider(
                             }
                             entry.files = files;
                             if (!replace) value.entries.push(entry);
-                            if (!save(value))
-                                render(host._("Settings could not be saved"));
+                            save(value);
                         }
                     );
                     if (!completed) cancelMetadata = release;
@@ -445,11 +389,7 @@ function mountTorrentProvider(
                 host._("Enter a magnet link or a torrent file URL."),
                 "",
                 function (source) {
-                    if (
-                        !/^(?:magnet:\?|https?:\/\/[^?#]*\.torrent(?:[?#]|$))/i.test(
-                            source
-                        )
-                    ) {
+                    if (!host.__ottTorrentCodec.source(source)) {
                         render(
                             host._("Enter a magnet link or a torrent file URL.")
                         );

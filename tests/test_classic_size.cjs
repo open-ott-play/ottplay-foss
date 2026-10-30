@@ -74,7 +74,7 @@ const currentCaps = {
     OPTIONAL_BUDGETS,
     TOTAL_BUDGET,
 };
-const torrentDelta = (name) => {
+const torrentDelta = (name, allowance = TORRENT_PROVIDER_ALLOWANCE) => {
     const kinds =
         name === "BUDGET"
             ? ["entry"]
@@ -84,10 +84,7 @@ const torrentDelta = (name) => {
     return Object.fromEntries(
         ["bytes", "gzipBytes"].map((metric) => [
             metric,
-            kinds.reduce(
-                (sum, kind) => sum + TORRENT_PROVIDER_ALLOWANCE[kind][metric],
-                0
-            ),
+            kinds.reduce((sum, kind) => sum + allowance[kind][metric], 0),
         ])
     );
 };
@@ -127,7 +124,42 @@ const historicalCaps = Object.fromEntries(
 );
 try {
     const torrentEvidence = require("../docs/evidence/torrent-provider-size-20261030.json");
-    assert.deepEqual(TORRENT_PROVIDER_ALLOWANCE, torrentEvidence.allowance);
+    const rpcEvidence = require("../docs/evidence/torrent-catalog-rpc-size-20261030.json");
+    const rpcKinds = {
+        "favorites-transfer.js": "favorites",
+        "media-companion.js": "companion",
+        "player.js": "entry",
+        "provider-torrent.js": "catalog",
+    };
+    assert.deepEqual(
+        rpcEvidence.components.map((row) => row.name).sort(),
+        Object.keys(rpcKinds).sort()
+    );
+    const rpcAllowance = { settings: { bytes: 0, gzipBytes: 0 } };
+    for (const component of rpcEvidence.components) {
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                component.delta[metric],
+                component.after[metric] - component.before[metric]
+            );
+        }
+        for (const state of ["before", "after"])
+            assert.match(component[state].sha256, /^[a-f0-9]{64}$/);
+        rpcAllowance[rpcKinds[component.name]] = component.delta;
+    }
+    assert.deepEqual(TORRENT_PROVIDER_ALLOWANCE, {
+        catalog: { bytes: 33177, gzipBytes: 11259 },
+        companion: { bytes: -3377, gzipBytes: -1358 },
+        entry: { bytes: 4530, gzipBytes: 1079 },
+        favorites: { bytes: 4157, gzipBytes: 1117 },
+        settings: { bytes: 263, gzipBytes: 102 },
+    });
+    for (const kind of Object.keys(TORRENT_PROVIDER_ALLOWANCE)) {
+        assert.deepEqual(
+            subtract(TORRENT_PROVIDER_ALLOWANCE[kind], rpcAllowance[kind]),
+            torrentEvidence.allowance[kind]
+        );
+    }
     assert(Object.isFrozen(TORRENT_PROVIDER_ALLOWANCE));
     for (const [name, key] of [
         ["BUDGET", "entry"],
@@ -135,7 +167,10 @@ try {
         ["TOTAL_BUDGET", "total"],
     ]) {
         assert.deepEqual(historicalCaps[name], torrentEvidence.beforeCaps[key]);
-        assert.deepEqual(currentCaps[name], torrentEvidence.afterCaps[key]);
+        assert.deepEqual(
+            subtract(currentCaps[name], torrentDelta(name, rpcAllowance)),
+            torrentEvidence.afterCaps[key]
+        );
     }
     for (const [name, key] of [
         ["media-companion", "companion"],
@@ -146,7 +181,7 @@ try {
             torrentEvidence.beforeCaps[key]
         );
         assert.deepEqual(
-            currentCaps.OPTIONAL_BUDGETS[name],
+            subtract(currentCaps.OPTIONAL_BUDGETS[name], rpcAllowance[key]),
             torrentEvidence.afterCaps[key]
         );
     }
@@ -2929,9 +2964,13 @@ try {
     );
     fs.writeFileSync(oversizedSet, "x".repeat(providerBudget.bytes - 1));
     const additional = path.join(root, "dist/provider-edem.js");
+    const aggregateOverflow = path.join(root, "dist/provider-xtream.js");
+    const remainingTotal = TOTAL_BUDGET.bytes - (providerBudget.bytes - 1);
+    const additionalBytes = Math.min(remainingTotal, providerBudget.bytes - 1);
+    fs.writeFileSync(additional, "y".repeat(additionalBytes));
     fs.writeFileSync(
-        additional,
-        "y".repeat(TOTAL_BUDGET.bytes - providerBudget.bytes)
+        aggregateOverflow,
+        "z".repeat(remainingTotal - additionalBytes)
     );
     assert.throws(
         () => inspectBundleSets(root),
@@ -2939,6 +2978,7 @@ try {
     );
     fs.writeFileSync(oversizedSet, source);
     fs.writeFileSync(additional, source);
+    fs.writeFileSync(aggregateOverflow, source);
     fs.writeFileSync(oversizedSet, "x".repeat(800000));
     fs.writeFileSync(
         additional,
@@ -3626,9 +3666,10 @@ try {
     fs.writeFileSync(required, source);
     fs.writeFileSync(required, "x".repeat(providerBudget.bytes - 1));
     const otherRequired = path.join(root, "play/dist/provider-m3u.js");
+    fs.writeFileSync(otherRequired, "y".repeat(additionalBytes));
     fs.writeFileSync(
-        otherRequired,
-        "y".repeat(TOTAL_BUDGET.bytes - providerBudget.bytes)
+        path.join(root, "play/dist/provider-plex.js"),
+        "z".repeat(remainingTotal - additionalBytes)
     );
     assert.throws(
         () => inspectBundleSets(root, playArtifacts, playKinds),

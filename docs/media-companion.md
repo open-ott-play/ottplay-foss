@@ -86,9 +86,9 @@ saving private endpoints or temporary lease URLs. Each playback
 gets a fresh viewer lease. Seeking reads byte ranges from the selected file.
 Raw and cloud settings backups include the `torrentcfg` catalogue. Importing
 Favorites alone transfers references, so the receiving player also needs the
-matching catalogue. The current CLI named presets and structured settings JSON
-do not provision a Torrent catalogue; use the full raw/cloud backup for that
-transfer. Private companion endpoints remain installation settings throughout.
+matching catalogue. Named presets and structured settings JSON do not provision
+a Torrent catalogue; use the typed catalog API below or a full raw/cloud backup
+for that transfer. Private companion endpoints remain installation settings throughout.
 Codec support still depends on the video engine; receiving a file does not make
 an unsupported codec playable. External AceStream engines remain separate.
 
@@ -110,6 +110,43 @@ Do not copy a running session's `/sessions/.../stream` address into a playlist.
 That URL expires with its viewer. The original reference obtains a new session
 on the next playback. A file choice is carried as a zero-based `so` index in a
 magnet reference, or `index` in an `ottplay-torrent:` reference.
+
+## Remote catalog control
+
+Authenticated remote control exposes `torrent_catalog: {version: 1}` only when
+the player supports its own native service. An external companion endpoint does
+not grant this capability. Requests use action `torrent_catalog`, the current
+`runtime`, and one of `read`, `read_chunk`, `metadata`, `status`, `cancel`,
+`write_begin`, `write_chunk`, `write_commit`, or `play`. Each operation has its own
+controller permission, `torrent_catalog.OP`; existing player restrictions still
+apply. The API does not enable remote access or change its authorization.
+
+Reads return immutable catalog snapshots without selecting a provider or starting
+network activity. `metadata` prepares a playable file list without saving or
+playing it. File indices are the native zero-based indices, not positions in a
+displayed list. Catalogs preserve stable catalog and entry IDs and original
+source references; they contain no private endpoints or temporary stream URLs.
+
+Writes upload strict UTF-8 JSON in canonical base64 chunks of at most 6,144 decoded
+bytes, with an 8 MiB document limit and SHA-256 verification. `write_commit` checks
+the original catalog revision again and confirms the persisted result. `replace`
+adopts the incoming catalog; `merge` requires matching catalog IDs, preserves
+existing order and name, and rejects conflicting entries as a whole. Importing
+never selects a provider or starts playback. The updated list appears on the next
+explicit provider load or play.
+
+Use a UUID for each mutation and retain it if a response is lost. Identical
+requests reuse their retained receipt; `status` recovers the result and `cancel`
+cancels pending work. Records and snapshots expire after 600 seconds of inactivity;
+valid status or chunk access extends the corresponding lifetime. Metadata has a
+75-second total deadline. After expiry or reload, an unknown result must not be
+automatically retried as a new mutation. `play` uses the normal guarded playback
+path; acceptance confirms dispatch, not decoder startup. Cancelling an accepted
+play does not stop it.
+
+Catalog and optional portable Favorites imports are separate commits. A client
+must validate both before writing and report partial success if Favorites fails.
+Unresolved Favorites keep their original references rather than being remapped.
 
 ## Server configuration
 
