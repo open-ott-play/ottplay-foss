@@ -15,7 +15,13 @@
       "url": "https://gcc.gnu.org/pub/gcc/releases/gcc-12.2.0/gcc-12.2.0.tar.xz",
       "sha512": "e9e857bd81bf7a370307d6848c81b2f5403db8c7b5207f54bce3f3faac3bde63445684092c2bc1a2427cddb6f7746496d9fbbef05fbbd77f2810b2998f1f9173",
       "provenance": "GCC 12.2 release sha512.sum, also pinned by Buildroot package/gcc/gcc.hash",
-      "licenses": ["COPYING", "COPYING3", "COPYING.RUNTIME", "COPYING.LIB", "COPYING3.LIB"]
+      "licenses": [
+        "COPYING",
+        "COPYING3",
+        "COPYING.RUNTIME",
+        "COPYING.LIB",
+        "COPYING3.LIB"
+      ]
     },
     {
       "id": "buildroot-recipes",
