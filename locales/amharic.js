@@ -355,6 +355,8 @@ var keyStrings = {
     Editor: "የጽሑፍ አርታዒ",
     "Enable HTTP remote": "የHTTP የርቀት ቁጥጥርን አንቃ",
     English: "እንግሊዝኛ",
+    "Enter a magnet link or a torrent file URL.":
+        "የማግኔት አገናኝ ወይም የቶረንት ፋይል URL ያስገቡ።",
     "Enter a password (8 characters).": "የይለፍ ቃል ያስገቡ (8 ቁምፊዎች)።",
     "Enter a playlist URL to access this service.":
         "ይህን አገልግሎት ለመጠቀም የአጫዋች ዝርዝር URL ያስገቡ።",
@@ -1033,6 +1035,7 @@ var keyStrings = {
         "ይህ የርቀት መቆጣጠሪያ ትዕዛዝ በአጫዋቹ አይደገፍም።",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ይህ ደህንነቱ የተጠበቀ ክፍለ ጊዜ አይገኝም ወይም ጊዜው አልፎበታል። በቴሌቪዥኑ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ እና ሙሉውን ማገናኛ ይጠቀሙ።",
+    "This source is already in the catalog.": "ይህ ምንጭ አስቀድሞ በካታሎጉ ውስጥ አለ።",
     Timer: "ሰዓት ቆጣሪ",
     "Timer: switch to channel?": "ሰዓት ቆጣሪ፦ ወደዚህ ሰርጥ ቀይር?",
     "Timeshift: one minute back": "የጊዜ ማስተላለፍ፦ አንድ ደቂቃ ወደ ኋላ",
@@ -1049,6 +1052,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "የማጉላት ሁነታ ቀይር",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "የTop-Tv ቅንብሮች",
+    "Torrent source limit reached.": "የቶረንት ምንጮች ገደብ ተደርሷል።",
     "Touchscreen locked": "የንክኪ ማያ ገጹ ተቆልፏል",
     "Touchscreen unlocked": "የንክኪ ማያ ገጹ ቁልፍ ተከፍቷል",
     "Trust this server for remote support": "ይህን አገልጋይ ለርቀት ድጋፍ እመን",

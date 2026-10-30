@@ -364,6 +364,8 @@ var keyStrings = {
     Editor: "Editor",
     "Enable HTTP remote": "Enable HTTP remote",
     English: "English",
+    "Enter a magnet link or a torrent file URL.":
+        "Enter a magnet link or a torrent file URL.",
     "Enter a password (8 characters).": "Enter a password (8 characters).",
     "Enter a playlist URL to access this service.":
         "Enter a playlist URL to access this service.",
@@ -1064,6 +1066,8 @@ var keyStrings = {
         "This remote command is not supported by the player.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.",
+    "This source is already in the catalog.":
+        "This source is already in the catalog.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: switch to this channel?",
     "Timeshift: one minute back": "Timeshift: one minute back",
@@ -1080,6 +1084,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Change zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv settings",
+    "Torrent source limit reached.": "Torrent source limit reached.",
     "Touchscreen locked": "Touchscreen locked",
     "Touchscreen unlocked": "Touchscreen unlocked",
     "Trust this server for remote support":

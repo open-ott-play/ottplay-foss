@@ -361,6 +361,8 @@ var keyStrings = {
     Editor: "সম্পাদক",
     "Enable HTTP remote": "HTTP রিমোট সক্ষম করুন",
     English: "ইংরেজি",
+    "Enter a magnet link or a torrent file URL.":
+        "একটি ম্যাগনেট লিংক বা টরেন্ট ফাইলের URL লিখুন।",
     "Enter a password (8 characters).": "একটি পাসওয়ার্ড লিখুন (8 অক্ষর)।",
     "Enter a playlist URL to access this service.":
         "এই পরিষেবাটি অ্যাক্সেস করতে একটি প্লেলিস্ট URL লিখুন৷",
@@ -1049,6 +1051,7 @@ var keyStrings = {
         "এই দূরনিয়ন্ত্রণ নির্দেশ প্লেয়ার সমর্থন করে না।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "এই সুরক্ষিত সেশনটি অনুপলব্ধ বা মেয়াদ শেষ। টিভিতে একটি নতুন সেশন খুলুন এবং এর সম্পূর্ণ লিঙ্কটি ব্যবহার করুন।",
+    "This source is already in the catalog.": "এই উৎসটি ইতিমধ্যেই ক্যাটালগে আছে।",
     Timer: "টাইমার",
     "Timer: switch to channel?": "টাইমার: এই চ্যানেলে স্যুইচ করবেন?",
     "Timeshift: one minute back": "টাইমশিফ্ট: এক মিনিট পিছিয়ে",
@@ -1065,6 +1068,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "জুম মোড পরিবর্তন করুন",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv সেটিংস",
+    "Torrent source limit reached.": "টরেন্ট উৎসের সংখ্যা সর্বোচ্চ সীমায় পৌঁছেছে।",
     "Touchscreen locked": "টাচস্ক্রিন লক করা হয়েছে",
     "Touchscreen unlocked": "টাচস্ক্রিনের লক খোলা হয়েছে",
     "Trust this server for remote support":

@@ -383,6 +383,8 @@ var keyStrings = {
     Editor: "Επεξεργαστής",
     "Enable HTTP remote": "Ενεργοποίηση τηλεχειρισμού HTTP",
     English: "Αγγλικά",
+    "Enter a magnet link or a torrent file URL.":
+        "Εισαγάγετε έναν σύνδεσμο magnet ή το URL ενός αρχείου torrent.",
     "Enter a password (8 characters).":
         "Εισαγάγετε κωδικό πρόσβασης (8 χαρακτήρες).",
     "Enter a playlist URL to access this service.":
@@ -1113,6 +1115,8 @@ var keyStrings = {
         "Η συσκευή αναπαραγωγής δεν υποστηρίζει αυτή την απομακρυσμένη εντολή.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Αυτή η ασφαλής περίοδος λειτουργίας δεν είναι διαθέσιμη ή έχει λήξει. Ανοίξτε μια νέα περίοδο λειτουργίας στην τηλεόραση και χρησιμοποιήστε τον πλήρη σύνδεσμό της.",
+    "This source is already in the catalog.":
+        "Αυτή η πηγή υπάρχει ήδη στον κατάλογο.",
     Timer: "Χρονοδιακόπτης",
     "Timer: switch to channel?": "Χρονοδιακόπτης: μετάβαση σε αυτό το κανάλι;",
     "Timeshift: one minute back": "Χρονική μετατόπιση: ένα λεπτό πίσω",
@@ -1130,6 +1134,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Αλλαγή λειτουργίας μεγέθυνσης",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ρυθμίσεις Top-Tv",
+    "Torrent source limit reached.":
+        "Συμπληρώθηκε ο μέγιστος αριθμός πηγών torrent.",
     "Touchscreen locked": "Η οθόνη αφής κλειδώθηκε",
     "Touchscreen unlocked": "Η οθόνη αφής ξεκλειδώθηκε",
     "Trust this server for remote support":

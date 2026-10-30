@@ -376,6 +376,8 @@ var keyStrings = {
     Editor: "Muharrir",
     "Enable HTTP remote": "HTTP pultini yoqish",
     English: "Inglizcha",
+    "Enter a magnet link or a torrent file URL.":
+        "Magnit havolasi yoki torrent faylining URL manzilini kiriting.",
     "Enter a password (8 characters).": "Parolni kiriting (8 ta belgi).",
     "Enter a playlist URL to access this service.":
         "Bu xizmatga kirish uchun pleylist URL manzilini kiriting.",
@@ -1092,6 +1094,8 @@ var keyStrings = {
         "Pleyer masofadan boshqarishning bu buyrug‘ini qo‘llab-quvvatlamaydi.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ushbu xavfsiz seans mavjud emas yoki muddati tugagan. Televizorda yangi seansni oching va uning to'liq havolasidan foydalaning.",
+    "This source is already in the catalog.":
+        "Bu manba allaqachon katalogda bor.",
     Timer: "Taymer",
     "Timer: switch to channel?": "Taymer: bu kanalga oʻtilsinmi?",
     "Timeshift: one minute back": "Vaqt siljishi: bir daqiqa orqaga",
@@ -1109,6 +1113,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Masshtab rejimini almashtirish",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sozlamalari",
+    "Torrent source limit reached.":
+        "Torrent manbalari soni chegarasiga yetildi.",
     "Touchscreen locked": "Sensorli ekran qulflandi",
     "Touchscreen unlocked": "Sensorli ekran qulfi ochildi",
     "Trust this server for remote support":

@@ -63,7 +63,7 @@ selection uses the app's own service. It never adopts the external companion
 endpoint, even when one is configured. There is no companion endpoint editor in
 the player settings UI.
 
-Open **Torrent sources** in provider settings, choose **Add source…**, and enter
+Open **Torrent: Manage lists** in provider settings, choose **Add new list**, and enter
 a magnet URI or public HTTP(S) torrent metadata URL and a source name. The player
 reads and saves the playable file list. Each source appears as a category;
 choose a file from its channel list to play it. References use stable zero-based

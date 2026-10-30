@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Texteditor",
     "Enable HTTP remote": "HTTP-Fernsteuerung einschalten",
     English: "Englisch",
+    "Enter a magnet link or a torrent file URL.":
+        "Geben Sie einen Magnet-Link oder die URL einer Torrent-Datei ein.",
     "Enter a password (8 characters).":
         "Geben Sie ein Passwort ein (8 Zeichen).",
     "Enter a playlist URL to access this service.":
@@ -1105,6 +1107,8 @@ var keyStrings = {
         "Der Player unterstützt diesen Fernsteuerungsbefehl nicht.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Diese sichere Sitzung ist nicht verfügbar oder abgelaufen. Öffnen Sie eine neue Sitzung auf dem Fernseher und verwenden Sie den vollständigen Link.",
+    "This source is already in the catalog.":
+        "Diese Quelle ist bereits im Katalog.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: zu diesem Sender wechseln?",
     "Timeshift: one minute back": "Timeshift: eine Minute zurück",
@@ -1121,6 +1125,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Zoommodus ändern",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Einstellungen für Top-Tv",
+    "Torrent source limit reached.":
+        "Die maximale Anzahl an Torrent-Quellen ist erreicht.",
     "Touchscreen locked": "Touchscreen gesperrt",
     "Touchscreen unlocked": "Touchscreen entsperrt",
     "Trust this server for remote support":

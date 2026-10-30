@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "編集者",
     "Enable HTTP remote": "HTTPリモートを有効にする",
     English: "英語",
+    "Enter a magnet link or a torrent file URL.":
+        "マグネットリンクまたはトレントファイルの URL を入力してください。",
     "Enter a password (8 characters).": "パスワード(8文字)を入力します。",
     "Enter a playlist URL to access this service.":
         "このサービスにアクセスするには、プレイリストURLを入力してください。",
@@ -1083,6 +1085,8 @@ var keyStrings = {
         "この遠隔操作コマンドにはプレーヤーが対応していません。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "この安全なセッションは利用できないか、期限切れです。テレビで新しいセッションを開き、その完全なリンクを使用します。",
+    "This source is already in the catalog.":
+        "このソースはすでにカタログに登録されています。",
     Timer: "タイマー",
     "Timer: switch to channel?": "タイマー: このチャンネルに切り替えますか?",
     "Timeshift: one minute back": "タイムシフト：1分戻る",
@@ -1098,6 +1102,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ズームモードを変更する",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tvの設定",
+    "Torrent source limit reached.": "トレントソースの数が上限に達しました。",
     "Touchscreen locked": "タッチスクリーンをロックしました",
     "Touchscreen unlocked": "タッチスクリーンのロックを解除しました",
     "Trust this server for remote support":

@@ -373,6 +373,8 @@ var keyStrings = {
     Editor: "Teksredigeerder",
     "Enable HTTP remote": "Skakel HTTP-afstandbeheer aan",
     English: "Engels",
+    "Enter a magnet link or a torrent file URL.":
+        "Voer 'n magneetskakel of die URL van 'n torrentlêer in.",
     "Enter a password (8 characters).": "Voer 'n wagwoord in (8 karakters).",
     "Enter a playlist URL to access this service.":
         "Voer 'n snitlys-URL in om toegang tot hierdie diens te kry.",
@@ -1083,6 +1085,8 @@ var keyStrings = {
         "Die speler ondersteun nie hierdie afstandbeheeropdrag nie.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Hierdie veilige sessie is onbeskikbaar of het verval. Maak 'n nuwe sessie op die TV oop en gebruik sy volledige skakel.",
+    "This source is already in the catalog.":
+        "Hierdie bron is reeds in die katalogus.",
     Timer: "Tydhouer",
     "Timer: switch to channel?": "Tydhouer: skakel na hierdie kanaal?",
     "Timeshift: one minute back": "Tydverskuiwing: een minuut terug",
@@ -1100,6 +1104,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Verander zoemmodus",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-instellings",
+    "Torrent source limit reached.": "Die limiet vir torrentbronne is bereik.",
     "Touchscreen locked": "Raakskerm gesluit",
     "Touchscreen unlocked": "Raakskerm ontsluit",
     "Trust this server for remote support":

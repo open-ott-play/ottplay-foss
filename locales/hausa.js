@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "Editan rubutu",
     "Enable HTTP remote": "Kunna sarrafa HTTP daga nesa",
     English: "Turanci",
+    "Enter a magnet link or a torrent file URL.":
+        "Shigar da mahaɗin magnet ko URL na fayil ɗin torrent.",
     "Enter a password (8 characters).": "Shigar da kalmar sirri (haruffa 8).",
     "Enter a playlist URL to access this service.":
         "Shigar da URL na jerin kunnawa don shiga wannan sabis.",
@@ -1080,6 +1082,8 @@ var keyStrings = {
         "Manhajar kunnawa ba ta goyon bayan wannan umarnin sarrafawa daga nesa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Wannan amintaccen zaman babu shi ko ya ƙare. Bude sabon zama akan TV kuma yi amfani da cikakkiyar hanyar haɗin gwiwa.",
+    "This source is already in the catalog.":
+        "Wannan majiya tana cikin kundin tuni.",
     Timer: "Mai ƙidayar lokaci",
     "Timer: switch to channel?": "Mai ƙidayar lokaci: sauya zuwa wannan tasha?",
     "Timeshift: one minute back": "Sauyin lokaci: minti ɗaya baya",
@@ -1096,6 +1100,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Sauya yanayin zuƙowa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Saitunan Top-Tv",
+    "Torrent source limit reached.": "An kai iyakar adadin majiyoyin torrent.",
     "Touchscreen locked": "An kulle allon taɓawa",
     "Touchscreen unlocked": "An buɗe makullin allon taɓawa",
     "Trust this server for remote support":

@@ -370,6 +370,8 @@ var keyStrings = {
     Editor: "Редактор",
     "Enable HTTP remote": "HTTP қашықтан басқаруды қосу",
     English: "Ағылшын тілі",
+    "Enter a magnet link or a torrent file URL.":
+        "Магниттік сілтемені немесе торрент файлының URL мекенжайын енгізіңіз.",
     "Enter a password (8 characters).": "Құпиясөзді енгізіңіз (8 таңба).",
     "Enter a playlist URL to access this service.":
         "Бұл қызметке кіру үшін ойнату тізімінің URL мекенжайын енгізіңіз.",
@@ -1081,6 +1083,7 @@ var keyStrings = {
         "Ойнатқыш бұл қашықтан басқару пәрменін қолдамайды.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Бұл қауіпсіз сеанс қолжетімсіз немесе мерзімі өтіп кеткен. Теледидарда жаңа сеанс ашып, оның толық сілтемесін пайдаланыңыз.",
+    "This source is already in the catalog.": "Бұл көз каталогта бұрыннан бар.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: арнаға ауысу керек пе?",
     "Timeshift: one minute back": "Уақыт ығысуы: бір минут артқа",
@@ -1098,6 +1101,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Масштаб режимін өзгерту",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv баптаулары",
+    "Torrent source limit reached.": "Торрент көздерінің саны шегіне жетті.",
     "Touchscreen locked": "Сенсорлық экран құлыпталды",
     "Touchscreen unlocked": "Сенсорлық экранның құлпы ашылды",
     "Trust this server for remote support":

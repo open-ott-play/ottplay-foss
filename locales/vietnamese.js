@@ -369,6 +369,8 @@ var keyStrings = {
     Editor: "Trình chỉnh sửa",
     "Enable HTTP remote": "Bật điều khiển từ xa HTTP",
     English: "Tiếng Anh",
+    "Enter a magnet link or a torrent file URL.":
+        "Nhập liên kết magnet hoặc URL của tệp torrent.",
     "Enter a password (8 characters).": "Nhập mật khẩu (8 ký tự).",
     "Enter a playlist URL to access this service.":
         "Nhập URL danh sách phát để truy cập dịch vụ này.",
@@ -1070,6 +1072,7 @@ var keyStrings = {
         "Trình phát không hỗ trợ lệnh điều khiển từ xa này.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Phiên bảo mật này không khả dụng hoặc đã hết hạn. Mở một phiên mới trên TV và sử dụng liên kết hoàn chỉnh của nó.",
+    "This source is already in the catalog.": "Nguồn này đã có trong danh mục.",
     Timer: "Hẹn giờ",
     "Timer: switch to channel?": "Hẹn giờ: chuyển sang kênh này?",
     "Timeshift: one minute back": "Timeshift: lùi một phút",
@@ -1086,6 +1089,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Đổi chế độ thu phóng",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cài đặt Top-Tv",
+    "Torrent source limit reached.": "Đã đạt số lượng nguồn torrent tối đa.",
     "Touchscreen locked": "Đã khóa màn hình cảm ứng",
     "Touchscreen unlocked": "Đã mở khóa màn hình cảm ứng",
     "Trust this server for remote support":

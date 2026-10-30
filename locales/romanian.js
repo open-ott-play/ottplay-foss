@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Editor",
     "Enable HTTP remote": "Activează controlul HTTP",
     English: "Engleză",
+    "Enter a magnet link or a torrent file URL.":
+        "Introduceți un link magnet sau adresa URL a unui fișier torrent.",
     "Enter a password (8 characters).": "Introduceți o parolă (8 caractere).",
     "Enter a playlist URL to access this service.":
         "Introduceți URL-ul listei de redare pentru a accesa acest serviciu.",
@@ -1103,6 +1105,8 @@ var keyStrings = {
         "Playerul nu acceptă această comandă de la distanță.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Această sesiune securizată este indisponibilă sau a expirat. Deschideți o nouă sesiune pe televizor și utilizați linkul complet al acesteia.",
+    "This source is already in the catalog.":
+        "Această sursă există deja în catalog.",
     Timer: "Temporizator",
     "Timer: switch to channel?": "Temporizator: comutați pe acest canal?",
     "Timeshift: one minute back": "Decalaj temporal: un minut înapoi",
@@ -1120,6 +1124,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Schimbă modul de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Setări Top-Tv",
+    "Torrent source limit reached.":
+        "A fost atins numărul maxim de surse torrent.",
     "Touchscreen locked": "Ecranul tactil este blocat",
     "Touchscreen unlocked": "Ecranul tactil este deblocat",
     "Trust this server for remote support":

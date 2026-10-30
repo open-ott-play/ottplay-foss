@@ -182,7 +182,7 @@ test("adding a source saves cached metadata then uses the normal channel reload"
     f.host.listKeyHandler(f.host.keys.ENTER);
     f.host.editvar = source;
     f.host.setEdit();
-    assert.equal(f.host.editCaption, "Source name");
+    assert.equal(f.host.editCaption, "New list name");
     f.host.editvar = "Public sample";
     f.host.setEdit();
     await flush();

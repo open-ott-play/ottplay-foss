@@ -376,6 +376,8 @@ var keyStrings = {
     Editor: "Редактор",
     "Enable HTTP remote": "Включване на HTTP дистанционно",
     English: "Английски",
+    "Enter a magnet link or a torrent file URL.":
+        "Въведете магнитна връзка или URL на торент файл.",
     "Enter a password (8 characters).": "Въведете парола (8 знака).",
     "Enter a playlist URL to access this service.":
         "Въведете URL на плейлиста за достъп до услугата.",
@@ -1094,6 +1096,8 @@ var keyStrings = {
         "Плейърът не поддържа тази дистанционна команда.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Тази защитена сесия е недостъпна или изтекла. Отворете нова сесия на телевизора и използвайте пълната му връзка.",
+    "This source is already in the catalog.":
+        "Този източник вече е в каталога.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: да се превключи ли каналът?",
     "Timeshift: one minute back": "Отложено гледане: една минута назад",
@@ -1112,6 +1116,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Смяна на режима на мащабиране",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Настройки за Top-Tv",
+    "Torrent source limit reached.":
+        "Достигнат е максималният брой торент източници.",
     "Touchscreen locked": "Сензорният екран е заключен",
     "Touchscreen unlocked": "Сензорният екран е отключен",
     "Trust this server for remote support":

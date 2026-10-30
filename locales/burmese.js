@@ -362,6 +362,8 @@ var keyStrings = {
     Editor: "တည်းဖြတ်သူ",
     "Enable HTTP remote": "HTTP အဝေးထိန်းကို ဖွင့်ပါ။",
     English: "အင်္ဂလိပ်",
+    "Enter a magnet link or a torrent file URL.":
+        "မက်ဂနက်လင့်ခ် သို့မဟုတ် တော်ရင့်ဖိုင်၏ URL ကို ထည့်ပါ။",
     "Enter a password (8 characters).": "စကားဝှက် (စာလုံး ၈ လုံး) ရိုက်ထည့်ပါ။",
     "Enter a playlist URL to access this service.":
         "ဤဝန်ဆောင်မှုကိုရယူရန် URL အစီအစဉ်ကို ထည့်သွင်းပါ။",
@@ -1056,6 +1058,8 @@ var keyStrings = {
         "ဤအဝေးထိန်းအမိန့်ကို ပလေယာက မပံ့ပိုးပါ။",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ဤလုံခြုံသောစက်ရှင်ကို မရရှိနိုင်ပါ သို့မဟုတ် သက်တမ်းကုန်သွားပါပြီ။ TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပြီး ၎င်း၏ အပြည့်အစုံလင့်ခ်ကို အသုံးပြုပါ။",
+    "This source is already in the catalog.":
+        "ဤရင်းမြစ်သည် စာရင်းထဲတွင် ရှိပြီးသားဖြစ်သည်။",
     Timer: "အချိန်တိုင်းစက်",
     "Timer: switch to channel?": "အချိန်တိုင်း- ဤချန်နယ်သို့ ပြောင်းမလား။",
     "Timeshift: one minute back": "တစ်မိနစ် နောက်ပြန်ကြည့်ရန်",
@@ -1071,6 +1075,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ဇူးမ်မုဒ်ကို ပြောင်းပါ။",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ဆက်တင်များ",
+    "Torrent source limit reached.": "တော်ရင့်ရင်းမြစ် အရေအတွက် ကန့်သတ်ချက်သို့ ရောက်ရှိနေပါပြီ။",
     "Touchscreen locked": "ထိတွေ့မျက်နှာပြင်ကို လော့ခ်ချထားသည်",
     "Touchscreen unlocked": "ထိတွေ့မျက်နှာပြင်၏ လော့ခ်ကို ဖွင့်ထားသည်",
     "Trust this server for remote support": "အဝေးထိန်းပံ့ပိုးမှုအတွက် ဤဆာဗာကို ယုံကြည်ပါ။",

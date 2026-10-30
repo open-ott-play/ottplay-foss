@@ -352,6 +352,8 @@ var keyStrings = {
     Editor: "编辑",
     "Enable HTTP remote": "启用HTTP远程",
     English: "英语",
+    "Enter a magnet link or a torrent file URL.":
+        "请输入磁力链接或种子文件的 URL。",
     "Enter a password (8 characters).": "输入密码（8 个字符）。",
     "Enter a playlist URL to access this service.":
         "输入播放列表URL 以访问此服务。",
@@ -1022,6 +1024,7 @@ var keyStrings = {
         "播放器不支持此远程控制命令。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "此安全会话不可用或已过期。在电视上打开一个新会话并使用其完整链接。",
+    "This source is already in the catalog.": "此来源已在目录中。",
     Timer: "定时器",
     "Timer: switch to channel?": "定时器：切换到该频道？",
     "Timeshift: one minute back": "时移：回退一分钟",
@@ -1037,6 +1040,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "更改缩放模式",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv设定",
+    "Torrent source limit reached.": "已达到种子来源数量上限。",
     "Touchscreen locked": "触摸屏已锁定",
     "Touchscreen unlocked": "触摸屏已解锁",
     "Trust this server for remote support": "信任此服务器以提供远程支持",

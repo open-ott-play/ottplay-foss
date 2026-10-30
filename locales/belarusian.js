@@ -368,6 +368,8 @@ var keyStrings = {
     Editor: "Рэдактар",
     "Enable HTTP remote": "Уключыць HTTP-пульт",
     English: "Англійская",
+    "Enter a magnet link or a torrent file URL.":
+        "Увядзіце магніт-спасылку або URL торэнт-файла.",
     "Enter a password (8 characters).": "Увядзіце пароль (8 сімвалаў).",
     "Enter a playlist URL to access this service.":
         "Увядзіце адрас плэйліста для доступу да сэрвісу.",
@@ -1073,6 +1075,8 @@ var keyStrings = {
         "Плэер не падтрымлівае гэтую дыстанцыйную каманду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Гэты бяспечны сеанс недаступны або скончыўся. Адкрыйце новы сеанс на тэлевізары і скарыстайцеся яго поўнай спасылкай.",
+    "This source is already in the catalog.":
+        "Гэта крыніца ўжо ёсць у каталогу.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: пераключыць канал?",
     "Timeshift: one minute back": "Таймшыфт: на хвіліну назад",
@@ -1089,6 +1093,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змяніць рэжым маштабавання",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налады Top-Tv",
+    "Torrent source limit reached.":
+        "Дасягнута абмежаванне колькасці торэнт-крыніц.",
     "Touchscreen locked": "Сэнсарны экран заблакаваны",
     "Touchscreen unlocked": "Сэнсарны экран разблакаваны",
     "Trust this server for remote support":

@@ -3,7 +3,7 @@ function normalizeTorrentConfiguration(value: any): any {
     function token(input: any): boolean {
         return typeof input === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(input);
     }
-    function label(input: any, fallback: string): string {
+    function normalizeTitle(input: any, fallback: string): string {
         return typeof input === "string" && input.trim()
             ? input.trim().slice(0, 256)
             : fallback;
@@ -66,17 +66,20 @@ function normalizeTorrentConfiguration(value: any): any {
         total += files.length;
         if (total > 10000) return null;
         entries.push({
-            category: label(entry.category, label(entry.title, "Torrent")),
+            category: normalizeTitle(
+                entry.category,
+                normalizeTitle(entry.title, "Torrent")
+            ),
             files: files,
             id: entry.id,
             source: entry.source,
-            title: label(entry.title, "Torrent"),
+            title: normalizeTitle(entry.title, "Torrent"),
         });
     }
     return {
         entries: entries,
         id: value.id,
-        name: label(value.name, "Torrent"),
+        name: normalizeTitle(value.name, "Torrent"),
         schema: 1,
     };
 }
@@ -382,7 +385,7 @@ function mountTorrentProvider(
             accept: (value: string) => void
         ): void {
             if (!current()) return;
-            host.editCaption = host._(caption);
+            host.editCaption = caption;
             host.editvar = value;
             var accepted = false;
             host.setEdit = function () {
@@ -395,7 +398,7 @@ function mountTorrentProvider(
         function inspect(value: any, entry: any, replace: boolean): void {
             busy = true;
             var before = JSON.stringify(driver.configuration());
-            render(host._("Reading torrent files…"));
+            render(host._("Loading..."));
             host.__ottMediaCompanion.ensure(!!host.__TAURI__).then(
                 function (client: any) {
                     if (!current()) return;
@@ -411,33 +414,24 @@ function mountTorrentProvider(
                                 JSON.stringify(driver.configuration()) !==
                                 before
                             ) {
-                                render(
-                                    host._(
-                                        "Torrent sources changed. Please try again."
-                                    )
-                                );
+                                render(host._("Settings source changed"));
                                 return;
                             }
                             if (!files || !files.length) {
-                                render(
-                                    host._(
-                                        "Could not read playable files from this source."
-                                    )
-                                );
+                                render(host._("Failed to load!"));
                                 return;
                             }
                             entry.files = files;
                             if (!replace) value.entries.push(entry);
                             if (!save(value))
-                                render(host._("Settings could not be saved."));
+                                render(host._("Settings could not be saved"));
                         }
                     );
                     if (!completed) cancelMetadata = release;
                 },
                 function () {
                     busy = false;
-                    if (current())
-                        render(host._("Torrent service is unavailable."));
+                    if (current()) render(host._("Unavailable"));
                 }
             );
         }
@@ -447,54 +441,60 @@ function mountTorrentProvider(
                 render(host._("Torrent source limit reached."));
                 return;
             }
-            input("Torrent source", "", function (source) {
-                if (
-                    !/^(?:magnet:\?|https?:\/\/[^?#]*\.torrent(?:[?#]|$))/i.test(
-                        source
-                    )
-                ) {
-                    render(
-                        host._("Enter a magnet link or a torrent file URL.")
-                    );
-                    return;
-                }
-                if (
-                    value.entries.some(function (entry: any) {
-                        return entry.source === source;
-                    })
-                ) {
-                    render(host._("This source is already in the catalog."));
-                    return;
-                }
-                var title = "Torrent";
-                try {
-                    var url = new URL(source);
-                    title =
-                        url.searchParams.get("dn") ||
-                        decodeURIComponent(
-                            url.pathname.split("/").pop() || ""
-                        ) ||
-                        title;
-                } catch (_) {}
-                render();
-                input("Source name", title, function (name) {
-                    if (!name) {
-                        render();
+            input(
+                host._("Enter a magnet link or a torrent file URL."),
+                "",
+                function (source) {
+                    if (
+                        !/^(?:magnet:\?|https?:\/\/[^?#]*\.torrent(?:[?#]|$))/i.test(
+                            source
+                        )
+                    ) {
+                        render(
+                            host._("Enter a magnet link or a torrent file URL.")
+                        );
                         return;
                     }
-                    inspect(
-                        value,
-                        {
-                            category: name,
-                            files: [],
-                            id: identifier(),
-                            source: source,
-                            title: name,
-                        },
-                        false
-                    );
-                });
-            });
+                    if (
+                        value.entries.some(function (entry: any) {
+                            return entry.source === source;
+                        })
+                    ) {
+                        render(
+                            host._("This source is already in the catalog.")
+                        );
+                        return;
+                    }
+                    var title = "Torrent";
+                    try {
+                        var url = new URL(source);
+                        title =
+                            url.searchParams.get("dn") ||
+                            decodeURIComponent(
+                                url.pathname.split("/").pop() || ""
+                            ) ||
+                            title;
+                    } catch (_) {}
+                    render();
+                    input(host._("New list name"), title, function (name) {
+                        if (!name) {
+                            render();
+                            return;
+                        }
+                        inspect(
+                            value,
+                            {
+                                category: name,
+                                files: [],
+                                id: identifier(),
+                                source: source,
+                                title: name,
+                            },
+                            false
+                        );
+                    });
+                }
+            );
         }
         function sourceActions(entryId: string): void {
             var value = config(),
@@ -510,21 +510,25 @@ function mountTorrentProvider(
                     action: function () {
                         inspect(value, entry, true);
                     },
-                    name: host._("Refresh files"),
+                    name: host._("Load"),
                 },
                 {
                     action: function () {
-                        input("Source name", entry.title, function (name) {
-                            if (!name) {
-                                sourceActions(entryId);
-                                return;
+                        input(
+                            host._("Rename to"),
+                            entry.title,
+                            function (name) {
+                                if (!name) {
+                                    sourceActions(entryId);
+                                    return;
+                                }
+                                entry.title = name;
+                                entry.category = name;
+                                save(value);
                             }
-                            entry.title = name;
-                            entry.category = name;
-                            save(value);
-                        });
+                        );
                     },
-                    name: host._("Rename source"),
+                    name: host._("Rename"),
                 },
                 {
                     action: function () {
@@ -535,7 +539,7 @@ function mountTorrentProvider(
                         });
                         save(value);
                     },
-                    name: host._("Remove source"),
+                    name: host._("Delete"),
                 },
                 {
                     action: function () {
@@ -557,7 +561,7 @@ function mountTorrentProvider(
             if (!owner.active() || session !== revision || locked()) return;
             rows =
                 actions ||
-                [{ action: add, name: host._("Add source…") }].concat(
+                [{ action: add, name: host._("Add new list") }].concat(
                     config().entries.map(function (entry: any) {
                         return {
                             action: function () {
@@ -575,11 +579,7 @@ function mountTorrentProvider(
             };
             host.getListItem = renderItem;
             host.detailListAction = function () {
-                host.listDetail.textContent =
-                    message ||
-                    host._(
-                        "Each source appears as a category in the channel list."
-                    );
+                host.listDetail.textContent = message || "";
             };
             host.listKeyHandler = function (key: number) {
                 if (!current()) return false;
@@ -594,7 +594,7 @@ function mountTorrentProvider(
                 }
                 return false;
             };
-            host.listCaption.textContent = host._("Torrent sources");
+            host.listCaption.textContent = "Torrent";
             host.listFooter.innerHTML = host.renderButtonHint(
                 host.keys.RETURN,
                 host.strRETURN,
@@ -606,10 +606,10 @@ function mountTorrentProvider(
         return true;
     }
     edit.menuTitle = function () {
-        return host._("Torrent sources");
+        return "Torrent: " + host._("Manage lists");
     };
     edit.menuDetail = function () {
-        return host._("Manage sources in the Torrent catalog");
+        return host._("Add / rename / delete…");
     };
     host.__ottEditProvider = edit;
     host.duneAddSettings = function (index: number) {

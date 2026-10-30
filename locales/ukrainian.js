@@ -368,6 +368,8 @@ var keyStrings = {
     Editor: "Редактор",
     "Enable HTTP remote": "Увімкнути HTTP-пульт",
     English: "Англійська",
+    "Enter a magnet link or a torrent file URL.":
+        "Введіть магнітне посилання або URL торрент-файлу.",
     "Enter a password (8 characters).": "Введіть пароль (8 символів).",
     "Enter a playlist URL to access this service.":
         "Введіть адресу списку відтворення для доступу до сервісу.",
@@ -1079,6 +1081,7 @@ var keyStrings = {
         "Плеєр не підтримує цю віддалену команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Цей безпечний сеанс недоступний або закінчився. Відкрийте новий сеанс на телевізорі та скористайтеся його повним посиланням.",
+    "This source is already in the catalog.": "Це джерело вже є в каталозі.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: перемкнути канал?",
     "Timeshift: one minute back": "Таймшифт: на хвилину назад",
@@ -1095,6 +1098,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змінити режим масштабування",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налаштування Top-Tv",
+    "Torrent source limit reached.":
+        "Досягнуто максимальної кількості торрент-джерел.",
     "Touchscreen locked": "Сенсорний екран заблоковано",
     "Touchscreen unlocked": "Сенсорний екран розблоковано",
     "Trust this server for remote support":

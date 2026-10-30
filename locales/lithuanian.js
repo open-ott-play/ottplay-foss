@@ -372,6 +372,8 @@ var keyStrings = {
     Editor: "Redaktorius",
     "Enable HTTP remote": "Įjungti HTTP valdymą",
     English: "Anglų",
+    "Enter a magnet link or a torrent file URL.":
+        "Įveskite magnetinę nuorodą arba torrento failo URL.",
     "Enter a password (8 characters).": "Įveskite slaptažodį (8 simboliai).",
     "Enter a playlist URL to access this service.":
         "Norėdami naudotis šia paslauga, įveskite grojaraščio URL.",
@@ -1080,6 +1082,7 @@ var keyStrings = {
         "Leistuvas nepalaiko šios nuotolinės komandos.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ši saugi sesija nepasiekiama arba pasibaigė. Atidarykite naują seansą televizoriuje ir naudokite visą jos nuorodą.",
+    "This source is already in the catalog.": "Šis šaltinis jau yra kataloge.",
     Timer: "Laikmatis",
     "Timer: switch to channel?": "Laikmatis: perjungti į šį kanalą?",
     "Timeshift: one minute back": "Laiko poslinkis: minutę atgal",
@@ -1096,6 +1099,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Keisti mastelio režimą",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv nustatymai",
+    "Torrent source limit reached.":
+        "Pasiektas didžiausias torrentų šaltinių skaičius.",
     "Touchscreen locked": "Jutiklinis ekranas užrakintas",
     "Touchscreen unlocked": "Jutiklinis ekranas atrakintas",
     "Trust this server for remote support":

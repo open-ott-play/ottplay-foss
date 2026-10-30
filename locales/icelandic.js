@@ -365,6 +365,8 @@ var keyStrings = {
     Editor: "Ritill",
     "Enable HTTP remote": "Virkja HTTP-fjarstýringu",
     English: "Enska",
+    "Enter a magnet link or a torrent file URL.":
+        "Sláðu inn magnet-tengil eða vefslóð torrent-skrár.",
     "Enter a password (8 characters).": "Sláðu inn lykilorð (8 stafir).",
     "Enter a playlist URL to access this service.":
         "Sláðu inn vefslóð spilunarlista til að nota þessa þjónustu.",
@@ -1069,6 +1071,7 @@ var keyStrings = {
         "Spilarinn styður ekki þessa fjarstýringarskipun.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Þessi örugga lota er ekki tiltæk eða útrunnin. Opnaðu nýja lotu í sjónvarpinu og notaðu allan hlekkinn.",
+    "This source is already in the catalog.": "Þessi gjafi er þegar í skránni.",
     Timer: "Tímastillir",
     "Timer: switch to channel?": "Tímastillir: skipta yfir á þessa rás?",
     "Timeshift: one minute back": "Fara eina mínútu til baka",
@@ -1085,6 +1088,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Breyta aðdráttarham",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Stillingar fyrir Top-Tv",
+    "Torrent source limit reached.":
+        "Hámarksfjölda torrent-gjafa hefur verið náð.",
     "Touchscreen locked": "Snertiskjár læstur",
     "Touchscreen unlocked": "Snertiskjár aflæstur",
     "Trust this server for remote support":

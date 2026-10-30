@@ -378,6 +378,8 @@ var keyStrings = {
     Editor: "Editur",
     "Enable HTTP remote": "Ixgħel il-kontroll mill-bogħod HTTP",
     English: "Ingliż",
+    "Enter a magnet link or a torrent file URL.":
+        "Daħħal link magnet jew URL ta' fajl torrent.",
     "Enter a password (8 characters).": "Daħħal password (8 karattri).",
     "Enter a playlist URL to access this service.":
         "Daħħal URL ta’ lista tad-daqq biex taċċessa dan is-servizz.",
@@ -1099,6 +1101,8 @@ var keyStrings = {
         "Il-plejer ma jappoġġjax dan il-kmand mill-bogħod.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Din is-sessjoni sigura mhix disponibbli jew skadiet. Iftaħ sessjoni ġdida fuq it-TV u uża l-link sħiħa tagħha.",
+    "This source is already in the catalog.":
+        "Dan is-sors diġà jinsab fil-katalgu.",
     Timer: "Tajmer",
     "Timer: switch to channel?": "Tajmer: taqleb għal dan il-kanal?",
     "Timeshift: one minute back": "Mur minuta lura",
@@ -1116,6 +1120,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ibdel il-modalità taż-żum",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Issettjar ta’ Top-Tv",
+    "Torrent source limit reached.":
+        "Intlaħaq l-għadd massimu ta' sorsi tat-torrent.",
     "Touchscreen locked": "L-iskrin tal-mess imsakkar",
     "Touchscreen unlocked": "L-iskrin tal-mess mhux imsakkar",
     "Trust this server for remote support":

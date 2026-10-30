@@ -372,6 +372,8 @@ var keyStrings = {
     Editor: "Muokkain",
     "Enable HTTP remote": "Ota HTTP kaukosäädin käyttöön",
     English: "englanti",
+    "Enter a magnet link or a torrent file URL.":
+        "Anna magnet-linkki tai torrent-tiedoston URL-osoite.",
     "Enter a password (8 characters).": "Anna salasana (8 merkkiä).",
     "Enter a playlist URL to access this service.":
         "Käytä tätä palvelua kirjoittamalla soittolista URL.",
@@ -1079,6 +1081,7 @@ var keyStrings = {
         "Soitin ei tue tätä etäkomentoa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Tämä suojattu istunto ei ole käytettävissä tai se on vanhentunut. Avaa uusi istunto televisiossa ja käytä sen täydellistä linkkiä.",
+    "This source is already in the catalog.": "Tämä lähde on jo luettelossa.",
     Timer: "Ajastin",
     "Timer: switch to channel?": "Ajastin: vaihtaa tälle kanavalle?",
     "Timeshift: one minute back": "Ajansiirto: minuutti taaksepäin",
@@ -1095,6 +1098,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Vaihda zoomaustilaa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv asetukset",
+    "Torrent source limit reached.":
+        "Torrent-lähteiden enimmäismäärä on saavutettu.",
     "Touchscreen locked": "Kosketusnäyttö on lukittu",
     "Touchscreen unlocked": "Kosketusnäytön lukitus on avattu",
     "Trust this server for remote support":

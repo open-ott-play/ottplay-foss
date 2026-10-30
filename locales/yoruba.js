@@ -366,6 +366,8 @@ var keyStrings = {
     Editor: "Olóòtú ọ̀rọ̀",
     "Enable HTTP remote": "Mú ìṣàkóso HTTP láti ọ̀nà jíjìn ṣiṣẹ́",
     English: "Gẹ̀ẹ́sì",
+    "Enter a magnet link or a torrent file URL.":
+        "Tẹ ìjápọ̀ magnet tàbí URL fáìlì torrent sílẹ̀.",
     "Enter a password (8 characters).": "Tẹ ọ̀rọ̀ aṣínà (àmì 8).",
     "Enter a playlist URL to access this service.":
         "Tẹ URL àkójọ ìṣeré láti wọ iṣẹ́ yìí.",
@@ -1064,6 +1066,8 @@ var keyStrings = {
         "Ẹ̀rọ ìṣeré kò ṣe àtìlẹ́yìn fún àṣẹ ìṣàkóso láti ọ̀nà jíjìn yìí.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Igba aabo yii ko si tabi ti pari. Ṣii igba tuntun lori TV ki o lo ọna asopọ pipe rẹ.",
+    "This source is already in the catalog.":
+        "Orísun yìí ti wà nínú kátálọ́gù tẹ́lẹ̀.",
     Timer: "Aago ìṣètò",
     "Timer: switch to channel?": "Aago ìṣètò: yí sí ìkànnì yìí?",
     "Timeshift: one minute back": "Ìyípadà àkókò: ìṣẹ́jú kan sẹ́yìn",
@@ -1080,6 +1084,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yí ipò súnmọ́/súnjìnnà padà",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ètò Top-Tv",
+    "Torrent source limit reached.":
+        "A ti dé iye tó pọ̀ jù fún àwọn orísun torrent.",
     "Touchscreen locked": "A ti ti iboju ìfọwọ́kàn pa",
     "Touchscreen unlocked": "A ti ṣí iboju ìfọwọ́kàn",
     "Trust this server for remote support":

@@ -370,6 +370,8 @@ var keyStrings = {
     Editor: "Redigerare",
     "Enable HTTP remote": "Aktivera HTTP-fjärrkontroll",
     English: "Engelska",
+    "Enter a magnet link or a torrent file URL.":
+        "Ange en magnetlänk eller URL:en till en torrentfil.",
     "Enter a password (8 characters).": "Ange ett lösenord (8 tecken).",
     "Enter a playlist URL to access this service.":
         "Ange en spelliste-URL för att använda tjänsten.",
@@ -1079,6 +1081,8 @@ var keyStrings = {
         "Spelaren stöder inte detta fjärrkommando.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Denna säkra session är inte tillgänglig eller har löpt ut. Öppna en ny session på TV:n och använd hela länken till den.",
+    "This source is already in the catalog.":
+        "Den här källan finns redan i katalogen.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: byta kanal?",
     "Timeshift: one minute back": "Tidsförskjutning: en minut bakåt",
@@ -1096,6 +1100,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Byt zoomläge",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-inställningar",
+    "Torrent source limit reached.": "Maximalt antal torrentkällor har nåtts.",
     "Touchscreen locked": "Pekskärmen är låst",
     "Touchscreen unlocked": "Pekskärmen är upplåst",
     "Trust this server for remote support":

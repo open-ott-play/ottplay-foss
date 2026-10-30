@@ -101,6 +101,7 @@ const optionalProviderApis = {
     playlist: ["__ottPlaylistDrivers"],
     plex: ["__ottPlex", "__ottPlexAuth", "__ottPlexDriver"],
     stalker: ["__ottStalkerDriver"],
+    torrent: ["__ottTorrentDriver"],
     vportal: ["__ottVPortalDriver"],
     xtream: ["__ottXtreamMedia"],
 };
@@ -618,7 +619,7 @@ function assertPrivateRuntime(w, profile) {
             ["demo", "m3u", "offline", "plex", "stalker", "vportal", "xtream"]
         );
     } else {
-        assert.equal(w.__ottProviderDrivers.registry.ids().length, 51);
+        assert.equal(w.__ottProviderDrivers.registry.ids().length, 52);
     }
     assert(Array.isArray(w.__ottProviderDriverProfiles));
     assert.deepEqual(
@@ -2048,6 +2049,50 @@ function exerciseProviderRuntime(profile) {
     w.listCaption = w.listCaptionElement;
     w.listDetail = w.document.getElementById("listDetail");
     w.listFooter = w.document.getElementById("listFooter");
+    if (w.__ottProviderDrivers.registry.has("torrent")) {
+        // The native shell has already confirmed its owned companion. Load the
+        // real family asset from a saved catalog without network or media IO.
+        const companion = w.__ottMediaCompanion;
+        w.__ottMediaCompanion = {
+            nativePending: () => false,
+            providerAvailable: () => true,
+        };
+        try {
+            stored.set(
+                "torrentcfg",
+                JSON.stringify({
+                    entries: [
+                        {
+                            category: "Saved torrents",
+                            files: [
+                                { index: 3, length: 1024, name: "clip.mp4" },
+                            ],
+                            id: "artifact-source",
+                            source: "https://media.test/fixture.torrent",
+                            title: "Artifact torrent",
+                        },
+                    ],
+                    id: "artifact-catalog",
+                    name: "Torrent",
+                    schema: 1,
+                })
+            );
+            stored.set("ottplayprov", "torrent");
+            const requestCount = requests.length;
+            w.loadProv("torrent");
+            const driver = w.__ottActiveProviderDriver;
+            assert.equal(driver.id, "torrent");
+            assert.equal(driver.capabilities.mediaPlaylist, true);
+            assert.equal(driver.libraryReady(), true);
+            assert.equal(w.cList.length, 1);
+            assert.equal(requests.length, requestCount);
+            w.loadProv("demo");
+            assert.equal(driver.libraryReady(), false);
+        } finally {
+            if (companion) w.__ottMediaCompanion = companion;
+            else delete w.__ottMediaCompanion;
+        }
+    }
     for (const id of ["plex", "vportal"]) {
         stored.set("ottplayprov", id);
         w.loadProv(id);

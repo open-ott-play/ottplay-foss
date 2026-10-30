@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Teksteditor",
     "Enable HTTP remote": "HTTP-afstandsbediening inschakelen",
     English: "Engels",
+    "Enter a magnet link or a torrent file URL.":
+        "Voer een magnetlink of de URL van een torrentbestand in.",
     "Enter a password (8 characters).": "Voer een wachtwoord in (8 tekens).",
     "Enter a playlist URL to access this service.":
         "Voer een afspeellijst-URL in om deze dienst te gebruiken.",
@@ -1096,6 +1098,8 @@ var keyStrings = {
         "De speler ondersteunt deze opdracht op afstand niet.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Deze beveiligde sessie is niet beschikbaar of verlopen. Open een nieuwe sessie op de tv en gebruik de volledige link.",
+    "This source is already in the catalog.":
+        "Deze bron staat al in de catalogus.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: naar deze zender schakelen?",
     "Timeshift: one minute back": "Timeshift: één minuut terug",
@@ -1112,6 +1116,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Zoommodus wijzigen",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Instellingen voor Top-Tv",
+    "Torrent source limit reached.":
+        "Het maximumaantal torrentbronnen is bereikt.",
     "Touchscreen locked": "Aanraakscherm vergrendeld",
     "Touchscreen unlocked": "Aanraakscherm ontgrendeld",
     "Trust this server for remote support":

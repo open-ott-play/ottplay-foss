@@ -365,6 +365,8 @@ var keyStrings = {
     Editor: "편집자",
     "Enable HTTP remote": "HTTP 원격 활성화",
     English: "영어",
+    "Enter a magnet link or a torrent file URL.":
+        "마그넷 링크 또는 토렌트 파일 URL을 입력하세요.",
     "Enter a password (8 characters).": "비밀번호를 입력하세요(8자).",
     "Enter a playlist URL to access this service.":
         "이 서비스에 액세스하려면 재생 목록 URL를 입력하세요.",
@@ -1069,6 +1071,8 @@ var keyStrings = {
         "플레이어에서 이 원격 제어 명령을 지원하지 않습니다.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "이 보안 세션을 사용할 수 없거나 만료되었습니다. TV에서 새 세션을 열고 전체 링크를 사용하세요.",
+    "This source is already in the catalog.":
+        "이 소스는 이미 카탈로그에 있습니다.",
     Timer: "타이머",
     "Timer: switch to channel?": "타이머: 이 채널로 전환하시겠습니까?",
     "Timeshift: one minute back": "타임시프트: 1분 뒤로",
@@ -1085,6 +1089,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "줌 모드 변경",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv 설정",
+    "Torrent source limit reached.": "토렌트 소스 수가 한도에 도달했습니다.",
     "Touchscreen locked": "터치스크린이 잠겼습니다",
     "Touchscreen unlocked": "터치스크린 잠금이 해제되었습니다",
     "Trust this server for remote support":

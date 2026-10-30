@@ -375,6 +375,8 @@ var keyStrings = {
     Editor: "Urejevalnik",
     "Enable HTTP remote": "Omogoči daljinsko upravljanje HTTP",
     English: "angleščina",
+    "Enter a magnet link or a torrent file URL.":
+        "Vnesite povezavo magnet ali URL datoteke torrent.",
     "Enter a password (8 characters).": "Vnesite geslo (8 znakov).",
     "Enter a playlist URL to access this service.":
         "Za dostop do te storitve vnesite seznam predvajanja URL.",
@@ -1091,6 +1093,7 @@ var keyStrings = {
         "Predvajalnik ne podpira tega oddaljenega ukaza.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ta varna seja ni na voljo ali je potekla. Odprite novo sejo na televizorju in uporabite njeno celotno povezavo.",
+    "This source is already in the catalog.": "Ta vir je že v katalogu.",
     Timer: "Časovnik",
     "Timer: switch to channel?": "Časovnik: preklop na ta kanal?",
     "Timeshift: one minute back": "Časovni zamik: eno minuto nazaj",
@@ -1108,6 +1111,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Spremenite način povečave",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "nastavitve Top-Tv",
+    "Torrent source limit reached.":
+        "Doseženo je največje število virov torrentov.",
     "Touchscreen locked": "Zaslon na dotik je zaklenjen",
     "Touchscreen unlocked": "Zaslon na dotik je odklenjen",
     "Trust this server for remote support":

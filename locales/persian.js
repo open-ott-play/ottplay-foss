@@ -368,6 +368,8 @@ var keyStrings = {
     Editor: "ویرایشگر",
     "Enable HTTP remote": "کنترل از راه دور HTTP را فعال کنید",
     English: "انگلیسی",
+    "Enter a magnet link or a torrent file URL.":
+        "یک پیوند مگنت یا نشانی URL فایل تورنت را وارد کنید.",
     "Enter a password (8 characters).": "یک رمز عبور (8 کاراکتر) وارد کنید.",
     "Enter a playlist URL to access this service.":
         "یک لیست پخش URL برای دسترسی به این سرویس وارد کنید.",
@@ -1076,6 +1078,8 @@ var keyStrings = {
         "پخش‌کننده از این فرمان کنترل از راه دور پشتیبانی نمی‌کند.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "این جلسه امن در دسترس نیست یا منقضی شده است. یک جلسه جدید در تلویزیون باز کنید و از لینک کامل آن استفاده کنید.",
+    "This source is already in the catalog.":
+        "این منبع از قبل در فهرست موجود است.",
     Timer: "تایمر",
     "Timer: switch to channel?": "تایمر: به این کانال تغییر دهید؟",
     "Timeshift: one minute back": "بازگشت یک دقیقه به عقب",
@@ -1092,6 +1096,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "تغییر حالت زوم",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "تنظیمات Top-Tv",
+    "Torrent source limit reached.":
+        "تعداد منابع تورنت به حداکثر مجاز رسیده است.",
     "Touchscreen locked": "صفحه لمسی قفل شد",
     "Touchscreen unlocked": "قفل صفحه لمسی باز شد",
     "Trust this server for remote support":

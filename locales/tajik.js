@@ -377,6 +377,8 @@ var keyStrings = {
     Editor: "Муҳаррир",
     "Enable HTTP remote": "Идоракунии дурдасти HTTP-ро фаъол кунед",
     English: "Англисӣ",
+    "Enter a magnet link or a torrent file URL.":
+        "Пайванди магнитӣ ё URL-и файли торрентро ворид кунед.",
     "Enter a password (8 characters).": "Гузарвожаро ворид кунед (8 аломат).",
     "Enter a playlist URL to access this service.":
         "Барои дастрасӣ ба ин хидмат URL-и рӯйхати пахшро ворид кунед.",
@@ -1086,6 +1088,8 @@ var keyStrings = {
         "Плеер ин фармони идоракунии дурдастро дастгирӣ намекунад.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ин сеанси бехатар дастнорас аст ё мӯҳлати гузаштааст. Дар телевизион сеанси нав кушоед ва истиноди пурраи онро истифода баред.",
+    "This source is already in the catalog.":
+        "Ин манбаъ аллакай дар феҳрист ҳаст.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: ба ин канал гузарем?",
     "Timeshift: one minute back": "Гузариши вақт: як дақиқа ақиб",
@@ -1103,6 +1107,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ҳолати калонкуниро иваз кунед",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Танзимоти Top-Tv",
+    "Torrent source limit reached.":
+        "Шумораи манбаъҳои торрент ба ҳадди аксар расид.",
     "Touchscreen locked": "Экрани ламсӣ қулф шуд",
     "Touchscreen unlocked": "Қулфи экрани ламсӣ кушода шуд",
     "Trust this server for remote support":

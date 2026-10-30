@@ -39,8 +39,12 @@
   },
   "reserve": {
     "entryGzipBytes": 33,
-    "explanation": "Same-runtime entry delta is 515 bytes compressed; 33 bytes accommodates native transform compression variation. Includes cold-start static discovery and cancellable remote-provider capability waiting (+505 raw, +107 web/+108 native gzip over the first provider build). Companion retains 3 bytes of compression headroom. Existing component headroom is preserved.",
-    "companionGzipBytes": 3
+    "explanation": "Same-runtime entry delta is 515 bytes compressed; 33 bytes accommodates native transform compression variation. Includes cold-start static discovery and cancellable remote-provider capability waiting (+505 raw, +107 web/+108 native gzip over the first provider build). Companion retains 3 bytes of compression headroom. Reusing translated catalog labels saves 149 raw and 46 gzip bytes in the Torrent asset; the existing limits are unchanged.",
+    "companionGzipBytes": 3,
+    "catalog": {
+      "bytes": 149,
+      "gzipBytes": 46
+    }
   },
   "beforeCaps": {
     "entry": {
@@ -333,13 +337,13 @@
         "sha256": null
       },
       "after": {
-        "bytes": 8426,
-        "gzipBytes": 3348,
-        "sha256": "c3e10244491415ead1f10d7df572e7d01c2ab662fd6a7d68dbf307c2809ce414"
+        "bytes": 8277,
+        "gzipBytes": 3302,
+        "sha256": "fcbd06e56a955ef5b17954a60496b5da660b425e341fd64d540d145f12106544"
       },
       "delta": {
-        "bytes": 8426,
-        "gzipBytes": 3348
+        "bytes": 8277,
+        "gzipBytes": 3302
       }
     },
     {
@@ -514,7 +518,7 @@
     }
   ],
   "delta": {
-    "bytes": 8506,
-    "gzipBytes": 2793
+    "bytes": 8357,
+    "gzipBytes": 2747
   }
 }

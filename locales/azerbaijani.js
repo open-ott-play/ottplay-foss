@@ -372,6 +372,8 @@ var keyStrings = {
     Editor: "Redaktor",
     "Enable HTTP remote": "HTTP uzaqdan idarəetməni aktivləşdir",
     English: "İngiliscə",
+    "Enter a magnet link or a torrent file URL.":
+        "Maqnit keçidi və ya torrent faylının URL ünvanını daxil edin.",
     "Enter a password (8 characters).": "Şifrə daxil edin (8 simvol).",
     "Enter a playlist URL to access this service.":
         "Bu xidmətə daxil olmaq üçün pleylist URL-i daxil edin.",
@@ -1083,6 +1085,7 @@ var keyStrings = {
         "Bu uzaqdan idarəetmə əmri pleyer tərəfindən dəstəklənmir.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Bu təhlükəsiz seans mövcud deyil və ya müddəti bitib. Televiziyada yeni sessiya açın və onun tam linkindən istifadə edin.",
+    "This source is already in the catalog.": "Bu mənbə artıq kataloqdadır.",
     Timer: "Taymer",
     "Timer: switch to channel?": "Taymer: kanala keçilsin?",
     "Timeshift: one minute back": "Vaxt sürüşməsi: bir dəqiqə geri",
@@ -1099,6 +1102,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Miqyas rejimini dəyiş",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Torrent source limit reached.":
+        "Torrent mənbələrinin say həddinə çatılıb.",
     "Touchscreen locked": "Toxunma ekranı kilidləndi",
     "Touchscreen unlocked": "Toxunma ekranının kilidi açıldı",
     "Trust this server for remote support":

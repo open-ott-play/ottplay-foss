@@ -379,6 +379,8 @@ var keyStrings = {
     Editor: "Umhleli",
     "Enable HTTP remote": "Vula ulawulo olukude lwe-HTTP",
     English: "IsiNgesi",
+    "Enter a magnet link or a torrent file URL.":
+        "Faka ikhonkco le-magnet okanye i-URL yefayile ye-torrent.",
     "Enter a password (8 characters).":
         "Faka igama lokugqitha (oonobumba abasi-8).",
     "Enter a playlist URL to access this service.":
@@ -1106,6 +1108,8 @@ var keyStrings = {
         "Umdlali wemidiya akawuxhasi lo myalelo wolawulo olukude.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Le seshini ekhuselekileyo ayifumaneki okanye iphelelwe lixesha. Vula iseshoni entsha kwiTV kwaye usebenzise ikhonkco elipheleleyo.",
+    "This source is already in the catalog.":
+        "Lo mthombo sele ukho kwikhathalogu.",
     Timer: "Isibali-xesha",
     "Timer: switch to channel?": "Isibali-xesha: tshintshela kweli jelo?",
     "Timeshift: one minute back": "Ukushenxisa ixesha: umzuzu omnye umva",
@@ -1124,6 +1128,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Tshintsha imo yokwandisa umfanekiso",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Iisetingi ze-Top-Tv",
+    "Torrent source limit reached.":
+        "Kufikelelwe kwelona nani liphezulu lemithombo ye-torrent.",
     "Touchscreen locked": "Isikrini sokuchukumisa sitshixiwe",
     "Touchscreen unlocked": "Isitshixo sesikrini sokuchukumisa sivuliwe",
     "Trust this server for remote support": "Themba le seva ngenkxaso ekude",

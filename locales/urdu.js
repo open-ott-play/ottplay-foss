@@ -375,6 +375,8 @@ var keyStrings = {
     Editor: "ایڈیٹر",
     "Enable HTTP remote": "HTTP ریموٹ کو فعال کریں۔",
     English: "انگریزی",
+    "Enter a magnet link or a torrent file URL.":
+        "میگنیٹ لنک یا ٹورینٹ فائل کا URL درج کریں۔",
     "Enter a password (8 characters).": "پاس ورڈ درج کریں (8 حروف)۔",
     "Enter a playlist URL to access this service.":
         "اس سروس تک رسائی کے لیے پلے لسٹ URL درج کریں۔",
@@ -1083,6 +1085,8 @@ var keyStrings = {
         "پلیئر اس ریموٹ کنٹرول کمانڈ کی معاونت نہیں کرتا۔",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "یہ محفوظ سیشن دستیاب نہیں ہے یا ختم ہو چکا ہے۔ ٹی وی پر نیا سیشن کھولیں اور اس کا مکمل لنک استعمال کریں۔",
+    "This source is already in the catalog.":
+        "یہ ذریعہ پہلے ہی کیٹلاگ میں موجود ہے۔",
     Timer: "ٹائمر",
     "Timer: switch to channel?": "ٹائمر: اس چینل پر جائیں؟",
     "Timeshift: one minute back": "ٹائم شفٹ: ایک منٹ پیچھے",
@@ -1099,6 +1103,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "زوم موڈ تبدیل کریں۔",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ترتیبات",
+    "Torrent source limit reached.":
+        "ٹورینٹ ذرائع کی زیادہ سے زیادہ حد پوری ہو گئی ہے۔",
     "Touchscreen locked": "ٹچ اسکرین لاک ہے",
     "Touchscreen unlocked": "ٹچ اسکرین کا لاک کھل گیا ہے",
     "Trust this server for remote support":

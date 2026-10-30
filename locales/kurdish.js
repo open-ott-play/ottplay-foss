@@ -374,6 +374,8 @@ var keyStrings = {
     Editor: "Edîtor",
     "Enable HTTP remote": "HTTP ji dûr ve çalak bike",
     English: "Îngilîzî",
+    "Enter a magnet link or a torrent file URL.":
+        "Girêdaneke magnet an URL ya pelekî torrentê binivîse.",
     "Enter a password (8 characters).": "Şîfreyek (8 tîpan) binivîse.",
     "Enter a playlist URL to access this service.":
         "Ji bo gihîştina vê xizmetê URL-ya lîsteya lêdanê binivîsin.",
@@ -1087,6 +1089,8 @@ var keyStrings = {
         "Ev fermana kontrola dûr ji aliyê lêkerê ve nayê piştgirîkirin.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ev danişîna ewle ne berdest e an qediya ye. Li ser TV-yê rûniştinek nû vekin û girêdana wê ya bêkêmasî bikar bînin.",
+    "This source is already in the catalog.":
+        "Ev çavkanî jixwe di katalogê de ye.",
     Timer: "Demjimêr",
     "Timer: switch to channel?": "Demjimêr: derbasî vê kanalê bibe?",
     "Timeshift: one minute back": "Vegera demê: deqeyek paşve",
@@ -1105,6 +1109,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Moda mezinkirinê biguherîne",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Mîhengên Top-Tv",
+    "Torrent source limit reached.":
+        "Hejmara çavkaniyên torrentê gihîştiye sînorê xwe.",
     "Touchscreen locked": "Ekrana destdanê hat kilîtkirin",
     "Touchscreen unlocked": "Kilîda ekrana destdanê hat vekirin",
     "Trust this server for remote support":

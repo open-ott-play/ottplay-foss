@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Kihariri",
     "Enable HTTP remote": "Washa HTTP kidhibiti mbali",
     English: "Kiingereza",
+    "Enter a magnet link or a torrent file URL.":
+        "Weka kiungo cha magnet au URL ya faili la torrent.",
     "Enter a password (8 characters).": "Weka nenosiri (herufi 8).",
     "Enter a playlist URL to access this service.":
         "Weka orodha ya kucheza URL ili kufikia huduma hii.",
@@ -1094,6 +1096,8 @@ var keyStrings = {
         "Kichezaji hakitumii amri hii ya udhibiti wa mbali.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Kipindi hiki salama hakipatikani au muda wake umekwisha. Fungua kipindi kipya kwenye TV na utumie kiungo chake kamili.",
+    "This source is already in the catalog.":
+        "Chanzo hiki tayari kipo kwenye katalogi.",
     Timer: "Kipima muda",
     "Timer: switch to channel?":
         "Kipima muda: ungependa kubadilisha hadi kituo hiki?",
@@ -1112,6 +1116,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Badilisha modi ya kukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv mipangilio",
+    "Torrent source limit reached.":
+        "Idadi ya juu zaidi ya vyanzo vya torrent imefikiwa.",
     "Touchscreen locked": "Skrini ya mguso imefungwa",
     "Touchscreen unlocked": "Skrini ya mguso imefunguliwa",
     "Trust this server for remote support":

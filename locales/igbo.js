@@ -366,6 +366,8 @@ var keyStrings = {
     Editor: "Onye ndezi ederede",
     "Enable HTTP remote": "Gbanye njikwa HTTP dị anya",
     English: "Bekee",
+    "Enter a magnet link or a torrent file URL.":
+        "Tinye njikọ magnet ma ọ bụ URL faịlụ torrent.",
     "Enter a password (8 characters).": "Tinye okwuntughe (mkpụrụedemede 8).",
     "Enter a playlist URL to access this service.":
         "Tinye URL ndepụta ọkpụkpọ ka ị nweta ọrụ a.",
@@ -1068,6 +1070,7 @@ var keyStrings = {
         "Ihe ọkpụkpọ anaghị akwado iwu njikwa dị anya a.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Nnọkọ echekwara a adịghị ma ọ bụ oge ya agwụla. Mepee nnọkọ ọhụrụ na TV wee jiri njikọ ya zuru ezu.",
+    "This source is already in the catalog.": "Isi iyi a adịlarị na katalọgụ.",
     Timer: "Oge ngụkọta",
     "Timer: switch to channel?": "Oge ngụkọta: gbanwee na ọwa a?",
     "Timeshift: one minute back": "Mgbanwe oge: otu nkeji azụ",
@@ -1085,6 +1088,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Gbanwee ọnọdụ mbugharị",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ntọala Top-Tv",
+    "Torrent source limit reached.": "Eruola oke ọnụọgụ isi iyi torrent.",
     "Touchscreen locked": "Akpọchiela ihuenyo mmetụ",
     "Touchscreen unlocked": "Emegheela mkpọchi ihuenyo mmetụ",
     "Trust this server for remote support":
