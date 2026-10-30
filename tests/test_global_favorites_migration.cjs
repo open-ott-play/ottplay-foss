@@ -4,6 +4,7 @@ const assert = require("node:assert/strict"),
     vm = require("node:vm"),
     ts = require("typescript");
 const load = require("./helpers/private-runtime.cjs");
+const { actualModule } = require("./helpers/global-favorites-main-ports.cjs");
 const context = vm.createContext({ console, JSON });
 context.window = context;
 load(context, "src/media/journal.ts");
@@ -81,7 +82,10 @@ function moduleAt(file, deps) {
             Promise,
             require: (name) =>
                 name === "./global-favorites-providers"
-                    ? moduleAt("src/media/global-favorites-providers.ts", {})
+                    ? actualModule(
+                          "src/media/global-favorites-providers.ts",
+                          {}
+                      )
                     : deps[name],
             String,
             window: {},

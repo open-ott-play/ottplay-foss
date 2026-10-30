@@ -37,7 +37,7 @@ export function torrentId(value: any): boolean {
         /^[A-Za-z0-9_-]{1,64}(?![\s\S])/.test(value)
     );
 }
-function text(value: any, units: number, bytes: number): boolean {
+function torrentCatalogText(value: any, units: number, bytes: number): boolean {
     if (
         typeof value !== "string" ||
         !value ||
@@ -52,11 +52,12 @@ function text(value: any, units: number, bytes: number): boolean {
         return false;
     }
 }
-function validLabel(value: any): boolean {
-    return text(value, 256, 1024) && value === value.trim();
+function torrentCatalogLabel(value: any): boolean {
+    return torrentCatalogText(value, 256, 1024) && value === value.trim();
 }
 export function torrentSource(value: any): boolean {
-    if (!text(value, 8192, 8192) || /\s/.test(value)) return false;
+    if (!torrentCatalogText(value, 8192, 8192) || /\s/.test(value))
+        return false;
     if (/^magnet:\?/i.test(value)) return true;
     try {
         var url = new URL(value);
@@ -82,7 +83,7 @@ export function torrentFiles(value: any): any[] | null {
             !torrentInteger(file.index, 999999999) ||
             seen[file.index] ||
             !torrentInteger(file.length, 9007199254740991) ||
-            !text(file.name, 4096, 16384) ||
+            !torrentCatalogText(file.name, 4096, 16384) ||
             !/\.(mp4|m4v|mkv|webm|mov|avi|ts|m2ts|mpg|mpeg|ogv)$/i.test(
                 file.name
             )
@@ -99,7 +100,7 @@ export function normalizeTorrentCatalog(value: any): any | null {
         !torrentKeys(value, ["schema", "id", "name", "entries"]) ||
         value.schema !== 1 ||
         !torrentId(value.id) ||
-        !validLabel(value.name) ||
+        !torrentCatalogLabel(value.name) ||
         !Array.isArray(value.entries) ||
         value.entries.length > 256
     )
@@ -119,8 +120,8 @@ export function normalizeTorrentCatalog(value: any): any | null {
             ]) ||
             !torrentId(entry.id) ||
             seen[entry.id] ||
-            !validLabel(entry.title) ||
-            !validLabel(entry.category) ||
+            !torrentCatalogLabel(entry.title) ||
+            !torrentCatalogLabel(entry.category) ||
             !torrentSource(entry.source)
         )
             return null;

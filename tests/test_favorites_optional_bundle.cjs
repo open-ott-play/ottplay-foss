@@ -70,6 +70,7 @@ test("shared-scope guard rejects function and storage-key collisions", () => {
 });
 const modules = [
     "commands/favorites-document-json",
+    "provider/torrent-catalog-codec",
     "commands/favorites-transfer",
     "commands/favorites-recovery",
     "settings/favorites-bindings",
@@ -105,7 +106,7 @@ test("production registration keeps exact optional graph and main-owned dispatch
         CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"],
         modules.map((name) => "build/" + name + ".js")
     );
-    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 30);
+    assert.equal(CLASSIC_OPTIONAL_BUNDLES["favorites-transfer"].length, 31);
     assert(
         CLASSIC_MAIN_MODULES.includes(
             "build/commands/remote-favorites-transfer.js"
@@ -156,6 +157,7 @@ test("optional favorites asset links without entry storage and loads without tou
             set(target, key, value) {
                 assert(
                     /^__ottFavorites/.test(String(key)) ||
+                        key === "__ottTorrentCodec" ||
                         key === "__ottGlobalFavoritesFactory",
                     "Unexpected global export " + String(key)
                 );
@@ -177,6 +179,8 @@ test("optional favorites asset links without entry storage and loads without tou
             typeof published.__ottGlobalFavoritesFactory.create,
             "function"
         );
+        assert.equal(typeof published.__ottTorrentCodec.parse, "function");
+        assert.equal(typeof published.__ottTorrentCodec.encode, "function");
         assert.equal(
             fs.existsSync(path.join(temporary, "build/storage/index.js")),
             false

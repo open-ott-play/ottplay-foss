@@ -1,5 +1,6 @@
 "use strict";
 const {
+    actualModule,
     createMainPorts,
 } = require("./helpers/global-favorites-main-ports.cjs");
 const assert = require("node:assert/strict"),
@@ -40,7 +41,7 @@ function moduleAt(file, deps = {}, window = {}) {
 }
 const identities = moduleAt("src/media/global-favorites-identities.ts"),
     selectors = moduleAt("src/settings/global-favorites-bindings.ts"),
-    builtins = moduleAt("src/media/global-favorites-providers.ts");
+    builtins = actualModule("src/media/global-favorites-providers.ts", {});
 function actualPortal(w) {
     const ast = ts.createSourceFile(
             "helpers.ts",

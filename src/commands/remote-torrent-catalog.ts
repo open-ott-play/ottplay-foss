@@ -7,7 +7,7 @@ import { captureFavoritesPhysicalStorage } from "../storage/index";
 import { loadRemoteFeature } from "./remote-feature";
 import { remotePlayerInfo } from "./remote-restart";
 
-function instance(w: any): any {
+function torrentCatalogInstance(w: any): any {
     var runtime = remotePlayerInfo(w).runtime,
         cached = w.__ottRemoteTorrentCatalog;
     if (cached && cached.runtime !== runtime) {
@@ -95,7 +95,7 @@ export function executeRemoteTorrentCatalog(
             failure("unsupported");
             return;
         }
-        var service = instance(w);
+        var service = torrentCatalogInstance(w);
         if (!service) {
             failure("unsupported");
             return;
@@ -131,5 +131,5 @@ export function executeRemoteTorrentCatalog(
     };
 }
 (window as any).__ottTorrentCatalogAccess = function () {
-    return instance(window);
+    return torrentCatalogInstance(window);
 };

@@ -148,10 +148,10 @@ try {
         rpcAllowance[rpcKinds[component.name]] = component.delta;
     }
     assert.deepEqual(TORRENT_PROVIDER_ALLOWANCE, {
-        catalog: { bytes: 33177, gzipBytes: 11259 },
+        catalog: { bytes: 33485, gzipBytes: 11308 },
         companion: { bytes: -3377, gzipBytes: -1358 },
-        entry: { bytes: 4530, gzipBytes: 1079 },
-        favorites: { bytes: 4157, gzipBytes: 1117 },
+        entry: { bytes: 4572, gzipBytes: 1086 },
+        favorites: { bytes: 4249, gzipBytes: 1121 },
         settings: { bytes: 263, gzipBytes: 102 },
     });
     for (const kind of Object.keys(TORRENT_PROVIDER_ALLOWANCE)) {

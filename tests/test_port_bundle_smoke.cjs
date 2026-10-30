@@ -2273,7 +2273,131 @@ function exerciseScreenRuntime(profile) {
     );
 }
 
+async function exerciseTorrentCatalogBundle() {
+    for (const order of [
+        ["favorites", "torrent"],
+        ["torrent", "favorites"],
+    ]) {
+        const w = fixture("modern");
+        w.crypto.subtle = webcrypto.subtle;
+        w.btoa = (value) => Buffer.from(value, "binary").toString("base64");
+        w.atob = (value) => Buffer.from(value, "base64").toString("binary");
+        w.navigator.locks = {
+            request: (_name, _options, work) => Promise.resolve(work({})),
+        };
+        vm.runInContext(bundle, w, { filename: bundlePath, timeout: 5000 });
+        let starts = 0;
+        w.__ottMediaCompanion = {
+            ensure() {
+                starts++;
+                throw new Error("Catalog reads must not start the service");
+            },
+            nativePending: () => false,
+            providerAvailable: () => true,
+        };
+        const favoriteFile = path.join(
+            path.dirname(bundlePath),
+            "favorites-transfer.js"
+        );
+        for (const asset of order) {
+            if (asset === "torrent") loadProviderBundle(w, "torrent");
+            else
+                vm.runInContext(fs.readFileSync(favoriteFile, "utf8"), w, {
+                    filename: favoriteFile,
+                    timeout: 5000,
+                });
+        }
+        const runtime = w.remotePlayerInfo(w).runtime;
+        const request = (params) =>
+            new Promise((resolve, reject) => {
+                try {
+                    w.executeRemoteRequest(
+                        {
+                            action: "torrent_catalog",
+                            params: { runtime, ...params },
+                        },
+                        resolve
+                    );
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        const empty = await request({ op: "read" });
+        assert.equal(empty.status, "ok", JSON.stringify(empty));
+        assert.equal(empty.data.snapshot.size_bytes, 4);
+        const chunk = await request({
+            max_bytes: 6144,
+            offset: 0,
+            op: "read_chunk",
+            snapshot_id: empty.data.snapshot.id,
+        });
+        assert.equal(chunk.status, "ok", JSON.stringify(chunk));
+        assert.equal(
+            Buffer.from(chunk.data.data_b64, "base64").toString(),
+            "null"
+        );
+        const service = w.__ottTorrentCatalogAccess();
+        assert.equal(
+            typeof service.save,
+            "function",
+            "UI access must return the Torrent service, not Favorites"
+        );
+        const value = {
+            entries: [],
+            id: "bundle-catalog",
+            name: "Torrent",
+            schema: 1,
+        };
+        assert.equal(await service.save(value, null, () => true), true);
+        assert.deepEqual(
+            JSON.parse(w.localStorage.getItem("torrentcfg")),
+            value
+        );
+        const saved = await request({ op: "read" });
+        assert.equal(saved.status, "ok", JSON.stringify(saved));
+        assert.notEqual(
+            saved.data.snapshot.revision,
+            empty.data.snapshot.revision
+        );
+        const unicode = { ...value, name: "Каталог".repeat(35) };
+        assert.ok(
+            unicode.name.length <= 256 && Buffer.byteLength(unicode.name) > 256
+        );
+        assert.equal(
+            await service.save(
+                unicode,
+                w.localStorage.getItem("torrentcfg"),
+                () => true
+            ),
+            true
+        );
+        const retained = w.localStorage.getItem("torrentcfg");
+        for (const name of ["", "\ud800"]) {
+            assert.equal(
+                await service.save({ ...unicode, name }, retained, () => true),
+                false
+            );
+            assert.equal(w.localStorage.getItem("torrentcfg"), retained);
+        }
+        const malformedId = await request({
+            max_bytes: 6144,
+            offset: 0,
+            op: "read_chunk",
+            snapshot_id: empty.data.snapshot.id + "\n",
+        });
+        assert.equal(malformedId.data.reason, "invalid_request");
+        assert.equal(starts, 0);
+        service.dispose();
+        console.log(
+            "PASS actual bundled Torrent RPC: empty read/chunk and UI save, " +
+                order.join(" then ")
+        );
+    }
+}
+
 async function main() {
+    if (!playDistribution) await exerciseTorrentCatalogBundle();
+    if (process.argv.includes("--torrent-catalog")) return;
     // The bundle reassigns ott_device after HTML boot has already detected it.
     // Exercise that assignment with the webOS TV 25 UA published by LG:
     // https://webostv.developer.lge.com/develop/specifications/web-api-and-web-engine

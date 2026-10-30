@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const { test } = require("node:test");
+const { actualModule } = require("./helpers/global-favorites-main-ports.cjs");
 
 function moduleAt(file, deps = {}) {
     const exports = {};
@@ -27,8 +28,9 @@ function moduleAt(file, deps = {}) {
 const identities = moduleAt("src/media/global-favorites-identities.ts");
 const capture = moduleAt("src/media/global-favorites-capture.ts", {
     "./global-favorites-identities": identities,
-    "./global-favorites-providers": moduleAt(
-        "src/media/global-favorites-providers.ts"
+    "./global-favorites-providers": actualModule(
+        "src/media/global-favorites-providers.ts",
+        {}
     ),
 }).captureGlobalFavorite;
 const codec = moduleAt(

@@ -621,10 +621,10 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
 // Catalog RPC deltas preserve existing headroom; parser and engine stay in lazy assets.
 // Evidence: docs/evidence/torrent-catalog-rpc-size-20261030.json.
 const TORRENT_PROVIDER_ALLOWANCE = Object.freeze({
-    catalog: Object.freeze({ bytes: 8426 + 24751, gzipBytes: 3348 + 7911 }),
+    catalog: Object.freeze({ bytes: 8426 + 25059, gzipBytes: 3348 + 7960 }),
     companion: Object.freeze({ bytes: -3663 + 286, gzipBytes: -1439 + 81 }),
-    entry: Object.freeze({ bytes: 2286 + 2244, gzipBytes: 548 + 531 }),
-    favorites: Object.freeze({ bytes: 1194 + 2963, gzipBytes: 270 + 847 }),
+    entry: Object.freeze({ bytes: 2286 + 2286, gzipBytes: 548 + 538 }),
+    favorites: Object.freeze({ bytes: 1194 + 3055, gzipBytes: 270 + 851 }),
     settings: Object.freeze({ bytes: 263, gzipBytes: 102 }),
 });
 const BUDGET = Object.freeze({

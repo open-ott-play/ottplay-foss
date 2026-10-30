@@ -50,12 +50,12 @@ export interface TorrentCatalogTransport {
     deadlineAt?: number;
     startedAt?: number;
 }
-const UUID =
+const TORRENT_OPERATION_UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
-const TOKEN = /^[A-Za-z0-9_.:-]{1,128}(?![\s\S])/;
-const TTL = 600000;
-const MAX_MEMORY = 33554432;
-const REASONS =
+const TORRENT_REVISION_TOKEN = /^[A-Za-z0-9_.:-]{1,128}(?![\s\S])/;
+const TORRENT_IDLE_MS = 600000;
+const TORRENT_MEMORY_BYTES = 33554432;
+const TORRENT_FAILURE_REASONS =
     "invalid_request unsupported policy_restricted runtime_changed source_changed revision_conflict snapshot_not_found operation_not_found operation_conflict busy expired cancelled metadata_failed metadata_timeout no_files invalid_document document_too_large hash_mismatch offset_mismatch incomplete catalog_mismatch entry_conflict entry_not_found file_not_found storage_failed effect_failed".split(
         " "
     );
@@ -78,10 +78,10 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
         return JSON.parse(JSON.stringify(value));
     }
     function uuid(value: any): boolean {
-        return typeof value === "string" && UUID.test(value);
+        return typeof value === "string" && TORRENT_OPERATION_UUID.test(value);
     }
     function token(value: any): boolean {
-        return typeof value === "string" && TOKEN.test(value);
+        return typeof value === "string" && TORRENT_REVISION_TOKEN.test(value);
     }
     function terminal(operation: any): boolean {
         return ["pending", "uploading"].indexOf(operation.state) < 0;
@@ -139,13 +139,19 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
     function sweep(): void {
         var now = ports.now();
         operations = operations.filter(function (operation) {
-            if (now - operation.touched < TTL && now >= operation.touched)
+            if (
+                now - operation.touched < TORRENT_IDLE_MS &&
+                now >= operation.touched
+            )
                 return true;
             finish(operation, "cancelled");
             return false;
         });
         snapshots = snapshots.filter(function (snapshot) {
-            if (now - snapshot.touched < TTL && now >= snapshot.touched)
+            if (
+                now - snapshot.touched < TORRENT_IDLE_MS &&
+                now >= snapshot.touched
+            )
                 return true;
             memory -= snapshot.bytes.length;
             return false;
@@ -225,7 +231,7 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
             return existing;
         }
         if (
-            memory + bytes.length > MAX_MEMORY ||
+            memory + bytes.length > TORRENT_MEMORY_BYTES ||
             snapshots.length + pendingSnapshots >= 64
         )
             fail("busy");
@@ -359,7 +365,7 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
                 finish(
                     operation,
                     "failed",
-                    REASONS.indexOf(reason || "") >= 0
+                    TORRENT_FAILURE_REASONS.indexOf(reason || "") >= 0
                         ? reason!
                         : "metadata_failed"
                 );
@@ -402,7 +408,7 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
                         finish(
                             operation,
                             "failed",
-                            REASONS.indexOf(error.message) >= 0
+                            TORRENT_FAILURE_REASONS.indexOf(error.message) >= 0
                                 ? error.message
                                 : "metadata_failed"
                         );
@@ -548,7 +554,10 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
                 if (saved.revision !== params.revision)
                     fail("revision_conflict");
                 var boundaryBytes = Math.ceil((params.size_bytes + 1) / 8);
-                if (memory + params.size_bytes + boundaryBytes > MAX_MEMORY)
+                if (
+                    memory + params.size_bytes + boundaryBytes >
+                    TORRENT_MEMORY_BYTES
+                )
                     fail("busy");
                 operation = create(params.operation_id, "write", signature);
                 operation.before = saved.raw;
@@ -811,7 +820,9 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
             finish(
                 operation,
                 "failed",
-                REASONS.indexOf(reason) >= 0 ? reason : "storage_failed"
+                TORRENT_FAILURE_REASONS.indexOf(reason) >= 0
+                    ? reason
+                    : "storage_failed"
             );
             return { operation: operationView(operation) };
         } finally {
@@ -854,7 +865,7 @@ export function createTorrentCatalogRuntime(ports: TorrentCatalogPorts) {
                 return Object.assign(common, {
                     error: "Torrent catalog request failed.",
                     reason:
-                        REASONS.indexOf(reason) >= 0
+                        TORRENT_FAILURE_REASONS.indexOf(reason) >= 0
                             ? reason
                             : "storage_failed",
                 });
