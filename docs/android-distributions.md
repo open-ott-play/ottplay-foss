@@ -1,5 +1,9 @@
 # Capacitor Android distribution and updates
 
+Setting up a new projector? Start with the
+[complete English projector setup guide](android-projector-setup.md), including
+devices with a custom launcher, no usable Play Store, or no USB debugging port.
+
 `ottplay-foss` publishes the **Full Capacitor APK** alongside its web, desktop and
 iOS artifacts. It contains the current shared interface, translations, provider
 profiles, remote commands and native media bridges. Two APKs share the same Full

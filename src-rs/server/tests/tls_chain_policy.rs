@@ -1,7 +1,7 @@
 //! Real binary startup/HTTPS checks with ephemeral, locally generated certificates.
 use std::{
     fs,
-    io::Write,
+    io::{Read, Write},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -131,7 +131,7 @@ impl Drop for Server {
     }
 }
 
-fn run_server(fixture: &Fixture, accepted: bool) {
+fn run_server(fixture: &Fixture, accepted: bool, case: &str) {
     let http = TcpListener::bind("127.0.0.1:0").unwrap();
     let https = TcpListener::bind("127.0.0.1:0").unwrap();
     let http_port = http.local_addr().unwrap().port();
@@ -194,7 +194,7 @@ fn run_server(fixture: &Fixture, accepted: bool) {
                 .lines()
                 .any(|line| line == readiness)
         {
-            verified_health(&fixture.0, tls_port);
+            verified_health(&fixture.0, tls_port, case);
             return;
         }
         assert!(
@@ -211,7 +211,41 @@ fn run_server(fixture: &Fixture, accepted: bool) {
     }
 }
 
-fn verified_health(path: &Path, port: u16) {
+fn read_prefix(path: &Path, limit: u64) -> std::io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    fs::File::open(path)?.take(limit).read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+fn client_diagnostics(path: &Path, case: &str) -> String {
+    let stdout_path = path.join("client.stdout.log");
+    let stdout = match (fs::metadata(&stdout_path), read_prefix(&stdout_path, 12)) {
+        (Ok(metadata), Ok(prefix)) => format!(
+            "{} bytes; HTTP 200 prefix: {}",
+            metadata.len(),
+            prefix.starts_with(b"HTTP/1.1 200")
+        ),
+        (Err(error), _) | (_, Err(error)) => format!("unavailable: {error}"),
+    };
+    let excerpt = |name: &str, limit: u64| match read_prefix(&path.join(name), limit) {
+        Ok(bytes) => {
+            let text = String::from_utf8_lossy(&bytes);
+            // Starting at byte zero prevents exposing a PEM block's middle.
+            text.split("-----BEGIN ").next().unwrap_or("").to_owned()
+        }
+        Err(error) => format!("unavailable: {error}"),
+    };
+    format!(
+        "fixture: {case}\nclient stdout: {stdout}\nclient stderr (up to 2048 bytes, before any PEM):\n{}\nserver log (up to 8192 bytes, before any PEM):\n{}",
+        excerpt("client.stderr.log", 2048),
+        excerpt("server.log", 8192)
+    )
+}
+
+fn verified_health(path: &Path, port: u16, case: &str) {
+    // Files cannot back up an unread pipe while the parent waits for exit.
+    let stdout = fs::File::create(path.join("client.stdout.log")).unwrap();
+    let stderr = fs::File::create(path.join("client.stderr.log")).unwrap();
     let mut client = Command::new("openssl")
         .args([
             "s_client",
@@ -226,8 +260,8 @@ fn verified_health(path: &Path, port: u16) {
         ])
         .current_dir(path)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(stdout)
+        .stderr(stderr)
         .spawn()
         .unwrap();
     client
@@ -241,26 +275,64 @@ fn verified_health(path: &Path, port: u16) {
         if Instant::now() >= deadline {
             let _ = client.kill();
             let _ = client.wait();
-            panic!(
-                "HTTPS client timeout; server log:\n{}",
-                fs::read_to_string(path.join("server.log")).unwrap()
-            );
+            panic!("HTTPS client timeout; {}", client_diagnostics(path, case));
         }
         thread::sleep(Duration::from_millis(10));
     }
-    let output = client.wait_with_output().unwrap();
+    let status = client.wait().unwrap();
+    let stdout = read_prefix(&path.join("client.stdout.log"), 12).unwrap();
     assert!(
-        output.status.success(),
-        "HTTPS verification failed: {}\nserver log:\n{}",
-        String::from_utf8_lossy(&output.stderr),
-        fs::read_to_string(path.join("server.log")).unwrap()
+        status.success(),
+        "HTTPS verification failed: {status}\n{}",
+        client_diagnostics(path, case)
     );
     assert!(
-        output.stdout.starts_with(b"HTTP/1.1 200"),
-        "Unexpected HTTPS response: {}\nserver log:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        fs::read_to_string(path.join("server.log")).unwrap()
+        stdout.starts_with(b"HTTP/1.1 200"),
+        "Unexpected HTTPS response: {}",
+        client_diagnostics(path, case)
     );
+}
+
+#[test]
+fn client_diagnostics_are_useful_bounded_and_do_not_disclose_payloads() {
+    let fixture = Fixture::new();
+    let stdout = b"HTTP/1.1 200 OK\r\n\r\nPRIVATE_RESPONSE_BODY";
+    fs::write(fixture.0.join("client.stdout.log"), stdout).unwrap();
+    for (redacted_log, long_log) in [
+        ("client.stderr.log", "server.log"),
+        ("server.log", "client.stderr.log"),
+    ] {
+        fs::write(
+            fixture.0.join(redacted_log),
+            "before-pem\n-----BEGIN SYNTHETIC DATA-----\nPEM_PAYLOAD_SENTINEL\n-----END SYNTHETIC DATA-----\n",
+        )
+        .unwrap();
+        fs::write(
+            fixture.0.join(long_log),
+            format!(
+                "ordinary diagnostic\n{}LOG_TAIL_SENTINEL",
+                "x".repeat(32768)
+            ),
+        )
+        .unwrap();
+        let report = client_diagnostics(&fixture.0, "synthetic formatter case");
+        assert!(report.contains("synthetic formatter case"));
+        assert!(report.contains(&format!("{} bytes", stdout.len())));
+        assert!(report.contains("HTTP 200 prefix: true"));
+        assert!(report.contains("before-pem"));
+        assert!(report.contains("ordinary diagnostic"));
+        for hidden in [
+            "PRIVATE_RESPONSE_BODY",
+            "PEM_PAYLOAD_SENTINEL",
+            "LOG_TAIL_SENTINEL",
+        ] {
+            assert!(!report.contains(hidden), "diagnostic disclosed {hidden}");
+        }
+        assert!(
+            report.len() < 16384,
+            "failure diagnostics must stay bounded"
+        );
+    }
 }
 
 #[test]
@@ -273,7 +345,7 @@ fn weak_supplied_intermediate_and_root_fail_before_any_listener() {
     ] {
         let fixture = Fixture::new();
         fixture.certificates(root, intermediate, "rsa:2048");
-        run_server(&fixture, false);
+        run_server(&fixture, false, "rejected fixture");
     }
 }
 #[test]
@@ -281,7 +353,11 @@ fn supported_strong_chains_still_serve_verified_https() {
     for intermediate in [None, Some("rsa:2048"), Some("ec:secp224r1"), Some("pss")] {
         let fixture = Fixture::new();
         fixture.certificates("rsa:2048", intermediate, "rsa:2048");
-        run_server(&fixture, true);
+        run_server(
+            &fixture,
+            true,
+            &format!("supported chain: intermediate={intermediate:?}"),
+        );
     }
 }
 #[test]
@@ -289,7 +365,7 @@ fn supported_ec_and_ed25519_leaf_keys_still_serve_verified_https() {
     for leaf in ["ec:prime256v1", "ec:secp384r1", "ec:secp521r1", "ed25519"] {
         let fixture = Fixture::new();
         fixture.certificates("rsa:2048", None, leaf);
-        run_server(&fixture, true);
+        run_server(&fixture, true, &format!("supported leaf: {leaf}"));
     }
 }
 
@@ -356,6 +432,6 @@ fn malformed_certificate_and_nested_key_structures_fail_before_listening() {
         chain.extend(pem.as_bytes());
         chain.extend(fs::read(fixture.0.join("root.pem")).unwrap());
         fs::write(fixture.0.join("chain.pem"), chain).unwrap();
-        run_server(&fixture, false);
+        run_server(&fixture, false, "rejected fixture");
     }
 }

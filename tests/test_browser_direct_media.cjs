@@ -243,12 +243,19 @@ deadline.unref();
         // external-folder permission policy, as in the built-UI fixture.
         await profileContext.addInitScript(() => {
             const permission = { queries: 0, requests: 0, state: "granted" };
+            const nativeQueryPermission =
+                FileSystemHandle.prototype.queryPermission;
             window.__directMediaProfilePermission = permission;
             FileSystemHandle.prototype.queryPermission = function (options) {
                 if (!options || options.mode !== "read")
                     throw new Error("Profile fixture requires read permission");
                 permission.queries++;
-                return Promise.resolve(permission.state);
+                const state = permission.state;
+                // Keep the browser's check on restored handles. The fixture
+                // may restrict access, but must not grant it over native denial.
+                return nativeQueryPermission
+                    .call(this, options)
+                    .then((access) => (access === "granted" ? state : access));
             };
             FileSystemHandle.prototype.requestPermission = function (options) {
                 if (!options || options.mode !== "read")

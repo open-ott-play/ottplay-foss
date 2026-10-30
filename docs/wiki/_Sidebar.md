@@ -15,6 +15,7 @@
 - [Settings recovery](../settings-recovery.md) · [Восстановление настроек](../settings-recovery.ru.md)
 - [Architecture · Архитектура](../architecture.md)
 - [Android Full/API 22](../android-distributions.md)
+- [Android projector setup and automatic startup (English)](../android-projector-setup.md)
 - [Capacitor iOS/Android](../capacitor-mobile.md)
 - [Remote workbench · Управление](../remote-workbench.md)
 - [Release policy · Релизы](../../RELEASING.md)
