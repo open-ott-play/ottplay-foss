@@ -1624,6 +1624,9 @@ test("real request dispatcher preserves local cancellation and structured kiosk 
         .matchAll(/from "([^"]+)"/g))
         modules[match[1]] = {};
     modules["./remote-local-media"] = { executeRemoteLocalMedia: execute };
+    modules["./player-state"] = require("./helpers/player-presence.cjs").load(
+        "src/commands/player-state.ts"
+    );
     const dispatch = load("src/commands/remote-requests.ts", modules, {
         window: f.w,
     }).executeRemoteRequest;

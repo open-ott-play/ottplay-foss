@@ -27,6 +27,8 @@ const real = new Set([
     "src/commands/favorites-document-json.ts",
     "src/plugins/remote-inspect.ts",
     "src/plugins/command-server.ts",
+    "src/plugins/player-state.ts",
+    "src/commands/player-state.ts",
     "src/shared/wire-contracts.ts",
     "src/utils/lzstring.ts",
 ]);

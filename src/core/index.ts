@@ -2505,6 +2505,7 @@ export function stbGetVolume(): number {
 export function stbSetVolume(v: number): void {
     video!.volume = v / 100;
     if (coreDeviceEffects.volume) coreDeviceEffects.volume(v);
+    (window as any).__ottPlayerState?.changed();
 }
 /**
  * Get the current playback position.

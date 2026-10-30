@@ -30,6 +30,9 @@ function loadSource(file, dependencies) {
 }
 const commandServer = loadSource("src/plugins/command-server.ts", {
     "../shared/wire-contracts": require("./load-wire.cjs")(),
+    "./player-state": require("./helpers/player-presence.cjs").load(
+        "src/plugins/player-state.ts"
+    ),
     "./remote-notifications": require("./helpers/remote-notifications.cjs")(),
 });
 const realRemote = loadSource("src/plugins/remote-diagnostics.ts", {

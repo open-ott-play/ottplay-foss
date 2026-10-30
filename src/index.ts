@@ -330,6 +330,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { readPlayerState } from "./commands/player-state";
 import { readNotificationsEnabled } from "./commands/remote-notifications";
 import { executeRemoteRequest } from "./commands/remote-requests";
 import { remotePlayerInfo } from "./commands/remote-restart";
@@ -5520,6 +5521,7 @@ window.addChannel2bucket = function (): void {
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
+        var savedData = w.listDataArray;
         var savedGetListItem = w.getListItem;
         var savedDetailListAction = w.detailListAction;
         var savedListKeyHandler = w.listKeyHandlerFn;
@@ -5544,9 +5546,9 @@ window.addChannel2bucket = function (): void {
         if (!admitted()) return;
         w.selIndex = 0;
         w.listArray = w.catsArray.slice(1);
-        if (resume) w.listDataArray = w.listArray;
+        w.listDataArray = w.listArray;
         w.getListItem = function (item: any, _idx: number): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListAction = function (): void {};
         w.listKeyHandlerFn = handler = function (e: number): boolean {
@@ -5608,6 +5610,7 @@ window.addChannel2bucket = function (): void {
                 w.restoreListPanelState();
             w.selIndex = savedIdx;
             w.listArray = savedList;
+            w.listDataArray = savedData;
             w.getListItem = savedGetListItem;
             w.detailListAction = savedDetailListAction;
             w.listKeyHandlerFn = savedListKeyHandler;
@@ -6578,7 +6581,10 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
             }
         );
     },
-    remoteInspection.accept
+    remoteInspection.accept,
+    function () {
+        return readPlayerState(window, remotePlayerInfo(window));
+    }
 );
 
 (window as any).__ottRemoteLifecyclePorts = {

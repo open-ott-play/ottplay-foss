@@ -90,6 +90,12 @@ function fixture(initial = []) {
     require("./helpers/screen-runtime.cjs")(w);
     Object.assign(w, require("./load-wire.cjs")());
     Object.assign(w, require("./helpers/remote-notifications.cjs")());
+    Object.assign(
+        w,
+        require("./helpers/player-presence.cjs").load(
+            "src/plugins/player-state.ts"
+        )
+    );
     const stored = new Map(initial);
     const writes = [];
     const requests = [];

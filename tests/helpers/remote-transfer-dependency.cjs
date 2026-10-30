@@ -21,6 +21,11 @@ const files = {
     "./remote-feature": "src/commands/remote-feature.ts",
 };
 module.exports = function dependency(name, host, environment = {}) {
+    if (name === "./player-state")
+        return require("./player-presence.cjs").load(
+            "src/commands/player-state.ts",
+            { ...environment, window: host }
+        );
     if (!Object.hasOwn(files, name)) return null;
     const exports = {};
     const output = ts.transpileModule(

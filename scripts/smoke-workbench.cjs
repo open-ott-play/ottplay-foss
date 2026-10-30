@@ -676,9 +676,31 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const unknown = await run(["operation", "f".repeat(32)], 3);
     assert.equal(unknown.operation_state, "unknown");
     const output = path.join(directory, "bundle");
+    const debugRequestsBeforeBundle = executed.filter(
+        (request) =>
+            request.action === "inspect" && request.params.section === "debug"
+    ).length;
     const bundle = await run(["bundle", "--lane", "web", "--out", output]);
     assert.equal(bundle.verdict, "observed");
-    assert.equal(bundle.debug_observations[0].status, "observed");
+    if (process.env.OTT_DEBUG_ENGINE_V2 === "unsupported-controller") {
+        // Bundle auto-selects the advertised debug version; an old controller
+        // rejects it without a second request for the legacy debug payload.
+        assert.equal(bundle.debug_observations[0].status, "unknown");
+        assert.equal(
+            bundle.debug_observations[0].reason,
+            "unsupported_controller"
+        );
+        assert(!Object.hasOwn(bundle.debug_observations[0], "data"));
+        assert.equal(
+            executed.filter(
+                (request) =>
+                    request.action === "inspect" &&
+                    request.params.section === "debug"
+            ).length,
+            debugRequestsBeforeBundle,
+            "rejected bundle debug must not be delivered or downgraded"
+        );
+    } else assert.equal(bundle.debug_observations[0].status, "observed");
     const verified = await execFile("python3", [
         cli,
         "report",

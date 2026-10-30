@@ -21,6 +21,11 @@ const moduleContext = {
     Date: { now: () => clock },
     exports: {},
     require(name) {
+        if (name === "./player-state")
+            return require("./helpers/player-presence.cjs").load(
+                "src/plugins/player-state.ts",
+                { Date: { now: () => clock } }
+            );
         if (name === "./remote-notifications")
             return require("./helpers/remote-notifications.cjs")({
                 Date: { now: () => clock },

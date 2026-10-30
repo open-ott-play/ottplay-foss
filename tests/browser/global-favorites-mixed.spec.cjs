@@ -165,6 +165,19 @@ for (const membership of ["global", "category"])
         baseURL,
     }) => {
         await install(context, baseURL, "origin");
+        const categoryLabel = "Arts <b>& Culture</b>";
+        if (membership === "category")
+            await context.route("**/mixed/one.m3u", (route) =>
+                route.fulfill({
+                    body:
+                        '#EXTM3U\n#EXTINF:-1 tvg-id="station-one" group-title="' +
+                        categoryLabel +
+                        '",One channel\n' +
+                        new URL(baseURL).origin +
+                        "/mixed/media/one.mp4\n",
+                    contentType: "text/plain",
+                })
+            );
         await page.goto("/f/pc/");
         await page.waitForFunction(() => window.commandChannelsReady);
         await ensure(page);
@@ -178,22 +191,44 @@ for (const membership of ["global", "category"])
             return id;
         }, membership);
         if (membership === "category") {
-            await page.evaluate(() => {
+            const categories = await page.evaluate(() => {
                 window.sFavorites = 0;
                 window.channelsList(window.catIndex, window.primaryIndex);
                 window.showActionsDialog();
+                return window.catsArray.slice(1);
             });
             await expect(page.locator("#dialogbox")).toBeVisible();
             await page.keyboard.press("Enter");
             await expect(page.locator("#listCaption")).toHaveText(
                 "Select a category to add the channel"
             );
-            await page.evaluate(() => {
-                window.selIndex = window.listArray.indexOf("Favorites");
-                if (window.selIndex < 0)
-                    throw Error("Favorites category absent");
-            });
+            const rows = page.locator("#list .item"),
+                selected = page.locator("#list .item.ott-selected");
+            expect(categories.length).toBeGreaterThan(1);
+            expect(categories).toContain("Favorites");
+            expect(categories).toContain(categoryLabel);
+            await expect(rows).toHaveText(categories);
+            await expect(rows.locator("b")).toHaveCount(0);
+            await expect(selected).toHaveText(categories[0]);
+            await page.keyboard.press("ArrowDown");
+            await expect(selected).toHaveText(categories[1]);
+            await page.keyboard.press("ArrowUp");
+            await expect(selected).toHaveText(categories[0]);
+            await page.keyboard.press("Backspace");
+            await expect(rows).toContainText(["One channel"]);
+            await page.evaluate(() => window.showActionsDialog());
             await page.keyboard.press("Enter");
+            await expect(rows).toHaveText(categories);
+            await expect(rows.locator("b")).toHaveCount(0);
+            for (
+                let index = 0;
+                index < categories.indexOf("Favorites");
+                index++
+            )
+                await page.keyboard.press("ArrowDown");
+            await expect(selected).toHaveText("Favorites");
+            await page.keyboard.press("Enter");
+            await expect(rows).toContainText(["One channel"]);
         }
         await expect
             .poll(() =>

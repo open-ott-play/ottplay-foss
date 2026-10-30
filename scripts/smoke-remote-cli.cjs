@@ -814,6 +814,7 @@ function moduleOf(file, requireFn, window) {
                             host
                         )
                       : name === "./remote-favorites-transfer" ||
+                          name === "./player-state" ||
                           name === "./remote-favorites-global" ||
                           name === "./remote-favorites-global-items" ||
                           name === "./remote-favorites-global-recovery" ||
@@ -1016,9 +1017,10 @@ function moduleOf(file, requireFn, window) {
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 (name) =>
-                    name === "./remote-notifications"
+                    name === "./remote-notifications" ||
+                    name === "./player-state"
                         ? moduleOf(
-                              "src/plugins/remote-notifications.ts",
+                              "src/plugins/" + name.slice(2) + ".ts",
                               () => {},
                               host
                           )
@@ -1294,7 +1296,20 @@ function moduleOf(file, requireFn, window) {
                     ? { maxBuffer: 2 * 1024 * 1024, timeout: 60000 }
                     : {}
             );
-            assert.equal(result.stderr, "");
+            if (
+                !globalFavoritesOnly &&
+                ["fav", "favorites", "favourite"].includes(args[0]) &&
+                args[1]?.toLowerCase() !== "global" &&
+                result.stderr
+            ) {
+                const notice =
+                    args[1]?.toLowerCase() === "legacy"
+                        ? "Legacy favorites explicitly selected."
+                        : "Legacy favorites: this player does not advertise global favorites items.";
+                assert.ok(
+                    [notice + "\n", notice + "\r\n"].includes(result.stderr)
+                );
+            } else assert.equal(result.stderr, "");
             return JSON.parse(result.stdout);
         }
         async function eventually(read, predicate, message) {
@@ -1884,8 +1899,16 @@ function moduleOf(file, requireFn, window) {
         const staleAspectBefore = television();
         television().reloadOnAspect();
         await assert.rejects(jsonOn("tv", "aspect", "fit"), (error) => {
+            assert.equal(error.code, 1);
             assert.equal(error.stdout, "");
-            assert.match(error.stderr, /did not respond/);
+            assert.match(
+                error.stderr,
+                /^Error: (?:The player did not respond\.|No player response was received before the deadline\.)/
+            );
+            assert.match(
+                error.stderr,
+                /do not repeat the change blindly\.\r?\n$/
+            );
             return true;
         });
         assert.equal(
@@ -2263,7 +2286,15 @@ function moduleOf(file, requireFn, window) {
             beforeSharedStore,
             "host construction and capability discovery do not write favorites"
         );
-        const firstFavorite = await jsonOn("tv", "fav", "add", "First profile");
+        // The real shared host also advertises global Favorites. Keep these
+        // legacy wire assertions explicit when using the current CLI.
+        const firstFavorite = await jsonOn(
+            "tv",
+            "fav",
+            "legacy",
+            "add",
+            "First profile"
+        );
         assert.equal(firstFavorite.created, true);
         assert.equal(firstFavorite.entry.profile_number, 1);
         assert.equal(firstFavorite.entry.kind, "live");
@@ -2276,7 +2307,12 @@ function moduleOf(file, requireFn, window) {
             "provider",
             "title",
         ]);
-        const repeatedFavorite = await jsonOn("tv", "favorites", "current");
+        const repeatedFavorite = await jsonOn(
+            "tv",
+            "favorites",
+            "legacy",
+            "current"
+        );
         assert.equal(repeatedFavorite.created, false);
         assert.equal(repeatedFavorite.entry.id, firstFavorite.entry.id);
         await run("profile", "2");
@@ -2289,6 +2325,7 @@ function moduleOf(file, requireFn, window) {
         const secondFavorite = await jsonOn(
             "tv",
             "favourite",
+            "legacy",
             "add",
             "Second profile"
         );
@@ -2297,6 +2334,7 @@ function moduleOf(file, requireFn, window) {
         const firstPlay = await jsonOn(
             "tv",
             "fav",
+            "legacy",
             "play",
             firstFavorite.entry.id
         );
@@ -2309,7 +2347,7 @@ function moduleOf(file, requireFn, window) {
             profile: 0,
         });
         const loads = television().playlistLoads;
-        await jsonOn("tv", "fav", "First profile");
+        await jsonOn("tv", "fav", "legacy", "First profile");
         assert.equal(
             television().playlistLoads,
             loads,
@@ -2323,13 +2361,13 @@ function moduleOf(file, requireFn, window) {
         television().stop();
         television = player("dev_test", "b".repeat(32), 30, false, true);
         television().enableLegacyFavorites();
-        const restoredFavorites = await jsonOn("tv", "fav");
+        const restoredFavorites = await jsonOn("tv", "fav", "legacy");
         assert.notEqual(restoredFavorites.runtime, priorFavoriteRuntime);
         assert.deepEqual(
             restoredFavorites.entries.map((entry) => entry.id),
             [firstFavorite.entry.id, secondFavorite.entry.id]
         );
-        await jsonOn("tv", "fav", "play", "Second profile");
+        await jsonOn("tv", "fav", "legacy", "play", "Second profile");
         assert.deepEqual(television().favoritePlays, [
             { itemId: "news:1", profile: 1 },
         ]);
@@ -2337,6 +2375,7 @@ function moduleOf(file, requireFn, window) {
         const removedFavorite = await jsonOn(
             "tv",
             "fav",
+            "legacy",
             "rm",
             firstFavorite.entry.id
         );
@@ -2344,7 +2383,7 @@ function moduleOf(file, requireFn, window) {
         assert.equal(removedFavorite.entry.id, firstFavorite.entry.id);
         const beforeMissing = television().favoritePlays.length;
         await assert.rejects(
-            run("fav", "play", firstFavorite.entry.id),
+            run("fav", "legacy", "play", firstFavorite.entry.id),
             (error) => {
                 assert.equal(error.stdout, "");
                 assert.match(error.stderr, /No favorite matches/);
@@ -2352,8 +2391,8 @@ function moduleOf(file, requireFn, window) {
             }
         );
         assert.equal(television().favoritePlays.length, beforeMissing);
-        await jsonOn("tv", "fav", "remove", secondFavorite.entry.id);
-        assert.deepEqual((await jsonOn("tv", "fav")).entries, []);
+        await jsonOn("tv", "fav", "legacy", "remove", secondFavorite.entry.id);
+        assert.deepEqual((await jsonOn("tv", "fav", "legacy")).entries, []);
         await checkOfflineProfiles();
         console.log(
             "PASS favorites via real Go + compiled TS + Python: current capture, aliases, deduplication, same/cross-profile exact selection, loaded-catalog gating, restart persistence, redacted metadata and bound not-found rejection"
