@@ -4462,14 +4462,82 @@ test("Modern and Classic retain the same mixed Favorites view and stable selecti
     }
 });
 
+async function waitForModernTouchLayout(page) {
+    await page.evaluate(async () => {
+        if (document.fonts) await document.fonts.ready;
+    });
+    let previous;
+    let stableFrames = 0;
+    let geometry;
+    await expect
+        .poll(
+            async () => {
+                // The fixture clock is paused. Advance animation frames so the
+                // real renderer can complete pending layout work before touch.
+                await page.clock.runFor(32);
+                geometry = await page.evaluate(() => {
+                    const owner = __ottClassicScreenPort.listOwner();
+                    const metrics = __ottModernUi.touchMetrics(owner);
+                    const list = document.getElementById("listIn");
+                    const row = document.getElementById("it" + selIndex);
+                    if (!metrics || !row) return null;
+                    const css = getComputedStyle(list);
+                    const box = list.getBoundingClientRect();
+                    return {
+                        columns: css.gridTemplateColumns.trim().split(/\s+/)
+                            .length,
+                        fontsReady:
+                            !document.fonts ||
+                            document.fonts.status === "loaded",
+                        height:
+                            row.getBoundingClientRect().height +
+                            parseFloat(css.rowGap),
+                        listHeight: box.height,
+                        listWidth: box.width,
+                        metrics,
+                        paint: owner.model.paintRevision,
+                        selected: selIndex,
+                    };
+                });
+                const valid =
+                    geometry &&
+                    geometry.fontsReady &&
+                    geometry.listWidth > 0 &&
+                    geometry.listHeight > 0 &&
+                    geometry.columns === geometry.metrics.stride &&
+                    Math.abs(geometry.height - geometry.metrics.height) < 2;
+                const signature = valid ? JSON.stringify(geometry) : null;
+                stableFrames =
+                    signature && signature === previous ? stableFrames + 1 : 0;
+                previous = signature;
+                return stableFrames;
+            },
+            {
+                intervals: [0],
+                message:
+                    "Modern touch geometry must settle across animation frames",
+            }
+        )
+        .toBeGreaterThanOrEqual(3);
+    return geometry;
+}
+
 for (const width of [1280, 360]) {
     test(`Modern touch moves by visual rows and cancels after a mode change (${width}px)`, async ({
         browser,
     }) => {
-        const fixture = await listTouchFixture(browser);
+        // Set the final viewport before startup. Resizing after installing the
+        // paused clock can deliver WebKit's real resize event late and schedule
+        // its debounce inside an otherwise stationary gesture.
+        const fixture = await listTouchFixture({
+            newContext: (options) =>
+                browser.newContext({
+                    ...options,
+                    viewport: { height: 800, width },
+                }),
+        });
         const { page } = fixture;
         try {
-            await page.setViewportSize({ height: 800, width });
             await page.evaluate(() => {
                 cats.Fixture.forEach((id) => {
                     channels[id].__ottMediaItem = {
@@ -4481,19 +4549,7 @@ for (const width of [1280, 360]) {
                 saveSettings({ interfaceMode: 1 });
             });
             await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
-            await page.clock.runFor(300);
-            const geometry = await page.evaluate(() => {
-                const list = document.getElementById("listIn");
-                const row = document.getElementById("it" + selIndex);
-                const css = getComputedStyle(list);
-                return {
-                    columns: css.gridTemplateColumns.trim().split(/\s+/).length,
-                    height:
-                        row.getBoundingClientRect().height +
-                        parseFloat(css.rowGap),
-                    selected: selIndex,
-                };
-            });
+            const geometry = await waitForModernTouchLayout(page);
             if (width === 360) expect(geometry.columns).toBe(1);
             else expect(geometry.columns).toBeGreaterThan(1);
             await page.evaluate((height) => {
