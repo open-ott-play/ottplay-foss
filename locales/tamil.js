@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex சர்வர் இணைப்பைச் சரிபார்க்கிறது…",
     "Choose a folder in the browser window":
         "உலாவி சாளரத்தில் ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்",
+    "Choose a profile": "சுயவிவரத்தைத் தேர்வு செய்யவும்",
     "Choose files in the browser window":
         "உலாவி சாளரத்தில் கோப்புகளைத் தேர்ந்தெடுக்கவும்",
     "Choose from": "இதிலிருந்து தேர்வு செய்யவும்",
@@ -990,6 +991,8 @@ var keyStrings = {
     "Sleep timer": "ஸ்லீப் டைமர்",
     "Sort channels": "சேனல்களை வரிசைப்படுத்தவும்",
     "Source access": "மூல அணுகல்",
+    "Source is busy. Try again later.":
+        "மூலம் பிஸியாக உள்ளது. பின்னர் மீண்டும் முயற்சிக்கவும்.",
     "Source sign-in required": "மூல உள்நுழைவு தேவை",
     "Source sign-in was cancelled": "மூல உள்நுழைவு ரத்து செய்யப்பட்டது",
     "Stalker Portal Provider": "Stalker போர்டல் வழங்குநர்",
@@ -1042,6 +1045,9 @@ var keyStrings = {
         "கட்டளை சர்வர் கண்டுபிடிப்பு URL தவறானது.",
     "The device ID in the address is invalid.": "முகவரியில் உள்ள ID சாதனம் தவறானது.",
     "The discovery response is invalid.": "கண்டுபிடிப்பு பதில் தவறானது.",
+    "The stream connection failed": "ஸ்ட்ரீம் இணைப்பு தோல்வியடைந்தது",
+    "The stream format could not be played":
+        "இந்த வடிவத்தில் ஸ்ட்ரீமை இயக்க முடியவில்லை",
     "This browser cannot identify the selected screenshot source.":
         "இந்த உலாவியால் தேர்ந்தெடுக்கப்பட்ட ஸ்கிரீன்ஷாட் மூலத்தை அடையாளம் காண முடியவில்லை.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1054,6 +1060,8 @@ var keyStrings = {
         "இந்த Play பயன்பாட்டிற்கு HTTPS தேவை. HTTPS பிளேலிஸ்ட் அல்லது சர்வர் URL உங்கள் வழங்குநரிடம் கேளுங்கள்.",
     "This pairing link has expired. Open a new session on your TV.":
         "இந்த இணைத்தல் இணைப்பு காலாவதியானது. உங்கள் டிவியில் புதிய அமர்வைத் திறக்கவும்.",
+    "This protected stream could not be played":
+        "பாதுகாக்கப்பட்ட இந்த ஸ்ட்ரீமை இயக்க முடியவில்லை",
     "This remote command is not supported by the player.":
         "இந்தத் தொலைக்கட்டுப்பாட்டுக் கட்டளையை இயக்கி ஆதரிக்கவில்லை.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1096,6 +1104,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X அமைப்புகள்",
     "Unable to load playlist": "பிளேலிஸ்ட்டை ஏற்ற முடியவில்லை",
+    Unavailable: "கிடைக்கவில்லை",
     "Unlock the player's settings before changing its playlist.":
         "இயக்கப்பட்டியலை மாற்றும் முன் இயக்கியின் அமைப்புகளின் பூட்டை நீக்கவும்.",
     Untitled: "தலைப்பு இல்லை",

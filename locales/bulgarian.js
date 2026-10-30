@@ -172,6 +172,7 @@ var keyStrings = {
         "Проверка на връзката със сървъра Plex...",
     "Choose a folder in the browser window":
         "Изберете папка в прозореца на браузъра",
+    "Choose a profile": "Изберете профил",
     "Choose files in the browser window":
         "Изберете файлове в прозореца на браузъра",
     "Choose from": "Избор от",
@@ -1010,6 +1011,8 @@ var keyStrings = {
     "Sleep timer": "Таймер за заспиване",
     "Sort channels": "Сортиране на канали",
     "Source access": "Достъп до медийния източник",
+    "Source is busy. Try again later.":
+        "Източникът е зает. Опитайте отново по-късно.",
     "Source sign-in required": "Изисква се влизане в източника",
     "Source sign-in was cancelled": "Входът в източника е отменен",
     "Stalker Portal Provider": "Доставчик на портал Stalker",
@@ -1065,6 +1068,9 @@ var keyStrings = {
         "ID на устройството в адреса е невалиден.",
     "The discovery response is invalid.":
         "Получен е невалиден отговор на заявката за търсене.",
+    "The stream connection failed": "Свързването с потока е неуспешно",
+    "The stream format could not be played":
+        "Форматът на потока не може да се възпроизведе",
     "This browser cannot identify the selected screenshot source.":
         "Този браузър не може да идентифицира избрания източник на екранна снимка.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1077,6 +1083,8 @@ var keyStrings = {
         "Тази версия от Play изисква HTTPS. Поискайте от доставчика HTTPS адрес за плейлист или сървър.",
     "This pairing link has expired. Open a new session on your TV.":
         "Тази връзка за сдвояване е изтекла. Отворете нова сесия на вашия телевизор.",
+    "This protected stream could not be played":
+        "Този защитен поток не може да се възпроизведе",
     "This remote command is not supported by the player.":
         "Плейърът не поддържа тази дистанционна команда.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1122,6 +1130,7 @@ var keyStrings = {
     "ULTIFL1X settings": "Настройки за ULTIFL1X",
     "Unable to load playlist":
         "Неуспешно зареждане на списъка за възпроизвеждане",
+    Unavailable: "Недостъпно",
     "Unlock the player's settings before changing its playlist.":
         "Отключете настройките на плейъра, преди да промените плейлиста.",
     Untitled: "Без заглавие",

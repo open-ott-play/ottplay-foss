@@ -658,7 +658,7 @@ for (const replacement of [null, "catalog", "channel", "list"]) {
 // Stop really invalidates the private controller before touching media objects.
 {
     const c = fixture();
-    include(c, "src/core/index.ts", ["stbStop"]);
+    include(c, "src/core/index.ts", ["stopCorePlayback", "stbStop"]);
     c.getCoreMediaBackend = () => ({ stop() {} });
     c.video = { pause() {}, removeAttribute() {} };
     c._playSession = 0;
@@ -1109,6 +1109,99 @@ for (const replace of [
 }
 
 // Production TS lowering remains valid for old browser grammars.
+
+// Target selection must not overwrite a newer command from the stop callback.
+for (const replacement of ["none", "stop", "target"]) {
+    const c = fixture();
+    const original = c.__ottMedia.playbackStop;
+    c.__ottMedia.playbackStop = function () {
+        c.__ottMedia.playbackStop = original;
+        if (replacement === "stop") {
+            c.__ottClassicPlayback.cancel();
+            c.__ottClassicPlayback.command({ type: "stop" });
+        }
+        if (replacement === "target")
+            c.__ottClassicPlayback.command({
+                channelId: "newer",
+                type: "live",
+            });
+    };
+    const accepted = c.__ottClassicPlayback.command({
+        channelId: "outer",
+        type: "live",
+    });
+    const target = c.__ottClassicPlayback.snapshot().target;
+    if (replacement === "none") assert.equal(target.channelId, "outer");
+    else {
+        assert.equal(accepted, false);
+        assert.notEqual(target && target.channelId, "outer");
+        if (replacement === "target") assert.equal(target.channelId, "newer");
+    }
+}
+
+// An owned stop callback cannot stop the target it synchronously replaces.
+{
+    const c = fixture();
+    c.__ottClassicPlayback.command({ channelId: "old", type: "live" });
+    const ticket = c.__ottClassicPlayback.cancelForSource();
+    const original = c.__ottMedia.playbackStop;
+    c.__ottMedia.playbackStop = function () {
+        c.__ottMedia.playbackStop = original;
+        c.__ottClassicPlayback.command({
+            channelId: "replacement",
+            type: "live",
+        });
+    };
+    assert.equal(
+        c.__ottClassicPlayback.command({ sourceStop: ticket, type: "stop" }),
+        false
+    );
+    const state = c.__ottClassicPlayback.snapshot();
+    assert.equal(state.target.channelId, "replacement");
+    assert.notEqual(state.phase, "stopped");
+    assert.equal(ticket.current(), false);
+    c.__ottClassicPlayback.finishSourceStop(ticket);
+    c.__ottClassicPlayback.command({ type: "stop" });
+    assert.equal(
+        c.__ottClassicPlayback.snapshot().phase,
+        "stopped",
+        "ordinary stop remains effective"
+    );
+}
+
+// A captured intentional stop owns only its original cancellation ticket.
+for (const invalidate of ["cancel", "select", "request"]) {
+    const c = fixture();
+    const ticket = c.__ottClassicPlayback.cancelForSource();
+    assert.equal(ticket.current(), true);
+    c.__ottClassicPlayback.finishSourceStop(ticket);
+    if (invalidate === "cancel") c.__ottClassicPlayback.cancel();
+    if (invalidate === "select") c.__ottClassicPlayback.select(0, 1);
+    if (invalidate === "request") c.__ottClassicPlayback.shift(-30);
+    assert.equal(ticket.current(), false, invalidate);
+}
+{
+    const c = fixture();
+    c.__ottClassicArchive = {
+        cancel() {
+            throw new Error("archive cleanup");
+        },
+    };
+    assert.throws(
+        () => c.__ottClassicPlayback.cancelForSource(),
+        /archive cleanup/
+    );
+    c.__ottClassicArchive = null;
+    const ticket = c.__ottClassicPlayback.cancelForSource();
+    c.__ottClassicPlayback.finishSourceStop(ticket);
+    c.__ottClassicPlayback.command({ sourceStop: ticket, type: "stop" });
+    assert.equal(
+        ticket.current(),
+        false,
+        "retired marker cannot bypass public cancellation"
+    );
+}
+
 for (const file of ["session.ts", "classic-adapter.ts"]) {
     const source = fs.readFileSync(
         path.join(root, "src/playback", file),

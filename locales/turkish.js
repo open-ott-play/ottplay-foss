@@ -173,6 +173,7 @@ var keyStrings = {
         "Plex sunucu bağlantısı kontrol ediliyor…",
     "Choose a folder in the browser window":
         "Tarayıcı penceresinde bir klasör seçin",
+    "Choose a profile": "Profil seç",
     "Choose files in the browser window":
         "Tarayıcı penceresinde dosyaları seçin",
     "Choose from": "Şuradan seç",
@@ -999,6 +1000,8 @@ var keyStrings = {
     "Sleep timer": "Uyku zamanlayıcısı",
     "Sort channels": "Kanalları sırala",
     "Source access": "Medya kaynağına erişim",
+    "Source is busy. Try again later.":
+        "Kaynak meşgul. Daha sonra tekrar deneyin.",
     "Source sign-in required": "Kaynakta oturum açılması gerekiyor",
     "Source sign-in was cancelled": "Kaynakta oturum açma iptal edildi",
     "Stalker Portal Provider": "Stalker portalı sağlayıcısı",
@@ -1051,6 +1054,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Adresteki cihaz kimliği geçersiz.",
     "The discovery response is invalid.": "Arama yanıtı geçersiz.",
+    "The stream connection failed": "Akış bağlantısı başarısız oldu",
+    "The stream format could not be played": "Akış bu biçimde oynatılamadı",
     "This browser cannot identify the selected screenshot source.":
         "Bu tarayıcı seçilen ekran görüntüsü kaynağını tanımlayamıyor.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1063,6 +1068,8 @@ var keyStrings = {
         "Bu Play uygulaması HTTPS gerektirir. Sağlayıcınızdan HTTPS oynatma listesi veya sunucu URL'si isteyin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu eşleştirme bağlantısının süresi doldu. TV'nizde yeni bir oturum açın.",
+    "This protected stream could not be played":
+        "Bu korumalı akış oynatılamadı",
     "This remote command is not supported by the player.":
         "Oynatıcı bu uzaktan kumanda komutunu desteklemiyor.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1105,6 +1112,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ayarları",
     "Unable to load playlist": "Oynatma listesi yüklenemedi",
+    Unavailable: "Kullanılamıyor",
     "Unlock the player's settings before changing its playlist.":
         "Oynatma listesini değiştirmeden önce oynatıcı ayarlarının kilidini açın.",
     Untitled: "Başlıksız",

@@ -170,6 +170,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Provjera veze servera Plex…",
     "Choose a folder in the browser window":
         "Odaberite fasciklu u prozoru preglednika",
+    "Choose a profile": "Odaberite profil",
     "Choose files in the browser window":
         "Odaberite datoteke u prozoru preglednika",
     "Choose from": "Odaberite između",
@@ -1001,6 +1002,8 @@ var keyStrings = {
     "Sleep timer": "Mjerač vremena za spavanje",
     "Sort channels": "Poredaj kanale",
     "Source access": "Pristup izvoru",
+    "Source is busy. Try again later.":
+        "Izvor je zauzet. Pokušajte ponovo kasnije.",
     "Source sign-in required": "Potrebna je prijava na izvor",
     "Source sign-in was cancelled": "Prijava na izvor je otkazana",
     "Stalker Portal Provider": "Pružatelj portala Stalker",
@@ -1054,6 +1057,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID uređaja u adresi nije važeći.",
     "The discovery response is invalid.": "Odgovor pretraživanja nije važeći.",
+    "The stream connection failed": "Povezivanje sa streamom nije uspjelo",
+    "The stream format could not be played":
+        "Format streama nije se mogao reproducirati",
     "This browser cannot identify the selected screenshot source.":
         "Ovaj pretraživač ne može identificirati odabrani izvor snimka ekrana.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1066,6 +1072,8 @@ var keyStrings = {
         "Ova Play aplikacija zahtijeva HTTPS. Zatražite od svog pružatelja usluga HTTPS popis za reprodukciju ili server URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ova veza za uparivanje je istekla. Otvorite novu sesiju na svom TV-u.",
+    "This protected stream could not be played":
+        "Ovaj zaštićeni stream nije se mogao reproducirati",
     "This remote command is not supported by the player.":
         "Plejer ne podržava ovu daljinsku naredbu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1109,6 +1117,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X postavke",
     "Unable to load playlist": "Nije moguće učitati popis za reprodukciju",
+    Unavailable: "Nije dostupno",
     "Unlock the player's settings before changing its playlist.":
         "Otključajte postavke plejera prije promjene liste.",
     Untitled: "Bez naslova",

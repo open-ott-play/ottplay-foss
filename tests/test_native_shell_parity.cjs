@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -949,12 +950,14 @@ console.log(
 // Execute JS extracted from each actual native bridge, with the actual loaded
 // device keymap and actual TS dispatch chain. No OS or native player is mocked
 // as successful by these assertions.
-const dispatch = functions("src/key-handler/index.ts", [
-    "cancelNativeListInertia",
-    "dispatchKey",
-    "keyHandler",
-    "handleMainKey",
-]);
+const dispatch =
+    numericKeyState() +
+    functions("src/key-handler/index.ts", [
+        "cancelNativeListInertia",
+        "dispatchKey",
+        "keyHandler",
+        "handleMainKey",
+    ]);
 const nativeSources = {
     android: read(
         "android/app/src/main/java/play/ott/foss/MediaPlaybackService.kt"
@@ -1060,6 +1063,7 @@ const coreControls = functions("src/core/index.ts", [
     "stbContinue",
     "stbPause",
     "stbResume",
+    "stopCorePlayback",
     "stbStop",
     "getCoreMediaBackend",
     "coreCompat",
@@ -1084,6 +1088,7 @@ for (const platform of Object.keys(nativeSources)) {
         _coreNativeAttempt: 0,
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
+        _corePauseRevision: 0,
         _corePendingSeek: null,
         _corePendingSeekPosition: null,
         _corePipSession: 0,

@@ -18,6 +18,7 @@ interface LibraryGroup {
     shuffleBefore?: string[];
 }
 interface LibraryDocument {
+    browsedGroup?: string;
     groups: LibraryGroup[];
     hidden: string[];
     locks: string[];
@@ -205,6 +206,8 @@ function createChannelLibrary(
         )
             return null;
         var result = empty();
+        if (typeof value.browsedGroup === "string" && value.browsedGroup)
+            result.browsedGroup = value.browsedGroup;
         var seen: Record<string, boolean> = Object.create(null);
         value.groups.forEach(function (group: any) {
             if (
@@ -568,6 +571,21 @@ function createChannelLibrary(
                     state!.locks.concat(addedLocks),
                     state!.unlocks
                 );
+        },
+        browse: function (groupId: string): boolean {
+            if (
+                !ports.current() ||
+                (groupId !== "system:favorites" &&
+                    !groupById(groups(), groupId))
+            )
+                return false;
+            if (state!.browsedGroup === groupId) return true;
+            return commit(function (draft) {
+                draft.browsedGroup = groupId;
+            });
+        },
+        browsedGroup: function (): string | null {
+            return ports.current() ? state!.browsedGroup || null : null;
         },
         changeMember: function (
             groupId: string,

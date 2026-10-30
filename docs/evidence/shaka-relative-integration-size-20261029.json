@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "feature": "Integrated Shaka track controls and atomic relative VOD seeking",
+  "status": "Local integrated build and targeted browser tests passed; final-head CI and official release qualification remain required",
+  "source": "a3307904014d967b4bafbed92d417b62defe369c",
+  "tree": "c1101d28609a049f83c643da3dffbb45f5c5bafc",
+  "parents": [
+    "950e7aa4ef06b36327c4cb8a9b0094db875798a8",
+    "2f8c046d27880cdfeb73376129c84a3e7fa8d454"
+  ],
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703",
+    "typescript": "5.9.3",
+    "terser": "5.51.2"
+  },
+  "allocations": {
+    "relativeSeekEntry": {
+      "bytes": 2613,
+      "gzipBytes": 768
+    },
+    "shakaTracksEntry": {
+      "bytes": 576,
+      "gzipBytes": 128
+    },
+    "shakaTracksOptional": {
+      "bytes": 1200,
+      "gzipBytes": 640
+    }
+  },
+  "caps": {
+    "budget": {
+      "bytes": 1136462,
+      "gzipBytes": 347587
+    },
+    "legacyTotalBudget": {
+      "bytes": 1281298,
+      "gzipBytes": 400277
+    },
+    "baseTotalBudget": {
+      "bytes": 1637528,
+      "gzipBytes": 503737
+    },
+    "totalBudget": {
+      "bytes": 1642008,
+      "gzipBytes": 506041
+    }
+  },
+  "variants": [
+    {
+      "entry": {
+        "bytes": 1136418,
+        "gzipBytes": 347444,
+        "path": "dist/player.js",
+        "sha256": "2b7970c06aaceed1e31c0561ff871ac330f10cbabcc31e1e6348546ae384073a"
+      },
+      "legacyTotal": {
+        "bytes": 1280480,
+        "gzipBytes": 400010
+      },
+      "completeTotal": {
+        "bytes": 1641878,
+        "gzipBytes": 505735
+      },
+      "shakaTracks": {
+        "bytes": 1144,
+        "gzipBytes": 599,
+        "path": "dist/shaka-tracks.js",
+        "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1136376,
+        "gzipBytes": 347500,
+        "path": "src-tauri/frontend/dist/player.js",
+        "sha256": "883661b340a821a8e83b791741b0a1b736a25f3b533f600c0cb1e0aa2541d7f6"
+      },
+      "legacyTotal": {
+        "bytes": 1280438,
+        "gzipBytes": 400066
+      },
+      "completeTotal": {
+        "bytes": 1641836,
+        "gzipBytes": 505791
+      },
+      "shakaTracks": {
+        "bytes": 1144,
+        "gzipBytes": 599,
+        "path": "src-tauri/frontend/dist/shaka-tracks.js",
+        "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+      }
+    },
+    {
+      "entry": {
+        "bytes": 1136376,
+        "gzipBytes": 347500,
+        "path": "dist-mobile/dist/player.js",
+        "sha256": "883661b340a821a8e83b791741b0a1b736a25f3b533f600c0cb1e0aa2541d7f6"
+      },
+      "legacyTotal": {
+        "bytes": 1280438,
+        "gzipBytes": 400066
+      },
+      "completeTotal": {
+        "bytes": 1641836,
+        "gzipBytes": 505791
+      },
+      "shakaTracks": {
+        "bytes": 1144,
+        "gzipBytes": 599,
+        "path": "dist-mobile/dist/shaka-tracks.js",
+        "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+      }
+    }
+  ],
+  "historicalEvidenceSha256": {
+    "docs/evidence/relative-seek-size-20261029.json": "e7bbba488638ce24fe58d1a4245a1e6a02baa7207800ef69eac954dacf539b39",
+    "docs/evidence/shaka-track-controls-size-20261029.json": "11fb96c91cb7c54da48ef35cd3a8a539d4fc6775fcd7c9cc2c121415aad52e99"
+  },
+  "localEvidence": {
+    "reportSha256": "2266d3dc705d5aa9b800c7432ff7bd43e9dc980bcc8faf63af5a4909be73634a",
+    "receiptSha256": "50453adb433d5c1aee0945b28b05ff84e8841773085e5c9369120f7d0579fec7",
+    "stages": [
+      {
+        "name": "build",
+        "exitCode": 0,
+        "elapsedSeconds": 28.053,
+        "logSha256": "1ba94e22703f75f8b9b4ddf8d66f10b0edb903a0db7f00422673ec38aff9bb78"
+      },
+      {
+        "name": "test_classic_size.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 3.392,
+        "logSha256": "cbfb72038e8a58e5102d1492d1ec0706dc40fbc11dd27406f5bd3efba1626ecb"
+      },
+      {
+        "name": "test_core_init_lifecycle.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 2.167,
+        "logSha256": "b7ea3c8007087d737c3616d35e41286ef99753adba7df039d2d0707d9351ec2e"
+      },
+      {
+        "name": "test_port_engine_lifecycle.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 3.227,
+        "logSha256": "c73cf59f598b9eb4d626c3217079ac79478c03a69626be46ae01a5227751ac90"
+      },
+      {
+        "name": "test_media_backend.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 1.118,
+        "logSha256": "0664ba7421aa80e669c8d77ba7133cf2339261dc8e4429c3511c0e6e84609863"
+      },
+      {
+        "name": "test_remote_controls.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 3.258,
+        "logSha256": "8cea957e46d1fbd0109298db92d7fa19e9337bd2018d2618d360e44f1158db55"
+      },
+      {
+        "name": "test_command_server.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 3.316,
+        "logSha256": "a022e008c4e58576a4851f9f912347f0a8f947bac4ad8bef96997ca558ba52e0"
+      },
+      {
+        "name": "test_pc2_engine.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 1.054,
+        "logSha256": "829b117089f9009261fc342028d2b3370c0244984a3d090032e20b86435e4619"
+      },
+      {
+        "name": "test_subtitle_appearance.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 1.2,
+        "logSha256": "8e9cd75f555cd59de796133efc087e210f3eb77ebe71045f4f34a99e906c2e27"
+      },
+      {
+        "name": "test_media_language_preferences.cjs",
+        "exitCode": 0,
+        "elapsedSeconds": 1.115,
+        "logSha256": "ef345e55561aa81a00a6f0c6e3f713bb30a7691108c6c816c2ca9ad95790bac3"
+      },
+      {
+        "name": "size",
+        "exitCode": 0,
+        "elapsedSeconds": 1.06,
+        "logSha256": "17a54d7e9d322ce0d6ee9f268ad92a5d4086cc499b8dc06bc8d8e2b3c77ae1b5"
+      },
+      {
+        "name": "browser",
+        "exitCode": 0,
+        "elapsedSeconds": 21.549,
+        "logSha256": "8845e569baf0efcf29b94eddc7f923e7c0e86b3765e485210cf64a6261ae8fda"
+      }
+    ],
+    "browserCases": [
+      "Shaka audio and subtitle menus use real engine tracks: modern=false",
+      "Shaka audio and subtitle menus use real engine tracks: modern=true",
+      "authenticated relative VOD seek moves the paused decoder without replacing its queue"
+    ],
+    "browserPassed": 3,
+    "allStartedChildrenReaped": true,
+    "initialAllocatedBytes": 59109376,
+    "peakAllocatedBytes": 76095488,
+    "terminalAllocatedBytes": 65912832,
+    "capBytes": 536870912
+  },
+  "notes": [
+    "Official release bytes were not built or installed. This is a frontend-only local build using existing dependencies and a headless browser with synthetic local media.",
+    "Both independently reviewed entry allowances are counted once; only the complete total includes the separate Shaka optional allowance. Other provider and optional limits remain unchanged.",
+    "Historical measurements keep their original source/toolchain identities. This record reports actual integrated output rather than summing gzip measurements across toolchains.",
+    "The exact built source is the merge commit above. A subsequent documentation-only commit recording these measurements requires fresh CI; embedded source identity can change output hashes and gzip size."
+  ]
+}

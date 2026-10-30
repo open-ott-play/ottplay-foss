@@ -176,6 +176,7 @@ var keyStrings = {
         "Controllo della connessione al server Plex…",
     "Choose a folder in the browser window":
         "Scegli una cartella nella finestra del browser",
+    "Choose a profile": "Scegli un profilo",
     "Choose files in the browser window":
         "Scegli i file nella finestra del browser",
     "Choose from": "Scegli tra",
@@ -1017,6 +1018,8 @@ var keyStrings = {
     "Sleep timer": "Timer di spegnimento",
     "Sort channels": "Ordina canali",
     "Source access": "Accesso alla fonte multimediale",
+    "Source is busy. Try again later.":
+        "La sorgente è occupata. Riprova più tardi.",
     "Source sign-in required": "È richiesto l'accesso alla fonte",
     "Source sign-in was cancelled": "Accesso alla sorgente annullato",
     "Stalker Portal Provider": "Fornitore portale Stalker",
@@ -1072,6 +1075,9 @@ var keyStrings = {
         "L'ID dispositivo nell'indirizzo non è valido.",
     "The discovery response is invalid.":
         "La risposta alla ricerca non è valida.",
+    "The stream connection failed": "Connessione al flusso non riuscita",
+    "The stream format could not be played":
+        "Impossibile riprodurre il formato del flusso",
     "This browser cannot identify the selected screenshot source.":
         "Questo browser non è in grado di identificare la fonte dello screenshot selezionata.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1084,6 +1090,8 @@ var keyStrings = {
         "Questa app Play richiede HTTPS. Chiedi al fornitore una playlist o un URL server HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Questo collegamento di accoppiamento è scaduto. Apri una nuova sessione sulla tua TV.",
+    "This protected stream could not be played":
+        "Impossibile riprodurre questo flusso protetto",
     "This remote command is not supported by the player.":
         "Il lettore non supporta questo comando remoto.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1126,6 +1134,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Impostazioni di ULTIFL1X",
     "Unable to load playlist": "Impossibile caricare la playlist",
+    Unavailable: "Non disponibile",
     "Unlock the player's settings before changing its playlist.":
         "Sblocca le impostazioni del lettore prima di modificarne la playlist.",
     Untitled: "Senza titolo",

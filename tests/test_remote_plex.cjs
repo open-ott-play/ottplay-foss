@@ -1,3 +1,4 @@
+const numericKeyState = require("./helpers/numeric-key-state.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
@@ -283,13 +284,213 @@ test("explicit saved Plex queue preserves provider until preflight, starts at ze
     assert.equal(h.c.stored.plexcfg, saved);
     assert.equal(h.call("next").replies[0].status, "rejected");
     const previous = h.call("previous");
-    h.prepare(ids);
+    h.prepare([ids[1]]);
     h.resolve(ids[1]);
     assert.equal(previous.replies[0].status, "ok");
     assert.equal(h.queue.snapshot().index, 1);
     h.call("stop");
     assert.equal(h.queue.snapshot().state, "idle");
     assert.equal(h.queue.snapshot().active, false);
+});
+test("remote next refreshes one selected row while retaining a 265-item queue", () => {
+    const h = setup();
+    const ids = Array.from({ length: 265 }, (_, i) => String(i + 1));
+    h.call("play", ids);
+    h.reply();
+    assert.equal(
+        new URL(h.requests[0].url).pathname,
+        "/library/metadata/" + ids.join(","),
+        "a new queue still validates every requested item"
+    );
+    h.reply(ids.map((id) => h.item(id)));
+    h.resolve("1");
+    const previous = h.c.__ottMedia.current();
+    const rows = plain(previous.context.catalog());
+    let disposed = 0;
+    const dispose = previous.context.client.dispose;
+    previous.context.client.dispose = () => {
+        disposed++;
+        dispose();
+    };
+    const step = h.call("next");
+    assert.equal(new URL(h.requests[0].url).pathname, "/library/sections");
+    h.reply();
+    assert.equal(h.requests.length, 1);
+    assert.equal(new URL(h.requests[0].url).pathname, "/library/metadata/2");
+    // No unrelated row is returned: unavailable unrelated items do not block this step.
+    h.reply([h.item("2", "Fresh title")]);
+    assert.equal(new URL(h.requests[0].url).pathname, "/library/metadata/2");
+    assert.equal(h.c.__ottMedia.current(), previous);
+    assert.equal(disposed, 0, "the old client survives all target preflight");
+    const resolve = h.requests[0];
+    h.resolve("2");
+    resolve.success({ MediaContainer: { Metadata: [h.item("2")] } });
+    assert.equal(
+        step.replies.length,
+        1,
+        "duplicate transport completion cannot dispatch twice"
+    );
+    assert.equal(step.replies[0].status, "ok");
+    assert.equal(h.c.calls.filter((x) => x[0] === "play").length, 2);
+    assert.equal(disposed, 1);
+    assert.equal(h.queue.snapshot().index, 1);
+    assert.deepEqual(plain(h.queue.snapshot().ids), ids);
+    const after = plain(h.c.__ottMedia.current().context.catalog());
+    assert.equal(after[1].title, "Fresh title");
+    assert.deepEqual(
+        after.filter((_, i) => i !== 1),
+        rows.filter((_, i) => i !== 1)
+    );
+    assert.equal(h.requests.length, 0);
+});
+test("remote steps preserve duplicate IDs and refresh only their selected position", () => {
+    const h = setup();
+    const ids = ["1", "2", "2", "3"];
+    h.call("play", ids);
+    h.prepare(ids);
+    h.resolve("1");
+    for (const [op, index] of [
+        ["next", 1],
+        ["next", 2],
+        ["previous", 1],
+    ]) {
+        const step = h.call(op);
+        h.reply();
+        assert.equal(
+            new URL(h.requests[0].url).pathname,
+            "/library/metadata/2"
+        );
+        h.reply([h.item("2", "Selected " + index)]);
+        h.resolve("2");
+        assert.equal(step.replies[0].status, "ok");
+        assert.equal(h.queue.snapshot().index, index);
+        assert.deepEqual(plain(h.queue.snapshot().ids), ids);
+        const rows = plain(h.c.__ottMedia.current().context.catalog());
+        assert.equal(rows[index].title, "Selected " + index);
+        if (index === 2) assert.equal(rows[1].title, "Selected 1");
+    }
+});
+test("failed fresh target validation never skips or replaces the prior queue", () => {
+    for (const failure of [
+        "missing",
+        "wrong-id",
+        "unplayable",
+        "parental",
+        "resolve",
+    ]) {
+        const h = setup();
+        const ids = ["1", "2", "3"];
+        h.call("play", ids);
+        h.prepare(ids);
+        h.resolve("1");
+        const previous = h.c.__ottMedia.current();
+        const before = plain(h.queue.snapshot());
+        const rows = plain(previous.context.catalog());
+        let disposed = 0;
+        const dispose = previous.context.client.dispose;
+        previous.context.client.dispose = () => {
+            disposed++;
+            dispose();
+        };
+        const step = h.call("next");
+        h.reply();
+        assert.equal(
+            new URL(h.requests[0].url).pathname,
+            "/library/metadata/2"
+        );
+        const item = h.item(failure === "wrong-id" ? "3" : "2");
+        if (failure === "unplayable") item.Media = [];
+        if (failure === "parental") item.adult = 1;
+        h.reply(failure === "missing" ? [] : [item]);
+        if (failure === "resolve") h.reply([]);
+        assert.equal(step.replies.length, 1, failure);
+        assert.equal(step.replies[0].status, "rejected", failure);
+        assert.equal(h.c.__ottMedia.current(), previous, failure);
+        assert.deepEqual(plain(h.queue.snapshot()), before, failure);
+        assert.deepEqual(plain(previous.context.catalog()), rows, failure);
+        assert.equal(disposed, 0, failure);
+        assert.equal(
+            h.c.calls.filter((x) => x[0] === "play").length,
+            1,
+            failure
+        );
+        assert.equal(
+            h.requests.length,
+            0,
+            failure + " must not try the following item"
+        );
+    }
+});
+test("step expiry and context cancellation fence delayed metadata and resolution", () => {
+    for (const stage of ["metadata", "resolve"]) {
+        for (const change of [
+            "timeout",
+            "cancel",
+            "config",
+            "provider",
+            "generation",
+            "superseded",
+        ]) {
+            const h = setup();
+            h.call("play", ["1", "2", "3"]);
+            h.prepare(["1", "2", "3"]);
+            h.resolve("1");
+            const previous = h.c.__ottMedia.current();
+            let disposed = 0;
+            const dispose = previous.context.client.dispose;
+            previous.context.client.dispose = () => {
+                disposed++;
+                dispose();
+            };
+            const step = { replies: [] };
+            step.cancel = h.queue.execute(
+                {
+                    expires_at: (h.c.Date.now() + 7000) / 1000,
+                    params: { op: "next", runtime: "runtime-fixture" },
+                },
+                (result) => step.replies.push(plain(result))
+            );
+            h.reply();
+            if (stage === "resolve") h.reply([h.item("2")]);
+            const late = h.requests.shift();
+            assert.equal(new URL(late.url).pathname, "/library/metadata/2");
+            const timer = [...h.timers.values()].find((x) => x.ms === 7000);
+            assert(timer);
+            if (change === "timeout") h.advance(7000);
+            if (change === "cancel") step.cancel();
+            if (change === "config") h.c.stored.plexcfg = "{}";
+            if (change === "provider")
+                h.c.__ottActiveProviderDriver = { id: "other" };
+            if (change === "generation")
+                h.c.__ottClassicPlayback.command({ type: "stop" });
+            if (change === "superseded") h.call("play", ["4"]);
+            const count = h.requests.length;
+            late.success({ MediaContainer: { Metadata: [h.item("2")] } });
+            if (late.complete) late.complete();
+            assert.equal(h.requests.length, count, stage + "/" + change);
+            timer.fn();
+            late.success({ MediaContainer: { Metadata: [h.item("2")] } });
+            assert.equal(
+                h.c.calls.filter((x) => x[0] === "play").length,
+                1,
+                stage + "/" + change
+            );
+            assert.equal(disposed, 0, stage + "/" + change);
+            assert(step.replies.length <= 1, stage + "/" + change);
+            if (change !== "cancel")
+                assert.equal(
+                    step.replies[0].status,
+                    "rejected",
+                    stage + "/" + change
+                );
+            else
+                assert.equal(
+                    step.replies.length,
+                    0,
+                    "explicit cancellation is silent"
+                );
+        }
+    }
 });
 test("manual sibling arrows retain the remote queue identity and exact stop boundary", () => {
     const h = setup();
@@ -352,10 +553,11 @@ test("Fullscreen arrows follow the playing Plex source without changing the sele
         h.c.__ottActiveProviderDriver = { id: provider };
         const selected = h.c.__ottActiveProviderDriver;
         vm.runInContext(
-            sourceFunctions("src/key-handler/index.ts", [
-                "handleMainKey",
-                "keyFun",
-            ]),
+            numericKeyState() +
+                sourceFunctions("src/key-handler/index.ts", [
+                    "handleMainKey",
+                    "keyFun",
+                ]),
             h.c
         );
         h.c.settings.auFun = 19;
@@ -1795,5 +1997,16 @@ test("Plex library source carries the selected label and actual categories while
     assert.equal(rows[1].__ottMediaCollection, "Family movies");
     assert(!JSON.stringify(rows).includes("/private/movies/"));
     assert.deepEqual(plain(h.queue.snapshot().ids), ["9", "4"]);
+    const step = h.call("next");
+    h.prepare(["4"]);
+    h.resolve("4");
+    assert.equal(step.replies[0].status, "ok");
+    const next = h.c.__ottMedia.current().context;
+    assert.deepEqual(plain(next.library), plain(source.library));
+    assert.equal(next.title, "Family movies");
+    assert.deepEqual(plain(next.catalog()[0]), plain(rows[0]));
+    assert.deepEqual(plain(next.catalog()[1].__ottMediaCategories), [
+        { id: "plex:/library/sections/16/all", name: "Family movies" },
+    ]);
 });
 console.log("PASS Plex queue: " + groups + " behavior groups");

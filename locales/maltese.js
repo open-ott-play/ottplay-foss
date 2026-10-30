@@ -173,6 +173,7 @@ var keyStrings = {
         "Qed tiġi ċċekkjata l-konnessjoni mas-server Plex…",
     "Choose a folder in the browser window":
         "Agħżel fowlder fit-tieqa tal-brawżer",
+    "Choose a profile": "Agħżel profil",
     "Choose files in the browser window": "Agħżel fajls fit-tieqa tal-brawżer",
     "Choose from": "Agħżel minn",
     "Choose language": "Agħżel il-lingwa",
@@ -1015,6 +1016,8 @@ var keyStrings = {
     "Sleep timer": "Tajmer tal-irqad",
     "Sort channels": "Issortja l-kanali",
     "Source access": "Aċċess għas-sorsi",
+    "Source is busy. Try again later.":
+        "Is-sors huwa okkupat. Erġa’ pprova aktar tard.",
     "Source sign-in required": "Meħtieġ dħul fis-sors",
     "Source sign-in was cancelled": "Id-dħul fis-sors ġie kkanċellat",
     "Stalker Portal Provider": "Fornitur tal-portal Stalker",
@@ -1070,6 +1073,9 @@ var keyStrings = {
         "L-ID tal-apparat fl-indirizz mhuwiex validu.",
     "The discovery response is invalid.":
         "It-tweġiba tat-tfittxija mhix valida.",
+    "The stream connection failed": "Il-konnessjoni mal-istrim falliet",
+    "The stream format could not be played":
+        "Il-format tal-istrim ma setax jindaqq",
     "This browser cannot identify the selected screenshot source.":
         "Dan il-brawżer ma jistax jidentifika s-sors ta' ritratt tal-iskrin magħżul.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1082,6 +1088,8 @@ var keyStrings = {
         "Din l-app Play teħtieġ HTTPS. Itlob lill-fornitur tiegħek URL HTTPS tal-lista tad-daqq jew tas-server.",
     "This pairing link has expired. Open a new session on your TV.":
         "Din il-link ta' tqabbil skadiet. Iftaħ sessjoni ġdida fuq it-TV tiegħek.",
+    "This protected stream could not be played":
+        "Dan l-istrim protett ma setax jindaqq",
     "This remote command is not supported by the player.":
         "Il-plejer ma jappoġġjax dan il-kmand mill-bogħod.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1125,6 +1133,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Issettjar ta’ ULTIFL1X",
     "Unable to load playlist": "Il-lista tad-daqq ma setgħetx titgħabba",
+    Unavailable: "Mhux disponibbli",
     "Unlock the player's settings before changing its playlist.":
         "Neħħi l-imblukkar tal-issettjar tal-plejer qabel tibdel il-lista tad-daqq tiegħu.",
     Untitled: "Bla titlu",

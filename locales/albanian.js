@@ -172,6 +172,7 @@ var keyStrings = {
         "Po kontrollon lidhjen e serverit Plex…",
     "Choose a folder in the browser window":
         "Zgjidhni një dosje në dritaren e shfletuesit",
+    "Choose a profile": "Zgjidhni një profil",
     "Choose files in the browser window":
         "Zgjidhni skedarët në dritaren e shfletuesit",
     "Choose from": "Zgjidhni nga",
@@ -1017,6 +1018,8 @@ var keyStrings = {
     "Sleep timer": "Kohëmatësi i gjumit",
     "Sort channels": "Rendit kanalet",
     "Source access": "Qasja në burim",
+    "Source is busy. Try again later.":
+        "Burimi është i zënë. Provo sërish më vonë.",
     "Source sign-in required": "Kërkohet identifikimi në burim",
     "Source sign-in was cancelled": "Identifikimi në burim u anulua",
     "Stalker Portal Provider": "Ofruesi i portalit Stalker",
@@ -1072,6 +1075,9 @@ var keyStrings = {
         "ID-ja e pajisjes në adresë është e pavlefshme.",
     "The discovery response is invalid.":
         "Përgjigja e zbulimit është e pavlefshme.",
+    "The stream connection failed": "Lidhja me transmetimin dështoi",
+    "The stream format could not be played":
+        "Formati i transmetimit nuk mund të luhej",
     "This browser cannot identify the selected screenshot source.":
         "Ky shfletues nuk mund të identifikojë burimin e përzgjedhur të pamjes së ekranit.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1084,6 +1090,8 @@ var keyStrings = {
         "Ky aplikacion Play kërkon HTTPS. Kërkojini ofruesit tuaj një listë riprodhimi ose URL serveri me HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Kjo lidhje çiftimi ka skaduar. Hapni një sesion të ri në televizorin tuaj.",
+    "This protected stream could not be played":
+        "Ky transmetim i mbrojtur nuk mund të luhej",
     "This remote command is not supported by the player.":
         "Kjo komandë në distancë nuk mbështetet nga luajtësi.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1126,6 +1134,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Cilësimet e ULTIFL1X",
     "Unable to load playlist": "Nuk mund të ngarkohet lista e riprodhimit",
+    Unavailable: "I padisponueshëm",
     "Unlock the player's settings before changing its playlist.":
         "Zhbllokoni cilësimet e luajtësit përpara se të ndryshoni listën e tij të luajtjes.",
     Untitled: "Pa titull",

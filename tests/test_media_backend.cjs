@@ -38,6 +38,7 @@ function fixture() {
                 event,
                 request,
                 sample,
+                seeks: [],
                 selections: [],
             };
             leases.push(lease);
@@ -52,6 +53,15 @@ function fixture() {
                 pause() {
                     sample.paused = true;
                     event("pause");
+                },
+                relativeSample() {
+                    if (lease.onSample) lease.onSample();
+                    return { ...sample };
+                },
+                relativeSeek(position, paused) {
+                    lease.seeks.push({ paused, position });
+                    sample.position = position;
+                    return true;
                 },
                 resume() {
                     sample.paused = false;
@@ -535,6 +545,7 @@ function coreBridge(f, kind = "vod") {
                 [
                     "getCoreMediaBackend",
                     "coreCompat",
+                    "stopCorePlayback",
                     "stbStop",
                     "stbIsStandby",
                     "configureLiveRecovery",
@@ -1831,6 +1842,92 @@ test("admitted external seeks replace pending keyboard offsets despite decoder l
     );
 });
 
+for (const result of [
+    "refuse",
+    "throw",
+    "stale-before",
+    "stale-after",
+    "newer-marker",
+    "accept",
+]) {
+    test("relative seek marker rollback: " + result, (f) => {
+        const core = require("./helpers/shared-core-runtime.cjs")(f.context, {
+            vendorOnly: true,
+        });
+        load(f.context, "src/playback/session.ts");
+        const jobs = new Map(),
+            applied = [],
+            failure = new Error("decoder refused with an exception");
+        let serial = 0,
+            admitted = true,
+            decoderCalls = 0,
+            rollbacks = 0;
+        const target = { channelId: "one", kind: "vod", sourceId: "source" };
+        const controller = f.context.__ottPlaybackSession.create(core, {
+            apply: (plan) => applied.push(plan.position),
+            // Model an unchanged/lagging decoder after the attempted seek.
+            observe: () => ({
+                archiveAvailable: false,
+                duration: 500,
+                now: 1000,
+                position: 100,
+                target,
+            }),
+            preview() {},
+            schedule(callback) {
+                jobs.set(++serial, callback);
+                return serial;
+            },
+            unschedule(id) {
+                jobs.delete(id);
+            },
+        });
+        f.ports.beforeSeek = (position) => {
+            assert.equal(position, 150);
+            const rollback = controller.beforeSeek(position);
+            if (result === "stale-before") admitted = false;
+            return () => {
+                rollbacks++;
+                rollback();
+            };
+        };
+        const open = f.ports.open;
+        f.ports.open = (request, event) => {
+            const engine = open(request, event);
+            engine.relativeSeek = () => {
+                decoderCalls++;
+                if (result === "throw") throw failure;
+                if (result === "newer-marker") controller.beforeSeek(70);
+                if (result === "stale-after") admitted = false;
+                return result === "accept" || result === "stale-after";
+            };
+            return engine;
+        };
+        const handle = f.backend.open({ url: "fixture" });
+        f.playing(0, 100);
+        if (result === "throw")
+            assert.throws(
+                () => handle.seekRelative(50, () => admitted),
+                (error) => error === failure,
+                "rollback preserves the original decoder exception"
+            );
+        else {
+            const receipt = handle.seekRelative(50, () => admitted);
+            if (result === "accept") assert.equal(receipt.position, 150);
+            else assert.equal(receipt, null);
+        }
+        assert.equal(decoderCalls, result === "stale-before" ? 0 : 1);
+        assert.equal(rollbacks, result === "accept" ? 0 : 1);
+        controller.request({ intent: "offset", value: 10 });
+        for (const callback of [...jobs.values()]) callback();
+        assert.deepEqual(
+            applied,
+            [result === "accept" ? 160 : result === "newer-marker" ? 80 : 110],
+            "only a successfully submitted or newer seek can replace decoder time"
+        );
+    });
+}
+
 test("PIP observations and seeks never retire main keyboard gestures", (f) => {
     const main = f.backend.open({ url: "main" });
     f.playing(0, 100);
@@ -1857,6 +1954,130 @@ test("external seek hook reentry cannot operate on a replacement generation", (f
         f.domain({ generation: 2, kind: "vod", position: 0 });
     handle.seek(50);
     assert.equal(f.leases[0].sample.position, 10);
+});
+
+test("source-stop marker is forwarded only for the explicit internal stop", (f) => {
+    const calls = [];
+    f.ports.emit = (...args) => calls.push(args);
+    const ticket = { current: () => true };
+    f.backend.open({ url: "source-stop" });
+    calls.length = 0; // Exclude the ordinary initial loading event.
+    f.backend.stop(undefined, ticket);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].length, 5);
+    assert.equal(calls[0][1], "stop");
+    assert.equal(calls[0][4], ticket);
+    f.backend.stop();
+    assert.equal(
+        calls[1].length,
+        2,
+        "ordinary public stop has no internal marker"
+    );
+    f.domain(null);
+    f.backend.stop(undefined, ticket);
+    assert.equal(calls.length, 2, "idle stop does not invent an event context");
+});
+
+for (const paused of [false, true]) {
+    test(
+        "relative seek reads actual decoder, clamps and preserves pause " +
+            paused,
+        (f) => {
+            const handle = f.backend.open({ url: "vod" });
+            f.playing(0, 10);
+            const lease = f.leases[0];
+            if (paused) handle.pause();
+            lease.sample.position = 70; // Intentionally newer than the backend snapshot.
+            assert.equal(handle.snapshot().position, 10);
+            const moved = handle.seekRelative(12.5, () => true);
+            assert.deepEqual(JSON.parse(JSON.stringify(moved)), {
+                clamped: false,
+                from: 70,
+                position: 82.5,
+            });
+            assert.equal(lease.sample.paused, paused);
+            assert.deepEqual(lease.seeks, [{ paused, position: 82.5 }]);
+            assert.equal(handle.seekRelative(-100, () => true).position, 0);
+            const end = handle.seekRelative(9007199254740991, () => true);
+            assert.equal(end.clamped, true);
+            assert.equal(end.position, 499.999);
+            assert.ok(end.position < lease.sample.duration);
+            lease.sample.duration = 9007199254740991;
+            const large = handle.seekRelative(9007199254740991, () => true);
+            assert.ok(
+                large.position < lease.sample.duration,
+                "large doubles remain strictly before EOF"
+            );
+            lease.sample.duration = 0.0005;
+            lease.sample.position = 0;
+            assert.equal(handle.seekRelative(1, () => true).position, 0);
+        }
+    );
+}
+for (const field of ["position", "duration"]) {
+    for (const invalid of [NaN, Infinity, -1, "10"]) {
+        test("relative seek rejects invalid " + field + ": " + invalid, (f) => {
+            const handle = f.backend.open({ url: "vod" });
+            f.playing(0, 10);
+            f.leases[0].sample[field] = invalid;
+            assert.equal(
+                handle.seekRelative(1, () => true),
+                null
+            );
+            assert.deepEqual(f.leases[0].seeks, []);
+        });
+    }
+}
+for (const boundary of ["sample", "intent", "seek", "policy"]) {
+    test("relative seek fences replacement during " + boundary, (f) => {
+        const handle = f.backend.open({ url: "old" });
+        f.playing(0, 10);
+        const replace = () => {
+            f.domain({ generation: 2, kind: "vod", position: 0 });
+            f.backend.open({ url: "new" });
+            f.playing(1, 20);
+            return true;
+        };
+        if (boundary === "sample") f.leases[0].onSample = replace;
+        if (boundary === "intent") f.ports.beforeIntent = replace;
+        if (boundary === "seek") f.ports.beforeSeek = replace;
+        assert.equal(
+            handle.seekRelative(
+                1,
+                boundary === "policy" ? () => false : () => true
+            ),
+            null
+        );
+        assert.ok(f.leases.every((lease) => lease.seeks.length === 0));
+    });
+}
+test("relative seek rejects zero, invalid offsets, unavailable phases and non-VOD", (f) => {
+    const handle = f.backend.open({ url: "vod" });
+    assert.equal(
+        handle.seekRelative(1, () => true),
+        null
+    );
+    f.playing(0, 0);
+    for (const value of [0, -0, NaN, Infinity, "1", 9007199254740992])
+        assert.equal(
+            handle.seekRelative(value, () => true),
+            null
+        );
+    assert.equal(handle.seekRelative(1, () => true).from, 0);
+    for (const kind of ["live", "archive"]) {
+        f.domain({ generation: 2, kind, position: 0 });
+        const other = f.backend.open({ url: kind });
+        f.playing(f.leases.length - 1, 10);
+        assert.equal(other.canSeekRelative(), false);
+        assert.equal(
+            other.seekRelative(1, () => true),
+            null
+        );
+    }
+    assert.deepEqual(
+        f.leases.slice(1).map((lease) => lease.seeks),
+        [[], []]
+    );
 });
 
 console.log(

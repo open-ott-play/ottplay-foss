@@ -88,10 +88,10 @@ The synthetic test pattern can be regenerated with `scripts/generate-demo-media.
 
 - **Playback**: HLS, DASH and plain HTTP streams, with managed HLS.js/Shaka quality ceilings, bounded recovery and up to three explicit backup URLs per live channel. Archive/VOD never switch to a live backup; see [quality and recovery](docs/playback-stream-policy.md).
 - **EPG**: XMLTV matching, time-shift/catch-up, programme-title search (N5 in EPG), reminders and a manual feed/ID binding for an exact channel in the hosted/native XMLTV path. See [binding and accessibility](docs/guide-binding-accessibility.md).
-- **Favorites**: Multi-list favorites (switch/add/rename/delete from Actions → Favorite lists); parental PIN
+- **Favorites**: One ordered [mixed collection](docs/mixed-favorites.md) across configured providers and profiles on supported hosts, with portable CLI export/import; parental PIN. Per-source favorite lists remain available in fallback mode.
 - **Settings**: JSON export/import of settings and favorites, an undo journal for supported localStorage batches, source-aware archive resume and exact stored-settings comparison for controller workflows. Recovery assumes one writer; custom storage adapters retain best-effort rollback. See [settings recovery](docs/settings-recovery.md).
 - **Shared interface**: OTT Server, Tauri and Capacitor use the same channel-list theme and visibility settings. Interface settings control highlight and selection colors; Channel list settings control channel names, picons, current programmes, progress and archive markers.
-- **Providers**: M3U/M3U8, Xtream live TV plus [on-demand movie/series catalogs](docs/xtream-media.md), Stalker/Ministra, Plex and VPortal. Provider capabilities and account access determine available archive and media-library features.
+- **Providers**: M3U/M3U8, Xtream live TV plus [on-demand movie/series catalogs](docs/xtream-media.md), Stalker/Ministra with [movies and nested episodes](docs/stalker-media.md), Plex and VPortal. Provider capabilities and account access determine available archive and media-library features.
 - **Push commands**: Remote control via webhook — change channel, provider, playlist, show popups
 - **Remote text entry (swop)**: Phone keyboard via Cloudflare Worker when TV/phone are on different networks (installation-authorized sessions; ♥™ on VKB)
 - **Per-device routing**: UUID-based addressing for multi-device setups
@@ -109,6 +109,9 @@ Installed releases or hosted deployments may use an earlier revision. The indepe
 [Android application](https://github.com/open-ott-play/ottplay-android) also keeps
 audio/subtitle choices by language, role and label instead of manifest indexes;
 its implementation and release are separate from this frontend.
+
+The [STB source review](docs/stb-player-improvements.md) explains the media,
+resource and recovery improvements, their source comparisons and current limits.
 
 ## Debug HUD
 
@@ -501,15 +504,22 @@ for example `http://provider.example/stalker_portal/c/`. `/c/index.html`,
 `/stalker_portal`, `/server/load.php`, `/load.php` and `/portal.php` URLs select
 the classic MAG protocol. Existing bare-server configurations retain JSON-RPC.
 The provider loads the profile, genres and paginated live channels using the
-shared Stalker core. Browser requests pass through the companion's `/stalker/api`
-endpoint; native apps use their existing HTTP transport. Browser and companion
-assets must be updated together.
+shared Stalker core, then discovers classic `type=vod` movies and nested episodes
+in the background. Folder paths become categories in the normal Channel list;
+available descriptions, posters and stable global Favorites use the same media
+interface. See [catalog behavior and bounds](docs/stalker-media.md).
+
+Self-hosted browser requests pass through the companion's `/stalker/api`
+endpoint; native apps use their existing HTTP transport. Hosted browsers require
+explicitly configured routes through the [dedicated relay](docs/stalker-relay.md).
+Browser and server assets must be updated together.
 
 Live playback resolves temporary channel commands when opening a stream; channel
 changes, stop, PiP and provider replacement cancel stale resolutions. Explicit
-non-temporary HTTP(S) commands play directly. Short EPG is supported; classic
-portal archive and VOD are not exposed by this provider yet. Existing JSON-RPC
-archive/guide behavior is unchanged. Private LAN portals require an exact
+non-temporary HTTP(S) commands play directly. Short EPG is supported. Classic
+portal archive and the separate `type=series` dialect are not exposed by this
+provider. Existing JSON-RPC archive/guide behavior is unchanged. Private LAN
+portals on the companion route require an exact
 `OTTPLAY_PROXY_LAN_ORIGINS` entry, as with the other companion proxy routes.
 
 The public Infomir demo is `http://middleware-stalker.com/stalker_portal/c/`.

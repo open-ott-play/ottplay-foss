@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking folder permission": "جارٍ التحقق من إذن المجلد",
     "Checking the Plex server connection…": "جارٍ التحقق من اتصال خادم Plex...",
     "Choose a folder in the browser window": "اختر مجلدًا في نافذة المتصفح",
+    "Choose a profile": "اختر ملفًا شخصيًا",
     "Choose files in the browser window": "اختر ملفات في نافذة المتصفح",
     "Choose from": "اختر من بينها",
     "Choose language": "اختر اللغة",
@@ -976,6 +977,7 @@ var keyStrings = {
     "Sleep timer": "مؤقت النوم",
     "Sort channels": "فرز القنوات",
     "Source access": "الوصول إلى المصدر",
+    "Source is busy. Try again later.": "المصدر مشغول. حاول مرة أخرى لاحقًا.",
     "Source sign-in required": "يلزم تسجيل الدخول إلى المصدر",
     "Source sign-in was cancelled": "تم إلغاء تسجيل الدخول للمصدر",
     "Stalker Portal Provider": "مزود البوابة Stalker",
@@ -1029,6 +1031,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "الجهاز ID الموجود في العنوان غير صالح.",
     "The discovery response is invalid.": "استجابة الاكتشاف غير صالحة.",
+    "The stream connection failed": "فشل الاتصال بالدفق",
+    "The stream format could not be played": "تعذر تشغيل صيغة الدفق",
     "This browser cannot identify the selected screenshot source.":
         "لا يستطيع هذا المتصفح التعرف على مصدر لقطة الشاشة المحدد.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1041,6 +1045,7 @@ var keyStrings = {
         "يتطلب تطبيق Play هذا وجود HTTPS. اطلب من مزود الخدمة الخاص بك الحصول على قائمة تشغيل HTTPS أو خادم URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "انتهت صلاحية رابط الاقتران هذا. افتح جلسة جديدة على جهاز التلفزيون.",
+    "This protected stream could not be played": "تعذر تشغيل هذا الدفق المحمي",
     "This remote command is not supported by the player.":
         "أمر التحكم عن بُعد هذا غير مدعوم في المشغل.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1083,6 +1088,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "إعدادات ULTIFL1X",
     "Unable to load playlist": "غير قادر على تحميل قائمة التشغيل",
+    Unavailable: "غير متاح",
     "Unlock the player's settings before changing its playlist.":
         "افتح قفل إعدادات المشغل قبل تغيير قائمة التشغيل.",
     Untitled: "بدون عنوان",

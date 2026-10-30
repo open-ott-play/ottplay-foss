@@ -61,6 +61,7 @@ import { createLocalHttpRemote } from "./plugins/local-http-remote";
 import { setupCapacitorCompanionShim } from "./plugins/m3u-proxy";
 import { MobileNativeMedia } from "./plugins/mobile-native-media";
 import { resolveNativePlugin, tauriInvoke } from "./plugins/native-bridge";
+import { captureNativeMemoryHint } from "./plugins/native-memory";
 import { installRemoteLifecycle } from "./plugins/remote-lifecycle";
 import { installRemoteScreenshot } from "./plugins/remote-screenshot";
 import { installRuntimeDebug } from "./plugins/runtime-debug";
@@ -330,6 +331,7 @@ declare var $: any;
 
 // Command handler (push commands via webhook)
 import { type Command, handleCommand, showPopup } from "./commands";
+import { readPlayerState } from "./commands/player-state";
 import { readNotificationsEnabled } from "./commands/remote-notifications";
 import { executeRemoteRequest } from "./commands/remote-requests";
 import { remotePlayerInfo } from "./commands/remote-restart";
@@ -2744,10 +2746,13 @@ function setupTauriEpgCacheReady(): void {
  * @param catIdx - Category index.
  * @param chIdx - Channel index within the category.
  * @param fullscreen - Close the list after admitting a remote selection.
- * @param admit - Optional current-state guard for a synchronous remote channel step.
+ * @param admit - Optional pre-selection guard for a synchronous remote channel step.
  * @param resume - Startup-only local file offset, bound to its source and channel.
  * @param background - Keep the channel list open during natural media transitions.
  * @param fromStart - Start an adjacent media file at zero instead of its saved position.
+ * @param committed - Optional callback after asynchronous media dispatch settles.
+ * @param postSelection - Persistent internal guard: selected=false after owned Stop,
+ * before selecting; selected=true (default) while the new media resolves.
  *
  * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
  * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
@@ -2756,6 +2761,11 @@ function setupTauriEpgCacheReady(): void {
  * Edge case: If the category doesn't exist, shows an error via infoBox()
  * and sendClientFeedback(). If parental access is required, defers via callback.
  */
+function stopSourcePlayback(): void {
+    var stop = (window as any).__ottCoreTransport?.stopForSource;
+    if (typeof stop === "function") stop();
+    else stbStop();
+}
 function _playChannel(
     catIdx: number,
     chIdx: number,
@@ -2763,7 +2773,9 @@ function _playChannel(
     admit?: () => boolean,
     resume?: { channelId: string; position: number; sourceId: string },
     background = false,
-    fromStart = false
+    fromStart = false,
+    committed?: (ok: boolean) => void,
+    postSelection?: (loadingOwner?: any, selected?: boolean) => boolean
 ): boolean | void {
     var w = window as any;
     if (w.__ottStandby?.blocked()) return false;
@@ -2831,7 +2843,9 @@ function _playChannel(
                     admit,
                     resume,
                     background,
-                    fromStart
+                    fromStart,
+                    committed,
+                    postSelection
                 );
         })
     ) {
@@ -2848,12 +2862,62 @@ function _playChannel(
     if (admit && !admit()) return false;
     // Natural EOF already retired its decoder. Stopping it again would cancel
     // the completion guard before the next Local file can be admitted.
+    var stoppedForSelection = false;
+    var beforeStop: any = null;
+    var stoppedProof: any = null;
+    var stopDriver = w.__ottActiveProviderDriver;
+    var stopLoad = w.__ottCommandChannelLoad;
+    var stopCatalog = channels;
+    var stopGroups = cats;
+    var stopIdentity = w.__ottSourceIdentity;
+    var stopSource = stopIdentity?.current?.(w);
     if (
         settings.stopPlay &&
         !(background && w.__ottClassicPlayback?.snapshot().phase === "stopped")
+    ) {
+        beforeStop = w.__ottClassicPlayback?.snapshot();
+        var stopSelection = w.__ottCoreTransport?.stopForSelection;
+        if (typeof stopSelection === "function") stoppedProof = stopSelection();
+        else stopSourcePlayback();
+        stoppedForSelection = true;
+    }
+    // The old cursor authorizes dispatch. The exact owned Stop ticket and the
+    // persistent policy guard authorize its deliberate generation transition.
+    if (stoppedForSelection) {
+        var afterStop = w.__ottClassicPlayback?.snapshot();
+        var wasActive = beforeStop?.target && beforeStop.phase !== "stopped";
+        if (
+            typeof stoppedProof !== "function" ||
+            !stoppedProof() ||
+            !beforeStop ||
+            !afterStop ||
+            afterStop.generation !==
+                beforeStop.generation + (wasActive ? 1 : 0) ||
+            (wasActive && afterStop.phase !== "stopped") ||
+            !!beforeStop.target !== !!afterStop.target ||
+            (beforeStop.target &&
+                (beforeStop.target.sourceId !== afterStop.target.sourceId ||
+                    beforeStop.target.channelId !==
+                        afterStop.target.channelId ||
+                    beforeStop.target.kind !== afterStop.target.kind ||
+                    beforeStop.target.archiveStart !==
+                        afterStop.target.archiveStart)) ||
+            (postSelection && !postSelection(undefined, false))
+        )
+            return false;
+    } else if (admit && !admit()) return false;
+    if (
+        stopDriver !== w.__ottActiveProviderDriver ||
+        stopLoad !== w.__ottCommandChannelLoad ||
+        stopCatalog !== channels ||
+        stopGroups !== cats ||
+        stopIdentity !== w.__ottSourceIdentity ||
+        stopSource !== stopIdentity?.current?.(w) ||
+        catsArray[catIdx] !== requestedCategory ||
+        !cats[requestedCategory] ||
+        cats[requestedCategory][chIdx] !== requestedId
     )
-        stbStop();
-    if (admit && !admit()) return false;
+        return false;
     if (!resumeCurrent()) return false;
     setCurrent(catIdx, chIdx);
     if (!resumeCurrent()) return false;
@@ -2864,6 +2928,37 @@ function _playChannel(
         var selectedDriver = w.__ottActiveProviderDriver;
         var selectedLoad = w.__ottCommandChannelLoad;
         var selectedRow = channels[channelId];
+        var selectedCatalog = channels;
+        var selectedIdentity = w.__ottSourceIdentity;
+        var selectedSource = selectedIdentity?.current?.(w);
+        // The fourth argument authorizes the old cursor synchronously. Once
+        // select() commits, the new selection owns asynchronous media work.
+        var selectedCurrent = function (loadingOwner?: any): boolean {
+            return (
+                selectedDriver === w.__ottActiveProviderDriver &&
+                selectedLoad === w.__ottCommandChannelLoad &&
+                selectedCatalog === w.channels &&
+                selectedRow === selectedCatalog[channelId] &&
+                mediaItem === (selectedRow as any).__ottMediaItem &&
+                selectedIdentity === w.__ottSourceIdentity &&
+                selectedSource === selectedIdentity?.current?.(w) &&
+                Array.isArray(w.catsArray) &&
+                w.catsArray[w.catIndex] === requestedCategory &&
+                Array.isArray(w.curList) &&
+                w.curList[w.primaryIndex] === channelId &&
+                !w.__ottStandby?.blocked() &&
+                kiosk === w.__ottKiosk &&
+                (!kiosk || kiosk.allowed(channelId)) &&
+                (!admit ||
+                    (Array.isArray(w.parentalArray) &&
+                        typeof w.__ottParental?.needs === "function" &&
+                        (!w.parentalArray.some(function (id: any) {
+                            return String(id) === String(channelId);
+                        }) ||
+                            !w.__ottParental.needs("channels")))) &&
+                (!postSelection || postSelection(loadingOwner, true))
+            );
+        };
         clearTimeout(w.previewTimer);
         w.previewChan = null;
         if (w.isListVisible && !background) closeList();
@@ -2876,14 +2971,15 @@ function _playChannel(
         return w.__ottMedia.playChannel(
             mediaItem,
             channelId,
-            undefined,
+            selectedCurrent,
             background,
             fromStart
                 ? "start"
                 : w.commandChannelsReady === false ||
                     (kiosk && kiosk.locked() && kiosk.allowed(channelId))
                   ? "resume"
-                  : "prompt"
+                  : "prompt",
+            committed
         );
     }
     if (
@@ -2976,7 +3072,39 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
     if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
-    if (settings.stopPlay) stbStop();
+    var mediaHost = window as any;
+    var mediaDriver = mediaHost.__ottActiveProviderDriver;
+    var mediaLoad = mediaHost.__ottCommandChannelLoad;
+    var mediaIdentity = mediaHost.__ottSourceIdentity;
+    var mediaSource = mediaIdentity?.current?.(mediaHost);
+    var mediaCurrent = function (): boolean {
+        return (
+            media.valid() &&
+            mediaDriver === mediaHost.__ottActiveProviderDriver &&
+            mediaLoad === mediaHost.__ottCommandChannelLoad &&
+            mediaIdentity === mediaHost.__ottSourceIdentity &&
+            mediaSource === mediaIdentity?.current?.(mediaHost) &&
+            !mediaHost.__ottStandby?.blocked() &&
+            kiosk === mediaHost.__ottKiosk &&
+            (!kiosk ||
+                !kiosk.enabled() ||
+                (channelLaunch != null && kiosk.allowed(channelLaunch)) ||
+                (automatic &&
+                    kiosk.locked() &&
+                    typeof kiosk.allowedMedia === "function" &&
+                    kiosk.allowedMedia(media.ref)))
+        );
+    };
+    if (!mediaCurrent()) return;
+    var mediaStopProof: (() => boolean) | null = null;
+    if (settings.stopPlay) {
+        var stopSelection = mediaHost.__ottCoreTransport?.stopForSelection;
+        if (typeof stopSelection === "function")
+            mediaStopProof = stopSelection();
+        else stopSourcePlayback();
+        if (!mediaStopProof || !mediaStopProof() || !mediaCurrent()) return;
+    }
+    var mediaGeneration = mediaHost.__ottClassicPlayback?.snapshot().generation;
     if (
         (window as any).__ottClassicPlayback &&
         typeof (window as any).__ottClassicPlayback.command === "function"
@@ -2991,6 +3119,20 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
                 sourceId: media.ref.sourceId,
                 type: "vod",
             }) === false
+        )
+            return;
+    }
+    // The command may notify observers that synchronously replace this item.
+    if (!mediaCurrent()) return;
+    if (mediaHost.__ottClassicPlayback) {
+        var selectedMedia = mediaHost.__ottClassicPlayback.snapshot();
+        if (
+            selectedMedia.generation !== mediaGeneration + 1 ||
+            !selectedMedia.target ||
+            selectedMedia.phase === "stopped" ||
+            selectedMedia.target.sourceId !== media.ref.sourceId ||
+            selectedMedia.target.channelId !== media.ref.itemId ||
+            selectedMedia.target.kind !== "vod"
         )
             return;
     }
@@ -5335,9 +5477,18 @@ window.addChannel2bucket = function (): void {
     var idx = w.selIndex;
     var chId = w.listArray[idx];
     if (w.sFavorites) {
+        if (
+            typeof w.setGlobalChannelFavorite === "function" &&
+            w.setGlobalChannelFavorite(chId, true) !== false
+        )
+            return;
         if (!w.listCatIndex) return;
         addToFavorites(chId);
-        if (typeof w.saveChannelsCats === "function") w.saveChannelsCats();
+        if (
+            typeof w.saveChannelsCats !== "function" ||
+            w.saveChannelsCats() !== true
+        )
+            return;
         if (typeof w.showShift === "function")
             w.showShift(
                 (w._("Channel ") || "Channel ") +
@@ -5367,25 +5518,46 @@ window.addChannel2bucket = function (): void {
                 )
             );
         };
+        // Retain the serialized panel across replacement of its list owner.
         if (typeof w.saveListPanelState === "function") w.saveListPanelState();
+        var panels = w.__ottClassicScreenPort;
+        var savedPanel = panels.savedPanel();
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
+        var savedData = w.listDataArray;
         var savedGetListItem = w.getListItem;
         var savedDetailListAction = w.detailListAction;
         var savedListKeyHandler = w.listKeyHandlerFn;
+        var favoriteSource = w.__ottSourceIdentity?.current?.(w);
+        var favoriteChannels = w.channels;
+        var favoriteChannel = favoriteChannels && favoriteChannels[chId];
+        var addPickedFavorite = function (): void {
+            if (
+                favoriteSource !== w.__ottSourceIdentity?.current?.(w) ||
+                favoriteChannels !== w.channels ||
+                favoriteChannel !== w.channels?.[chId]
+            )
+                return;
+            if (
+                typeof w.setGlobalChannelFavorite !== "function" ||
+                w.setGlobalChannelFavorite(chId, true) === false
+            )
+                w.showShift?.(w._("Favorites") + ": " + w._("Unavailable"));
+        };
         var popupVisible =
             typeof $ !== "undefined" && $("#listPopUp").is(":visible");
         if (!admitted()) return;
         w.selIndex = 0;
         w.listArray = w.catsArray.slice(1);
-        if (resume) w.listDataArray = w.listArray;
+        w.listDataArray = w.listArray;
         w.getListItem = function (item: any, _idx: number): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListAction = function (): void {};
         w.listKeyHandlerFn = handler = function (e: number): boolean {
             if (!admitted()) return true;
+            var pickedFavorite = false;
             switch (e) {
                 case w.keys.ENTER:
                     var groupId = resume
@@ -5399,6 +5571,10 @@ window.addChannel2bucket = function (): void {
                             w.__ottChannels.index(groupId) < 0)
                     )
                         return true;
+                    if (groupId === "system:favorites") {
+                        pickedFavorite = true;
+                        break;
+                    }
                     w.__ottChannels.change("member", {
                         action: "add",
                         channelId: chId,
@@ -5427,22 +5603,23 @@ window.addChannel2bucket = function (): void {
                     return false;
             }
             if (!admitted()) return true;
-            if (resume) {
-                w.getListItem = savedGetListItem;
-                w.detailListAction = savedDetailListAction;
-                resume(admitted);
-                return true;
-            }
-            if (typeof w.restoreListPanelState === "function")
-                w.restoreListPanelState();
-            w.selIndex = savedIdx;
-            w.listArray = savedList;
             w.getListItem = savedGetListItem;
             w.detailListAction = savedDetailListAction;
-            w.listKeyHandlerFn = savedListKeyHandler;
-            if (typeof w.showPage === "function") w.showPage();
-            if (popupVisible && typeof $ !== "undefined")
-                $("#listPopUp").show();
+            if (resume) {
+                resume(admitted);
+            } else {
+                panels.savePanel(savedPanel);
+                if (typeof w.restoreListPanelState === "function")
+                    w.restoreListPanelState();
+                w.selIndex = savedIdx;
+                w.listArray = savedList;
+                w.listDataArray = savedData;
+                w.listKeyHandlerFn = savedListKeyHandler;
+                if (typeof w.showPage === "function") w.showPage();
+                if (popupVisible && typeof $ !== "undefined")
+                    $("#listPopUp").show();
+            }
+            if (pickedFavorite) addPickedFavorite();
             return true;
         };
         var caption =
@@ -6320,6 +6497,9 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
         };
     }
 );
+captureNativeMemoryHint(window, function () {
+    return runtimeDiagnostics.snapshot();
+});
 (window as any).__ottRuntimeDebug = installRuntimeDebug(window, {
     getConfig: remoteControlConfig,
     native: function () {
@@ -6406,7 +6586,10 @@ var runtimeDiagnostics = resolveNativePlugin<any>(
             }
         );
     },
-    remoteInspection.accept
+    remoteInspection.accept,
+    function () {
+        return readPlayerState(window, remotePlayerInfo(window));
+    }
 );
 
 (window as any).__ottRemoteLifecyclePorts = {

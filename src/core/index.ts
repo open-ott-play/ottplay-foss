@@ -209,6 +209,7 @@ var _coreShakaTeardown: CoreShakaRetirement | null = null;
 var _corePendingSeek: (() => void) | null = null;
 var _corePendingSeekPosition: number | null = null;
 var _coreSeekRevision = 0;
+var _corePauseRevision = 0;
 var _coreAutoCancel: ReturnType<typeof watchAutoNativePlayback> | null = null;
 var _coreAutoHlsUsed = false;
 var _corePlaybackMode = 0;
@@ -1346,7 +1347,7 @@ function createCoreStreamAttempt(
                 ended = true;
                 report(denied ? "access-denied" : "failed");
                 if ((window as any).__ottPlaybackFeedback)
-                    (window as any).__ottPlaybackFeedback.fail();
+                    (window as any).__ottPlaybackFeedback.fail(kind, status);
                 $("#buffering").hide();
                 showShift(
                     denied
@@ -1365,7 +1366,7 @@ function createCoreStreamAttempt(
         },
         pause: clear,
         progress: function () {
-            if (!pending && !ended) retries = 0;
+            if (active() && !pending && !ended) retries = 0;
         },
         resume: function () {
             if (ended) return true;
@@ -1496,11 +1497,31 @@ function startCoreEngine(
         var sampled = Date.now(),
             last = media.currentTime,
             progress = 0,
+            seekRevision = _coreSeekRevision,
+            pauseRevision = _corePauseRevision,
+            interrupted = false,
             cancelled = false;
         var stalled = sampled;
+        var interruptions = [
+            "pause",
+            "play",
+            "seeking",
+            "seeked",
+            "waiting",
+            "stalled",
+        ];
+        function interrupt(): void {
+            if (!cancelled) interrupted = true;
+        }
+        interruptions.forEach(function (name) {
+            media.addEventListener(name, interrupt);
+        });
         function cancel(): void {
             cancelled = true;
             clearTimeout(timer);
+            interruptions.forEach(function (name) {
+                media.removeEventListener(name, interrupt);
+            });
         }
         cancel.pending = function (): boolean {
             return false;
@@ -1520,12 +1541,18 @@ function startCoreEngine(
                 next = media.currentTime;
             var elapsed = (now - sampled) / 1000,
                 delta = next - last;
+            var discontinuity =
+                interrupted ||
+                seekRevision !== _coreSeekRevision ||
+                pauseRevision !== _corePauseRevision;
             sampled = now;
             last = next;
             if (
                 (window as any).forcePlay === false ||
                 media.paused ||
-                media.seeking
+                media.seeking ||
+                elapsed <= 0 ||
+                elapsed > 2.5
             ) {
                 stalled = now;
                 progress = 0;
@@ -1535,8 +1562,10 @@ function startCoreEngine(
                 delta <= elapsed * (media.playbackRate || 1) + 0.5
             ) {
                 stalled = now;
-                progress += delta;
-                if (progress >= 2 && coreStreamAttempt)
+                // Brief reads from an unstable mount must not renew the retry
+                // budget. Count observed wall time, not seek/rate advancement.
+                progress = discontinuity ? 0 : progress + elapsed;
+                if (progress >= 10 && coreStreamAttempt)
                     coreStreamAttempt.progress();
             } else {
                 progress = 0;
@@ -1555,6 +1584,11 @@ function startCoreEngine(
                     stalled = now;
                 }
             }
+            // Commands and native events can begin and end between samples.
+            // Credit resumes only after observing a fresh uninterrupted interval.
+            interrupted = false;
+            seekRevision = _coreSeekRevision;
+            pauseRevision = _corePauseRevision;
             if (
                 !cancelled &&
                 session === _playSession &&
@@ -2139,7 +2173,23 @@ function startCorePlayback(
                 },
                 streaming: bufferPolicy.shaka,
             });
+        var restoringTracks = false;
+        var restoreTracks = function (): void {
+            if (
+                restoringTracks ||
+                session !== _playSession ||
+                window.player !== playbackShaka
+            )
+                return;
+            restoringTracks = true;
+            setSubtitleTrack(undefined, true);
+            setSubtitleTrack();
+            restoringTracks = false;
+            if (typeof (window as any).refreshAudioBadge === "function")
+                (window as any).refreshAudioBadge();
+        };
         var loaded = function (): void {
+            restoreTracks();
             if (
                 session === _playSession &&
                 window.player === playbackShaka &&
@@ -2170,11 +2220,20 @@ function startCorePlayback(
                 status
             );
         };
-        if (typeof playbackShaka.addEventListener === "function")
+        if (typeof playbackShaka.addEventListener === "function") {
             playbackShaka.addEventListener("error", function (event: any) {
                 if (event.detail && event.detail.severity === 2)
                     failed(event.detail);
             });
+            [
+                "trackschanged",
+                "variantchanged",
+                "textchanged",
+                "texttrackvisibility",
+            ].forEach(function (name) {
+                playbackShaka.addEventListener(name, restoreTracks);
+            });
+        }
         var loadShaka = function (): void {
             // attach() in current Shaka is asynchronous. A stop/channel switch
             // during attachment must not load an obsolete stream afterwards.
@@ -2377,11 +2436,53 @@ export function stbPlay(url: string, position?: number): void {
     getCoreMediaBackend().open({ position: position, url: url });
 }
 export function stbStop(): void {
+    (window as any).__ottGlobalFavorites?.navigation?.retire();
+    stopCorePlayback();
+}
+function stopCorePlayback(): void {
     var media = (window as any).__ottMedia;
     if (media && media.cancelAuto) media.cancelAuto();
     if ((window as any).__ottClassicPlayback)
         (window as any).__ottClassicPlayback.cancel();
     getCoreMediaBackend().stop();
+}
+function stopCoreForSelection(): any {
+    var w = window as any;
+    var playback = w.__ottClassicPlayback;
+    if (!playback?.cancelForSource || !playback.finishSourceStop) return null;
+    // Capture cancellation ownership before any teardown callback can reenter.
+    var ticket = playback.cancelForSource();
+    try {
+        if (!ticket?.current()) return null;
+        var before = playback.snapshot();
+        if (!ticket.current()) return null;
+        var ownedHandoff = w.__ottGlobalFavoritesHandoff?.current();
+        if (!ticket.current()) return null;
+        if (!ownedHandoff) {
+            w.__ottGlobalFavorites?.navigation?.retire();
+            if (!ticket.current()) return null;
+        }
+        if (w.__ottMedia?.cancelAuto) w.__ottMedia.cancelAuto();
+        if (!ticket.current()) return null;
+        var backend = getCoreMediaBackend();
+        if (!ticket.current()) return null;
+        backend.stop(undefined, ticket);
+        if (
+            !ticket.current() ||
+            backend.current() ||
+            (before.target && !ticket.used)
+        )
+            return null;
+        return function (): boolean {
+            return (
+                ticket.current() &&
+                backend === getCoreMediaBackend() &&
+                !backend.current()
+            );
+        };
+    } finally {
+        playback.finishSourceStop(ticket);
+    }
 }
 export function stbPause(): void {
     var handle = getCoreMediaBackend().current();
@@ -2438,6 +2539,7 @@ export function stbGetVolume(): number {
 export function stbSetVolume(v: number): void {
     video!.volume = v / 100;
     if (coreDeviceEffects.volume) coreDeviceEffects.volume(v);
+    (window as any).__ottPlayerState?.changed();
 }
 /**
  * Get the current playback position.
@@ -2746,7 +2848,7 @@ export function stbToggleAspectRatio(): void {
 }
 
 /**
- * Check whether more than one audio track is available (hls.js or native).
+ * Check whether more than one audio track is available (HLS, Shaka, or native).
  * @returns `true` if multiple audio tracks exist.
  */
 export function stbAudioTracksExists(): boolean {
@@ -2773,6 +2875,8 @@ function avTracks(
     selected?: number,
     audio?: boolean
 ): any[] {
+    if (media === video && window.player && (window as any).__ottShakaTracks)
+        return (window as any).__ottShakaTracks(window.player, selected, audio);
     var hls =
             media === video
                 ? hlsInstance
@@ -2853,18 +2957,31 @@ function avTracks(
     return rows;
 }
 
-function setSubtitleTrack(index?: number): void {
-    if (index === undefined) {
+function setSubtitleTrack(index?: number, audio?: boolean): void {
+    var session = _playSession;
+    var apply = function (value: number): void {
+        if (session !== _playSession) return;
         var owner: any = getCoreMediaBackend().current();
         var choice =
             owner &&
             owner.active() &&
             owner.__ottExplicitTracks &&
-            owner.__ottExplicitTracks.subtitle;
-        if (!choice) return applyChannelPreference("aSubs", setSubtitleTrack);
-        index = choice - 1;
-    }
-    avTracks(video, index);
+            owner.__ottExplicitTracks[audio ? "audio" : "subtitle"];
+        avTracks(
+            video,
+            index !== undefined ? index : choice ? choice - 1 : value,
+            audio
+        );
+    };
+    var owner: any = getCoreMediaBackend().current();
+    if (
+        index !== undefined ||
+        (owner &&
+            owner.__ottExplicitTracks &&
+            owner.__ottExplicitTracks[audio ? "audio" : "subtitle"])
+    )
+        apply(0);
+    else applyChannelPreference(audio ? "aAudios" : "aSubs", apply);
 }
 
 /** The menu and picker use the same engine-aware track discovery. */
@@ -3317,7 +3434,7 @@ export function stbInit(): void {
                     applyChannelPreference("aAspects", setAspect);
                     applyChannelPreference("aZooms", setZoom);
                     setSubtitleTrack();
-                    applyChannelPreference("aAudios", setAudioTrack);
+                    setSubtitleTrack(undefined, true);
                 }
             });
             video!.addEventListener("playing", function () {
@@ -3872,6 +3989,15 @@ export function getCoreMediaBackend(): any {
             return !stbIsStandby();
         },
         beforeIntent: function (): boolean {
+            var globalRouter = (window as any).__ottGlobalFavorites?.router;
+            var intentSession = _playSession,
+                intentDriver = (window as any).__ottActiveProviderDriver;
+            if (globalRouter?.busy()) globalRouter.cancel();
+            if (
+                intentSession !== _playSession ||
+                intentDriver !== (window as any).__ottActiveProviderDriver
+            )
+                return false;
             var driver = (window as any).__ottActiveProviderDriver;
             if (
                 !driver ||
@@ -3887,9 +4013,10 @@ export function getCoreMediaBackend(): any {
                 driver === (window as any).__ottActiveProviderDriver
             );
         },
-        beforeSeek: function (position: number): void {
+        beforeSeek: function (position: number): (() => void) | void {
             var playback = (window as any).__ottClassicPlayback;
-            if (playback && playback.beforeSeek) playback.beforeSeek(position);
+            if (playback && playback.beforeSeek)
+                return playback.beforeSeek(position);
         },
         clearInterval: function (timer: any) {
             clearInterval(timer);
@@ -3913,19 +4040,31 @@ export function getCoreMediaBackend(): any {
             context: any,
             type: string,
             position: number,
-            duration: number
+            duration: number,
+            sourceStop?: any
         ) {
             var playback = (window as any).__ottClassicPlayback;
             if (playback) {
-                playback.command({
+                var completion =
+                    type === "ended" && context.kind === "vod"
+                        ? (
+                              window as any
+                          ).__ottGlobalFavorites?.navigation?.prepareEnded(
+                              context.generation
+                          )
+                        : null;
+                var command: any = {
                     duration: duration,
                     generation: context.generation,
                     position: position,
                     type: type === "ended" ? "stop" : type,
-                });
+                };
+                if (type === "stop" && sourceStop)
+                    command.sourceStop = sourceStop;
+                playback.command(command);
                 var media = (window as any).__ottMedia;
                 if (type === "ended" && context.kind === "vod" && media)
-                    media.ended(context.generation + 1);
+                    media.ended(context.generation + 1, completion);
             }
         },
         observedPosition: function (position: number): void {
@@ -4113,7 +4252,7 @@ function openCoreEngineLease(
             var callback = function () {
                 if (!active()) return;
                 if (kind === "subtitle") setSubtitleTrack();
-                else applyChannelPreference("aAudios", setAudioTrack);
+                else setSubtitleTrack(undefined, true);
             };
             list.addEventListener("addtrack", callback);
             if (kind === "subtitle") list.addEventListener("change", callback);
@@ -4177,6 +4316,7 @@ function openCoreEngineLease(
         },
         pause: function () {
             if (!active() || !media) return;
+            if (!pip) _corePauseRevision++;
             (window as any).forcePlay = false;
             if (!pip && coreStreamAttempt) coreStreamAttempt.pause();
             if (!pip && (window as any).__ottPlaybackFeedback)
@@ -4187,12 +4327,54 @@ function openCoreEngineLease(
                 cancelCoreCompat((window as any).__ottCoreCompatibilityUrl);
             }
         },
+        relativeSample: function () {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                media.seekable.length === 0
+            )
+                return null;
+            return {
+                duration: media.duration,
+                paused: media.paused,
+                position: media.currentTime,
+                ready: media.readyState,
+            };
+        },
+        relativeSeek: function (position: number, paused: boolean) {
+            if (
+                !active() ||
+                pip ||
+                !media ||
+                media.seeking ||
+                media.ended ||
+                !media.seekable ||
+                _corePendingSeek !== null
+            )
+                return false;
+            var inRange = false;
+            for (var i = 0; i < media.seekable.length; i++)
+                if (
+                    position >= media.seekable.start(i) &&
+                    position <= media.seekable.end(i)
+                )
+                    inRange = true;
+            if (!inRange || !active()) return false;
+            (window as any).forcePlay = !paused;
+            seekCoreMedia(position, session);
+            return true;
+        },
         resume: function () {
             if (!active() || !media) return;
             var waitingForPlayback =
                 media.paused ||
                 media.readyState < 3 ||
                 (window as any).forcePlay === false;
+            if (!pip && waitingForPlayback) _corePauseRevision++;
             (window as any).forcePlay = true;
             if (
                 !pip &&
@@ -4310,6 +4492,13 @@ if (typeof window !== "undefined") {
             });
         },
         play: stbPlay,
+        // Only fixed source/catalogue dispatch call sites use this internal stop.
+        stopForSelection: stopCoreForSelection,
+        stopForSource: function () {
+            if ((window as any).__ottGlobalFavoritesHandoff?.current())
+                stopCorePlayback();
+            else stbStop();
+        },
     };
 }
 /** Shared guards avoid duplicating ES5 optional-call expansion in every engine. */

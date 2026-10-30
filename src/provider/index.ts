@@ -250,6 +250,11 @@ declare var channelsKeyHandler: (key: number) => boolean;
  * Side effects: DOM mutations to #pn{chId}, #pr{chId}.
  * Called as the EPG callback from observeCurrentProgramme.
  */
+function stopSourcePlayback(): void {
+    var stop = (window as any).__ottCoreTransport?.stopForSource;
+    if (typeof stop === "function") stop();
+    else stbStop();
+}
 function updateChannelListRow(chId: string): void {
     var ch = channels[chId as any];
     if (!ch && (window as any).channels) ch = (window as any).channels[chId];
@@ -298,6 +303,7 @@ function detailProg(sourceRow?: any): void {
         };
     if (media || (e.time_to && e.time_to >= Date.now() / 1e3)) {
         var t = Math.round((Date.now() / 1e3 - e.time) / 60);
+        var icon = wdet.sThumbnail && metadataCssUrl(e.icon);
         // Title yellow (OTT); time on next line; descr clipped; next on yellow line.
         var r =
             '<div id="_name"><div class="ott-channel-detail-accent">' +
@@ -317,8 +323,12 @@ function detailProg(sourceRow?: any): void {
                   ")</div>") +
             "</div>" +
             '<div id="_descr" class="ott-channel-description"><div id="_prd">' +
-            (wdet.sThumbnail && metadataCssUrl(e.icon)
-                ? '<div class="img ott-channel-thumbnail"></div>'
+            (icon
+                ? media
+                    ? '<img class="img ott-channel-thumbnail" alt="" src="' +
+                      metadataText(icon) +
+                      '">'
+                    : '<div class="img ott-channel-thumbnail"></div>'
                 : "") +
             metadataHtml(e.descr) +
             "</div></div>";
@@ -353,8 +363,12 @@ function detailProg(sourceRow?: any): void {
             thumbnail.style.height =
                 Math.floor(200 * getViewportHeightScale()) + "px";
             thumbnail.style.margin = Math.floor(thumbnailWidth / 15) + "px";
-            thumbnail.style.backgroundImage =
-                'url("' + metadataCssUrl(e.icon) + '")';
+            if (media) {
+                thumbnail.style.objectFit = "cover";
+                (thumbnail as HTMLImageElement).onerror = function () {
+                    thumbnail!.style.display = "none";
+                };
+            } else thumbnail.style.backgroundImage = 'url("' + icon + '")';
         }
         $("#_nextpr").css({
             "max-height":
@@ -913,6 +927,7 @@ export function loadProv(
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     (window as any).__ottMissingCatalogSelection = false;
+    (window as any).__ottPlayerState?.changed();
     (window as any).__ottCatalogSelectedId = undefined;
     (window as any).__ottParental.revoke();
     if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
@@ -1021,7 +1036,7 @@ export function loadProv(
         }
 
         if (!$("#launch").is(":visible")) {
-            if (stbIsPlaying()) stbStop();
+            if (stbIsPlaying()) stopSourcePlayback();
             $("#dialogbox")
                 .html(
                     '<div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div>'
@@ -1392,8 +1407,9 @@ export function loadChannels(): void {
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
     var idMigration = beginPortChannelIdMigration();
+    (window as any).__ottPlayerState?.changed();
     if (libraryLoading || !$("#launch").is(":visible")) {
-        if (stbIsPlaying()) stbStop();
+        if (stbIsPlaying()) stopSourcePlayback();
         $("#dialogbox")
             .html(
                 '<center><div class="ott-spinner" aria-hidden="true"><span class="blob"></span><span class="blob"></span><span class="blob"></span><span class="blob"></span></div></center>'
@@ -1437,9 +1453,12 @@ export function loadChannels(): void {
     if (typeof setPlayer === "function") setPlayer();
 
     $(launch_id).append(
-        libraryLoading
-            ? "<br/>" + _("Loading. Please wait...") + "<br/>"
-            : "<br/>Loading channel list..."
+        '<br/><span data-load-phase="">' +
+            (libraryLoading
+                ? _("Loading. Please wait...")
+                : "Loading channel list...") +
+            "</span>" +
+            (libraryLoading ? "<br/>" : "")
     );
     var loadTimer: ReturnType<typeof setTimeout> | number = -1;
     function dismissLoading(): void {
@@ -1451,6 +1470,14 @@ export function loadChannels(): void {
         if (typeof (window as any).clearBootHide === "function")
             (window as any).clearBootHide();
     }
+    (window as any).__ottCommandChannelCancel = {
+        cancel: function () {
+            if ((window as any).__ottCommandChannelLoad !== commandLoad) return;
+            catalogSession.dispose();
+            dismissLoading();
+        },
+        owner: commandLoad,
+    };
     // Managed drivers settle explicitly, including credential editors. Only
     // dealer scripts that may omit their callback need the compatibility timer.
     if (!driverOwned) loadTimer = setTimeout(dismissLoading, 3000);
@@ -1466,6 +1493,7 @@ export function loadChannels(): void {
                 // Startup callbacks may synchronously switch provider or reload channels.
                 if ((window as any).__ottCommandChannelLoad === commandLoad) {
                     (window as any).commandChannelsReady = true;
+                    (window as any).__ottPlayerState?.changed();
                     var kiosk = (window as any).__ottKiosk;
                     if (kiosk && typeof kiosk.restoreMedia === "function")
                         kiosk.restoreMedia();
@@ -1504,6 +1532,8 @@ export function selectProviderByIndex(index: number): boolean {
         !localMedia.finishSession(id === "offline")
     )
         return false;
+    if (!(window as any).__ottGlobalFavoritesHandoff?.current())
+        (window as any).__ottGlobalFavorites?.navigation?.retire();
     if (!ephemeral && stbGetItem("ottplayprov") === id) return true;
     var recent: string[] = [];
     try {
@@ -2103,6 +2133,13 @@ export function getChannelsArray(
  * - If stbPlayPip exists, a PiP button is added to the footer.
  */
 function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
+    if (
+        !view &&
+        (window as any).__ottChannels?.group(catIdx) === "system:favorites" &&
+        typeof (window as any).openGlobalFavorites === "function" &&
+        (window as any).openGlobalFavorites() !== false
+    )
+        return;
     if (!view && catsArray[catIdx] === undefined) {
         infoBox(
             _(
@@ -2121,9 +2158,18 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
     }
     selIndex = channelIdx;
     (window as any).selIndex = selIndex;
+    if (!view || view.id === "system:global-favorites")
+        (window as any).__ottChannels?.rememberCategory?.(
+            view ? "system:favorites" : catIdx
+        );
     listCatIndex = catIdx;
     listArray = view ? view.rows : cats[catsArray[listCatIndex]] || [];
     var wglob = window as any;
+    if (
+        (!view || view.id !== "system:global-favorites") &&
+        !wglob.__ottGlobalFavoritesHandoff?.current()
+    )
+        wglob.__ottGlobalFavorites?.navigation?.retire();
     function channelRow(id: string): any {
         return view ? view.channel(id) : channels[id];
     }
@@ -2408,7 +2454,13 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
                     : ""
         ) +
         (!view || view.actions
-            ? renderButtonHint(keys.YELLOW, "", "Actions", strTools, "0")
+            ? renderButtonHint(
+                  keys.YELLOW,
+                  view ? "−" : "",
+                  view ? "Favorites" : "Actions",
+                  strTools,
+                  "0"
+              )
             : "") +
         renderButtonHint(keys.N2, strInfo, "Description", "2") +
         (!view && typeof stbPlayPip === "function"

@@ -172,6 +172,7 @@ var keyStrings = {
         "Kontroleer die Plex-bedienerverbinding…",
     "Choose a folder in the browser window":
         "Kies ’n vouer in die blaaiervenster",
+    "Choose a profile": "Kies 'n profiel",
     "Choose files in the browser window": "Kies lêers in die blaaiervenster",
     "Choose from": "Kies uit",
     "Choose language": "Kies taal",
@@ -1001,6 +1002,8 @@ var keyStrings = {
     "Sleep timer": "Slaaptydhouer",
     "Sort channels": "Sorteer kanale",
     "Source access": "Brontoegang",
+    "Source is busy. Try again later.":
+        "Die bron is besig. Probeer later weer.",
     "Source sign-in required": "Bronaanmelding word vereis",
     "Source sign-in was cancelled": "Bronaanmelding is gekanselleer",
     "Stalker Portal Provider": "Stalker-portaalverskaffer",
@@ -1054,6 +1057,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Die toestel-ID in die adres is ongeldig.",
     "The discovery response is invalid.": "Die soekantwoord is ongeldig.",
+    "The stream connection failed": "Die verbinding met die stroom het misluk",
+    "The stream format could not be played":
+        "Die stroomformaat kon nie afgespeel word nie",
     "This browser cannot identify the selected screenshot source.":
         "Hierdie blaaier kan nie die geselekteerde skermkiekiebron identifiseer nie.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1066,6 +1072,8 @@ var keyStrings = {
         "Hierdie Play-toepassing vereis HTTPS. Vra jou verskaffer vir 'n HTTPS-snitlys of bediener-URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Hierdie paringskakel het verval. Maak 'n nuwe sessie op jou TV oop.",
+    "This protected stream could not be played":
+        "Hierdie beskermde stroom kon nie afgespeel word nie",
     "This remote command is not supported by the player.":
         "Die speler ondersteun nie hierdie afstandbeheeropdrag nie.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1109,6 +1117,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X-instellings",
     "Unable to load playlist": "Kan nie snitlys laai nie",
+    Unavailable: "Nie beskikbaar nie",
     "Unlock the player's settings before changing its playlist.":
         "Ontsluit die speler se instellings voordat jy die afspeellys verander.",
     Untitled: "Naamloos",

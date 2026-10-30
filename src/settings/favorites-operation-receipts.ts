@@ -21,7 +21,8 @@ interface FavoritesOperationReceiptPorts {
 }
 
 export function createFavoritesOperationReceipts(
-    ports: FavoritesOperationReceiptPorts
+    ports: FavoritesOperationReceiptPorts,
+    schema?: any
 ) {
     var active = false;
     var retention = 86400000;
@@ -33,16 +34,18 @@ export function createFavoritesOperationReceipts(
     function copy(value: any): any {
         return JSON.parse(JSON.stringify(value));
     }
-    var exact = favoritesReceiptValidators.exact,
-        integer = favoritesReceiptValidators.integer,
-        uuid = favoritesReceiptValidators.uuid,
-        hash = favoritesReceiptValidators.hash,
-        scope = favoritesReceiptValidators.scope,
-        refs = favoritesReceiptValidators.refs,
-        meta = favoritesReceiptValidators.meta,
-        counts = favoritesReceiptValidators.counts;
+    var validators = schema ? schema.validators : favoritesReceiptValidators;
+    var capacity = schema ? schema.capacity : favoritesRecoveryCapacity;
+    var exact = validators.exact,
+        integer = validators.integer,
+        uuid = validators.uuid,
+        hash = validators.hash,
+        scope = validators.scope,
+        refs = validators.refs,
+        meta = validators.meta,
+        counts = validators.counts;
     function row(value: any): boolean {
-        return validateFavoritesReceiptRow(value);
+        return schema ? schema.row(value) : validateFavoritesReceiptRow(value);
     }
     function fence(): any {
         var value: any;
@@ -80,7 +83,7 @@ export function createFavoritesOperationReceipts(
         }
     }
     function parse(raw: string | null): any {
-        return parseFavoritesRecoveryLedger(raw);
+        return schema ? schema.parse(raw) : parseFavoritesRecoveryLedger(raw);
     }
     function now(): number {
         var time: any;
@@ -179,10 +182,7 @@ export function createFavoritesOperationReceipts(
         }
     }
     function write(before: string | null, after: string, entry: any): void {
-        if (
-            !favoritesRecoveryCapacity(after) ||
-            (before !== null && !favoritesRecoveryCapacity(before))
-        )
+        if (!capacity(after) || (before !== null && !capacity(before)))
             fail("capacity");
         writeAdmission(entry);
         current(entry);
@@ -220,13 +220,12 @@ export function createFavoritesOperationReceipts(
         outcome: any
     ): any {
         if (
-            !exact(outcome, [
-                "state",
-                "meta",
-                "counts",
-                "newRevision",
-                "persistence",
-            ]) ||
+            !exact(
+                outcome,
+                ["state", "meta", "counts", "newRevision", "persistence"],
+                schema ? schema.outcomeKeys : []
+            ) ||
+            (schema && !schema.outcome(outcome)) ||
             ["verified", "not_applied", "partial", "unknown"].indexOf(
                 outcome.state
             ) < 0 ||
@@ -235,8 +234,7 @@ export function createFavoritesOperationReceipts(
             outcome.persistence !== "persistent"
         )
             fail("invalid_outcome");
-        if (before !== null && !favoritesRecoveryCapacity(before))
-            fail("capacity");
+        if (before !== null && !capacity(before)) fail("capacity");
         var value = parse(before),
             entry = pending(value, proof);
         entry.state = outcome.state;
@@ -251,9 +249,11 @@ export function createFavoritesOperationReceipts(
             plan_digest: new Array(65).join("0"),
             scope: copy(entry.scope),
         };
+        if (schema)
+            entry.receipt = schema.receipt(entry, outcome, entry.receipt);
         if (!row(entry)) fail("invalid_outcome");
         var after = JSON.stringify(value);
-        if (!favoritesRecoveryCapacity(after)) fail("capacity");
+        if (!capacity(after)) fail("capacity");
         entry.receipt.plan_digest = { computed: "plan_digest", width: 64 };
         return {
             afterTemplate: copy(value),
@@ -288,10 +288,9 @@ export function createFavoritesOperationReceipts(
             capturedBefore === undefined ? read(false) : capturedBefore;
         if (read(false) !== before || read(true) !== before)
             fail("ledger_changed");
-        if (before !== null && !favoritesRecoveryCapacity(before))
-            fail("capacity");
+        if (before !== null && !capacity(before)) fail("capacity");
         var value = parse(before);
-        value.version = 2;
+        value.version = schema ? schema.version : 2;
         var provenance = fence();
         if (find(value, input.operationId)) fail("operation_exists");
         var entry = {
@@ -325,9 +324,7 @@ export function createFavoritesOperationReceipts(
             pendingRaw: string;
         while (true) {
             pendingRaw = JSON.stringify(value);
-            var fits =
-                value.entries.length <= 32 &&
-                favoritesRecoveryCapacity(pendingRaw);
+            var fits = value.entries.length <= 32 && capacity(pendingRaw);
             if (fits && completionOutcome !== undefined) {
                 try {
                     completion = completionPlan(
@@ -391,6 +388,11 @@ export function createFavoritesOperationReceipts(
                 persistence: final.receipt.persistence,
                 state: final.state,
             };
+            if (schema)
+                completionOutcome = schema.outcomeFromReceipt(
+                    final.receipt,
+                    completionOutcome
+                );
         }
         var expected = reservation(
             {
@@ -487,7 +489,7 @@ export function createFavoritesOperationReceipts(
                 entry.receipt.plan_digest = digest;
                 var after = JSON.stringify(value);
                 parse(after);
-                if (!favoritesRecoveryCapacity(after)) fail("capacity");
+                if (!capacity(after)) fail("capacity");
                 return {
                     afterRaw: after,
                     beforeRaw: template.beforeRaw,

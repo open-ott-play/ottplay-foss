@@ -66,10 +66,10 @@ Het synthetische testbeeld kan opnieuw worden gegenereerd met `scripts/generate-
 
 - **Afspelen**: HLS, DASH en gewone HTTP-streams, met beheerde kwaliteitsplafonds voor HLS.js/Shaka, begrensd herstel en maximaal drie expliciete reserve-URL's per livezender. Archief/VOD schakelt nooit over naar een live reserve; zie [kwaliteit en herstel](docs/playback-stream-policy.nl.md).
 - **EPG**: XMLTV-koppeling, timeshift/terugkijken, zoeken op programmatitel (N5 in de EPG), herinneringen en handmatige feed-/ID-koppeling voor één exacte zender in het gehoste/native XMLTV-pad. Zie [koppeling en toegankelijkheid](docs/guide-binding-accessibility.nl.md).
-- **Favorieten**: meerdere favorietenlijsten (wisselen/toevoegen/hernoemen/verwijderen via Acties → Favorietenlijsten); ouderlijke pincode
+- **Favorieten**: één geordende [gemengde verzameling](docs/mixed-favorites.md) over ingestelde providers en profielen op ondersteunde apparaten, met overdraagbare CLI-export/import; ouderlijke pincode. Favorietenlijsten per bron blijven beschikbaar in de terugvalmodus.
 - **Instellingen**: JSON-export/import van instellingen en favorieten, een terugdraaijournaal voor ondersteunde localStorage-batches, bronbewust hervatten van archief en exacte vergelijking van opgeslagen instellingen voor controllerworkflows. Herstel gaat uit van één schrijver; aangepaste opslagadapters behouden terugdraaien naar beste vermogen. Zie [instellingen herstellen](docs/settings-recovery.nl.md).
 - **Gedeelde interface**: OTT Server, Tauri en Capacitor gebruiken hetzelfde zenderlijstthema en dezelfde zichtbaarheidsinstellingen. Interface-instellingen bepalen accent- en selectiekleuren; zenderlijstinstellingen bepalen zendernamen, picons, huidige programma's, voortgang en archiefmarkeringen.
-- **Providers**: M3U/M3U8, Xtream live-tv plus [film-/seriecatalogi op aanvraag](docs/xtream-media.nl.md), Stalker/Ministra, Plex en VPortal. Providermogelijkheden en accounttoegang bepalen beschikbare archief- en mediabibliotheekfuncties.
+- **Providers**: M3U/M3U8, Xtream live-tv plus [film-/seriecatalogi op aanvraag](docs/xtream-media.nl.md), Stalker/Ministra met [films en geneste afleveringen](docs/stalker-media.md), Plex en VPortal. Providermogelijkheden en accounttoegang bepalen beschikbare archief- en mediabibliotheekfuncties.
 - **Pushopdrachten**: afstandsbediening via webhook — zender, provider of afspeellijst wijzigen en pop-ups tonen
 - **Tekstinvoer op afstand (swop)**: telefoontoetsenbord via Cloudflare Worker wanneer tv en telefoon op verschillende netwerken zitten (per installatie geautoriseerde sessies; ♥™ op het virtuele toetsenbord)
 - **Routering per apparaat**: UUID-adressering voor opstellingen met meerdere apparaten
@@ -82,6 +82,8 @@ Het synthetische testbeeld kan opnieuw worden gegenereerd met `scripts/generate-
 - **88 interfacetalen**: overeenkomstige catalogi, [vertaalde snelstartgidsen](docs/readme/README.md) en [met CLDR gecontroleerde toetsenbordalfabetten](docs/localization.md). De hoofdhandleiding en gekoppelde functiegidsen zijn beschikbaar in [24 documentatietalen](docs/manual-translations.md); andere technische referenties behouden hun bestaande talen.
 
 De [opleveringsgids](docs/roadmap-delivery.nl.md) beschrijft de geïmplementeerde functies in deze bronrevisie, platformgrenzen, diagrammen en verificatie. Geïnstalleerde releases of gehoste installaties kunnen een eerdere revisie gebruiken. De onafhankelijke native [Android-app](https://github.com/open-ott-play/ottplay-android) bewaart audio-/ondertitelkeuzes ook op taal, rol en label in plaats van manifestindexen; implementatie en release daarvan staan los van deze frontend.
+
+De [STB-broncodebeoordeling](docs/stb-player-improvements.md) beschrijft de verbeteringen voor media, resourcegebruik en herstel, de bijbehorende broncodevergelijkingen en de huidige beperkingen.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Controles staan in `scripts/modea-smoke-checks.json`. Geen geheimen. De opdracht
 
 ## Klassieke Stalker-/Ministra-portalen
 
-Kies **Stalker-portalen** en voer de MAC van de provider en de volledige portaal-URL in, bijvoorbeeld `http://provider.example/stalker_portal/c/`. URL's met `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` en `/portal.php` kiezen het klassieke MAG-protocol. Bestaande configuraties met alleen de server behouden JSON-RPC. De provider laadt profiel, genres en gepagineerde livezenders met de gedeelde Stalker-core. Browseraanvragen gaan via `/stalker/api` van de companion; native apps gebruiken hun bestaande HTTP-transport. Browser- en companionbestanden moeten samen worden bijgewerkt.
+Kies **Stalker-portalen** en voer de MAC van de provider en de volledige portaal-URL in, bijvoorbeeld `http://provider.example/stalker_portal/c/`. URL's met `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` en `/portal.php` kiezen het klassieke MAG-protocol. Bestaande configuraties met alleen de server behouden JSON-RPC. De provider laadt profiel, genres en gepagineerde livezenders met de gedeelde Stalker-core en zoekt vervolgens op de achtergrond naar films via het klassieke protocol `type=vod` en geneste afleveringen. Mappaden worden categorieën in de normale zenderlijst; beschikbare beschrijvingen, posters en stabiele globale Favorieten gebruiken dezelfde media-interface. Zie [catalogusgedrag en grenzen](docs/stalker-media.md).
 
-Live afspelen resolveert tijdelijke zenderopdrachten bij het openen van een stream; zenderwissels, stoppen, PiP en providervervanging annuleren verouderde resoluties. Expliciete niet-tijdelijke HTTP(S)-opdrachten spelen rechtstreeks. Korte EPG wordt ondersteund; klassiek portaalarchief en VOD worden nog niet aangeboden door deze provider. Bestaand JSON-RPC-archief-/gidsgedrag verandert niet. Privé-LAN-portalen vereisen een exacte `OTTPLAY_PROXY_LAN_ORIGINS`-vermelding, net als andere companionproxyroutes.
+Aanvragen van een zelfgehoste browserversie gaan via `/stalker/api` van de companion; native apps gebruiken hun bestaande HTTP-transport. Gehoste browserversies vereisen expliciet geconfigureerde routes via de [aparte relay](docs/stalker-relay.md). Browser- en serverbestanden moeten samen worden bijgewerkt.
+
+Live afspelen resolveert tijdelijke zenderopdrachten bij het openen van een stream; zenderwissels, stoppen, PiP en providervervanging annuleren verouderde resoluties. Expliciete niet-tijdelijke HTTP(S)-opdrachten spelen rechtstreeks. Korte EPG wordt ondersteund. Het archief van klassieke portalen en het afzonderlijke `type=series`-dialect worden niet aangeboden door deze provider. Bestaand JSON-RPC-archief-/gidsgedrag verandert niet. Privé-LAN-portalen via de companionroute vereisen een exacte `OTTPLAY_PROXY_LAN_ORIGINS`-vermelding, net als andere companionproxyroutes.
 
 De publieke Infomir-demo is `http://middleware-stalker.com/stalker_portal/c/`. Die gaf op 2026-09-26 drie livecatalogusvermeldingen terug, maar de media-endpoints waren onbeschikbaar; gebruik gecontroleerde portaal-/mediatestgegevens voor afspeelregressie.
 

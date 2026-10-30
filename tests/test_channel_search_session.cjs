@@ -802,6 +802,16 @@ for (const [profile, code] of profiles) {
         check(
             "Actions category picker remains usable through " + finish,
             async (f) => {
+                const favorites = Array.from(f.host.cats.Favorites);
+                const panels = ["listCaption", "listPodval", "listDetail"];
+                const content = [
+                    "Channel list. Category: News",
+                    "Category / Actions",
+                    "Selected programme",
+                ];
+                panels.forEach((id, index) => {
+                    f.element(id).innerHTML = content[index];
+                });
                 f.host.showActionsDialog();
                 const dialog = f.port.owner("dialog");
                 f.key("ENTER");
@@ -810,16 +820,27 @@ for (const [profile, code] of profiles) {
                 assert.deepEqual(Array.from(f.host.listArray), [
                     "News",
                     "Sport",
+                    "Favorites",
                 ]);
                 f.key("DOWN");
                 assert(f.port.listOwner().foreground());
-                f.host.selIndex = 1;
+                f.host.selIndex = f.host.listArray.indexOf("Sport");
                 f.key(finish);
                 assert.equal(
                     f.host.cats.Sport.includes(11),
                     finish === "ENTER"
                 );
+                assert.deepEqual(
+                    Array.from(f.host.cats.Favorites),
+                    favorites,
+                    "provider category action does not edit Favorites"
+                );
                 assert.deepEqual(Array.from(f.host.listArray), [11, 22]);
+                assert.deepEqual(
+                    panels.map((id) => f.element(id).innerHTML),
+                    content,
+                    "return from the replacement list restores caption, footer and detail"
+                );
                 assert(f.port.listOwner().foreground());
             }
         );
@@ -844,6 +865,47 @@ for (const [profile, code] of profiles) {
             assert.equal(f.take("write").length, 0);
         }
     );
+    for (const finish of ["ENTER", "RETURN"]) {
+        check(
+            "category picker restores the selected row and popup presentation through " +
+                finish,
+            async (f) => {
+                const panels = ["listCaption", "listPodval", "listDetail"];
+                const content = [
+                    "Channel list. Category: News",
+                    "Category / Actions",
+                    "Programme two",
+                ];
+                panels.forEach((id, index) => {
+                    f.element(id).innerHTML = content[index];
+                });
+                f.host.selIndex = 1;
+                const rows = f.host.listArray;
+                const data = f.host.listDataArray;
+                const handler = f.host.listKeyHandlerFn;
+                f.element("listPopUp").visible = true;
+                f.host.addChannel2bucket();
+                assert.equal(f.element("listPopUp").visible, false);
+                f.host.selIndex = f.host.listArray.indexOf("Sport");
+                f.key(finish);
+                assert.equal(f.host.listArray, rows);
+                assert.equal(f.host.listDataArray, data);
+                assert.equal(f.host.selIndex, 1);
+                assert.equal(f.host.listKeyHandlerFn, handler);
+                assert.equal(f.element("listPopUp").visible, true);
+                assert.deepEqual(
+                    panels.map((id) => f.element(id).innerHTML),
+                    content
+                );
+                assert.equal(
+                    f.host.cats.Sport.includes(22),
+                    finish === "ENTER"
+                );
+                assert.equal(f.take("play-request").length, 0);
+                assert(f.port.listOwner().foreground());
+            }
+        );
+    }
     check(
         "search publishes native input once and uses real list owner",
         async (f) => {

@@ -644,8 +644,55 @@ test("NAS switching awaits session release; browsing and cancel keep playback al
         started,
         "opening/closing lists preserves the playing session"
     );
+    // Match the real internal selection stop instead of issuing a public Stop.
+    let sourceStopTicket = null;
+    let disposed = 0;
+    const backend = f.c.__ottMediaBackend.create({
+        clearInterval() {},
+        context: () => {
+            const state = f.c.__ottClassicPlayback.snapshot();
+            return state.target
+                ? { ...state.target, generation: state.generation }
+                : null;
+        },
+        emit(context, type, position, duration, sourceStop) {
+            sourceStopTicket = sourceStop;
+            f.c.__ottClassicPlayback.command({
+                duration,
+                generation: context.generation,
+                position,
+                sourceStop,
+                type,
+            });
+        },
+        open() {
+            return {
+                dispose() {
+                    disposed++;
+                },
+                pause() {},
+                resume() {},
+                sample: () => ({
+                    duration: 600,
+                    paused: false,
+                    position: 0,
+                    ready: 3,
+                }),
+                seek() {},
+            };
+        },
+        setInterval: () => 1,
+    });
+    f.c.getCoreMediaBackend = () => backend;
+    vm.runInContext(
+        sourceFunctions("src/core/index.ts", ["stopCoreForSelection"]),
+        f.c
+    );
+    f.c.__ottCoreTransport = {
+        stopForSelection: f.c.stopCoreForSelection,
+    };
+    backend.open({ url: "https://player.invalid/first.m3u8" });
     f.c.settings.stopPlay = 1;
-    f.c.stbStop = () => f.c.__ottClassicPlayback.command({ type: "stop" });
     f.c.selectMedia(0);
     const release = f.requests.at(-1);
     assert.equal(release.options.type, "GET");
@@ -660,6 +707,13 @@ test("NAS switching awaits session release; browsing and cancel keep playback al
     f.requests
         .at(-1)
         .reply({ stop: secondStop, url: "https://player.invalid/second.m3u8" });
+    assert.equal(
+        sourceStopTicket?.used,
+        true,
+        "internal Stop consumes its owned ticket"
+    );
+    assert.equal(disposed, 1, "internal Stop disposes the old decoder once");
+    assert.equal(backend.current(), null);
     assert(
         f.c.calls.some(
             (call) => call[0] === "play" && call[1].includes("second.m3u8")

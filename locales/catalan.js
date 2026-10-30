@@ -177,6 +177,7 @@ var keyStrings = {
         "S’està comprovant la connexió amb el servidor Plex…",
     "Choose a folder in the browser window":
         "Trieu una carpeta a la finestra del navegador",
+    "Choose a profile": "Tria un perfil",
     "Choose files in the browser window":
         "Trieu fitxers a la finestra del navegador",
     "Choose from": "Tria entre",
@@ -1031,6 +1032,8 @@ var keyStrings = {
     "Sleep timer": "Temporitzador d’apagada",
     "Sort channels": "Ordena els canals",
     "Source access": "Accés a les fonts",
+    "Source is busy. Try again later.":
+        "La font està ocupada. Torna-ho a provar més tard.",
     "Source sign-in required": "Cal iniciar sessió a la font",
     "Source sign-in was cancelled":
         "S’ha cancel·lat l’inici de sessió a la font",
@@ -1086,6 +1089,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "L’ID del dispositiu a l’adreça no és vàlid.",
     "The discovery response is invalid.": "La resposta de cerca no és vàlida.",
+    "The stream connection failed": "La connexió amb la transmissió ha fallat",
+    "The stream format could not be played":
+        "No s’ha pogut reproduir el format de la transmissió",
     "This browser cannot identify the selected screenshot source.":
         "Aquest navegador no pot identificar la font de captura de pantalla seleccionada.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1098,6 +1104,8 @@ var keyStrings = {
         "Aquesta aplicació Play requereix HTTPS. Demana al proveïdor una llista o un URL de servidor HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Aquest enllaç de vinculació ha caducat. Obre una sessió nova al teu televisor.",
+    "This protected stream could not be played":
+        "No s’ha pogut reproduir aquesta transmissió protegida",
     "This remote command is not supported by the player.":
         "El reproductor no admet aquesta ordre remota.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1141,6 +1149,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Configuració de ULTIFL1X",
     "Unable to load playlist": "No es pot carregar la llista de reproducció",
+    Unavailable: "No disponible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquegeu la configuració del reproductor abans de canviar-ne la llista.",
     Untitled: "Sense títol",

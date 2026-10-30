@@ -11,10 +11,21 @@ const files = {
     "../utils/helpers": "src/utils/helpers.ts",
     "../utils/lzstring": "src/utils/lzstring.ts",
     "./favorites-physical-storage": "src/storage/favorites-physical-storage.ts",
+    "./remote-favorites-contract": "src/commands/remote-favorites-contract.ts",
+    "./remote-favorites-global": "src/commands/remote-favorites-global.ts",
+    "./remote-favorites-global-items":
+        "src/commands/remote-favorites-global-items.ts",
+    "./remote-favorites-global-recovery":
+        "src/commands/remote-favorites-global-recovery.ts",
     "./remote-favorites-transfer": "src/commands/remote-favorites-transfer.ts",
     "./remote-feature": "src/commands/remote-feature.ts",
 };
 module.exports = function dependency(name, host, environment = {}) {
+    if (name === "./player-state")
+        return require("./player-presence.cjs").load(
+            "src/commands/player-state.ts",
+            { ...environment, window: host }
+        );
     if (!Object.hasOwn(files, name)) return null;
     const exports = {};
     const output = ts.transpileModule(

@@ -91,6 +91,53 @@ check("strict documents preserve missing stable and raw references", () => {
     assert.equal(codec.validate(document(), "another-account"), false);
 });
 check(
+    "browsed category is optional, validated and independent of playback selection",
+    () => {
+        for (const browsedGroup of [
+            null,
+            "system:favorites",
+            "custom:2",
+            "provider:missing",
+        ]) {
+            const original = document();
+            original.channels.browsedGroup = browsedGroup;
+            assert.equal(codec.validate(original, source), true);
+            const exported = libraryFixture(
+                JSON.stringify(original.channels)
+            ).library.document();
+            const restored = libraryFixture(JSON.stringify(exported)).library;
+            assert.equal(restored.browsedGroup(), browsedGroup);
+            assert.deepEqual(
+                clone(restored.document().selected),
+                original.channels.selected
+            );
+            const legacy = codec.legacy(
+                source,
+                [],
+                [],
+                {},
+                {},
+                original,
+                referenceFactory
+            );
+            assert.equal(legacy.channels.browsedGroup, browsedGroup);
+        }
+        for (const value of [
+            true,
+            0,
+            {},
+            [],
+            "",
+            "invalid\u0000group",
+            "x".repeat(4097),
+        ]) {
+            const invalid = document();
+            invalid.channels.browsedGroup = value;
+            assert.equal(codec.validate(invalid, source), false);
+        }
+    }
+);
+check(
     "default-list provenance is optional, validated and retained by legacy restore",
     () => {
         const d = document();

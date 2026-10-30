@@ -127,6 +127,12 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         require("./helpers/shared-core-runtime.cjs")(c);
         Object.assign(c, require("./load-wire.cjs")());
         Object.assign(c, require("./helpers/remote-notifications.cjs")());
+        Object.assign(
+            c,
+            require("./helpers/player-presence.cjs").load(
+                "src/plugins/player-state.ts"
+            )
+        );
         vm.runInContext(policy + controller + cloud, c);
         c.__ottCommandServer = c.createCommandServer(
             c,

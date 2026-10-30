@@ -826,11 +826,17 @@ body {
     opacity: 0.75;
 }
 #video_res.playback-feedback {
-    /* One existing metadata line; full details remain in title/aria-label. */
+    /* One metadata line; a terminal error opens details only on explicit input. */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     opacity: 1;
+}
+#video_res[role="button"] {
+    cursor: pointer;
+}
+#video_res[role="button"]:focus {
+    outline: 2px solid currentColor;
 }
 #descr {
     padding: 0px 100px;

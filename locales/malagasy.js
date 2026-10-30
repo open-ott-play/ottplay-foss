@@ -181,6 +181,7 @@ var keyStrings = {
         "Manamarina ny fifandraisana amin'ny lohamilina Plex…",
     "Choose a folder in the browser window":
         "Misafidiana lahatahiry ao amin’ny varavarankelin’ny mpitety",
+    "Choose a profile": "Safidio ny mombamomba",
     "Choose files in the browser window":
         "Misafidiana rakitra ao amin’ny varavarankelin’ny mpitety",
     "Choose from": "Misafidiana amin'ny",
@@ -1042,6 +1043,8 @@ var keyStrings = {
     "Sleep timer": "Fameram-potoana fatoriana",
     "Sort channels": "Alaharo ny fantsona",
     "Source access": "Fidirana amin'ny loharano",
+    "Source is busy. Try again later.":
+        "Sahirana ny loharano. Andramo indray any aoriana.",
     "Source sign-in required": "Ilaina ny miditra amin'ny loharano",
     "Source sign-in was cancelled": "Nofoanana ny fidirana amin'ny loharano",
     "Stalker Portal Provider": "Mpamatsy vavahady Stalker",
@@ -1097,6 +1100,10 @@ var keyStrings = {
         "Tsy manan-kery ny ID fitaovana ao amin'ny adiresy.",
     "The discovery response is invalid.":
         "Tsy manan-kery ny valin'ny fikarohana.",
+    "The stream connection failed":
+        "Tsy nahomby ny fifandraisana tamin'ny fikorianana",
+    "The stream format could not be played":
+        "Tsy afaka nandefa ity endriky ny fikorianana ity",
     "This browser cannot identify the selected screenshot source.":
         "Ity navigateur ity dia tsy afaka mamantatra ny loharanon-tsary voafantina.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1109,6 +1116,8 @@ var keyStrings = {
         "Mitaky HTTPS ity rindranasa Play ity. Mangataha lisitra fandefasana HTTPS na URL lohamilina amin'ny mpamatsinao.",
     "This pairing link has expired. Open a new session on your TV.":
         "Lany daty ity rohy mampiaraka ity. Sokafy fivoriana vaovao amin'ny fahitalavitra.",
+    "This protected stream could not be played":
+        "Tsy afaka nandefa ity fikorianana voaaro ity",
     "This remote command is not supported by the player.":
         "Tsy tohanan’ny mpilalao haino aman-jery ity baiko fanaraha-maso lavitra ity.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1154,6 +1163,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Fikirakirana ULTIFL1X",
     "Unable to load playlist": "Tsy afaka naka ny lisitra fandefasana",
+    Unavailable: "Tsy misy",
     "Unlock the player's settings before changing its playlist.":
         "Vohay ny hidin’ny fikirakiran’ny mpilalao haino aman-jery alohan’ny hanovana ny lisitra fandefasany.",
     Untitled: "Tsy misy lohateny",

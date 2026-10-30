@@ -170,6 +170,7 @@ var keyStrings = {
         "Plex サーバー接続を確認しています…",
     "Choose a folder in the browser window":
         "ブラウザーのウィンドウでフォルダーを選択してください",
+    "Choose a profile": "プロフィールを選択してください",
     "Choose files in the browser window":
         "ブラウザーのウィンドウでファイルを選択してください",
     "Choose from": "からお選びください",
@@ -1001,6 +1002,8 @@ var keyStrings = {
     "Sleep timer": "スリープタイマー",
     "Sort channels": "チャンネルを並べ替える",
     "Source access": "ソースアクセス",
+    "Source is busy. Try again later.":
+        "配信元が混み合っています。しばらくしてから再試行してください。",
     "Source sign-in required": "ソースのサインインが必要です",
     "Source sign-in was cancelled": "ソースサインインがキャンセルされました",
     "Stalker Portal Provider": "Stalker ポータルプロバイダー",
@@ -1054,6 +1057,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "アドレス内のデバイスIDは無効です。",
     "The discovery response is invalid.": "検出応答が無効です。",
+    "The stream connection failed": "ストリームへの接続に失敗しました",
+    "The stream format could not be played":
+        "この形式のストリームを再生できませんでした",
     "This browser cannot identify the selected screenshot source.":
         "このブラウザは、選択されたスクリーンショットのソースを識別できません。",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1066,6 +1072,8 @@ var keyStrings = {
         "このPlayアプリにはHTTPSが必要です。プロバイダーに HTTPS プレイリストまたはサーバー URL を問い合わせてください。",
     "This pairing link has expired. Open a new session on your TV.":
         "このペアリングリンクの有効期限が切れています。テレビで新しいセッションを開きます。",
+    "This protected stream could not be played":
+        "この保護されたストリームを再生できませんでした",
     "This remote command is not supported by the player.":
         "この遠隔操作コマンドにはプレーヤーが対応していません。",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1107,6 +1115,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1Xの設定",
     "Unable to load playlist": "プレイリストを読み込めません",
+    Unavailable: "利用できません",
     "Unlock the player's settings before changing its playlist.":
         "プレイリストを変更する前に、プレーヤーの設定のロックを解除してください。",
     Untitled: "無題",

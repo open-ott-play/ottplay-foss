@@ -40,6 +40,9 @@ interface MediaEngineLease {
     } | null;
     dispose(replaced?: boolean): void;
     pause(): void;
+    // Relative seeks must read decoder time, never an uncommitted seek cursor.
+    relativeSample?(): MediaBackendSample | null;
+    relativeSeek?(position: number, paused: boolean): boolean;
     resume(): void;
     sample(): MediaBackendSample;
     seek(position: number): void;
@@ -51,14 +54,15 @@ interface MediaEngineLease {
 interface MediaBackendPorts {
     admitted?(): boolean;
     beforeIntent?(): boolean | void;
-    beforeSeek?(position: number): void;
+    beforeSeek?(position: number): (() => void) | void;
     clearInterval(timer: any): void;
     context(): MediaBackendContext | null;
     emit(
         context: MediaBackendContext,
         type: string,
         position?: number,
-        duration?: number
+        duration?: number,
+        sourceStop?: any
     ): void;
     observedPosition?(position: number): void;
     open(
@@ -391,6 +395,84 @@ function createMediaBackend(ports: MediaBackendPorts) {
             updateTimer();
             announce("seek");
         }
+        function seekRelative(value: number, admitted: () => boolean) {
+            var captured = engine,
+                token = attachment;
+            function valid(): boolean {
+                return (
+                    admitted() &&
+                    lane === "main" &&
+                    !previewEvent &&
+                    !suspended &&
+                    !!context &&
+                    context.kind === "vod" &&
+                    (phase === "playing" || phase === "paused") &&
+                    handle.active() &&
+                    engine === captured &&
+                    attachment === token
+                );
+            }
+            if (
+                typeof value !== "number" ||
+                !isFinite(value) ||
+                value === 0 ||
+                Math.abs(value) > 9007199254740991 ||
+                !captured ||
+                !captured.relativeSample ||
+                !captured.relativeSeek ||
+                !valid() ||
+                !beforeIntent() ||
+                !valid()
+            )
+                return null;
+            var sample = captured.relativeSample();
+            if (
+                !sample ||
+                !valid() ||
+                sample.ready < 1 ||
+                typeof sample.paused !== "boolean" ||
+                typeof sample.position !== "number" ||
+                !isFinite(sample.position) ||
+                sample.position < 0 ||
+                typeof sample.duration !== "number" ||
+                !isFinite(sample.duration) ||
+                sample.duration <= 0 ||
+                sample.duration > 9007199254740991 ||
+                sample.position > sample.duration
+            )
+                return null;
+            // At least 1 ms short of EOF; scale the guard for large doubles so
+            // subtraction cannot round back to the exact duration.
+            var end = Math.max(
+                0,
+                sample.duration -
+                    Math.max(0.001, sample.duration * 2.220446049250313e-16)
+            );
+            var requested = sample.position + value;
+            var target = Math.max(0, Math.min(end, requested));
+            var rollback = ports.beforeSeek && ports.beforeSeek(target);
+            var accepted = false;
+            try {
+                if (
+                    !valid() ||
+                    captured.relativeSeek(target, sample.paused) !== true ||
+                    !valid()
+                )
+                    return null;
+                accepted = true;
+            } finally {
+                if (!accepted && typeof rollback === "function") rollback();
+            }
+            desired = position = target;
+            offset = 0;
+            command("position");
+            if (valid()) announce("seek");
+            return {
+                clamped: target !== requested,
+                from: sample.position,
+                position: target,
+            };
+        }
         function attachEngine() {
             if (!handle.active() || suspended) return;
             var token = ++attachment;
@@ -466,6 +548,20 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     (!ports.admitted || ports.admitted()) &&
                     current() &&
                     (lane !== "main" || !context || domainCurrent())
+                );
+            },
+            canSeekRelative: function () {
+                return !!(
+                    handle.active() &&
+                    lane === "main" &&
+                    !previewEvent &&
+                    !suspended &&
+                    context &&
+                    context.kind === "vod" &&
+                    (phase === "playing" || phase === "paused") &&
+                    engine &&
+                    engine.relativeSample &&
+                    engine.relativeSeek
                 );
             },
             diagnosticAttempt: function () {
@@ -655,6 +751,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
             seek: function (value: number) {
                 seek(value, false);
             },
+            seekRelative: seekRelative,
             selectTrack: function (kind: string, index: number) {
                 if (handle.active() && engine && engine.selectTrack)
                     engine.selectTrack(kind, index);
@@ -795,11 +892,20 @@ function createMediaBackend(ports: MediaBackendPorts) {
             if (operation && operation.handle === lanes.main)
                 operation.run(value, true);
         },
-        stop: function (lane?: string) {
+        stop: function (lane?: string, sourceStop?: any) {
             var handle = lanes[lane || "main"];
             var context = ports.context();
-            if ((!lane || lane === "main") && context)
-                ports.emit(context, "stop");
+            if ((!lane || lane === "main") && context) {
+                if (sourceStop)
+                    ports.emit(
+                        context,
+                        "stop",
+                        undefined,
+                        undefined,
+                        sourceStop
+                    );
+                else ports.emit(context, "stop");
+            }
             if (handle) handle.dispose();
         },
         subscribe: function (callback: (event: any) => void) {

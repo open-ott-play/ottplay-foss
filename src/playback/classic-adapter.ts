@@ -4,6 +4,7 @@
  * Remove this module when the remaining classic views consume typed state.
  */
 var classicPlaybackController: any = null;
+var classicPlaybackStopTicket: any = null;
 var classicPlaybackState: any = null;
 var classicPlaybackProjection: any = null;
 var classicPlaybackStartedAt: number | null = null;
@@ -102,6 +103,7 @@ function classicPlaybackOwnedState(): any {
                 var api = classicPlaybackHost().__ottClassicPlayback;
                 if (api && typeof api.checkpoint === "function")
                     api.checkpoint(snapshot);
+                classicPlaybackHost().__ottPlayerState?.changed();
             });
     return classicPlaybackState;
 }
@@ -270,6 +272,22 @@ function classicPlaybackCommand(command: any): boolean | void {
                 state.phase === "stopped")
         )
             return;
+        var favoriteHandoff = w.__ottGlobalFavoritesHandoff;
+        if (type !== "finite-channel" && favoriteHandoff?.current()) {
+            if (command.automatic === true) return false;
+            if (!favoriteHandoff.accept(command)) {
+                var favoriteDriver = w.__ottActiveProviderDriver,
+                    favoriteSession = w._playSession;
+                w.__ottGlobalFavorites?.router.cancel();
+                if (
+                    favoriteDriver !== w.__ottActiveProviderDriver ||
+                    favoriteSession !== w._playSession ||
+                    store !== classicPlaybackOwnedState() ||
+                    state.generation !== classicPlaybackSnapshot().generation
+                )
+                    return false;
+            }
+        }
         var previewDriver = w.__ottActiveProviderDriver;
         if (
             type !== "finite-channel" &&
@@ -288,6 +306,21 @@ function classicPlaybackCommand(command: any): boolean | void {
                 state.generation !== classicPlaybackSnapshot().generation
             )
                 return false;
+        }
+        if (type !== "finite-channel" && !favoriteHandoff?.current()) {
+            var navigation = w.__ottGlobalFavorites?.navigation;
+            if (navigation) {
+                var navigationSession = w._playSession,
+                    navigationDriver = w.__ottActiveProviderDriver;
+                navigation.retire();
+                if (
+                    navigationSession !== w._playSession ||
+                    navigationDriver !== w.__ottActiveProviderDriver ||
+                    store !== classicPlaybackOwnedState() ||
+                    state.generation !== classicPlaybackSnapshot().generation
+                )
+                    return false;
+            }
         }
         var history: PlaybackVisit = {
             archiveStart:
@@ -359,9 +392,11 @@ function classicPlaybackCommand(command: any): boolean | void {
                 ? command.position
                 : 0;
         classicPlaybackProjection = classicPlaybackProjectionValue(w);
-        if (classicPlaybackController) classicPlaybackController.cancel();
+        var selectionCurrent = classicPlaybackRuntime().cancelAndCapture();
+        if (!selectionCurrent()) return false;
         if (w.__ottMedia && w.__ottMedia.playbackStop)
             w.__ottMedia.playbackStop(state.target);
+        if (!selectionCurrent()) return false;
         if (type !== "finite-channel") classicPlaybackStartedAt = null;
         if (type === "finite-channel")
             store.classify(target, history, command.duration);
@@ -388,9 +423,22 @@ function classicPlaybackCommand(command: any): boolean | void {
         type === "playing"
     ) {
         if (type === "stop") {
-            if (classicPlaybackController) classicPlaybackController.cancel();
+            var ownedStop =
+                command.sourceStop &&
+                command.sourceStop === classicPlaybackStopTicket &&
+                !command.sourceStop.used &&
+                command.sourceStop.current();
+            if (ownedStop) command.sourceStop.used = true;
+            else if (classicPlaybackController)
+                classicPlaybackController.cancel();
             if (w.__ottMedia && w.__ottMedia.playbackStop)
                 w.__ottMedia.playbackStop(state.target);
+            if (
+                ownedStop &&
+                (classicPlaybackStopTicket !== command.sourceStop ||
+                    !command.sourceStop.current())
+            )
+                return false;
         }
         store.phase(
             type === "stop"
@@ -1165,15 +1213,31 @@ function classicPlaybackProgramme(): any {
 }
 
 (window as any).__ottClassicPlayback = {
-    beforeSeek: function (value: number): void {
+    beforeSeek: function (value: number): (() => void) | void {
         classicPlaybackCapture();
-        classicPlaybackRuntime().beforeSeek(value);
+        return classicPlaybackRuntime().beforeSeek(value);
     },
     bookmark: classicPlaybackBookmark,
     cancel: function (): void {
+        classicPlaybackStopTicket = null;
         if (classicPlaybackController) classicPlaybackController.cancel();
         var archive = classicPlaybackHost().__ottClassicArchive;
         if (archive) archive.cancel();
+    },
+    cancelForSource: function (): any {
+        var current = classicPlaybackRuntime().cancelAndCapture();
+        if (!current()) return null;
+        var ticket = { current: current, used: false };
+        classicPlaybackStopTicket = ticket;
+        try {
+            var archive = classicPlaybackHost().__ottClassicArchive;
+            if (archive) archive.cancel();
+            return ticket;
+        } catch (error) {
+            if (classicPlaybackStopTicket === ticket)
+                classicPlaybackStopTicket = null;
+            throw error;
+        }
     },
     canMigrateJournal: function (): boolean {
         var journal = classicPlaybackJournal();
@@ -1202,6 +1266,10 @@ function classicPlaybackProgramme(): any {
             isCurrentSource: observation.isCurrentSource,
             sourceId: classicPlaybackSource(classicPlaybackHost()),
         };
+    },
+    finishSourceStop: function (ticket: any): void {
+        if (classicPlaybackStopTicket === ticket)
+            classicPlaybackStopTicket = null;
     },
     guard: function (
         callback: (...args: any[]) => void

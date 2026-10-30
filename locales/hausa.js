@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Ana duba haɗin sabar Plex…",
     "Choose a folder in the browser window":
         "Zaɓi babban fayil a tagar burauza",
+    "Choose a profile": "Zaɓi bayanin martaba",
     "Choose files in the browser window": "Zaɓi fayiloli a tagar burauza",
     "Choose from": "Zaɓa daga",
     "Choose language": "Zaɓi harshe",
@@ -997,6 +998,8 @@ var keyStrings = {
     "Sleep timer": "Mai ƙidayar lokacin barci",
     "Sort channels": "Tsara tashoshi",
     "Source access": "Damar shiga tushe",
+    "Source is busy. Try again later.":
+        "Tushen yana da cunkoso. A sake gwadawa daga baya.",
     "Source sign-in required": "Ana buƙatar shiga tushen",
     "Source sign-in was cancelled": "An soke shiga tushen",
     "Stalker Portal Provider": "Mai bada sabis na tashar Stalker",
@@ -1052,6 +1055,8 @@ var keyStrings = {
         "ID na na'ura a adireshin ba ya inganta.",
     "The discovery response is invalid.":
         "Amsar binciken sabar ba ta inganta ba.",
+    "The stream connection failed": "Haɗawa da rafin ya gaza",
+    "The stream format could not be played": "Ba a iya kunna tsarin rafin ba",
     "This browser cannot identify the selected screenshot source.":
         "Wannan mai binciken ba zai iya tantance tushen hoton da aka zaɓa ba.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1064,6 +1069,8 @@ var keyStrings = {
         "Wannan manhajar Play tana buƙatar HTTPS. Nemi jerin kunnawa na HTTPS ko URL na sabar daga mai bada sabis.",
     "This pairing link has expired. Open a new session on your TV.":
         "Wannan hanyar haɗin gwiwar ta ƙare. Bude sabon zama akan TV ɗin ku.",
+    "This protected stream could not be played":
+        "Ba a iya kunna wannan rafin mai kariya ba",
     "This remote command is not supported by the player.":
         "Manhajar kunnawa ba ta goyon bayan wannan umarnin sarrafawa daga nesa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1106,6 +1113,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Saitunan ULTIFL1X",
     "Unable to load playlist": "Ba a iya loda jerin kunnawa ba",
+    Unavailable: "Ba a samu ba",
     "Unlock the player's settings before changing its playlist.":
         "Buɗe makullin saitunan manhajar kunnawa kafin sauya jerin kunnawarta.",
     Untitled: "Ba a ba da suna ba",

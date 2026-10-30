@@ -1,0 +1,479 @@
+import { globalFavoritesReceiptSchema as schema } from "./global-favorites-receipt-codec";
+
+const LEDGER = "favorites-global-receipts.v1",
+    STORE = "remoteFavorites.v1",
+    GLOBAL_RECOVERY_REASON = "accept-unknown-no-replay";
+const GLOBAL_RECOVERY_UUID =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\s\S])/;
+const GLOBAL_RECOVERY_HASH = /^[0-9a-f]{64}(?![\s\S])/;
+function globalFavoritesRecoveryFail(code: string): never {
+    throw new Error(code);
+}
+function globalFavoritesRecoveryCanonical(value: any): string {
+    if (value === null || typeof value !== "object")
+        return JSON.stringify(value);
+    if (Array.isArray(value))
+        return (
+            "[" + value.map(globalFavoritesRecoveryCanonical).join(",") + "]"
+        );
+    return (
+        "{" +
+        Object.keys(value)
+            .sort()
+            .map(function (key) {
+                return (
+                    JSON.stringify(key) +
+                    ":" +
+                    globalFavoritesRecoveryCanonical(value[key])
+                );
+            })
+            .join(",") +
+        "}"
+    );
+}
+function protectedRow(row: any): boolean {
+    return ["pending", "partial", "unknown"].indexOf(row.state) >= 0;
+}
+export async function globalFavoritesBackendProof(
+    grant: any,
+    sha256: (text: string) => Promise<string>
+): Promise<string> {
+    return sha256(
+        JSON.stringify([
+            "ottplay-favorites-global-backend-v1",
+            grant.origin,
+            LEDGER,
+            STORE,
+            grant.lockName,
+            grant.kind,
+            1,
+            grant.implementationVersion,
+        ])
+    );
+}
+export async function verifyGlobalFavoritesAudit(
+    row: any,
+    sha256: (text: string) => Promise<string>
+): Promise<boolean> {
+    if (!row.recovery_ack) return false;
+    var copy: any = {};
+    Object.keys(row).forEach(function (key) {
+        if (key !== "recovery_ack") copy[key] = row[key];
+    });
+    var original = await sha256(globalFavoritesRecoveryCanonical(copy)),
+        audit = row.recovery_ack;
+    var expected = await sha256(
+        JSON.stringify([
+            "ottplay-favorites-global-recovery-ack-v1",
+            audit.runtime,
+            "global",
+            row.operationId,
+            row.refs.runtimeId,
+            original,
+            audit.ledger_revision_before,
+            audit.store_revision,
+            audit.context_revision,
+            audit.backend_proof,
+            audit.reason,
+        ])
+    );
+    return (
+        expected === audit.acknowledgement_id &&
+        row.fence &&
+        row.fence.backendProof === audit.backend_proof
+    );
+}
+/** Separate global family: audit-only one-CAS recovery, never original operation replay. */
+export function createGlobalFavoritesRecovery(ports: any) {
+    async function hash(value: string) {
+        var result = await ports.sha256(value);
+        if (!GLOBAL_RECOVERY_HASH.test(result))
+            globalFavoritesRecoveryFail("hash_unavailable");
+        return result;
+    }
+    async function original(row: any) {
+        var copy: any = {};
+        Object.keys(row).forEach(function (key) {
+            if (key !== "recovery_ack") copy[key] = row[key];
+        });
+        return hash(globalFavoritesRecoveryCanonical(copy));
+    }
+    async function record(row: any) {
+        var digest = await original(row),
+            audit = row.recovery_ack || null;
+        if (audit) {
+            var expected = await hash(
+                JSON.stringify([
+                    "ottplay-favorites-global-recovery-ack-v1",
+                    audit.runtime,
+                    "global",
+                    row.operationId,
+                    row.refs.runtimeId,
+                    digest,
+                    audit.ledger_revision_before,
+                    audit.store_revision,
+                    audit.context_revision,
+                    audit.backend_proof,
+                    audit.reason,
+                ])
+            );
+            if (expected !== audit.acknowledgement_id)
+                globalFavoritesRecoveryFail("invalid_ledger");
+        }
+        return {
+            acknowledgement: audit,
+            operation_id: row.operationId,
+            operation_runtime: row.refs.runtimeId,
+            original_entry_sha256: digest,
+            original_outcome: row.state === "partial" ? "partial" : "unknown",
+            original_state: row.state,
+            subject: "global",
+        };
+    }
+    async function view(
+        grant: any,
+        runtime: string,
+        context: any,
+        current: () => boolean
+    ) {
+        var raw = grant.read(LEDGER),
+            store = grant.read(STORE),
+            parsed = schema.parse(raw);
+        var ledgerRevision = await hash(raw === null ? "null" : raw),
+            storeRevision = await hash(store === null ? "null" : store),
+            proof = await globalFavoritesBackendProof(grant, hash);
+        if (
+            !current() ||
+            grant.read(LEDGER) !== raw ||
+            grant.read(STORE) !== store ||
+            !current()
+        )
+            globalFavoritesRecoveryFail("revision_conflict");
+        var rows = parsed.entries.filter(protectedRow).sort(function (
+            a: any,
+            b: any
+        ) {
+            return a.operationId < b.operationId
+                ? -1
+                : a.operationId > b.operationId
+                  ? 1
+                  : 0;
+        });
+        var records: any[] = [];
+        for (var i = 0; i < rows.length; i++)
+            records.push(await record(rows[i]));
+        if (
+            !current() ||
+            grant.read(LEDGER) !== raw ||
+            grant.read(STORE) !== store
+        )
+            globalFavoritesRecoveryFail("revision_conflict");
+        return {
+            meta: {
+                backend_proof: proof,
+                context_revision: context.revision,
+                ledger_format: 1,
+                ledger_revision: ledgerRevision,
+                op: "inspect",
+                runtime: runtime,
+                store_revision: storeRevision,
+                subject: "global",
+                version: 1,
+            },
+            parsed: parsed,
+            raw: raw,
+            records: records,
+            rows: rows,
+            store: store,
+        };
+    }
+    async function selected(state: any, id: string, runtime: string) {
+        var index = state.rows.findIndex(function (row: any) {
+                return row.operationId === id;
+            }),
+            row = index < 0 ? null : state.rows[index],
+            record = index < 0 ? null : state.records[index];
+        var result: any = Object.assign({}, state.meta, {
+            acknowledge_allowed: false,
+            acknowledgement_id: null,
+            after_ledger_sha256: null,
+            operation_id: id,
+            plan_sha256: null,
+            record: record,
+        });
+        if (
+            !ports.authorized("acknowledge") ||
+            !row ||
+            row.recovery_ack ||
+            !row.fence ||
+            row.fence.backendProof !== state.meta.backend_proof
+        )
+            return { after: null, result: result };
+        var acknowledgement = await hash(
+            JSON.stringify([
+                "ottplay-favorites-global-recovery-ack-v1",
+                runtime,
+                "global",
+                id,
+                row.refs.runtimeId,
+                record.original_entry_sha256,
+                state.meta.ledger_revision,
+                state.meta.store_revision,
+                state.meta.context_revision,
+                state.meta.backend_proof,
+                GLOBAL_RECOVERY_REASON,
+            ])
+        );
+        var after = JSON.parse(state.raw),
+            target = after.entries.filter(function (entry: any) {
+                return entry.operationId === id;
+            })[0];
+        target.recovery_ack =
+            /* biome-ignore assist/source/useSortedKeys: Preserve recovery acknowledgement byte order in the hashed ledger after-image. */ {
+                acknowledgement_id: acknowledgement,
+                runtime: runtime,
+                ledger_revision_before: state.meta.ledger_revision,
+                store_revision: state.meta.store_revision,
+                context_revision: state.meta.context_revision,
+                backend_proof: state.meta.backend_proof,
+                reason: GLOBAL_RECOVERY_REASON,
+            };
+        var afterRaw = JSON.stringify(after);
+        if (!schema.capacity(afterRaw) || afterRaw === state.raw)
+            globalFavoritesRecoveryFail("capacity");
+        if (utf8Size(afterRaw) - utf8Size(state.raw) > 1024)
+            globalFavoritesRecoveryFail("capacity");
+        var afterHash = await hash(afterRaw),
+            plan = await hash(
+                JSON.stringify([
+                    "ottplay-favorites-global-recovery-plan-v1",
+                    runtime,
+                    "global",
+                    id,
+                    row.refs.runtimeId,
+                    record.original_entry_sha256,
+                    state.meta.ledger_revision,
+                    state.meta.store_revision,
+                    state.meta.context_revision,
+                    state.meta.backend_proof,
+                    GLOBAL_RECOVERY_REASON,
+                    acknowledgement,
+                    afterHash,
+                ])
+            );
+        Object.assign(result, {
+            acknowledge_allowed: true,
+            acknowledgement_id: acknowledgement,
+            after_ledger_sha256: afterHash,
+            plan_sha256: plan,
+        });
+        return { after: afterRaw, result: result };
+    }
+    function utf8Size(raw: string) {
+        return encodeURIComponent(raw).replace(/%[0-9A-F]{2}/g, "x").length;
+    }
+    async function execute(request: any, admission?: () => boolean) {
+        var runtime = ports.runtime(),
+            deadline = Math.floor(request.expires_at * 1000),
+            p = request.params;
+        if (
+            !p ||
+            p.runtime !== runtime ||
+            p.subject !== "global" ||
+            ["inspect", "acknowledge"].indexOf(p.op) < 0
+        )
+            globalFavoritesRecoveryFail("invalid_request");
+        if (!ports.authorized(p.op))
+            globalFavoritesRecoveryFail("policy_denied");
+        if (
+            p.operation_id !== undefined &&
+            !GLOBAL_RECOVERY_UUID.test(p.operation_id)
+        )
+            globalFavoritesRecoveryFail("invalid_request");
+        var grant = ports.capture(),
+            context = await ports.captureContext();
+        if (
+            !grant ||
+            !context ||
+            !GLOBAL_RECOVERY_HASH.test(context.revision) ||
+            typeof context.current !== "function"
+        )
+            globalFavoritesRecoveryFail("unsupported_persistence");
+        function current() {
+            return (
+                ports.current() &&
+                (!admission || admission()) &&
+                ports.runtime() === runtime &&
+                ports.now() < deadline &&
+                grant.current() &&
+                context.current() &&
+                ports.authorized(p.op)
+            );
+        }
+        if (!current()) globalFavoritesRecoveryFail("context_changed");
+        return grant.exclusive(async function (held: any) {
+            if (held !== grant || !current())
+                globalFavoritesRecoveryFail("context_changed");
+            var state = await view(grant, runtime, context, current);
+            if (
+                p.op === "inspect" &&
+                Object.prototype.hasOwnProperty.call(p, "cursor")
+            ) {
+                if (
+                    Object.keys(p).sort().join(",") !==
+                    "cursor,op,runtime,subject"
+                )
+                    globalFavoritesRecoveryFail("invalid_request");
+                var offset = 0;
+                if (p.cursor !== null) {
+                    var cursor = p.cursor;
+                    if (
+                        Object.keys(cursor).sort().join(",") !==
+                        "after_operation_id,backend_proof,context_revision,ledger_revision,store_revision"
+                    )
+                        globalFavoritesRecoveryFail("invalid_request");
+                    for (var name of [
+                        "backend_proof",
+                        "context_revision",
+                        "ledger_revision",
+                        "store_revision",
+                    ])
+                        if (cursor[name] !== state.meta[name])
+                            globalFavoritesRecoveryFail("revision_conflict");
+                    var at = state.rows.findIndex(function (row: any) {
+                        return row.operationId === cursor.after_operation_id;
+                    });
+                    if (
+                        at < 0 ||
+                        (at + 1) % 16 !== 0 ||
+                        at >= state.rows.length - 1
+                    )
+                        globalFavoritesRecoveryFail("invalid_cursor");
+                    offset = at + 1;
+                }
+                var end = Math.min(state.records.length, offset + 16),
+                    next =
+                        end < state.records.length
+                            ? Object.assign(
+                                  {
+                                      after_operation_id:
+                                          state.rows[end - 1].operationId,
+                                  },
+                                  {
+                                      backend_proof: state.meta.backend_proof,
+                                      context_revision:
+                                          state.meta.context_revision,
+                                      ledger_revision:
+                                          state.meta.ledger_revision,
+                                      store_revision: state.meta.store_revision,
+                                  }
+                              )
+                            : null;
+                return Object.assign({}, state.meta, {
+                    next_cursor: next,
+                    records: state.records.slice(offset, end),
+                    total: state.records.length,
+                });
+            }
+            var planned = await selected(state, p.operation_id, runtime);
+            if (p.op === "inspect") {
+                if (
+                    Object.keys(p).sort().join(",") !==
+                    "op,operation_id,runtime,subject"
+                )
+                    globalFavoritesRecoveryFail("invalid_request");
+                if (
+                    !current() ||
+                    grant.read(LEDGER) !== state.raw ||
+                    grant.read(STORE) !== state.store
+                )
+                    globalFavoritesRecoveryFail("revision_conflict");
+                return planned.result;
+            }
+            if (
+                Object.keys(p).sort().join(",") !==
+                    "accept_unknown,acknowledgement_id,after_ledger_sha256,backend_proof,expected_context_revision,expected_ledger_revision,expected_store_revision,op,operation_id,operation_runtime,original_entry_sha256,plan_sha256,reason,runtime,subject" ||
+                p.accept_unknown !== true ||
+                p.reason !== GLOBAL_RECOVERY_REASON ||
+                !planned.result.acknowledge_allowed
+            )
+                globalFavoritesRecoveryFail("invalid_request");
+            var expected = {
+                acknowledgement_id: planned.result.acknowledgement_id,
+                after_ledger_sha256: planned.result.after_ledger_sha256,
+                backend_proof: state.meta.backend_proof,
+                expected_context_revision: state.meta.context_revision,
+                expected_ledger_revision: state.meta.ledger_revision,
+                expected_store_revision: state.meta.store_revision,
+                operation_runtime: planned.result.record.operation_runtime,
+                original_entry_sha256:
+                    planned.result.record.original_entry_sha256,
+                plan_sha256: planned.result.plan_sha256,
+            };
+            for (var key of Object.keys(expected))
+                if (p[key] !== expected[key])
+                    globalFavoritesRecoveryFail("revision_conflict");
+            if (
+                !current() ||
+                grant.read(LEDGER) !== state.raw ||
+                grant.read(STORE) !== state.store ||
+                !current()
+            )
+                globalFavoritesRecoveryFail("revision_conflict");
+            var conditional = function () {
+                return current() && grant.read(STORE) === state.store;
+            };
+            var outcome: string;
+            try {
+                outcome = grant.compareAndSwap(
+                    LEDGER,
+                    state.raw,
+                    planned.after,
+                    conditional
+                );
+            } catch (_) {
+                globalFavoritesRecoveryFail("outcome_unknown");
+            }
+            if (outcome === "conflict")
+                globalFavoritesRecoveryFail("revision_conflict");
+            try {
+                if (
+                    outcome !== "confirmed" ||
+                    !current() ||
+                    grant.read(LEDGER) !== planned.after ||
+                    grant.read(STORE) !== state.store
+                )
+                    globalFavoritesRecoveryFail("outcome_unknown");
+                var afterState = await view(grant, runtime, context, current),
+                    row = afterState.records.filter(function (row: any) {
+                        return row.operation_id === p.operation_id;
+                    })[0];
+                if (
+                    afterState.raw !== planned.after ||
+                    afterState.store !== state.store ||
+                    !current()
+                )
+                    globalFavoritesRecoveryFail("outcome_unknown");
+                return {
+                    acknowledged: true,
+                    acknowledgement_id: p.acknowledgement_id,
+                    context_revision: state.meta.context_revision,
+                    ledger_revision: planned.result.after_ledger_sha256,
+                    op: "acknowledge",
+                    operation_id: p.operation_id,
+                    operation_runtime: p.operation_runtime,
+                    persistence: "persistent",
+                    plan_sha256: p.plan_sha256,
+                    record: row,
+                    runtime: runtime,
+                    store_revision: state.meta.store_revision,
+                    subject: "global",
+                    version: 1,
+                };
+            } catch (_) {
+                globalFavoritesRecoveryFail("outcome_unknown");
+            }
+        });
+    }
+    return { execute: execute };
+}

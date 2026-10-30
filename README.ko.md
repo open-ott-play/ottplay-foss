@@ -64,10 +64,10 @@ PC 인터페이스의 **R**은 목록 순서를 섞지 않고 현재 목록에�
 
 - **재생**: HLS, DASH 및 일반 HTTP 스트림. 관리되는 HLS.js/Shaka 화질 상한, 제한된 복구, 실시간 채널마다 최대 세 개의 명시적 백업 URL을 지원합니다. 다시 보기/VOD는 실시간 백업으로 전환하지 않습니다. [화질 및 복구](docs/playback-stream-policy.ko.md)를 참고하세요.
 - **EPG**: XMLTV 매칭, 타임시프트/다시 보기, 프로그램 제목 검색(EPG의 N5), 알림, 호스팅/네이티브 XMLTV 경로에서 정확한 채널의 수동 피드/ID 연결. [연결 및 접근성](docs/guide-binding-accessibility.ko.md)을 참고하세요.
-- **즐겨찾기**: 여러 목록(작업 → 즐겨찾기 목록에서 전환/추가/이름 변경/삭제), 자녀 보호 PIN.
+- **즐겨찾기**: 지원되는 환경에서 설정된 공급자와 프로필을 아우르는 하나의 순서 있는 [혼합 모음](docs/mixed-favorites.md), CLI를 통한 이식 가능한 내보내기/가져오기 및 자녀 보호 PIN. 대체 모드에서는 소스별 즐겨찾기 목록을 계속 사용할 수 있습니다.
 - **설정**: 설정 및 즐겨찾기 JSON 내보내기/가져오기, 지원 localStorage 배치의 실행 취소 저널, 소스를 구분하는 다시 보기 재개, 컨트롤러 워크플로의 저장 설정 정밀 비교. 복구는 단일 작성자를 가정하며 사용자 정의 저장소 어댑터는 최선의 롤백을 유지합니다. [설정 복구](docs/settings-recovery.ko.md)를 참고하세요.
 - **공유 인터페이스**: OTT Server, Tauri, Capacitor는 같은 채널 목록 테마와 표시 설정을 사용합니다. 인터페이스 설정은 강조/선택 색을, 채널 목록 설정은 채널명, 아이콘, 현재 프로그램, 진행률, 다시 보기 표시를 제어합니다.
-- **공급자**: M3U/M3U8, Xtream 실시간 TV와 [주문형 영화/시리즈 카탈로그](docs/xtream-media.ko.md), Stalker/Ministra, Plex, VPortal. 공급자 기능과 계정 접근 권한에 따라 다시 보기와 미디어 라이브러리 기능이 결정됩니다.
+- **공급자**: M3U/M3U8, Xtream 실시간 TV와 [주문형 영화/시리즈 카탈로그](docs/xtream-media.ko.md), [영화와 중첩된 에피소드](docs/stalker-media.md)를 지원하는 Stalker/Ministra, Plex, VPortal. 공급자 기능과 계정 접근 권한에 따라 다시 보기와 미디어 라이브러리 기능이 결정됩니다.
 - **푸시 명령**: webhook 원격 제어로 채널, 공급자, 재생목록을 바꾸거나 팝업을 표시합니다.
 - **원격 텍스트 입력(swop)**: TV와 휴대전화가 다른 네트워크에 있을 때 Cloudflare Worker를 통한 휴대전화 키보드 사용(설치 승인 세션, 가상 키보드의 ♥™).
 - **장치별 라우팅**: 다중 장치 설정을 위한 UUID 기반 주소 지정.
@@ -80,6 +80,8 @@ PC 인터페이스의 **R**은 목록 순서를 섞지 않고 현재 목록에�
 - **88개 인터페이스 언어**: 일치하는 카탈로그, [현지화 빠른 시작](docs/readme/README.md), [CLDR 검증 키보드 문자](docs/localization.md). 기본 설명서와 대응 기능 안내서는 [24개 문서 언어](docs/manual-translations.md)로 제공하며 다른 엔지니어링 참고 문서는 기존 언어를 유지합니다.
 
 [제공 기능 안내](docs/roadmap-delivery.ko.md)는 이 소스 리비전에 구현된 기능, 플랫폼 경계, 다이어그램 및 검증을 설명합니다. 설치된 릴리스나 호스팅 배포는 이전 리비전일 수 있습니다. 별도 네이티브 [Android 앱](https://github.com/open-ott-play/ottplay-android)도 매니페스트 인덱스 대신 언어, 역할, 레이블로 오디오/자막 선택을 유지합니다. 구현 및 릴리스는 이 프런트엔드와 별개입니다.
+
+[STB 소스 검토](docs/stb-player-improvements.md)는 미디어, 리소스 및 복구 개선 사항과 관련 소스 비교, 현재 제한 사항을 설명합니다.
 
 <a id="debug-hud"></a>
 
@@ -362,9 +364,11 @@ EPG_HASH=<channel-hash> ./scripts/smoke-modea-companion.sh
 
 ## 클래식 Stalker / Ministra 포털
 
-**Stalker 포털**을 선택하고 공급자가 발급한 MAC과 전체 포털 URL(예: `http://provider.example/stalker_portal/c/`)을 입력하세요. `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php`, `/portal.php` URL은 클래식 MAG 프로토콜을 선택합니다. 기존의 서버 주소만 있는 설정은 JSON-RPC를 유지합니다. 공급자는 공유 Stalker 코어로 프로필, 장르, 페이지별 실시간 채널을 로드합니다. 브라우저 요청은 보조 서버의 `/stalker/api`를 거치며 네이티브 앱은 기존 HTTP 전송을 사용합니다. 브라우저와 보조 서버 자산은 함께 업데이트해야 합니다.
+**Stalker 포털**을 선택하고 공급자가 발급한 MAC과 전체 포털 URL(예: `http://provider.example/stalker_portal/c/`)을 입력하세요. `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php`, `/portal.php` URL은 클래식 MAG 프로토콜을 선택합니다. 기존의 서버 주소만 있는 설정은 JSON-RPC를 유지합니다. 공급자는 공유 Stalker 코어로 프로필, 장르, 페이지별 실시간 채널을 로드한 다음, 백그라운드에서 클래식 `type=vod` 프로토콜의 영화와 중첩된 에피소드를 탐색합니다. 폴더 경로는 일반 채널 목록의 카테고리가 되며, 제공되는 설명과 포스터 및 안정적으로 유지되는 전역 즐겨찾기는 같은 미디어 인터페이스를 사용합니다. [카탈로그 동작과 제한](docs/stalker-media.md)을 참고하세요.
 
-실시간 재생은 스트림을 열 때 임시 채널 명령을 해석합니다. 채널 변경, 정지, PiP, 공급자 교체는 오래된 해석 작업을 취소합니다. 명시적 비임시 HTTP(S) 명령은 직접 재생합니다. 짧은 EPG는 지원하지만 클래식 포털 다시 보기와 VOD는 아직 이 공급자에서 제공하지 않습니다. 기존 JSON-RPC 다시 보기/가이드 동작은 그대로입니다. 사설 LAN 포털은 다른 보조 프록시 경로처럼 정확한 `OTTPLAY_PROXY_LAN_ORIGINS` 항목이 필요합니다.
+자체 호스팅 브라우저 버전의 요청은 보조 서버의 `/stalker/api`를 거치며 네이티브 앱은 기존 HTTP 전송을 사용합니다. 호스팅된 브라우저 버전에는 [전용 릴레이](docs/stalker-relay.md)를 통하는 경로를 명시적으로 설정해야 합니다. 브라우저와 서버 자산은 함께 업데이트해야 합니다.
+
+실시간 재생은 스트림을 열 때 임시 채널 명령을 해석합니다. 채널 변경, 정지, PiP, 공급자 교체는 오래된 해석 작업을 취소합니다. 명시적 비임시 HTTP(S) 명령은 직접 재생합니다. 짧은 EPG는 지원합니다. 클래식 포털 다시 보기와 별도의 `type=series` 방식은 이 공급자에서 제공하지 않습니다. 기존 JSON-RPC 다시 보기/가이드 동작은 그대로입니다. 보조 서버 경로를 이용하는 사설 LAN 포털은 다른 보조 프록시 경로처럼 정확한 `OTTPLAY_PROXY_LAN_ORIGINS` 항목이 필요합니다.
 
 공개 Infomir 데모는 `http://middleware-stalker.com/stalker_portal/c/`입니다. 2026-09-26에 실시간 카탈로그 세 항목을 반환했지만 미디어 엔드포인트는 사용할 수 없었습니다. 재생 회귀에는 제어 가능한 포털/미디어 픽스처를 사용하세요.
 

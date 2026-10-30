@@ -239,6 +239,25 @@ deadline.unref();
         assert.deepEqual(resume.recovered, ["granted", "granted"]);
         checkpoint("profile context");
         const profileContext = await browser.newContext();
+        // Keep real OPFS handles, IndexedDB, and page closure. Only model the
+        // external-folder permission policy, as in the built-UI fixture.
+        await profileContext.addInitScript(() => {
+            const permission = { queries: 0, requests: 0, state: "granted" };
+            window.__directMediaProfilePermission = permission;
+            FileSystemHandle.prototype.queryPermission = function (options) {
+                if (!options || options.mode !== "read")
+                    throw new Error("Profile fixture requires read permission");
+                permission.queries++;
+                return Promise.resolve(permission.state);
+            };
+            FileSystemHandle.prototype.requestPermission = function (options) {
+                if (!options || options.mode !== "read")
+                    throw new Error("Profile fixture requires read permission");
+                permission.requests++;
+                permission.state = "granted";
+                return Promise.resolve(permission.state);
+            };
+        });
         let profilePage = await profileContext.newPage();
         const address = "http://127.0.0.1:" + server.address().port;
         await profilePage.goto(address);
@@ -300,6 +319,10 @@ deadline.unref();
                 );
         };
         profilePage.on("console", profileConsole);
+        const profilePageError = () => checkpoint("profile reopen: pageerror");
+        const profilePageCrash = () => checkpoint("profile reopen: pagecrash");
+        profilePage.once("pageerror", profilePageError);
+        profilePage.once("crash", profilePageCrash);
         const restoredProfile = await profilePage.evaluate(async (profile) => {
             window.stbDelItem = (key) => localStorage.removeItem(key);
             window.stbGetItem = (key) => localStorage.getItem(key);
@@ -322,8 +345,149 @@ deadline.unref();
                 action: "profile",
                 params: { number: 2 },
             });
+            // Observe the real browser boundary without replacing its iterator,
+            // promises, fulfillment values, or rejection reasons.
+            const directoryPrototype = FileSystemDirectoryHandle.prototype;
+            const nativeValues = directoryPrototype.values;
+            const started = performance.now();
+            const reads = {
+                nextCalls: 0,
+                nextRejected: 0,
+                nextResolved: 0,
+                nextThrown: 0,
+                valuesCalls: 0,
+                valuesThrown: 0,
+            };
+            let diagnosticLines = 0;
+            function diagnostic(event, eventLoopMs = 0) {
+                if (!eventLoopMs && diagnosticLines >= 16) return;
+                if (!eventLoopMs) diagnosticLines++;
+                try {
+                    console.log(
+                        "[direct-media-profile] diagnostic " +
+                            JSON.stringify({
+                                ...reads,
+                                elapsedMs: Math.floor(
+                                    performance.now() - started
+                                ),
+                                event,
+                                eventLoopMs,
+                            })
+                    );
+                } catch (_) {
+                    // Diagnostic reporting cannot reject the native operation.
+                }
+            }
+            directoryPrototype.values = function () {
+                reads.valuesCalls++;
+                diagnostic("values-call");
+                let iterator;
+                try {
+                    iterator = nativeValues.apply(this, arguments);
+                } catch (error) {
+                    reads.valuesThrown++;
+                    diagnostic("values-throw");
+                    throw error;
+                }
+                const nativeNext = iterator.next;
+                iterator.next = function () {
+                    reads.nextCalls++;
+                    diagnostic("next-call");
+                    let pending;
+                    try {
+                        pending = nativeNext.apply(this, arguments);
+                    } catch (error) {
+                        reads.nextThrown++;
+                        diagnostic("next-throw");
+                        throw error;
+                    }
+                    // Observe settlement on a separate branch; return the exact
+                    // native promise to the production consumer below.
+                    Promise.prototype.then.call(
+                        pending,
+                        () => {
+                            reads.nextResolved++;
+                            diagnostic("next-resolved");
+                        },
+                        () => {
+                            reads.nextRejected++;
+                            diagnostic("next-rejected");
+                        }
+                    );
+                    return pending;
+                };
+                diagnostic("values-return");
+                return iterator;
+            };
+            // Four one-shot checkpoints prove whether page timers can still run
+            // while a native read is pending. They never retry or cancel a read.
+            const responsiveness = [1000, 10000, 30000, 60000].map((delay) =>
+                setTimeout(() => diagnostic("event-loop", delay), delay)
+            );
             console.log("[direct-media-profile] list");
-            const catalog = profiles.filter(await media.list());
+            let lastProgress = "",
+                progressLines = 0,
+                progressBytes = 0,
+                progressCapped = false;
+            const catalogRead = media.list((value) => {
+                // Diagnostics must never cancel or alter the catalog operation.
+                try {
+                    const phases = [
+                        "sources",
+                        "permission",
+                        "files",
+                        "enumerating",
+                        "metadata",
+                        "complete",
+                    ];
+                    const count = (number) =>
+                        typeof number === "number" &&
+                        Number.isFinite(number) &&
+                        number >= 0
+                            ? Math.floor(Math.min(number, 1000000000))
+                            : 0;
+                    const phase = value.phase;
+                    const summary = JSON.stringify({
+                        discovered: count(value.discovered),
+                        items: count(
+                            Array.isArray(value.items) ? value.items.length : 0
+                        ),
+                        phase: phases.includes(phase) ? phase : "unknown",
+                        scanned: count(value.scanned),
+                        sources: count(
+                            Array.isArray(value.sources)
+                                ? value.sources.length
+                                : 0
+                        ),
+                    });
+                    if (summary === lastProgress || progressCapped) return;
+                    lastProgress = summary;
+                    const line = "[direct-media-profile] list " + summary;
+                    if (
+                        progressLines >= 24 ||
+                        progressBytes + line.length > 3840
+                    ) {
+                        progressCapped = true;
+                        console.log(
+                            '[direct-media-profile] list {"phase":"diagnostic-cap","omitted":1}'
+                        );
+                        return;
+                    }
+                    progressLines++;
+                    progressBytes += line.length;
+                    console.log(line);
+                } catch (_) {
+                    // A malformed diagnostic field cannot reject the real scan.
+                }
+            });
+            const rawCatalog = await catalogRead.finally(() => {
+                directoryPrototype.values = nativeValues;
+                responsiveness.forEach((timer) => clearTimeout(timer));
+            });
+            console.log("[direct-media-profile] list-resolved");
+            if (rawCatalog.scanning !== false || rawCatalog.cancelled !== false)
+                throw new Error("Profile catalog did not complete");
+            const catalog = profiles.filter(rawCatalog);
             const item = catalog.items.find(
                 (item) => "local-" + item.id === profiles.selection()
             );
@@ -332,13 +496,27 @@ deadline.unref();
             console.log("[direct-media-profile] blob body");
             const body = await response.text();
             console.log("[direct-media-profile] complete");
-            return { body, count: catalog.items.length, imported, loaded };
+            return {
+                body,
+                count: catalog.items.length,
+                imported,
+                loaded,
+                permission: window.__directMediaProfilePermission,
+            };
         }, portable);
         profilePage.off("console", profileConsole);
+        profilePage.off("pageerror", profilePageError);
+        profilePage.off("crash", profilePageCrash);
         assert.equal(restoredProfile.imported.data.binding_required, false);
         assert.equal(restoredProfile.loaded.status, "ok");
         assert.equal(restoredProfile.body, "second.mp4");
         assert.equal(restoredProfile.count, 2);
+        assert(
+            restoredProfile.permission.queries > 0,
+            "reopened profile reads permission through the modeled policy"
+        );
+        assert.equal(restoredProfile.permission.requests, 0);
+        assert.equal(restoredProfile.permission.state, "granted");
         checkpoint("foreign profile context");
         const foreignContext = await browser.newContext();
         const foreignPage = await foreignContext.newPage();

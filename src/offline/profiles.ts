@@ -408,7 +408,7 @@ export function installOfflineProfiles(w: any, media: any): any {
         var local = binding(profile);
         return local && local.selected ? "local-" + local.selected : "";
     }
-    function request(request: any): Promise<any> {
+    function request(request: any, admission?: () => boolean): Promise<any> {
         if (busy)
             return Promise.resolve({
                 data: {
@@ -427,6 +427,7 @@ export function installOfflineProfiles(w: any, media: any): any {
         function owner(): boolean {
             return (
                 active() &&
+                (!admission || admission()) &&
                 w.__ottActiveProviderDriver === driver &&
                 !locked() &&
                 readPort === w.stbGetItem &&
@@ -855,6 +856,44 @@ export function installOfflineProfiles(w: any, media: any): any {
             return Promise.reject(error);
         }
     }
+    /** Internal explicit Favorites handoff to the default Local scope. */
+    function useDefault(admitted: () => boolean): boolean {
+        if (busy || locked() || !active() || !admitted()) return false;
+        var before = w.stbGetItem(key),
+            store = read(),
+            driver = w.__ottActiveProviderDriver;
+        var library = media.libraryIdentity(),
+            reload = w.loadChannels;
+        if (store.active < 0) return true;
+        if (typeof reload !== "function") return false;
+        function owner(): boolean {
+            return (
+                active() &&
+                !locked() &&
+                admitted() &&
+                driver === w.__ottActiveProviderDriver &&
+                library === media.libraryIdentity() &&
+                reload === w.loadChannels
+            );
+        }
+        busy = true;
+        try {
+            if (w.__ottClassicPlayback?.checkpointNow)
+                w.__ottClassicPlayback.checkpointNow();
+            if (!owner() || w.stbGetItem(key) !== before) return false;
+            store.active = -1;
+            var values: any = {},
+                previous: any = {};
+            values[key] = JSON.stringify(store);
+            previous[key] = before;
+            writeBatch(values, previous, owner, owner, true);
+            if (!owner() || w.stbGetItem(key) !== values[key]) return false;
+            reload();
+            return owner();
+        } finally {
+            busy = false;
+        }
+    }
     var api = {
         bind: bind,
         bindCurrent: bindCurrent,
@@ -914,6 +953,7 @@ export function installOfflineProfiles(w: any, media: any): any {
                 : null;
         },
         selection: selection,
+        useDefault: useDefault,
         validateProfile: validateProfile,
         validateStore: validateStore,
     };

@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex 서버 연결을 확인하는 중…",
     "Choose a folder in the browser window":
         "브라우저 창에서 폴더를 선택하세요",
+    "Choose a profile": "프로필 선택",
     "Choose files in the browser window": "브라우저 창에서 파일을 선택하세요",
     "Choose from": "선택하세요",
     "Choose language": "언어를 선택하세요",
@@ -988,6 +989,8 @@ var keyStrings = {
     "Sleep timer": "취침 타이머",
     "Sort channels": "채널 정렬",
     "Source access": "소스 액세스",
+    "Source is busy. Try again later.":
+        "스트림 제공처가 혼잡합니다. 나중에 다시 시도하세요.",
     "Source sign-in required": "소스 로그인 필요",
     "Source sign-in was cancelled": "소스 로그인이 취소되었습니다.",
     "Stalker Portal Provider": "Stalker 포털 제공업체",
@@ -1040,6 +1043,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "주소의 ID 디바이스가 유효하지 않습니다.",
     "The discovery response is invalid.": "검색 응답이 잘못되었습니다.",
+    "The stream connection failed": "스트림 연결에 실패했습니다",
+    "The stream format could not be played":
+        "이 형식의 스트림을 재생할 수 없습니다",
     "This browser cannot identify the selected screenshot source.":
         "이 브라우저는 선택된 스크린샷 소스를 식별할 수 없습니다.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1052,6 +1058,8 @@ var keyStrings = {
         "이 Play 앱에는 HTTPS가 필요합니다. 공급자에게 HTTPS 재생 목록 또는 서버 URL를 요청하세요.",
     "This pairing link has expired. Open a new session on your TV.":
         "이 페어링 링크는 만료되었습니다. TV에서 새 세션을 엽니다.",
+    "This protected stream could not be played":
+        "이 보호된 스트림을 재생할 수 없습니다",
     "This remote command is not supported by the player.":
         "플레이어에서 이 원격 제어 명령을 지원하지 않습니다.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1094,6 +1102,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X 설정",
     "Unable to load playlist": "재생 목록을 로드할 수 없습니다.",
+    Unavailable: "사용할 수 없습니다",
     "Unlock the player's settings before changing its playlist.":
         "재생목록을 변경하기 전에 플레이어 설정의 잠금을 해제하세요.",
     Untitled: "제목없음",

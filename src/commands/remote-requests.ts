@@ -6,10 +6,24 @@ import {
 } from "../provider";
 import { caselessKey } from "../utils/caseless";
 import { handleCommand } from "./index";
+import { readPlayerState } from "./player-state";
 import { randomChannels } from "./random-channel";
 import { executeRemoteAppUpdate } from "./remote-app-update";
 import { handleRemoteArchive } from "./remote-archive";
 import { executeRemoteFavorites } from "./remote-favorites";
+import {
+    executeGlobalFavorites,
+    globalFavoritesCapability,
+    legacyFavoritesCapability,
+} from "./remote-favorites-global";
+import {
+    executeGlobalFavoritesItems,
+    globalFavoritesItemsCapability,
+} from "./remote-favorites-global-items";
+import {
+    executeGlobalFavoritesRecovery,
+    globalFavoritesRecoveryCapability,
+} from "./remote-favorites-global-recovery";
 import {
     executeRemoteFavoritesTransfer,
     remoteFavoritesTransferCapability,
@@ -284,7 +298,11 @@ function remoteMediaRows(
     });
     return valid && snapshot.active() ? result : null;
 }
-function remoteMediaRestricted(w: any, channels = true): boolean {
+function remoteMediaRestricted(
+    w: any,
+    channels = true,
+    loadingOwner?: any
+): boolean {
     try {
         if (
             (w.__ottKiosk && w.__ottKiosk.enabled()) ||
@@ -306,10 +324,18 @@ function remoteMediaRestricted(w: any, channels = true): boolean {
         )
             return true;
         var owner = port.screens.current();
+        var ownedLoading =
+            !!loadingOwner &&
+            owner === loadingOwner &&
+            loadingOwner.kind === "dialog" &&
+            loadingOwner.active() &&
+            loadingOwner.foreground() &&
+            typeof port.owner === "function" &&
+            port.owner("dialog") === loadingOwner;
         var list = port.listOwner && port.listOwner();
         if (
             (owner &&
-                (owner.kind !== "list" ||
+                ((owner.kind !== "list" && !ownedLoading) ||
                     (owner.model && owner.model.localOnlyInput))) ||
             (list && list.model && list.model.localOnlyInput)
         )
@@ -318,7 +344,8 @@ function remoteMediaRestricted(w: any, channels = true): boolean {
             w.$ &&
             w
                 .$(
-                    "#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust, #remoteScreenshotToggle, #dialogbox, #listAbout, #listEdit, #numprog"
+                    "#pin, #remoteDiagnosticsToggle, #remoteDiagnosticsTrust, #remoteScreenshotToggle, #listAbout, #listEdit, #numprog" +
+                        (ownedLoading ? "" : ", #dialogbox")
                 )
                 .is(":visible")
         )
@@ -393,6 +420,27 @@ export function executeRemoteRequest(
         return executeRemoteSettings(w, request, done, afterReply);
     if (request.action === "inspect" && w.__ottRemoteInspect)
         return w.__ottRemoteInspect.request(request, done);
+    if (request.action === "favorites_global_items")
+        return executeGlobalFavoritesItems(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
+    if (request.action === "favorites_global_recovery")
+        return executeGlobalFavoritesRecovery(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
+    if (request.action === "favorites_global")
+        return executeGlobalFavorites(
+            w,
+            remotePlayerInfo(w).runtime,
+            request,
+            done
+        );
     if (request.action === "favorites")
         return executeRemoteFavorites(
             w,
@@ -457,10 +505,10 @@ export function executeRemoteRequest(
             ids,
             params.random,
             include,
-            function () {
+            function (loadingOwner?: any) {
                 return (
                     current() &&
-                    !remoteMediaRestricted(w, false) &&
+                    !remoteMediaRestricted(w, false, loadingOwner) &&
                     (request.expires_at === undefined ||
                         request.expires_at > Date.now() / 1000)
                 );
@@ -1000,6 +1048,18 @@ export function executeRemoteRequest(
         ) >= 0
     ) {
         var controlCancelled = false;
+        var controlRuntime = remotePlayerInfo(w).runtime;
+        var controlDeadline =
+            request.expires_at === undefined
+                ? Infinity
+                : Math.floor(request.expires_at * 1000);
+        var controlCurrent = function (): boolean {
+            return (
+                !controlCancelled &&
+                remotePlayerInfo(w).runtime === controlRuntime &&
+                Date.now() < controlDeadline
+            );
+        };
         var cancelCapability: (() => void) | undefined;
         var cancelControl = executeRemoteControl(
             w,
@@ -1008,6 +1068,10 @@ export function executeRemoteRequest(
             request.action === "capabilities"
                 ? function (result: any) {
                       if (controlCancelled) return;
+                      if (!controlCurrent()) {
+                          done(result);
+                          return;
+                      }
                       if (result.status === "ok" && result.data)
                           result.data.notifications = {
                               operations: ["get", "set"],
@@ -1038,6 +1102,27 @@ export function executeRemoteRequest(
                               },
                               function (capability, recoveryCapability) {
                                   if (controlCancelled) return;
+                                  if (!controlCurrent()) {
+                                      done(result);
+                                      return;
+                                  }
+                                  var globalFavorites =
+                                      globalFavoritesCapability(w);
+                                  if (globalFavorites)
+                                      result.data.favorites_global =
+                                          globalFavorites;
+                                  var globalItems =
+                                      globalFavoritesItemsCapability(w);
+                                  if (globalItems)
+                                      result.data.favorites_global_items =
+                                          globalItems;
+                                  var globalRecovery =
+                                      globalFavoritesRecoveryCapability(w);
+                                  if (globalRecovery)
+                                      result.data.favorites_global_recovery =
+                                          globalRecovery;
+                                  result.data.favorites =
+                                      legacyFavoritesCapability(w);
                                   if (capability)
                                       result.data.favorites_transfer =
                                           capability;
@@ -1062,9 +1147,11 @@ export function executeRemoteRequest(
         };
     }
     if (request.action === "status") {
+        var player = remotePlayerInfo(w);
         reply({
             channels: channels().length,
-            player: remotePlayerInfo(w),
+            playback: readPlayerState(w, player).playback,
+            player: player,
             ...(w.__ottKiosk ? { kiosk: w.__ottKiosk.snapshot() } : {}),
             diagnostics: {
                 epg: remoteSnapshot(

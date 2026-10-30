@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { parse } = require("acorn");
+const { JSDOM } = require("jsdom");
 const code = fs.readFileSync(
     path.join(__dirname, "../devices/pc2/device.js"),
     "utf8"
@@ -137,20 +138,11 @@ function fixture() {
     const f = fixture(),
         timers = new Map();
     let serial = 0;
-    const label = {
-            removeAttribute() {},
-            setAttribute() {},
-            style: {},
-            textContent: "",
-        },
-        spinner = { style: {} };
-    f.w.document = {
-        getElementById: (id) =>
-            ({
-                buffering: spinner,
-                video_res: label,
-            })[id] || null,
-    };
+    const dom = new JSDOM(
+        '<div id="buffering"></div><div id="video_res"></div>'
+    );
+    f.w.document = dom.window.document;
+    const label = f.w.document.getElementById("video_res");
     f.w.setTimeout = (fn, ms) => {
         timers.set(++serial, { fn, ms });
         return serial;
@@ -173,6 +165,7 @@ function fixture() {
         { url: "https://fixture.test/film.mp4" },
         () => {}
     );
+    assert.equal(label.getAttribute("aria-label"), "Connecting...");
     f.ready[0]();
     f.players[0].readyLevel = 4;
     f.engineMedia.currentTime = 0;
@@ -188,6 +181,7 @@ function fixture() {
         "Video.js repeated Play does not create feedback timeout"
     );
     assert.equal(label.textContent, "");
+    assert.equal(label.hasAttribute("aria-label"), false);
     lease.pause();
     lease.resume();
     assert.equal(
@@ -197,6 +191,7 @@ function fixture() {
     );
     lease.dispose();
     assert.equal(timers.size, 0);
+    dom.window.close();
 }
 
 {
@@ -612,6 +607,28 @@ assert.equal(
     80,
     "A missing library retains PC keyboard navigation"
 );
+for (const paused of [false, true]) {
+    const f = fixture();
+    const lease = f.openRequest({ url: "relative.mp4" }, () => {});
+    f.ready.shift()();
+    Object.assign(f.engineMedia, {
+        currentTime: 7.5,
+        duration: 30,
+        paused,
+        readyState: 3,
+        seekable: { end: () => 30, length: 1, start: () => 0 },
+    });
+    f.players[0].position = 20; // The public player cache is not decoder time.
+    assert.equal(lease.relativeSample().position, 7.5);
+    assert.equal(lease.relativeSeek(12.5, paused), true);
+    assert.equal(f.players[0].position, 12.5);
+    assert.equal(f.w.forcePlay, !paused);
+    assert.equal(f.engineMedia.paused, paused);
+    assert.equal(lease.relativeSeek(31, paused), false);
+    lease.dispose();
+    assert.equal(lease.relativeSample(), null);
+    assert.equal(lease.relativeSeek(1, paused), false);
+}
 console.log(
     "PASS pc2 engine: ES5, request cancellation, pause/seek, tracks, PiP, formats and missing-vendor fallback"
 );

@@ -43,6 +43,10 @@ impl Request {
             (one("type"), one("action")),
             (Some("stb"), Some("handshake" | "get_profile"))
                 | (
+                    Some("vod"),
+                    Some("get_categories" | "get_ordered_list" | "create_link")
+                )
+                | (
                     Some("itv"),
                     Some(
                         "get_genres"
@@ -129,12 +133,20 @@ mod tests {
         assert!(bulk.validate().is_ok());
         bulk.url = bulk.url.replace("type=itv", "type=stb");
         assert!(bulk.validate().is_err());
+        for action in ["get_categories", "get_ordered_list", "create_link"] {
+            let mut vod = input();
+            vod.url = format!("http://portal.example/server/load.php?type=vod&action={action}&JsHttpRequest=1-xml");
+            assert!(vod.validate().is_ok());
+            vod.url = vod.url.replace("type=vod", "type=series");
+            assert!(vod.validate().is_err());
+        }
         for url in [
             "file:///tmp/load.php",
             "http://user:secret@portal.example/load.php",
             "http://portal.example/admin.php?type=stb&action=handshake&JsHttpRequest=1-xml",
             "http://portal.example/load.php?type=stb&action=handshake&action=delete&JsHttpRequest=1-xml",
             "http://portal.example/load.php?type=stb&action=delete&JsHttpRequest=1-xml",
+            "http://portal.example/load.php?type=vod&action=delete&JsHttpRequest=1-xml",
         ] {
             let mut r = input();
             r.url = url.into();

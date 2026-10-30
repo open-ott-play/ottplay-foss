@@ -24,6 +24,16 @@ inheriting the same old records. Old keys remain available for recovery.
 Unknown document versions and failed reads prevent writes. Failed writes do
 not publish a new in-memory channel document.
 
+The last browsed category is saved separately from the playing channel. Opening
+Channels or Category selection restores that category, including Favorites,
+after quitting with Q or restarting. Merely browsing a category does not change
+the playing channel or the normal fullscreen startup. The preference is scoped
+to the provider account and profile, and uses a stable category ID rather than
+its translated label or position. If a category is temporarily missing during
+catalog loading, All is shown without discarding the saved preference; choosing
+another category replaces it. Library backups include this optional preference
+and remain compatible with older documents that do not contain it.
+
 Production JavaScript retains ES5. The unused `devices/legacy-core.js` artifact is excluded
 from browser and native staging but retained as a test fixture.
 The packaging audit rejects its reappearance in the shipped roots.

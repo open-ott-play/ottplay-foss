@@ -161,6 +161,7 @@ var keyStrings = {
     "Checking folder permission": "የአቃፊ ፈቃድ በመፈተሽ ላይ",
     "Checking the Plex server connection…": "የPlex አገልጋይ ግንኙነትን በማረጋገጥ ላይ…",
     "Choose a folder in the browser window": "በአሳሽ መስኮት ውስጥ አቃፊ ይምረጡ",
+    "Choose a profile": "መገለጫ ምረጥ",
     "Choose files in the browser window": "በአሳሽ መስኮት ውስጥ ፋይሎችን ይምረጡ",
     "Choose from": "ከዚህ ምረጥ",
     "Choose language": "ቋንቋ ምረጥ",
@@ -957,6 +958,7 @@ var keyStrings = {
     "Sleep timer": "የእንቅልፍ ሰዓት ቆጣሪ",
     "Sort channels": "ሰርጦችን ደርድር",
     "Source access": "የምንጭ መዳረሻ",
+    "Source is busy. Try again later.": "ምንጩ በሥራ ላይ ነው። ቆይተው እንደገና ይሞክሩ።",
     "Source sign-in required": "ወደ ምንጩ መግባት ያስፈልጋል",
     "Source sign-in was cancelled": "ወደ ምንጩ መግባት ተሰርዟል",
     "Stalker Portal Provider": "የStalker ፖርታል አቅራቢ",
@@ -1007,6 +1009,8 @@ var keyStrings = {
         "የትእዛዝ አገልጋይ ፍለጋ URL ልክ አይደለም።",
     "The device ID in the address is invalid.": "በአድራሻው ያለው የመሣሪያ ID ልክ አይደለም።",
     "The discovery response is invalid.": "የፍለጋው ምላሽ ልክ አይደለም።",
+    "The stream connection failed": "ከዥረቱ ጋር መገናኘት አልተቻለም",
+    "The stream format could not be played": "የዥረቱን ቅርጸት ማጫወት አልተቻለም",
     "This browser cannot identify the selected screenshot source.":
         "ይህ አሳሽ የተመረጠውን የቅጽበታዊ ገጽ እይታ ምንጭ መለየት አይችልም።",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1019,6 +1023,7 @@ var keyStrings = {
         "ይህ የPlay መተግበሪያ HTTPS ይፈልጋል። የHTTPS አጫዋች ዝርዝር ወይም የአገልጋይ URL ከአቅራቢዎ ይጠይቁ።",
     "This pairing link has expired. Open a new session on your TV.":
         "ይህ የማጣመሪያ ማገናኛ ጊዜው አልፎበታል። በቲቪዎ ላይ አዲስ ክፍለ ጊዜ ይክፈቱ።",
+    "This protected stream could not be played": "ይህን የተጠበቀ ዥረት ማጫወት አልተቻለም",
     "This remote command is not supported by the player.":
         "ይህ የርቀት መቆጣጠሪያ ትዕዛዝ በአጫዋቹ አይደገፍም።",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1060,6 +1065,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "የULTIFL1X ቅንብሮች",
     "Unable to load playlist": "አጫዋች ዝርዝሩን መጫን አልተቻለም",
+    Unavailable: "አይገኝም",
     "Unlock the player's settings before changing its playlist.":
         "የማጫወቻ ዝርዝሩን ከመቀየርዎ በፊት የአጫዋቹን ቅንብሮች ቁልፍ ይክፈቱ።",
     Untitled: "ያለ ርዕስ",

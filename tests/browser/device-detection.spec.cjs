@@ -846,7 +846,9 @@ test.describe("webOS fullscreen remote navigation", () => {
                 window.__resumeEffects.played.length > 0;
             window.stbSetPosTime = (time) =>
                 window.__resumeEffects.seeks.push(time);
-            window.sStopPlay = window.sInfoRew = false;
+            window.sStopPlay = window.sInfoRew = 0;
+            if (window.sStopPlay !== 0 || window.sInfoRew !== 0)
+                throw new Error("Archive settings must be numeric zero");
             window.providerGetItem = (key) => stored.get(key) ?? null;
             window.providerSetItem = (key, value) => stored.set(key, value);
             window.p_pref = "archive-fixture";

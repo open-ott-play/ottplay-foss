@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex سرور جو رابطو جاچيو پيو وڃي…",
     "Choose a folder in the browser window":
         "برائوزر جي ونڊو ۾ هڪ فولڊر چونڊيو",
+    "Choose a profile": "پروفائل چونڊيو",
     "Choose files in the browser window": "برائوزر جي ونڊو ۾ فائلون چونڊيو",
     "Choose from": "هتان چونڊيو",
     "Choose language": "ٻولي چونڊيو",
@@ -985,6 +986,8 @@ var keyStrings = {
     "Sleep timer": "ننڊ ٽائمر",
     "Sort channels": "چينل ترتيب ڏيو",
     "Source access": "ذريعي تائين رسائي",
+    "Source is busy. Try again later.":
+        "ذريعو مصروف آهي. بعد ۾ ٻيهر ڪوشش ڪريو.",
     "Source sign-in required": "ذريعي ۾ سائن ان گهربل",
     "Source sign-in was cancelled": "ذريعي ۾ سائن ان رد ٿيو",
     "Stalker Portal Provider": "Stalker پورٽل فراهم ڪندڙ",
@@ -1037,6 +1040,9 @@ var keyStrings = {
         "حڪم سرور ڳولڻ جو URL صحيح ناهي.",
     "The device ID in the address is invalid.": "پتي ۾ ڊوائيس ID صحيح ناهي.",
     "The discovery response is invalid.": "ڳولا جو جواب صحيح ناهي.",
+    "The stream connection failed": "اسٽريم سان ڳنڍجڻ ناڪام ٿيو",
+    "The stream format could not be played":
+        "هن فارميٽ ۾ اسٽريم هلائي نه سگهيو",
     "This browser cannot identify the selected screenshot source.":
         "هي برائوزر چونڊيل اسڪرين شاٽ ماخذ جي سڃاڻپ نٿو ڪري سگهي.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1049,6 +1055,8 @@ var keyStrings = {
         "هن Play ايپ کي HTTPS گهربل آهي. فراهم ڪندڙ کان HTTPS پلي لسٽ يا سرور URL گهرو.",
     "This pairing link has expired. Open a new session on your TV.":
         "هن جوڙڻ واري لنڪ ختم ٿي وئي آهي. پنھنجي ٽي وي تي ھڪڙو نئون سيشن کوليو.",
+    "This protected stream could not be played":
+        "هي محفوظ اسٽريم هلائي نه سگهيو",
     "This remote command is not supported by the player.":
         "پليئر هن ريموٽ ڪنٽرول حڪم جي سهائتا نٿو ڪري.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1092,6 +1100,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X جون سيٽنگون",
     "Unable to load playlist": "پلي لسٽ لوڊ نه ٿي",
+    Unavailable: "موجود ناهي",
     "Unlock the player's settings before changing its playlist.":
         "پلي لسٽ بدلائڻ کان اڳ پليئر جي سيٽنگن جو تالو کوليو.",
     Untitled: "بي عنوان",

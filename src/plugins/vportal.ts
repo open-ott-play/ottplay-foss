@@ -475,6 +475,46 @@ export function createVPortalClient(
         return parts.join("<br>");
     }
 
+    function artwork(item: any, parent: any): string {
+        var values = [
+            item.imglr,
+            item.img,
+            parent && parent.imglr,
+            parent && parent.img,
+        ];
+        for (var i = 0; i < values.length; i++) {
+            if (typeof values[i] !== "string") continue;
+            var value = metadataImageUrl(values[i]);
+            if (!value || /\\/.test(value)) continue;
+            if (/^data:/i.test(value)) return value;
+            try {
+                var Resolver = w.URL || (typeof URL === "function" && URL);
+                if (!Resolver) {
+                    // Old clients may display already-absolute artwork without URL resolution.
+                    if (
+                        /^https?:\/\//i.test(value) &&
+                        !/^https?:\/\/[^/?#]*@/i.test(value)
+                    )
+                        return value;
+                    continue;
+                }
+                var base = new Resolver(
+                    portal.url,
+                    nasOrigin ? nasOrigin + "/" : w.location && w.location.href
+                );
+                var resolved = new Resolver(value, base.href);
+                if (
+                    !/^https?:$/.test(resolved.protocol) ||
+                    resolved.username ||
+                    resolved.password
+                )
+                    continue;
+                return resolved.href;
+            } catch (_) {}
+        }
+        return "";
+    }
+
     function media(item: any, parent: any): any {
         if (!item || typeof item !== "object") return null;
         if (
@@ -488,15 +528,31 @@ export function createVPortalClient(
             title = String(parent.title) + " - " + title;
         var record: any = {
             description: description(item, parent),
-            logo_30x30: metadataImageUrl(
-                item.imglr ||
-                    item.img ||
-                    (parent && (parent.imglr || parent.img))
-            ),
+            logo_30x30: artwork(item, parent),
             title: title,
         };
         if (item.type === "multistream") record.__ottMediaFilterable = true;
         sourceTarget(record);
+        // Portable identity is attested here, before raw provider fields are discarded.
+        var identitySource = item;
+        var identity = directProviderId(identitySource);
+        if (!identity && item.request && typeof item.request === "object") {
+            identitySource = item.request;
+            identity = directProviderId(identitySource);
+        }
+        if (identity) {
+            var rawId = identitySource[identity.field];
+            if (
+                (typeof rawId === "string" ||
+                    (typeof rawId === "number" &&
+                        isFinite(rawId) &&
+                        rawId >= 0 &&
+                        Math.floor(rawId) === rawId &&
+                        rawId <= 9007199254740991)) &&
+                /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(identity.value)
+            )
+                record.__ottFavoriteId = identity;
+        }
         if (item.adult || (parent && parent.adult)) record.adult = 1;
         if (item.type === "stream") {
             if (parent && parent.type === "multistream")
@@ -962,7 +1018,8 @@ export function createVPortalClient(
         data: any,
         params: any,
         name: string,
-        retainDirect = false
+        retainDirect = false,
+        inherited?: any
     ): any[] {
         if (
             !data ||
@@ -972,13 +1029,16 @@ export function createVPortalClient(
             !Array.isArray(data.items)
         )
             throw new Error();
+        var context = inherited ? mediaContext(data, inherited) : data;
+        if (inherited && inherited.type === "multistream" && inherited.title)
+            context.title = inherited.title;
         var records: any[] = [];
         var next: any = null;
         var occurrences: Record<string, number> = Object.create(null);
         data.items.forEach(function (item: any): void {
             if (item && item.type === "next") next = item;
             else {
-                var record = media(item, data);
+                var record = media(item, context);
                 if (retainDirect && record && item.type === "stream") {
                     var title = String(item.title || "");
                     var occurrence = occurrences[title] || 0;
@@ -1019,16 +1079,16 @@ export function createVPortalClient(
                 Object.keys(supplied).some(function (key) {
                     return page[key] !== params[key];
                 })
-            )
+            ) {
+                var target = sourceTarget({ mediaName: name, request: page });
+                if (inherited) target.__ottVPortalContext = context;
                 records.push({
                     __ottMediaLabel: { key: "Next", value: translate("Next") },
                     __ottMediaNext: true,
-                    playlist_url: sourceTarget({
-                        mediaName: name,
-                        request: page,
-                    }),
+                    playlist_url: target,
                     title: translate("Next"),
                 });
+            }
         }
         if (data.controls && data.controls.search)
             records.push({
@@ -1120,7 +1180,9 @@ export function createVPortalClient(
                     records = catalogRecords(
                         data,
                         params,
-                        target.mediaName || options.title || "VPortal"
+                        target.mediaName || options.title || "VPortal",
+                        false,
+                        target.__ottVPortalContext || {}
                     );
                 } catch (_) {
                     records = undefined;
@@ -1214,45 +1276,11 @@ export function createVPortalClient(
             }
             return length;
         }
-        function descriptionPreview(value: string): string {
-            // Only these literal tags are generated by description(). Provider
-            // fields were escaped there; never strip arbitrary HTML patterns.
-            var text = value
-                .split("<b>")
-                .join("")
-                .split("</b>")
-                .join("")
-                .split("<br>")
-                .join(" ")
-                .replace(/[<>]/g, function (character) {
-                    return character === "<" ? "&lt;" : "&gt;";
-                });
-            var result = "";
-            var bytes = 0;
-            for (var i = 0; i < text.length; i++) {
-                var code = text.charCodeAt(i);
-                var character = text.charAt(i);
-                var size = code < 128 ? 1 : code < 2048 ? 2 : 3;
-                if (
-                    code >= 55296 &&
-                    code <= 56319 &&
-                    text.charCodeAt(i + 1) >= 56320 &&
-                    text.charCodeAt(i + 1) <= 57343
-                ) {
-                    character += text.charAt(++i);
-                    size = 4;
-                } else if (code >= 55296 && code <= 57343) {
-                    character = "\uFFFD";
-                }
-                if (bytes + size > 128) break;
-                result += character;
-                bytes += size;
-            }
-            return result.replace(/&[^;]*$/, "");
-        }
         function retain(key: string, record: any): void {
             if (!whole) return;
-            if (descriptionsOmitted) delete record.description;
+            if (descriptionsOmitted) {
+                delete record.description;
+            }
             var size = utf8Size(record);
             var nextSize = retainedBytes - (sizes[key] || 0) + size;
             if (nextSize > 67108864 && !descriptionsOmitted) {
@@ -1583,14 +1611,6 @@ export function createVPortalClient(
                                         itemId: "direct:" + key,
                                         sourceId: options.sourceId,
                                     };
-                                if (
-                                    whole &&
-                                    typeof record.description === "string"
-                                ) {
-                                    record.description = descriptionPreview(
-                                        record.description
-                                    );
-                                }
                                 retain(key, record);
                                 result.push(record);
                             } else if (
@@ -1755,7 +1775,13 @@ export function createVPortalClient(
             function (data): void {
                 if (!current()) return;
                 try {
-                    records = catalogRecords(data, params, name);
+                    records = catalogRecords(
+                        data,
+                        params,
+                        name,
+                        false,
+                        target.__ottVPortalContext || {}
+                    );
                 } catch (_) {
                     reportError();
                 }

@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Ń ṣàyẹ̀wò ìsopọ̀ sáfà Plex…",
     "Choose a folder in the browser window":
         "Yan àpò fáìlì nínú fèrèsé aṣàwákiri",
+    "Choose a profile": "Yan prófáìlì",
     "Choose files in the browser window":
         "Yan àwọn fáìlì nínú fèrèsé aṣàwákiri",
     "Choose from": "Yan láti",
@@ -982,6 +983,8 @@ var keyStrings = {
     "Sleep timer": "Aago ìsinmi",
     "Sort channels": "To àwọn ìkànnì",
     "Source access": "Ìwọlé orísun",
+    "Source is busy. Try again later.":
+        "Orísun kò ráyè báyìí. Tún gbìyànjú nígbà míì.",
     "Source sign-in required": "Ìwọlé orísun ṣe pàtàkì",
     "Source sign-in was cancelled": "A fagilé ìwọlé orísun",
     "Stalker Portal Provider": "Olùpèsè ojú-ọ̀nà Stalker",
@@ -1035,6 +1038,9 @@ var keyStrings = {
         "URL wíwá sáfà àṣẹ kò péye.",
     "The device ID in the address is invalid.": "ID ẹ̀rọ inú àdírẹ́sì kò péye.",
     "The discovery response is invalid.": "Ìdáhùn wíwá sáfà kò péye.",
+    "The stream connection failed": "Ìsopọ̀ mọ́ ìṣàn kùnà",
+    "The stream format could not be played":
+        "A kò lè mú ìṣàn ní ìrísí yìí ṣiṣẹ́",
     "This browser cannot identify the selected screenshot source.":
         "Ẹrọ aṣawakiri yii ko le ṣe idanimọ orisun àwòrán iboju ti o yan.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1047,6 +1053,8 @@ var keyStrings = {
         "Ohun èlò Play yìí nílò HTTPS. Béèrè lọ́wọ́ olùpèsè rẹ fún àkójọ ìṣeré HTTPS tàbí URL sáfà HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ọna asopọ sisopọ yii ti pari. Ṣii igba titun lori TV rẹ.",
+    "This protected stream could not be played":
+        "A kò lè mú ìṣàn tí a dáàbò bò yìí ṣiṣẹ́",
     "This remote command is not supported by the player.":
         "Ẹ̀rọ ìṣeré kò ṣe àtìlẹ́yìn fún àṣẹ ìṣàkóso láti ọ̀nà jíjìn yìí.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1089,6 +1097,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ètò ULTIFL1X",
     "Unable to load playlist": "A kò lè gbé àkójọ ìṣeré wọlé",
+    Unavailable: "Kò sí lárọ̀ọ́wọ́tó",
     "Unlock the player's settings before changing its playlist.":
         "Ṣí títìpa ètò ẹ̀rọ ìṣeré kí o tó yí àkójọ ìṣeré rẹ̀ padà.",
     Untitled: "Kò ní àkọlé",

@@ -177,6 +177,7 @@ var keyStrings = {
         "Kuhlolwa uxhumano lweseva ye-Plex…",
     "Choose a folder in the browser window":
         "Khetha ifolda efasiteleni lesiphequluli",
+    "Choose a profile": "Khetha iphrofayela",
     "Choose files in the browser window":
         "Khetha amafayela efasiteleni lesiphequluli",
     "Choose from": "Khetha kokulandelayo",
@@ -1023,6 +1024,7 @@ var keyStrings = {
     "Sleep timer": "Isibali-sikhathi sokulala",
     "Sort channels": "Hlela iziteshi",
     "Source access": "Ukufinyelela kumthombo",
+    "Source is busy. Try again later.": "Umthombo umatasa. Zama futhi kamuva.",
     "Source sign-in required": "Kudingeka ukungena kumthombo",
     "Source sign-in was cancelled": "Ukungena kumthombo kukhanseliwe",
     "Stalker Portal Provider": "Umhlinzeki wephothali ye-Stalker",
@@ -1077,6 +1079,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "I-ID yedivayisi esekhelini ayivumelekile.",
     "The discovery response is invalid.": "Impendulo yokutholwa ayivumelekile.",
+    "The stream connection failed": "Ukuxhumana nokusakaza kuhlulekile",
+    "The stream format could not be played":
+        "Ukusakaza okukule fomethi akukwazanga ukudlalwa",
     "This browser cannot identify the selected screenshot source.":
         "Lesi siphequluli asikwazi ukubona umthombo wesithombe-skrini okhethiwe.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1089,6 +1094,8 @@ var keyStrings = {
         "Lolu hlelo lwe-Play ludinga i-HTTPS. Cela umhlinzeki wakho ukuthi akunike uhlu lokudlala noma i-URL yeseva ye-HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Lesi sixhumanisi sokumatanisa siphelelwe yisikhathi. Vula iseshini entsha ku-TV yakho.",
+    "This protected stream could not be played":
+        "Lokhu kusakaza okuvikelwe akukwazanga ukudlalwa",
     "This remote command is not supported by the player.":
         "Isidlali asiwusekeli lo myalo wesilawuli kude.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1134,6 +1141,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Izilungiselelo ze-ULTIFL1X",
     "Unable to load playlist": "Akukwazanga ukulayisha uhlu lokudlala",
+    Unavailable: "Akutholakali",
     "Unlock the player's settings before changing its playlist.":
         "Vula ukukhiya kwezilungiselelo zesidlali ngaphambi kokushintsha uhlu lwaso lokudlala.",
     Untitled: "Akunasihloko",

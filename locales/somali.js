@@ -174,6 +174,7 @@ var keyStrings = {
         "Xidhiidhka seerfarka Plex ayaa la hubinayaa…",
     "Choose a folder in the browser window":
         "Ka dooro gal daaqadda biraawsarka",
+    "Choose a profile": "Dooro astaanta isticmaalaha",
     "Choose files in the browser window":
         "Ka dooro faylal daaqadda biraawsarka",
     "Choose from": "Ka dooro",
@@ -1016,6 +1017,8 @@ var keyStrings = {
     "Sleep timer": "Saacad-tiriyaha hurdada",
     "Sort channels": "Kala hormari kanaallada",
     "Source access": "Gelitaanka isha",
+    "Source is busy. Try again later.":
+        "Isha baahintu waa mashquul. Mar kale isku day goor dambe.",
     "Source sign-in required": "Gelitaanka isha ayaa loo baahan yahay",
     "Source sign-in was cancelled": "Gelitaanka isha waa la joojiyey",
     "Stalker Portal Provider": "Bixiyaha bogga adeegga Stalker",
@@ -1070,6 +1073,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Aqoonsiga qalabka ee cinwaanka ku jira sax ma aha.",
     "The discovery response is invalid.": "Jawaabta raadintu sax ma aha.",
+    "The stream connection failed": "Xidhiidhka baahinta ayaa fashilmay",
+    "The stream format could not be played":
+        "Baahinta qaabkan ah waa la daari waayey",
     "This browser cannot identify the selected screenshot source.":
         "Barowsarku ma aqoonsan karo isha sawirka la doortay.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1082,6 +1088,8 @@ var keyStrings = {
         "App-kan Play wuxuu u baahan yahay HTTPS. Ka codso bixiyahaaga URL liiska daarista ama seerfar oo HTTPS ah.",
     "This pairing link has expired. Open a new session on your TV.":
         "Isku xirka lammaanaha ayaa dhacay. Ka fur fadhi cusub TV-gaaga.",
+    "This protected stream could not be played":
+        "Baahintan la ilaaliyey waa la daari waayey",
     "This remote command is not supported by the player.":
         "Daaruhu ma taageero amarkan kontoroolka fog.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1127,6 +1135,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Dejinta ULTIFL1X",
     "Unable to load playlist": "Liiska daarista waa la soo rari waayey",
+    Unavailable: "Lama heli karo",
     "Unlock the player's settings before changing its playlist.":
         "Fur qufulka dejinta daaraha ka hor intaadan beddelin liiskiisa daarista.",
     Untitled: "Aan magac lahayn",

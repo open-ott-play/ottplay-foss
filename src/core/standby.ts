@@ -66,6 +66,9 @@ export function installStandby(w: any, read: any, write: any): any {
             });
     }
     function suspend(): void {
+        attempt(function () {
+            w.__ottGlobalFavorites?.navigation?.retire();
+        });
         // Invalidate owners before abort: transports may synchronously call back.
         invoke("__ottRemoteNotifications", "suspend");
         var timers = w.__ottUiTimers;
@@ -326,6 +329,7 @@ export function installStandby(w: any, read: any, write: any): any {
                 });
                 suspend();
                 syncNative();
+                w.__ottPlayerState?.changed();
             } else {
                 if ((!asleep && !probing) || waking) return;
                 epoch++;
@@ -339,6 +343,7 @@ export function installStandby(w: any, read: any, write: any): any {
                         write("__ottStandbyV1", "0");
                     });
                     if (resume) resume();
+                    w.__ottPlayerState?.changed();
                 });
             }
         },

@@ -171,6 +171,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Tarkistetaan Plex palvelinyhteyttä…",
     "Choose a folder in the browser window": "Valitse kansio selainikkunassa",
+    "Choose a profile": "Valitse profiili",
     "Choose files in the browser window": "Valitse tiedostot selainikkunassa",
     "Choose from": "Valitse",
     "Choose language": "Valitse kieli",
@@ -997,6 +998,8 @@ var keyStrings = {
     "Sleep timer": "Uniajastin",
     "Sort channels": "Lajittele kanavat",
     "Source access": "Lähteen käyttöoikeus",
+    "Source is busy. Try again later.":
+        "Lähde on varattu. Yritä myöhemmin uudelleen.",
     "Source sign-in required": "Lähdekirjautuminen vaaditaan",
     "Source sign-in was cancelled": "Lähteen kirjautuminen peruttiin",
     "Stalker Portal Provider": "Stalker-portaalin tarjoaja",
@@ -1051,6 +1054,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Osoitteessa oleva laite ID on virheellinen.",
     "The discovery response is invalid.": "Etsintävastaus on virheellinen.",
+    "The stream connection failed": "Yhteys striimiin epäonnistui",
+    "The stream format could not be played": "Striimin muotoa ei voitu toistaa",
     "This browser cannot identify the selected screenshot source.":
         "Tämä selain ei pysty tunnistamaan valittua kuvakaappauslähdettä.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1063,6 +1068,8 @@ var keyStrings = {
         "Tämä Play-sovellus vaatii HTTPS. Pyydä palveluntarjoajaltasi HTTPS soittolista tai palvelin URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Tämä pariliitoslinkki on vanhentunut. Avaa uusi istunto televisiossasi.",
+    "This protected stream could not be played":
+        "Tätä suojattua striimiä ei voitu toistaa",
     "This remote command is not supported by the player.":
         "Soitin ei tue tätä etäkomentoa.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1105,6 +1112,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X asetukset",
     "Unable to load playlist": "Soittolistan lataaminen epäonnistui",
+    Unavailable: "Ei käytettävissä",
     "Unlock the player's settings before changing its playlist.":
         "Avaa soittimen asetusten lukitus ennen toistolistan muuttamista.",
     Untitled: "Nimetön",

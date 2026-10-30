@@ -175,6 +175,7 @@ var keyStrings = {
         "De Plex-serververbinding controleren…",
     "Choose a folder in the browser window":
         "Kies een map in het browservenster",
+    "Choose a profile": "Profiel kiezen",
     "Choose files in the browser window":
         "Kies bestanden in het browservenster",
     "Choose from": "Kiezen uit",
@@ -1012,6 +1013,8 @@ var keyStrings = {
     "Sleep timer": "Slaaptimer",
     "Sort channels": "Zenders sorteren",
     "Source access": "Toegang tot de mediabron",
+    "Source is busy. Try again later.":
+        "De bron is bezet. Probeer het later opnieuw.",
     "Source sign-in required": "Aanmelding bij bron vereist",
     "Source sign-in was cancelled": "Aanmelden bij de bron geannuleerd",
     "Stalker Portal Provider": "Stalker-portaalprovider",
@@ -1067,6 +1070,9 @@ var keyStrings = {
         "De apparaat-ID in het adres is ongeldig.",
     "The discovery response is invalid.":
         "Het antwoord op het zoekverzoek is ongeldig.",
+    "The stream connection failed": "De verbinding met de stream is mislukt",
+    "The stream format could not be played":
+        "Het streamformaat kon niet worden afgespeeld",
     "This browser cannot identify the selected screenshot source.":
         "Deze browser kan de geselecteerde screenshotbron niet identificeren.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1079,6 +1085,8 @@ var keyStrings = {
         "Deze Play-app vereist HTTPS. Vraag uw provider om een HTTPS-afspeellijst of server-URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Deze koppelingslink is verlopen. Open een nieuwe sessie op uw tv.",
+    "This protected stream could not be played":
+        "Deze beveiligde stream kon niet worden afgespeeld",
     "This remote command is not supported by the player.":
         "De speler ondersteunt deze opdracht op afstand niet.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1121,6 +1129,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Instellingen voor ULTIFL1X",
     "Unable to load playlist": "Kan afspeellijst niet laden",
+    Unavailable: "Niet beschikbaar",
     "Unlock the player's settings before changing its playlist.":
         "Ontgrendel de instellingen van de speler voordat u de afspeellijst wijzigt.",
     Untitled: "Zonder titel",

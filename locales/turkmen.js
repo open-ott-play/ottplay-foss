@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex serwerine birikme barlanýar…",
     "Choose a folder in the browser window":
         "Brauzer penjiresinde bukja saýlaň",
+    "Choose a profile": "Profili saýlaň",
     "Choose files in the browser window":
         "Brauzer penjiresinde faýllary saýlaň",
     "Choose from": "Şundan saýla",
@@ -991,6 +992,8 @@ var keyStrings = {
     "Sleep timer": "Uky taýmeri",
     "Sort channels": "Kanallary tertiple",
     "Source access": "Çeşmä giriş",
+    "Source is busy. Try again later.":
+        "Çeşme meşgul. Soňrak gaýtadan synanyşyň.",
     "Source sign-in required": "Çeşmä girmek gerek",
     "Source sign-in was cancelled": "Çeşmä giriş ýatyryldy",
     "Stalker Portal Provider": "Stalker portal üpjün edijisi",
@@ -1044,6 +1047,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Salgydaky enjam ID-si nädogry.",
     "The discovery response is invalid.": "Gözlegiň jogaby nädogry.",
+    "The stream connection failed": "Ýaýlyma birigip bolmady",
+    "The stream format could not be played":
+        "Ýaýlymy şu formatda oýnadyp bolmady",
     "This browser cannot identify the selected screenshot source.":
         "Bu brauzer saýlanan skrinshot çeşmesini kesgitläp bilmeýär.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1056,6 +1062,8 @@ var keyStrings = {
         "Bu Play programmasyna HTTPS gerek. Üpçün edijiňizden HTTPS oýnatma sanawyny ýa-da serwer URL salgysyny soraň.",
     "This pairing link has expired. Open a new session on your TV.":
         "Bu jübütleşigiň möhleti gutardy. Telewizoryňyzda täze sessiýa açyň.",
+    "This protected stream could not be played":
+        "Bu goragly ýaýlymy oýnadyp bolmady",
     "This remote command is not supported by the player.":
         "Pleýer bu uzakdan dolandyryş buýrugyny goldamaýar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1099,6 +1107,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X sazlamalary",
     "Unable to load playlist": "Oýnatma sanawyny ýükläp bolmady",
+    Unavailable: "Elýeterli däl",
     "Unlock the player's settings before changing its playlist.":
         "Oýnatma sanawyny üýtgetmezden öň pleýeriň sazlamalarynyň gulpuny açyň.",
     Untitled: "Atsyz",

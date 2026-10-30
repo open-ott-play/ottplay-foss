@@ -64,10 +64,10 @@
 
 - **播放**：HLS、DASH和普通HTTP流，支持托管HLS.js/Shaka画质上限、有界恢复，以及每个直播频道最多三个显式备用URL。回看/VOD绝不会切换到直播备用源；参见[画质与恢复](docs/playback-stream-policy.zh-Hans.md)。
 - **节目指南**：XMLTV匹配、时移/回看、节目标题搜索（EPG中的N5）、提醒，以及托管/原生XMLTV路径中针对准确频道的手动节目源/ID绑定。参见[绑定与无障碍](docs/guide-binding-accessibility.zh-Hans.md)。
-- **收藏**：多收藏列表（通过操作 → 收藏列表切换/添加/重命名/删除）；家长控制PIN。
+- **收藏**：在支持的设备上，跨已配置的提供商和配置档案使用一个有序的[混合收藏集](docs/mixed-favorites.md)，支持通过CLI进行可迁移的导出/导入；保留家长控制PIN。回退模式下仍可使用各来源的收藏列表。
 - **设置**：设置和收藏的JSON导入/导出、支持的localStorage批量操作撤销日志、区分来源的回看续播，以及控制器工作流所用的已存设置精确比较。恢复假定只有一个写入者；自定义存储适配器仍为尽力回滚。参见[设置恢复](docs/settings-recovery.zh-Hans.md)。
 - **共享界面**：OTT Server、Tauri和Capacitor使用相同的频道列表主题与可见性设置。界面设置控制高亮和选中色；频道列表设置控制频道名称、图标、当前节目、进度及回看标记。
-- **提供商**：M3U/M3U8、Xtream直播及[点播电影/剧集目录](docs/xtream-media.zh-Hans.md)、Stalker/Ministra、Plex和VPortal。可用回看与媒体库功能取决于提供商能力和账户权限。
+- **提供商**：M3U/M3U8、Xtream直播及[点播电影/剧集目录](docs/xtream-media.zh-Hans.md)、支持[电影和嵌套分集](docs/stalker-media.md)的Stalker/Ministra、Plex和VPortal。可用回看与媒体库功能取决于提供商能力和账户权限。
 - **推送命令**：通过webhook远程控制——切换频道、提供商、播放列表以及显示弹窗。
 - **远程文字输入（swop）**：电视和手机处于不同网络时，通过Cloudflare Worker使用手机键盘（安装授权会话；虚拟键盘上的♥™）。
 - **按设备路由**：基于UUID为多设备部署寻址。
@@ -80,6 +80,8 @@
 - **88种界面语言**：配套目录、[本地化快速入门](docs/readme/README.md)和[经CLDR校验的键盘字符表](docs/localization.md)。主手册和成对功能指南提供[24种文档语言](docs/manual-translations.md)；其他工程参考文档保留原有语言。
 
 [交付指南](docs/roadmap-delivery.zh-Hans.md)介绍此源码版本已实现的功能、平台边界、图表与验证。已安装版本或托管部署可能使用更早修订。独立的原生[Android应用](https://github.com/open-ott-play/ottplay-android)也会按语言、角色和标签保存音轨/字幕选择，而非使用清单索引；其实现与发布独立于本前端。
+
+[STB源码审查](docs/stb-player-improvements.md)介绍媒体、资源使用和恢复方面的改进，以及源码比较和当前限制。
 
 <a id="debug-hud"></a>
 
@@ -362,9 +364,11 @@ EPG_HASH=<channel-hash> ./scripts/smoke-modea-companion.sh
 
 ## 经典Stalker / Ministra门户
 
-选择**Stalker门户**，输入提供商发放的MAC和完整门户URL，例如`http://provider.example/stalker_portal/c/`。`/c/index.html`、`/stalker_portal`、`/server/load.php`、`/load.php`和`/portal.php` URL选择经典MAG协议。现有裸服务器配置保留JSON-RPC。提供商通过共享Stalker核心加载配置、分类和分页直播频道。浏览器请求经过配套服务器的`/stalker/api`端点；原生应用使用现有HTTP传输。浏览器和配套服务器资产必须一起更新。
+选择**Stalker门户**，输入提供商发放的MAC和完整门户URL，例如`http://provider.example/stalker_portal/c/`。`/c/index.html`、`/stalker_portal`、`/server/load.php`、`/load.php`和`/portal.php` URL选择经典MAG协议。现有裸服务器配置保留JSON-RPC。提供商通过共享Stalker核心加载配置、分类和分页直播频道，然后在后台通过经典`type=vod`协议发现电影和嵌套分集。文件夹路径成为常规频道列表中的分类；可用的简介、海报和稳定的全局收藏使用同一媒体界面。参见[目录行为与限制](docs/stalker-media.md)。
 
-打开直播流时会解析临时频道命令；切换频道、停止、画中画和更换提供商会取消过期解析。显式的非临时HTTP(S)命令直接播放。支持短EPG；此提供商尚未开放经典门户回看和VOD。现有JSON-RPC回看/节目指南行为不变。私有局域网门户与其他配套代理路由一样，需要准确的`OTTPLAY_PROXY_LAN_ORIGINS`条目。
+自行托管的浏览器版本通过配套服务器的`/stalker/api`端点发送请求；原生应用使用现有HTTP传输。使用托管服务的浏览器版本需要明确配置经由[专用中继](docs/stalker-relay.md)的路由。浏览器和服务器资产必须一起更新。
+
+打开直播流时会解析临时频道命令；切换频道、停止、画中画和更换提供商会取消过期解析。显式的非临时HTTP(S)命令直接播放。支持短EPG。此提供商不开放经典门户回看和独立的`type=series`协议变体。现有JSON-RPC回看/节目指南行为不变。通过配套服务器路由访问的私有局域网门户与其他配套代理路由一样，需要准确的`OTTPLAY_PROXY_LAN_ORIGINS`条目。
 
 Infomir公开演示为`http://middleware-stalker.com/stalker_portal/c/`。它在2026-09-26返回三个直播目录条目，但媒体端点不可用；播放回归请使用可控门户/媒体测试数据。
 

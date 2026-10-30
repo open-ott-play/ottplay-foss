@@ -670,8 +670,8 @@ function createEdemProviderDriver(
                 portal: value.playlist || "",
             });
         },
-        saveSettings: function (value) {
-            if (!active()) return false;
+        saveSettings: function (value, admission?: () => boolean) {
+            if (!active() || (admission && !admission())) return false;
             var previous = settings(),
                 version = ++operation;
             var unchanged =
@@ -680,7 +680,11 @@ function createEdemProviderDriver(
                 previous.cdn === value.cdn &&
                 previous.portal === value.portal;
             function current() {
-                return active() && version === operation;
+                return (
+                    active() &&
+                    version === operation &&
+                    (!admission || admission())
+                );
             }
             var writes = {
                 edcdn: value.cdn,

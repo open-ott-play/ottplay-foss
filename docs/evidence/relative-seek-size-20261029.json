@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "feature": "Atomic relative VOD seek",
+  "status": "Measured budget update; successor CI qualification required",
+  "allocation": {
+    "name": "RELATIVE_SEEK_ENTRY_ALLOWANCE",
+    "bytes": 2613,
+    "gzipBytes": 768,
+    "counting": "Once in entry, legacy total and complete total. Provider and optional caps are unchanged. Existing release-identity headroom is retained, not added again."
+  },
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703"
+  },
+  "baseline": {
+    "source": "45f8483c6da8da134a4f3462efcf89412e67dd68",
+    "tree": "1a655dd55c584d26d996180869857d675fd56019",
+    "measurement": "global-favorites-ended-observation-native-attempt01/candidate/measurement.json",
+    "measurementSha256": "683cf418677a8de0ed959ed8d99116ff38b2df699152b509dd1c82acef61b4e1",
+    "reportSha256": "a9ccb13b1c17cddb745c9fd00b98d9746301bcbb10bddf7c491ca879c2321a7f",
+    "sizeGatesPassed": true,
+    "sourceAndDependenciesUnchanged": true,
+    "comparisonToPrBase": {
+      "base": "b1f8871421f3c573024f1654922e2ac525e18a4f",
+      "examinedPaths": [
+        "src",
+        "devices",
+        "scripts",
+        "package-lock.json",
+        "package.json",
+        "vite.config.ts"
+      ],
+      "differentFiles": [
+        "scripts/global-favorites-smoke.cjs",
+        "scripts/smoke-remote-cli.cjs"
+      ],
+      "interpretation": "Only smoke-test scripts differ in these paths; the retained build supplies the prior runtime-input size baseline. This does not establish equivalence to the new relative-seek code."
+    }
+  },
+  "candidate": {
+    "pullRequest": 933,
+    "head": "28a23edc7ccdfd7850d4d2b4282042c64e0b3eea",
+    "builtMergeSource": "e44c8cb914fe03f5fe0b7669f7be5ba27f8429cc",
+    "workflowRun": 40926990122,
+    "attempt": 1,
+    "runUrl": "https://github.com/open-ott-play/ottplay-foss/actions/runs/40926990122",
+    "artifactId": 12920428706,
+    "artifactZipSha256": "6adba43de1b15499a4dcd993515a4ed0f815305162cc2648604f71d45db19724",
+    "reportSha256": "01a220c3b4a9b3409a04045610051dd35368f88e2ac2537dda177fa82dfe8305",
+    "complete": true,
+    "inputErrors": [],
+    "sizeViolations": 18,
+    "qualification": "Build rejected by the old size caps before the browser steps. The report is size evidence, not successful browser or native-runtime qualification."
+  },
+  "previousCaps": {
+    "budget": {
+      "bytes": 1133273,
+      "gzipBytes": 346691
+    },
+    "legacyTotalBudget": {
+      "bytes": 1278109,
+      "gzipBytes": 399381
+    },
+    "baseTotalBudget": {
+      "bytes": 1633139,
+      "gzipBytes": 502201
+    },
+    "totalBudget": {
+      "bytes": 1637619,
+      "gzipBytes": 504505
+    }
+  },
+  "newCaps": {
+    "budget": {
+      "bytes": 1135886,
+      "gzipBytes": 347459
+    },
+    "legacyTotalBudget": {
+      "bytes": 1280722,
+      "gzipBytes": 400149
+    },
+    "baseTotalBudget": {
+      "bytes": 1635752,
+      "gzipBytes": 502969
+    },
+    "totalBudget": {
+      "bytes": 1640232,
+      "gzipBytes": 505273
+    }
+  },
+  "variants": [
+    {
+      "path": "dist/player.js",
+      "baseline": {
+        "entry": {
+          "bytes": 1133215,
+          "gzipBytes": 346546,
+          "path": "dist/player.js",
+          "sha256": "a2bc5bde90f39868ce91072041afe98985338a554a60c8670dd9a6e4c14cafa7"
+        },
+        "legacyTotal": {
+          "bytes": 1277277,
+          "gzipBytes": 399112
+        },
+        "completeTotal": {
+          "bytes": 1637531,
+          "gzipBytes": 504238
+        }
+      },
+      "candidate": {
+        "entry": {
+          "bytes": 1135828,
+          "gzipBytes": 347314,
+          "path": "dist/player.js",
+          "sha256": "0e21744ff23fb6aa133178abe676e2b061167e698882310dbb3b7ed6b0a3cf20"
+        },
+        "legacyTotal": {
+          "bytes": 1279890,
+          "gzipBytes": 399880
+        },
+        "completeTotal": {
+          "bytes": 1640144,
+          "gzipBytes": 505006
+        }
+      },
+      "unchangedAssets": {
+        "providers": 8,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, raw size and gzip size equality against baseline."
+      }
+    },
+    {
+      "path": "src-tauri/frontend/dist/player.js",
+      "baseline": {
+        "entry": {
+          "bytes": 1133173,
+          "gzipBytes": 346600,
+          "path": "src-tauri/frontend/dist/player.js",
+          "sha256": "152714d2d0a67b889f0f1775c8d20755e3154cce3cd41b33ca4d82779c50ca96"
+        },
+        "legacyTotal": {
+          "bytes": 1277235,
+          "gzipBytes": 399166
+        },
+        "completeTotal": {
+          "bytes": 1637489,
+          "gzipBytes": 504292
+        }
+      },
+      "candidate": {
+        "entry": {
+          "bytes": 1135786,
+          "gzipBytes": 347368,
+          "path": "src-tauri/frontend/dist/player.js",
+          "sha256": "e505d299f0e8916b7622dda1d77215bd68f9964d9f0271d8bb835612af9aa2a6"
+        },
+        "legacyTotal": {
+          "bytes": 1279848,
+          "gzipBytes": 399934
+        },
+        "completeTotal": {
+          "bytes": 1640102,
+          "gzipBytes": 505060
+        }
+      },
+      "unchangedAssets": {
+        "providers": 8,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, raw size and gzip size equality against baseline."
+      }
+    },
+    {
+      "path": "dist-mobile/dist/player.js",
+      "baseline": {
+        "entry": {
+          "bytes": 1133173,
+          "gzipBytes": 346600,
+          "path": "dist-mobile/dist/player.js",
+          "sha256": "152714d2d0a67b889f0f1775c8d20755e3154cce3cd41b33ca4d82779c50ca96"
+        },
+        "legacyTotal": {
+          "bytes": 1277235,
+          "gzipBytes": 399166
+        },
+        "completeTotal": {
+          "bytes": 1637489,
+          "gzipBytes": 504292
+        }
+      },
+      "candidate": {
+        "entry": {
+          "bytes": 1135786,
+          "gzipBytes": 347368,
+          "path": "dist-mobile/dist/player.js",
+          "sha256": "e505d299f0e8916b7622dda1d77215bd68f9964d9f0271d8bb835612af9aa2a6"
+        },
+        "legacyTotal": {
+          "bytes": 1279848,
+          "gzipBytes": 399934
+        },
+        "completeTotal": {
+          "bytes": 1640102,
+          "gzipBytes": 505060
+        }
+      },
+      "unchangedAssets": {
+        "providers": 8,
+        "optional": 12,
+        "comparison": "Exact path, SHA-256, raw size and gzip size equality against baseline."
+      }
+    }
+  ],
+  "limitations": [
+    "The net measured delta includes the changed embedded source identity; it is not a claim that all gzip growth comes solely from runtime statements.",
+    "No new build or runtime equivalence test was executed to prepare this record.",
+    "The updated limits still require a fresh current-head CI build and browser tests."
+  ]
+}

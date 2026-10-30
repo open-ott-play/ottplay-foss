@@ -10,7 +10,160 @@
     var source = "";
     var position = 0;
     var sampledAt = 0;
+    var generation = 0;
+    var failure: any = null;
+    var detailsOwner: any = null;
     var refreshInfo: (() => void) | undefined;
+    function closeDetails(): void {
+        var owner = detailsOwner;
+        detailsOwner = null;
+        var port = host.__ottClassicScreenPort;
+        if (owner && port && port.owner("dialog") === owner)
+            port.close("dialog");
+    }
+    function clearFailure(): void {
+        failure = null;
+        closeDetails();
+    }
+    function failureMessage(kind?: string, status?: number): string {
+        if (status === 401 || status === 403 || kind === "auth")
+            return host._("Source sign-in required");
+        if (status === 404) return host._("Not found");
+        if (status === 429) return host._("Source is busy. Try again later.");
+        if (kind === "quality")
+            return host._("No stream meets the quality limits");
+        if (kind === "drm")
+            return host._("This protected stream could not be played");
+        if (kind === "decode" || kind === "parse")
+            return host._("The stream format could not be played");
+        if (kind === "network") return host._("The stream connection failed");
+        return host._("Stream could not be played");
+    }
+    function captureFailure(message: string): any {
+        var expected = generation,
+            expectedSource = sourceKey(),
+            playback = host.__ottClassicPlayback,
+            state = playback && playback.snapshot(),
+            context = playback && playback.context(),
+            backend = host.__ottCoreBackendPeek && host.__ottCoreBackendPeek(),
+            handle = backend && backend.current();
+        function current(): boolean {
+            if (
+                expected !== generation ||
+                expectedSource !== sourceKey() ||
+                !active ||
+                !expired
+            )
+                return false;
+            if (!state || !context) return true;
+            return (
+                playback === host.__ottClassicPlayback &&
+                state.generation === playback.snapshot().generation &&
+                context.isCurrentBackend() &&
+                (!handle ||
+                    (host.__ottCoreBackendPeek() === backend &&
+                        backend.current() === handle &&
+                        handle.active()))
+            );
+        }
+        function restartable(): boolean {
+            var latest = playback && playback.snapshot(),
+                target = latest && latest.target,
+                original = state && state.target;
+            if (
+                !current() ||
+                !target ||
+                !original ||
+                target.kind !== "live" ||
+                target.sourceId !== original.sourceId ||
+                target.channelId !== original.channelId ||
+                latest.phase === "paused" ||
+                !handle ||
+                typeof handle.restart !== "function" ||
+                !host.__ottCoreTransport ||
+                host.stbPlay !== host.__ottCoreTransport.play ||
+                host.forcePlay === false ||
+                (host.__ottKiosk && host.__ottKiosk.enabled()) ||
+                (host.__ottStandby && host.__ottStandby.blocked())
+            )
+                return false;
+            // The playback identity is a string; the retained TV PIN list uses numbers.
+            var channelId = Number(target.channelId);
+            if (
+                !isFinite(channelId) ||
+                Math.floor(channelId) !== channelId ||
+                Math.abs(channelId) > 9007199254740991 ||
+                String(channelId) !== String(target.channelId)
+            )
+                return false;
+            if (
+                host.hasParentalLock &&
+                host.hasParentalLock(channelId) &&
+                (!host.__ottParental || host.__ottParental.needs("channels"))
+            )
+                return false;
+            return current();
+        }
+        return {
+            current: current,
+            message: message,
+            restart: function () {
+                return restartable() ? handle.restart() : null;
+            },
+            restartable: restartable,
+        };
+    }
+    function details(): boolean {
+        var issue = failure,
+            port = host.__ottClassicScreenPort,
+            root = host.document.getElementById("dialogbox");
+        if (
+            !issue ||
+            !issue.current() ||
+            !port ||
+            port.screens.current() ||
+            !root ||
+            !host.renderButtonHint ||
+            !host.$ ||
+            (host.__ottKiosk && host.__ottKiosk.enabled()) ||
+            (host.__ottStandby && host.__ottStandby.blocked())
+        )
+            return false;
+        var retry = issue.restartable(),
+            message = host.document.createElement("div"),
+            buttons = host.document.createElement("div");
+        message.id = "dialogMessage";
+        message.textContent = issue.message;
+        buttons.innerHTML =
+            (retry
+                ? host.renderButtonHint(host.keys.ENTER, host.strENTER, "Retry")
+                : "") +
+            host.renderButtonHint(host.keys.RETURN, host.strRETURN, "Close");
+        var handler = port.setOwnedCallback("dialog", function (code: number) {
+            var event = port.keyEvent && port.keyEvent();
+            if (event && event.repeat) return;
+            if (
+                code !== host.keys.ENTER &&
+                code !== host.keys.RETURN &&
+                code !== host.keys.EXIT
+            )
+                return;
+            closeDetails();
+            if (code === host.keys.ENTER && retry && failure === issue)
+                issue.restart();
+        });
+        detailsOwner = handler.owner;
+        if (!detailsOwner || !detailsOwner.foreground() || !issue.current()) {
+            closeDetails();
+            return false;
+        }
+        root.textContent = "";
+        root.appendChild(message);
+        root.appendChild(host.document.createElement("br"));
+        root.appendChild(buttons);
+        host.$(root).show();
+        return true;
+    }
     function sourceKey(): string {
         return media ? media.currentSrc || media.src : "";
     }
@@ -44,6 +197,7 @@
         if (progressing() && (timer || expired)) {
             clear();
             expired = false;
+            clearFailure();
             render("");
         }
     }
@@ -63,19 +217,45 @@
         if (spinner)
             spinner.style.display = message && !expired ? "block" : "none";
         if (!label) return;
+        if (!(label as any).__ottFailureBound) {
+            (label as any).__ottFailureBound = true;
+            function activate(event: any): void {
+                if (
+                    event.type === "keydown" &&
+                    event.keyCode !== 13 &&
+                    event.keyCode !== 32
+                )
+                    return;
+                if (!event.repeat && details()) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }
+            label.addEventListener("click", activate, true);
+            label.addEventListener("keydown", activate, true);
+        }
         label.className = message ? "playback-feedback" : "";
         label.textContent = message && expired ? host._("ERROR!") : message;
         label.title = message;
+        if (message && expired) {
+            label.setAttribute("role", "button");
+            label.setAttribute("tabindex", "0");
+        } else {
+            label.removeAttribute("role");
+            label.removeAttribute("tabindex");
+        }
         if (message) label.setAttribute("aria-label", message);
         else label.removeAttribute("aria-label");
         if (!message && refreshInfo) refreshInfo();
     }
     function fail(message?: string): void {
         clear();
+        closeDetails();
         expired = true;
-        render(
+        failure = captureFailure(
             message || host._("Stream timed out. Select the channel to retry.")
         );
+        render(failure.message);
     }
     function waiting(message: string, deadline: number): void {
         if (!active) {
@@ -83,7 +263,7 @@
             return;
         }
         if (expired) {
-            fail();
+            render(failure ? failure.message : lastMessage);
             return;
         }
         render(message);
@@ -102,6 +282,8 @@
         timeout?: number
     ): void {
         clear();
+        generation++;
+        clearFailure();
         active = !paused;
         expired = false;
         // begin runs before the previous source is detached. Its remaining
@@ -146,8 +328,9 @@
             });
             on("ended", stop);
         },
-        fail: function (): void {
-            if (active) fail(host._("Stream could not be played"));
+        details: details,
+        fail: function (kind?: string, status?: number): void {
+            if (active) fail(failureMessage(kind, status));
         },
         inactive: function (): boolean {
             return !active;

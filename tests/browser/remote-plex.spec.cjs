@@ -13,6 +13,309 @@ test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });
 
+test("authenticated relative VOD seek moves the paused decoder without replacing its queue", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    test.setTimeout(90000);
+    const local = new URL(baseURL).origin;
+    const errors = [];
+    const pending = [];
+    const results = new Map();
+    const streams = [];
+    let sequence = 0;
+    const playlist =
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
+        Array.from(
+            { length: 24 },
+            (_, index) =>
+                (index ? "#EXT-X-DISCONTINUITY\n" : "") +
+                "#EXTINF:2.000000,\nsegment00.ts?n=" +
+                index +
+                "\n"
+        ).join("") +
+        "#EXT-X-ENDLIST\n";
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (
+            url.origin === local &&
+            url.pathname.startsWith("/seek-controller/")
+        ) {
+            expect(request.headers().authorization).toBe(
+                "Bearer " + DEVICE_TOKEN
+            );
+            if (url.pathname.endsWith("/api/responses")) {
+                const result = request.postDataJSON();
+                results.set(result.id, result);
+                return route.fulfill({ json: { status: "ok" } });
+            }
+            if (url.pathname.endsWith("/api/webhook/commands")) {
+                const now = Date.now() / 1000;
+                const next = pending.shift();
+                return route.fulfill({
+                    json: {
+                        commands: [],
+                        requests: next
+                            ? [{ ...next, expires_at: now + 40 }]
+                            : [],
+                        server_time: now,
+                    },
+                });
+            }
+            return route.fulfill({ json: {}, status: 404 });
+        }
+        if (request.url() === PLAYLIST)
+            return route.fulfill({
+                body: '#EXTM3U\n#EXTINF:-1 group-title="TV fixture",Fixture channel\nhttps://tv-queue.fixture.invalid/index.m3u8\n',
+                contentType: "text/plain",
+                headers: { "Access-Control-Allow-Origin": "*" },
+            });
+        if (url.origin === PLEX) {
+            const headers = { "Access-Control-Allow-Origin": "*" };
+            const json = (body) =>
+                route.fulfill({ headers, json: { MediaContainer: body } });
+            if (url.pathname === "/library/sections")
+                return json({
+                    Directory: [
+                        { key: "1", title: "Synthetic films", type: "movie" },
+                    ],
+                });
+            if (url.pathname === "/library/metadata/33") {
+                expect(url.searchParams.get("X-Plex-Token")).toBe(TOKEN);
+                return json({
+                    Metadata: [
+                        {
+                            Media: [
+                                {
+                                    audioCodec: "mp3",
+                                    container: "avi",
+                                    Part: [
+                                        { key: "/library/parts/33/file.avi" },
+                                    ],
+                                    videoCodec: "mpeg4",
+                                },
+                            ],
+                            ratingKey: "33",
+                            title: "Synthetic seek film",
+                            type: "movie",
+                        },
+                    ],
+                });
+            }
+            if (url.pathname.endsWith("/decision"))
+                return json({
+                    generalDecisionCode: 1001,
+                    Metadata: [
+                        { Media: [{ Part: [{ decision: "transcode" }] }] },
+                    ],
+                });
+            if (url.pathname.endsWith("/start.m3u8")) {
+                streams.push(url.searchParams.get("path"));
+                return route.fulfill({
+                    body: playlist,
+                    contentType: "application/vnd.apple.mpegurl",
+                    headers,
+                });
+            }
+            if (url.pathname.endsWith(".ts"))
+                return route.fulfill({
+                    body: fs.readFileSync(path.join(mediaRoot, "segment00.ts")),
+                    contentType: "video/mp2t",
+                    headers,
+                });
+            if (
+                url.pathname.endsWith("/stop") ||
+                url.pathname.endsWith("/ping")
+            )
+                return route.fulfill({ body: "", headers });
+            return route.fulfill({ headers, status: 404 });
+        }
+        return url.origin === local
+            ? route.continue()
+            : route.abort("blockedbyclient");
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript(
+        ({ plex, token, tv }) => {
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                return play.call(this);
+            };
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "m3u");
+            localStorage.setItem(
+                "m3um3uArr",
+                JSON.stringify({ active: 0, M3Us: [{ www: tv }] })
+            );
+            localStorage.setItem(
+                "plexcfg",
+                JSON.stringify({ address: plex, playback: "compatible", token })
+            );
+        },
+        { plex: PLEX, token: TOKEN, tv: PLAYLIST }
+    );
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    await page.keyboard.press("Shift");
+    await page.evaluate((token) => {
+        window.stbStop();
+        window.setPlayerMode(1);
+        window.__ottCommandServer.configure({
+            address: location.origin + "/seek-controller",
+            enabled: true,
+            token,
+        });
+    }, DEVICE_TOKEN);
+    async function rpc(action, params = {}) {
+        const id = String(++sequence).padStart(32, "0");
+        pending.push({ action, id, params });
+        await expect.poll(() => results.has(id)).toBe(true);
+        const result = results.get(id);
+        expect(result.status).toBe("ok");
+        return result.data;
+    }
+    try {
+        const initial = await rpc("capabilities");
+        const runtime = initial.player.runtime;
+        await rpc("plex_queue", { ids: ["33"], op: "play", runtime });
+        await page.waitForFunction(() => {
+            const video = document.getElementById("video");
+            return (
+                window.__ottClassicPlayback.snapshot().phase === "playing" &&
+                video.currentTime > 0 &&
+                video.readyState >= 2 &&
+                video.duration > 40 &&
+                video.seekable.length > 0
+            );
+        });
+        await rpc("playback", { operation: "pause" });
+        await page.waitForFunction(
+            () =>
+                document.getElementById("video").paused &&
+                window.__ottClassicPlayback.snapshot().phase === "paused"
+        );
+        const original = await page.evaluate(() => {
+            const video = document.getElementById("video");
+            const state = window.__ottClassicPlayback.snapshot();
+            window.__seekOwner = {
+                element: video,
+                handle: window.__ottCoreBackendPeek().current(),
+            };
+            window.__seekEnded = 0;
+            video.addEventListener("ended", () => window.__seekEnded++);
+            return { generation: state.generation, target: state.target };
+        });
+        expect((await rpc("capabilities")).playback_seek_relative).toEqual({
+            version: 1,
+        });
+        async function settled(position) {
+            await page.waitForFunction((target) => {
+                const video = document.getElementById("video");
+                return (
+                    !video.seeking &&
+                    video.readyState >= 2 &&
+                    Math.abs(video.currentTime - target) < 0.15
+                );
+            }, position);
+            const state = await page.evaluate(() => {
+                const video = document.getElementById("video");
+                const snapshot = window.__ottClassicPlayback.snapshot();
+                return {
+                    ended: window.__seekEnded,
+                    generation: snapshot.generation,
+                    paused: video.paused,
+                    sameElement: video === window.__seekOwner.element,
+                    sameHandle:
+                        window.__ottCoreBackendPeek().current() ===
+                        window.__seekOwner.handle,
+                    target: snapshot.target,
+                };
+            });
+            expect(state).toEqual({
+                ended: 0,
+                generation: original.generation,
+                paused: true,
+                sameElement: true,
+                sameHandle: true,
+                target: original.target,
+            });
+        }
+        expect(
+            await rpc("playback", { operation: "seek", position: 15 })
+        ).toEqual({
+            dispatched: true,
+            operation: "seek",
+            position: 15,
+        });
+        await settled(15);
+        for (const offset of [10, -10, -1000, 1000]) {
+            const before = await page.evaluate(() => {
+                const video = document.getElementById("video");
+                return {
+                    duration: video.duration,
+                    position: video.currentTime,
+                };
+            });
+            const result = await rpc("playback", {
+                offset,
+                operation: "seek_relative",
+            });
+            expect(Object.keys(result).sort()).toEqual([
+                "clamped",
+                "dispatched",
+                "from",
+                "offset",
+                "operation",
+                "position",
+            ]);
+            expect(result).toMatchObject({
+                clamped: Math.abs(offset) === 1000,
+                dispatched: true,
+                offset,
+                operation: "seek_relative",
+            });
+            expect(result.from).toBeCloseTo(before.position, 6);
+            if (offset === -1000) expect(result.position).toBe(0);
+            else if (offset === 1000) {
+                expect(result.position).toBeLessThan(before.duration);
+                expect(before.duration - result.position).toBeCloseTo(0.001, 6);
+            } else
+                expect(result.position).toBeCloseTo(
+                    before.position + offset,
+                    6
+                );
+            await settled(result.position);
+        }
+        expect(
+            await rpc("playback", { operation: "seek", position: 5 })
+        ).toEqual({
+            dispatched: true,
+            operation: "seek",
+            position: 5,
+        });
+        await settled(5);
+        expect(
+            await rpc("plex_queue", { op: "status", runtime })
+        ).toMatchObject({
+            active: true,
+            ids: ["33"],
+            index: 0,
+            state: "paused",
+        });
+        expect(streams).toEqual(["/library/metadata/33"]);
+        expect(errors).toEqual([]);
+    } finally {
+        await page.evaluate(() => {
+            window.__ottCommandServer.configure({ enabled: false });
+            window.stbStop();
+        });
+    }
+});
+
 test("remote Plex loads lazily, ends its exact queue and restores a current favorite after reload", async ({
     page,
     context,

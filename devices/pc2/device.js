@@ -289,6 +289,49 @@ var keys = {
                 }
                 player.pause();
             },
+            relativeSample: function () {
+                if (
+                    !alive ||
+                    pip ||
+                    !sourceAttached ||
+                    pendingSeek !== null ||
+                    media.seeking ||
+                    media.ended ||
+                    !media.seekable ||
+                    !media.seekable.length
+                )
+                    return null;
+                return {
+                    duration: media.duration,
+                    paused: media.paused,
+                    position: media.currentTime,
+                    ready: media.readyState,
+                };
+            },
+            relativeSeek: function (position, paused) {
+                if (
+                    !alive ||
+                    pip ||
+                    !sourceAttached ||
+                    pendingSeek !== null ||
+                    media.seeking ||
+                    media.ended ||
+                    !media.seekable
+                )
+                    return false;
+                var inRange = false;
+                for (var i = 0; i < media.seekable.length; i++)
+                    if (
+                        position >= media.seekable.start(i) &&
+                        position <= media.seekable.end(i)
+                    )
+                        inRange = true;
+                if (!inRange || !alive) return false;
+                wantsPlay = !paused;
+                w.forcePlay = !paused;
+                player.currentTime(position);
+                return true;
+            },
             resume: function () {
                 if (!alive) return;
                 var waitingForPlayback =

@@ -66,10 +66,10 @@ Pola uji sintetis dapat dibuat ulang dengan `scripts/generate-demo-media.sh` (me
 
 - **Pemutaran**: HLS, DASH, dan streaming HTTP biasa, dengan batas kualitas HLS.js/Shaka yang dikelola, pemulihan terbatas, dan hingga tiga URL cadangan eksplisit per saluran langsung. Arsip/VOD tidak pernah beralih ke cadangan langsung; lihat [kualitas dan pemulihan](docs/playback-stream-policy.id.md).
 - **EPG**: pencocokan XMLTV, pergeseran waktu/tayangan ulang, pencarian judul acara (N5 di EPG), pengingat, dan pengikatan feed/ID manual untuk saluran tertentu pada jalur XMLTV terhosting/native. Lihat [pengikatan dan aksesibilitas](docs/guide-binding-accessibility.id.md).
-- **Favorit**: beberapa daftar favorit (beralih/tambah/ubah nama/hapus dari Tindakan → Daftar favorit); PIN orang tua
+- **Favorit**: satu [koleksi campuran](docs/mixed-favorites.md) berurutan lintas penyedia dan profil yang dikonfigurasi pada perangkat yang didukung, dengan ekspor/impor portabel melalui CLI; PIN orang tua. Daftar favorit per sumber tetap tersedia dalam mode cadangan.
 - **Pengaturan**: ekspor/impor JSON pengaturan dan favorit, jurnal pembatalan untuk batch localStorage yang didukung, melanjutkan arsip sesuai sumber, dan perbandingan tepat pengaturan tersimpan untuk alur pengontrol. Pemulihan mengasumsikan satu penulis; adaptor penyimpanan khusus tetap memakai rollback sebisanya. Lihat [pemulihan pengaturan](docs/settings-recovery.id.md).
 - **Antarmuka bersama**: OTT Server, Tauri, dan Capacitor memakai tema dan pengaturan visibilitas daftar saluran yang sama. Pengaturan antarmuka mengendalikan warna sorotan dan pilihan; pengaturan daftar saluran mengendalikan nama, picon, acara saat ini, kemajuan, dan penanda arsip.
-- **Penyedia**: M3U/M3U8, TV langsung Xtream beserta [katalog film/serial sesuai permintaan](docs/xtream-media.id.md), Stalker/Ministra, Plex, dan VPortal. Kemampuan penyedia dan akses akun menentukan fitur arsip serta pustaka media yang tersedia.
+- **Penyedia**: M3U/M3U8, TV langsung Xtream beserta [katalog film/serial sesuai permintaan](docs/xtream-media.id.md), Stalker/Ministra dengan [film dan episode bertingkat](docs/stalker-media.md), Plex, dan VPortal. Kemampuan penyedia dan akses akun menentukan fitur arsip serta pustaka media yang tersedia.
 - **Perintah push**: kendali jarak jauh melalui webhook — ubah saluran, penyedia, daftar putar, tampilkan popup
 - **Input teks jarak jauh (swop)**: keyboard ponsel melalui Cloudflare Worker ketika TV dan ponsel berada di jaringan berbeda (sesi diotorisasi per instalasi; ♥™ pada keyboard virtual)
 - **Perutean per perangkat**: pengalamatan berbasis UUID untuk konfigurasi banyak perangkat
@@ -82,6 +82,8 @@ Pola uji sintetis dapat dibuat ulang dengan `scripts/generate-demo-media.sh` (me
 - **88 bahasa antarmuka**: katalog yang sesuai, [panduan cepat terlokalisasi](docs/readme/README.md), dan [alfabet keyboard yang diperiksa dengan CLDR](docs/localization.md). Manual utama dan panduan fitur berpasangan tersedia dalam [24 bahasa dokumentasi](docs/manual-translations.md); referensi rekayasa lain mempertahankan bahasa yang ada.
 
 [Panduan penyampaian](docs/roadmap-delivery.id.md) menjelaskan fitur yang diimplementasikan dalam revisi sumber ini, batas platform, diagram, dan verifikasi. Rilis terinstal atau penerapan terhosting mungkin memakai revisi lebih lama. [Aplikasi Android](https://github.com/open-ott-play/ottplay-android) native yang mandiri juga menyimpan pilihan audio/subtitel menurut bahasa, peran, dan label, bukan indeks manifest; implementasi dan rilisnya terpisah dari frontend ini.
+
+[Tinjauan kode sumber STB](docs/stb-player-improvements.md) menjelaskan peningkatan media, penggunaan sumber daya, dan pemulihan, beserta perbandingan kode sumber dan batasan saat ini.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Pemeriksaan berada di `scripts/modea-smoke-checks.json`. Tanpa rahasia. Antrean 
 
 ## Portal Stalker / Ministra klasik
 
-Pilih **Portal Stalker** dan masukkan MAC dari penyedia serta URL portal lengkap, misalnya `http://provider.example/stalker_portal/c/`. URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php`, dan `/portal.php` memilih protokol MAG klasik. Konfigurasi server tanpa jalur yang sudah ada mempertahankan JSON-RPC. Penyedia memuat profil, genre, dan saluran langsung berhalaman melalui inti Stalker bersama. Permintaan browser melewati endpoint `/stalker/api` companion; aplikasi native memakai transport HTTP yang ada. Aset browser dan companion harus diperbarui bersama.
+Pilih **Portal Stalker** dan masukkan MAC dari penyedia serta URL portal lengkap, misalnya `http://provider.example/stalker_portal/c/`. URL `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php`, dan `/portal.php` memilih protokol MAG klasik. Konfigurasi server tanpa jalur yang sudah ada mempertahankan JSON-RPC. Penyedia memuat profil, genre, dan saluran langsung berhalaman melalui inti Stalker bersama, lalu menemukan film dari protokol klasik `type=vod` dan episode bertingkat di latar belakang. Jalur folder menjadi kategori dalam Daftar saluran biasa; deskripsi dan poster yang tersedia serta Favorit global yang stabil menggunakan antarmuka media yang sama. Lihat [perilaku dan batas katalog](docs/stalker-media.md).
 
-Pemutaran langsung menyelesaikan perintah saluran sementara saat membuka stream; pergantian saluran, berhenti, PiP, dan penggantian penyedia membatalkan resolusi lama. Perintah HTTP(S) eksplisit yang tidak sementara diputar langsung. EPG pendek didukung; arsip dan VOD portal klasik belum disajikan oleh penyedia ini. Perilaku arsip/panduan JSON-RPC yang sudah ada tidak berubah. Portal LAN pribadi memerlukan entri `OTTPLAY_PROXY_LAN_ORIGINS` yang tepat, seperti rute proxy companion lainnya.
+Permintaan versi browser yang dihosting sendiri melewati endpoint `/stalker/api` companion; aplikasi native memakai transport HTTP yang ada. Versi browser terhosting memerlukan rute yang dikonfigurasi secara eksplisit melalui [relai khusus](docs/stalker-relay.md). Aset browser dan server harus diperbarui bersama.
+
+Pemutaran langsung menyelesaikan perintah saluran sementara saat membuka stream; pergantian saluran, berhenti, PiP, dan penggantian penyedia membatalkan resolusi lama. Perintah HTTP(S) eksplisit yang tidak sementara diputar langsung. EPG pendek didukung. Arsip portal klasik dan dialek `type=series` yang terpisah tidak disajikan oleh penyedia ini. Perilaku arsip/panduan JSON-RPC yang sudah ada tidak berubah. Portal LAN pribadi yang menggunakan rute companion memerlukan entri `OTTPLAY_PROXY_LAN_ORIGINS` yang tepat, seperti rute proxy companion lainnya.
 
 Demo Infomir publik berada di `http://middleware-stalker.com/stalker_portal/c/`. Demo mengembalikan tiga entri katalog langsung pada 2026-09-26, tetapi endpoint medianya tidak tersedia; gunakan data portal/media terkontrol untuk regresi pemutaran.
 

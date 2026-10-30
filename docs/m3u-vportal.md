@@ -15,8 +15,9 @@ use names such as `Cartoons / Series`; the parent `Cartoons` includes its descen
 videos. Category selection changes visibility, not the video's identity or the
 saved account. Old profile section selections remain stored for compatibility,
 but no longer limit the catalog.
-Links are masked in summaries. These slots use their own storage. VPortal is
-configured only in its standalone provider; M3U is reserved for television.
+Links are masked in summaries. These slots use their own storage. Configure new
+portal links through the standalone VPortal provider. Existing links in older
+M3U slots remain available to Favorites, as described below.
 
 The standard channel list provides search, favorites, ordering and Actions. Videos can start from the first usable batch while the rest of the portal loads in the background. Selecting a file shows an owned loading dialog; Back cancels it. **Actions → Repeat** controls All / One / Off; **Shuffle / Reset order** uses the existing channel-list actions. See the [shared playlist flow](plex-provider.md).
 
@@ -120,20 +121,22 @@ VPortal search.
 
 ## Moving from an old M3U profile
 
-VPortal links are no longer configured or used inside M3U profiles. Television
-stays in M3U; select **VPortal** and configure its own profile to watch portal
-videos. Enter the complete cabinet link there:
+M3U settings no longer expose portal-link configuration. To configure a new
+link or move to a standalone media library, select **VPortal** and configure
+its own profile. Enter the complete cabinet link there:
 
 ```text
 portal::[key:YOUR_KEY]http://your-portal.example/api/v1/
 ```
 
 Save the link to load the portal, then filter videos using **Category selection**.
-Old M3U `medUrl`
-and `medSourceId` values are left in device storage, but portal links do not
-start a catalog request, appear in M3U settings, or affect TV profile selection.
-They are not automatically copied into standalone profiles. Ordinary nonportal
-Dune media catalogs retain their existing behavior.
+Old M3U `medUrl` and `medSourceId` values remain in device storage and are hidden
+from M3U settings. A valid saved portal link supplies a lazy embedded VPortal
+client for capturing, resolving and playing entries in [Global Favorites](mixed-favorites.md).
+Starting, refreshing or selecting an M3U slot does not itself fetch the portal
+catalog. These values are not automatically copied into standalone profiles.
+Ordinary nonportal Dune media catalogs retain their existing behavior; the old
+direct Dune media loader still rejects portal links.
 
 The CLI's M3U settings now accept only `name`, `playlist` and `history_hours`.
 Use `ott PLAYER provider vportal` before `profile N vportal LINK` or a VPortal

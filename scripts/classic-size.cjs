@@ -443,8 +443,128 @@ const SHAKA_RETIREMENT_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 1152,
     gzipBytes: 0,
 });
+// Atomic relative VOD seeking adds 2613 raw / 768 gzip bytes; rejected-seek
+// marker rollback adds another 124 raw / 35 gzip on Node22.23.4.
+// Count the measured entry cost once in
+// each complete total; preserve prior release headroom and all provider/
+// optional caps. See docs/evidence/relative-seek-size-20261029.json and
+// docs/evidence/relative-seek-rollback-size-20261029.json.
+const RELATIVE_SEEK_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 2737,
+    gzipBytes: 803,
+});
+// Selected-only Plex queue metadata adds 308 raw / 70 gzip bytes to its lazy
+// provider on Node22.23.4. Count it once in the complete payload; entry,
+// legacy, provider and optional caps retain their existing limits.
+// See docs/evidence/plex-queue-step-size-20261029.json.
+const PLEX_QUEUE_STEP_TOTAL_ALLOWANCE = Object.freeze({
+    bytes: 308,
+    gzipBytes: 70,
+});
+// Mixed global favorites: measured against the production-equivalent a480
+// baseline using Node22.23.4/zlib1.3.1-e00f703. These bounded named allowances
+// use exact a822/6234 canonical deltas, preserving pre-feature headroom.
+// Count entry/provider/optional cost once in their applicable complete totals.
+// Individual provider and unrelated optional limits remain unchanged.
+// See docs/evidence/mixed-global-favorites-size-20261028.json.
+const MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 34739,
+    gzipBytes: 8485,
+});
+const MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 132130,
+    gzipBytes: 32892,
+});
+const MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE = Object.freeze({
+    bytes: 1536,
+    gzipBytes: 640,
+});
+// Same-toolchain Shaka track controls add 550 raw / 91 gzip bytes to the
+// entry. Keep its previous headroom; the lazy adapter has its own cap below.
+// Evidence: docs/evidence/shaka-track-controls-size-20261029.json.
+const SHAKA_TRACKS_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 576,
+    gzipBytes: 128,
+});
+// Negotiated presence and confirmed-media projection: Node22.23.4 observes
+// +7707 raw/+2542 gzip over 1d85ec9c before the source commit was embedded.
+// Inserting the full b9840aa7 identity in memory gives +7747/+2589 maximum;
+// retain 20 gzip bytes for final identity variation, pending clean-source CI.
+// Hosted transport adds exactly +27/+10 in its optional asset. Count both
+// once in complete totals and preserve all previous headroom and other caps.
+// See docs/evidence/player-presence-size-20261029.json.
+const PLAYER_PRESENCE_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 7747,
+    gzipBytes: 2609,
+});
+const PLAYER_PRESENCE_TRANSPORT_ALLOWANCE = Object.freeze({
+    bytes: 27,
+    gzipBytes: 10,
+});
+// Persistent category selection and shared Favorites picker writes:
+// paired Node22.23.4 builds add 2781 raw / at most 780 gzip entry bytes and
+// 209 raw / 65 gzip bytes to the lazy Favorites family. Keep prior headroom
+// and add only 20 gzip entry bytes for revision/release identity variation.
+// Count each component once in its applicable total; other caps stay fixed.
+// Evidence: docs/evidence/category-selection-size-20261029.json.
+const CATEGORY_SELECTION_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 2781,
+    gzipBytes: 800,
+});
+const CATEGORY_SELECTION_FAVORITES_ALLOWANCE = Object.freeze({
+    bytes: 209,
+    gzipBytes: 65,
+});
+// Escaped category labels and picker data restoration add 45 raw / 8 gzip
+// entry bytes in paired full-width source-stamped CI builds. Count the entry
+// delta once in each complete total; preserve provider and optional caps.
+// Evidence: docs/evidence/category-picker-size-20261029.json.
+const CATEGORY_PICKER_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 45,
+    gzipBytes: 8,
+});
+// Paired 1.1.61 / Node22.23.4 builds measure four changed asset families.
+// Preserve prior headroom and add only 20 entry gzip bytes for source-identity
+// variation. Both measured builds have null sourceRevision; final stamped
+// artifacts still require validation. Providers retain their existing cap.
+// Evidence: docs/evidence/stb-player-improvements-size-20261029.json.
+const STB_PLAYER_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 5356,
+    gzipBytes: 1666,
+});
+const STB_PLAYER_STALKER_ALLOWANCE = Object.freeze({
+    bytes: 7803,
+    gzipBytes: 2601,
+});
+const STB_PLAYER_XTREAM_ALLOWANCE = Object.freeze({
+    bytes: 48,
+    gzipBytes: 8,
+});
+const STB_PLAYER_FAVORITES_ALLOWANCE = Object.freeze({
+    bytes: 2433,
+    gzipBytes: 511,
+});
+// Favorites category navigation and category-membership panel restoration:
+// paired clean 1.1.62 / Node22.23.4 builds add 10 raw / 5 gzip entry bytes
+// and 603 raw / 214 gzip bytes to the lazy Favorites family. Preserve prior
+// headroom and add only 20 entry gzip bytes for source-identity variation.
+// Count each component once; other provider and optional caps stay fixed.
+// Evidence: docs/evidence/category-navigation-size-20261029.json.
+const CATEGORY_NAVIGATION_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 10,
+    gzipBytes: 25,
+});
+const CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE = Object.freeze({
+    bytes: 603,
+    gzipBytes: 214,
+});
 const BUDGET = Object.freeze({
     bytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -452,15 +572,26 @@ const BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
         LOCAL_STARTUP_PREVIEW_ALLOWANCE.gzipBytes +
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -642,6 +773,14 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_STALKER_ALLOWANCE.bytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.bytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         1205560 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -650,8 +789,19 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.bytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
         380214 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
@@ -659,20 +809,34 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_ENTRY_ALLOWANCE.gzipBytes +
         FAVORITES_TRANSFER_PLEX_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
-    "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    "control-transport": Object.freeze({
+        bytes: 6000 + PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
+        gzipBytes: 2000 + PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes,
+    }),
     "favorites-transfer": Object.freeze({
         bytes:
+            CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.bytes +
+            STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
-            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes,
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.gzipBytes +
+            STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
-            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
+            FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
     }),
     // Compatibility is net-new; Local UI and the admitted command runner move
     // existing code off startup. Every emitted asset remains counted once.
@@ -708,6 +872,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
+    // Measured 1144 raw / 596 gzip bytes; fetched only when Shaka is requested.
+    "shaka-tracks": Object.freeze({ bytes: 1200, gzipBytes: 640 }),
     // Two live-recovery choices add 239 raw / 73 gzip bytes on Node 26.12.1.
     // Keep the existing lazy editor and its original measurement headroom.
     "subtitle-appearance": Object.freeze({ bytes: 8100, gzipBytes: 3400 }),
@@ -720,6 +886,18 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.bytes +
+        STB_PLAYER_STALKER_ALLOWANCE.bytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.bytes +
+        CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.bytes +
+        STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
+        MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes +
         1319160 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.bytes +
@@ -730,8 +908,26 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
-        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes,
+        SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
+        OPTIONAL_BUDGETS["shaka-tracks"].bytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
+        STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
+        STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes +
+        CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.gzipBytes +
+        STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
+        CATEGORY_PICKER_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
+        MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes +
         420842 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
         LOCAL_COMMAND_SESSION_ALLOWANCE.gzipBytes +
@@ -741,7 +937,13 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
-        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes,
+        FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
+        OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes +
+        SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -903,6 +1105,13 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         artifacts: measured,
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
+        categoryNavigationEntryAllowance: CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
+        categoryNavigationFavoritesAllowance:
+            CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
+        categoryPickerEntryAllowance: CATEGORY_PICKER_ENTRY_ALLOWANCE,
+        categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+        categorySelectionFavoritesAllowance:
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
         favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
         favoritesRecoveryOptionalAllowance:
@@ -916,18 +1125,33 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
         localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+        mixedGlobalFavoritesEntryAllowance:
+            MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+        mixedGlobalFavoritesOptionalAllowance:
+            MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+        mixedGlobalFavoritesProviderAllowance:
+            MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
         optionalBudgets: OPTIONAL_BUDGETS,
+        playerPresenceEntryAllowance: PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+        playerPresenceTransportAllowance: PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
+        plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
                 modules.includes(file)
             )
         ),
         providerBundles: sets,
+        relativeSeekEntryAllowance: RELATIVE_SEEK_ENTRY_ALLOWANCE,
         schema: 1,
         shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+        shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
+        stbPlayerEntryAllowance: STB_PLAYER_ENTRY_ALLOWANCE,
+        stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
+        stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
+        stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
         totalBudget: TOTAL_BUDGET,
     };
@@ -1197,6 +1421,14 @@ function writeBuildBundleReport(
             artifacts: measured,
             attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
             budget: BUDGET,
+            categoryNavigationEntryAllowance:
+                CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
+            categoryNavigationFavoritesAllowance:
+                CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
+            categoryPickerEntryAllowance: CATEGORY_PICKER_ENTRY_ALLOWANCE,
+            categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+            categorySelectionFavoritesAllowance:
+                CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
             collectedAt: new Date().toISOString(),
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -1210,19 +1442,35 @@ function writeBuildBundleReport(
             favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+            mixedGlobalFavoritesEntryAllowance:
+                MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+            mixedGlobalFavoritesOptionalAllowance:
+                MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+            mixedGlobalFavoritesProviderAllowance:
+                MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             mode: label(context.mode || "standard"),
             optimizerBinding: {
                 outputSha256: optimizer.outputSha256,
                 stagedExpectedSha256: expectedSha256,
             },
             optionalBudgets: OPTIONAL_BUDGETS,
+            playerPresenceEntryAllowance: PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+            playerPresenceTransportAllowance:
+                PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
+            plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
             providerBudget: PROVIDER_BUDGET,
             providerBundles: sets,
+            relativeSeekEntryAllowance: RELATIVE_SEEK_ENTRY_ALLOWANCE,
             run: label(process.env.GITHUB_RUN_ID),
             runAttempt: label(process.env.GITHUB_RUN_ATTEMPT),
             schema: 1,
             shakaRetirementEntryAllowance: SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+            shakaTracksEntryAllowance: SHAKA_TRACKS_ENTRY_ALLOWANCE,
             source: label(context.source || process.env.GITHUB_SHA),
+            stbPlayerEntryAllowance: STB_PLAYER_ENTRY_ALLOWANCE,
+            stbPlayerFavoritesAllowance: STB_PLAYER_FAVORITES_ALLOWANCE,
+            stbPlayerStalkerAllowance: STB_PLAYER_STALKER_ALLOWANCE,
+            stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
             toolchain: {
                 node: process.versions.node,
                 zlib: process.versions.zlib,
@@ -1276,6 +1524,11 @@ module.exports = {
     ARTIFACTS,
     BASE_TOTAL_BUDGET,
     BUDGET,
+    CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
+    CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
+    CATEGORY_PICKER_ENTRY_ALLOWANCE,
+    CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+    CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -1291,11 +1544,23 @@ module.exports = {
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
+    MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
+    PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+    PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
+    PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
     PROVIDER_BUDGET,
+    RELATIVE_SEEK_ENTRY_ALLOWANCE,
     SHAKA_RETIREMENT_ENTRY_ALLOWANCE,
+    SHAKA_TRACKS_ENTRY_ALLOWANCE,
+    STB_PLAYER_ENTRY_ALLOWANCE,
+    STB_PLAYER_FAVORITES_ALLOWANCE,
+    STB_PLAYER_STALKER_ALLOWANCE,
+    STB_PLAYER_XTREAM_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,

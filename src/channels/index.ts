@@ -1,3 +1,4 @@
+import { openGlobalFavorites } from "../commands/global-favorites";
 import { createSettingsEditor } from "../settings/editor";
 import {
     hasTmdbService,
@@ -703,6 +704,7 @@ export function restoreContinueWatch(): boolean {
  * Side effects: Calls `window.playChannel` which triggers playback switch.
  */
 export function nextChannel(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(1)) return;
     var nextIndex = (window as any).OttPlayCore.playbackChannelIndex(
         primaryIndex,
         curList.length,
@@ -719,6 +721,7 @@ export function nextChannel(): void {
  * Side effects: Calls `window.playChannel` which triggers playback switch.
  */
 export function prevChannel(): void {
+    if ((window as any).__ottGlobalFavorites?.navigation?.move(-1)) return;
     var prevIndex = (window as any).OttPlayCore.playbackChannelIndex(
         primaryIndex,
         curList.length,
@@ -1440,6 +1443,24 @@ export function onChannelsLoaded(): void {
     // Dismiss the old loading dialog before playback can open a PIN or resume
     // prompt. Hiding it afterwards would close the newly created prompt.
     $("#dialogbox").hide();
+    // A global Favorites handoff selects its exact item after this catalog is ready.
+    // Do not start a previous profile's saved cursor while that owner is resolving.
+    var favoriteHandoff = (window as any).__ottGlobalFavoritesHandoff;
+    if (favoriteHandoff?.blocks()) {
+        loadFavoritesLists();
+        if (!favoriteHandoff.blocks()) return;
+        (window as any).__ottChannels.mount(window);
+        if (!favoriteHandoff.blocks()) return;
+        (window as any).__ottClassicPlayback?.hydrate();
+        if (!favoriteHandoff.blocks()) return;
+        (window as any).__ottMedia?.useSource(null);
+        if (
+            favoriteHandoff.cancelled &&
+            (window as any).__ottGlobalFavoritesHandoff === favoriteHandoff
+        )
+            (window as any).__ottGlobalFavoritesHandoff = null;
+        return;
+    }
     var localRecovery: any = null;
     var mediaRecovery: any = null;
     try {
@@ -1500,7 +1521,11 @@ export function onChannelsLoaded(): void {
                 };
                 var openLibrary = function (): void {
                     if (host.__ottKiosk && host.__ottKiosk.locked()) return;
-                    if (currentLibrary()) host.popMedia();
+                    if (
+                        currentLibrary() &&
+                        !host.__ottChannels.restoreBrowsing?.()
+                    )
+                        host.popMedia();
                 };
                 // Resolve the saved media ID immediately. A delayed startup
                 // timer could otherwise override the user's first selection.
@@ -1516,6 +1541,23 @@ export function onChannelsLoaded(): void {
                 loadFavoritesLists();
                 (window as any).__ottChannels.mount(window);
                 (window as any).__ottClassicPlayback.hydrate();
+                var selectStartupChannel = function (id: number): void {
+                    // Catalog cursors choose the item; the restored category
+                    // remains authoritative whenever it still contains it.
+                    var group = catIndex;
+                    var index = (cats[catsArray[group]] || []).indexOf(id);
+                    if (index < 0) {
+                        group = catsArray.indexOf(_("All"));
+                        index = (cats[catsArray[group]] || []).indexOf(id);
+                    }
+                    if (index < 0) {
+                        for (group = 0; group < catsArray.length; group++) {
+                            index = (cats[catsArray[group]] || []).indexOf(id);
+                            if (index >= 0) break;
+                        }
+                    }
+                    if (index >= 0) window.setCurrent(group, index);
+                };
                 var preferred = (window as any).__ottCatalogSelectedId;
                 var localFallback =
                     driver?.id === "offline" &&
@@ -1530,15 +1572,7 @@ export function onChannelsLoaded(): void {
                 }
                 var localProfiles = (window as any).__ottOfflineProfiles;
                 if (driver?.capabilities.mediaPlaylist && preferred != null) {
-                    for (var group = 0; group < catsArray.length; group++) {
-                        var preferredIndex = (
-                            cats[catsArray[group]] || []
-                        ).indexOf(preferred);
-                        if (preferredIndex >= 0) {
-                            window.setCurrent(group, preferredIndex);
-                            break;
-                        }
-                    }
+                    selectStartupChannel(preferred);
                 }
                 if (driver && driver.id === "offline" && localProfiles) {
                     var selectedLocal = localProfiles.selection();
@@ -1547,7 +1581,7 @@ export function onChannelsLoaded(): void {
                         if (localIndex < 0 && !localFallback)
                             localRecovery = driver;
                         else if (localIndex >= 0)
-                            window.setCurrent(0, localIndex);
+                            selectStartupChannel(selectedLocal);
                     }
                 }
                 if (!localRecovery && !mediaRecovery) {
@@ -1628,7 +1662,8 @@ export function onChannelsLoaded(): void {
         mediaRecovery === (window as any).__ottActiveProviderDriver &&
         !(window as any).__ottKiosk?.locked()
     ) {
-        window.channelsList(sFavorites ? 1 : 0, 0);
+        if (!(window as any).__ottChannels.browse?.("system:all", false))
+            window.channelsList(sFavorites ? 1 : 0, 0);
         window.infoBox(window._("Channel is not available!!!"));
     }
 }
@@ -2770,6 +2805,7 @@ export function bucketsList(
     view?: any
 ): void {
     var w = window as any;
+    if (!view && w.__ottChannels) w.__ottChannels.refresh();
     var catsList = view ? view.labels : catsArray || [];
 
     w.selIndex =
@@ -2984,6 +3020,11 @@ export function bucketsKeyHandler(keyCode: number): boolean {
                 idx < catsArray.length &&
                 typeof w.channelsList === "function"
             ) {
+                if (
+                    w.__ottChannels.group(idx) === "system:favorites" &&
+                    openGlobalFavorites()
+                )
+                    return true;
                 w.channelsList(idx, playingChannelIdxInCategory(idx));
             }
             return true;
@@ -2999,6 +3040,11 @@ export function bucketsKeyHandler(keyCode: number): boolean {
             return true;
 
         case keys.ENTER:
+            if (
+                w.__ottChannels.group(w.selIndex) === "system:favorites" &&
+                openGlobalFavorites()
+            )
+                return true;
             if (typeof w.channelsList === "function") {
                 w.channelsList(
                     w.selIndex,
@@ -3011,6 +3057,11 @@ export function bucketsKeyHandler(keyCode: number): boolean {
         case keys.NEXT: {
             var nextCat =
                 w.selIndex < catsArray.length - 1 ? w.selIndex + 1 : 0;
+            if (
+                w.__ottChannels.group(nextCat) === "system:favorites" &&
+                openGlobalFavorites()
+            )
+                return true;
             if (typeof w.channelsList === "function") {
                 w.channelsList(nextCat, playingChannelIdxInCategory(nextCat));
             }
@@ -3885,6 +3936,11 @@ function removeSelectedChannelFromCategory(): void {
     var groupId = w.__ottChannels.group(w.listCatIndex);
     if (!groupId || selected === undefined) return;
     if (groupId === "system:favorites") {
+        if (
+            typeof w.setGlobalChannelFavorite === "function" &&
+            w.setGlobalChannelFavorite(selected, false) !== false
+        )
+            return;
         removeFromFavorites(selected);
         saveChannelsCats();
     } else if (

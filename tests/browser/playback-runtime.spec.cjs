@@ -606,7 +606,9 @@ async function episodeFixture(
         window.sFavorites = 1;
         window.sMedCount = 2;
         window.parentPIN = "";
-        window.settings.stopPlay = true;
+        window.settings.stopPlay = 1;
+        if (window.settings.stopPlay !== 1)
+            throw new Error("Episode fixture must enable numeric stopPlay");
         const saved = {};
         window.providerGetItem = (key) => saved[key] || null;
         window.providerSetItem = (key, value) => {
@@ -2381,3 +2383,247 @@ test("live recovery OSD follows watchdog countdown without a second timer", asyn
     await expect(osd).toBeHidden();
     await page.evaluate(() => window.__indicatorFixture.observer.dispose());
 });
+for (const modern of [false, true]) {
+    test(
+        "Shaka audio and subtitle menus use real engine tracks: modern=" +
+            modern,
+        async ({ page, context, baseURL }) => {
+            const origin = new URL(baseURL).origin;
+            const createMedia =
+                require("../helpers/hls-aspect-fixture.cjs").createHlsAspectFixture;
+            const tsBytes = fs.readFileSync(
+                path.join(mediaRoot, "segment00.ts")
+            );
+            const hlsMedia = createMedia(tsBytes);
+            for (const type of ["audio", "video"]) {
+                let playlist =
+                    '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MAP:URI="' +
+                    type +
+                    '-init.mp4"\n';
+                for (let segment = 0; segment < 10; segment++) {
+                    const name = type + "-" + segment + ".m4s";
+                    hlsMedia[name] = createMedia(tsBytes, segment * 180000)[
+                        type + "-segment.m4s"
+                    ];
+                    playlist += "#EXTINF:2,\n" + name + "\n";
+                }
+                hlsMedia[type + ".m3u8"] = playlist + "#EXT-X-ENDLIST\n";
+            }
+            const errors = [];
+            page.on("pageerror", (error) => errors.push(error.message));
+            await context.routeWebSocket("**/*", (socket) => socket.close());
+            await context.route("**/*", (route) => {
+                const url = new URL(route.request().url());
+                if (url.pathname === "/js/shaka-player.compiled.js")
+                    return route.fulfill({
+                        body: fs.readFileSync(
+                            path.resolve(
+                                __dirname,
+                                modern
+                                    ? "../../node_modules/shaka-player/dist/shaka-player.compiled.js"
+                                    : "../../js/shaka-player.compiled.js"
+                            )
+                        ),
+                        contentType: "application/javascript",
+                    });
+                if (url.pathname.startsWith("/shaka-tracks/")) {
+                    const leaf = url.pathname.split("/").pop();
+                    let body,
+                        contentType = "application/vnd.apple.mpegurl";
+                    if (leaf === "master.m3u8")
+                        body =
+                            "#EXTM3U\n#EXT-X-VERSION:3\n" +
+                            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",LANGUAGE="en",DEFAULT=YES,AUTOSELECT=YES,URI="en.m3u8"\n' +
+                            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="French",LANGUAGE="fr",DEFAULT=NO,AUTOSELECT=YES,URI="fr.m3u8"\n' +
+                            '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",DEFAULT=NO,AUTOSELECT=YES,URI="text.m3u8"\n' +
+                            '#EXT-X-STREAM-INF:BANDWIDTH=300000,CODECS="avc1.42c01e,mp4a.40.2",AUDIO="audio",SUBTITLES="subs"\nvideo.m3u8\n';
+                    else if (leaf === "text.m3u8")
+                        body =
+                            "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:20\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXTINF:20,\ntext.vtt\n#EXT-X-ENDLIST\n";
+                    else if (leaf === "text.vtt") {
+                        body =
+                            "WEBVTT\n\n00:00:00.000 --> 00:00:20.000 line:20% position:30%\nShaka caption\n";
+                        contentType = "text/vtt";
+                    } else {
+                        body =
+                            hlsMedia[
+                                leaf === "en.m3u8" || leaf === "fr.m3u8"
+                                    ? "audio.m3u8"
+                                    : leaf
+                            ];
+                        if (leaf.endsWith(".mp4") || leaf.endsWith(".m4s"))
+                            contentType = "video/mp4";
+                    }
+                    return route.fulfill({ body, contentType });
+                }
+                return url.origin === origin
+                    ? route.continue()
+                    : route.abort("blockedbyclient");
+            });
+            await context.addInitScript(() => {
+                localStorage.setItem("ottplaylang", "_eng");
+                localStorage.setItem("ottplayprov", "demo");
+            });
+            await page.goto("/f/pc/");
+            await page.waitForFunction(() => window.__ottDevice);
+            await page.evaluate((modern) => {
+                window.stbStop();
+                if (modern) window.__ottNativeRuntime = {};
+                const video = document.querySelector("#video");
+                video.muted = true;
+                window.setPlayerMode(2);
+                window.stbPlay(location.origin + "/shaka-tracks/master.m3u8");
+            }, modern);
+            await page.waitForFunction(
+                () => document.querySelector("#video").currentTime > 0.05
+            );
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            window
+                                .getCoreMediaBackend()
+                                .current()
+                                .tracks("audio").length
+                    )
+                )
+                .toBe(2);
+            const initial = await page.evaluate(() => ({
+                abr: window.player.getConfiguration().abr.enabled,
+                height: window.player
+                    .getVariantTracks()
+                    .find((track) => track.active)?.height,
+            }));
+            await page.evaluate(() => window.stbToggleAudioTrack());
+            await expect(page.locator("#numprog")).toContainText("French");
+            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("Enter");
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            window.player
+                                .getVariantTracks()
+                                .find((track) => track.active)?.language
+                    )
+                )
+                .toBe("fr");
+            await page.evaluate(() => window.stbToggleSubtitle());
+            await expect(page.locator("#numprog")).toContainText("English");
+            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("Enter");
+            await expect
+                .poll(() =>
+                    page.evaluate(() =>
+                        window
+                            .getCoreMediaBackend()
+                            .current()
+                            .tracks("subtitle")
+                            .some((track) => track.selected)
+                    )
+                )
+                .toBe(true);
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const tracks = Array.from(
+                            document.querySelector("#video").textTracks
+                        );
+                        for (const track of tracks) {
+                            const cue = Array.from(track.cues || []).find(
+                                (cue) => cue.text.includes("Shaka caption")
+                            );
+                            if (cue)
+                                return {
+                                    line: cue.line,
+                                    position: cue.position,
+                                };
+                        }
+                        return null;
+                    })
+                )
+                .toEqual({ line: 20, position: 30 });
+            await page.evaluate(() => window.stbToggleSubtitle());
+            await page.keyboard.press("ArrowUp");
+            await page.keyboard.press("Enter");
+            await expect
+                .poll(() =>
+                    page.evaluate(() =>
+                        window
+                            .getCoreMediaBackend()
+                            .current()
+                            .tracks("subtitle")
+                            .some((track) => track.selected)
+                    )
+                )
+                .toBe(false);
+            await page.evaluate(() => window.stbToggleAudioTrack());
+            await page.keyboard.press("ArrowUp");
+            await page.keyboard.press("Enter");
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            window.player
+                                .getVariantTracks()
+                                .find((track) => track.active)?.language
+                    )
+                )
+                .toBe("en");
+            await expect
+                .poll(() =>
+                    page.evaluate(() =>
+                        window
+                            .getCoreMediaBackend()
+                            .current()
+                            .tracks("subtitle")
+                            .some((track) => track.selected)
+                    )
+                )
+                .toBe(false);
+            // Re-enabling after explicit Off must restore actual cues, not only the menu state.
+            await page.evaluate(() => window.stbToggleSubtitle());
+            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("Enter");
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const selected = window
+                            .getCoreMediaBackend()
+                            .current()
+                            .tracks("subtitle")
+                            .some((track) => track.selected);
+                        const cues = Array.from(
+                            document.querySelector("#video").textTracks
+                        )
+                            .filter((track) => track.mode === "showing")
+                            .flatMap((track) =>
+                                Array.from(track.activeCues || [])
+                            );
+                        return (
+                            selected &&
+                            cues.some(
+                                (cue) =>
+                                    cue.text.includes("Shaka caption") &&
+                                    cue.line === 20 &&
+                                    cue.position === 30
+                            )
+                        );
+                    })
+                )
+                .toBe(true);
+            expect(
+                await page.evaluate(() => ({
+                    abr: window.player.getConfiguration().abr.enabled,
+                    height: window.player
+                        .getVariantTracks()
+                        .find((track) => track.active)?.height,
+                }))
+            ).toEqual(initial);
+            expect(errors).toEqual([]);
+            await page.screenshot({
+                path: test.info().outputPath("shaka-track-controls.png"),
+            });
+        }
+    );
+}

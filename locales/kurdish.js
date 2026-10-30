@@ -173,6 +173,7 @@ var keyStrings = {
         "Kontrolkirina girêdana servera Plex…",
     "Choose a folder in the browser window":
         "Di pencereya gerokê de peldankekê hilbijêre",
+    "Choose a profile": "Profîl hilbijêre",
     "Choose files in the browser window":
         "Di pencereya gerokê de pelan hilbijêre",
     "Choose from": "Hilbijêre",
@@ -1004,6 +1005,8 @@ var keyStrings = {
     "Sleep timer": "Demjimêra xewê",
     "Sort channels": "Kanalan rêz bike",
     "Source access": "Gihîştina çavkaniyê",
+    "Source is busy. Try again later.":
+        "Çavkanî mijûl e. Paşê dîsa biceribînin.",
     "Source sign-in required": "Têketina çavkaniyê pêwîst e",
     "Source sign-in was cancelled": "Têketina çavkaniyê hat betalkirin",
     "Stalker Portal Provider": "Dabînkerê portala Stalker",
@@ -1059,6 +1062,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID-ya amûrê di navnîşanê de nederbasdar e.",
     "The discovery response is invalid.": "Bersiva lêgerînê nederbasdar e.",
+    "The stream connection failed": "Girêdana bi weşanê re têk çû",
+    "The stream format could not be played": "Formata weşanê nehat lêdan",
     "This browser cannot identify the selected screenshot source.":
         "Ev gerok nikare çavkaniya dîmena hilbijartî nas bike.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1071,6 +1076,8 @@ var keyStrings = {
         "Ev sepana Play HTTPS dixwaze. Ji dabînkerê xwe lîsteyeke lêdanê an URL-ya pêşkêskerê ya HTTPS bixwazin.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ev girêdana hevberdanê qediyaye. Li ser TV-ya xwe danişînek nû vekin.",
+    "This protected stream could not be played":
+        "Ev weşana parastî nehat lêdan",
     "This remote command is not supported by the player.":
         "Ev fermana kontrola dûr ji aliyê lêkerê ve nayê piştgirîkirin.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1115,6 +1122,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Mîhengên ULTIFL1X",
     "Unable to load playlist": "Lîsteya lêdanê nehat barkirin",
+    Unavailable: "Ne berdest e",
     "Unlock the player's settings before changing its playlist.":
         "Berî guherandina lîsteya lêdanê kilîda mîhengên lêkerê veke.",
     Untitled: "Bênav",

@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Plex ಸರ್ವರ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
     "Choose a folder in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Choose a profile": "ಪ್ರೊಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
     "Choose files in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೈಲ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Choose from": "ಆಯ್ಕೆ ಮಾಡಿ",
     "Choose language": "ಭಾಷೆಯನ್ನು ಆರಿಸಿ",
@@ -975,6 +976,8 @@ var keyStrings = {
     "Sleep timer": "ಸ್ಲೀಪ್ ಟೈಮರ್",
     "Sort channels": "ಚಾನಲ್‌ಗಳನ್ನು ವಿಂಗಡಿಸಿ",
     "Source access": "ಮೂಲ ಪ್ರವೇಶ",
+    "Source is busy. Try again later.":
+        "ಮೂಲ ಕಾರ್ಯನಿರತವಾಗಿದೆ. ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
     "Source sign-in required": "ಮೂಲ ಸೈನ್-ಇನ್ ಅಗತ್ಯವಿದೆ",
     "Source sign-in was cancelled": "ಮೂಲ ಸೈನ್-ಇನ್ ಅನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
     "Stalker Portal Provider": "Stalker ಪೋರ್ಟಲ್ ಪೂರೈಕೆದಾರ",
@@ -1026,6 +1029,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ವಿಳಾಸದಲ್ಲಿರುವ ID ಸಾಧನವು ಅಮಾನ್ಯವಾಗಿದೆ.",
     "The discovery response is invalid.": "ಅನ್ವೇಷಣೆಯ ಪ್ರತಿಕ್ರಿಯೆಯು ಅಮಾನ್ಯವಾಗಿದೆ.",
+    "The stream connection failed": "ಸ್ಟ್ರೀಮ್ ಸಂಪರ್ಕ ವಿಫಲವಾಗಿದೆ",
+    "The stream format could not be played": "ಈ ಸ್ವರೂಪದ ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
     "This browser cannot identify the selected screenshot source.":
         "ಈ ಬ್ರೌಸರ್ ಆಯ್ಕೆಮಾಡಿದ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಮೂಲವನ್ನು ಗುರುತಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1038,6 +1043,8 @@ var keyStrings = {
         "ಈ Play ಅಪ್ಲಿಕೇಶನ್‌ಗೆ HTTPS ಅಗತ್ಯವಿದೆ. HTTPS ಪ್ಲೇಪಟ್ಟಿ ಅಥವಾ ಸರ್ವರ್ URL ಗಾಗಿ ನಿಮ್ಮ ಪೂರೈಕೆದಾರರನ್ನು ಕೇಳಿ.",
     "This pairing link has expired. Open a new session on your TV.":
         "ಈ ಜೋಡಣೆ ಲಿಂಕ್ ಅವಧಿ ಮೀರಿದೆ. ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ ಹೊಸ ಸೆಶನ್ ತೆರೆಯಿರಿ.",
+    "This protected stream could not be played":
+        "ಈ ಸಂರಕ್ಷಿತ ಸ್ಟ್ರೀಮ್ ಅನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗಲಿಲ್ಲ",
     "This remote command is not supported by the player.":
         "ಈ ರಿಮೋಟ್ ಕಂಟ್ರೋಲ್ ಆದೇಶವನ್ನು ಪ್ಲೇಯರ್ ಬೆಂಬಲಿಸುವುದಿಲ್ಲ.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1079,6 +1086,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "Unable to load playlist": "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ",
+    Unavailable: "ಲಭ್ಯವಿಲ್ಲ",
     "Unlock the player's settings before changing its playlist.":
         "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸುವ ಮೊದಲು ಪ್ಲೇಯರ್‌ನ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ.",
     Untitled: "ಶೀರ್ಷಿಕೆಯಿಲ್ಲ",

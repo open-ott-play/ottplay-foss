@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex сервер қосылымы тексерілуде…",
     "Choose a folder in the browser window":
         "Браузер терезесінде қалтаны таңдаңыз",
+    "Choose a profile": "Профильді таңдаңыз",
     "Choose files in the browser window":
         "Браузер терезесінде файлдарды таңдаңыз",
     "Choose from": "Мынадан таңдау",
@@ -998,6 +999,8 @@ var keyStrings = {
     "Sleep timer": "Ұйқы таймері",
     "Sort channels": "Арналарды сұрыптау",
     "Source access": "Мультимедиа көзіне кіру",
+    "Source is busy. Try again later.":
+        "Дереккөз бос емес. Кейінірек қайталап көріңіз.",
     "Source sign-in required": "Дереккөзге кіру қажет",
     "Source sign-in was cancelled": "Дереккөзге кіру тоқтатылды",
     "Stalker Portal Provider": "Stalker порталының провайдері",
@@ -1052,6 +1055,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Мекенжайдағы құрылғы ID-і жарамсыз.",
     "The discovery response is invalid.": "Іздеу сұрауының жауабы жарамсыз.",
+    "The stream connection failed": "Ағынға қосылу сәтсіз аяқталды",
+    "The stream format could not be played":
+        "Ағынды осы пішімде ойнату мүмкін болмады",
     "This browser cannot identify the selected screenshot source.":
         "Бұл браузер таңдалған скриншот көзін анықтай алмайды.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1064,6 +1070,8 @@ var keyStrings = {
         "Бұл Play қолданбасына HTTPS қажет. Провайдерден HTTPS ойнату тізімін немесе сервер URL мекенжайын сұраңыз.",
     "This pairing link has expired. Open a new session on your TV.":
         "Бұл жұптастыру сілтемесінің мерзімі аяқталды. Теледидарда жаңа сеанс ашыңыз.",
+    "This protected stream could not be played":
+        "Бұл қорғалған ағынды ойнату мүмкін болмады",
     "This remote command is not supported by the player.":
         "Ойнатқыш бұл қашықтан басқару пәрменін қолдамайды.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1107,6 +1115,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X баптаулары",
     "Unable to load playlist": "Ойнату тізімін жүктеу мүмкін болмады",
+    Unavailable: "Қолжетімсіз",
     "Unlock the player's settings before changing its playlist.":
         "Ойнату тізімін өзгертпес бұрын ойнатқыш баптауларының құлпын ашыңыз.",
     Untitled: "Атаусыз",

@@ -170,6 +170,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Notiek Plex servera savienojuma pārbaude…",
     "Choose a folder in the browser window": "Pārlūka logā izvēlieties mapi",
+    "Choose a profile": "Izvēlēties profilu",
     "Choose files in the browser window": "Pārlūka logā izvēlieties failus",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
@@ -1004,6 +1005,8 @@ var keyStrings = {
     "Sleep timer": "Miega taimeris",
     "Sort channels": "Kārtot kanālus",
     "Source access": "Piekļuve multivides avotam",
+    "Source is busy. Try again later.":
+        "Avots ir aizņemts. Mēģiniet vēlreiz vēlāk.",
     "Source sign-in required": "Nepieciešama avota pierakstīšanās",
     "Source sign-in was cancelled": "Pierakstīšanās avotā atcelta",
     "Stalker Portal Provider": "Stalker portāla pakalpojuma sniedzējs",
@@ -1057,6 +1060,9 @@ var keyStrings = {
         "Komandu servera meklēšanas URL nav derīgs.",
     "The device ID in the address is invalid.": "Ierīces ID adresē nav derīgs.",
     "The discovery response is invalid.": "Meklēšanas atbilde nav derīga.",
+    "The stream connection failed": "Neizdevās izveidot savienojumu ar straumi",
+    "The stream format could not be played":
+        "Neizdevās atskaņot straumi šajā formātā",
     "This browser cannot identify the selected screenshot source.":
         "Šī pārlūkprogramma nevar identificēt atlasīto ekrānuzņēmuma avotu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1069,6 +1075,8 @@ var keyStrings = {
         "Šai Play lietotnei nepieciešams HTTPS. Lūdziet pakalpojuma sniedzējam HTTPS sarakstu vai servera URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Šīs savienošanas saites derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju.",
+    "This protected stream could not be played":
+        "Neizdevās atskaņot šo aizsargāto straumi",
     "This remote command is not supported by the player.":
         "Atskaņotājs neatbalsta šo attālināto komandu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1111,6 +1119,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X iestatījumi",
     "Unable to load playlist": "Neizdevās ielādēt atskaņošanas sarakstu",
+    Unavailable: "Nav pieejams",
     "Unlock the player's settings before changing its playlist.":
         "Pirms atskaņošanas saraksta maiņas atbloķējiet atskaņotāja iestatījumus.",
     Untitled: "Bez nosaukuma",

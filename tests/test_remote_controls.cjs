@@ -30,6 +30,7 @@ const updateContext = {
 };
 vm.runInNewContext(emit("src/commands/remote-app-update.ts"), updateContext);
 const context = {
+    Date,
     exports: {},
     require(name) {
         if (name === "./remote-app-update") return updateContext.exports;
@@ -96,6 +97,8 @@ function fixture() {
         phase = "playing";
     const handle = {
         active: () => active,
+        canSeekRelative: () =>
+            active && kind === "vod" && ["playing", "paused"].includes(phase),
         pause: () => {
             effects.push("pause");
             phase = "paused";
@@ -105,6 +108,11 @@ function fixture() {
             phase = "playing";
         },
         seek: (position) => effects.push(["seek", position]),
+        seekRelative: (offset, admitted) => {
+            if (!admitted()) return null;
+            effects.push(["seek_relative", offset]);
+            return { clamped: false, from: 100, position: 100 + offset };
+        },
         snapshot: () => ({ phase }),
     };
     const backend = {
@@ -117,7 +125,7 @@ function fixture() {
         __ottCoreBackend: () => backend,
         __ottCoreBackendPeek: () => backend,
         __ottCoreTransport: { play },
-        __ottKiosk: { enabled: () => kiosk },
+        __ottKiosk: { enabled: () => kiosk, locked: () => kiosk },
         __ottParental: { needs: () => locked },
         __ottRemoteLifecycle: {
             exit: () => effects.push("exit"),
@@ -157,7 +165,7 @@ function fixture() {
         revision: () => revision,
         screens: { current: () => null },
     };
-    function run(action, params = {}, acknowledged = true) {
+    function run(action, params = {}, acknowledged = true, expiresAt) {
         let result, effect;
         execute(
             w,
@@ -170,7 +178,8 @@ function fixture() {
                 ? (value) => {
                       effect = value;
                   }
-                : undefined
+                : undefined,
+            expiresAt
         );
         return { effect, result };
     }
@@ -529,6 +538,112 @@ for (const changed of [
         f.run("playback", { operation: "resume" }).result.status,
         "unsupported"
     );
+}
+{
+    const f = fixture();
+    assert.deepEqual(f.run("capabilities").result.data.playback, [
+        "pause",
+        "resume",
+        "seek",
+    ]);
+    assert.deepEqual(f.run("capabilities").result.data.playback_seek_relative, {
+        version: 1,
+    });
+    assert.deepEqual(
+        f.run("playback", { offset: -10.5, operation: "seek_relative" }).result
+            .data,
+        {
+            clamped: false,
+            dispatched: true,
+            from: 100,
+            offset: -10.5,
+            operation: "seek_relative",
+            position: 89.5,
+        }
+    );
+    f.effects.length = 0;
+    for (const params of [
+        { operation: "seek_relative" },
+        ...[0, NaN, Infinity, "2", true, 9007199254740992].map((offset) => ({
+            offset,
+            operation: "seek_relative",
+        })),
+        { offset: 1, operation: "seek_relative", position: 20 },
+        { extra: true, offset: 1, operation: "seek_relative" },
+    ])
+        assert.equal(f.run("playback", params).result.status, "rejected");
+    assert.equal(
+        f.run(
+            "playback",
+            { offset: 1, operation: "seek_relative" },
+            true,
+            Date.now() / 1000 - 1
+        ).result.status,
+        "rejected"
+    );
+    assert.deepEqual(f.effects, []);
+    f.kiosk(true);
+    assert.deepEqual(f.run("capabilities").result.data.playback, ["seek"]);
+    assert.equal(
+        f.run("playback", { operation: "pause" }).result.status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run("playback", { operation: "resume" }).result.status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run(
+            "playback",
+            { offset: 1, operation: "seek_relative" },
+            true,
+            Date.now() / 1000 + 30
+        ).result.status,
+        "ok"
+    );
+    assert.equal(
+        f.run("playback", { operation: "seek", position: 20 }).result.status,
+        "ok"
+    );
+    f.kiosk(false);
+    f.effects.length = 0;
+    for (const guard of [
+        f.lock,
+        (value) => {
+            f.w.stbIsStandby = () => value;
+        },
+    ]) {
+        guard(true);
+        assert.equal(
+            f.run("capabilities").result.data.playback_seek_relative,
+            undefined
+        );
+        assert.equal(
+            f.run("playback", { offset: 1, operation: "seek_relative" }).result
+                .status,
+            "unsupported"
+        );
+        guard(false);
+    }
+    f.w.$ = () => ({ is: () => true });
+    assert.equal(
+        f.run("playback", { offset: 1, operation: "seek_relative" }).result
+            .status,
+        "unsupported"
+    );
+    assert.equal(
+        f.run("playback", { operation: "seek", position: 20 }).result.status,
+        "unsupported"
+    );
+    f.w.$ = () => ({ is: () => false });
+    f.w.__ottCoreBackendPeek = () => ({ current: () => f.handle });
+    assert.equal(
+        f.run("playback", { offset: 1, operation: "seek_relative" }).result
+            .status,
+        "rejected",
+        "replacement backend cannot receive old seek"
+    );
+    assert.deepEqual(f.effects, []);
 }
 {
     const f = fixture();
@@ -1733,6 +1848,83 @@ for (const [start, offset, id] of [
     assert.deepEqual(f.effects, []);
     assert.equal(f.pinCalls, 0);
 }
+// The pre-step cursor retires after selection; persistent policy does not.
+{
+    const f = channelStepFixture();
+    const w = f.w;
+    let guard;
+    const loading = {
+        active: () => true,
+        foreground: () => true,
+        kind: "dialog",
+    };
+    w.__ottClassicScreenPort.owner = () => f.owner;
+    w.channels[1].__ottMediaItem = { id: 1, request: { id: 1 } };
+    w.__ottMedia = {
+        cancelRequest() {},
+        playChannel(item, id, current, _background, resumeMode) {
+            assert.equal(item, w.channels[1].__ottMediaItem);
+            assert.equal(id, 1);
+            assert.equal(resumeMode, "prompt");
+            guard = current;
+            assert.equal(guard(), true);
+            f.owner = loading;
+            return true;
+        },
+    };
+    const deadline = Date.now() / 1000 + 30;
+    assert.equal(
+        f.run("playback", { operation: "next_channel" }, true, deadline).result
+            .status,
+        "ok"
+    );
+    assert.equal(w.primaryIndex, 1);
+    assert.equal(
+        guard(loading),
+        true,
+        "new cursor and own loading owner are admitted"
+    );
+    context.Date = { now: () => (deadline + 1) * 1000 };
+    try {
+        assert.equal(
+            guard(loading),
+            false,
+            "post-ACK relative resolution retains original expiry"
+        );
+    } finally {
+        context.Date = Date;
+    }
+    assert.equal(
+        guard(),
+        false,
+        "a dialog without exact owner proof remains protected"
+    );
+    f.lock(true);
+    assert.equal(
+        guard(loading),
+        false,
+        "later provider/settings policy remains authoritative"
+    );
+    f.lock(false);
+    f.owner = { ...loading };
+    assert.equal(
+        guard(loading),
+        false,
+        "replacement dialog cannot borrow loading authority"
+    );
+    f.owner = loading;
+    w.__ottKiosk.allowed = () => false;
+    assert.equal(guard(loading), false, "later kiosk policy denies playback");
+    w.__ottKiosk.allowed = () => true;
+    assert.equal(
+        guard(loading),
+        true,
+        "restored policy retains owned playback"
+    );
+    w.stbIsStandby = () => true;
+    assert.equal(guard(loading), false, "standby remains authoritative");
+}
+
 console.log(
     "PASS channel offsets: exact safe integers, positive/negative wrap, one selection, bounded receipt, target PIN and shared stale-state guards"
 );

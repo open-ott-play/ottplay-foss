@@ -238,7 +238,7 @@ function remoteInputAllowed(w: any, key: string): boolean {
         /^(volume_up|volume_down|mute)$/.test(key)
     );
 }
-function remoteChannelStepAllowed(w: any): boolean {
+function remoteChannelStepAllowed(w: any, loadingOwner?: any): boolean {
     if (remoteProtectedInput(w) || remoteKiosk(w) || remoteSettingsLocked(w))
         return false;
     if (typeof w.stbIsStandby === "function" && w.stbIsStandby()) return false;
@@ -246,10 +246,24 @@ function remoteChannelStepAllowed(w: any): boolean {
     if (!port || !port.screens || typeof port.screens.current !== "function")
         return false;
     var owner = port.screens.current();
-    // A channel change must not answer, dismiss or bypass a modal interaction.
-    if (owner && owner.kind !== "list") return false;
+    var ownedLoading =
+        !!loadingOwner &&
+        owner === loadingOwner &&
+        loadingOwner.kind === "dialog" &&
+        loadingOwner.active() &&
+        loadingOwner.foreground() &&
+        typeof port.owner === "function" &&
+        port.owner("dialog") === loadingOwner;
+    // Only the exact internally supplied loading owner can coexist with resolution.
+    if (owner && owner.kind !== "list" && !ownedLoading) return false;
     return !(
-        w.$ && w.$("#dialogbox, #listAbout, #listEdit, #numprog").is(":visible")
+        w.$ &&
+        w
+            .$(
+                (ownedLoading ? "" : "#dialogbox, ") +
+                    "#listAbout, #listEdit, #numprog"
+            )
+            .is(":visible")
     );
 }
 
@@ -338,11 +352,11 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
         var name = row.channel_name;
         var order = catalogue.slice();
         var categoryName = categories[category];
-        var current = function (): boolean {
+        var current = function (selected = false, loadingOwner?: any): boolean {
             try {
                 // Admission is read-only: never queue a PIN continuation for a step.
                 if (
-                    !remoteChannelStepAllowed(w) ||
+                    !remoteChannelStepAllowed(w, loadingOwner) ||
                     !Array.isArray(w.parentalArray) ||
                     !w.__ottParental ||
                     (w.parentalArray.some(function (value: any) {
@@ -363,7 +377,7 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
                     categories[category] === categoryName &&
                     groups[categoryName] === list &&
                     w.catIndex === category &&
-                    w.primaryIndex === position &&
+                    w.primaryIndex === (selected ? index : position) &&
                     list[position] === oldId &&
                     list[index] === id &&
                     list.length === listOrder.length &&
@@ -391,6 +405,12 @@ function remoteChannelStep(w: any, offset: number, probe?: boolean): any {
                   current: current,
                   index: index,
                   play: play,
+                  postSelection: function (
+                      loadingOwner?: any,
+                      selected = true
+                  ) {
+                      return current(selected, loadingOwner);
+                  },
               }
             : null;
     } catch (_) {
@@ -817,8 +837,29 @@ export function executeRemoteControl(
     }
     var playback =
         owned && owned.kind !== "live" && !remoteKiosk(w)
-            ? ["pause", "resume"].concat(owned.kind === "vod" ? ["seek"] : [])
+            ? ["pause", "resume"]
             : [];
+    // Authenticated transport may seek the current VOD even in strict kiosk;
+    // this does not authorize a source change or other restricted UI control.
+    function seekAllowed(): boolean {
+        return !!(
+            owned &&
+            owned.kind === "vod" &&
+            !remoteSettingsLocked(w) &&
+            !remoteProtectedInput(w) &&
+            !(typeof w.stbIsStandby === "function" && w.stbIsStandby())
+        );
+    }
+    if (seekAllowed()) playback.push("seek");
+    function relativeSeekAllowed(): boolean {
+        return !!(
+            seekAllowed() &&
+            typeof owned.handle.seekRelative === "function" &&
+            typeof owned.handle.canSeekRelative === "function" &&
+            owned.handle.canSeekRelative() &&
+            owned.handle.active()
+        );
+    }
     if (action === localMessage2) {
         var localMedia = w.__ottLocalMedia?.remoteCapabilities
             ? w.__ottLocalMedia.remoteCapabilities()
@@ -877,6 +918,9 @@ export function executeRemoteControl(
                 ? { version: 3 }
                 : undefined,
             playback: playback,
+            playback_seek_relative: relativeSeekAllowed()
+                ? { version: 1 }
+                : undefined,
             player: remotePlayerInfo(w),
             player_settings: w.__ottPlayerSettingsHost
                 ? {
@@ -916,6 +960,69 @@ export function executeRemoteControl(
     }
     if (action === "playback") {
         var operation = params.operation;
+        if (operation === "seek_relative") {
+            if (
+                Object.keys(params).length !== 2 ||
+                typeof params.offset !== "number" ||
+                !isFinite(params.offset) ||
+                params.offset === 0 ||
+                Math.abs(params.offset) > 9007199254740991
+            ) {
+                fail(
+                    "rejected",
+                    "Use seek_relative with a nonzero finite offset."
+                );
+                return;
+            }
+            if (!relativeSeekAllowed()) {
+                fail(
+                    "unsupported",
+                    "Relative seek requires a compatible owned VOD stream."
+                );
+                return;
+            }
+            var backend = owned.backend,
+                handle = owned.handle;
+            var current = function (): boolean {
+                if (
+                    !relativeSeekAllowed() ||
+                    (expiresAt !== undefined &&
+                        (!isFinite(expiresAt) ||
+                            Date.now() / 1000 >= expiresAt))
+                )
+                    return false;
+                var now = remoteOwnedPlayback(w, true);
+                return !!(
+                    now &&
+                    now.backend === backend &&
+                    now.handle === handle &&
+                    now.kind === "vod"
+                );
+            };
+            var moved;
+            try {
+                moved =
+                    current() && handle.seekRelative(params.offset, current);
+            } catch (_) {
+                moved = null;
+            }
+            if (!moved) {
+                fail(
+                    "rejected",
+                    "Relative seek is unavailable for this decoder or its current timeline."
+                );
+                return;
+            }
+            reply({
+                clamped: moved.clamped,
+                dispatched: true,
+                from: moved.from,
+                offset: params.offset,
+                operation: operation,
+                position: moved.position,
+            });
+            return;
+        }
         var relative = operation === localMessage6;
         if (
             operation === localMessage4 ||
@@ -979,14 +1086,33 @@ export function executeRemoteControl(
                 );
                 return;
             }
+            var withinDeadline = function (): boolean {
+                return (
+                    expiresAt === undefined ||
+                    (typeof expiresAt === "number" &&
+                        isFinite(expiresAt) &&
+                        Date.now() / 1000 < expiresAt)
+                );
+            };
             if (
+                !withinDeadline() ||
                 !selected.current() ||
                 selected.play.call(
                     w,
                     selected.category,
                     selected.index,
                     true,
-                    selected.current
+                    selected.current,
+                    undefined,
+                    false,
+                    false,
+                    undefined,
+                    function (loadingOwner?: any, committed = true) {
+                        return (
+                            withinDeadline() &&
+                            selected.postSelection(loadingOwner, committed)
+                        );
+                    }
                 ) !== true
             ) {
                 fail(

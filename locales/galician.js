@@ -179,6 +179,7 @@ var keyStrings = {
         "Comprobando a conexión co servidor Plex…",
     "Choose a folder in the browser window":
         "Escolle un cartafol na xanela do navegador",
+    "Choose a profile": "Escoller un perfil",
     "Choose files in the browser window":
         "Escolle ficheiros na xanela do navegador",
     "Choose from": "Escoller entre",
@@ -1023,6 +1024,8 @@ var keyStrings = {
     "Sleep timer": "Temporizador de apagado",
     "Sort channels": "Ordenar canles",
     "Source access": "Acceso ás fontes",
+    "Source is busy. Try again later.":
+        "A fonte está ocupada. Téntao de novo máis tarde.",
     "Source sign-in required": "Cómpre iniciar sesión na fonte",
     "Source sign-in was cancelled": "Cancelouse o inicio de sesión na fonte",
     "Stalker Portal Provider": "Provedor do portal Stalker",
@@ -1077,6 +1080,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "O ID do dispositivo no enderezo non é válido.",
     "The discovery response is invalid.": "A resposta da busca non é válida.",
+    "The stream connection failed": "Fallou a conexión coa transmisión",
+    "The stream format could not be played":
+        "Non se puido reproducir o formato da transmisión",
     "This browser cannot identify the selected screenshot source.":
         "Este navegador non pode identificar a fonte da captura de pantalla seleccionada.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1089,6 +1095,8 @@ var keyStrings = {
         "Esta aplicación Play require HTTPS. Pídelle ao provedor unha lista ou un URL de servidor HTTPS.",
     "This pairing link has expired. Open a new session on your TV.":
         "Esta ligazón de vinculación caducou. Abre unha nova sesión na túa televisión.",
+    "This protected stream could not be played":
+        "Non se puido reproducir esta transmisión protexida",
     "This remote command is not supported by the player.":
         "O reprodutor non admite esta orde remota.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1132,6 +1140,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Configuración de ULTIFL1X",
     "Unable to load playlist": "Non se pode cargar a lista de reprodución",
+    Unavailable: "Non dispoñible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquea a configuración do reprodutor antes de cambiar a súa lista de reprodución.",
     Untitled: "Sen título",

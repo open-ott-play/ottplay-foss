@@ -166,6 +166,13 @@ function fixture(name, play) {
     fs.mkdirSync(folder);
     write(folder, "index.html", read("index.html"));
     write(folder, "dist/player.js", app);
+    write(
+        folder,
+        "dist/shaka-tracks.js",
+        ts.transpileModule(read("src/core/shaka-tracks.ts"), {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText
+    );
     for (const top of ["js", "fonts"]) {
         for (const file of walk(path.join(root, top)))
             write(folder, path.relative(root, file), fs.readFileSync(file));
@@ -316,7 +323,7 @@ function browser(folder, platform) {
         w.eval(fs.readFileSync(path.join(folder, "dist/player.js"), "utf8"));
     w.loadJS = (url, done) => {
         assert(
-            url.startsWith("/js/"),
+            url.startsWith("/js/") || url === "/dist/shaka-tracks.js?fixture",
             "Native boot requested a non-local dependency: " + url
         );
         loaded.push(url);
@@ -396,6 +403,7 @@ function browser(folder, platform) {
             "/js/jquery.min.js",
             "/js/hls.min.js?v=" + w.__ottMediaRuntimeVersion,
             "/js/shaka-player.compiled.js",
+            "/dist/shaka-tracks.js?fixture",
         ],
         "Both demanded libraries retain their reviewed local native paths"
     );

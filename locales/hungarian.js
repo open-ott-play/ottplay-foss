@@ -172,6 +172,7 @@ var keyStrings = {
         "A Plex szerverkapcsolat ellenőrzése…",
     "Choose a folder in the browser window":
         "Válasszon mappát a böngészőablakban",
+    "Choose a profile": "Profil kiválasztása",
     "Choose files in the browser window":
         "Válasszon fájlokat a böngészőablakban",
     "Choose from": "Választás innen",
@@ -1012,6 +1013,8 @@ var keyStrings = {
     "Sleep timer": "Elalvásidőzítő",
     "Sort channels": "Csatornák rendezése",
     "Source access": "Hozzáférés a médiaforráshoz",
+    "Source is busy. Try again later.":
+        "A forrás foglalt. Próbáld újra később.",
     "Source sign-in required": "Forrás bejelentkezés szükséges",
     "Source sign-in was cancelled": "A forrásba való bejelentkezés megszakítva",
     "Stalker Portal Provider": "Stalker portálszolgáltató",
@@ -1067,6 +1070,9 @@ var keyStrings = {
         "A címben szereplő eszközazonosító érvénytelen.",
     "The discovery response is invalid.":
         "A keresésre kapott válasz érvénytelen.",
+    "The stream connection failed": "Nem sikerült kapcsolódni a streamhez",
+    "The stream format could not be played":
+        "A stream formátuma nem játszható le",
     "This browser cannot identify the selected screenshot source.":
         "Ez a böngésző nem tudja azonosítani a kiválasztott képernyőkép forrását.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1079,6 +1085,8 @@ var keyStrings = {
         "Ez a Play-alkalmazás HTTPS-t igényel. Kérjen a szolgáltatótól HTTPS-lejátszási listát vagy kiszolgáló-URL-t.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ez a párosítási hivatkozás lejárt. Nyisson meg egy új munkamenetet a tévén.",
+    "This protected stream could not be played":
+        "Ez a védett stream nem játszható le",
     "This remote command is not supported by the player.":
         "A lejátszó nem támogatja ezt a távoli parancsot.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1122,6 +1130,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X beállításai",
     "Unable to load playlist": "Nem sikerült betölteni a lejátszási listát",
+    Unavailable: "Nem érhető el",
     "Unlock the player's settings before changing its playlist.":
         "A lejátszási lista módosítása előtt oldja fel a lejátszó beállításainak zárolását.",
     Untitled: "Névtelen",

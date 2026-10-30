@@ -173,6 +173,7 @@ var keyStrings = {
         "Inakagua Plex muunganisho wa seva...",
     "Choose a folder in the browser window":
         "Chagua folda katika dirisha la kivinjari",
+    "Choose a profile": "Chagua wasifu",
     "Choose files in the browser window":
         "Chagua faili katika dirisha la kivinjari",
     "Choose from": "Chagua kutoka",
@@ -1011,6 +1012,8 @@ var keyStrings = {
     "Sleep timer": "Kipima muda cha usingizi",
     "Sort channels": "Panga vituo",
     "Source access": "Ufikiaji wa chanzo",
+    "Source is busy. Try again later.":
+        "Chanzo kinatumika. Jaribu tena baadaye.",
     "Source sign-in required": "Kuingia kwa chanzo kunahitajika",
     "Source sign-in was cancelled": "Kuingia kwa chanzo kumeghairiwa",
     "Stalker Portal Provider": "Mtoa huduma wa tovuti ya Stalker",
@@ -1065,6 +1068,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Kifaa ID katika anwani ni batili.",
     "The discovery response is invalid.": "Jibu la ugunduzi ni batili.",
+    "The stream connection failed": "Muunganisho wa mtiririko umeshindwa",
+    "The stream format could not be played":
+        "Mtiririko haukuweza kuchezwa katika umbizo hili",
     "This browser cannot identify the selected screenshot source.":
         "Kivinjari hiki hakiwezi kutambua chanzo kilichochaguliwa cha picha ya skrini.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1077,6 +1083,8 @@ var keyStrings = {
         "Programu hii ya Google Play inahitaji HTTPS. Uliza mtoa huduma wako HTTPS orodha ya kucheza au seva URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Kiungo hiki cha kuoanisha kimeisha muda wake. Fungua kipindi kipya kwenye TV yako.",
+    "This protected stream could not be played":
+        "Mtiririko huu uliolindwa haukuweza kuchezwa",
     "This remote command is not supported by the player.":
         "Kichezaji hakitumii amri hii ya udhibiti wa mbali.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1121,6 +1129,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X mipangilio",
     "Unable to load playlist": "Imeshindwa kupakia orodha ya kucheza",
+    Unavailable: "Haipatikani",
     "Unlock the player's settings before changing its playlist.":
         "Fungua kufuli ya mipangilio ya kichezaji kabla ya kubadilisha orodha yake ya kucheza.",
     Untitled: "Bila kichwa",

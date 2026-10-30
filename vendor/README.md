@@ -150,6 +150,12 @@ covered by [RUSTSEC-2026-0367](https://rustsec.org/advisories/RUSTSEC-2026-0367.
 [RUSTSEC-2026-0368](https://rustsec.org/advisories/RUSTSEC-2026-0368.html) and
 [RUSTSEC-2026-0369](https://rustsec.org/advisories/RUSTSEC-2026-0369.html); all list
 9.0.0 as patched. These advisories concern Unix permission and symlink handling.
+The application lock and standalone compatibility workspace now resolve ZIP
+9.1.3, replacing 9.0.0 for the later
+[GHSA-m665-v7pm-7grj](https://github.com/advisories/GHSA-m665-v7pm-7grj)
+advisory. The regression manifest pins `=9.1.3`; the provenance checker requires
+the same version and published crate checksum in both locks. This update does
+not modify the vendored updater source or its two reviewed patches.
 Their presence in an optional lock graph does not establish that the Windows
 application can exercise those paths. Windows ZIP updates remain disabled;
 raw MSI/NSIS updates and non-Windows archive support are unchanged.

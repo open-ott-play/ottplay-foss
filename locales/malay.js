@@ -172,6 +172,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Menyemak sambungan pelayan Plex…",
     "Choose a folder in the browser window":
         "Pilih folder dalam tetingkap pelayar",
+    "Choose a profile": "Pilih profil",
     "Choose files in the browser window": "Pilih fail dalam tetingkap pelayar",
     "Choose from": "Pilih daripada",
     "Choose language": "Pilih bahasa",
@@ -994,6 +995,8 @@ var keyStrings = {
     "Sleep timer": "Pemasa tidur",
     "Sort channels": "Isih saluran",
     "Source access": "Akses kepada sumber media",
+    "Source is busy. Try again later.":
+        "Sumber sedang sibuk. Cuba lagi kemudian.",
     "Source sign-in required": "Log masuk sumber diperlukan",
     "Source sign-in was cancelled": "Log masuk ke sumber dibatalkan",
     "Stalker Portal Provider": "Penyedia portal Stalker",
@@ -1048,6 +1051,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID peranti dalam alamat tidak sah.",
     "The discovery response is invalid.": "Respons carian tidak sah.",
+    "The stream connection failed": "Sambungan ke strim gagal",
+    "The stream format could not be played":
+        "Format strim tidak dapat dimainkan",
     "This browser cannot identify the selected screenshot source.":
         "Penyemak imbas ini tidak dapat mengenal pasti sumber tangkapan skrin yang dipilih.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1060,6 +1066,8 @@ var keyStrings = {
         "Aplikasi Play ini memerlukan HTTPS. Minta URL senarai main atau pelayan HTTPS daripada penyedia anda.",
     "This pairing link has expired. Open a new session on your TV.":
         "Pautan berpasangan ini telah tamat tempoh. Buka sesi baharu pada TV anda.",
+    "This protected stream could not be played":
+        "Strim terlindung ini tidak dapat dimainkan",
     "This remote command is not supported by the player.":
         "Arahan kawalan jauh ini tidak disokong oleh pemain media.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1103,6 +1111,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Tetapan ULTIFL1X",
     "Unable to load playlist": "Tidak dapat memuatkan senarai main",
+    Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci tetapan pemain media sebelum menukar senarai mainnya.",
     Untitled: "Tanpa tajuk",

@@ -165,6 +165,7 @@ var keyStrings = {
     "Checking folder permission": "ဖိုင်တွဲအသုံးပြုခွင့်ကို စစ်ဆေးနေသည်",
     "Checking the Plex server connection…": "Plex ဆာဗာချိတ်ဆက်မှုကို စစ်ဆေးနေသည်...",
     "Choose a folder in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်တွဲတစ်ခု ရွေးပါ",
+    "Choose a profile": "ပရိုဖိုင်ကို ရွေးပါ။",
     "Choose files in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်များ ရွေးပါ",
     "Choose from": "ရွေးချယ်ပါ။",
     "Choose language": "ဘာသာစကားကို ရွေးပါ။",
@@ -979,6 +980,7 @@ var keyStrings = {
     "Sleep timer": "အိပ်စက်ချိန်တိုင်းစက်",
     "Sort channels": "ချန်နယ်များကို စီပါ။",
     "Source access": "ရင်းမြစ်ဝင်ရောက်ခွင့်",
+    "Source is busy. Try again later.": "ရင်းမြစ် မအားလပ်ပါ။ နောက်မှ ထပ်ကြိုးစားပါ။",
     "Source sign-in required": "ရင်းမြစ် လက်မှတ်ထိုးဝင်ရန် လိုအပ်သည်။",
     "Source sign-in was cancelled": "ရင်းမြစ် လက်မှတ်ထိုးဝင်ခြင်းကို ပယ်ဖျက်လိုက်ပါပြီ။",
     "Stalker Portal Provider": "Stalker ပေါ်တယ်ဝန်ဆောင်မှုပေးသူ",
@@ -1030,6 +1032,8 @@ var keyStrings = {
         "အမိန့်ဆာဗာ ရှာဖွေတွေ့ရှိမှု URL သည် မမှန်ကန်ပါ။",
     "The device ID in the address is invalid.": "လိပ်စာရှိ စက် ID သည် မမှန်ကန်ပါ။",
     "The discovery response is invalid.": "ရှာဖွေတွေ့ရှိမှု တုံ့ပြန်မှုသည် မမှန်ကန်ပါ။",
+    "The stream connection failed": "ထုတ်လွှင့်မှုသို့ ချိတ်ဆက်မှု မအောင်မြင်ပါ",
+    "The stream format could not be played": "ထုတ်လွှင့်မှု၏ ဖော်မတ်ကို ဖွင့်မရပါ",
     "This browser cannot identify the selected screenshot source.":
         "ဤဘရောက်ဆာသည် ရွေးချယ်ထားသော ဖန်သားပြင်ဓာတ်ပုံရင်းမြစ်ကို မခွဲခြားနိုင်ပါ။",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1042,6 +1046,7 @@ var keyStrings = {
         "ဤ Play အက်ပ်သည် HTTPS လိုအပ်သည်။ HTTPS အစီအစဉ် သို့မဟုတ် ဆာဗာ URL အတွက် သင့်ဝန်ဆောင်မှုပေးသူကို တောင်းဆိုပါ။",
     "This pairing link has expired. Open a new session on your TV.":
         "ဤတွဲချိတ်လင့်ခ်သည် သက်တမ်းကုန်သွားပါပြီ။ သင့် TV တွင် စက်ရှင်အသစ်တစ်ခုဖွင့်ပါ။",
+    "This protected stream could not be played": "ဤကာကွယ်ထားသော ထုတ်လွှင့်မှုကို ဖွင့်မရပါ",
     "This remote command is not supported by the player.":
         "ဤအဝေးထိန်းအမိန့်ကို ပလေယာက မပံ့ပိုးပါ။",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1082,6 +1087,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ဆက်တင်များ",
     "Unable to load playlist": "အစီအစဉ်ကို ဖွင့်၍မရပါ။",
+    Unavailable: "မရရှိနိုင်ပါ",
     "Unlock the player's settings before changing its playlist.":
         "ဖွင့်စာရင်းကို မပြောင်းမီ ပလေယာဆက်တင်များ၏ လော့ခ်ကို ဖွင့်ပါ။",
     Untitled: "ခေါင်းစဉ်မဲ့",

@@ -21,6 +21,11 @@ const moduleContext = {
     Date: { now: () => clock },
     exports: {},
     require(name) {
+        if (name === "./player-state")
+            return require("./helpers/player-presence.cjs").load(
+                "src/plugins/player-state.ts",
+                { Date: { now: () => clock } }
+            );
         if (name === "./remote-notifications")
             return require("./helpers/remote-notifications.cjs")({
                 Date: { now: () => clock },
@@ -1516,6 +1521,7 @@ const plexCode = ts.transpileModule(
 acorn.parse(plexCode, { ecmaVersion: 5 });
 vm.runInNewContext(plexCode, plexContext);
 const restartContext = {
+    Date: moduleContext.Date,
     exports: {},
     require(name) {
         if (name === "./remote-favorites-contract") {
@@ -1717,6 +1723,76 @@ for (const action of ["lifecycle", "input", "aspect"]) {
 console.log(
     "PASS actual lifecycle/input/aspect transport: lost ACK, byte-identical retry, single dispatch, duplicate replay, disable, expiry and local policy changes"
 );
+
+{
+    let seeks = 0,
+        position = 100;
+    const play = () => {};
+    const handle = {
+        active: () => true,
+        canSeekRelative: () => true,
+        seekRelative(offset, admitted) {
+            if (!admitted()) return null;
+            const from = position;
+            position += offset;
+            seeks++;
+            return { clamped: false, from, position };
+        },
+        snapshot: () => ({ phase: "playing" }),
+    };
+    const backend = { current: () => handle };
+    const w = {
+        __ottClassicPlayback: { snapshot: () => ({ target: { kind: "vod" } }) },
+        __ottCoreBackend: () => backend,
+        __ottCoreBackendPeek: () => backend,
+        __ottCoreTransport: { play },
+        stbPlay: play,
+    };
+    const rpc = harness("http:", (request, done, afterReply) =>
+        restartContext.exports.executeRemoteControl(
+            w,
+            request.action,
+            request.params,
+            done,
+            afterReply,
+            request.expires_at
+        )
+    );
+    const envelope = {
+        commands: [],
+        requests: [
+            {
+                action: "playback",
+                expires_at: 5030,
+                id: "e".repeat(32),
+                params: { offset: 15, operation: "seek_relative" },
+            },
+        ],
+        server_time: 5000,
+    };
+    rpc.connect();
+    rpc.respond(envelope);
+    rpc.next();
+    const body = rpc.requests.at(-1).request.body;
+    assert.equal(JSON.parse(body).data.position, 115);
+    assert.equal(seeks, 1);
+    rpc.respond({}, 0); // Lost ACK: retry the receipt, never the relative operation.
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    rpc.respond(envelope);
+    rpc.next();
+    assert.equal(rpc.requests.at(-1).request.body, body);
+    assert.equal(seeks, 1);
+    assert.equal(position, 115);
+    rpc.respond({ status: "ok" });
+    rpc.next();
+    envelope.requests[0].id = "d".repeat(32);
+    envelope.requests[0].expires_at = 4999;
+    rpc.respond(envelope);
+    assert.equal(seeks, 1, "expired new request cannot move decoder");
+}
 
 // Settings writes share the same exact-response replay protection as playback.
 for (const action of [

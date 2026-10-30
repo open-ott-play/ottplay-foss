@@ -179,9 +179,28 @@ for (const provider of ["m3u", "vportal"]) {
         );
         if (provider === "m3u") {
             expect(portalRequests).toHaveLength(0);
+            // The saved portal client is lazy and remains owned by this M3U slot.
             expect(
-                await page.evaluate(() => window.providerMediaClient)
-            ).toBeFalsy();
+                await page.evaluate(() => {
+                    const client = window.providerMediaClient,
+                        embedded = window.__ottEmbeddedVPortal,
+                        driver = window.__ottActiveProviderDriver;
+                    return {
+                        active: driver.configuration().active,
+                        current: !!embedded && embedded.current(),
+                        loaderMatches:
+                            !!client && window.getMediaArray === client.load,
+                        provider: driver.id,
+                        sameClient: !!embedded && embedded.client === client,
+                    };
+                })
+            ).toEqual({
+                active: 0,
+                current: true,
+                loaderMatches: true,
+                provider: "m3u",
+                sameClient: true,
+            });
             expect(
                 await page.evaluate(
                     () =>

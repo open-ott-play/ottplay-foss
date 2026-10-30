@@ -305,6 +305,8 @@ test(
 );
 
 test("inactive TV patch preserves other slots and legacy data without loading media", (f) => {
+    const client = f.host.providerMediaClient;
+    assert.ok(client, "active configured portal client exists before the edit");
     const before = clone(f.driver.configuration());
     const result = f.invoke("profile_settings", {
         number: 15,
@@ -327,7 +329,8 @@ test("inactive TV patch preserves other slots and legacy data without loading me
     assert.equal(after.M3Us[14].rechours, 8760);
     assert.equal(f.writes(), 1);
     assert.equal(f.reloads, 0);
-    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.host.providerMediaClient, client);
+    assert.equal(f.host.getMediaArray, client.load);
     assert.equal(f.requests.length, 0);
 });
 
@@ -362,6 +365,8 @@ test("active name update does not reload or rotate source and identical patches 
 });
 
 test("active playlist/archive patch reloads once without starting retired media", (f) => {
+    const client = f.host.providerMediaClient;
+    assert.ok(client, "active configured portal client exists before the edit");
     const before = clone(f.driver.configuration());
     const result = f.invoke("profile_settings", {
         number: 1,
@@ -375,7 +380,8 @@ test("active playlist/archive patch reloads once without starting retired media"
     assert.equal(result.data.reloaded, true);
     assert.equal(f.reloads, 1);
     assert.equal(f.writes(), 1);
-    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.host.providerMediaClient, client);
+    assert.equal(f.host.getMediaArray, client.load);
     assert.equal(f.requests.length, 0);
     assert.equal(
         f.driver.configuration().M3Us[0].medUrl,
@@ -388,18 +394,23 @@ test("active playlist/archive patch reloads once without starting retired media"
 });
 
 test("M3U rejects retired VPortal edits atomically, including clearing the link", (f) => {
+    const client = f.host.providerMediaClient;
+    assert.ok(client, "active configured portal client exists before the edit");
     for (const vportal of [portal, ""]) {
         unchangedRejection(f, "profile_settings", {
             number: 1,
             settings: { name: "Must not save", vportal },
         });
     }
-    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.host.providerMediaClient, client);
+    assert.equal(f.host.getMediaArray, client.load);
 });
 
 test(
     "legacy VPortal links do not block TV selection or create identities",
     (f) => {
+        const previous = f.host.__ottEmbeddedVPortal;
+        assert.ok(previous && previous.current());
         const before = clone(f.driver.configuration());
         const checked = [];
         f.host.checkProviderUrl = (url) => {
@@ -417,7 +428,14 @@ test(
         assert.deepEqual(after.M3Us, before.M3Us);
         assert.equal(after.M3Us[14].medSourceId, undefined);
         assert.deepEqual(checked, [before.M3Us[14].www]);
-        assert.equal(f.host.providerMediaClient, null);
+        assert.notEqual(f.host.providerMediaClient, previous.client);
+        assert.equal(
+            previous.current(),
+            false,
+            "retired profile loses media ownership"
+        );
+        assert.equal(f.host.__ottEmbeddedVPortal.current(), true);
+        assert.equal(f.host.getMediaArray, f.host.providerMediaClient.load);
         assert.equal(f.requests.length, 0);
     },
     {
@@ -446,6 +464,8 @@ test("standalone VPortal profile operations still delegate to its driver", (f) =
 });
 
 test("clearing fields is allowed but empty playlist slots cannot be selected", (f) => {
+    const client = f.host.providerMediaClient;
+    assert.ok(client, "active configured portal client exists before the edit");
     const result = f.invoke("profile_settings", {
         number: 1,
         settings: { history_hours: 0, name: "", playlist: "" },
@@ -454,7 +474,8 @@ test("clearing fields is allowed but empty playlist slots cannot be selected", (
     assert.equal(result.data.profile.playlist_configured, false);
     assert.equal("vportal_configured" in result.data.profile, false);
     assert.equal(f.reloads, 1);
-    assert.equal(f.host.providerMediaClient, null);
+    assert.equal(f.host.providerMediaClient, client);
+    assert.equal(f.host.getMediaArray, client.load);
     unchangedRejection(f, "profile", { number: 1 });
 });
 

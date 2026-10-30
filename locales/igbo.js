@@ -169,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Ana elele njikọ sava Plex…",
     "Choose a folder in the browser window":
         "Họrọ folda na windo ihe nchọgharị",
+    "Choose a profile": "Họrọ profaịlụ",
     "Choose files in the browser window": "Họrọ faịlụ na windo ihe nchọgharị",
     "Choose from": "Họrọ n'ime",
     "Choose language": "Họrọ asụsụ",
@@ -986,6 +987,8 @@ var keyStrings = {
     "Sleep timer": "Oge ngụkọta ụra",
     "Sort channels": "Hazie ọwa",
     "Source access": "Nnweta isi iyi",
+    "Source is busy. Try again later.":
+        "Isi mmalite na-arụ ọrụ ugbu a. Nwaa ọzọ ma emechaa.",
     "Source sign-in required": "Achọrọ nbanye isi iyi",
     "Source sign-in was cancelled": "Akagbuola nbanye isi iyi",
     "Stalker Portal Provider": "Onye na-eweta ọrụ ọdụ Stalker",
@@ -1040,6 +1043,8 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "ID ngwaọrụ n'adreesị ezighi ezi.",
     "The discovery response is invalid.": "Nzaghachi ọchụchọ ezighi ezi.",
+    "The stream connection failed": "Njikọ na iyi ahụ agaghị nke ọma",
+    "The stream format could not be played": "Enweghị ike ịkpọ usoro iyi a",
     "This browser cannot identify the selected screenshot source.":
         "Nchọgharị a enweghị ike ịmata ebe nseta ihuenyo ahọpụtara.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1052,6 +1057,8 @@ var keyStrings = {
         "Ngwa Play a chọrọ HTTPS. Rịọ onye na-eweta ọrụ maka ndepụta ọkpụkpọ HTTPS ma ọ bụ URL sava.",
     "This pairing link has expired. Open a new session on your TV.":
         "Njikọ njikọ a kubiela. Mepee nnọkọ ọhụrụ na TV gị.",
+    "This protected stream could not be played":
+        "Enweghị ike ịkpọ iyi a echedoro",
     "This remote command is not supported by the player.":
         "Ihe ọkpụkpọ anaghị akwado iwu njikwa dị anya a.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1095,6 +1102,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Ntọala ULTIFL1X",
     "Unable to load playlist": "Enweghị ike ibugo ndepụta ọkpụkpọ",
+    Unavailable: "Adịghị",
     "Unlock the player's settings before changing its playlist.":
         "Mepee mkpọchi ntọala ihe ọkpụkpọ tupu ịgbanwe ndepụta ọkpụkpọ ya.",
     Untitled: "Enweghị aha",

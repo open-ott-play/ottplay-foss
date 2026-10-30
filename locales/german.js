@@ -175,6 +175,7 @@ var keyStrings = {
         "Überprüfen der Plex-Serververbindung…",
     "Choose a folder in the browser window":
         "Wählen Sie einen Ordner im Browserfenster",
+    "Choose a profile": "Profil wählen",
     "Choose files in the browser window":
         "Wählen Sie Dateien im Browserfenster",
     "Choose from": "Auswählen aus",
@@ -1019,6 +1020,8 @@ var keyStrings = {
     "Sleep timer": "Ausschalttimer",
     "Sort channels": "Sender sortieren",
     "Source access": "Zugriff auf die Medienquelle",
+    "Source is busy. Try again later.":
+        "Die Quelle ist ausgelastet. Versuche es später erneut.",
     "Source sign-in required": "Anmeldung an der Quelle erforderlich",
     "Source sign-in was cancelled": "Anmeldung bei der Quelle abgebrochen",
     "Stalker Portal Provider": "Stalker-Portal-Anbieter",
@@ -1075,6 +1078,10 @@ var keyStrings = {
         "Die Geräte-ID in der Adresse ist ungültig.",
     "The discovery response is invalid.":
         "Die Antwort auf die Suchanfrage ist ungültig.",
+    "The stream connection failed":
+        "Die Verbindung zum Stream ist fehlgeschlagen",
+    "The stream format could not be played":
+        "Das Streamformat konnte nicht wiedergegeben werden",
     "This browser cannot identify the selected screenshot source.":
         "Dieser Browser kann die ausgewählte Screenshot-Quelle nicht identifizieren.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1087,6 +1094,8 @@ var keyStrings = {
         "Diese Play-App erfordert HTTPS. Fragen Sie Ihren Anbieter nach einer HTTPS-Wiedergabeliste oder Server-URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Dieser Kopplungslink ist abgelaufen. Öffnen Sie eine neue Sitzung auf Ihrem Fernseher.",
+    "This protected stream could not be played":
+        "Dieser geschützte Stream konnte nicht wiedergegeben werden",
     "This remote command is not supported by the player.":
         "Der Player unterstützt diesen Fernsteuerungsbefehl nicht.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1129,6 +1138,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "Einstellungen für ULTIFL1X",
     "Unable to load playlist": "Wiedergabeliste konnte nicht geladen werden",
+    Unavailable: "Nicht verfügbar",
     "Unlock the player's settings before changing its playlist.":
         "Entsperren Sie die Player-Einstellungen, bevor Sie die Wiedergabeliste ändern.",
     Untitled: "Ohne Titel",

@@ -103,6 +103,7 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
             stopped++;
             client.cancel();
         },
+        URL,
         ...overrides,
     };
     w.$ = (selector) => {
@@ -155,7 +156,7 @@ function fixture(overrides = {}, options = {}, hooks = {}) {
         ? compiled.replace(/\b67108864\b/g, String(hooks.catalogMetadataBudget))
         : compiled;
     vm.runInNewContext(fixtureCode, context);
-    client = context.exports.createVPortalClient(link, {
+    client = context.exports.createVPortalClient(hooks.link || link, {
         isCurrent: () => active,
         title: "Fixture Library",
         ...options,
@@ -1196,6 +1197,102 @@ for (const trigger of ["#dialogbox", "#numprog"]) {
     assert.equal(JSON.parse(native.requests[0].options.data).params, undefined);
 }
 
+// Foreground and quiet pagination preserve inherited folder metadata without
+// changing whole-catalog collection or its retained metadata budget.
+for (const mode of ["load", "page"]) {
+    const f = fixture({}, { sourceId: "paged-source" });
+    const synopsis = "Inherited full synopsis ".repeat(20) + "END-PARENT";
+    f.client.load("", () => {});
+    f.requests.at(-1).receive({
+        items: [
+            {
+                adult: 1,
+                description: synopsis,
+                img: "../posters/series.jpg",
+                request: { cmd: "episodes", id: 7 },
+                title: "Series",
+                type: "multistream",
+                year: "2026",
+            },
+        ],
+        type: "videoportal",
+    });
+    const folder = f.w.mediaRecords[0].playlist_url;
+    const originalFolder = JSON.stringify(folder);
+    f.client.load(folder, () => {});
+    f.requests.at(-1).receive({
+        items: [
+            { request: { cmd: "play", id: 1 }, title: "First", type: "stream" },
+            { request: { offset: 300 }, type: "next" },
+        ],
+        type: "category",
+    });
+    const first = f.w.mediaRecords[0];
+    assert.equal(first.title, "Series - First");
+    assert(first.description.endsWith("END-PARENT"));
+    assert(first.description.includes("2026"));
+    assert.equal(first.adult, 1);
+    assert.equal(
+        first.logo_30x30,
+        "http://portal.example/api/posters/series.jpg"
+    );
+    const cursor = f.w.mediaRecords[1].playlist_url;
+    assert.equal(cursor.request.cmd, "episodes");
+    assert.equal(cursor.request.id, 7);
+    assert.equal(cursor.request.offset, 300);
+    assert.equal(cursor.vportalSource, "paged-source");
+    const visibleBefore = JSON.stringify(f.w.mediaRecords);
+    let next;
+    if (mode === "page")
+        f.client.page(cursor, (value) => {
+            next = value.items;
+        });
+    else
+        f.client.load(cursor, () => {
+            next = f.w.mediaRecords;
+        });
+    const request = f.requests.at(-1);
+    assert.equal(JSON.parse(request.options.data).params.offset, 300);
+    request.receive({
+        items: [
+            {
+                request: { cmd: "play", id: 2 },
+                title: "Second",
+                type: "stream",
+            },
+            {
+                description: "Own synopsis",
+                img: "/own.jpg",
+                request: { cmd: "play", id: 3 },
+                title: "Own",
+                type: "stream",
+            },
+        ],
+        type: "category",
+    });
+    assert.equal(next[0].title, "Series - Second");
+    assert(next[0].description.endsWith("END-PARENT"));
+    assert.equal(next[0].adult, 1);
+    assert.equal(next[0].logo_30x30, first.logo_30x30);
+    assert(next[1].description.endsWith("Own synopsis"));
+    assert(!next[1].description.includes("END-PARENT"));
+    assert.equal(next[1].logo_30x30, "http://portal.example/own.jpg");
+    assert.equal(
+        JSON.stringify(folder),
+        originalFolder,
+        "inherited input is immutable"
+    );
+    if (mode === "page")
+        assert.equal(
+            JSON.stringify(f.w.mediaRecords),
+            visibleBefore,
+            "quiet paging does not replace the foreground"
+        );
+}
+console.log(
+    "PASS VPortal folder metadata survives foreground and quiet pagination"
+);
+
 // Incremental pages own a quiet transport lane, including while complete
 // search collection and automatic playback are active.
 {
@@ -2060,7 +2157,10 @@ require("./test_vportal_search.cjs");
         JSON.stringify(result.items[0].request),
         JSON.stringify(request)
     );
-    assert(Buffer.byteLength(result.items[0].description, "utf8") <= 128);
+    assert(
+        result.items[0].description.includes("😀long description ".repeat(1000))
+    );
+    assert.equal(result.items[0].__ottMediaDescription, undefined);
     assert(!/[\uD800-\uDBFF]$/.test(result.items[0].description));
     const diagnostic = f.client.scanDiagnostics();
     assert(diagnostic.retainedBytes > 0);
@@ -2304,14 +2404,20 @@ console.log(
         });
         assert.equal(result.error, undefined);
         assert.equal(result.complete, true);
-        const preview = result.items[0].description;
-        assert(Buffer.byteLength(preview, "utf8") <= 128);
-        assert(!/[<>]/.test(preview), "preview must never expose an HTML tag");
-        assert(
-            !/[\uD800-\uDFFF]/u.test(preview),
-            "preview must not retain unpaired surrogates"
+        const full = result.items[0].description;
+        const escaped = description.replace(
+            /[&<>"']/g,
+            (c) =>
+                ({
+                    "'": "&#39;",
+                    '"': "&quot;",
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                })[c]
         );
-        assert(!/&[^;]*$/.test(preview), "preview must not cut an entity");
+        assert.equal(full, "<b>Film</b><br>" + escaped);
+        assert.equal(result.items[0].__ottMediaDescription, undefined);
         assert.equal(result.items[0].title, "Film");
         assert.deepEqual(
             JSON.parse(JSON.stringify(result.items[0].request)),
@@ -2320,7 +2426,7 @@ console.log(
     }
 }
 console.log(
-    "PASS VPortal safe UTF8 description previews preserve request identity"
+    "PASS VPortal full escaped Unicode descriptions preserve request identity and bounds"
 );
 
 {
@@ -2544,6 +2650,7 @@ console.log(
     for (let i = 0; i < 3; i++) {
         const expected = { ...baseline.result.items[i] };
         delete expected.description;
+        delete expected.__ottMediaDescription;
         assert.equal(
             JSON.stringify(fallback.result.items[i]),
             JSON.stringify(expected)
@@ -2602,6 +2709,7 @@ console.log(
     assert.equal(fallback.result.items.length, 1);
     assert.strictEqual(fallback.result.items[0], fallback.first);
     assert.equal(fallback.first.description, undefined);
+    assert.equal(fallback.first.__ottMediaDescription, undefined);
     assert.equal(fallback.first.adult, 1);
     assert.equal(fallback.first.__ottMediaCategories.length, 3);
     assert.equal(
@@ -2656,6 +2764,7 @@ console.log(
     assert.equal(result.items.length, 1);
     assert.strictEqual(result.items[0], first);
     assert.equal(first.description, undefined);
+    assert.equal(first.__ottMediaDescription, undefined);
     assert.equal(first.title, "First");
     assert.equal(
         f.client.scanDiagnostics().retainedBytes,

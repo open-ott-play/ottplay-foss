@@ -125,6 +125,9 @@ const ctx = {
             : name === "./remote-feature" ||
                 name === "./remote-perf" ||
                 name === "./remote-favorites" ||
+                name === "./remote-favorites-global" ||
+                name === "./remote-favorites-global-items" ||
+                name === "./remote-favorites-global-recovery" ||
                 name === "./remote-favorites-transfer" ||
                 name === "./remote-favorites-contract" ||
                 name === "./random-channel"
@@ -178,6 +181,13 @@ function loadRemoteHelper(
     vm.runInContext(helper, context);
     return context.exports;
 }
+const requireRemoteDependency = ctx.require;
+ctx.require = (name) =>
+    name === "./player-state"
+        ? require("./helpers/player-presence.cjs").load(
+              "src/commands/player-state.ts"
+          )
+        : requireRemoteDependency(name);
 vm.createContext(ctx);
 sharedCore(ctx, { vendorOnly: true });
 vm.runInContext(code, ctx);
@@ -895,6 +905,17 @@ async function checkStatusDiagnostics() {
                 epg: { available: false },
                 input: { available: false },
                 version: 1,
+            },
+            playback: {
+                channel_number: null,
+                duration: null,
+                kind: "unknown",
+                media_id: null,
+                position: null,
+                provider: null,
+                state: "unknown",
+                title: null,
+                volume: 35,
             },
             player: data.player,
             provider: "xtream",

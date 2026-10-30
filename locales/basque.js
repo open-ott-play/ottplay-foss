@@ -174,6 +174,7 @@ var keyStrings = {
         "Plex zerbitzariaren konexioa egiaztatzen…",
     "Choose a folder in the browser window":
         "Aukeratu karpeta bat arakatzailearen leihoan",
+    "Choose a profile": "Aukeratu profila",
     "Choose files in the browser window":
         "Aukeratu fitxategiak arakatzailearen leihoan",
     "Choose from": "Aukeratu hauen artean",
@@ -1010,6 +1011,8 @@ var keyStrings = {
     "Sleep timer": "Itzaltzeko tenporizadorea",
     "Sort channels": "Ordenatu kanalak",
     "Source access": "Iturrietarako sarbidea",
+    "Source is busy. Try again later.":
+        "Iturria lanpetuta dago. Saiatu berriro geroago.",
     "Source sign-in required": "Iturrian saioa hasi behar da",
     "Source sign-in was cancelled":
         "Iturrian saioa hastea bertan behera utzi da",
@@ -1066,6 +1069,9 @@ var keyStrings = {
         "Helbideko gailuaren IDa baliogabea da.",
     "The discovery response is invalid.":
         "Bilaketaren erantzuna baliogabea da.",
+    "The stream connection failed": "Transmisiorako konexioak huts egin du",
+    "The stream format could not be played":
+        "Ezin izan da transmisioaren formatua erreproduzitu",
     "This browser cannot identify the selected screenshot source.":
         "Arakatzaile honek ezin du hautatutako pantaila-argazkiaren iturburua identifikatu.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1078,6 +1084,8 @@ var keyStrings = {
         "Play aplikazio honek HTTPS behar du. Eskatu hornitzaileari HTTPS erreprodukzio-zerrenda edo zerbitzariaren URLa.",
     "This pairing link has expired. Open a new session on your TV.":
         "Parekatzeko esteka hau iraungi da. Ireki saio berri bat zure telebistan.",
+    "This protected stream could not be played":
+        "Ezin izan da babestutako transmisio hau erreproduzitu",
     "This remote command is not supported by the player.":
         "Erreproduzitzaileak ez du urrutiko agindu hau onartzen.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1120,6 +1128,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ezarpenak",
     "Unable to load playlist": "Ezin da erreprodukzio-zerrenda kargatu",
+    Unavailable: "Ez dago erabilgarri",
     "Unlock the player's settings before changing its playlist.":
         "Desblokeatu erreproduzitzailearen ezarpenak erreprodukzio-zerrenda aldatu aurretik.",
     Untitled: "Izenbururik gabe",

@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "د Plex سرور پیوستون چک کول…",
     "Choose a folder in the browser window":
         "د براوزر په کړکۍ کې یوه پوښۍ غوره کړئ",
+    "Choose a profile": "پروفایل غوره کړئ",
     "Choose files in the browser window":
         "د براوزر په کړکۍ کې فایلونه غوره کړئ",
     "Choose from": "له دې څخه غوره کړئ",
@@ -992,6 +993,7 @@ var keyStrings = {
     "Sleep timer": "د خوب ټایمر",
     "Sort channels": "چینلونه ترتیب کړئ",
     "Source access": "سرچینې ته لاسرسی",
+    "Source is busy. Try again later.": "سرچینه بوخته ده. وروسته بیا هڅه وکړئ.",
     "Source sign-in required": "سرچینې ته ننوتل اړین دي",
     "Source sign-in was cancelled": "سرچینې ته ننوتل لغوه شول",
     "Stalker Portal Provider": "Stalker پورټل چمتو کوونکی",
@@ -1044,6 +1046,8 @@ var keyStrings = {
         "د قوماندې سرور د موندلو URL ناسم دی.",
     "The device ID in the address is invalid.": "په پته کې د وسیلې ID ناسم دی.",
     "The discovery response is invalid.": "د موندلو ځواب ناسم دی.",
+    "The stream connection failed": "له خپرونې سره اړیکه ټینګه نه شوه",
+    "The stream format could not be played": "په دې بڼه خپرونه پلې نه شوه",
     "This browser cannot identify the selected screenshot source.":
         "دا براوزر نشي کولی د ټاکل شوي سکرین شاټ سرچینه وپیژني.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1056,6 +1060,8 @@ var keyStrings = {
         "دا Play اپلېکېشن HTTPS ته اړتیا لري. له خپل چمتوکوونکي څخه د HTTPS پلې‌لېست یا سرور URL وغواړئ.",
     "This pairing link has expired. Open a new session on your TV.":
         "د دې جوړه کولو لینک پای ته رسیدلی. په خپل تلویزیون کې نوې ناسته پرانیزئ.",
+    "This protected stream could not be played":
+        "دا خوندي شوې خپرونه پلې نه شوه",
     "This remote command is not supported by the player.":
         "پلیر د لرې کنټرول د دې امر ملاتړ نه کوي.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1098,6 +1104,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "د ULTIFL1X ترتیبات",
     "Unable to load playlist": "پلې‌لېست بار نه شو",
+    Unavailable: "د لاسرسي وړ نه دی",
     "Unlock the player's settings before changing its playlist.":
         "د پلې لېست بدلولو مخکې د پلیر د امستنو قلف خلاص کړئ.",
     Untitled: "بې سرلیک",

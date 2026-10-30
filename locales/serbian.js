@@ -170,6 +170,7 @@ var keyStrings = {
         "Проверава се Plex веза са сервером…",
     "Choose a folder in the browser window":
         "Изаберите фасциклу у прозору прегледача",
+    "Choose a profile": "Изаберите профил",
     "Choose files in the browser window":
         "Изаберите датотеке у прозору прегледача",
     "Choose from": "Изаберите из",
@@ -1001,6 +1002,8 @@ var keyStrings = {
     "Sleep timer": "Тајмер за спавање",
     "Sort channels": "Сортирај канале",
     "Source access": "Приступ извору",
+    "Source is busy. Try again later.":
+        "Извор је заузет. Покушајте поново касније.",
     "Source sign-in required": "Потребно је пријављивање на извор",
     "Source sign-in was cancelled": "Пријава на извор је отказана",
     "Stalker Portal Provider": "Провајдер портала Stalker",
@@ -1055,6 +1058,9 @@ var keyStrings = {
     "The device ID in the address is invalid.":
         "Уређај ID у адреси је неважећи.",
     "The discovery response is invalid.": "Одговор на откривање је неважећи.",
+    "The stream connection failed": "Повезивање са стримом није успело",
+    "The stream format could not be played":
+        "Стрим у овом формату није могао да се пусти",
     "This browser cannot identify the selected screenshot source.":
         "Овај претраживач не може да идентификује изабрани извор снимка екрана.",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1067,6 +1073,8 @@ var keyStrings = {
         "Ова Плаи апликација захтева HTTPS. Затражите од свог провајдера HTTPS листу песама или сервер URL.",
     "This pairing link has expired. Open a new session on your TV.":
         "Ова веза за упаривање је истекла. Отворите нову сесију на ТВ-у.",
+    "This protected stream could not be played":
+        "Овај заштићени стрим није могао да се пусти",
     "This remote command is not supported by the player.":
         "Плејер не подржава ову даљинску команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1109,6 +1117,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X подешавања",
     "Unable to load playlist": "Није могуће учитати плејлисту",
+    Unavailable: "Није доступно",
     "Unlock the player's settings before changing its playlist.":
         "Откључајте подешавања плејера пре промене листе за репродукцију.",
     Untitled: "Без наслова",

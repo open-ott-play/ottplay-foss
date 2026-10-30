@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…":
         "Plex ਸਰਵਰ ਕਨੈਕਸ਼ਨ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
     "Choose a folder in the browser window": "ਬ੍ਰਾਊਜ਼ਰ ਵਿੰਡੋ ਵਿੱਚ ਇੱਕ ਫੋਲਡਰ ਚੁਣੋ",
+    "Choose a profile": "ਪ੍ਰੋਫਾਈਲ ਚੁਣੋ",
     "Choose files in the browser window": "ਬ੍ਰਾਊਜ਼ਰ ਵਿੰਡੋ ਵਿੱਚ ਫਾਈਲਾਂ ਚੁਣੋ",
     "Choose from": "ਵਿੱਚੋਂ ਚੁਣੋ",
     "Choose language": "ਭਾਸ਼ਾ ਚੁਣੋ",
@@ -973,6 +974,8 @@ var keyStrings = {
     "Sleep timer": "ਸਲੀਪ ਟਾਈਮਰ",
     "Sort channels": "ਚੈਨਲਾਂ ਨੂੰ ਛਾਂਟੋ",
     "Source access": "ਸਰੋਤ ਪਹੁੰਚ",
+    "Source is busy. Try again later.":
+        "ਸਰੋਤ ਰੁੱਝਿਆ ਹੋਇਆ ਹੈ। ਬਾਅਦ ਵਿੱਚ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
     "Source sign-in required": "ਸਰੋਤ ਸਾਈਨ-ਇਨ ਲੋੜੀਂਦਾ ਹੈ",
     "Source sign-in was cancelled": "ਸਰੋਤ ਸਾਈਨ-ਇਨ ਰੱਦ ਕੀਤਾ ਗਿਆ ਸੀ",
     "Stalker Portal Provider": "Stalker ਪੋਰਟਲ ਪ੍ਰਦਾਤਾ",
@@ -1022,6 +1025,9 @@ var keyStrings = {
     "The command server discovery URL is invalid.": "ਕਮਾਂਡ ਸਰਵਰ ਖੋਜ URL ਅਵੈਧ ਹੈ।",
     "The device ID in the address is invalid.": "ਪਤੇ ਵਿੱਚ ਡਿਵਾਈਸ ID ਅਵੈਧ ਹੈ।",
     "The discovery response is invalid.": "ਖੋਜ ਜਵਾਬ ਅਵੈਧ ਹੈ।",
+    "The stream connection failed": "ਸਟ੍ਰੀਮ ਨਾਲ ਕਨੈਕਸ਼ਨ ਅਸਫਲ ਰਿਹਾ",
+    "The stream format could not be played":
+        "ਇਸ ਫਾਰਮੈਟ ਵਿੱਚ ਸਟ੍ਰੀਮ ਚਲਾਈ ਨਹੀਂ ਜਾ ਸਕੀ",
     "This browser cannot identify the selected screenshot source.":
         "ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਚੁਣੇ ਗਏ ਸਕ੍ਰੀਨਸ਼ਾਟ ਸਰੋਤ ਦੀ ਪਛਾਣ ਨਹੀਂ ਕਰ ਸਕਦਾ ਹੈ।",
     "This browser cannot safely pair automatically. Update it or enter the command server settings manually.":
@@ -1034,6 +1040,8 @@ var keyStrings = {
         "ਇਸ ਪਲੇ ਐਪ ਨੂੰ HTTPS ਦੀ ਲੋੜ ਹੈ। ਆਪਣੇ ਪ੍ਰਦਾਤਾ ਨੂੰ ਇੱਕ HTTPS ਪਲੇਲਿਸਟ ਜਾਂ ਸਰਵਰ URL ਲਈ ਪੁੱਛੋ।",
     "This pairing link has expired. Open a new session on your TV.":
         "ਇਸ ਜੋੜੀ ਲਿੰਕ ਦੀ ਮਿਆਦ ਪੁੱਗ ਗਈ ਹੈ। ਆਪਣੇ ਟੀਵੀ 'ਤੇ ਇੱਕ ਨਵਾਂ ਸੈਸ਼ਨ ਖੋਲ੍ਹੋ।",
+    "This protected stream could not be played":
+        "ਇਹ ਸੁਰੱਖਿਅਤ ਸਟ੍ਰੀਮ ਚਲਾਈ ਨਹੀਂ ਜਾ ਸਕੀ",
     "This remote command is not supported by the player.":
         "ਪਲੇਅਰ ਇਸ ਰਿਮੋਟ ਕੰਟਰੋਲ ਹੁਕਮ ਦਾ ਸਮਰਥਨ ਨਹੀਂ ਕਰਦਾ।",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
@@ -1075,6 +1083,7 @@ var keyStrings = {
     ULTIFL1X: "ULTIFL1X",
     "ULTIFL1X settings": "ULTIFL1X ਸੈਟਿੰਗਾਂ",
     "Unable to load playlist": "ਪਲੇਲਿਸਟ ਲੋਡ ਕਰਨ ਵਿੱਚ ਅਸਮਰੱਥ",
+    Unavailable: "ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
     "Unlock the player's settings before changing its playlist.":
         "ਪਲੇਲਿਸਟ ਬਦਲਣ ਤੋਂ ਪਹਿਲਾਂ ਪਲੇਅਰ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਦਾ ਲੌਕ ਖੋਲ੍ਹੋ।",
     Untitled: "ਸਿਰਲੇਖ ਰਹਿਤ",

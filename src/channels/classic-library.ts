@@ -2,6 +2,7 @@
 var channelLibraryInstance: any = null;
 var channelLibraryView: any[] = [];
 var channelLibraryGeneration = 0;
+var channelLibraryBrowseTransient = false;
 var channelRemoteCatalog: any = null;
 var channelPreferenceKinds: any = {
     aAspects: "aspect",
@@ -16,19 +17,73 @@ function channelLibraryIndex(id: string): number {
     return -1;
 }
 
+function channelLibraryBrowsingIndex(host: any): number {
+    var id = channelLibraryInstance?.browsedGroup?.();
+    var index = id ? channelLibraryIndex(id) : host.catIndex;
+    return typeof index === "number" && index >= 0 && channelLibraryView[index]
+        ? index
+        : channelLibraryIndex("system:all");
+}
+
+function showChannelLibraryGroup(
+    host: any,
+    category: number,
+    index: number,
+    remember: boolean
+): void {
+    var transient = channelLibraryBrowseTransient;
+    channelLibraryBrowseTransient = !remember;
+    try {
+        host.channelsList(category, index);
+    } finally {
+        channelLibraryBrowseTransient = transient;
+    }
+}
+
 function channelLibraryPublish(host: any): void {
     if (!channelLibraryInstance || !channelLibraryInstance.active()) return;
     var previousId = host.curList && host.curList[host.primaryIndex];
     var previousGroup = channelLibraryView[host.catIndex];
-    var snapshot = channelLibraryInstance.snapshot();
+    var library = channelLibraryInstance;
+    var snapshot = library.snapshot();
     var all = { id: "system:all", label: host._("All"), members: snapshot.all };
     channelLibraryView = [all].concat(snapshot.groups);
-    if (host.sFavorites)
-        channelLibraryView.unshift({
+    {
+        // Global Favorites remains accessible independently of per-source edit mode.
+        var available: any = Object.create(null);
+        var added: any = Object.create(null);
+        var members: any[] = [];
+        function key(id: any): string | null {
+            return typeof id === "string" ||
+                (typeof id === "number" && id === id)
+                ? typeof id + ":" + String(id)
+                : null;
+        }
+        snapshot.all.forEach(function (id: any) {
+            var value = key(id);
+            if (value !== null) available[value] = true;
+        });
+        function include(id: any): void {
+            var value = key(id);
+            if (value !== null && available[value] && !added[value]) {
+                added[value] = true;
+                members.push(id);
+            }
+        }
+        (host.favoritesArray || []).forEach(include);
+        var media =
+            host.__ottMedia?.categoryMembers?.(snapshot.all, host.channels) ||
+            [];
+        media.forEach(include);
+        if (channelLibraryInstance !== library || !library.active()) return;
+        var favorites = {
             id: "system:favorites",
             label: host._("Favorites"),
-            members: host.favoritesArray,
-        });
+            members: members,
+        };
+        if (host.sFavorites === 1) channelLibraryView.unshift(favorites);
+        else channelLibraryView.push(favorites);
+    }
     var categories: Record<string, number[]> = Object.create(null);
     var labels: string[] = [];
     channelLibraryView.forEach(function (group) {
@@ -67,7 +122,7 @@ function channelLibraryPublish(host: any): void {
         ? selected.groupId
         : previousGroup && previousGroup.id;
     var category = channelLibraryIndex(wantedGroup);
-    if (category < 0) category = host.sFavorites ? 1 : 0;
+    if (category < 0) category = host.sFavorites === 1 ? 1 : 0;
     var list = categories[labels[category]] || [];
     var index = -1;
     if (selected) {
@@ -157,6 +212,7 @@ function mountChannelLibrary(host: any): void {
     channelLibraryInstance.persist();
     channelLibraryView = [];
     channelLibraryPublish(host);
+    host.listCatIndex = channelLibraryBrowsingIndex(host);
 }
 
 /** Retain the live list model so progressive data cannot replace its overlays. */
@@ -271,7 +327,7 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
     append: function (ids: any[]): void {
         appendChannelLibrary(window, ids);
     },
-    browse: function (groupId: string) {
+    browse: function (groupId: string, remember = true) {
         var host = window as any;
         var index = channelLibraryIndex(groupId);
         if (
@@ -282,7 +338,7 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
             typeof host.channelsList !== "function"
         )
             return false;
-        host.channelsList(index, 0);
+        showChannelLibraryGroup(host, index, 0, remember);
         return true;
     },
     browsingGroup: function () {
@@ -292,6 +348,9 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
                 ? host.listCatIndex
                 : host.catIndex;
         return channelLibraryView[index] && channelLibraryView[index].id;
+    },
+    browsingIndex: function () {
+        return channelLibraryBrowsingIndex(window);
     },
     capture: function (category: number) {
         var host = window as any;
@@ -413,6 +472,19 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
     refresh: function () {
         channelLibraryPublish(window as any);
     },
+    rememberCategory: function (category: number | string): boolean {
+        if (channelLibraryBrowseTransient) return false;
+        var index =
+            typeof category === "string"
+                ? channelLibraryIndex(category)
+                : category;
+        var group = channelLibraryView[index];
+        return !!(
+            group &&
+            channelLibraryInstance &&
+            channelLibraryInstance.browse(group.id)
+        );
+    },
     remoteCatalog: function () {
         return channelRemoteCatalog && channelRemoteCatalog.active()
             ? channelRemoteCatalog
@@ -423,6 +495,38 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
         channelLibraryGeneration++;
         channelLibraryInstance = null;
         channelLibraryView = [];
+    },
+    restoreBrowsing: function (): boolean {
+        var host = window as any;
+        var library = channelLibraryInstance;
+        if (
+            !library?.active() ||
+            !library.browsedGroup() ||
+            host.__ottStandby?.blocked() ||
+            host.__ottKiosk?.enabled() ||
+            typeof host.channelsList !== "function"
+        )
+            return false;
+        var port = host.__ottClassicScreenPort;
+        port?.reconcile?.();
+        if (
+            library !== channelLibraryInstance ||
+            !library.active() ||
+            port !== host.__ottClassicScreenPort ||
+            port?.screens.current()
+        )
+            return false;
+        var category = channelLibraryBrowsingIndex(host);
+        if (category < 0) return false;
+        var list = host.cats[host.catsArray[category]] || [];
+        var current = host.curList && host.curList[host.primaryIndex];
+        showChannelLibraryGroup(
+            host,
+            category,
+            Math.max(0, list.indexOf(current)),
+            false
+        );
+        return true;
     },
     select: function (category: number, id: number) {
         var group = channelLibraryView[category];

@@ -60,6 +60,21 @@ const posted = map(
     })
 );
 assert.deepEqual(JSON.parse(posted.body).body, { result: { ok: true } });
+const presence = map(
+    request(base + "/api/player-state", "POST", '{"version":1}', {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+    })
+);
+assert.equal(presence.url, base + "/api/device-transport");
+assert.equal(presence.headers.Authorization, undefined);
+assert.deepEqual(JSON.parse(presence.body), {
+    body: { version: 1 },
+    method: "POST",
+    path: "/api/player-state",
+    token,
+    version: 1,
+});
 const diagnostic = map(
     request(base + "/api/v2/diagnostics/poll", "POST", "{}", {
         Authorization: "Bearer " + token,

@@ -3716,12 +3716,82 @@ test("portrait player settings keep Save visible and persist the selected engine
     try {
         await page.setViewportSize({ height: 1230, width: 722 });
         await page.evaluate(() => {
+            (function installPortraitSettingsDiagnostics() {
+                const trace = [];
+                const identities = new WeakMap();
+                let serial = 0;
+                function id(value) {
+                    if (!value || typeof value !== "object") return null;
+                    if (!identities.has(value)) identities.set(value, ++serial);
+                    return identities.get(value);
+                }
+                window.__portraitSettingsRecord = (stage, event) => {
+                    try {
+                        const editor = window.__ottSettingsEditor;
+                        const owner =
+                            window.__ottClassicScreenPort?.listOwner();
+                        const row = window.listArray?.[window.selIndex];
+                        const target = event?.target?.closest?.(".item");
+                        trace.push({
+                            at: performance.now(),
+                            detail: event?.detail ?? null,
+                            draftPlayers: editor?.get("players") ?? null,
+                            editor: id(editor),
+                            editorActive: editor?.active() ?? null,
+                            notice: (
+                                document.getElementById("info")?.textContent ||
+                                ""
+                            ).slice(0, 512),
+                            owner: id(owner),
+                            ownerActive: owner?.active() ?? null,
+                            ownerForeground: owner?.foreground() ?? null,
+                            playerMode: window.playerMode,
+                            row: row?.settingId || null,
+                            rowValue: row?.val ?? null,
+                            savedPlayers:
+                                window.providerGetItem?.("sPlayers") ?? null,
+                            selection: window.selIndex,
+                            sPlayers: window.sPlayers,
+                            stage,
+                            target: target?.id || null,
+                        });
+                        if (trace.length > 32) trace.shift();
+                    } catch (error) {
+                        trace.push({
+                            diagnosticError: String(error).slice(0, 256),
+                            stage,
+                        });
+                        if (trace.length > 32) trace.shift();
+                    }
+                };
+                window.__portraitSettingsTrace = trace;
+                for (const type of ["click", "dblclick"]) {
+                    document.addEventListener(
+                        type,
+                        (event) => {
+                            window.__portraitSettingsRecord(
+                                type + ":capture",
+                                event
+                            );
+                            Promise.resolve().then(() =>
+                                window.__portraitSettingsRecord(
+                                    type + ":microtask",
+                                    event
+                                )
+                            );
+                        },
+                        true
+                    );
+                }
+            })();
+
             window.setFontSize();
             window.stbOptions();
             window.selIndex = window.listArray.findIndex(
                 (row) => row.settingId === "players"
             );
             window.listKeyHandlerFn(window.keys.RIGHT);
+            window.__portraitSettingsRecord("after-right");
         });
         const save = page
             .locator("#listIn .btn")
@@ -3736,14 +3806,37 @@ test("portrait player settings keep Save visible and persist the selected engine
             expect(bounds.y + bounds.height).toBeLessThanOrEqual(1230);
         }).toPass();
         expect(
-            await page
-                .locator("#list")
-                .evaluate((node) => parseFloat(getComputedStyle(node).fontSize))
+            await page.locator("#list").evaluate((node) => {
+                window.__portraitSettingsRecord("before-save");
+                return parseFloat(getComputedStyle(node).fontSize);
+            })
         ).toBeLessThanOrEqual(29);
         await save.dblclick();
-        expect(await page.evaluate(() => window.sPlayers)).toBe(1);
+        expect(
+            await page.evaluate(() => {
+                window.__portraitSettingsRecord("after-save");
+                return window.sPlayers;
+            })
+        ).toBe(1);
         expect(await page.evaluate(() => window.playerMode)).toBe(1);
         expect(fixture.errors).toEqual([]);
+    } catch (error) {
+        try {
+            const trace = await page.evaluate(() => {
+                window.__portraitSettingsRecord?.("failure");
+                return window.__portraitSettingsTrace || [];
+            });
+            await test.info().attach("portrait-settings-state", {
+                body: JSON.stringify(trace, null, 2),
+                contentType: "application/json",
+            });
+        } catch (diagnosticError) {
+            console.error(
+                "Portrait settings diagnostics unavailable:",
+                diagnosticError
+            );
+        }
+        throw error;
     } finally {
         await fixture.close();
     }
