@@ -90,6 +90,23 @@ test("M3U Local remembers a browsed Favorites category after quit and relaunch",
     await page.goto("/f/pc/");
     await ready(page);
     await ensure(page);
+    const initialPlaying = await page.evaluate(() => {
+        window.bucketsList(window.__ottChannels.index("system:favorites"));
+        return window.curList[window.primaryIndex];
+    });
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#listCaption")).toContainText("Favorites");
+    await expect(page.locator("#list .item")).toHaveCount(0);
+    await page.keyboard.press("v");
+    await expect(page.locator("#listCaption")).toHaveText("Category selection");
+    await expect(page.locator("#list .item.ott-selected")).toHaveText(
+        "Favorites"
+    );
+    expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
+        initialPlaying
+    );
+    await page.keyboard.press("Backspace");
+    await page.waitForFunction(() => !window.isListVisible);
     const playing = await page.evaluate(() => {
         const favorite = window.cList.find(
             (id) => window.channels[id].channel_name === "Favorite channel"
@@ -120,6 +137,18 @@ test("M3U Local remembers a browsed Favorites category after quit and relaunch",
                 .getElementById("listCaption")
                 .textContent.includes("Favorites")
     );
+    await expect(page.locator("#list")).toContainText("Favorite channel");
+    expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
+        playing
+    );
+    await page.keyboard.press("v");
+    await expect(page.locator("#listCaption")).toHaveText("Category selection");
+    await expect(page.locator("#list .item.ott-selected")).toHaveText(
+        "Favorites"
+    );
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#listCaption")).toContainText("Favorites");
+    await expect(page.locator("#list .item")).toHaveCount(1);
     await expect(page.locator("#list")).toContainText("Favorite channel");
     expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
         playing
@@ -191,11 +220,18 @@ for (const membership of ["global", "category"])
             return id;
         }, membership);
         if (membership === "category") {
-            const categories = await page.evaluate(() => {
+            const { categories, caption, footer } = await page.evaluate(() => {
                 window.sFavorites = 0;
                 window.channelsList(window.catIndex, window.primaryIndex);
+                const caption =
+                    document.getElementById("listCaption").textContent;
+                const footer = document.getElementById("listPodval").innerHTML;
                 window.showActionsDialog();
-                return window.catsArray.slice(1);
+                return {
+                    caption,
+                    categories: window.catsArray.slice(1),
+                    footer,
+                };
             });
             await expect(page.locator("#dialogbox")).toBeVisible();
             await page.keyboard.press("Enter");
@@ -216,6 +252,8 @@ for (const membership of ["global", "category"])
             await expect(selected).toHaveText(categories[0]);
             await page.keyboard.press("Backspace");
             await expect(rows).toContainText(["One channel"]);
+            await expect(page.locator("#listCaption")).toHaveText(caption);
+            expect(await page.locator("#listPodval").innerHTML()).toBe(footer);
             await page.evaluate(() => window.showActionsDialog());
             await page.keyboard.press("Enter");
             await expect(rows).toHaveText(categories);
@@ -229,6 +267,8 @@ for (const membership of ["global", "category"])
             await expect(selected).toHaveText("Favorites");
             await page.keyboard.press("Enter");
             await expect(rows).toContainText(["One channel"]);
+            await expect(page.locator("#listCaption")).toHaveText(caption);
+            expect(await page.locator("#listPodval").innerHTML()).toBe(footer);
         }
         await expect
             .poll(() =>
