@@ -98,11 +98,15 @@ test("M3U Local remembers a browsed Favorites category after quit and relaunch",
             throw Error("favorite add was not admitted");
         return window.curList[window.primaryIndex];
     });
-    await page.waitForFunction(
-        async () =>
-            (await window.__ottGlobalFavorites.store.snapshot()).entries
-                .length === 1
-    );
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async () =>
+                    (await window.__ottGlobalFavorites.store.snapshot()).entries
+                        .length
+            )
+        )
+        .toBe(1);
     await page.evaluate(() => {
         const category = window.__ottChannels.index("system:favorites");
         window.bucketsList(category);
@@ -191,11 +195,15 @@ for (const membership of ["global", "category"])
             });
             await page.keyboard.press("Enter");
         }
-        await page.waitForFunction(
-            async () =>
-                (await window.__ottGlobalFavorites.store.snapshot()).entries
-                    .length === 1
-        );
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    async () =>
+                        (await window.__ottGlobalFavorites.store.snapshot())
+                            .entries.length
+                )
+            )
+            .toBe(1);
         const before = await page.evaluate(
             async () =>
                 (await window.__ottGlobalFavorites.store.snapshot()).entries
