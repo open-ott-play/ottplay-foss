@@ -165,6 +165,19 @@ for (const membership of ["global", "category"])
         baseURL,
     }) => {
         await install(context, baseURL, "origin");
+        const categoryLabel = "Arts <b>& Culture</b>";
+        if (membership === "category")
+            await context.route("**/mixed/one.m3u", (route) =>
+                route.fulfill({
+                    body:
+                        '#EXTM3U\n#EXTINF:-1 tvg-id="station-one" group-title="' +
+                        categoryLabel +
+                        '",One channel\n' +
+                        new URL(baseURL).origin +
+                        "/mixed/media/one.mp4\n",
+                    contentType: "text/plain",
+                })
+            );
         await page.goto("/f/pc/");
         await page.waitForFunction(() => window.commandChannelsReady);
         await ensure(page);
@@ -193,7 +206,9 @@ for (const membership of ["global", "category"])
                 selected = page.locator("#list .item.ott-selected");
             expect(categories.length).toBeGreaterThan(1);
             expect(categories).toContain("Favorites");
+            expect(categories).toContain(categoryLabel);
             await expect(rows).toHaveText(categories);
+            await expect(rows.locator("b")).toHaveCount(0);
             await expect(selected).toHaveText(categories[0]);
             await page.keyboard.press("ArrowDown");
             await expect(selected).toHaveText(categories[1]);
@@ -204,6 +219,7 @@ for (const membership of ["global", "category"])
             await page.evaluate(() => window.showActionsDialog());
             await page.keyboard.press("Enter");
             await expect(rows).toHaveText(categories);
+            await expect(rows.locator("b")).toHaveCount(0);
             for (
                 let index = 0;
                 index < categories.indexOf("Favorites");

@@ -5547,7 +5547,7 @@ window.addChannel2bucket = function (): void {
         w.listArray = w.catsArray.slice(1);
         w.listDataArray = w.listArray;
         w.getListItem = function (item: any, _idx: number): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListAction = function (): void {};
         w.listKeyHandlerFn = handler = function (e: number): boolean {
