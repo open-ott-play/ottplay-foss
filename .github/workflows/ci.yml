@@ -91,36 +91,57 @@ jobs:
           python-version: "3.12"
       - run: npm ci --ignore-scripts
       - name: Build lazy diagnostic assets for real transport smokes
+        id: runtime-assets
         run: npm run build
       - name: Build the pinned control server
+        id: legacy-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
         working-directory: .control-integration
         run: go build -o "$RUNNER_TEMP/ottplay-control-server" ./cmd/ottplay-control-server
-      - name: Exercise real HTTPS diagnostics and legacy repairs
+      - name: Exercise real HTTPS diagnostics
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
         env:
           OTT_OFFLINE_PROFILES: unsupported-controller
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
           OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
           OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
-        run: |
-          node scripts/smoke-diagnostics.cjs
+        run: node scripts/smoke-diagnostics.cjs
+      - name: Exercise legacy repairs with the current CLI
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
           # M3U metadata uses the current CLI; keep the old server and its negative capability probes.
-          OTT_CLI="$GITHUB_WORKSPACE/.control-current/cli/ott.py" node scripts/smoke-remote-cli.cjs
-          node scripts/smoke-workbench.cjs
-          # Exact M3U settings comparison uses the current contract in the roadmap step below.
+          OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
+        run: node scripts/smoke-remote-cli.cjs
+      - name: Exercise the legacy workbench
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
+        env:
+          OTT_OFFLINE_PROFILES: unsupported-controller
+          OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
+          OTT_DIAGNOSTICS_CLI: ${{ github.workspace }}/.control-integration/cli/diagnostics.py
+          OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
+        run: node scripts/smoke-workbench.cjs
       - name: Build the engine-aware control server
+        id: current-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
         working-directory: .control-current
         run: go build -o "$RUNNER_TEMP/ottplay-control-server-current" ./cmd/ottplay-control-server
       - name: Exercise local profiles with the current controller
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
         run: node scripts/smoke-remote-cli.cjs --offline-profiles-only
       - name: Keep the legacy CLI compatible with the current server
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-integration/cli/ott.py
         run: node scripts/smoke-workbench.cjs
       - name: Reject engine inspection on the legacy server without downgrading
+        if: ${{ !cancelled() && steps.legacy-server.outcome == 'success' }}
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
@@ -128,6 +149,7 @@ jobs:
           OTT_PERF_CAPTURE: unsupported-controller
         run: node scripts/smoke-workbench.cjs
       - name: Exercise explicit engine inspection and default legacy payloads
+        if: ${{ !cancelled() && steps.current-server.outcome == 'success' }}
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-current
           OTT_CLI: ${{ github.workspace }}/.control-current/cli/ott.py
@@ -135,11 +157,16 @@ jobs:
           OTT_PERF_CAPTURE: "1"
         run: node scripts/smoke-workbench.cjs
       - name: Exercise roadmap with the current controller
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
+        # This pinned script builds its own controller and compares exact M3U settings.
         run: node .control-current/scripts/smoke_foss_roadmap.cjs .
       - name: Build the pinned global Favorites control server
+        id: global-server
+        if: ${{ !cancelled() && steps.runtime-assets.outcome == 'success' }}
         working-directory: .control-global
         run: go build -o "$RUNNER_TEMP/ottplay-control-server-global" ./cmd/ottplay-control-server
       - name: Exercise global Favorites through real CLI and HTTP transport
+        if: ${{ !cancelled() && steps.global-server.outcome == 'success' }}
         env:
           OTT_CONTROL_BINARY: ${{ runner.temp }}/ottplay-control-server-global
           OTT_CLI: ${{ github.workspace }}/.control-global/cli/ott.py
