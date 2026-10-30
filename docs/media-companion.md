@@ -122,6 +122,12 @@ port. Its default address is `127.0.0.1:8793`, giving the endpoint
 `http://127.0.0.1:8793/companion/<your-token>/v1`.
 Set `OTT_COMPANION_HOST` and `OTT_COMPANION_PORT` to change that listener.
 
+When upgrading from the shared-listener implementation, change each configured
+client endpoint to this separate address. The old companion URL on the player
+port returns 404. A previous `OTT_COMPANION_ALLOW_REMOTE=1` does not move the
+new listener out of loopback; intentional LAN deployments must also set their
+explicit companion host.
+
 The installation-scoped `companionEndpoint` setting accepts this complete
 address through the existing authenticated remote settings API. Use a private
 UTF-8 file containing the endpoint with the existing CLI:
@@ -140,8 +146,8 @@ issues. Native discovery does not publish it to other machines.
 This endpoint belongs to the installation, not to a provider profile. JSON,
 local/raw and cloud backups omit both `companionEndpoint` and its storage key
 `sCompanionEndpoint`. Restoring old backups that contain either key leaves the
-current installation setting unchanged. Existing locally saved endpoints remain
-valid; importing a profile or backup cannot configure an external service.
+current installation setting unchanged. Existing locally saved endpoint values
+are preserved; importing a profile or backup cannot configure an external service.
 
 Remote clients additionally require `OTT_COMPANION_ALLOW_REMOTE=1`, an explicit
 non-loopback `OTT_COMPANION_HOST`, a reachable endpoint and TLS when needed by
