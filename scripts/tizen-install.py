@@ -280,17 +280,18 @@ def sign_package(package, metadata, checksum, output, profile, tizen='tizen'):
     require(output.parent.is_dir(), 'Signed output parent directory must exist')
     cli = tool_path(tizen)
     with tempfile.TemporaryDirectory(prefix='ottplay-tizen-sign-') as temporary:
-        stage, packaged = Path(temporary) / 'app', Path(temporary) / 'signed'
+        stage = Path(temporary) / 'app'
         stage.mkdir()
-        packaged.mkdir()
         for name, payload in files.items():
             destination = stage.joinpath(*PurePosixPath(name).parts)
             destination.parent.mkdir(parents=True, exist_ok=True)
             with destination.open('xb') as handle:
                 handle.write(payload)
-        run_tool([cli, 'package', '-t', 'wgt', '-s', profile, '-o', str(packaged), '--', str(stage)])
-        candidates = list(packaged.glob('*.wgt'))
+        run_tool([cli, 'package', '-t', 'wgt', '-s', profile, '--', str(stage)])
+        candidates = list(stage.glob('*.wgt'))
         require(len(candidates) == 1, 'Tizen CLI must produce exactly one signed WGT')
+        # Compare against the verified input snapshot, never rescan the stage
+        # after the SDK has added signatures and its output package.
         signed = verify_signed(files, candidates[0])
         receipt = {'schema': 1, 'appId': APP_ID, 'source': meta['source'],
                    'packageVersion': meta['packageVersion'], 'tizenVersion': meta['tizenVersion'],
