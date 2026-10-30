@@ -286,7 +286,269 @@ function notificationBoundary() {
         "PASS MAIN-owned escaped notification port and stale-runtime suppression; no optional helper import"
     );
 }
+async function categoryFixture(count, device = "pc") {
+    const events = [],
+        footer = [],
+        elements = {};
+    let complete,
+        renders = 0;
+    const keys = fn(
+        extract(
+            `src/devices/${device}/device.ts`,
+            (n) => ts.isVariableDeclaration(n) && /Keys$/.test(n.name.getText())
+        ).replace(/^\w+\s*=\s*/, ""),
+        {}
+    );
+    keys.PLAYPAUSE = 10252;
+    const w = {
+        _: (value) => value,
+        __ottChannels: {
+            group: (index) => ["system:all", "news", "system:favorites"][index],
+            index: (id) => (id === "system:favorites" ? 2 : -1),
+            refresh() {},
+            rememberCategory() {},
+        },
+        $: () => ({ hide() {}, html() {}, is: () => false }),
+        catIndex: 0,
+        cats: { All: [7, 8], Favorites: [], News: [7] },
+        catsArray: ["All", "News", "Favorites"],
+        changeSelect: (delta) => events.push(["page", delta]),
+        changeVolume: (delta) => events.push(["volume", delta]),
+        channels: new Proxy(
+            {},
+            {
+                get() {
+                    throw Error("No provider UUID lookup");
+                },
+            }
+        ),
+        channelsList: (category, selected) =>
+            events.push(["channels", category, selected]),
+        closeList() {
+            w.__ottClassicScreenPort.closeList();
+        },
+        document: { getElementById: (id) => (elements[id] ||= {}) },
+        getViewportHeightScale: () => 1,
+        getViewportWidthScale: () => 1,
+        innerHeight: 720,
+        keys,
+        listCaptionElement: {},
+        listDetail: {},
+        listFooter: {},
+        primaryIndex: 1,
+        renderButtonHint: (key, _icon, title) => {
+            footer.push({ key, title });
+            return title;
+        },
+        sArrowFun: 0,
+        settings: { pageSize: 10 },
+        sFavorites: 0,
+        showPage() {
+            renders++;
+            w.__ottClassicScreenPort.commitList();
+        },
+        sPNFun: 0,
+        sRewFun: 0,
+        strEPG: "EPG",
+        strInfo: "Info",
+        strPlayPause: "Play/Pause",
+        strTools: "Tools",
+    };
+    w.window = w;
+    ui(w);
+    function actual(file, name) {
+        return fn(
+            extract(
+                file,
+                (n) => ts.isFunctionDeclaration(n) && n.name?.text === name
+            ),
+            w
+        );
+    }
+    const channels = actual("src/provider/index.ts", "_channelsList");
+    w.__ottChannelListView = {
+        show: (view) => channels(0, view.selected, view),
+    };
+    w.playingChannelIdxInCategory = actual(
+        "src/channels/index.ts",
+        "playingChannelIdxInCategory"
+    );
+    w.bucketsKeyHandler = actual("src/channels/index.ts", "bucketsKeyHandler");
+    w.bucketsList = actual("src/channels/index.ts", "bucketsList");
+    const show = fn(
+        extract(
+            "src/media/global-favorites-host.ts",
+            (n) => ts.isPropertyAssignment(n) && n.name.getText() === "show"
+        ).replace(/^show:\s*/, ""),
+        { permitted: () => true, w }
+    );
+    const entries = count
+        ? [
+              {
+                  id: "00000000-0000-4000-8000-000000000001",
+                  origin: {},
+                  title: "Saved channel",
+              },
+          ]
+        : [];
+    const view = load(
+        "src/media/global-favorites-view.ts"
+    ).createGlobalFavoritesView({
+        canFavorite: () => true,
+        captureScreen: () => () => true,
+        current: () => true,
+        describe: () => "Profile",
+        error: (reason) => events.push(["error", reason]),
+        navigation: { currentId: () => null, isPlaying: () => false },
+        remove: async () => {
+            throw Error("Navigation must not remove Favorites");
+        },
+        removed() {},
+        router: {
+            select: (id) => {
+                events.push(["select", id]);
+                return {
+                    cancel: () => events.push(["cancel"]),
+                    result: new Promise((resolve) => {
+                        complete = resolve;
+                    }),
+                };
+            },
+        },
+        selected: () => w.selIndex,
+        show,
+        store: { snapshot: async () => ({ current: () => true, entries }) },
+        translate: (value) => value,
+    });
+    await view.open();
+    events.length = 0;
+    return {
+        complete: (result) => complete(result),
+        elements,
+        events,
+        footer,
+        press: (code) =>
+            w.__ottClassicScreenPort.dispatch(code, {}, () =>
+                events.push(["main"])
+            ),
+        renders: () => renders,
+        view,
+        w,
+    };
+}
+async function categoryNavigation() {
+    for (const count of [0, 1]) {
+        for (const device of ["pc", "lg/webos"]) {
+            for (const name of ["BLUE", "PLAY", "PAUSE", "PLAYPAUSE"]) {
+                const f = await categoryFixture(count, device);
+                const oldOwner = f.w.__ottClassicScreenPort.listOwner();
+                assert.equal(
+                    f.w.listCatIndex,
+                    0,
+                    "global view uses a virtual index"
+                );
+                assert(
+                    f.footer.some(
+                        (item) =>
+                            item.title === "Category" &&
+                            item.key === f.w.keys.BLUE
+                    )
+                );
+                f.press(f.w.keys[name]);
+                assert.equal(
+                    f.elements.listCaption?.innerHTML,
+                    "Category selection",
+                    `${device}/${count}/${name}`
+                );
+                assert.equal(
+                    f.w.selIndex,
+                    2,
+                    "picker highlights actual Favorites, not virtual index zero"
+                );
+                assert.equal(oldOwner.active(), false);
+                assert.equal(
+                    f.events.length,
+                    0,
+                    "opening categories neither plays nor mutates Favorites"
+                );
+                f.w.selIndex = 0;
+                f.press(f.w.keys.ENTER);
+                assert.deepEqual(
+                    f.events,
+                    [["channels", 0, 1]],
+                    "All opens with the playing selection"
+                );
+            }
+        }
+        for (const [name, setting] of [
+            ["LEFT", "sArrowFun"],
+            ["RW", "sRewFun"],
+            ["PREV", "sPNFun"],
+        ]) {
+            const f = await categoryFixture(count);
+            f.w[setting] = name === "LEFT" ? 2 : 1;
+            f.press(f.w.keys[name]);
+            assert.equal(
+                f.elements.listCaption?.innerHTML,
+                "Category selection"
+            );
+            assert.equal(f.w.selIndex, 2);
+        }
+        for (const name of ["RW", "PREV", "FF", "NEXT"]) {
+            const f = await categoryFixture(count);
+            f.w.sRewFun = f.w.sPNFun = 2;
+            f.press(f.w.keys[name]);
+            const backward = /^(RW|PREV)$/.test(name);
+            assert.deepEqual(f.events, [
+                ["channels", backward ? 1 : 0, backward ? 0 : 1],
+            ]);
+        }
+        const select = await categoryFixture(count);
+        select.press(select.w.keys.ENTER);
+        assert.equal(
+            select.events.length,
+            count,
+            "Enter selects one row and is safe on an empty list"
+        );
+        if (count) assert.equal(select.events[0][0], "select");
+        const back = await categoryFixture(count);
+        back.press(back.w.keys.RETURN);
+        assert.equal(back.w.__ottClassicScreenPort.listOwner(), null);
+    }
+    const pending = await categoryFixture(1);
+    pending.press(pending.w.keys.ENTER);
+    pending.press(pending.w.keys.BLUE);
+    assert.deepEqual(
+        pending.events.map((event) => event[0]),
+        ["select", "cancel"]
+    );
+    const rendered = pending.renders();
+    pending.complete({ status: "ok" });
+    await settle();
+    assert.equal(
+        pending.renders(),
+        rendered,
+        "late completion cannot reopen Favorites over categories"
+    );
+    for (const mode of ["volume", "page", "modal"]) {
+        const f = await categoryFixture(1);
+        if (mode === "volume") f.w.sArrowFun = 1;
+        if (mode === "modal")
+            f.w.__ottClassicScreenPort.screens.open({
+                handle: () => f.events.push(["modal"]),
+                kind: "dialog",
+                priority: 10,
+            });
+        f.press(f.w.keys[mode === "modal" ? "BLUE" : "LEFT"]);
+        assert.equal(f.events[0][0], mode);
+        assert.equal(f.elements.listCaption, undefined);
+    }
+    console.log(
+        "PASS real empty/populated Favorites renderer and router: desktop/TV Category keys, configured navigation, Enter, Back, modal ownership and cancellation"
+    );
+}
 async function main() {
+    await categoryNavigation();
     notificationBoundary();
     const good = await setup();
     assert(good.press());

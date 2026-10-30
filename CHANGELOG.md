@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Restore Category and Play/Pause navigation from empty and populated Global
+  Favorites lists. Preserve Enter selection, Back, configured category shortcuts
+  and the current playback while browsing categories.
+- Restore the channel list caption, footer and details after adding a channel
+  to a category or cancelling the category picker.
 
 - Avoid repeated network metadata checks while scanning native Local folders.
   Reuse validated legacy records and no-follow enumeration types for known

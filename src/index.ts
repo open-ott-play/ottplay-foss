@@ -5518,7 +5518,18 @@ window.addChannel2bucket = function (): void {
                 )
             );
         };
-        if (typeof w.saveListPanelState === "function") w.saveListPanelState();
+        // This picker replaces the list owner. An overlay panel snapshot would
+        // be discarded with that owner, so retain its presentation locally.
+        var savedPanel = resume
+            ? null
+            : ["listCaption", "listPodval", "listDetail"].map(function (id) {
+                  var element = document.getElementById(id);
+                  return element
+                      ? { element: element, html: element.innerHTML }
+                      : null;
+              });
+        if (resume && typeof w.saveListPanelState === "function")
+            w.saveListPanelState();
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
@@ -5607,8 +5618,9 @@ window.addChannel2bucket = function (): void {
                 if (pickedFavorite) addPickedFavorite();
                 return true;
             }
-            if (typeof w.restoreListPanelState === "function")
-                w.restoreListPanelState();
+            savedPanel?.forEach(function (panel) {
+                if (panel) panel.element.innerHTML = panel.html;
+            });
             w.selIndex = savedIdx;
             w.listArray = savedList;
             w.listDataArray = savedData;
