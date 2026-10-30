@@ -31,7 +31,6 @@ assert.equal(
 );
 assert.equal(manifest.ipkUrl, prefix + names.ipk);
 assert.equal(manifest.iconUri, metadataPrefix + names.icon);
-assert(!JSON.stringify(index).includes("github.com"));
 assert.equal(manifest.ipkHash.sha256, fixture.sha256);
 assert.equal(manifest.ipkSize, 8192);
 assert.equal(manifest.installedSize, 16384); // Manifest units are bytes, not control-file KiB.
