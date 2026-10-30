@@ -543,6 +543,7 @@ var keyStrings = {
     "Infobar settings": "הגדרות סרגל מידע",
     Information: "מידע",
     "Interface credits": "יוצרי הממשק",
+    "Interface mode": "מצב ממשק",
     "Interface settings": "הגדרות ממשק",
     "Interface theme": "ערכת נושא לממשק",
     "Interface transparency": "שקיפות הממשק",
@@ -618,6 +619,9 @@ var keyStrings = {
     "Media Library URL": "כתובת ספריית מדיה",
     Menu: "תפריט",
     "Menu items settings": "הגדרות פריטי תפריט",
+    Modern: "מודרני",
+    "Modern interface is unavailable. Classic remains active.":
+        "הממשק המודרני אינו זמין. הממשק הקלאסי נשאר פעיל.",
     "Move category down": "הזז קטגוריה למטה",
     "Move category up": "הזז קטגוריה למעלה",
     "Move channel down": "הזז ערוץ למטה",

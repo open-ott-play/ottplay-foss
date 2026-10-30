@@ -539,6 +539,7 @@ var keyStrings = {
     "Infobar settings": "የመረጃ አሞሌ ቅንብሮች",
     Information: "መረጃ",
     "Interface credits": "የበይነገጽ አበርካቾች",
+    "Interface mode": "የበይነገጽ ሁነታ",
     "Interface settings": "የበይነገጽ ቅንብሮች",
     "Interface theme": "የበይነገጽ ገጽታ",
     "Interface transparency": "የበይነገጽ ግልጽነት",
@@ -614,6 +615,9 @@ var keyStrings = {
     "Media Library URL": "የሚዲያ ቤተ መጻሕፍት URL",
     Menu: "ምናሌ",
     "Menu items settings": "የምናሌ ንጥሎች ቅንብሮች",
+    Modern: "ዘመናዊ",
+    "Modern interface is unavailable. Classic remains active.":
+        "ዘመናዊው በይነገጽ አይገኝም። ክላሲክ እንደነቃ ይቀጥላል።",
     "Move category down": "ምድብ ወደ ታች አንቀሳቅስ",
     "Move category up": "ምድብ ወደ ላይ አንቀሳቅስ",
     "Move channel down": "ሰርጥ ወደ ታች አንቀሳቅስ",

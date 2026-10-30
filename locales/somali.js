@@ -576,6 +576,7 @@ var keyStrings = {
     "Infobar settings": "Dejinta barta xogta",
     Information: "Macluumaad",
     "Interface credits": "Ka qaybqaatayaasha isdhexgalka",
+    "Interface mode": "Qaabka muuqaalka",
     "Interface settings": "Dejinta isdhexgalka",
     "Interface theme": "Muuqaalka isdhexgalka",
     "Interface transparency": "Hufnaanta isdhexgalka",
@@ -657,6 +658,9 @@ var keyStrings = {
     "Media Library URL": "URL-ka maktabadda warbaahinta",
     Menu: "Liiska xulashooyinka",
     "Menu items settings": "Dejinta qodobka liiska xulashooyinka",
+    Modern: "Casri",
+    "Modern interface is unavailable. Classic remains active.":
+        "Muuqaalka casriga ah lama heli karo. Kii caadiga ahaa wuu sii shaqaynayaa.",
     "Move category down": "Qaybta hoos u dhaqaaji",
     "Move category up": "Qaybta kor u dhaqaaji",
     "Move channel down": "Kanaalka hoos u dhaqaaji",

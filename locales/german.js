@@ -578,6 +578,7 @@ var keyStrings = {
     "Infobar settings": "Einstellungen der Infoleiste",
     Information: "Informationen",
     "Interface credits": "Mitwirkende an der Oberfläche",
+    "Interface mode": "Oberflächenmodus",
     "Interface settings": "Oberflächeneinstellungen",
     "Interface theme": "Oberflächendesign",
     "Interface transparency": "Transparenz der Oberfläche",
@@ -657,6 +658,9 @@ var keyStrings = {
     "Media Library URL": "Mediathek-URL",
     Menu: "Menü",
     "Menu items settings": "Einstellungen der Menüeinträge",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Die moderne Oberfläche ist nicht verfügbar. Die klassische bleibt aktiv.",
     "Move category down": "Kategorie nach unten verschieben",
     "Move category up": "Kategorie nach oben verschieben",
     "Move channel down": "Sender nach unten verschieben",

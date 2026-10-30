@@ -569,6 +569,7 @@ var keyStrings = {
     "Infobar settings": "Informācijas joslas iestatījumi",
     Information: "Informācija",
     "Interface credits": "Saskarnes autori",
+    "Interface mode": "Saskarnes režīms",
     "Interface settings": "Saskarnes iestatījumi",
     "Interface theme": "Saskarnes motīvs",
     "Interface transparency": "Saskarnes caurspīdīgums",
@@ -646,6 +647,9 @@ var keyStrings = {
     "Media Library URL": "Mediotēkas URL",
     Menu: "Izvēlne",
     "Menu items settings": "Izvēlnes vienumu iestatījumi",
+    Modern: "Mūsdienīgs",
+    "Modern interface is unavailable. Classic remains active.":
+        "Mūsdienīgā saskarne nav pieejama. Klasiskā paliek aktīva.",
     "Move category down": "Pārvietot kategoriju uz leju",
     "Move category up": "Pārvietot kategoriju uz augšu",
     "Move channel down": "Pārvietot kanālu uz leju",

@@ -2241,6 +2241,10 @@ function onStbReady(): void {
         setPipPosBuf();
         setSleepTimeout();
         closeList();
+        // Restore the application's presentation even when autoplay starts in
+        // fullscreen and the user never opens a catalogue. The optional UI
+        // load does not hold provider or decoder startup.
+        (window as any).setInterfaceMode?.();
 
         // Expose edit globals for provider scripts (stalker, edem, etc.)
         // Providers assign window.setEdit, window.editCaption, window.editvar directly

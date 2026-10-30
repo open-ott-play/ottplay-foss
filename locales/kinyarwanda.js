@@ -581,6 +581,7 @@ var keyStrings = {
     "Infobar settings": "Igenamiterere ry'akabaho k'amakuru",
     Information: "Amakuru",
     "Interface credits": "Abagize uruhare mu migaragarire",
+    "Interface mode": "Uburyo bw'imigaragarire",
     "Interface settings": "Igenamiterere ry'imigaragarire",
     "Interface theme": "Insanganyamigaragarire",
     "Interface transparency": "Ububonere bw'imigaragarire",
@@ -660,6 +661,9 @@ var keyStrings = {
     "Media Library URL": "URL y'isomero ry'ibitangazamakuru",
     Menu: "Ibikubiyemo",
     "Menu items settings": "Igenamiterere ry'ikintu cyo mu bikubiyemo",
+    Modern: "Bugezweho",
+    "Modern interface is unavailable. Classic remains active.":
+        "Imigaragarire igezweho ntiboneka. Isanzwe irakomeza gukora.",
     "Move category down": "Manura icyiciro",
     "Move category up": "Zamura icyiciro",
     "Move channel down": "Manura shene",

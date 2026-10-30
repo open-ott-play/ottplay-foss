@@ -546,6 +546,7 @@ var keyStrings = {
     "Infobar settings": "సమాచార పట్టీ సెట్టింగ్‌లు",
     Information: "సమాచారం",
     "Interface credits": "ఇంటర్‌ఫేస్ రూపకర్తలు",
+    "Interface mode": "ఇంటర్‌ఫేస్ మోడ్",
     "Interface settings": "ఇంటర్‌ఫేస్ సెట్టింగ్‌లు",
     "Interface theme": "ఇంటర్ఫేస్ థీమ్",
     "Interface transparency": "ఇంటర్‌ఫేస్ పారదర్శకత",
@@ -621,6 +622,9 @@ var keyStrings = {
     "Media Library URL": "మీడియా లైబ్రరీ URL",
     Menu: "మెను",
     "Menu items settings": "మెనూ ఐటెమ్ సెట్టింగ్‌లు",
+    Modern: "ఆధునికం",
+    "Modern interface is unavailable. Classic remains active.":
+        "ఆధునిక ఇంటర్‌ఫేస్ అందుబాటులో లేదు. క్లాసిక్ సక్రియంగా ఉంటుంది.",
     "Move category down": "వర్గాన్ని క్రిందికి తరలించండి",
     "Move category up": "వర్గాన్ని పైకి తరలించండి",
     "Move channel down": "ఛానెల్‌ని క్రిందికి తరలించండి",

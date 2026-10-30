@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add an optional Modern interface with poster grids for media and spacious TV
+  rows. Keep Classic as the default, share playback, categories and Favorites,
+  and switch views from Interface settings or the remote `interfaceMode`
+  setting. Load the renderer only when requested, retain keyboard and touch
+  navigation, and fall back to Classic if the renderer is unavailable.
+
 - Avoid repeated network metadata checks while scanning native Local folders.
   Reuse validated legacy records and no-follow enumeration types for known
   files, retain unavailable IDs, and reject changed or incomplete directories.

@@ -564,6 +564,7 @@ var keyStrings = {
     "Infobar settings": "Innstillinger for informasjonslinjen",
     Information: "Informasjon",
     "Interface credits": "Bidragsytere til grensesnittet",
+    "Interface mode": "Grensesnittmodus",
     "Interface settings": "Grensesnittinnstillinger",
     "Interface theme": "Grensesnitt tema",
     "Interface transparency": "Grensesnitt åpenhet",
@@ -641,6 +642,9 @@ var keyStrings = {
     "Media Library URL": "Mediebibliotek URL",
     Menu: "Meny",
     "Menu items settings": "Menyelementinnstillinger",
+    Modern: "Moderne",
+    "Modern interface is unavailable. Classic remains active.":
+        "Det moderne grensesnittet er ikke tilgjengelig. Klassisk forblir aktivt.",
     "Move category down": "Flytt kategori ned",
     "Move category up": "Flytt kategori opp",
     "Move channel down": "Flytt kanalen ned",

@@ -239,6 +239,7 @@ async function fixturePage(
         ["/js/runtime-polyfills.js", read(stage + "js/runtime-polyfills.js")],
         ["/js/ottplay-core.js", read(stage + "js/ottplay-core.js")],
         ["/dist/player.js", read(stage + "dist/player.js")],
+        ["/dist/modern-interface.js", read(stage + "dist/modern-interface.js")],
         ["/dist/provider-plex.js", read(stage + "dist/provider-plex.js")],
         [
             "/dist/subtitle-appearance.js",
@@ -1068,6 +1069,108 @@ test("browser portrait touch keeps tap mouse keyboard and wheel selection policy
         }
     }
 });
+
+async function seedModernMovies(page, count, selected) {
+    await page.evaluate(
+        ({ count, selected }) => {
+            const titles = [
+                "Northern Passage",
+                "Under City Lights",
+                "Ocean of Silence",
+                "Beyond the Signal",
+            ];
+            const colors = [
+                ["#0b2942", "#36b8af"],
+                ["#301846", "#df8a63"],
+                ["#082e44", "#49a7cd"],
+                ["#20243e", "#e5be70"],
+            ];
+            const posters = colors.map(
+                ([sky, light]) =>
+                    "data:image/svg+xml;charset=utf-8," +
+                    encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="480" viewBox="0 0 360 480"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="${sky}"/><stop offset="1" stop-color="${light}"/></linearGradient></defs><path fill="url(#sky)" d="M0 0h360v480H0z"/><circle fill="${light}" opacity=".8" cx="248" cy="140" r="66"/><path fill="#142a35" opacity=".65" d="M0 310L88 181 175 285 280 218 360 322V480H0z"/><path fill="#091b29" d="M0 387L121 280 241 354 360 286V480H0z"/><path fill="#eff9e8" opacity=".16" d="M110 480l132-144-92 144z"/></svg>`
+                    )
+            );
+            const description =
+                "A quiet journey through changing landscapes brings four strangers together. Each must choose what to leave behind before the final crossing. An original fixture story with a complete, readable description.";
+            const ids = [];
+            for (let index = 0; index < count; index++) {
+                const id = "movie-" + index;
+                const title = titles[index % titles.length];
+                ids.push(id);
+                channels[id] = {
+                    __ottMediaItem: {
+                        __ottMediaCollection: "Movies",
+                        description,
+                        name: title,
+                        poster: posters[index % posters.length],
+                    },
+                    channel_name: title,
+                    descr: description,
+                    icon: posters[index % posters.length],
+                    name: title,
+                };
+            }
+            catsArray[0] = "Movies";
+            cats.Movies = ids;
+            _channelsList(0, selected);
+            saveSettings({ interfaceMode: 1 });
+        },
+        { count, selected }
+    );
+}
+
+async function saveModernScreenshot(page, profile, view) {
+    const directory = process.env.OTTP_MODERN_SCREENSHOTS;
+    if (!directory) return;
+    fs.mkdirSync(directory, { recursive: true });
+    await page.evaluate(async () => {
+        const art = document.querySelector(".ott-selected .modern-art img");
+        if (!art) return;
+        const left = document
+            .getElementById("_l")
+            .getBoundingClientRect().right;
+        const top = document
+            .getElementById("_t")
+            .getBoundingClientRect().bottom;
+        const right = document
+            .getElementById("_r")
+            .getBoundingClientRect().left;
+        const bottom = document
+            .getElementById("_b")
+            .getBoundingClientRect().top;
+        if (right <= left || bottom <= top) return;
+        // Local synthetic frame in the fixture's otherwise empty video plane.
+        // The actual compiled UI, including its preview masks, stays untouched.
+        const frame = document.createElement("img");
+        frame.id = "modern-fixture-frame";
+        frame.setAttribute("aria-hidden", "true");
+        frame.src = art.src;
+        Object.assign(frame.style, {
+            height: bottom - top + "px",
+            left: left + "px",
+            objectFit: "cover",
+            pointerEvents: "none",
+            position: "fixed",
+            top: top + "px",
+            width: right - left + "px",
+            zIndex: "0",
+        });
+        document.body.insertBefore(frame, document.body.firstChild);
+        if (frame.decode) await frame.decode().catch(() => {});
+    });
+    await page.screenshot({
+        fullPage: true,
+        path: path.join(
+            directory,
+            `${profile}-${test.info().project.name}-${view}.png`
+        ),
+    });
+    await page.evaluate(() =>
+        document.getElementById("modern-fixture-frame")?.remove()
+    );
+}
 
 for (const profile of ["server", "tauri", "capacitor"]) {
     test(
@@ -4144,6 +4247,477 @@ test("buffer seconds remain mapped and readable in a narrow settings picker", as
         expect(await page.evaluate(() => Number(stbGetItem("sBufSize")))).toBe(
             30
         );
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(`Modern mode repaints the owned channel list without restarting media (${profile})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile, {
+            interfaceTheme: 2,
+        });
+        const { page } = fixture;
+        try {
+            await expect(page.locator("#listIn .modern-channel")).toHaveCount(
+                0
+            );
+            const before = await page.evaluate(() => {
+                changeSelect(23);
+                document.getElementById("it23").focus();
+                window.__modernBeforeOwner = __ottClassicScreenPort.listOwner();
+                window.__modernEffects = [];
+                for (const name of [
+                    "stbStop",
+                    "stbPlay",
+                    "loadChannels",
+                    "getChannelsArray",
+                    "stbSetWindow",
+                    "stbToFullScreen",
+                ])
+                    window[name] = () => __modernEffects.push(name);
+                return {
+                    category: listCatIndex,
+                    selected: listArray[selIndex],
+                };
+            });
+            await page.evaluate(() => saveSettings({ interfaceMode: 1 }));
+            await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+            await expect(page.locator("#it23.modern-channel")).toBeVisible();
+            await expect(page.locator("#it23")).toBeFocused();
+            await saveModernScreenshot(page, profile, "live");
+            expect(
+                await page.evaluate(() => ({
+                    category: listCatIndex,
+                    effects: __modernEffects,
+                    ownerSame:
+                        __modernBeforeOwner ===
+                        __ottClassicScreenPort.listOwner(),
+                    selected: listArray[selIndex],
+                }))
+            ).toEqual({ ...before, effects: [], ownerSame: true });
+            await page.evaluate(() => saveSettings({ interfaceMode: 0 }));
+            await expect(page.locator("#listIn")).not.toHaveClass(
+                /modern-catalog/
+            );
+            await expect(
+                page.locator("#listIn .modern-channel, #listIn .modern-card")
+            ).toHaveCount(0);
+            await expect(page.locator("#it23")).toBeFocused();
+            expect(
+                await page.evaluate(() => ({
+                    category: listCatIndex,
+                    effects: __modernEffects,
+                    selected: listArray[selIndex],
+                }))
+            ).toEqual({ ...before, effects: [] });
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+
+    test(`Modern grid stays bounded at 10000 files and respects modal ownership (${profile})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile, {
+            interfaceTheme: 2,
+        });
+        const { page } = fixture;
+        try {
+            await seedModernMovies(page, 10000, 3450);
+            await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+            await expect(page.locator("#it3450.modern-card")).toBeVisible();
+            await expect(page.locator("#_name")).toContainText(
+                "Ocean of Silence"
+            );
+            await saveModernScreenshot(page, profile, "grid");
+            const size = await page.locator("#listIn .item").count();
+            expect(size).toBeGreaterThan(0);
+            expect(size).toBeLessThanOrEqual(30);
+            expect(await page.evaluate(() => listArray.length)).toBe(10000);
+            await page.evaluate(() => {
+                window.__gridEffects = [];
+                window.sArrowFun = 1;
+                window.changeVolume = () => __gridEffects.push("volume");
+                window.playChannel = () => __gridEffects.push("play");
+                _doKey(keys.RIGHT);
+            });
+            expect(await page.evaluate(() => selIndex)).toBe(3451);
+            expect(await page.evaluate(() => __gridEffects)).toEqual([]);
+            await page.evaluate(() => {
+                document.getElementById("it" + selIndex).focus();
+                confirmBox("Keep the current selection?", () => {});
+            });
+            await expect(page.locator("#dialogbox")).toBeVisible();
+            await page.keyboard.press("Tab");
+            expect(
+                await page.evaluate(() =>
+                    document
+                        .getElementById("dialogbox")
+                        .contains(document.activeElement)
+                )
+            ).toBe(true);
+            await page.evaluate(() => _doKey(keys.DOWN));
+            expect(await page.evaluate(() => selIndex)).toBe(3451);
+            await page.evaluate(() => {
+                __ottClassicScreenPort.close("dialog");
+                $("#dialogbox").hide();
+            });
+            await expect(page.locator("#dialogbox")).toBeHidden();
+            await expect(page.locator("#it3451")).toBeFocused();
+            await page.evaluate(() => {
+                closeList();
+                _doKey(keys.RIGHT);
+            });
+            expect(await page.evaluate(() => __gridEffects)).toEqual([
+                "volume",
+            ]);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+test("Modern and Classic retain the same mixed Favorites view and stable selection", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "server");
+    const { page } = fixture;
+    try {
+        await page.evaluate(() => {
+            const rows = [
+                "favorite-local",
+                "favorite-m3u",
+                "favorite-plex",
+                "favorite-vportal",
+            ];
+            const items = {};
+            rows.forEach((id) => {
+                items[id] = {
+                    channel_name: id,
+                    descr: "From the shared Favorites view",
+                    name: id,
+                };
+                if (id !== "favorite-m3u")
+                    items[id].__ottMediaItem = {
+                        __ottMediaCollection: "Favorites",
+                        name: id,
+                    };
+            });
+            window.__favoriteChoices = [];
+            __ottChannelListView.show({
+                categoryName: "Favorites",
+                channel: (id) => items[id],
+                detail: () => {},
+                id: "system:global-favorites",
+                key: (code) => {
+                    if (code === keys.ENTER) {
+                        __favoriteChoices.push(listArray[selIndex]);
+                        return true;
+                    }
+                    return false;
+                },
+                locked: () => false,
+                picon: () => "",
+                playing: (id) => id === rows[0],
+                rows,
+                selected: 2,
+            });
+            window.__favoriteRows = listArray;
+            saveSettings({ interfaceMode: 1 });
+        });
+        await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+        await expect(page.locator("#listCaption")).toContainText("Favorites");
+        await expect(page.locator("#it2")).toContainText("favorite-plex");
+        await page.evaluate(() => changeSelect(-1));
+        await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+        await page.evaluate(() => changeSelect(1));
+        await page.evaluate(() => _doKey(keys.ENTER));
+        await page.evaluate(() => saveSettings({ interfaceMode: 0 }));
+        await expect(page.locator("#listIn")).not.toHaveClass(/modern-catalog/);
+        await page.evaluate(() => _doKey(keys.ENTER));
+        expect(
+            await page.evaluate(() => ({
+                choices: __favoriteChoices,
+                same: listArray === __favoriteRows,
+                selected: listArray[selIndex],
+            }))
+        ).toEqual({
+            choices: ["favorite-plex", "favorite-plex"],
+            same: true,
+            selected: "favorite-plex",
+        });
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+for (const width of [1280, 360]) {
+    test(`Modern touch moves by visual rows and cancels after a mode change (${width}px)`, async ({
+        browser,
+    }) => {
+        const fixture = await listTouchFixture(browser);
+        const { page } = fixture;
+        try {
+            await page.setViewportSize({ height: 800, width });
+            await page.evaluate(() => {
+                cats.Fixture.forEach((id) => {
+                    channels[id].__ottMediaItem = {
+                        __ottMediaCollection: "Movies",
+                        name: channels[id].channel_name,
+                    };
+                });
+                _channelsList(0, 8);
+                saveSettings({ interfaceMode: 1 });
+            });
+            await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+            await page.clock.runFor(300);
+            const geometry = await page.evaluate(() => {
+                const list = document.getElementById("listIn");
+                const row = document.getElementById("it" + selIndex);
+                const css = getComputedStyle(list);
+                return {
+                    columns: css.gridTemplateColumns.trim().split(/\s+/).length,
+                    height:
+                        row.getBoundingClientRect().height +
+                        parseFloat(css.rowGap),
+                    selected: selIndex,
+                };
+            });
+            if (width === 360) expect(geometry.columns).toBe(1);
+            else expect(geometry.columns).toBeGreaterThan(1);
+            await page.evaluate((height) => {
+                const metrics = __ottModernUi.touchMetrics;
+                window.__touchMetricsTrace = [];
+                __ottModernUi.touchMetrics = (owner) => {
+                    const value = metrics(owner);
+                    __touchMetricsTrace.push({
+                        foreground: owner && owner.foreground(),
+                        value,
+                        visible: isListVisible,
+                    });
+                    return value;
+                };
+                __touchBegin(selIndex);
+                __touchGesture.height = height;
+            }, geometry.height);
+            await page.clock.runFor(130);
+            await page.evaluate(() => __touchSend("touchmove", -1.2));
+            expect(
+                await page.evaluate(() => selIndex),
+                JSON.stringify(await page.evaluate(() => __touchMetricsTrace))
+            ).toBe(geometry.selected + geometry.columns);
+            await page.evaluate(() => __touchSend("touchend", -1.2));
+            expect(await page.evaluate(() => __touchPlayed)).toEqual([]);
+            expect(await page.evaluate(() => __touchClicks)).toEqual([]);
+            const selected = await page.evaluate((height) => {
+                __touchBegin(selIndex);
+                __touchGesture.height = height;
+                const selected = selIndex;
+                saveSettings({ interfaceMode: 0 });
+                return selected;
+            }, geometry.height);
+            await page.evaluate(() => {
+                __touchSend("touchmove", -2.2);
+                __touchSend("touchend", -2.2);
+            });
+            expect(await page.evaluate(() => selIndex)).toBe(selected);
+            expect(await page.evaluate(() => __touchPlayed)).toEqual([]);
+            expect(await page.evaluate(() => __touchClicks)).toEqual([]);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+test("Modern Classic-palette grid fits padded bounds and gap clicks do not choose a card", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri", { interfaceTheme: 0 });
+    const { page } = fixture;
+    try {
+        await seedModernMovies(page, 40, 2);
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+        const bounds = await page.evaluate(() => {
+            const list = document.getElementById("listIn");
+            const box = list.getBoundingClientRect();
+            const css = getComputedStyle(list);
+            const cards = Array.from(list.querySelectorAll(".item"), (card) =>
+                card.getBoundingClientRect()
+            );
+            window.__gapChoices = [];
+            window.playChannel = (...args) => __gapChoices.push(args);
+            return {
+                bottom: box.bottom - parseFloat(css.paddingBottom),
+                last: Math.max(...cards.map((card) => card.bottom)),
+                selected: selIndex,
+                x: (cards[0].right + cards[1].left) / 2,
+                y: cards[0].top + cards[0].height / 2,
+            };
+        });
+        expect(bounds.last).toBeLessThanOrEqual(bounds.bottom + 1);
+        const revisions = await page.evaluate(async () => {
+            const frames = () =>
+                new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve))
+                );
+            await frames();
+            const first =
+                __ottClassicScreenPort.listOwner().model.paintRevision;
+            await frames();
+            await frames();
+            return [
+                first,
+                __ottClassicScreenPort.listOwner().model.paintRevision,
+            ];
+        });
+        expect(revisions[1]).toBe(revisions[0]);
+        await page.mouse.click(bounds.x, bounds.y);
+        expect(await page.evaluate(() => selIndex)).toBe(bounds.selected);
+        expect(await page.evaluate(() => __gapChoices)).toEqual([]);
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("Modern narrow layout keeps long RTL titles inside the viewport", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri", {
+        interfaceTheme: 2,
+        uiFontScale: 120,
+    });
+    const { page } = fixture;
+    try {
+        await page.setViewportSize({ height: 851, width: 393 });
+        await seedModernMovies(page, 40, 0);
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+        await page.evaluate(() => {
+            document.documentElement.dir = "rtl";
+            channels["movie-0"].channel_name =
+                "الرحلة الطويلة عبر الصحراء والبحر";
+            channels["movie-0"].__ottMediaItem.name =
+                channels["movie-0"].channel_name;
+            showPage(true);
+        });
+        await expect(page.locator("#it0 .modern-title")).toHaveText(
+            "الرحلة الطويلة عبر الصحراء والبحر"
+        );
+        await expect
+            .poll(() =>
+                page
+                    .locator("#listIn")
+                    .evaluate((node) => node.getBoundingClientRect().width)
+            )
+            .toBeGreaterThan(100);
+        const layout = await page.evaluate(() => {
+            const list = document
+                .getElementById("listIn")
+                .getBoundingClientRect();
+            const card = document.getElementById("it0").getBoundingClientRect();
+            const title = document
+                .querySelector("#it0 .modern-title")
+                .getBoundingClientRect();
+            return {
+                left: card.left,
+                listLeft: list.left,
+                listRight: list.right,
+                right: card.right,
+                titleLeft: title.left,
+                titleRight: title.right,
+            };
+        });
+        expect(layout.left).toBeGreaterThanOrEqual(layout.listLeft - 1);
+        expect(layout.right).toBeLessThanOrEqual(
+            Math.min(393, layout.listRight) + 1
+        );
+        expect(layout.titleLeft).toBeGreaterThanOrEqual(layout.left - 1);
+        expect(layout.titleRight).toBeLessThanOrEqual(layout.right + 1);
+        await saveModernScreenshot(page, "tauri", "narrow-rtl");
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+test("Modern long media details stay within their panel through selection and mode changes", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri", {
+        interfaceTheme: 2,
+        uiFontScale: 140,
+    });
+    const { page } = fixture;
+    try {
+        await seedModernMovies(page, 40, 0);
+        await page.evaluate(() => {
+            const title =
+                "Northern Passage — a journey across the distant mountains, the silent ocean and the long road home";
+            channels["movie-0"].channel_name = title;
+            channels["movie-0"].name = title;
+            channels["movie-0"].__ottMediaItem.name = title;
+            channels["movie-0"].descr =
+                "A complete description follows the travellers through unfamiliar landscapes. ".repeat(
+                    50
+                );
+            channels["movie-0"].__ottMediaItem.description =
+                channels["movie-0"].descr;
+            _channelsList(0, 0);
+        });
+        await expect(page.locator("#_name")).toContainText("a journey across");
+        await expect(page.locator("#_descr")).toBeVisible();
+        await page.evaluate(() => {
+            window.__detailModeEffects = [];
+            for (const name of [
+                "stbStop",
+                "stbPlay",
+                "loadChannels",
+                "getChannelsArray",
+                "stbSetWindow",
+                "stbToFullScreen",
+            ])
+                window[name] = () => __detailModeEffects.push(name);
+        });
+        for (const mode of [1, 0, 1]) {
+            await page.evaluate(
+                (mode) => saveSettings({ interfaceMode: mode }),
+                mode
+            );
+            const bounds = await page.evaluate(() => {
+                const panel = document
+                    .getElementById("listDetail")
+                    .getBoundingClientRect();
+                const text = document
+                    .getElementById("_descr")
+                    .getBoundingClientRect();
+                return {
+                    panelBottom: panel.bottom,
+                    textBottom: text.bottom,
+                    textHeight: text.height,
+                };
+            });
+            expect(bounds.textHeight).toBeGreaterThan(0);
+            expect(bounds.textBottom).toBeLessThanOrEqual(
+                bounds.panelBottom + 1
+            );
+        }
+        expect(await page.evaluate(() => __detailModeEffects)).toEqual([]);
+        await saveModernScreenshot(page, "tauri", "long-details");
         expect(fixture.errors).toEqual([]);
         expect(fixture.unexpectedRequests).toEqual([]);
     } finally {

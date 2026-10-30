@@ -567,8 +567,25 @@ const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
     bytes: 116,
     gzipBytes: 95,
 });
+// Opt-in Modern presentation: measured separately from the existing catalogue.
+// Entry contains only settings, loader and repaint hooks; the renderer stays lazy.
+// Evidence: docs/evidence/modern-interface-size-20261030.json.
+const MODERN_INTERFACE_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 3700,
+    gzipBytes: 1200,
+});
+const MODERN_INTERFACE_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 6200,
+    gzipBytes: 2650,
+});
+const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
+    "favorites-transfer": Object.freeze({ bytes: 64, gzipBytes: 32 }),
+    "remote-settings-lifecycle": Object.freeze({ bytes: 700, gzipBytes: 256 }),
+    "subtitle-appearance": Object.freeze({ bytes: 96, gzipBytes: 32 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -587,6 +604,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -784,6 +802,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -806,6 +825,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -837,6 +857,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"].bytes +
             CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.bytes +
             STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
@@ -844,6 +865,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"]
+                .gzipBytes +
             CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.gzipBytes +
             STB_PLAYER_FAVORITES_ALLOWANCE.gzipBytes +
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
@@ -856,6 +879,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
     "local-compatibility": Object.freeze({ bytes: 4800, gzipBytes: 1900 }),
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
+    "modern-interface": MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
     // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
@@ -880,8 +904,14 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
     "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
     "remote-settings-lifecycle": Object.freeze({
-        bytes: 31000,
-        gzipBytes: 10000,
+        bytes:
+            31000 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["remote-settings-lifecycle"]
+                .bytes,
+        gzipBytes:
+            10000 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["remote-settings-lifecycle"]
+                .gzipBytes,
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
@@ -889,7 +919,15 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "shaka-tracks": Object.freeze({ bytes: 1200, gzipBytes: 640 }),
     // Two live-recovery choices add 239 raw / 73 gzip bytes on Node 26.12.1.
     // Keep the existing lazy editor and its original measurement headroom.
-    "subtitle-appearance": Object.freeze({ bytes: 8100, gzipBytes: 3400 }),
+    "subtitle-appearance": Object.freeze({
+        bytes:
+            8100 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"].bytes,
+        gzipBytes:
+            3400 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"]
+                .gzipBytes,
+    }),
 });
 // Carry the approved 96-byte VOD checkpoint allowance into the complete
 // payload exactly once, alongside the independently bounded optional capture.
@@ -899,6 +937,12 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+        Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
+            (sum, cap) => sum + cap.bytes,
+            0
+        ) +
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -930,6 +974,12 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+        Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
+            (sum, cap) => sum + cap.gzipBytes,
+            0
+        ) +
+        MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -1564,6 +1614,9 @@ module.exports = {
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
+    MODERN_INTERFACE_ENTRY_ALLOWANCE,
+    MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
+    MODERN_INTERFACE_RELATED_ALLOWANCES,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

@@ -558,6 +558,7 @@ var keyStrings = {
     "Infobar settings": "Ntọala ogwe ozi",
     Information: "Ozi",
     "Interface credits": "Ndị nyere aka n'interface",
+    "Interface mode": "Ụdị ihu njikwa",
     "Interface settings": "Ntọala ihu ngwa",
     "Interface theme": "Isiokwu ihu ngwa",
     "Interface transparency": "Nghọta ihu ngwa",
@@ -635,6 +636,9 @@ var keyStrings = {
     "Media Library URL": "URL ọba mgbasa ozi",
     Menu: "Ndepụta nhọrọ",
     "Menu items settings": "Ntọala ihe ndepụta nhọrọ",
+    Modern: "Ọgbara ọhụrụ",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ihu njikwa ọgbara ọhụrụ adịghị. Nke ochie ka na-arụ ọrụ.",
     "Move category down": "Bugharịa otu ala",
     "Move category up": "Bugharịa otu elu",
     "Move channel down": "Bugharịa ọwa ala",

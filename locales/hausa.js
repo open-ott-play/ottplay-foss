@@ -566,6 +566,7 @@ var keyStrings = {
     "Infobar settings": "Saitunan sandar bayani",
     Information: "Bayani",
     "Interface credits": "Masu bada gudunmawar manhaja",
+    "Interface mode": "Yanayin mu'amala",
     "Interface settings": "Saitunan fuskar manhaja",
     "Interface theme": "Jigon fuskar manhaja",
     "Interface transparency": "Ganin bayan fuskar manhaja",
@@ -643,6 +644,9 @@ var keyStrings = {
     "Media Library URL": "URL na ɗakin kafofin watsa labarai",
     Menu: "Zaɓuɓɓuka",
     "Menu items settings": "Saitunan abubuwan zaɓi",
+    Modern: "Na zamani",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ba a samun mu'amala ta zamani. Ta gargajiya za ta ci gaba da aiki.",
     "Move category down": "Matsar da rukuni ƙasa",
     "Move category up": "Matsar da rukuni sama",
     "Move channel down": "Matsar da tasha ƙasa",

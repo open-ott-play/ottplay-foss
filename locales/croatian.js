@@ -569,6 +569,7 @@ var keyStrings = {
     "Infobar settings": "Postavke info trake",
     Information: "Informacije",
     "Interface credits": "Autori sučelja",
+    "Interface mode": "Način sučelja",
     "Interface settings": "Postavke sučelja",
     "Interface theme": "Tema sučelja",
     "Interface transparency": "Transparentnost sučelja",
@@ -646,6 +647,9 @@ var keyStrings = {
     "Media Library URL": "Medijska biblioteka URL",
     Menu: "Izbornik",
     "Menu items settings": "Postavke stavki izbornika",
+    Modern: "Moderni",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moderno sučelje nije dostupno. Klasično ostaje aktivno.",
     "Move category down": "Pomakni kategoriju prema dolje",
     "Move category up": "Pomakni kategoriju gore",
     "Move channel down": "Pomakni kanal prema dolje",

@@ -591,6 +591,7 @@ var keyStrings = {
     "Infobar settings": "Fikirakirana bara fampahalalana",
     Information: "Fampahalalana",
     "Interface credits": "Mpandray anjara amin'ny endriky ny rindranasa",
+    "Interface mode": "Fomba fampisehoana",
     "Interface settings": "Fikirakirana endriky ny rindranasa",
     "Interface theme": "Lohahevitry ny endriky ny rindranasa",
     "Interface transparency": "Fangaraharan'ny endriky ny rindranasa",
@@ -671,6 +672,9 @@ var keyStrings = {
     "Media Library URL": "URL tranombokin'ny haino aman-jery",
     Menu: "Safidy",
     "Menu items settings": "Fikirakirana singa ao amin'ny safidy",
+    Modern: "Maoderina",
+    "Modern interface is unavailable. Classic remains active.":
+        "Tsy misy ny endrika maoderina. Mbola miasa ny endrika mahazatra.",
     "Move category down": "Afindrao midina ny sokajy",
     "Move category up": "Afindrao miakatra ny sokajy",
     "Move channel down": "Afindrao midina ny fantsona",

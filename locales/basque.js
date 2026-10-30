@@ -574,6 +574,7 @@ var keyStrings = {
     "Infobar settings": "Informazio-barraren ezarpenak",
     Information: "Informazioa",
     "Interface credits": "Interfazearen egileak",
+    "Interface mode": "Interfazearen modua",
     "Interface settings": "Interfazearen ezarpenak",
     "Interface theme": "Interfazearen gaia",
     "Interface transparency": "Interfazearen gardentasuna",
@@ -651,6 +652,9 @@ var keyStrings = {
     "Media Library URL": "Multimedia-liburutegiaren URLa",
     Menu: "Menua",
     "Menu items settings": "Menu-elementuen ezarpenak",
+    Modern: "Modernoa",
+    "Modern interface is unavailable. Classic remains active.":
+        "Interfaze modernoa ez dago erabilgarri. Klasikoak aktibo jarraitzen du.",
     "Move category down": "Mugitu kategoria behera",
     "Move category up": "Mugitu kategoria gora",
     "Move channel down": "Mugitu kanala behera",

@@ -550,6 +550,7 @@ var keyStrings = {
     "Infobar settings": "ការកំណត់របារព័ត៌មាន",
     Information: "ព័ត៌មាន",
     "Interface credits": "អ្នកចូលរួមបង្កើតចំណុចប្រទាក់",
+    "Interface mode": "របៀបចំណុចប្រទាក់",
     "Interface settings": "ការកំណត់ចំណុចប្រទាក់",
     "Interface theme": "ចំណុចប្រទាក់ស្បែក",
     "Interface transparency": "តម្លាភាពនៃចំណុចប្រទាក់",
@@ -626,6 +627,9 @@ var keyStrings = {
     "Media Library URL": "បណ្ណាល័យប្រព័ន្ធផ្សព្វផ្សាយ URL",
     Menu: "ម៉ឺនុយ",
     "Menu items settings": "ការកំណត់ធាតុម៉ឺនុយ",
+    Modern: "ទំនើប",
+    "Modern interface is unavailable. Classic remains active.":
+        "ចំណុចប្រទាក់ទំនើបមិនអាចប្រើបានទេ។ ចំណុចប្រទាក់បុរាណនៅតែសកម្ម។",
     "Move category down": "ផ្លាស់ទីប្រភេទចុះក្រោម",
     "Move category up": "ផ្លាស់ទីប្រភេទឡើងលើ",
     "Move channel down": "ផ្លាស់ទីឆានែលចុះក្រោម",

@@ -497,6 +497,8 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 rows[row.id] = {
                     channel_name: row.label + " — " + row.detail,
                     logo: "",
+                    modernMeta: row.detail,
+                    modernTitle: row.label,
                 };
             });
             w.__ottChannelListView.show(

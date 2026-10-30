@@ -561,6 +561,7 @@ var keyStrings = {
     "Infobar settings": "தகவல் பட்டி அமைப்புகள்",
     Information: "தகவல்",
     "Interface credits": "இடைமுகத்தை உருவாக்கியவர்கள்",
+    "Interface mode": "இடைமுக முறை",
     "Interface settings": "இடைமுக அமைப்புகள்",
     "Interface theme": "இடைமுக தீம்",
     "Interface transparency": "இடைமுகம் வெளிப்படைத்தன்மை",
@@ -637,6 +638,9 @@ var keyStrings = {
     "Media Library URL": "ஊடக நூலகம் URL",
     Menu: "மெனு",
     "Menu items settings": "மெனு உருப்படி அமைப்புகள்",
+    Modern: "நவீனம்",
+    "Modern interface is unavailable. Classic remains active.":
+        "நவீன இடைமுகம் கிடைக்கவில்லை. பாரம்பரிய இடைமுகம் செயலில் இருக்கும்.",
     "Move category down": "வகையை கீழே நகர்த்தவும்",
     "Move category up": "வகையை மேலே நகர்த்தவும்",
     "Move channel down": "சேனலை கீழே நகர்த்தவும்",

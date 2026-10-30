@@ -1,5 +1,12 @@
 # Studio 2026 and interface settings
 
+**Interface settings → Interface mode** selects **Classic** (`0`) or
+**Modern** (`1`). This application preference is independent of the colour
+theme. Classic remains the default presentation; selecting Modern does not
+change the saved theme, provider, categories, Favorites or playback position.
+[Modern interface](modern-interface.md) describes the catalogue presentation,
+navigation, remote setting and fallback behavior.
+
 Studio 2026 is the default theme for an unset or invalid `sInterfaceTheme`.
 Explicitly saved Classic (`0`), PLi-HD (`1`) and Studio (`2`) selections survive
 restart. Selecting a theme does not reset any other preference. Custom colour
@@ -17,6 +24,8 @@ upstream links and the earlier OTT-play lineage in English.
   At the default font scale, a full page renders the selected count. Enlarged
   fonts use fewer visible rows without changing this saved preference. The
   final page contains only the remaining channels at the same row height.
+  Modern catalogues calculate a separate visible capacity for their cards or
+  larger channel rows without overwriting this saved Classic preference.
 - **Typography:** all seven saved font indices and the 0–30 line-spacing setting
   remain available. At 100%, text retains the configured row density. Above
   100%, each page displays fewer rows so enlarged text remains readable; the

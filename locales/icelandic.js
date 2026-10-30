@@ -555,6 +555,7 @@ var keyStrings = {
     "Infobar settings": "Stillingar upplýsingastiku",
     Information: "Upplýsingar",
     "Interface credits": "Höfundar viðmóts",
+    "Interface mode": "Viðmótshamur",
     "Interface settings": "Stillingar viðmóts",
     "Interface theme": "Þema viðmóts",
     "Interface transparency": "Gagnsæi viðmóts",
@@ -631,6 +632,9 @@ var keyStrings = {
     "Media Library URL": "Vefslóð miðlasafns",
     Menu: "Valmynd",
     "Menu items settings": "Stillingar valmyndaratriða",
+    Modern: "Nútímalegt",
+    "Modern interface is unavailable. Classic remains active.":
+        "Nútímaviðmótið er ekki tiltækt. Klassíska viðmótið helst virkt.",
     "Move category down": "Færa flokk niður",
     "Move category up": "Færa flokk upp",
     "Move channel down": "Færa rás niður",

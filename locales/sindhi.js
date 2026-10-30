@@ -554,6 +554,7 @@ var keyStrings = {
     "Infobar settings": "ڄاڻ پٽي سيٽنگون",
     Information: "ڄاڻ",
     "Interface credits": "انٽرفيس جا تخليقڪار",
+    "Interface mode": "انٽرفيس موڊ",
     "Interface settings": "انٽرفيس سيٽنگون",
     "Interface theme": "انٽرفيس جو موضوع",
     "Interface transparency": "انٽرفيس جي شفافيت",
@@ -630,6 +631,9 @@ var keyStrings = {
     "Media Library URL": "ميڊيا لائبريري URL",
     Menu: "مينيو",
     "Menu items settings": "مينيو شين جون سيٽنگون",
+    Modern: "جديد",
+    "Modern interface is unavailable. Classic remains active.":
+        "جديد انٽرفيس دستياب ناهي. ڪلاسيڪي فعال رهندو.",
     "Move category down": "زمرو هيٺ ڪريو",
     "Move category up": "زمرو مٿي ڪريو",
     "Move channel down": "چينل هيٺ ڪريو",

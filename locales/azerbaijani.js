@@ -566,6 +566,7 @@ var keyStrings = {
     "Infobar settings": "Məlumat paneli ayarları",
     Information: "Məlumat",
     "Interface credits": "İnterfeys müəllifləri",
+    "Interface mode": "İnterfeys rejimi",
     "Interface settings": "İnterfeys ayarları",
     "Interface theme": "İnterfeys mövzusu",
     "Interface transparency": "İnterfeysin şəffaflığı",
@@ -642,6 +643,9 @@ var keyStrings = {
     "Media Library URL": "Media kitabxanasının URL-i",
     Menu: "Menyu",
     "Menu items settings": "Menyu elementlərinin ayarları",
+    Modern: "Müasir",
+    "Modern interface is unavailable. Classic remains active.":
+        "Müasir interfeys əlçatan deyil. Klassik aktiv qalır.",
     "Move category down": "Kateqoriyanı aşağı köçür",
     "Move category up": "Kateqoriyanı yuxarı köçür",
     "Move channel down": "Kanalı aşağı köçür",

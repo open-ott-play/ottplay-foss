@@ -562,6 +562,7 @@ var keyStrings = {
     "Infobar settings": "د معلوماتو بار ترتیبات",
     Information: "معلومات",
     "Interface credits": "د انټرفېس جوړوونکي",
+    "Interface mode": "د انٹرفېس حالت",
     "Interface settings": "د انټرفېس ترتیبات",
     "Interface theme": "د انټرفېس بڼه",
     "Interface transparency": "د انټرفېس روڼتیا",
@@ -638,6 +639,9 @@ var keyStrings = {
     "Media Library URL": "د رسنیو کتابتون URL",
     Menu: "مینو",
     "Menu items settings": "د مینو توکي ترتیبات",
+    Modern: "عصري",
+    "Modern interface is unavailable. Classic remains active.":
+        "عصري انٹرفېس شتون نه لري. کلاسیک فعال پاتې کېږي.",
     "Move category down": "کټګورۍ ښکته کړئ",
     "Move category up": "کټګوري پورته یوسئ",
     "Move channel down": "چینل ښکته کړئ",

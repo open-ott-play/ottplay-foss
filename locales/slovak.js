@@ -573,6 +573,7 @@ var keyStrings = {
     "Infobar settings": "Nastavenia informačnej lišty",
     Information: "Informácie",
     "Interface credits": "Autori rozhrania",
+    "Interface mode": "Režim rozhrania",
     "Interface settings": "Nastavenia rozhrania",
     "Interface theme": "Téma rozhrania",
     "Interface transparency": "Priehľadnosť rozhrania",
@@ -650,6 +651,9 @@ var keyStrings = {
     "Media Library URL": "Knižnica médií URL",
     Menu: "Menu",
     "Menu items settings": "Nastavenia položiek ponuky",
+    Modern: "Moderný",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moderné rozhranie nie je dostupné. Klasické zostáva aktívne.",
     "Move category down": "Presunúť kategóriu nadol",
     "Move category up": "Posunúť kategóriu nahor",
     "Move channel down": "Presuňte kanál nadol",

@@ -569,6 +569,7 @@ var keyStrings = {
     "Infobar settings": "Подешавања траке са информацијама",
     Information: "Информације",
     "Interface credits": "Аутори интерфејса",
+    "Interface mode": "Режим интерфејса",
     "Interface settings": "Подешавања интерфејса",
     "Interface theme": "Тема интерфејса",
     "Interface transparency": "Транспарентност интерфејса",
@@ -646,6 +647,9 @@ var keyStrings = {
     "Media Library URL": "Медијатека URL",
     Menu: "Мени",
     "Menu items settings": "Подешавања ставке менија",
+    Modern: "Модеран",
+    "Modern interface is unavailable. Classic remains active.":
+        "Модерни интерфејс није доступан. Класични остаје активан.",
     "Move category down": "Померите категорију надоле",
     "Move category up": "Померите категорију нагоре",
     "Move channel down": "Померите канал надоле",

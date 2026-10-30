@@ -553,6 +553,7 @@ var keyStrings = {
     "Infobar settings": "Ètò ọ̀pá ìwífún",
     Information: "Ìwífún",
     "Interface credits": "Àwọn tó ṣe ojú ìṣàkóso",
+    "Interface mode": "Ìpo ojú ìṣàkóso",
     "Interface settings": "Ètò ojú ìṣàkóso",
     "Interface theme": "Àkòrí ojú ìṣàkóso",
     "Interface transparency": "Ìhàn-kedere ojú ìṣàkóso",
@@ -630,6 +631,9 @@ var keyStrings = {
     "Media Library URL": "URL ilé-ìkàwé mídíà",
     Menu: "Àkójọ aṣàyàn",
     "Menu items settings": "Ètò àwọn ohun inú àkójọ aṣàyàn",
+    Modern: "Ìgbàlódé",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ojú ìṣàkóso ìgbàlódé kò sí. Ti àtijọ́ ṣì ń ṣiṣẹ́.",
     "Move category down": "Gbe ẹ̀ka sí ìsàlẹ̀",
     "Move category up": "Gbe ẹ̀ka sí òkè",
     "Move channel down": "Gbe ìkànnì sí ìsàlẹ̀",

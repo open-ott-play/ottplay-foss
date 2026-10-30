@@ -572,6 +572,7 @@ var keyStrings = {
     "Infobar settings": "Мэдээллийн мөрийн тохиргоо",
     Information: "Мэдээлэл",
     "Interface credits": "Интерфэйсийн зохиогчид",
+    "Interface mode": "Интерфейсийн горим",
     "Interface settings": "Интерфэйсийн тохиргоо",
     "Interface theme": "Интерфэйсийн загвар",
     "Interface transparency": "Интерфэйсийн тунгалаг байдал",
@@ -649,6 +650,9 @@ var keyStrings = {
     "Media Library URL": "Медиа сангийн URL",
     Menu: "Цэс",
     "Menu items settings": "Цэсийн зүйлийн тохиргоо",
+    Modern: "Орчин үеийн",
+    "Modern interface is unavailable. Classic remains active.":
+        "Орчин үеийн интерфейс ашиглах боломжгүй. Сонгодог интерфейс идэвхтэй хэвээр байна.",
     "Move category down": "Ангиллыг доош шилжүүлэх",
     "Move category up": "Ангиллыг дээш шилжүүлэх",
     "Move channel down": "Сувгийг доош шилжүүлэх",

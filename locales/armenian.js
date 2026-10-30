@@ -565,6 +565,7 @@ var keyStrings = {
     "Infobar settings": "Տեղեկագոտու կարգավորումներ",
     Information: "Տեղեկություն",
     "Interface credits": "Միջերեսի հեղինակներ",
+    "Interface mode": "Միջերեսի ռեժիմ",
     "Interface settings": "Միջերեսի կարգավորումներ",
     "Interface theme": "Միջերեսի թեմա",
     "Interface transparency": "Միջերեսի թափանցիկություն",
@@ -641,6 +642,9 @@ var keyStrings = {
     "Media Library URL": "Մեդիա գրադարանի URL",
     Menu: "Մենյու",
     "Menu items settings": "Մենյուի տարրերի կարգավորումներ",
+    Modern: "Ժամանակակից",
+    "Modern interface is unavailable. Classic remains active.":
+        "Ժամանակակից միջերեսն անհասանելի է։ Դասականը մնում է ակտիվ։",
     "Move category down": "Տեղափոխել կատեգորիան ներքև",
     "Move category up": "Տեղափոխել կատեգորիան վերև",
     "Move channel down": "Տեղափոխել ալիքը ներքև",

@@ -559,6 +559,7 @@ var keyStrings = {
     "Infobar settings": "Nastavení informačního panelu",
     Information: "Informace",
     "Interface credits": "Autoři rozhraní",
+    "Interface mode": "Režim rozhraní",
     "Interface settings": "Nastavení rozhraní",
     "Interface theme": "Motiv rozhraní",
     "Interface transparency": "Průhlednost rozhraní",
@@ -635,6 +636,9 @@ var keyStrings = {
     "Media Library URL": "URL knihovny médií",
     Menu: "Nabídka",
     "Menu items settings": "Nastavení položek nabídky",
+    Modern: "Moderní",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moderní rozhraní není dostupné. Klasické zůstává aktivní.",
     "Move category down": "Posunout kategorii dolů",
     "Move category up": "Posunout kategorii nahoru",
     "Move channel down": "Posunout kanál dolů",

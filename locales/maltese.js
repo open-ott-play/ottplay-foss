@@ -575,6 +575,7 @@ var keyStrings = {
     "Infobar settings": "Issettjar tal-barra tal-informazzjoni",
     Information: "Informazzjoni",
     "Interface credits": "Rikonoxximenti tal-interfaċċa",
+    "Interface mode": "Modalità tal-interfaċċa",
     "Interface settings": "Issettjar tal-interfaċċa",
     "Interface theme": "Tema tal-interfaċċa",
     "Interface transparency": "Trasparenza tal-interfaċċa",
@@ -654,6 +655,9 @@ var keyStrings = {
     "Media Library URL": "URL tal-librerija tal-midja",
     Menu: "Menù",
     "Menu items settings": "Issettjar tal-oġġetti tal-menù",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "L-interfaċċa moderna mhix disponibbli. Il-klassika tibqa’ attiva.",
     "Move category down": "Mexxi l-kategorija ’l isfel",
     "Move category up": "Mexxi l-kategorija ’l fuq",
     "Move channel down": "Mexxi l-kanal ’l isfel",

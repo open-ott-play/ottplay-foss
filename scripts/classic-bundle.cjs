@@ -73,6 +73,8 @@ const CLASSIC_MODULES = [
     "build/ui/menu-registry.js",
     "build/ui/accessibility.js",
     "build/ui/live-recovery.js",
+    "build/ui/interface-mode.js",
+    "build/ui/modern.js",
     "build/ui/index.js",
     "build/ui/subtitle-appearance.js",
     "build/key-handler/index.js",
@@ -262,6 +264,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     ],
     "local-compatibility": ["build/plugins/local-compatibility.js"],
     "local-media-ui": ["build/plugins/local-media-ui.js"],
+    "modern-interface": ["build/ui/modern.js"],
 
     "perf-capture": [
         "build/plugins/perf-sensors.js",
@@ -467,8 +470,17 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
         "window.__ottScreens",
     ]),
     "build/ui/input-router.js": Object.freeze(["window.__ottInputRouter"]),
+    "build/ui/interface-mode.js": Object.freeze([
+        "window.__ottEnsureModernUi",
+        "window.__ottInterfaceModeState",
+        "window.setInterfaceMode",
+    ]),
     "build/ui/live-recovery.js": Object.freeze(["window.__ottLiveRecoveryOSD"]),
     "build/ui/menu-registry.js": Object.freeze(["window.__ottMenuRegistry"]),
+    "build/ui/modern.js": Object.freeze([
+        "window.__ottModernUi",
+        "window.__ottModernUiFactory",
+    ]),
     "build/ui/screen-controller.js": Object.freeze([
         "window.__ottScreenController",
     ]),

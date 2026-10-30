@@ -579,6 +579,7 @@ var keyStrings = {
     "Infobar settings": "Setările barei de informații",
     Information: "Informații",
     "Interface credits": "Autorii interfeței",
+    "Interface mode": "Mod interfață",
     "Interface settings": "Setările interfeței",
     "Interface theme": "Tema interfeței",
     "Interface transparency": "Transparența interfeței",
@@ -657,6 +658,9 @@ var keyStrings = {
     "Media Library URL": "URL mediatecă",
     Menu: "Meniu",
     "Menu items settings": "Setările elementelor de meniu",
+    Modern: "Modern",
+    "Modern interface is unavailable. Classic remains active.":
+        "Interfața modernă nu este disponibilă. Cea clasică rămâne activă.",
     "Move category down": "Mută categoria în jos",
     "Move category up": "Mută categoria în sus",
     "Move channel down": "Mută canalul în jos",
