@@ -361,6 +361,8 @@ var keyStrings = {
     Editor: "المحرر",
     "Enable HTTP remote": "تمكين جهاز التحكم عن بعد HTTP",
     English: "الانجليزية",
+    "Enter a magnet link or a torrent file URL.":
+        "أدخل رابطًا مغناطيسيًا أو عنوان URL لملف تورنت.",
     "Enter a password (8 characters).": "أدخل كلمة المرور (8 أحرف).",
     "Enter a playlist URL to access this service.":
         "أدخل قائمة التشغيل URL للوصول إلى هذه الخدمة.",
@@ -1055,6 +1057,8 @@ var keyStrings = {
         "أمر التحكم عن بُعد هذا غير مدعوم في المشغل.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "هذه الجلسة الآمنة غير متوفرة أو منتهية الصلاحية. افتح جلسة جديدة على التلفاز واستخدم رابطها الكامل.",
+    "This source is already in the catalog.":
+        "هذا المصدر موجود بالفعل في الفهرس.",
     Timer: "الموقت",
     "Timer: switch to channel?": "الموقت: التبديل إلى هذه القناة؟",
     "Timeshift: one minute back": "رجوع دقيقة واحدة",
@@ -1071,6 +1075,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "تغيير وضع التكبير/التصغير",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "إعدادات Top-Tv",
+    "Torrent source limit reached.": "تم بلوغ الحد الأقصى لمصادر التورنت.",
     "Touchscreen locked": "تم قفل شاشة اللمس",
     "Touchscreen unlocked": "تم فتح قفل شاشة اللمس",
     "Trust this server for remote support":

@@ -378,6 +378,8 @@ var keyStrings = {
     Editor: "Editorea",
     "Enable HTTP remote": "Aktibatu HTTP urruneko kontrola",
     English: "Ingelesa",
+    "Enter a magnet link or a torrent file URL.":
+        "Sartu magnet esteka bat edo torrent fitxategi baten URLa.",
     "Enter a password (8 characters).": "Sartu pasahitza (8 karaktere).",
     "Enter a playlist URL to access this service.":
         "Sartu erreprodukzio-zerrenda baten URLa zerbitzu honetara sartzeko.",
@@ -1095,6 +1097,8 @@ var keyStrings = {
         "Erreproduzitzaileak ez du urrutiko agindu hau onartzen.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Saio seguru hau ez dago erabilgarri edo iraungi da. Ireki saio berri bat telebistan eta erabili bere esteka osoa.",
+    "This source is already in the catalog.":
+        "Iturri hau katalogoan dago jada.",
     Timer: "Tenporizadorea",
     "Timer: switch to channel?": "Tenporizadorea: kanal honetara aldatu?",
     "Timeshift: one minute back": "Egin minutu bat atzera",
@@ -1111,6 +1115,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Aldatu zoom modua",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ezarpenak",
+    "Torrent source limit reached.": "Torrent iturrien mugara iritsi zara.",
     "Touchscreen locked": "Ukipen-pantaila blokeatu da",
     "Touchscreen unlocked": "Ukipen-pantaila desblokeatu da",
     "Trust this server for remote support":

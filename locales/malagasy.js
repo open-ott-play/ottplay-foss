@@ -387,6 +387,8 @@ var keyStrings = {
     Editor: "Mpanova soratra",
     "Enable HTTP remote": "Alefaso ny fanaraha-maso HTTP lavitra",
     English: "Anglisy",
+    "Enter a magnet link or a torrent file URL.":
+        "Ampidiro rohy magnet na URL an'ny rakitra torrent.",
     "Enter a password (8 characters).":
         "Ampidiro ny tenimiafina (tarehintsoratra 8).",
     "Enter a playlist URL to access this service.":
@@ -1127,6 +1129,8 @@ var keyStrings = {
         "Tsy tohanan’ny mpilalao haino aman-jery ity baiko fanaraha-maso lavitra ity.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ity session azo antoka ity dia tsy misy na lany daty. Sokafy fivoriana vaovao amin'ny fahitalavitra ary ampiasao ny rohy feno.",
+    "This source is already in the catalog.":
+        "Efa ao amin'ny katalaogy io loharano io.",
     Timer: "Fameram-potoana",
     "Timer: switch to channel?":
         "Fameram-potoana: hifindra amin'ity fantsona ity?",
@@ -1146,6 +1150,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ovao ny fomba fanalehibiazana",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Fikirakirana Top-Tv",
+    "Torrent source limit reached.":
+        "Tratra ny fetra ambony indrindra amin'ny isan'ny loharano torrent.",
     "Touchscreen locked": "Voahidy ny efijery fikasihana",
     "Touchscreen unlocked": "Nesorina ny hidin’ny efijery fikasihana",
     "Trust this server for remote support":

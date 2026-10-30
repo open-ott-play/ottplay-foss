@@ -363,6 +363,8 @@ var keyStrings = {
     Editor: "ايڊيٽر",
     "Enable HTTP remote": "HTTP ريموٽ فعال ڪريو",
     English: "انگريزي",
+    "Enter a magnet link or a torrent file URL.":
+        "مئگنيٽ لنڪ يا ٽورينٽ فائل جو URL داخل ڪريو.",
     "Enter a password (8 characters).": "پاسورڊ داخل ڪريو (8 اکر).",
     "Enter a playlist URL to access this service.":
         "هن خدمت تائين رسائي لاءِ پلي لسٽ URL داخل ڪريو.",
@@ -1066,6 +1068,8 @@ var keyStrings = {
         "پليئر هن ريموٽ ڪنٽرول حڪم جي سهائتا نٿو ڪري.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "هي محفوظ سيشن دستياب ناهي يا ختم ٿي چڪو آهي. ٽي وي تي نئون سيشن کوليو ۽ ان جي مڪمل لنڪ استعمال ڪريو.",
+    "This source is already in the catalog.":
+        "هي ذريعو اڳ ۾ ئي فهرست ۾ موجود آهي.",
     Timer: "ٽائمر",
     "Timer: switch to channel?": "ٽائمر: هن چينل ڏانهن وڃجي؟",
     "Timeshift: one minute back": "وقت جي منتقلي: هڪ منٽ پوئتي",
@@ -1083,6 +1087,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "زوم موڊ بدلايو",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv جون سيٽنگون",
+    "Torrent source limit reached.":
+        "ٽورينٽ ذريعن جو وڌ ۾ وڌ انگ پورو ٿي ويو آهي.",
     "Touchscreen locked": "ٽچ اسڪرين کي تالو لڳل آهي",
     "Touchscreen unlocked": "ٽچ اسڪرين جو تالو کليل آهي",
     "Trust this server for remote support":

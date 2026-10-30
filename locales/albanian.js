@@ -378,6 +378,8 @@ var keyStrings = {
     Editor: "Redaktor",
     "Enable HTTP remote": "Aktivizo telekomandën HTTP",
     English: "anglisht",
+    "Enter a magnet link or a torrent file URL.":
+        "Futni një lidhje magnet ose URL-në e një skedari torrent.",
     "Enter a password (8 characters).":
         "Shkruani një fjalëkalim (8 karaktere).",
     "Enter a playlist URL to access this service.":
@@ -1101,6 +1103,8 @@ var keyStrings = {
         "Kjo komandë në distancë nuk mbështetet nga luajtësi.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ky sesion i sigurt nuk disponohet ose ka skaduar. Hapni një sesion të ri në televizor dhe përdorni lidhjen e plotë të tij.",
+    "This source is already in the catalog.":
+        "Ky burim është tashmë në katalog.",
     Timer: "Kohëmatësi",
     "Timer: switch to channel?": "Kohëmatësi: të kaloj te ky kanal?",
     "Timeshift: one minute back": "Kthehu një minutë pas",
@@ -1117,6 +1121,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ndrysho mënyrën e zmadhimit",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cilësimet e Top-Tv",
+    "Torrent source limit reached.": "U arrit kufiri i burimeve torrent.",
     "Touchscreen locked": "Ekrani me prekje u bllokua",
     "Touchscreen unlocked": "Ekrani me prekje u zhbllokua",
     "Trust this server for remote support":

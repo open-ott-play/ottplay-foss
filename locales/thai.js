@@ -361,6 +361,8 @@ var keyStrings = {
     Editor: "บรรณาธิการ",
     "Enable HTTP remote": "เปิดใช้งานรีโมท HTTP",
     English: "ภาษาอังกฤษ",
+    "Enter a magnet link or a torrent file URL.":
+        "ป้อนลิงก์แม่เหล็กหรือ URL ของไฟล์ทอร์เรนต์",
     "Enter a password (8 characters).": "ใส่รหัสผ่าน (8 ตัวอักษร)",
     "Enter a playlist URL to access this service.":
         "ป้อนเพลย์ลิสต์ URL เพื่อเข้าถึงบริการนี้",
@@ -1046,6 +1048,7 @@ var keyStrings = {
         "โปรแกรมเล่นไม่รองรับคำสั่งควบคุมระยะไกลนี้",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "เซสชันที่ปลอดภัยนี้ไม่พร้อมใช้งานหรือหมดอายุแล้ว เปิดเซสชันใหม่บนทีวีและใช้ลิงก์ที่สมบูรณ์",
+    "This source is already in the catalog.": "แหล่งนี้อยู่ในแค็ตตาล็อกแล้ว",
     Timer: "ตัวจับเวลา",
     "Timer: switch to channel?": "ตัวจับเวลา: สลับไปที่ช่องนี้หรือไม่?",
     "Timeshift: one minute back": "เลื่อนเวลาย้อนหลังหนึ่งนาที",
@@ -1062,6 +1065,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "เปลี่ยนโหมดการซูม",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "การตั้งค่า Top-Tv",
+    "Torrent source limit reached.": "จำนวนแหล่งทอร์เรนต์ถึงขีดจำกัดแล้ว",
     "Touchscreen locked": "ล็อกหน้าจอสัมผัสแล้ว",
     "Touchscreen unlocked": "ปลดล็อกหน้าจอสัมผัสแล้ว",
     "Trust this server for remote support":

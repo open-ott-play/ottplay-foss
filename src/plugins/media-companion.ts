@@ -1,7 +1,8 @@
 /** Optional media service client. Durable inputs never contain playback leases. */
 function createMediaCompanion(
     w: any,
-    nativeEndpoint?: () => Promise<any>
+    nativeEndpoint?: () => Promise<any>,
+    nativeOnly = false
 ): any {
     var owned: any[] = [];
     var last: any = null;
@@ -38,8 +39,9 @@ function createMediaCompanion(
     function endpoint(): Promise<string> {
         if (!supportsTransport())
             return Promise.reject(fail("companion_transport_unavailable"));
-        var configured = w.settings && w.settings.companionEndpoint;
-        if (!configured && w.stbGetItem)
+        var configured =
+            !nativeOnly && w.settings && w.settings.companionEndpoint;
+        if (!nativeOnly && !configured && w.stbGetItem)
             configured = w.stbGetItem("sCompanionEndpoint");
         if (configured)
             return Promise.resolve().then(function () {
@@ -188,7 +190,7 @@ function createMediaCompanion(
             var original = wrapped.searchParams.get("source") || "";
             var chosen = wrapped.searchParams.get("index");
             if (
-                !/^https?:\/\//.test(original) ||
+                !/^(?:https?:\/\/|magnet:|ottplay-plugin:)/i.test(original) ||
                 chosen === null ||
                 !/^\d{1,9}$/.test(chosen)
             )
@@ -220,7 +222,7 @@ function createMediaCompanion(
     }
     function resolve(
         source: string,
-        done: (value: string | null, transport?: "file" | "stream") => void,
+        done: (value: any, transport?: "file" | "stream") => void,
         options?: any
     ): () => void {
         var lease: any = {
@@ -230,12 +232,14 @@ function createMediaCompanion(
             files: [],
             id: "",
             selected: null,
+            selectionSubmitted: false,
             source: source,
             state: "metadata",
             streams: [],
         };
         var timer: any,
             deadline: any,
+            wrappedFileIndex: number | undefined,
             completed = false;
         owned.push(lease);
         last = lease;
@@ -252,7 +256,7 @@ function createMediaCompanion(
         lease.cancel = cleanup;
         function finish(
             error?: any,
-            result?: string,
+            result?: any,
             transport?: "file" | "stream"
         ): void {
             if (!lease.active || completed) return;
@@ -315,6 +319,7 @@ function createMediaCompanion(
             }, 30000);
         }
         function selected(index: number): void {
+            lease.selectionSubmitted = true;
             request(lease.base, "sessions/" + lease.id + "/select", "POST", {
                 fileIndex: index,
             }).then(inspect, finish);
@@ -336,6 +341,29 @@ function createMediaCompanion(
                 );
                 return;
             }
+            if (
+                options &&
+                options.metadataOnly &&
+                /^(select|preparing|ready)$/.test(value.state)
+            ) {
+                if (!lease.files.length) {
+                    finish(fail("companion_no_playable_files"));
+                    return;
+                }
+                var files = lease.files.map(function (file: any) {
+                    return {
+                        index: file.index,
+                        length:
+                            Number.isFinite(file.length) && file.length >= 0
+                                ? file.length
+                                : 0,
+                        name: file.name,
+                    };
+                });
+                finish(undefined, files);
+                cleanup();
+                return;
+            }
             if (value.state === "ready") {
                 var path = "sessions/" + lease.id + "/stream";
                 if (value.streamPath !== path) {
@@ -351,10 +379,16 @@ function createMediaCompanion(
                     finish(fail("companion_no_playable_files"));
                     return;
                 }
-                selected(lease.files[0].index);
-                return;
+                if (!lease.selectionSubmitted) {
+                    selected(lease.files[0].index);
+                    return;
+                }
             }
-            if (value.state !== "metadata" && value.state !== "preparing") {
+            if (
+                value.state !== "metadata" &&
+                value.state !== "preparing" &&
+                value.state !== "select"
+            ) {
                 finish(fail("companion_receipt_invalid"));
                 return;
             }
@@ -381,6 +415,10 @@ function createMediaCompanion(
             }
             if (options && Number.isInteger(options.fileIndex))
                 selection.fileIndex = options.fileIndex;
+            else if (wrappedFileIndex !== undefined)
+                selection.fileIndex = wrappedFileIndex;
+            if (options && options.metadataOnly) delete selection.fileIndex;
+            lease.selectionSubmitted = selection.fileIndex !== undefined;
             request(
                 lease.base,
                 "sessions",
@@ -408,14 +446,25 @@ function createMediaCompanion(
                 finish(fail("companion_protocol_unsupported"));
                 return;
             }
-            if (/^ottplay-plugin:/.test(source)) {
+            var requested = source;
+            if (/^ottplay-torrent:/i.test(source)) {
+                try {
+                    var wrapped = fileSelection(source);
+                    requested = wrapped.source;
+                    wrappedFileIndex = wrapped.fileIndex;
+                } catch (error) {
+                    finish(error);
+                    return;
+                }
+            }
+            if (/^ottplay-plugin:/.test(requested)) {
                 if (caps.plugins !== true) {
                     finish(fail("companion_plugins_unavailable"));
                     return;
                 }
                 var p;
                 try {
-                    p = plugin(source);
+                    p = plugin(requested);
                 } catch (error) {
                     finish(error);
                     return;
@@ -462,7 +511,7 @@ function createMediaCompanion(
                         );
                     else finish(fail("companion_source_invalid"));
                 }, finish);
-            } else if (caps.torrent === true) torrent(source);
+            } else if (caps.torrent === true) torrent(requested);
             else finish(fail("companion_torrent_unavailable"));
         }
         deadline = setTimeout(function () {
@@ -518,6 +567,18 @@ function createMediaCompanion(
         endpoint: endpoint,
         endpointValue: endpointValue,
         isSource: isSource,
+        metadata: function (
+            source: string,
+            done: (files: any[] | null) => void
+        ): () => void {
+            return resolve(
+                source,
+                function (files) {
+                    done(Array.isArray(files) ? files : null);
+                },
+                { metadataOnly: true }
+            );
+        },
         plugins: function () {
             return endpoint().then(function (base) {
                 return request(base, "plugins");

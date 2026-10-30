@@ -44,6 +44,7 @@ function fixture() {
         p_pref: "m3u",
         primaryIndex: 0,
         restart: () => restarts++,
+        URL,
     };
     w.window = w;
     const read = (key) => data.get(key) ?? null;
@@ -128,6 +129,52 @@ function fixture() {
     };
     return f;
 }
+check(
+    "JSON backups exclude companion access and preserve local configuration",
+    () => {
+        const copied =
+            "https://copied.invalid/companion/" + "b".repeat(48) + "/v1";
+        for (const own of [
+            undefined,
+            "",
+            "http://127.0.0.1:8793/companion/" + "a".repeat(48) + "/v1",
+            "legacy-invalid-value",
+        ]) {
+            const f = fixture();
+            if (own !== undefined) f.data.set("sCompanionEndpoint", own);
+            f.w.loadSettings();
+            f.mount();
+            const exported = f.export();
+            assert.equal(exported.settings.companionEndpoint, undefined);
+            assert.equal(exported.settings.sCompanionEndpoint, undefined);
+            for (const settings of [
+                {},
+                { companionEndpoint: copied, sCompanionEndpoint: copied },
+            ]) {
+                exported.settings = { ...settings, fontSize: 3 };
+                f.import(exported);
+                assert.equal(f.accept(), true);
+                assert.equal(f.data.get("sCompanionEndpoint"), own);
+                assert.equal(f.data.has("companionEndpoint"), false);
+            }
+        }
+    }
+);
+check(
+    "confirming an import does not overwrite a newly configured companion",
+    () => {
+        const f = fixture();
+        f.mount();
+        const exported = f.export();
+        exported.settings.fontSize = 3;
+        f.import(exported);
+        const own = "http://127.0.0.1:8793/companion/" + "c".repeat(48) + "/v1";
+        assert.equal(f.w.saveSettings({ companionEndpoint: own }), true);
+        assert.equal(f.accept(), true);
+        assert.equal(f.data.get("sCompanionEndpoint"), own);
+        assert.equal(f.w.settings.companionEndpoint, own);
+    }
+);
 check(
     "v2 round-trips full owner documents and preserves invisible references",
     () => {

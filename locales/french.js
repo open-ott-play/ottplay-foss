@@ -385,6 +385,8 @@ var keyStrings = {
     Editor: "Éditeur",
     "Enable HTTP remote": "Activer la télécommande HTTP",
     English: "Anglais",
+    "Enter a magnet link or a torrent file URL.":
+        "Saisissez un lien magnet ou l'URL d'un fichier torrent.",
     "Enter a password (8 characters).":
         "Saisissez un mot de passe (8 caractères).",
     "Enter a playlist URL to access this service.":
@@ -1115,6 +1117,8 @@ var keyStrings = {
         "Le lecteur ne prend pas en charge cette commande à distance.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Cette session sécurisée est indisponible ou a expiré. Ouvrez une nouvelle session sur le téléviseur et utilisez son lien complet.",
+    "This source is already in the catalog.":
+        "Cette source figure déjà dans le catalogue.",
     Timer: "Minuterie",
     "Timer: switch to channel?": "Minuterie : passer à cette chaîne ?",
     "Timeshift: one minute back": "Décalage temporel : une minute en arrière",
@@ -1132,6 +1136,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Changer le mode de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Paramètres de Top-Tv",
+    "Torrent source limit reached.":
+        "Le nombre maximal de sources torrent est atteint.",
     "Touchscreen locked": "Écran tactile verrouillé",
     "Touchscreen unlocked": "Écran tactile déverrouillé",
     "Trust this server for remote support":

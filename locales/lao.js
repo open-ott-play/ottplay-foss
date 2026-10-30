@@ -353,6 +353,8 @@ var keyStrings = {
     Editor: "ຕົວແກ້ໄຂ",
     "Enable HTTP remote": "ເປີດການຄວບຄຸມທາງໄກ HTTP",
     English: "ພາສາອັງກິດ",
+    "Enter a magnet link or a torrent file URL.":
+        "ປ້ອນລິ້ງ magnet ຫຼື URL ຂອງໄຟລ໌ torrent.",
     "Enter a password (8 characters).": "ປ້ອນລະຫັດຜ່ານ (8 ຕົວອັກສອນ).",
     "Enter a playlist URL to access this service.":
         "ປ້ອນ URL ລາຍການຫຼິ້ນເພື່ອເຂົ້າໃຊ້ບໍລິການນີ້.",
@@ -1027,6 +1029,7 @@ var keyStrings = {
         "ໂປຣແກຣມຫຼິ້ນບໍ່ຮອງຮັບຄຳສັ່ງຄວບຄຸມທາງໄກນີ້.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ເຊດຊັນທີ່ປອດໄພນີ້ບໍ່ສາມາດໃຊ້ໄດ້ ຫຼືໝົດອາຍຸແລ້ວ. ເປີດເຊດຊັນໃໝ່ໃນໂທລະທັດ ແລະໃຊ້ລິ້ງທີ່ສົມບູນຂອງມັນ.",
+    "This source is already in the catalog.": "ແຫຼ່ງນີ້ມີຢູ່ໃນລາຍການແລ້ວ.",
     Timer: "ຕົວຕັ້ງເວລາ",
     "Timer: switch to channel?": "ຕົວຕັ້ງເວລາ: ປ່ຽນໄປຊ່ອງນີ້ບໍ?",
     "Timeshift: one minute back": "ເລື່ອນເວລາ: ຖອຍຫຼັງໜຶ່ງນາທີ",
@@ -1043,6 +1046,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ປ່ຽນໂໝດຂະຫຍາຍພາບ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ການຕັ້ງຄ່າ Top-Tv",
+    "Torrent source limit reached.": "ຈຳນວນແຫຼ່ງ torrent ເຖິງຂີດຈຳກັດແລ້ວ.",
     "Touchscreen locked": "ໜ້າຈໍສຳຜັດຖືກລັອກແລ້ວ",
     "Touchscreen unlocked": "ໜ້າຈໍສຳຜັດຖືກປົດລັອກແລ້ວ",
     "Trust this server for remote support": "ໄວ້ໃຈເຊີບເວີນີ້ສຳລັບການຊ່ວຍເຫຼືອທາງໄກ",

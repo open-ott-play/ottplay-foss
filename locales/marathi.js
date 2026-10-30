@@ -361,6 +361,8 @@ var keyStrings = {
     Editor: "संपादक",
     "Enable HTTP remote": "HTTP रिमोट सक्षम करा",
     English: "इंग्रजी",
+    "Enter a magnet link or a torrent file URL.":
+        "मॅग्नेट लिंक किंवा टोरेंट फाइलचा URL टाका.",
     "Enter a password (8 characters).": "पासवर्ड टाका (8 वर्ण).",
     "Enter a playlist URL to access this service.":
         "या सेवेत प्रवेश करण्यासाठी प्लेलिस्ट URL प्रविष्ट करा.",
@@ -1052,6 +1054,7 @@ var keyStrings = {
         "प्लेयर या दूरस्थ नियंत्रण आदेशाला समर्थन देत नाही.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "हे सुरक्षित सत्र अनुपलब्ध आहे किंवा कालबाह्य झाले आहे. टीव्हीवर नवीन सत्र उघडा आणि त्याची संपूर्ण लिंक वापरा.",
+    "This source is already in the catalog.": "हा स्रोत आधीच सूचीमध्ये आहे.",
     Timer: "टाइमर",
     "Timer: switch to channel?": "टाइमर: या चॅनेलवर स्विच करायचे?",
     "Timeshift: one minute back": "टाइमशिफ्ट: एक मिनिट मागे",
@@ -1068,6 +1071,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "झूम मोड बदला",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv सेटिंग्ज",
+    "Torrent source limit reached.": "टोरेंट स्रोतांची कमाल मर्यादा गाठली आहे.",
     "Touchscreen locked": "टचस्क्रीन लॉक केली आहे",
     "Touchscreen unlocked": "टचस्क्रीन अनलॉक केली आहे",
     "Trust this server for remote support":

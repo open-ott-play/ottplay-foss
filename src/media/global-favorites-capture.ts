@@ -145,6 +145,30 @@ export async function captureGlobalFavorite(
             serverId: proof.serverId,
         };
         title = payload.title;
+    } else if (provider === "torrent") {
+        if (
+            !payload?.request ||
+            payload.request.kind !== "torrent" ||
+            payload.__ottMediaRef?.sourceId !== w.__ottSourceIdentity.media(w)
+        )
+            return null;
+        var torrentRows = (w.cList || []).filter(function (id: any) {
+            var row = w.channels[id];
+            return (
+                globalFavoriteChannelId("torrent", row) === payload.itemId &&
+                row.__ottMediaItem.__ottMediaRef?.sourceId ===
+                    w.__ottSourceIdentity.media(w) &&
+                globalFavoriteCanonical(row.__ottMediaItem.request) ===
+                    globalFavoriteCanonical(payload.request)
+            );
+        });
+        if (torrentRows.length !== 1) return null;
+        var torrentRow = w.channels[torrentRows[0]];
+        locator = {
+            channelId: globalFavoriteChannelId("torrent", torrentRow),
+            kind: "channel",
+        };
+        title = torrentRow.channel_name;
     } else if (
         provider === "m3u" &&
         payload?.vportalSource &&

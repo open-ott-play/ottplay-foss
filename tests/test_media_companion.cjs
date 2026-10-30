@@ -120,7 +120,8 @@ function fixture(custom = {}) {
                   nativeCalls++;
                   return { endpoint: base };
               }
-            : undefined
+            : undefined,
+        custom.nativeOnly === true
     );
     return {
         calls,
@@ -341,6 +342,38 @@ test("native endpoint is reacquired after release while explicit endpoint overri
     f.resolve();
     await flush();
     assert.equal(f.nativeCalls(), 2);
+});
+
+test("owned native source ignores a saved external endpoint", async () => {
+    const f = fixture({
+        handle: (path, method) =>
+            path === "sessions/s1" && method === "GET"
+                ? {
+                      files: [{ index: 2, name: "movie.mp4" }],
+                      id: "s1",
+                      selected: 2,
+                      state: "ready",
+                      streamPath: "sessions/s1/stream",
+                  }
+                : undefined,
+        native: true,
+        nativeOnly: true,
+    });
+    f.w.settings.companionEndpoint =
+        "https://external.invalid/companion/" + "z".repeat(32) + "/v1";
+    f.resolve(
+        "ottplay-torrent:?source=" +
+            encodeURIComponent(source) +
+            "&index=2&native=1"
+    );
+    await flush();
+    assert.equal(f.nativeCalls(), 1);
+    assert.deepEqual(
+        clone(f.calls.find((call) => call.path === "sessions").body),
+        { fileIndex: 2, source }
+    );
+    await f.tick(750);
+    assert.deepEqual(f.outcomes, [base + "/sessions/s1/stream"]);
 });
 test("file selector remains durable and never stores an HTTP playback lease", async () => {
     const f = fixture();
@@ -573,240 +606,295 @@ test("lazy loader cancellation prevents service startup and keeps the completed 
     assert.equal(released, 1);
 });
 
-test("companion UI edits the endpoint through the shared editor and opens stable media", () => {
-    const f = fixture(),
-        edits = [],
-        played = [],
-        saved = [],
-        returns = [];
-    let manualContext,
-        playbackState = { generation: 0, phase: "stopped" };
-    Object.assign(f.w, {
-        __ottClassicPlayback: { snapshot: () => playbackState },
-        __ottMedia: {
-            beginSource(value) {
-                manualContext = value;
-                return { commit: () => true, rollback() {} };
+test("native capability discovery never starts the media service", async () => {
+    const calls = [],
+        w = { __TAURI__: {}, fetch() {}, settings: {} };
+    const module = { exports: {} };
+    vm.runInNewContext(compile("src/plugins/media-companion-loader.ts"), {
+        exports: module.exports,
+        Promise,
+        require: () => ({
+            tauriInvoke: async (command) => {
+                calls.push(command);
+                return {
+                    available: true,
+                    local: true,
+                    plugins: true,
+                    schema: 1,
+                    torrent: true,
+                };
             },
-            usesSource: (value) => value === manualContext,
-        },
-        _playMedia: (value) => {
-            played.push(value);
-            playbackState = {
-                generation: playbackState.generation + 1,
-                phase: "playing",
-                target: {
-                    channelId: value.__ottMediaRef.itemId,
-                    kind: "vod",
-                    sourceId: value.__ottMediaRef.sourceId,
-                },
-            };
-        },
-        closeList() {
-            this.isListVisible = false;
-        },
-        isListVisible: true,
-        keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
-        listCaption: {},
-        listDetail: {},
-        listFooter: {},
-        optionsList: (fn) => returns.push(fn),
-        renderButtonHint: () => "",
-        saveSettings: (value) => {
-            saved.push(value);
-            Object.assign(f.w.settings, value);
-            return true;
-        },
-        settingsMediaCompanion() {},
-        showPage() {},
+        }),
     });
-    vm.runInNewContext(compile("src/plugins/media-companion-ui.ts"), {
-        window: f.w,
-    });
-    f.w.__ottMediaCompanionUi(
-        f.w,
-        f.client,
-        (caption, value, accept, close, secret) =>
-            edits.push({ accept, caption, close, secret, value })
-    );
-    f.w.listArray[0].action();
-    assert.equal(edits[0].secret, true);
-    edits[0].accept(base);
-    assert.equal(saved[0].companionEndpoint, base);
-    f.w.listArray[1].action();
-    edits[1].accept(source);
-    assert.equal(played[0].stream_url, source);
-    assert.equal(played[0].itemId, "manual");
-    assert.match(played[0].__ottMediaRef.sourceId, /^companion:manual:/);
-    manualContext.write("history", "private memory only");
-    assert.equal(manualContext.read("history"), "private memory only");
-    assert.equal(manualContext.readPersisted("history"), null);
-    assert.equal(played[0].stream_url.includes("/sessions/"), false);
+    module.exports.installMediaCompanion(w);
+    assert.equal(w.__ottMediaCompanion.providerAvailable(), false);
+    assert.deepEqual(calls, []);
+    const caps = await w.__ottMediaCompanion.capabilities();
+    assert.equal(caps.torrent, true);
+    assert.equal(w.__ottMediaCompanion.providerAvailable(), true);
+    assert.deepEqual(calls, ["companion_capabilities"]);
+    await w.__ottMediaCompanion.capabilities();
+    assert.equal(calls.length, 1);
+    assert.equal(w.__ottMediaCompanion.open, undefined);
 });
 
-test("companion UI keeps Back available and ignores plugin results after closing", async () => {
-    const pending = deferred(),
-        returns = [],
-        w = {
-            isListVisible: true,
-            keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
-            listCaption: {},
-            listDetail: {},
-            listFooter: {},
-            optionsList() {
-                returns.push(true);
-                w.getListItem = null;
-            },
-            renderButtonHint: () => "",
-            settings: {},
-            settingsMediaCompanion() {},
-            showPage() {},
-        };
-    vm.runInNewContext(compile("src/plugins/media-companion-ui.ts"), {
-        window: w,
+test("external playback endpoints never expose the native Torrent provider on web clients", () => {
+    const module = { exports: {} };
+    vm.runInNewContext(compile("src/plugins/media-companion-loader.ts"), {
+        exports: module.exports,
+        Promise,
+        require: () => ({}),
     });
-    w.__ottMediaCompanionUi(
-        w,
-        { choices: () => [], plugins: () => pending.promise },
-        () => {}
-    );
-    w.listArray[2].action();
-    assert.equal(w.listKeyHandler(27), true);
-    pending.resolve({ plugins: [{ id: "demo", name: "Demo" }], schema: 1 });
-    await flush();
-    assert.equal(returns.length, 1);
-    assert.equal(w.getListItem, null);
-});
-
-test("missing Fetch is explained in the shared UI without changing playback or blocking Back", async () => {
-    const f = fixture({ native: true, noFetch: true });
-    let accept,
-        handoffs = 0,
-        played = 0,
-        closed = 0;
-    Object.assign(f.w, {
-        __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
-        __ottMedia: { beginSource: () => handoffs++ },
-        _playMedia: () => played++,
-        isListVisible: true,
-        keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
-        listCaption: {},
-        listDetail: {},
-        listFooter: {},
-        optionsList: () => closed++,
-        renderButtonHint: () => "",
-        settingsMediaCompanion() {},
-        showPage: () => f.w.detailListAction(),
-    });
-    vm.runInNewContext(compile("src/plugins/media-companion-ui.ts"), {
-        window: f.w,
-    });
-    f.w.__ottMediaCompanionUi(f.w, f.client, (_caption, _value, done) => {
-        accept = done;
-    });
-    assert.match(f.w.listDetail.textContent, /lacks the Fetch API/);
-    assert.match(f.w.listDetail.textContent, /newer browser or WebView/);
-    f.w.listArray[1].action();
-    accept(source);
-    assert.equal(handoffs, 0);
-    assert.equal(played, 0);
-    f.w.listArray[2].action();
-    await flush();
-    assert.match(f.w.listDetail.textContent, /lacks the Fetch API/);
-    assert.equal(f.nativeCalls(), 0);
-    assert.equal(f.calls.length, 0);
-    assert.equal(f.w.listKeyHandler(27), true);
-    assert.equal(closed, 1);
-});
-
-for (const provider of ["plex", "m3u"]) {
-    for (const accepted of [true, false]) {
-        test(`manual companion source isolates ${provider} journal and ${accepted ? "plays" : "rolls back rejected dispatch"}`, () => {
-            const { fixture: playbackFixture } = require("./test_port_vod.cjs");
-            const w = playbackFixture();
-            w.p_pref = provider;
-            w.__ottActiveProviderDriver = { id: provider };
-            const resolverCalls = [];
-            w.providerMediaClient = {
-                cancel() {},
-                persist(value) {
-                    resolverCalls.push("persist");
-                    return { ...value, stream_url: undefined };
-                },
-                resolve() {
-                    resolverCalls.push("resolve");
-                    throw new Error(
-                        "Provider must not resolve companion source"
-                    );
-                },
-                stop() {},
-            };
-            w.__ottMedia.capture();
-            const previousSource = w.__ottMedia.sourceId();
-            const saved = JSON.stringify(w.stored);
-            const providerWrites = [];
-            const originalWrite = w.providerSetItem;
-            w.providerSetItem = (key, value) => {
-                providerWrites.push(key);
-                return originalWrite(key, value);
-            };
-            // Establish the runtime with the current storage-function identity.
-            w.__ottMedia.capture();
-            providerWrites.length = 0;
-            Object.assign(w, {
-                closeList() {
-                    w.isListVisible = false;
-                },
-                isListVisible: true,
-                listCaption: {},
-                listDetail: {},
-                listFooter: {},
-            });
-            let accept;
-            vm.runInContext(compile("src/plugins/media-companion-ui.ts"), w);
-            if (!accepted) {
-                const command = w.__ottClassicPlayback.command;
-                w.__ottClassicPlayback.command = (value) =>
-                    value.type === "vod" ? false : command(value);
-            }
-            const priorHistory = JSON.stringify(w.medHistory);
-            w.__ottMediaCompanionUi(
-                w,
-                { choices: () => [], isSource: () => true },
-                (_caption, _value, done) => {
-                    accept = done;
-                }
-            );
-            w.listArray[1].action();
-            accept(source);
-            assert.deepEqual(resolverCalls, []);
-            assert.deepEqual(providerWrites, []);
-            assert.equal(JSON.stringify(w.stored), saved);
-            if (accepted) {
-                assert.match(w.__ottMedia.sourceId(), /^companion:manual:/);
-                assert.equal(
-                    w.__ottClassicPlayback.snapshot().target.sourceId,
-                    w.__ottMedia.sourceId()
-                );
-                assert.equal(w.__ottMedia.current().payload.stream_url, source);
-                assert(
-                    w.calls.some(
-                        (call) => call[0] === "play" && call[1] === source
-                    )
-                );
-                assert.equal(w.isListVisible, false);
-                w.__ottMedia.useSource(null);
-            } else {
-                assert.equal(w.__ottMedia.sourceId(), previousSource);
-                assert.equal(
-                    JSON.stringify(w.medHistory),
-                    priorHistory,
-                    "rejected preparation restores the prior projection"
-                );
-                assert.equal(w.isListVisible, true);
-                assert(!w.calls.some((call) => call[0] === "play"));
-            }
-            assert.equal(w.__ottMedia.sourceId(), previousSource);
-        });
+    for (const host of [{}, { Capacitor: {} }, { AndroidInterface: {} }]) {
+        const w = { ...host, fetch() {}, settings: {} };
+        module.exports.installMediaCompanion(w);
+        assert.equal(w.__ottMediaCompanion.available(), false);
+        w.settings.companionEndpoint = base;
+        assert.equal(w.__ottMediaCompanion.available(), true);
+        assert.equal(w.__ottMediaCompanion.providerAvailable(), false);
+        delete w.fetch;
+        assert.equal(w.__ottMediaCompanion.available(), false);
     }
+});
+
+test("catalog metadata releases its lease without selecting or streaming a file", async () => {
+    const f = fixture(),
+        results = [];
+    f.client.metadata(source, (files) => results.push(clone(files)));
+    await flush();
+    await f.tick(750);
+    await flush();
+    assert.deepEqual(results, [
+        [{ index: 2, length: 1000, name: "movie.mp4" }],
+    ]);
+    assert.equal(f.calls.filter((call) => call.method === "DELETE").length, 1);
+    assert.equal(
+        f.calls.some((call) => call.path.endsWith("/select")),
+        false
+    );
+    assert.equal(f.timers.size, 0);
+});
+
+test("catalog metadata ignores source file-selection hints", async () => {
+    for (const input of [
+        source + "&so=2",
+        "ottplay-torrent:?source=" + encodeURIComponent(source) + "&index=2",
+    ]) {
+        const f = fixture(),
+            results = [];
+        f.client.metadata(input, (files) => results.push(clone(files)));
+        await flush();
+        await f.tick(750);
+        await flush();
+        const create = f.calls.find((call) => call.path === "sessions");
+        assert.equal(Object.hasOwn(create.body, "fileIndex"), false);
+        assert.equal(new URL(create.body.source).searchParams.has("so"), false);
+        assert.equal(results[0][0].index, 2);
+        assert.equal(
+            f.calls.some((call) => call.path.endsWith("/select")),
+            false
+        );
+        assert.equal(
+            f.calls.filter((call) => call.method === "DELETE").length,
+            1
+        );
+        assert.equal(f.timers.size, 0);
+    }
+});
+
+test("accepted file selection is polled instead of resubmitted while the worker catches up", async () => {
+    let selects = 0,
+        polls = 0;
+    const f = fixture({
+        handle: (path, method) => {
+            if (path.endsWith("/select")) {
+                selects++;
+                return {
+                    files: [{ index: 2, name: "movie.mp4" }],
+                    id: "s1",
+                    state: "select",
+                };
+            }
+            if (path === "sessions/s1" && method === "GET" && selects)
+                return {
+                    files: [{ index: 2, name: "movie.mp4" }],
+                    id: "s1",
+                    state: ++polls < 3 ? "select" : "ready",
+                    streamPath: "sessions/s1/stream",
+                };
+        },
+    });
+    f.resolve();
+    await flush();
+    await f.tick(750);
+    assert.equal(selects, 1);
+    await f.tick(750);
+    assert.equal(selects, 1);
+    assert.deepEqual(f.outcomes, []);
+    await f.tick(750);
+    assert.equal(selects, 1);
+    assert.deepEqual(f.outcomes, []);
+    await f.tick(750);
+    assert.equal(selects, 1);
+    assert.deepEqual(f.outcomes, [base + "/sessions/s1/stream"]);
+});
+
+test("explicit file index in session creation never triggers first-file fallback", async () => {
+    const f = fixture({
+        handle: (path, method) => {
+            if (path === "sessions" && method === "POST")
+                return {
+                    files: [
+                        { index: 0, name: "wrong.mp4" },
+                        { index: 2, name: "right.mp4" },
+                    ],
+                    id: "s1",
+                    state: "select",
+                };
+            if (path === "sessions/s1" && method === "GET")
+                return {
+                    files: [{ index: 2, name: "right.mp4" }],
+                    id: "s1",
+                    selected: 2,
+                    state: "ready",
+                    streamPath: "sessions/s1/stream",
+                };
+        },
+    });
+    f.resolve(source + "&so=2");
+    await flush();
+    await f.tick(750);
+    assert.equal(
+        f.calls.some((call) => call.path.endsWith("/select")),
+        false
+    );
+    assert.deepEqual(f.outcomes, [base + "/sessions/s1/stream"]);
+});
+
+function coldNativeRemoteFixture() {
+    const calls = [],
+        switched = [],
+        replies = [];
+    let settle;
+    const probe = new Promise((resolve) => {
+        settle = resolve;
+    });
+    const w = {
+        __ottCommandChannelLoad: {},
+        __TAURI__: {},
+        fetch() {},
+        settings: {},
+        stbGetItem: () => "m3u",
+    };
+    const loader = {
+        exports: {},
+        Promise,
+        require: () => ({
+            tauriInvoke(command) {
+                calls.push(command);
+                return probe;
+            },
+        }),
+    };
+    vm.runInNewContext(
+        compile("src/plugins/media-companion-loader.ts"),
+        loader
+    );
+    loader.exports.installMediaCompanion(w);
+    const remote = {
+        Date,
+        exports: {},
+        require: (name) =>
+            name === "../provider"
+                ? {
+                      isProviderAllowed: (id) =>
+                          id !== "torrent" ||
+                          w.__ottMediaCompanion.providerAvailable(),
+                      providerIds: ["m3u", "torrent"],
+                      providerLabels: ["M3U", "Torrent"],
+                      selectProviderByIndex: (index) => {
+                          switched.push(index);
+                          return true;
+                      },
+                  }
+                : name === "../utils/caseless"
+                  ? { caselessKey: (value) => value.toLowerCase() }
+                  : {},
+        window: w,
+    };
+    vm.runInNewContext(compile("src/commands/remote-requests.ts"), remote);
+    return {
+        calls,
+        replies,
+        request(action, extra = {}) {
+            return remote.exports.executeRemoteRequest(
+                { action, params: { query: "torrent" }, ...extra },
+                (result) => replies.push(result)
+            );
+        },
+        settle,
+        switched,
+        w,
+    };
 }
+const nativeCapabilities = {
+    available: true,
+    local: true,
+    plugins: true,
+    schema: 1,
+    torrent: true,
+};
+
+test("native cold start discovers static capability without opening a menu or service", async () => {
+    const f = coldNativeRemoteFixture();
+    await flush();
+    assert.deepEqual(f.calls, ["companion_capabilities"]);
+    assert.equal(f.w.__ottMediaCompanion.providerAvailable(), false);
+    f.settle(nativeCapabilities);
+    await flush();
+    assert.equal(f.w.__ottMediaCompanion.providerAvailable(), true);
+    assert.deepEqual(f.calls, ["companion_capabilities"]);
+});
+
+test("cold remote provider listing and direct selection await the same static capability", async () => {
+    for (const action of ["providers", "provider"]) {
+        const f = coldNativeRemoteFixture();
+        f.request(action);
+        await flush();
+        assert.deepEqual(f.replies, []);
+        assert.deepEqual(f.switched, []);
+        f.settle(nativeCapabilities);
+        await flush();
+        assert.equal(f.replies[0].status, "ok");
+        if (action === "providers")
+            assert.equal(f.replies[0].data.providers[1].id, "torrent");
+        else assert.deepEqual(f.switched, [1]);
+        assert.deepEqual(f.calls, ["companion_capabilities"]);
+    }
+});
+
+test("cold remote provider requests reject expiration and source changes and honor cancellation", async () => {
+    for (const kind of [
+        "expired",
+        "replaced",
+        "cancelled",
+        "restricted",
+        "unavailable",
+    ]) {
+        const f = coldNativeRemoteFixture();
+        const cancel = f.request(
+            "provider",
+            kind === "expired" ? { expires_at: 1 } : {}
+        );
+        await flush();
+        if (kind === "replaced") f.w.__ottCommandChannelLoad = {};
+        if (kind === "cancelled") cancel();
+        if (kind === "restricted") f.w.__ottKiosk = { enabled: () => true };
+        f.settle(kind === "unavailable" ? null : nativeCapabilities);
+        await flush();
+        assert.deepEqual(f.switched, []);
+        assert.equal(f.replies.length, kind === "cancelled" ? 0 : 1);
+        if (kind !== "cancelled") assert.equal(f.replies[0].status, "rejected");
+        assert.deepEqual(f.calls, ["companion_capabilities"]);
+    }
+});

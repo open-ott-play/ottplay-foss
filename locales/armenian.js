@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "Խմբագրիչ",
     "Enable HTTP remote": "Միացնել HTTP հեռակառավարումը",
     English: "Անգլերեն",
+    "Enter a magnet link or a torrent file URL.":
+        "Մուտքագրեք մագնիսական հղում կամ տորենտ ֆայլի URL։",
     "Enter a password (8 characters).": "Մուտքագրեք գաղտնաբառը (8 նիշ)։",
     "Enter a playlist URL to access this service.":
         "Այս ծառայությունից օգտվելու համար մուտքագրեք նվագարկման ցուցակի URL-ը։",
@@ -1088,6 +1090,8 @@ var keyStrings = {
         "Նվագարկիչը չի աջակցում հեռակառավարման այս հրամանը։",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Այս անվտանգ նիստն անհասանելի է կամ ժամկետանց է: Բացեք նոր նիստ հեռուստացույցով և օգտագործեք դրա ամբողջական հղումը:",
+    "This source is already in the catalog.":
+        "Այս աղբյուրն արդեն կատալոգում է։",
     Timer: "Ժամանակաչափ",
     "Timer: switch to channel?": "Ժամանակաչափ՝ անցնե՞լ այս ալիքին։",
     "Timeshift: one minute back": "Ժամանակային տեղաշարժ՝ մեկ րոպե հետ",
@@ -1105,6 +1109,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Փոխել խոշորացման ռեժիմը",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv կարգավորումներ",
+    "Torrent source limit reached.":
+        "Հասել եք տորենտ աղբյուրների սահմանաչափին։",
     "Touchscreen locked": "Սենսորային էկրանը կողպված է",
     "Touchscreen unlocked": "Սենսորային էկրանն ապակողպված է",
     "Trust this server for remote support":

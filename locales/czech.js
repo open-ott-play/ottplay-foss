@@ -366,6 +366,8 @@ var keyStrings = {
     Editor: "Textový editor",
     "Enable HTTP remote": "Zapnout ovládání HTTP",
     English: "Angličtina",
+    "Enter a magnet link or a torrent file URL.":
+        "Zadejte magnetický odkaz nebo URL torrentového souboru.",
     "Enter a password (8 characters).": "Zadejte heslo (8 znaků).",
     "Enter a playlist URL to access this service.":
         "Pro přístup ke službě zadejte URL playlistu.",
@@ -1073,6 +1075,7 @@ var keyStrings = {
         "Přehrávač tento vzdálený příkaz nepodporuje.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Tato zabezpečená relace je nedostupná nebo vypršela její platnost. Otevřete v televizi novou relaci a použijte její úplný odkaz.",
+    "This source is already in the catalog.": "Tento zdroj už je v katalogu.",
     Timer: "Časovač",
     "Timer: switch to channel?": "Časovač: přepnout na kanál?",
     "Timeshift: one minute back": "Časový posun: o minutu zpět",
@@ -1089,6 +1092,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Změnit režim zvětšení",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Nastavení Top-Tv",
+    "Torrent source limit reached.":
+        "Byl dosažen maximální počet torrentových zdrojů.",
     "Touchscreen locked": "Dotyková obrazovka je zamknutá",
     "Touchscreen unlocked": "Dotyková obrazovka je odemknutá",
     "Trust this server for remote support":

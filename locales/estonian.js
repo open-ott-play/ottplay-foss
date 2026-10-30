@@ -369,6 +369,8 @@ var keyStrings = {
     Editor: "Redaktor",
     "Enable HTTP remote": "Luba HTTP kaugjuhtimispult",
     English: "inglise keel",
+    "Enter a magnet link or a torrent file URL.":
+        "Sisestage magnetlink või torrentifaili URL.",
     "Enter a password (8 characters).": "Sisestage parool (8 tähemärki).",
     "Enter a playlist URL to access this service.":
         "Sellele teenusele juurdepääsuks sisestage esitusloend URL.",
@@ -1077,6 +1079,7 @@ var keyStrings = {
         "Mängija ei toeta seda kaugkäsku.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "See turvaline seanss pole saadaval või on aegunud. Avage teleris uus seanss ja kasutage selle täielikku linki.",
+    "This source is already in the catalog.": "See allikas on juba kataloogis.",
     Timer: "Taimer",
     "Timer: switch to channel?": "Taimer: kas lülituda sellele kanalile?",
     "Timeshift: one minute back": "Ajanihe: üks minut tagasi",
@@ -1094,6 +1097,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Muutke suumirežiimi",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv seaded",
+    "Torrent source limit reached.": "Torrentiallikate ülempiir on saavutatud.",
     "Touchscreen locked": "Puuteekraan on lukustatud",
     "Touchscreen unlocked": "Puuteekraani lukustus on avatud",
     "Trust this server for remote support":

@@ -392,6 +392,41 @@ export function executeRemoteRequest(
 ): (() => void) | void {
     var w = window as any;
     var params = request.params || {};
+    var companion = w.__ottMediaCompanion;
+    if (
+        (request.action === "providers" || request.action === "provider") &&
+        companion?.nativePending()
+    ) {
+        var pending = true,
+            providerLoad = w.__ottCommandChannelLoad,
+            cancelProviderRequest: (() => void) | void;
+        companion.capabilities().then(function () {
+            if (!pending) return;
+            pending = false;
+            if (
+                providerLoad !== w.__ottCommandChannelLoad ||
+                (request.expires_at !== undefined &&
+                    !(request.expires_at > Date.now() / 1000))
+            ) {
+                done({
+                    data: {
+                        error: "Provider request expired or the source changed.",
+                    },
+                    status: "rejected",
+                });
+                return;
+            }
+            cancelProviderRequest = executeRemoteRequest(
+                request,
+                done,
+                afterReply
+            );
+        });
+        return function () {
+            pending = false;
+            if (cancelProviderRequest) cancelProviderRequest();
+        };
+    }
     if (request.action === "favorites_transfer")
         return executeRemoteFavoritesTransfer(
             w,

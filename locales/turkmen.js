@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "Redaktor",
     "Enable HTTP remote": "HTTP uzakdan dolandyryşyny işlet",
     English: "Iňlisçe",
+    "Enter a magnet link or a torrent file URL.":
+        "Magnit baglanyşygyny ýa-da torrent faýlynyň URL salgysyny giriziň.",
     "Enter a password (8 characters).": "Paroly giriziň (8 nyşan).",
     "Enter a playlist URL to access this service.":
         "Bu hyzmatdan peýdalanmak üçin oýnatma sanawynyň URL salgysyny giriziň.",
@@ -1073,6 +1075,7 @@ var keyStrings = {
         "Pleýer bu uzakdan dolandyryş buýrugyny goldamaýar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Bu ygtybarly sessiýa elýeterli däl ýa-da möhleti gutarýar. Telewizorda täze sessiýa açyň we doly baglanyşygyny ulanyň.",
+    "This source is already in the catalog.": "Bu çeşme eýýäm katalogda bar.",
     Timer: "Taýmer",
     "Timer: switch to channel?": "Taýmer: şu kanala geçilsinmi?",
     "Timeshift: one minute back": "Wagt süýşürmek: bir minut yza",
@@ -1090,6 +1093,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ulaltma tertibini üýtget",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sazlamalary",
+    "Torrent source limit reached.":
+        "Torrent çeşmeleriniň sanynyň çägine ýetildi.",
     "Touchscreen locked": "Duýgur ekran gulplandy",
     "Touchscreen unlocked": "Duýgur ekranyň gulpy açyldy",
     "Trust this server for remote support":

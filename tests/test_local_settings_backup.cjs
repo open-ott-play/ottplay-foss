@@ -30,6 +30,7 @@ function functions(file, names) {
     ).outputText;
 }
 const policy = functions("src/storage/index.ts", [
+    "stbGetAllItems",
     "isPortableSettingsKey",
     "portableSettingsSnapshot",
     "restoreLocalSettingsSnapshot",
@@ -41,6 +42,9 @@ const controller = functions("src/plugins/command-server.ts", [
 const cloud = cloudSource();
 const ownToken = "a".repeat(48);
 const copiedToken = "b".repeat(48);
+const ownCompanion = "http://127.0.0.1:8793/companion/" + ownToken + "/v1";
+const copiedCompanion =
+    "https://copied.invalid/companion/" + copiedToken + "/v1";
 const providerPayload = JSON.stringify({
     active: 0,
     M3Us: [
@@ -68,6 +72,8 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             ["sLocalHttpEnabled", localConsent],
             ["sLocalHttpDeviceCode", "this-device-code"],
             ["sNotificationsEnabled", "0"],
+            ["sCompanionEndpoint", ownCompanion],
+            ["companionEndpoint", ownCompanion],
             ["m3u:m3uArr", providerPayload],
             ["plexcfg", plexPayload],
             ["ottplayStorageFallback", "pending"],
@@ -121,6 +127,7 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             stbGetAllItems: () => Object.fromEntries(stored),
             stbGetItem: (key) => stored.get(key) ?? null,
             stbSetItem: (key, value) => stored.set(key, String(value)),
+            storage: { dump: () => Object.fromEntries(stored) },
             URL,
         });
         c.window = c;
@@ -134,6 +141,8 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             )
         );
         vm.runInContext(policy + controller + cloud, c);
+        assert.equal(c.stbGetAllItems().sCompanionEndpoint, undefined);
+        assert.equal(c.stbGetAllItems().companionEndpoint, undefined);
         c.__ottCommandServer = c.createCommandServer(
             c,
             (request, complete) => {
@@ -185,6 +194,8 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         assert(!upload.data.d.includes("ottplayStorageFallback"));
         assert(!upload.data.d.includes("internal-marker-part"));
         assert(!upload.data.d.includes("sNotificationsEnabled"));
+        assert(!upload.data.d.includes("Companion"));
+        assert(!upload.data.d.includes("companion"));
         c[names[0]]();
         const saved = JSON.parse(stored.get("stb_settings_backup"));
         assert.deepEqual(saved, {
@@ -203,11 +214,13 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
                 commandServerAddress: "https://copied.invalid",
                 commandServerEnabled: "1",
                 commandServerToken: copiedToken,
+                companionEndpoint: copiedCompanion,
                 "m3u:m3uArr": providerPayload,
                 ordinary: "restored",
                 ottplayStorageFallback: "pending",
                 "ottplayStorageFallback.0": "imported-marker-part",
                 plexcfg: plexPayload,
+                sCompanionEndpoint: copiedCompanion,
                 sLocalHttpDeviceCode: "copied-device-code",
                 sLocalHttpEnabled: "1",
                 sNotificationsEnabled: "1",
@@ -238,6 +251,8 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         assert.equal(stored.get("sLocalHttpEnabled"), localConsent);
         assert.equal(stored.get("sNotificationsEnabled"), "0");
         assert.equal(stored.get("sLocalHttpDeviceCode"), "this-device-code");
+        assert.equal(stored.get("sCompanionEndpoint"), ownCompanion);
+        assert.equal(stored.get("companionEndpoint"), ownCompanion);
         assert.equal(stored.get("stb_settings_backup"), undefined);
         assert.equal(stored.get("m3u:m3uArr"), providerPayload);
         assert.equal(stored.get("plexcfg"), plexPayload);
@@ -251,6 +266,14 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             stored.get("ottplayStorageFallback.0"),
             "internal-marker-part"
         );
+        stored.delete("sCompanionEndpoint");
+        stored.delete("companionEndpoint");
+        c.restoreLocalSettingsSnapshot({
+            companionEndpoint: copiedCompanion,
+            sCompanionEndpoint: copiedCompanion,
+        });
+        assert.equal(stored.has("sCompanionEndpoint"), false);
+        assert.equal(stored.has("companionEndpoint"), false);
         if (profile === "static-core") {
             stored.set("stb_settings_backup", "{}");
             const before = JSON.stringify([...stored]);

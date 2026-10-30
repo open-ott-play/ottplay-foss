@@ -377,6 +377,8 @@ var keyStrings = {
     Editor: "Tifaftire",
     "Enable HTTP remote": "Shid xakamaynta fog ee HTTP",
     English: "Ingiriisi",
+    "Enter a magnet link or a torrent file URL.":
+        "Geli xiriiriye magnet ama URL-ka fayl torrent ah.",
     "Enter a password (8 characters).": "Geli furaha sirta ah (8 xaraf).",
     "Enter a playlist URL to access this service.":
         "Geli URL-ka liiska daarista si aad u gasho adeeggan.",
@@ -1099,6 +1101,8 @@ var keyStrings = {
         "Daaruhu ma taageero amarkan kontoroolka fog.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Fadhigan sugan lama heli karo ama dhacay. Kalfadhi cusub ka fur TV-ga oo isticmaal xidhiidhkiisa oo dhammaystiran.",
+    "This source is already in the catalog.":
+        "Ishan waxay hore ugu jirtaa kataloogga.",
     Timer: "Saacad-tiriye",
     "Timer: switch to channel?": "Saacad-tiriye: ma loo wareegaa kanaalkan?",
     "Timeshift: one minute back":
@@ -1118,6 +1122,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Beddel habka weyneynta",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Dejinta Top-Tv",
+    "Torrent source limit reached.":
+        "Waxaa la gaaray tirada ugu badan ee ilaha torrent.",
     "Touchscreen locked": "Shaashadda taabashada waa la qufulay",
     "Touchscreen unlocked": "Qufulka shaashadda taabashada waa la furay",
     "Trust this server for remote support":

@@ -381,6 +381,8 @@ var keyStrings = {
     Editor: "Editor",
     "Enable HTTP remote": "Activa el control remot HTTP",
     English: "Anglès",
+    "Enter a magnet link or a torrent file URL.":
+        "Introduïu un enllaç magnet o l'URL d'un fitxer torrent.",
     "Enter a password (8 characters).":
         "Introdueix una contrasenya (8 caràcters).",
     "Enter a playlist URL to access this service.":
@@ -1115,6 +1117,7 @@ var keyStrings = {
         "El reproductor no admet aquesta ordre remota.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Aquesta sessió segura no està disponible o ha caducat. Obriu una sessió nova al televisor i utilitzeu el seu enllaç complet.",
+    "This source is already in the catalog.": "Aquesta font ja és al catàleg.",
     Timer: "Temporitzador",
     "Timer: switch to channel?": "Temporitzador: vols canviar a aquest canal?",
     "Timeshift: one minute back": "Retrocedeix un minut",
@@ -1132,6 +1135,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Canvia el mode de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Configuració de Top-Tv",
+    "Torrent source limit reached.": "S'ha arribat al límit de fonts torrent.",
     "Touchscreen locked": "Pantalla tàctil bloquejada",
     "Touchscreen unlocked": "Pantalla tàctil desbloquejada",
     "Trust this server for remote support":

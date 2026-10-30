@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "რედაქტორი",
     "Enable HTTP remote": "ჩართეთ HTTP დისტანციური",
     English: "ინგლისური",
+    "Enter a magnet link or a torrent file URL.":
+        "შეიყვანეთ მაგნიტური ბმული ან ტორენტ-ფაილის URL.",
     "Enter a password (8 characters).": "აკრიფეთ პაროლი (8 სიმბოლო).",
     "Enter a playlist URL to access this service.":
         "ამ სერვისზე წვდომისთვის შეიყვანეთ დასაკრავი სიის URL.",
@@ -1083,6 +1085,7 @@ var keyStrings = {
         "პლეერი დისტანციური მართვის ამ ბრძანებას არ უჭერს მხარს.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ეს უსაფრთხო სესია მიუწვდომელია ან ვადაგასულია. გახსენით ახალი სესია ტელევიზორში და გამოიყენეთ მისი სრული ბმული.",
+    "This source is already in the catalog.": "ეს წყარო უკვე კატალოგშია.",
     Timer: "ტაიმერი",
     "Timer: switch to channel?": "ტაიმერი: გადაერთოთ ამ არხზე?",
     "Timeshift: one minute back": "ერთი წუთით უკან",
@@ -1099,6 +1102,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "შეცვალეთ მასშტაბირების რეჟიმი",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv პარამეტრები",
+    "Torrent source limit reached.":
+        "ტორენტის წყაროების რაოდენობის ზღვარი მიღწეულია.",
     "Touchscreen locked": "სენსორული ეკრანი დაბლოკილია",
     "Touchscreen unlocked": "სენსორული ეკრანი განბლოკილია",
     "Trust this server for remote support":

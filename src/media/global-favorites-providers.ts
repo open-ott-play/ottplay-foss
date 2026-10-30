@@ -46,7 +46,16 @@ export function globalFavoriteBuiltinConfiguration(
     var keys: string[],
         prefix = row.prefix;
     if (row.kind === "xtream") keys = ["xtream_data"];
-    else if (row.kind === "operator" || row.kind === "xtream-fallback")
+    else if (row.kind === "torrent") {
+        var catalog = parsed(w, row.prefix + "cfg");
+        return catalog &&
+            catalog.schema === 1 &&
+            typeof catalog.id === "string" &&
+            /^[A-Za-z0-9_-]{1,64}$/.test(catalog.id) &&
+            Array.isArray(catalog.entries)
+            ? { name: row.title, slot: null, values: [catalog.id] }
+            : null;
+    } else if (row.kind === "operator" || row.kind === "xtream-fallback")
         keys = ["cfg"];
     else if (row.kind === "named-playlist")
         keys = [

@@ -356,6 +356,8 @@ var keyStrings = {
     Editor: "עורך",
     "Enable HTTP remote": "הפעלת שליטת HTTP",
     English: "אנגלית",
+    "Enter a magnet link or a torrent file URL.":
+        "יש להזין קישור מגנט או כתובת URL של קובץ טורנט.",
     "Enter a password (8 characters).": "הזן סיסמה (8 תווים).",
     "Enter a playlist URL to access this service.":
         "הזן כתובת פלייליסט כדי לגשת לשירות זה.",
@@ -1042,6 +1044,7 @@ var keyStrings = {
         "פקודת שליטה מרחוק זו אינה נתמכת בנגן.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "הפעלה מאובטחת זו אינה זמינה או שפג תוקפו. פתח הפעלה חדשה בטלוויזיה והשתמש בקישור המלא שלה.",
+    "This source is already in the catalog.": "המקור הזה כבר נמצא בקטלוג.",
     Timer: "טיימר",
     "Timer: switch to channel?": "טיימר: לעבור לערוץ זה?",
     "Timeshift: one minute back": "השהיית שידור: דקה אחורה",
@@ -1058,6 +1061,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "שנה מצב זום",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "הגדרות Top-Tv",
+    "Torrent source limit reached.": "הגעת למספר המרבי של מקורות טורנט.",
     "Touchscreen locked": "מסך המגע נעול",
     "Touchscreen unlocked": "נעילת מסך המגע בוטלה",
     "Trust this server for remote support": "סמוך על שרת זה לתמיכה מרחוק",

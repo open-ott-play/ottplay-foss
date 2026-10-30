@@ -27,17 +27,14 @@ function movieFixture() {
     return Buffer.concat(parts);
 }
 
-// Use the actual source UI and admission path; only text entry is supplied.
-async function openManualPlugin(page, url) {
-    await page.evaluate(async (source) => {
-        const client = await window.__ottMediaCompanion.ensure();
-        window.__ottMediaCompanionUi(
-            window,
-            client,
-            (_caption, _initial, accept) => accept(source)
-        );
-        window.selIndex = 1;
-        window.listKeyHandler(window.keys.ENTER);
+// Exercise the normal current-provider media admission path.
+async function openPluginMedia(page, url) {
+    await page.evaluate((source) => {
+        window._playMedia({
+            itemId: "plugin-fixture",
+            stream_url: source,
+            title: "Plugin fixture",
+        });
     }, "ottplay-plugin:direct-url?input=" + encodeURIComponent(url));
 }
 
@@ -187,7 +184,7 @@ for (const layout of ["/f/pc/", "/f/"]) {
                     )
                 );
             } else {
-                await openManualPlugin(page, origin + "/plugin-master.m3u8");
+                await openPluginMedia(page, origin + "/plugin-master.m3u8");
                 await page.waitForFunction(
                     (engine) =>
                         window
@@ -219,7 +216,7 @@ for (const layout of ["/f/pc/", "/f/"]) {
                         window.video?.currentSrc.includes("/sample.mp4") &&
                         window.video.currentTime > 0.1
                 );
-            await openManualPlugin(page, origin + "/sample.mp4");
+            await openPluginMedia(page, origin + "/sample.mp4");
             await page.waitForFunction(
                 () =>
                     window.__ottCoreBackend().current()?.diagnosticEngine() ===
@@ -250,3 +247,259 @@ for (const layout of ["/f/pc/", "/f/"]) {
         });
     }
 }
+
+test("Torrent provider keeps categories and global Favorites across reloads without catalog leases", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    const base = "/companion/" + "c".repeat(32) + "/v1";
+    const source = "magnet:?xt=urn:btih:" + "1".repeat(40);
+    const movie = movieFixture(),
+        calls = [],
+        errors = [];
+    let serial = 0;
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.route("**/*", async (route) => {
+        const request = route.request(),
+            url = new URL(request.url());
+        if (url.origin !== origin) return route.abort();
+        if (!url.pathname.startsWith(base + "/")) return route.continue();
+        const api = url.pathname.slice(base.length);
+        calls.push(request.method() + " " + api);
+        if (/\/stream$/.test(api))
+            return route.fulfill({ body: movie, contentType: "video/mp4" });
+        if (api === "/capabilities")
+            return route.fulfill({
+                json: { plugins: true, schema: 1, torrent: true },
+            });
+        if (api === "/sessions" && request.method() === "POST") {
+            expect(
+                new URL(request.postDataJSON().source).searchParams.get("xt")
+            ).toBe(new URL(source).searchParams.get("xt"));
+            const id = "provider-" + ++serial;
+            return route.fulfill({
+                json: {
+                    files: [
+                        { index: 0, length: movie.length, name: "sample.mp4" },
+                    ],
+                    id,
+                    selected: 0,
+                    state: "ready",
+                    streamPath: "sessions/" + id + "/stream",
+                },
+            });
+        }
+        if (/^\/sessions\/provider-\d+$/.test(api)) {
+            if (request.method() === "DELETE")
+                return route.fulfill({ json: {} });
+            const id = api.split("/").pop();
+            return route.fulfill({
+                json: {
+                    id,
+                    state: "ready",
+                    streamPath: "sessions/" + id + "/stream",
+                },
+            });
+        }
+        throw new Error("Unexpected provider request " + api);
+    });
+    await context.addInitScript(
+        ({ origin, base, source }) => {
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "demo");
+            localStorage.setItem("sCompanionEndpoint", origin + base);
+            localStorage.setItem(
+                "torrentcfg",
+                JSON.stringify({
+                    entries: [
+                        {
+                            category: "First source",
+                            files: [
+                                { index: 0, length: 100, name: "sample.mp4" },
+                            ],
+                            id: "one",
+                            source,
+                            title: "First sample",
+                        },
+                        {
+                            category: "Second source",
+                            files: [
+                                { index: 0, length: 100, name: "sample.mp4" },
+                            ],
+                            id: "two",
+                            source,
+                            title: "Second sample",
+                        },
+                    ],
+                    id: "persistent-catalog",
+                    name: "Torrent",
+                    schema: 1,
+                })
+            );
+            const play = HTMLMediaElement.prototype.play;
+            HTMLMediaElement.prototype.play = function () {
+                this.muted = true;
+                return play.call(this);
+            };
+        },
+        { base, origin, source }
+    );
+    await page.goto("/f/");
+    async function openProvider() {
+        await page.waitForFunction(() => window.commandChannelsReady === true);
+        await page.evaluate(() => {
+            // Browser decoder fixture stands in for an attested native capability.
+            // Production visibility and native ownership are tested separately.
+            window.__ottMediaCompanion.providerAvailable = () => true;
+            window.stbSetItem("ottplayprov", "torrent");
+            window.loadProv();
+        });
+    }
+    await openProvider();
+    await page.waitForFunction(
+        () =>
+            window.commandChannelsReady === true &&
+            window.video?.currentTime > 0.1
+    );
+    expect(await page.evaluate(() => window.__ottActiveProviderDriver.id)).toBe(
+        "torrent"
+    );
+    expect(await page.evaluate(() => window.cList.length)).toBe(2);
+    const categories = await page.evaluate(() => window.catsArray);
+    expect(categories).toContain("First source");
+    expect(categories).toContain("Second source");
+    expect(categories).toContain("Favorites");
+    expect(calls.filter((call) => call === "POST /sessions").length).toBe(1);
+    await require("../helpers/global-mixed-browser.cjs").ensure(page);
+    expect(
+        await page.evaluate(() =>
+            window.setGlobalChannelFavorite(window.cList[1], true)
+        )
+    ).toBe(true);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async () =>
+                    (await window.__ottGlobalFavorites.store.snapshot()).entries
+                        .length
+            )
+        )
+        .toBe(1);
+    const entry = await page.evaluate(
+        async () =>
+            (await window.__ottGlobalFavorites.store.snapshot()).entries[0]
+    );
+    expect(entry.locator).toEqual({
+        channelId: "torrent:persistent-catalog:two:0",
+        kind: "channel",
+    });
+    expect(JSON.stringify(entry)).not.toContain("magnet:");
+    expect(JSON.stringify(entry)).not.toContain("/sessions/");
+    await page.evaluate(() => {
+        window.stbSetItem("ottplayprov", "demo");
+        window.loadProv("demo");
+    });
+    await page.waitForFunction(
+        () =>
+            window.__ottActiveProviderDriver?.id === "demo" &&
+            window.commandChannelsReady === true
+    );
+    const replay = await page.evaluate(
+        async (id) => window.__ottGlobalFavorites.router.select(id).result,
+        entry.id
+    );
+    expect(replay.status).toBe("ok");
+    await page.waitForFunction(
+        () =>
+            window.__ottActiveProviderDriver?.id === "torrent" &&
+            window.video?.currentTime > 0.1
+    );
+    await page.reload();
+    await openProvider();
+    await require("../helpers/global-mixed-browser.cjs").ensure(page);
+    await page.waitForFunction(
+        () =>
+            window.commandChannelsReady === true &&
+            window.video?.currentTime > 0.1
+    );
+    expect(
+        await page.evaluate(
+            async () =>
+                (await window.__ottGlobalFavorites.store.snapshot()).entries[0]
+                    .locator.channelId
+        )
+    ).toBe(entry.locator.channelId);
+    const stored = await page.evaluate(() =>
+        Object.keys(localStorage)
+            .filter((key) => key.startsWith("torrent"))
+            .map((key) => localStorage.getItem(key))
+            .join("\n")
+    );
+    expect(stored).not.toContain("/sessions/");
+    expect(stored).not.toContain("companion/" + "c".repeat(32));
+    expect(errors).toEqual([]);
+});
+
+test("Torrent provider is hidden for external endpoints until native capability is confirmed", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.route("**/*", (route) =>
+        new URL(route.request().url()).origin === origin
+            ? route.continue()
+            : route.abort()
+    );
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+        localStorage.setItem(
+            "sCompanionEndpoint",
+            "https://external.invalid/companion/" + "a".repeat(32) + "/v1"
+        );
+    });
+    await page.goto("/f/");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    expect(
+        await page.evaluate(() => {
+            window.showProviderSelection();
+            return window.providerIds.includes("torrent");
+        })
+    ).toBe(false);
+    const commands = await page.evaluate(async () => {
+        const calls = [];
+        let answer;
+        window.__TAURI__ = {
+            core: {
+                invoke: (command) => {
+                    calls.push(command);
+                    return new Promise((resolve) => {
+                        answer = resolve;
+                    });
+                },
+            },
+        };
+        const ready = window.__ottMediaCompanion.capabilities();
+        if (window.isProviderAllowed("torrent"))
+            throw Error("Optimistic native provider visibility");
+        await Promise.resolve();
+        answer({
+            available: true,
+            local: true,
+            plugins: true,
+            schema: 1,
+            torrent: true,
+        });
+        await ready;
+        window.showProviderSelection();
+        if (!window.providerIds.includes("torrent"))
+            throw Error("Native provider missing");
+        return calls;
+    });
+    expect(commands).toEqual(["companion_capabilities"]);
+});

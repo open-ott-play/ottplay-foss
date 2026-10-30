@@ -1,0 +1,524 @@
+{
+  "schema": 1,
+  "feature": "Native Torrent provider and persistent catalog",
+  "baseline": {
+    "revision": "00e1c2ba2de4822219be986c5dd590c95a064a8a",
+    "method": "Tracked HEAD sources exported with git archive to an isolated temporary directory; compiled with the same local TypeScript, linker and optimizer; no checkout or worktree changes."
+  },
+  "candidate": {
+    "workingTree": true,
+    "sourceRevisionClaimed": false
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "lockSha256": "b91fcfcd6c3d2ce2931aaaca4bcf5d0b98bded80126dd29b0edbd14c21646e02",
+  "allowance": {
+    "catalog": {
+      "bytes": 8426,
+      "gzipBytes": 3348
+    },
+    "companion": {
+      "bytes": -3663,
+      "gzipBytes": -1439
+    },
+    "entry": {
+      "bytes": 2286,
+      "gzipBytes": 548
+    },
+    "favorites": {
+      "bytes": 1194,
+      "gzipBytes": 270
+    },
+    "settings": {
+      "bytes": 263,
+      "gzipBytes": 102
+    }
+  },
+  "reserve": {
+    "entryGzipBytes": 33,
+    "explanation": "Same-runtime entry delta is 515 bytes compressed; 33 bytes accommodates native transform compression variation. Includes cold-start static discovery and cancellable remote-provider capability waiting (+505 raw, +107 web/+108 native gzip over the first provider build). Companion retains 3 bytes of compression headroom. Reusing translated catalog labels saves 149 raw and 46 gzip bytes in the Torrent asset; the existing limits are unchanged.",
+    "companionGzipBytes": 3,
+    "catalog": {
+      "bytes": 149,
+      "gzipBytes": 46
+    }
+  },
+  "beforeCaps": {
+    "entry": {
+      "bytes": 1159167,
+      "gzipBytes": 354994
+    },
+    "legacyTotal": {
+      "bytes": 1311854,
+      "gzipBytes": 410293
+    },
+    "total": {
+      "bytes": 1695912,
+      "gzipBytes": 524640
+    },
+    "companion": {
+      "bytes": 12672,
+      "gzipBytes": 4734
+    },
+    "favorites": {
+      "bytes": 244739,
+      "gzipBytes": 63014
+    }
+  },
+  "afterCaps": {
+    "entry": {
+      "bytes": 1161453,
+      "gzipBytes": 355542
+    },
+    "legacyTotal": {
+      "bytes": 1322566,
+      "gzipBytes": 414189
+    },
+    "total": {
+      "bytes": 1704418,
+      "gzipBytes": 527469
+    },
+    "companion": {
+      "bytes": 9009,
+      "gzipBytes": 3295
+    },
+    "favorites": {
+      "bytes": 245933,
+      "gzipBytes": 63284
+    }
+  },
+  "components": [
+    {
+      "name": "control-transport.js",
+      "before": {
+        "bytes": 3011,
+        "gzipBytes": 1350,
+        "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+      },
+      "after": {
+        "bytes": 3011,
+        "gzipBytes": 1350,
+        "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "favorites-transfer.js",
+      "before": {
+        "bytes": 244467,
+        "gzipBytes": 62686,
+        "sha256": "54edad14d2de46d18790732f564138ff0d1499ffe6bcc5e71d5d93018ebbc46f"
+      },
+      "after": {
+        "bytes": 245661,
+        "gzipBytes": 62956,
+        "sha256": "fcea0f86c27d5fc23e5054286dac848787b6bf1aff6abe46be571d128e9ccc1e"
+      },
+      "delta": {
+        "bytes": 1194,
+        "gzipBytes": 270
+      }
+    },
+    {
+      "name": "local-compatibility.js",
+      "before": {
+        "bytes": 4012,
+        "gzipBytes": 1729,
+        "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+      },
+      "after": {
+        "bytes": 4012,
+        "gzipBytes": 1729,
+        "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "local-media-ui.js",
+      "before": {
+        "bytes": 8455,
+        "gzipBytes": 3330,
+        "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+      },
+      "after": {
+        "bytes": 8455,
+        "gzipBytes": 3330,
+        "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "media-companion.js",
+      "before": {
+        "bytes": 12626,
+        "gzipBytes": 4631,
+        "sha256": "6d267771f246711bdbdcc5d520e525051ea95088a0a6f7b7c756efaa524c11ee"
+      },
+      "after": {
+        "bytes": 8963,
+        "gzipBytes": 3189,
+        "sha256": "886192f702572cd3906949c158945f9955ce284dc10f1571650dbf14e4d3ec3b"
+      },
+      "delta": {
+        "bytes": -3663,
+        "gzipBytes": -1442
+      }
+    },
+    {
+      "name": "modern-interface.js",
+      "before": {
+        "bytes": 6076,
+        "gzipBytes": 2547,
+        "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+      },
+      "after": {
+        "bytes": 6076,
+        "gzipBytes": 2547,
+        "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "perf-capture.js",
+      "before": {
+        "bytes": 21388,
+        "gzipBytes": 7942,
+        "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+      },
+      "after": {
+        "bytes": 21388,
+        "gzipBytes": 7942,
+        "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "player.js",
+      "before": {
+        "bytes": 1158964,
+        "gzipBytes": 353371,
+        "sha256": "af8e6962a4c816fb5b6f06e9c87aabe29449c880d2fe469eadae9b95328fdd9f"
+      },
+      "after": {
+        "bytes": 1161250,
+        "gzipBytes": 353886,
+        "sha256": "2b84df376f77c5fe54207de27584681fee5693e0c572a317b50fbcdb3a78b632"
+      },
+      "delta": {
+        "bytes": 2286,
+        "gzipBytes": 515
+      }
+    },
+    {
+      "name": "provider-catalog.js",
+      "before": {
+        "bytes": 9463,
+        "gzipBytes": 3582,
+        "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+      },
+      "after": {
+        "bytes": 9463,
+        "gzipBytes": 3582,
+        "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-edem.js",
+      "before": {
+        "bytes": 15631,
+        "gzipBytes": 6092,
+        "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+      },
+      "after": {
+        "bytes": 15631,
+        "gzipBytes": 6092,
+        "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-m3u.js",
+      "before": {
+        "bytes": 19349,
+        "gzipBytes": 7080,
+        "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+      },
+      "after": {
+        "bytes": 19349,
+        "gzipBytes": 7080,
+        "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-playlist.js",
+      "before": {
+        "bytes": 11808,
+        "gzipBytes": 4393,
+        "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+      },
+      "after": {
+        "bytes": 11808,
+        "gzipBytes": 4393,
+        "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-plex.js",
+      "before": {
+        "bytes": 62116,
+        "gzipBytes": 21202,
+        "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+      },
+      "after": {
+        "bytes": 62116,
+        "gzipBytes": 21202,
+        "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-stalker.js",
+      "before": {
+        "bytes": 18737,
+        "gzipBytes": 6876,
+        "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+      },
+      "after": {
+        "bytes": 18737,
+        "gzipBytes": 6876,
+        "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-torrent.js",
+      "before": {
+        "bytes": 0,
+        "gzipBytes": 0,
+        "sha256": null
+      },
+      "after": {
+        "bytes": 8277,
+        "gzipBytes": 3302,
+        "sha256": "fcbd06e56a955ef5b17954a60496b5da660b425e341fd64d540d145f12106544"
+      },
+      "delta": {
+        "bytes": 8277,
+        "gzipBytes": 3302
+      }
+    },
+    {
+      "name": "provider-vportal.js",
+      "before": {
+        "bytes": 11391,
+        "gzipBytes": 4350,
+        "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+      },
+      "after": {
+        "bytes": 11391,
+        "gzipBytes": 4350,
+        "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "provider-xtream.js",
+      "before": {
+        "bytes": 4158,
+        "gzipBytes": 1752,
+        "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+      },
+      "after": {
+        "bytes": 4158,
+        "gzipBytes": 1752,
+        "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "remote-local-runner.js",
+      "before": {
+        "bytes": 2504,
+        "gzipBytes": 1175,
+        "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+      },
+      "after": {
+        "bytes": 2504,
+        "gzipBytes": 1175,
+        "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "remote-provider-fields.js",
+      "before": {
+        "bytes": 15788,
+        "gzipBytes": 5509,
+        "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+      },
+      "after": {
+        "bytes": 15788,
+        "gzipBytes": 5509,
+        "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "remote-settings-extras.js",
+      "before": {
+        "bytes": 6603,
+        "gzipBytes": 2507,
+        "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+      },
+      "after": {
+        "bytes": 6603,
+        "gzipBytes": 2507,
+        "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "remote-settings-lifecycle.js",
+      "before": {
+        "bytes": 31140,
+        "gzipBytes": 9762,
+        "sha256": "519644e16c6a615cf1a9ef6f324f3d2af7f5da051ae108b910fee757fc652154"
+      },
+      "after": {
+        "bytes": 31403,
+        "gzipBytes": 9864,
+        "sha256": "de17fe815b6f7ff272366836e31402f85511978a5afdb1ee7145b17e48bfa8f1"
+      },
+      "delta": {
+        "bytes": 263,
+        "gzipBytes": 102
+      }
+    },
+    {
+      "name": "remote-settings.js",
+      "before": {
+        "bytes": 15851,
+        "gzipBytes": 5185,
+        "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+      },
+      "after": {
+        "bytes": 15851,
+        "gzipBytes": 5185,
+        "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "runtime-debug-details.js",
+      "before": {
+        "bytes": 3311,
+        "gzipBytes": 1551,
+        "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+      },
+      "after": {
+        "bytes": 3311,
+        "gzipBytes": 1551,
+        "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "shaka-tracks.js",
+      "before": {
+        "bytes": 1144,
+        "gzipBytes": 596,
+        "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+      },
+      "after": {
+        "bytes": 1144,
+        "gzipBytes": 596,
+        "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    },
+    {
+      "name": "subtitle-appearance.js",
+      "before": {
+        "bytes": 7798,
+        "gzipBytes": 3373,
+        "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+      },
+      "after": {
+        "bytes": 7798,
+        "gzipBytes": 3373,
+        "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+      },
+      "delta": {
+        "bytes": 0,
+        "gzipBytes": 0
+      }
+    }
+  ],
+  "delta": {
+    "bytes": 8357,
+    "gzipBytes": 2747
+  }
+}

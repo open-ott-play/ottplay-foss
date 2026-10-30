@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "Redaktors",
     "Enable HTTP remote": "Ieslēgt HTTP tālvadību",
     English: "Angļu",
+    "Enter a magnet link or a torrent file URL.":
+        "Ievadiet magnētsaiti vai torrentfaila URL.",
     "Enter a password (8 characters).": "Ievadiet paroli (8 rakstzīmes).",
     "Enter a playlist URL to access this service.":
         "Lai piekļūtu šim pakalpojumam, ievadiet atskaņošanas saraksta URL.",
@@ -1086,6 +1088,7 @@ var keyStrings = {
         "Atskaņotājs neatbalsta šo attālināto komandu.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Šī drošā sesija nav pieejama vai tās derīguma termiņš ir beidzies. Televizorā atveriet jaunu sesiju un izmantojiet tās pilno saiti.",
+    "This source is already in the catalog.": "Šis avots jau ir katalogā.",
     Timer: "Taimeris",
     "Timer: switch to channel?": "Taimeris: pārslēgties uz šo kanālu?",
     "Timeshift: one minute back": "Laika nobīde: vienu minūti atpakaļ",
@@ -1102,6 +1105,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Mainīt tālummaiņas režīmu",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv iestatījumi",
+    "Torrent source limit reached.":
+        "Sasniegts maksimālais torrentu avotu skaits.",
     "Touchscreen locked": "Skārienekrāns ir bloķēts",
     "Touchscreen unlocked": "Skārienekrāns ir atbloķēts",
     "Trust this server for remote support":

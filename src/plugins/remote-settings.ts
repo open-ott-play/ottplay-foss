@@ -233,6 +233,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (/^preferred(?:Audio|Subtitle)Language$/.test(id))
             result.description =
                 "Used when tracks are selected for the next stream, unless that channel has an explicit track preference. Saving does not switch the current track.";
+        if (id === "companionEndpoint")
+            result.description =
+                "Installation-only companion endpoint, configured through authenticated remote settings and excluded from portable backups. Used for the next external companion stream; the native Torrent provider uses its owned service.";
         if (result.apply === "after_ack")
             result.description =
                 "Saved atomically with its companion fields, then applied after acknowledgement. Failed connection changes roll back; use the group transition to confirm the outcome.";

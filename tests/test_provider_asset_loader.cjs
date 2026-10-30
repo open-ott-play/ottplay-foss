@@ -171,6 +171,7 @@ test("every complete preloaded family stays synchronous", () => {
         "playlist",
         "plex",
         "stalker",
+        "torrent",
         "vportal",
         "xtream",
     ]);
@@ -179,7 +180,7 @@ test("every complete preloaded family stays synchronous", () => {
         f.publish(kind);
         f.ensure(kind, owner(), () => completed++);
     }
-    assert.equal(completed, 8);
+    assert.equal(completed, 9);
     assert.equal(f.requests.length, 0);
 });
 

@@ -97,6 +97,7 @@ const CLASSIC_MODULES = [
     "build/plugins/plex-queue.js",
     "build/provider/plex-driver.js",
     "build/provider/vportal-driver.js",
+    "build/provider/torrent-driver.js",
     "build/provider/xtream-media.js",
     "build/provider/drivers.js",
     "build/offline/browser-local-media.js",
@@ -104,7 +105,6 @@ const CLASSIC_MODULES = [
     "build/offline/playback-selection.js",
     "build/offline/profiles.js",
     "build/plugins/media-companion.js",
-    "build/plugins/media-companion-ui.js",
     "build/plugins/media-companion-loader.js",
     "build/plugins/local-compatibility.js",
     "build/plugins/local-media-ui.js",
@@ -230,6 +230,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
         "build/provider/plex-driver.js",
     ],
     stalker: ["build/provider/stalker-driver.js"],
+    torrent: ["build/provider/torrent-driver.js"],
     vportal: ["build/provider/vportal-driver.js"],
     xtream: ["build/provider/xtream-media.js"],
 });
@@ -269,10 +270,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     ],
     "local-compatibility": ["build/plugins/local-compatibility.js"],
     "local-media-ui": ["build/plugins/local-media-ui.js"],
-    "media-companion": [
-        "build/plugins/media-companion.js",
-        "build/plugins/media-companion-ui.js",
-    ],
+    "media-companion": ["build/plugins/media-companion.js"],
     "modern-interface": ["build/ui/modern.js"],
 
     "perf-capture": [
@@ -380,9 +378,6 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     "build/plugins/local-media-ui.js": Object.freeze([
         "window.__ottLocalMediaUiFactory",
     ]),
-    "build/plugins/media-companion-ui.js": Object.freeze([
-        "window.__ottMediaCompanionUi",
-    ]),
     "build/plugins/media-companion.js": Object.freeze([
         "window.__ottMediaCompanionFactory",
     ]),
@@ -469,6 +464,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/provider/torrent-driver.js": Object.freeze([
+        "window.__ottTorrentDriver",
     ]),
     "build/provider/vportal-driver.js": Object.freeze([
         "window.__ottVPortalDriver",

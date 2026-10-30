@@ -359,6 +359,8 @@ var keyStrings = {
     Editor: "ఎడిటర్",
     "Enable HTTP remote": "HTTP రిమోట్‌ని ప్రారంభించండి",
     English: "ఇంగ్లీష్",
+    "Enter a magnet link or a torrent file URL.":
+        "మాగ్నెట్ లింక్ లేదా టొరెంట్ ఫైల్ URLను నమోదు చేయండి.",
     "Enter a password (8 characters).": "పాస్‌వర్డ్‌ను నమోదు చేయండి (8 అక్షరాలు).",
     "Enter a playlist URL to access this service.":
         "ఈ సేవను యాక్సెస్ చేయడానికి ప్లేజాబితా URLని నమోదు చేయండి.",
@@ -1043,6 +1045,7 @@ var keyStrings = {
         "ప్లేయర్ ఈ రిమోట్ కంట్రోల్ ఆదేశానికి మద్దతు ఇవ్వదు.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ఈ సురక్షిత సెషన్ అందుబాటులో లేదు లేదా గడువు ముగిసింది. టీవీలో కొత్త సెషన్‌ని తెరిచి, దాని పూర్తి లింక్‌ని ఉపయోగించండి.",
+    "This source is already in the catalog.": "ఈ మూలం ఇప్పటికే జాబితాలో ఉంది.",
     Timer: "టైమర్",
     "Timer: switch to channel?": "టైమర్: ఈ ఛానెల్‌కి మారాలా?",
     "Timeshift: one minute back": "టైమ్‌షిఫ్ట్: ఒక నిమిషం వెనక్కి",
@@ -1059,6 +1062,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "జూమ్ మోడ్‌ని మార్చండి",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv సెట్టింగ్‌లు",
+    "Torrent source limit reached.": "టొరెంట్ మూలాల సంఖ్య గరిష్ఠ పరిమితికి చేరుకుంది.",
     "Touchscreen locked": "టచ్‌స్క్రీన్ లాక్ చేయబడింది",
     "Touchscreen unlocked": "టచ్‌స్క్రీన్ లాక్ తీసివేయబడింది",
     "Trust this server for remote support": "రిమోట్ మద్దతు కోసం ఈ సర్వర్‌ను విశ్వసించండి",

@@ -367,6 +367,8 @@ var keyStrings = {
     Editor: "سمونګر",
     "Enable HTTP remote": "HTTP ریموټ فعال کړئ",
     English: "انګلیسي",
+    "Enter a magnet link or a torrent file URL.":
+        "مقناطیسي لینک یا د تورېنټ دوتنې URL دننه کړئ.",
     "Enter a password (8 characters).": "پاسورډ دننه کړئ (8 توري).",
     "Enter a playlist URL to access this service.":
         "دې خدمت ته د لاسرسي لپاره یو پلې‌لېست URL داخل کړئ.",
@@ -1071,6 +1073,8 @@ var keyStrings = {
         "پلیر د لرې کنټرول د دې امر ملاتړ نه کوي.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "دا خوندي ناسته شتون نلري یا پای ته رسیدلی. په تلویزیون کې نوې ناسته پرانیزئ او د هغې بشپړ لینک وکاروئ.",
+    "This source is already in the catalog.":
+        "دا سرچینه له مخکې په لړلیک کې شته.",
     Timer: "ټایمر",
     "Timer: switch to channel?": "ټایمر: دې چینل ته لاړ شو؟",
     "Timeshift: one minute back": "د وخت بدلون: یوه دقیقه شاته",
@@ -1087,6 +1091,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "د لویولو حالت بدل کړئ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "د Top-Tv ترتیبات",
+    "Torrent source limit reached.":
+        "د تورېنټ سرچینو شمېر ټاکلي حد ته رسېدلی دی.",
     "Touchscreen locked": "لمس پرده قلف شوه",
     "Touchscreen unlocked": "د لمس پردې قلف خلاص شو",
     "Trust this server for remote support":

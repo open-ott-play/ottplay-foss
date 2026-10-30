@@ -369,6 +369,8 @@ var keyStrings = {
     Editor: "Редактор",
     "Enable HTTP remote": "Включить HTTP-пульт",
     English: "Английский",
+    "Enter a magnet link or a torrent file URL.":
+        "Введите magnet-ссылку или URL торрент-файла.",
     "Enter a password (8 characters).": "Введите пароль (8 символов).",
     "Enter a playlist URL to access this service.":
         "Введите адрес плейлиста для доступа к сервису.",
@@ -1077,6 +1079,8 @@ var keyStrings = {
         "Плеер не поддерживает эту удалённую команду.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Защищённый сеанс недоступен или срок его действия истёк. Откройте новый сеанс на телевизоре и используйте полную ссылку.",
+    "This source is already in the catalog.":
+        "Этот источник уже есть в каталоге.",
     Timer: "Таймер",
     "Timer: switch to channel?": "Таймер: переключить канал?",
     "Timeshift: one minute back": "Таймшифт: на минуту назад",
@@ -1093,6 +1097,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Изменить режим масштабирования",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Настройки Top-Tv",
+    "Torrent source limit reached.":
+        "Достигнут предел количества торрент-источников.",
     "Touchscreen locked": "Сенсорный экран заблокирован",
     "Touchscreen unlocked": "Сенсорный экран разблокирован",
     "Trust this server for remote support":

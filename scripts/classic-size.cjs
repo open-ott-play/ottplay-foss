@@ -568,7 +568,7 @@ const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
     gzipBytes: 95,
 });
 // Media companion dispatch/settings remain small at startup; session resolution,
-// file selection and packaged plugin UI live in a separately bounded family.
+// file selection live in a separately bounded family; its retired UI is deducted below.
 // Paired Node22 measurements and explicit source/release reserves are recorded
 // in docs/evidence/media-companion-size-20261030.json. Count each allowance once.
 const MEDIA_COMPANION_ENTRY_ALLOWANCE = Object.freeze({
@@ -613,8 +613,21 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
     "remote-settings-lifecycle": Object.freeze({ bytes: 700, gzipBytes: 256 }),
     "subtitle-appearance": Object.freeze({ bytes: 96, gzipBytes: 32 }),
 });
+// Native-only Torrent provider: measured HEAD/source-archive comparison on Node26.
+// Catalog/editor is a lazy provider asset; shared entry adds only capability and
+// registry plumbing. Retired companion UI savings are deducted once, and the
+// existing global Favorites/remote-settings changes are accounted separately.
+// Evidence: docs/evidence/torrent-provider-size-20261030.json.
+const TORRENT_PROVIDER_ALLOWANCE = Object.freeze({
+    catalog: Object.freeze({ bytes: 8426, gzipBytes: 3348 }),
+    companion: Object.freeze({ bytes: -3663, gzipBytes: -1439 }),
+    entry: Object.freeze({ bytes: 2286, gzipBytes: 548 }),
+    favorites: Object.freeze({ bytes: 1194, gzipBytes: 270 }),
+    settings: Object.freeze({ bytes: 263, gzipBytes: 102 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
@@ -636,6 +649,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
@@ -836,6 +850,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
+        TORRENT_PROVIDER_ALLOWANCE.catalog.bytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
@@ -861,6 +877,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
+        TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
@@ -895,6 +913,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"].bytes +
             CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.bytes +
             STB_PLAYER_FAVORITES_ALLOWANCE.bytes +
@@ -903,6 +922,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"]
                 .gzipBytes +
             CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.gzipBytes +
@@ -919,9 +939,11 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     "media-companion": Object.freeze({
         bytes:
+            TORRENT_PROVIDER_ALLOWANCE.companion.bytes +
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
             MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes,
         gzipBytes:
+            TORRENT_PROVIDER_ALLOWANCE.companion.gzipBytes +
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
             MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes,
     }),
@@ -985,6 +1007,11 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
+        TORRENT_PROVIDER_ALLOWANCE.catalog.bytes +
+        TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
+        TORRENT_PROVIDER_ALLOWANCE.settings.bytes +
+        TORRENT_PROVIDER_ALLOWANCE.companion.bytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
@@ -1027,6 +1054,11 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
+        TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
+        TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
+        TORRENT_PROVIDER_ALLOWANCE.settings.gzipBytes +
+        TORRENT_PROVIDER_ALLOWANCE.companion.gzipBytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
@@ -1283,6 +1315,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
         tizenPackageBootAllowance: TIZEN_PACKAGE_BOOT_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
+        torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
         totalBudget: TOTAL_BUDGET,
     };
     const output = path.join(root, "build/reports/classic-bundle.json");
@@ -1613,6 +1646,7 @@ function writeBuildBundleReport(
                 node: process.versions.node,
                 zlib: process.versions.zlib,
             },
+            torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
             totalBudget: TOTAL_BUDGET,
             violations,
         };
@@ -1708,6 +1742,7 @@ module.exports = {
     STB_PLAYER_STALKER_ALLOWANCE,
     STB_PLAYER_XTREAM_ALLOWANCE,
     TIZEN_PACKAGE_BOOT_ALLOWANCE,
+    TORRENT_PROVIDER_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,

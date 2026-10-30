@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Editor",
     "Enable HTTP remote": "Paganahin ang HTTP remote",
     English: "Ingles",
+    "Enter a magnet link or a torrent file URL.":
+        "Maglagay ng magnet link o URL ng torrent file.",
     "Enter a password (8 characters).": "Maglagay ng password (8 character).",
     "Enter a playlist URL to access this service.":
         "Maglagay ng playlist URL para ma-access ang serbisyong ito.",
@@ -1108,6 +1110,8 @@ var keyStrings = {
         "Hindi sinusuportahan ng player ang utos na ito mula sa remote control.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ang secure na session na ito ay hindi magagamit o nag-expire. Magbukas ng bagong session sa TV at gamitin ang kumpletong link nito.",
+    "This source is already in the catalog.":
+        "Nasa katalogo na ang pinagmumulang ito.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: lumipat sa channel na ito?",
     "Timeshift: one minute back": "Paglipat ng oras: isang minuto pabalik",
@@ -1125,6 +1129,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Baguhin ang zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv na mga setting",
+    "Torrent source limit reached.":
+        "Naabot na ang limitasyon ng mga pinagmumulan ng torrent.",
     "Touchscreen locked": "Naka-lock ang touchscreen",
     "Touchscreen unlocked": "Naka-unlock ang touchscreen",
     "Trust this server for remote support":

@@ -1415,6 +1415,8 @@ export function stbGetAllItems(): Record<string, string> {
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
             key === "sNotificationsEnabled" ||
+            key === "companionEndpoint" ||
+            key === "sCompanionEndpoint" ||
             /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
@@ -1430,6 +1432,8 @@ export function isPortableSettingsKey(key: string): boolean {
         key !== "offlineProfileBindings" &&
         key !== "__ottStandbyV1" &&
         key !== "sNotificationsEnabled" &&
+        key !== "companionEndpoint" &&
+        key !== "sCompanionEndpoint" &&
         !/^__ottRemoteLifecycleToken_/.test(key) &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
@@ -1450,6 +1454,8 @@ export function portableSettingsSnapshot(
             key === "offlineProfileBindings" ||
             key === "__ottStandbyV1" ||
             key === "sNotificationsEnabled" ||
+            key === "companionEndpoint" ||
+            key === "sCompanionEndpoint" ||
             /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
@@ -1508,6 +1514,8 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
                 key !== "offlineProfileBindings" &&
                 key !== "__ottStandbyV1" &&
                 key !== "sNotificationsEnabled" &&
+                key !== "companionEndpoint" &&
+                key !== "sCompanionEndpoint" &&
                 !isStorageMetadataKey(key)
             );
         })

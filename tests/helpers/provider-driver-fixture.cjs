@@ -119,6 +119,7 @@ function fixture(initial = {}) {
     privateRuntime(host, "src/plugins/plex.ts");
     privateRuntime(host, "src/plugins/plex-auth.ts");
     privateRuntime(host, "src/provider/plex-driver.ts");
+    privateRuntime(host, "src/provider/torrent-driver.ts");
     privateRuntime(host, "src/provider/drivers.ts");
     privateRuntime(host, "src/provider/xtream-media.ts");
     // The checked-in identity codec is shared with existing channel bookmarks.

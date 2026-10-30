@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["src-rs/core", "src-rs/server", "src-tauri"]
+members = ["src-rs/core", "src-rs/server", "src-rs/companion", "src-tauri"]
 
 [profile.release]
 lto = true

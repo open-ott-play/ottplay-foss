@@ -378,6 +378,8 @@ var keyStrings = {
     Editor: "Eagarthóir",
     "Enable HTTP remote": "Cumasaigh cianrialú HTTP",
     English: "Béarla",
+    "Enter a magnet link or a torrent file URL.":
+        "Cuir isteach nasc maighnéadach nó URL comhaid torrent.",
     "Enter a password (8 characters).":
         "Cuir isteach pasfhocal (8 gcarachtar).",
     "Enter a playlist URL to access this service.":
@@ -1097,6 +1099,8 @@ var keyStrings = {
         "Ní thacaíonn an seinnteoir leis an gcianordú seo.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Níl an seisiún slán seo ar fáil nó tá sé imithe in éag. Oscail seisiún nua ar an teilifís agus úsáid a nasc iomlán.",
+    "This source is already in the catalog.":
+        "Tá an fhoinse seo sa chatalóg cheana féin.",
     Timer: "Amadóir",
     "Timer: switch to channel?": "Amadóir: athraigh chuig an gcainéal seo?",
     "Timeshift: one minute back": "Téigh siar nóiméad amháin",
@@ -1114,6 +1118,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Athraigh an mód súmála",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Socruithe Top-Tv",
+    "Torrent source limit reached.":
+        "Tá uaslíon na bhfoinsí torrent bainte amach.",
     "Touchscreen locked": "An scáileán tadhaill glasáilte",
     "Touchscreen unlocked": "An scáileán tadhaill díghlasáilte",
     "Trust this server for remote support":

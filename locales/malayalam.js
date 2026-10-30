@@ -364,6 +364,8 @@ var keyStrings = {
     Editor: "എഡിറ്റർ",
     "Enable HTTP remote": "HTTP റിമോട്ട് പ്രവർത്തനക്ഷമമാക്കുക",
     English: "ഇംഗ്ലീഷ്",
+    "Enter a magnet link or a torrent file URL.":
+        "ഒരു മാഗ്നറ്റ് ലിങ്കോ ടൊറന്റ് ഫയലിന്റെ URL-ഓ നൽകുക.",
     "Enter a password (8 characters).": "ഒരു പാസ്‌വേഡ് നൽകുക (8 പ്രതീകങ്ങൾ).",
     "Enter a playlist URL to access this service.":
         "ഈ സേവനം ആക്സസ് ചെയ്യുന്നതിന് URL പ്ലേലിസ്റ്റ് നൽകുക.",
@@ -1062,6 +1064,7 @@ var keyStrings = {
         "ഈ വിദൂര നിയന്ത്രണ കമാൻഡ് പ്ലേയർ പിന്തുണയ്ക്കുന്നില്ല.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "ഈ സുരക്ഷിത സെഷൻ ലഭ്യമല്ല അല്ലെങ്കിൽ കാലഹരണപ്പെട്ടു. ടിവിയിൽ ഒരു പുതിയ സെഷൻ തുറന്ന് അതിൻ്റെ പൂർണ്ണമായ ലിങ്ക് ഉപയോഗിക്കുക.",
+    "This source is already in the catalog.": "ഈ ഉറവിടം ഇതിനകം കാറ്റലോഗിലുണ്ട്.",
     Timer: "ടൈമർ",
     "Timer: switch to channel?": "ടൈമർ: ഈ ചാനലിലേക്ക് മാറണോ?",
     "Timeshift: one minute back": "ടൈംഷിഫ്റ്റ്: ഒരു മിനിറ്റ് തിരികെ",
@@ -1078,6 +1081,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "സൂം മോഡ് മാറ്റുക",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ക്രമീകരണങ്ങൾ",
+    "Torrent source limit reached.": "ടൊറന്റ് ഉറവിടങ്ങളുടെ എണ്ണം പരിധിയിലെത്തി.",
     "Touchscreen locked": "ടച്ച്‌സ്‌ക്രീൻ ലോക്ക് ചെയ്തു",
     "Touchscreen unlocked": "ടച്ച്‌സ്‌ക്രീൻ അൺലോക്ക് ചെയ്തു",
     "Trust this server for remote support":

@@ -79,6 +79,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
+            commands::companion::companion_capabilities,
             commands::companion::companion_endpoint,
             commands::background::background_standby_status,
             commands::background::set_background_standby,

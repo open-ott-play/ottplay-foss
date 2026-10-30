@@ -380,6 +380,8 @@ var keyStrings = {
     Editor: "Muhinduzi",
     "Enable HTTP remote": "Fungura igenzura ryo kure rya HTTP",
     English: "Icyongereza",
+    "Enter a magnet link or a torrent file URL.":
+        "Injiza ihuza rya magnet cyangwa URL ya dosiye ya torrent.",
     "Enter a password (8 characters).": "Injiza ijambo ry'ibanga (inyuguti 8).",
     "Enter a playlist URL to access this service.":
         "Injiza URL y'urutonde rwo gukina kugira ngo ukoreshe iyi serivisi.",
@@ -1107,6 +1109,8 @@ var keyStrings = {
         "Porogaramu ntishyigikira iri tegeko ry’igenzura ryo kure.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Iki cyiciro gitekanye ntikiboneka cyangwa igihe cyacyo cyarangiye. Fungura icyiciro gishya kuri TV maze ukoreshe ihuza ryacyo ryose.",
+    "This source is already in the catalog.":
+        "Iri soko risanzwe riri muri kataloge.",
     Timer: "Igihe cyateganyijwe",
     "Timer: switch to channel?": "Igihe cyateganyijwe: kujya kuri iyi shene?",
     "Timeshift: one minute back": "Kureba bitinze: subira inyuma umunota umwe",
@@ -1125,6 +1129,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Hindura uburyo bwo gukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Igenamiterere rya Top-Tv",
+    "Torrent source limit reached.":
+        "Umubare ntarengwa w'amasoko ya torrent wagezweho.",
     "Touchscreen locked": "Ekarani ikorwaho yafunzwe",
     "Touchscreen unlocked": "Ekarani ikorwaho yafunguwe",
     "Trust this server for remote support":

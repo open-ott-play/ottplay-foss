@@ -19,6 +19,7 @@ var providerAssetGroups: { [kind: string]: string[][] } = {
         ["__ottPlexDriver", "create", "mount", "reportLoad"],
     ],
     stalker: [["__ottStalkerDriver", "create", "mountSettings"]],
+    torrent: [["__ottTorrentDriver", "create", "mount", "reportLoad"]],
     vportal: [["__ottVPortalDriver", "create", "mount", "reportLoad"]],
     xtream: [["__ottXtreamMedia", "mount"]],
 };

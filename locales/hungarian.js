@@ -375,6 +375,8 @@ var keyStrings = {
     Editor: "Szerkesztő",
     "Enable HTTP remote": "HTTP-távirányítás bekapcsolása",
     English: "Angol",
+    "Enter a magnet link or a torrent file URL.":
+        "Adjon meg egy magnet hivatkozást vagy egy torrentfájl URL-címét.",
     "Enter a password (8 characters).": "Adja meg a jelszót (8 karakter).",
     "Enter a playlist URL to access this service.":
         "A szolgáltatás eléréséhez adja meg a lejátszási lista URL-címét.",
@@ -1096,6 +1098,8 @@ var keyStrings = {
         "A lejátszó nem támogatja ezt a távoli parancsot.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Ez a biztonságos munkamenet nem érhető el vagy lejárt. Nyisson új munkamenetet a tévén, és használja a teljes hivatkozást.",
+    "This source is already in the catalog.":
+        "Ez a forrás már szerepel a katalógusban.",
     Timer: "Időzítő",
     "Timer: switch to channel?": "Időzítő: átvált erre a csatornára?",
     "Timeshift: one minute back": "Időeltolás: egy perccel vissza",
@@ -1113,6 +1117,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Nagyítási mód váltása",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv beállításai",
+    "Torrent source limit reached.":
+        "Elérte a torrentforrások maximális számát.",
     "Touchscreen locked": "Érintőképernyő zárolva",
     "Touchscreen unlocked": "Érintőképernyő feloldva",
     "Trust this server for remote support":

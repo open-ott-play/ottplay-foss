@@ -374,6 +374,8 @@ var keyStrings = {
     Editor: "Penyunting",
     "Enable HTTP remote": "Aktifkan kendali HTTP",
     English: "Inggris",
+    "Enter a magnet link or a torrent file URL.":
+        "Masukkan tautan magnet atau URL berkas torrent.",
     "Enter a password (8 characters).": "Masukkan kata sandi (8 karakter).",
     "Enter a playlist URL to access this service.":
         "Masukkan URL daftar putar untuk mengakses layanan ini.",
@@ -1080,6 +1082,8 @@ var keyStrings = {
         "Perintah jarak jauh ini tidak didukung oleh pemutar.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Sesi aman ini tidak tersedia atau kedaluwarsa. Buka sesi baru di TV dan gunakan tautan lengkapnya.",
+    "This source is already in the catalog.":
+        "Sumber ini sudah ada dalam katalog.",
     Timer: "Pengatur waktu",
     "Timer: switch to channel?": "Pengatur waktu: pindah ke saluran ini?",
     "Timeshift: one minute back": "Timeshift: mundur satu menit",
@@ -1097,6 +1101,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ubah mode zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Pengaturan Top-Tv",
+    "Torrent source limit reached.":
+        "Jumlah maksimum sumber torrent telah tercapai.",
     "Touchscreen locked": "Layar sentuh dikunci",
     "Touchscreen unlocked": "Layar sentuh dibuka kuncinya",
     "Trust this server for remote support":

@@ -371,6 +371,8 @@ var keyStrings = {
     Editor: "Redigering",
     "Enable HTTP remote": "Aktiver HTTP fjernkontroll",
     English: "engelsk",
+    "Enter a magnet link or a torrent file URL.":
+        "Skriv inn en magnetlenke eller URL-en til en torrentfil.",
     "Enter a password (8 characters).": "Skriv inn et passord (8 tegn).",
     "Enter a playlist URL to access this service.":
         "Skriv inn en spilleliste URL for å få tilgang til denne tjenesten.",
@@ -1078,6 +1080,8 @@ var keyStrings = {
         "Spilleren støtter ikke denne fjernkommandoen.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Denne sikre økten er utilgjengelig eller utløpt. Åpne en ny økt på TV-en og bruk den fullstendige lenken.",
+    "This source is already in the catalog.":
+        "Denne kilden finnes allerede i katalogen.",
     Timer: "Timer",
     "Timer: switch to channel?": "Timer: bytte til denne kanalen?",
     "Timeshift: one minute back": "Tidsforskyvning: ett minutt tilbake",
@@ -1095,6 +1099,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Endre zoommodus",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv innstillinger",
+    "Torrent source limit reached.": "Maksimalt antall torrentkilder er nådd.",
     "Touchscreen locked": "Berøringsskjermen er låst",
     "Touchscreen unlocked": "Berøringsskjermen er låst opp",
     "Trust this server for remote support":

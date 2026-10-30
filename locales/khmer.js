@@ -362,6 +362,8 @@ var keyStrings = {
     Editor: "កម្មវិធីនិពន្ធ",
     "Enable HTTP remote": "បើក HTTP ពីចម្ងាយ",
     English: "ភាសាអង់គ្លេស",
+    "Enter a magnet link or a torrent file URL.":
+        "បញ្ចូលតំណ magnet ឬ URL របស់ឯកសារ torrent។",
     "Enter a password (8 characters).": "បញ្ចូលពាក្យសម្ងាត់ (8 តួអក្សរ)។",
     "Enter a playlist URL to access this service.":
         "បញ្ចូលបញ្ជីចាក់ URL ដើម្បីចូលប្រើសេវាកម្មនេះ។",
@@ -1059,6 +1061,7 @@ var keyStrings = {
         "កម្មវិធីចាក់មិនគាំទ្រពាក្យបញ្ជាពីចម្ងាយនេះទេ។",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "វគ្គសុវត្ថិភាពនេះមិនមានទេ ឬផុតកំណត់។ បើកវគ្គថ្មីនៅលើទូរទស្សន៍ ហើយប្រើតំណពេញលេញរបស់វា។",
+    "This source is already in the catalog.": "ប្រភពនេះមាននៅក្នុងកាតាឡុករួចហើយ។",
     Timer: "កម្មវិធីកំណត់ម៉ោង",
     "Timer: switch to channel?": "កម្មវិធីកំណត់ម៉ោង៖ ប្តូរទៅឆានែលនេះ?",
     "Timeshift: one minute back": "ថយក្រោយមួយនាទី",
@@ -1075,6 +1078,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ប្តូររបៀបពង្រីក",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ការកំណត់ Top-Tv",
+    "Torrent source limit reached.": "បានដល់ចំនួនអតិបរមានៃប្រភព torrent ហើយ។",
     "Touchscreen locked": "អេក្រង់ប៉ះត្រូវបានចាក់សោ",
     "Touchscreen unlocked": "អេក្រង់ប៉ះត្រូវបានដោះសោ",
     "Trust this server for remote support":

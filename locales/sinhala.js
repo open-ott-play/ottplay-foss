@@ -362,6 +362,8 @@ var keyStrings = {
     Editor: "සංස්කාරක",
     "Enable HTTP remote": "HTTP දුරස්ථය සබල කරන්න",
     English: "ඉංග්රීසි",
+    "Enter a magnet link or a torrent file URL.":
+        "මැග්නට් සබැඳියක් හෝ ටොරන්ට් ගොනුවක URL එකක් ඇතුළත් කරන්න.",
     "Enter a password (8 characters).": "මුරපදයක් ඇතුළත් කරන්න (අක්ෂර 8).",
     "Enter a playlist URL to access this service.":
         "මෙම සේවාව වෙත ප්‍රවේශ වීමට URL ධාවන ලැයිස්තුවක් ඇතුළත් කරන්න.",
@@ -1054,6 +1056,7 @@ var keyStrings = {
         "වාදකය මෙම දුරස්ථ පාලන විධානයට සහාය නොදක්වයි.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "මෙම ආරක්ෂිත සැසිය ලබා ගත නොහැක හෝ කල් ඉකුත් වී ඇත. රූපවාහිනියේ නව සැසියක් විවෘත කර එහි සම්පූර්ණ සබැඳිය භාවිතා කරන්න.",
+    "This source is already in the catalog.": "මෙම මූලාශ්‍රය දැනටමත් නාමාවලියේ ඇත.",
     Timer: "ටයිමරය",
     "Timer: switch to channel?": "ටයිමරය: මෙම නාලිකාවට මාරු වන්නද?",
     "Timeshift: one minute back": "මිනිත්තුවක් පසුපසට යන්න",
@@ -1070,6 +1073,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "විශාලන මාදිලිය වෙනස් කරන්න",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv සැකසුම්",
+    "Torrent source limit reached.": "ටොරන්ට් මූලාශ්‍ර ගණනේ උපරිම සීමාවට ළඟා වී ඇත.",
     "Touchscreen locked": "ස්පර්ශ තිරය අගුළු දමා ඇත",
     "Touchscreen unlocked": "ස්පර්ශ තිරයේ අගුල ඉවත් කර ඇත",
     "Trust this server for remote support":

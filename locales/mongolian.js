@@ -374,6 +374,8 @@ var keyStrings = {
     Editor: "Засварлагч",
     "Enable HTTP remote": "HTTP алсын удирдлагыг идэвхжүүлэх",
     English: "Англи",
+    "Enter a magnet link or a torrent file URL.":
+        "Соронзон холбоос эсвэл торрент файлын URL оруулна уу.",
     "Enter a password (8 characters).": "Нууц үг оруулна уу (8 тэмдэгт).",
     "Enter a playlist URL to access this service.":
         "Энэ үйлчилгээнд хандахын тулд тоглуулах жагсаалтын URL-г оруулна уу.",
@@ -1088,6 +1090,8 @@ var keyStrings = {
         "Тоглуулагч энэ алсын удирдлагын командыг дэмждэггүй.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "Энэ аюулгүй сесс боломжгүй эсвэл хугацаа нь дууссан. ТВ дээр шинэ сесс нээж, түүний бүрэн холбоосыг ашиглана уу.",
+    "This source is already in the catalog.":
+        "Энэ эх сурвалж каталогт аль хэдийн байна.",
     Timer: "Цаглуур",
     "Timer: switch to channel?": "Цаглуур: энэ суваг руу шилжих үү?",
     "Timeshift: one minute back": "Хугацааны шилжилт: нэг минут ухраах",
@@ -1106,6 +1110,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Томруулах горим өөрчлөх",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-ийн тохиргоо",
+    "Torrent source limit reached.":
+        "Торрент эх сурвалжийн тоо дээд хязгаарт хүрсэн.",
     "Touchscreen locked": "Мэдрэгчтэй дэлгэц түгжигдсэн",
     "Touchscreen unlocked": "Мэдрэгчтэй дэлгэцийн түгжээ тайлагдсан",
     "Trust this server for remote support": "Алсын тусламжид энэ серверт итгэх",

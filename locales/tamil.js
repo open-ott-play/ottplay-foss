@@ -369,6 +369,8 @@ var keyStrings = {
     Editor: "ஆசிரியர்",
     "Enable HTTP remote": "HTTP ரிமோட்டை இயக்கு",
     English: "ஆங்கிலம்",
+    "Enter a magnet link or a torrent file URL.":
+        "மேக்னெட் இணைப்பு அல்லது டொரண்ட் கோப்பின் URL-ஐ உள்ளிடவும்.",
     "Enter a password (8 characters).": "கடவுச்சொல்லை உள்ளிடவும் (8 எழுத்துகள்).",
     "Enter a playlist URL to access this service.":
         "இந்த சேவையை அணுக URL பிளேலிஸ்ட்டை உள்ளிடவும்.",
@@ -1071,6 +1073,7 @@ var keyStrings = {
         "இந்தத் தொலைக்கட்டுப்பாட்டுக் கட்டளையை இயக்கி ஆதரிக்கவில்லை.",
     "This secure session is unavailable or expired. Open a new session on the TV and use its complete link.":
         "இந்த பாதுகாப்பான அமர்வு கிடைக்கவில்லை அல்லது காலாவதியானது. டிவியில் புதிய அமர்வைத் திறந்து அதன் முழுமையான இணைப்பைப் பயன்படுத்தவும்.",
+    "This source is already in the catalog.": "இந்த மூலம் ஏற்கனவே பட்டியலில் உள்ளது.",
     Timer: "டைமர்",
     "Timer: switch to channel?": "டைமர்: இந்த சேனலுக்கு மாறவா?",
     "Timeshift: one minute back": "டைம்ஷிப்ட்: ஒரு நிமிடம் பின்",
@@ -1087,6 +1090,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ஜூம் பயன்முறையை மாற்றவும்",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv அமைப்புகள்",
+    "Torrent source limit reached.": "டொரண்ட் மூலங்களின் எண்ணிக்கை வரம்பை எட்டிவிட்டது.",
     "Touchscreen locked": "தொடுதிரை பூட்டப்பட்டது",
     "Touchscreen unlocked": "தொடுதிரையின் பூட்டு நீக்கப்பட்டது",
     "Trust this server for remote support":

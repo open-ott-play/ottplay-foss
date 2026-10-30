@@ -261,11 +261,13 @@ var cloudSettingsTransfer = (function () {
                 if (keys.indexOf(key) === -1) keys.push(key);
             });
             var writes: SettingsWrite[] = keys
-                // Local source bindings never travel with a settings backup.
+                // Installation source bindings and companion access never travel.
                 .filter(function (key) {
                     return (
                         key !== "offlineProfileBindings" &&
-                        key !== "__ottStandbyV1"
+                        key !== "__ottStandbyV1" &&
+                        key !== "companionEndpoint" &&
+                        key !== "sCompanionEndpoint"
                     );
                 })
                 .map(function (key) {

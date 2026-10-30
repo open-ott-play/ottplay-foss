@@ -55,7 +55,7 @@ class WorkspaceContracts(unittest.TestCase):
                 PREPARE.server_manifest(changed)
 
     def test_multiline_members_and_unrelated_tables_are_preserved(self):
-        source = '[workspace]\nresolver = "2"\nmembers = [\n "src-rs/core",\n "src-rs/server",\n "src-tauri",\n]\n\n[workspace.metadata]\nlabel = "src-tauri"\n'
+        source = '[workspace]\nresolver = "2"\nmembers = [\n "src-rs/core",\n "src-rs/server",\n "src-rs/companion",\n "src-tauri",\n]\n\n[workspace.metadata]\nlabel = "src-tauri"\n'
         result = PREPARE.server_manifest(source)
         self.assertIn('label = "src-tauri"', result)
         self.assertEqual(tomllib.loads(result)["workspace"]["members"], list(PREPARE.SERVER_MEMBERS))
@@ -109,7 +109,7 @@ class CargoIntegration(unittest.TestCase):
         self.add_registry_version("1.0.0")
         write(
             self.workspace / "Cargo.toml",
-            '[workspace]\nresolver = "2"\nmembers = ["src-rs/core", "src-rs/server", "src-tauri"]\n[profile.release]\nlto = true\ncodegen-units = 1\nstrip = true\n',
+            '[workspace]\nresolver = "2"\nmembers = ["src-rs/core", "src-rs/server", "src-rs/companion", "src-tauri"]\n[profile.release]\nlto = true\ncodegen-units = 1\nstrip = true\n',
         )
         (self.workspace / "vendor").mkdir()
         write(self.workspace / "plugins/examples/direct-url.js", "// packaged resolver fixture\n")
@@ -128,6 +128,13 @@ class CargoIntegration(unittest.TestCase):
             '[dependencies]\nottplay-core = { path = "../core" }\n',
         )
         write(self.workspace / "src-rs/server/src/main.rs", "fn main() { assert_eq!(ottplay_core::value(), 7); }")
+        crate(
+            self.workspace / "src-rs/companion",
+            "ottplay-companion",
+            "0.1.0",
+            '[dependencies]\nottplay-core = { path = "../core" }\ncompanion-only = { path = "../../vendor/companion-only" }\n',
+        )
+        crate(self.workspace / "vendor/companion-only", "companion-only", "0.1.0")
         crate(
             self.workspace / "src-tauri",
             "ottplay-tauri",
@@ -179,6 +186,8 @@ class CargoIntegration(unittest.TestCase):
         versions = {package["name"]: package["version"] for package in lock["package"]}
         self.assertNotIn("ottplay-tauri", versions)
         self.assertNotIn("desktop-only", versions)
+        self.assertNotIn("ottplay-companion", versions)
+        self.assertNotIn("companion-only", versions)
         self.assertEqual(versions["locked-dependency"], "1.0.0")
         self.assertEqual((self.workspace / "Cargo.lock").read_bytes(), source_before)
         self.assertEqual((self.workspace / "Cargo.toml").read_bytes(), original_manifest)

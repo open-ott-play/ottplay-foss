@@ -1962,11 +1962,17 @@ providerDriverProfiles.forEach(function (profile) {
                               owner,
                               helpers
                           );
-                      if (profile.kind === "plex" || profile.kind === "vportal")
+                      if (
+                          profile.kind === "plex" ||
+                          profile.kind === "vportal" ||
+                          profile.kind === "torrent"
+                      )
                           return (window as any)[
                               profile.kind === "plex"
                                   ? "__ottPlexDriver"
-                                  : "__ottVPortalDriver"
+                                  : profile.kind === "torrent"
+                                    ? "__ottTorrentDriver"
+                                    : "__ottVPortalDriver"
                           ].create(ports, owner, {
                               credentials: createCredentialOperations,
                               emptyCatalog: emptyDriverCatalog,
@@ -2941,7 +2947,9 @@ function mountProviderDriver(
               ? host.__ottPlexDriver
               : profile.kind === "vportal"
                 ? host.__ottVPortalDriver
-                : null;
+                : profile.kind === "torrent"
+                  ? host.__ottTorrentDriver
+                  : null;
     // OTTPLAY_FULL_ONLY_BEGIN
     if (catalogProtocol)
         host.__ottCatalogDrivers.mountSettings(host, driver, owner, store);
