@@ -631,6 +631,61 @@ for (const id of [
         notices,
         "failed legacy save cannot confirm success"
     );
+    for (const lazy of [false, true]) {
+        available = true;
+        c.sFavorites = 0;
+        c.listArray = [101];
+        c.selIndex = 0;
+        c.listCatIndex = 2;
+        c.catsArray = ["All", "Favorites", "News"];
+        c.__ottChannels.group = (index) =>
+            ["system:all", "system:favorites", "provider:news"][index];
+        c.__ottChannels.change = () =>
+            assert.fail(
+                "virtual Favorites cannot be edited as a provider category"
+            );
+        c.saveChannelsCats = () =>
+            assert.fail("global Favorites cannot write source categories");
+        const query = c.$;
+        c.$ = (...args) => ({ ...query(...args), is: () => false });
+        const beforeCalls = calls.length;
+        const beforeNotices = c.calls.filter(
+            (row) => row[0] === "shift"
+        ).length;
+        const previousList = c.listArray;
+        let loaded;
+        if (lazy) {
+            c.__ottGlobalFavoritesFactory = null;
+            c.loadRemoteFeature = (_host, feature, done) => {
+                assert.equal(feature, "favorites-transfer");
+                loaded = done;
+            };
+        }
+        c.addChannel2bucket();
+        assert.deepEqual(Array.from(c.listArray), ["Favorites", "News"]);
+        c.listKeyHandlerFn(c.keys.ENTER);
+        assert.equal(
+            c.listArray,
+            previousList,
+            "category picker returns to its channel list"
+        );
+        if (lazy) {
+            assert.equal(typeof loaded, "function");
+            c.__ottGlobalFavoritesFactory = {};
+            loaded();
+        }
+        assert.deepEqual(
+            calls.slice(beforeCalls),
+            [["add", 101]],
+            "category-mode Favorites uses the global add operation after the picker closes; lazy=" +
+                lazy
+        );
+        assert.equal(
+            c.calls.filter((row) => row[0] === "shift").length,
+            beforeNotices,
+            "picker cannot claim success before the global operation confirms it"
+        );
+    }
 }
 // Opaque provider keys are resolved exactly, before ordinary-TV numeric handling.
 {

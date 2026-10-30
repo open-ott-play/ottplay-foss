@@ -1521,7 +1521,11 @@ export function onChannelsLoaded(): void {
                 };
                 var openLibrary = function (): void {
                     if (host.__ottKiosk && host.__ottKiosk.locked()) return;
-                    if (currentLibrary()) host.popMedia();
+                    if (
+                        currentLibrary() &&
+                        !host.__ottChannels.restoreBrowsing?.()
+                    )
+                        host.popMedia();
                 };
                 // Resolve the saved media ID immediately. A delayed startup
                 // timer could otherwise override the user's first selection.
@@ -1537,6 +1541,23 @@ export function onChannelsLoaded(): void {
                 loadFavoritesLists();
                 (window as any).__ottChannels.mount(window);
                 (window as any).__ottClassicPlayback.hydrate();
+                var selectStartupChannel = function (id: number): void {
+                    // Catalog cursors choose the item; the restored category
+                    // remains authoritative whenever it still contains it.
+                    var group = catIndex;
+                    var index = (cats[catsArray[group]] || []).indexOf(id);
+                    if (index < 0) {
+                        group = catsArray.indexOf(_("All"));
+                        index = (cats[catsArray[group]] || []).indexOf(id);
+                    }
+                    if (index < 0) {
+                        for (group = 0; group < catsArray.length; group++) {
+                            index = (cats[catsArray[group]] || []).indexOf(id);
+                            if (index >= 0) break;
+                        }
+                    }
+                    if (index >= 0) window.setCurrent(group, index);
+                };
                 var preferred = (window as any).__ottCatalogSelectedId;
                 var localFallback =
                     driver?.id === "offline" &&
@@ -1551,15 +1572,7 @@ export function onChannelsLoaded(): void {
                 }
                 var localProfiles = (window as any).__ottOfflineProfiles;
                 if (driver?.capabilities.mediaPlaylist && preferred != null) {
-                    for (var group = 0; group < catsArray.length; group++) {
-                        var preferredIndex = (
-                            cats[catsArray[group]] || []
-                        ).indexOf(preferred);
-                        if (preferredIndex >= 0) {
-                            window.setCurrent(group, preferredIndex);
-                            break;
-                        }
-                    }
+                    selectStartupChannel(preferred);
                 }
                 if (driver && driver.id === "offline" && localProfiles) {
                     var selectedLocal = localProfiles.selection();
@@ -1568,7 +1581,7 @@ export function onChannelsLoaded(): void {
                         if (localIndex < 0 && !localFallback)
                             localRecovery = driver;
                         else if (localIndex >= 0)
-                            window.setCurrent(0, localIndex);
+                            selectStartupChannel(selectedLocal);
                     }
                 }
                 if (!localRecovery && !mediaRecovery) {
@@ -1649,7 +1662,8 @@ export function onChannelsLoaded(): void {
         mediaRecovery === (window as any).__ottActiveProviderDriver &&
         !(window as any).__ottKiosk?.locked()
     ) {
-        window.channelsList(sFavorites ? 1 : 0, 0);
+        if (!(window as any).__ottChannels.browse?.("system:all", false))
+            window.channelsList(sFavorites ? 1 : 0, 0);
         window.infoBox(window._("Channel is not available!!!"));
     }
 }

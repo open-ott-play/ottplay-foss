@@ -350,6 +350,15 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         allowed: player.allowed,
         changed: function (state: any) {
             if (navigation) navigation.routeState(state);
+            var playing = state.phase === "playing" && router.captureCurrent();
+            if (
+                playing &&
+                playing.id === state.id &&
+                current() &&
+                permitted() &&
+                playing.current()
+            )
+                w.__ottChannels?.rememberCategory?.("system:favorites");
             ports.changed?.(state);
         },
         clearTimer: w.clearTimeout.bind(w),

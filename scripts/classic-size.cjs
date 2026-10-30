@@ -501,8 +501,23 @@ const PLAYER_PRESENCE_TRANSPORT_ALLOWANCE = Object.freeze({
     bytes: 27,
     gzipBytes: 10,
 });
+// Persistent category selection and shared Favorites picker writes:
+// paired Node22.23.4 builds add 2781 raw / at most 780 gzip entry bytes and
+// 209 raw / 65 gzip bytes to the lazy Favorites family. Keep prior headroom
+// and add only 20 gzip entry bytes for revision/release identity variation.
+// Count each component once in its applicable total; other caps stay fixed.
+// Evidence: docs/evidence/category-selection-size-20261029.json.
+const CATEGORY_SELECTION_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 2781,
+    gzipBytes: 800,
+});
+const CATEGORY_SELECTION_FAVORITES_ALLOWANCE = Object.freeze({
+    bytes: 209,
+    gzipBytes: 65,
+});
 const BUDGET = Object.freeze({
     bytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         1062760 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.bytes +
@@ -516,6 +531,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
         LOCAL_STALL_RECOVERY_ALLOWANCE.gzipBytes +
@@ -708,6 +724,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         1205560 +
@@ -723,6 +740,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
         380214 +
@@ -747,10 +765,12 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.gzipBytes +
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.gzipBytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes,
@@ -803,6 +823,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.bytes +
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.bytes +
         MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes +
@@ -824,6 +846,8 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE.gzipBytes +
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.gzipBytes +
@@ -1004,6 +1028,9 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         artifacts: measured,
         baseTotalBudget: BASE_TOTAL_BUDGET,
         budget: BUDGET,
+        categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+        categorySelectionFavoritesAllowance:
+            CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
         favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
         favoritesRecoveryOptionalAllowance:
@@ -1309,6 +1336,9 @@ function writeBuildBundleReport(
             artifacts: measured,
             attempt: label(context.attempt || process.env.GITHUB_RUN_ATTEMPT),
             budget: BUDGET,
+            categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+            categorySelectionFavoritesAllowance:
+                CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
             collectedAt: new Date().toISOString(),
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -1400,6 +1430,8 @@ module.exports = {
     ARTIFACTS,
     BASE_TOTAL_BUDGET,
     BUDGET,
+    CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+    CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,

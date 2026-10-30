@@ -2581,8 +2581,11 @@ export function popupList(i?: any): void {
  * @sideeffect Calls `window.bucketsList` with the current category index.
  */
 export function popBuckets(): void {
-    if (typeof (window as any).bucketsList === "function")
-        (window as any).bucketsList((window as any).catIndex);
+    var host = window as any;
+    if (typeof host.bucketsList === "function")
+        host.bucketsList(
+            host.__ottChannels?.browsingIndex?.() ?? host.catIndex
+        );
 }
 
 /**
@@ -2626,7 +2629,8 @@ export function popMedia(): void {
     if (host.__ottMedia && host.__ottMedia.useSource)
         host.__ottMedia.useSource(null);
     if (host.__ottActiveProviderDriver?.capabilities?.mediaPlaylist) {
-        host.channelsList(host.catIndex, host.primaryIndex);
+        if (!host.__ottChannels?.restoreBrowsing?.())
+            host.channelsList(host.catIndex, host.primaryIndex);
         return;
     }
     if (

@@ -5524,6 +5524,22 @@ window.addChannel2bucket = function (): void {
         var savedGetListItem = w.getListItem;
         var savedDetailListAction = w.detailListAction;
         var savedListKeyHandler = w.listKeyHandlerFn;
+        var favoriteSource = w.__ottSourceIdentity?.current?.(w);
+        var favoriteChannels = w.channels;
+        var favoriteChannel = favoriteChannels && favoriteChannels[chId];
+        var addPickedFavorite = function (): void {
+            if (
+                favoriteSource !== w.__ottSourceIdentity?.current?.(w) ||
+                favoriteChannels !== w.channels ||
+                favoriteChannel !== w.channels?.[chId]
+            )
+                return;
+            if (
+                typeof w.setGlobalChannelFavorite !== "function" ||
+                w.setGlobalChannelFavorite(chId, true) === false
+            )
+                w.showShift?.(w._("Favorites") + ": " + w._("Unavailable"));
+        };
         var popupVisible =
             typeof $ !== "undefined" && $("#listPopUp").is(":visible");
         if (!admitted()) return;
@@ -5536,6 +5552,7 @@ window.addChannel2bucket = function (): void {
         w.detailListAction = function (): void {};
         w.listKeyHandlerFn = handler = function (e: number): boolean {
             if (!admitted()) return true;
+            var pickedFavorite = false;
             switch (e) {
                 case w.keys.ENTER:
                     var groupId = resume
@@ -5549,6 +5566,10 @@ window.addChannel2bucket = function (): void {
                             w.__ottChannels.index(groupId) < 0)
                     )
                         return true;
+                    if (groupId === "system:favorites") {
+                        pickedFavorite = true;
+                        break;
+                    }
                     w.__ottChannels.change("member", {
                         action: "add",
                         channelId: chId,
@@ -5581,6 +5602,7 @@ window.addChannel2bucket = function (): void {
                 w.getListItem = savedGetListItem;
                 w.detailListAction = savedDetailListAction;
                 resume(admitted);
+                if (pickedFavorite) addPickedFavorite();
                 return true;
             }
             if (typeof w.restoreListPanelState === "function")
@@ -5593,6 +5615,7 @@ window.addChannel2bucket = function (): void {
             if (typeof w.showPage === "function") w.showPage();
             if (popupVisible && typeof $ !== "undefined")
                 $("#listPopUp").show();
+            if (pickedFavorite) addPickedFavorite();
             return true;
         };
         var caption =

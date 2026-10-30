@@ -14,6 +14,9 @@ import time
 
 SPEC = "tests/browser/global-favorites-mixed.spec.cjs"
 TITLES = (
+    "M3U Local remembers a browsed Favorites category after quit and relaunch",
+    "temporary Local shuffle retains global Favorites and can return to M3U",
+    "temporary Local shuffle retains category Favorites and can return to M3U",
     "receiver with reordered profiles plays imported mixed Favorites through the real list",
     "mixed Favorites refuses fallback: missing-profile",
     "mixed Favorites refuses fallback: ambiguous-profile",
@@ -197,7 +200,7 @@ def validate_report(report, root):
             require(actual.resolve() == root / SPEC, "spec_path_mismatch")
             selected.append(spec)
     require(len(selected) == len(TITLES) and
-            sorted(s.get("title", "") for s in selected) == sorted(TITLES), "exact_five_cases")
+            sorted(s.get("title", "") for s in selected) == sorted(TITLES), "exact_required_cases")
     for spec in selected:
         require(spec.get("ok") is True and type(spec.get("tests")) is list
                 and len(spec["tests"]) == 1, "case_not_passed")
@@ -241,7 +244,7 @@ def write_verdict(path, verdict):
 
 def verify(root, report_path, output, browser_outcome, env):
     verdict = {"version": 1, "status": "failed", "code": "unverified",
-               "scope": "five synthetic mixed-Favorites browser cases", "real_device_qualified": False}
+               "scope": "eight synthetic mixed-Favorites browser cases", "real_device_qualified": False}
     deadline = time.monotonic() + 30
     try:
         verdict["identity"] = collect_identity(root, env, deadline)

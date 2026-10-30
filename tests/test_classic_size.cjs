@@ -5,6 +5,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+    CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
@@ -49,26 +51,42 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const categoryDelta = (budget, metric) =>
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE[metric] +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? CATEGORY_SELECTION_FAVORITES_ALLOWANCE[metric]
+            : 0);
+    const categoryOptionalDelta = (name, metric) =>
+        name === "favorites-transfer"
+            ? CATEGORY_SELECTION_FAVORITES_ALLOWANCE[metric]
+            : 0;
     const presenceDelta = (budget, metric) =>
         PLAYER_PRESENCE_ENTRY_ALLOWANCE[metric] +
         (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
             ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
             : 0);
-    const beforePresenceBudget = (budget) =>
+    // Both features were measured from 1d85. Subtract their independent costs once.
+    const sharedFeatureDelta = (budget, metric) =>
+        presenceDelta(budget, metric) + categoryDelta(budget, metric);
+    const beforeSharedFeatureBudget = (budget) =>
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - presenceDelta(budget, metric),
+                budget[metric] - sharedFeatureDelta(budget, metric),
             ])
         );
-    const beforePresenceOptional = (name, budget = OPTIONAL_BUDGETS[name]) =>
+    const beforeSharedFeatureOptional = (
+        name,
+        budget = OPTIONAL_BUDGETS[name]
+    ) =>
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
                     (name === "control-transport"
                         ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
-                        : 0),
+                        : 0) -
+                    categoryOptionalDelta(name, metric),
             ])
         );
     const presenceEvidence = require("../docs/evidence/player-presence-size-20261029.json");
@@ -100,7 +118,7 @@ try {
         TOTAL_BUDGET,
     }))
         assert.deepEqual(
-            beforePresenceBudget(budget),
+            beforeSharedFeatureBudget(budget),
             presenceEvidence.previousCaps[name],
             name + " counts each presence component exactly once"
         );
@@ -114,7 +132,7 @@ try {
     );
     for (const [name, budget] of Object.entries(OPTIONAL_BUDGETS))
         assert.deepEqual(
-            beforePresenceOptional(name, budget),
+            beforeSharedFeatureOptional(name, budget),
             presenceEvidence.previousCaps.OPTIONAL_BUDGETS[name],
             name + " preserves prior optional headroom"
         );
@@ -178,13 +196,99 @@ try {
                     "source identity projection added once"
                 );
                 assert(
-                    budget[metric] - mode.projection[kind][metric] >=
+                    budget[metric] -
+                        categoryDelta(budget, metric) -
+                        mode.projection[kind][metric] >=
                         presenceEvidence.previousCaps[name][metric] -
                             mode.baseline[kind][metric],
                     kind + " prior headroom retained"
                 );
             }
         }
+    }
+    const categoryEvidence = require("../docs/evidence/category-selection-size-20261029.json");
+    assert(Object.isFrozen(CATEGORY_SELECTION_ENTRY_ALLOWANCE));
+    assert(Object.isFrozen(CATEGORY_SELECTION_FAVORITES_ALLOWANCE));
+    assert.deepEqual(CATEGORY_SELECTION_ENTRY_ALLOWANCE, {
+        bytes: 2781,
+        gzipBytes: 800,
+    });
+    assert.deepEqual(CATEGORY_SELECTION_FAVORITES_ALLOWANCE, {
+        bytes: 209,
+        gzipBytes: 65,
+    });
+    assert.deepEqual(
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+        categoryEvidence.allowances.entry
+    );
+    assert.deepEqual(
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+        categoryEvidence.allowances.favoritesTransfer
+    );
+    for (const [name, budget] of Object.entries({
+        base_total: BASE_TOTAL_BUDGET,
+        entry: BUDGET,
+        favorites_transfer: OPTIONAL_BUDGETS["favorites-transfer"],
+        legacy: LEGACY_TOTAL_BUDGET,
+        total: TOTAL_BUDGET,
+    })) {
+        const withoutPresence = Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] -
+                    (name === "favorites_transfer"
+                        ? 0
+                        : presenceDelta(budget, metric)),
+            ])
+        );
+        assert.deepEqual(withoutPresence, categoryEvidence.budgetsAfter[name]);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                withoutPresence[metric] -
+                    categoryEvidence.budgetsBefore[name][metric],
+                name === "favorites_transfer"
+                    ? CATEGORY_SELECTION_FAVORITES_ALLOWANCE[metric]
+                    : categoryDelta(budget, metric),
+                name + " counts each category component once"
+            );
+    }
+    for (const mode of categoryEvidence.measurements.canonicalModes) {
+        for (const metric of ["bytes", "gzipBytes"]) {
+            for (const kind of [
+                "entry",
+                "favoritesTransfer",
+                "legacyTotal",
+                "completeTotal",
+            ])
+                assert.equal(
+                    mode.after[kind][metric] - mode.before[kind][metric],
+                    mode.delta[kind][metric]
+                );
+            assert.equal(
+                mode.delta.legacyTotal[metric],
+                mode.delta.entry[metric]
+            );
+            assert.equal(
+                mode.delta.completeTotal[metric],
+                mode.delta.entry[metric] + mode.delta.favoritesTransfer[metric]
+            );
+            assert(
+                mode.delta.entry[metric] <=
+                    CATEGORY_SELECTION_ENTRY_ALLOWANCE[metric]
+            );
+            assert.equal(
+                mode.delta.favoritesTransfer[metric],
+                CATEGORY_SELECTION_FAVORITES_ALLOWANCE[metric]
+            );
+        }
+        assert.equal(
+            mode.unchangedProviders,
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+        );
+        assert.equal(
+            mode.unchangedOptionalAssets,
+            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length - 1
+        );
     }
     const shakaTrackDelta = (budget, metric) =>
         SHAKA_TRACKS_ENTRY_ALLOWANCE[metric] +
@@ -211,7 +315,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
-                    presenceDelta(budget, metric) -
+                    sharedFeatureDelta(budget, metric) -
                     rollbackEvidence.increment[metric] -
                     shakaTrackDelta(budget, metric) -
                     plexEvidence.previousCaps[name][metric],
@@ -224,7 +328,7 @@ try {
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,
-                    beforePresenceOptional(name, value),
+                    beforeSharedFeatureOptional(name, value),
                 ])
         ),
         plexEvidence.previousCaps.optionalBudgets
@@ -247,7 +351,7 @@ try {
             );
             assert.equal(
                 TOTAL_BUDGET[metric] -
-                    presenceDelta(TOTAL_BUDGET, metric) -
+                    sharedFeatureDelta(TOTAL_BUDGET, metric) -
                     rollbackEvidence.increment[metric] -
                     shakaTrackDelta(TOTAL_BUDGET, metric) -
                     variant.completeAfter[metric],
@@ -344,7 +448,7 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(beforePresenceBudget(BASE_TOTAL_BUDGET), {
+    assert.deepEqual(beforeSharedFeatureBudget(BASE_TOTAL_BUDGET), {
         bytes: 1637960,
         gzipBytes: 503842,
     });
@@ -360,15 +464,15 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(beforePresenceBudget(TOTAL_BUDGET), {
+    assert.deepEqual(beforeSharedFeatureBudget(TOTAL_BUDGET), {
         bytes: 1642440,
         gzipBytes: 506146,
     });
-    assert.deepEqual(beforePresenceBudget(BUDGET), {
+    assert.deepEqual(beforeSharedFeatureBudget(BUDGET), {
         bytes: 1136586,
         gzipBytes: 347622,
     });
-    assert.deepEqual(beforePresenceBudget(LEGACY_TOTAL_BUDGET), {
+    assert.deepEqual(beforeSharedFeatureBudget(LEGACY_TOTAL_BUDGET), {
         bytes: 1281422,
         gzipBytes: 400312,
     });
@@ -475,7 +579,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
-                    presenceDelta(budget, metric) -
+                    sharedFeatureDelta(budget, metric) -
                     shakaTrackDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
@@ -506,13 +610,13 @@ try {
         mixedEvidence.unchangedOptionalCaps
     ))
         assert.deepEqual(
-            beforePresenceOptional(name),
+            beforeSharedFeatureOptional(name),
             budget,
             name + " cap unchanged"
         );
     for (const metric of ["bytes", "gzipBytes"])
         assert.equal(
-            OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+            beforeSharedFeatureOptional("favorites-transfer")[metric] -
                 (metric === "bytes" ? 109300 : 29300),
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
         );
@@ -623,7 +727,7 @@ try {
     })) {
         assert.equal(
             budget.bytes -
-                presenceDelta(budget, "bytes") -
+                sharedFeatureDelta(budget, "bytes") -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes -
                 plexStepDelta(budget, "bytes") -
                 mixedDelta(budget, "bytes") -
@@ -634,7 +738,7 @@ try {
         );
         assert.equal(
             budget.gzipBytes -
-                presenceDelta(budget, "gzipBytes") -
+                sharedFeatureDelta(budget, "gzipBytes") -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes -
                 plexStepDelta(budget, "gzipBytes") -
                 mixedDelta(budget, "gzipBytes") -
@@ -653,7 +757,7 @@ try {
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,
-                    beforePresenceOptional(name, value),
+                    beforeSharedFeatureOptional(name, value),
                 ])
                 .map(([name, value]) => [
                     name,
@@ -728,7 +832,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
-                    presenceDelta(budget, metric) -
+                    sharedFeatureDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
@@ -766,7 +870,7 @@ try {
     ))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                beforePresenceOptional(name)[metric] -
+                beforeSharedFeatureOptional(name)[metric] -
                     (name === "favorites-transfer"
                         ? MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
                         : 0) -
@@ -830,7 +934,7 @@ try {
                 recoveryEvidence.measurement.measuredOptionalDelta[metric]
             );
             assert(
-                OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+                beforeSharedFeatureOptional("favorites-transfer")[metric] -
                     after[metric] >=
                     recoveryEvidence.previousCaps.OPTIONAL_BUDGETS[
                         "favorites-transfer"
@@ -856,7 +960,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
-                    presenceDelta(budget, metric) -
+                    sharedFeatureDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
@@ -876,7 +980,7 @@ try {
         favoritesEvidence.previousCaps.OPTIONAL_BUDGETS
     ))
         assert.deepEqual(
-            beforePresenceOptional(name),
+            beforeSharedFeatureOptional(name),
             budget,
             "existing optional cap unchanged: " + name
         );
@@ -894,7 +998,7 @@ try {
     });
     for (const metric of ["bytes", "gzipBytes"])
         assert.equal(
-            OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+            beforeSharedFeatureOptional("favorites-transfer")[metric] -
                 MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric] -
                 FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE[metric],
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE[metric]
@@ -919,7 +1023,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
-                    presenceDelta(actual, key) -
+                    sharedFeatureDelta(actual, key) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
@@ -972,7 +1076,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
-                    presenceDelta(actual, key) -
+                    sharedFeatureDelta(actual, key) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
@@ -1010,7 +1114,7 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
-                        presenceDelta(TOTAL_BUDGET, metric) -
+                        sharedFeatureDelta(TOTAL_BUDGET, metric) -
                         RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         plexStepDelta(TOTAL_BUDGET, metric) -
                         mixedDelta(TOTAL_BUDGET, metric) -
@@ -1028,7 +1132,7 @@ try {
                 (item) =>
                     item[metric] <=
                     BUDGET[metric] -
-                        presenceDelta(BUDGET, metric) -
+                        sharedFeatureDelta(BUDGET, metric) -
                         RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         mixedDelta(BUDGET, metric) -
                         shakaTrackDelta(BUDGET, metric) -
@@ -1400,6 +1504,14 @@ try {
     assert.equal(failed.artifacts.length, 3);
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        failed.categorySelectionEntryAllowance,
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        failed.categorySelectionFavoritesAllowance,
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE
+    );
     assert.deepEqual(
         failed.playerPresenceEntryAllowance,
         PLAYER_PRESENCE_ENTRY_ALLOWANCE
@@ -1973,6 +2085,14 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.categorySelectionEntryAllowance,
+        CATEGORY_SELECTION_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.categorySelectionFavoritesAllowance,
+        CATEGORY_SELECTION_FAVORITES_ALLOWANCE
+    );
     assert.deepEqual(
         report.playerPresenceEntryAllowance,
         PLAYER_PRESENCE_ENTRY_ALLOWANCE

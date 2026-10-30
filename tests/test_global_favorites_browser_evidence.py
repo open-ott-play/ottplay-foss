@@ -56,7 +56,7 @@ def report(root):
             {"id": "", "name": "", "testDir": str(root / "tests/browser"),
              "repeatEach": 1, "retries": 0}]},
         "suites": [{"title": "global-favorites-mixed.spec.cjs", "specs": cases}],
-        "errors": [], "stats": {"expected": 5, "unexpected": 0, "flaky": 0, "skipped": 0},
+        "errors": [], "stats": {"expected": len(cases), "unexpected": 0, "flaky": 0, "skipped": 0},
     }
 
 
@@ -79,7 +79,15 @@ class BrowserEvidenceTests(unittest.TestCase):
             case["file"] = verifier.SPEC
         value["suites"].append({"title": "unrelated", "specs": [
             {"file": "tests/browser/device-detection.spec.cjs", "title": "unrelated"}]})
-        self.assertEqual(len(verifier.validate_report(value, self.root)), 5)
+        self.assertEqual(len(verifier.validate_report(value, self.root)), 8)
+
+    def test_each_required_case_must_be_present(self):
+        for index, title in enumerate(verifier.TITLES):
+            with self.subTest(title=title):
+                value = report(self.root)
+                value["suites"][0]["specs"].pop(index)
+                with self.assertRaisesRegex(verifier.EvidenceError, "exact_required_cases"):
+                    verifier.validate_report(value, self.root)
 
     def test_exact_cases_reject_missing_extra_duplicate_or_renamed(self):
         for change in ("missing", "extra", "duplicate", "renamed"):
@@ -94,7 +102,7 @@ class BrowserEvidenceTests(unittest.TestCase):
                     cases[-1] = copy.deepcopy(cases[0])
                 else:
                     cases[-1]["title"] = "not the required negative"
-                with self.assertRaisesRegex(verifier.EvidenceError, "exact_five_cases"):
+                with self.assertRaisesRegex(verifier.EvidenceError, "exact_required_cases"):
                     verifier.validate_report(value, self.root)
 
     def test_failed_flaky_skipped_expected_failure_and_retries_are_rejected(self):
@@ -224,7 +232,7 @@ class BrowserEvidenceTests(unittest.TestCase):
         code, saved, stdout, output = self.run_verifier(json.dumps(report(self.root)).encode())
         self.assertEqual(code, 0)
         self.assertEqual(saved["status"], "passed")
-        self.assertEqual(len(saved["cases"]), 5)
+        self.assertEqual(len(saved["cases"]), 8)
         self.assertFalse(saved["real_device_qualified"])
         self.assertEqual(saved["report_sha256"], verifier.sha((self.root / "report.json").read_bytes()))
         if os.name != "nt":

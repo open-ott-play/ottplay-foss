@@ -9,6 +9,262 @@ const {
     scenarioTargets,
     openFavorites,
 } = require("../helpers/global-mixed-browser.cjs");
+test("M3U Local remembers a browsed Favorites category after quit and relaunch", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const fs = require("node:fs"),
+        path = require("node:path"),
+        origin = new URL(baseURL).origin,
+        errors = [];
+    context.on("page", (opened) =>
+        opened.on("pageerror", (error) => errors.push(error.message))
+    );
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.origin !== origin) return route.abort("blockedbyclient");
+        if (url.pathname === "/category-fixture/channels.m3u")
+            return route.fulfill({
+                body:
+                    '#EXTM3U\n#EXTINF:-1 tvg-id="playing" group-title="News",Playing channel\n' +
+                    origin +
+                    "/category-fixture/index.m3u8?id=playing\n" +
+                    '#EXTINF:-1 tvg-id="favorite" group-title="News",Favorite channel\n' +
+                    origin +
+                    "/category-fixture/index.m3u8?id=favorite\n",
+                contentType: "application/vnd.apple.mpegurl",
+            });
+        if (url.pathname.startsWith("/category-fixture/")) {
+            const segment = url.pathname.endsWith(".ts");
+            return route.fulfill({
+                body: fs.readFileSync(
+                    path.resolve(
+                        __dirname,
+                        "../fixtures/media-runtime/" +
+                            (segment ? "segment00.ts" : "index.m3u8")
+                    )
+                ),
+                contentType: segment
+                    ? "video/mp2t"
+                    : "application/vnd.apple.mpegurl",
+            });
+        }
+        return route.continue();
+    });
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.addInitScript((origin) => {
+        if (location.origin !== origin) return;
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            this.muted = true;
+            return play.call(this);
+        };
+        if (localStorage.getItem("categoryFixtureSeeded")) return;
+        localStorage.setItem("categoryFixtureSeeded", "1");
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "m3u");
+        localStorage.setItem("m3usPlayers", "1");
+        localStorage.setItem(
+            "m3um3uArr",
+            JSON.stringify({
+                active: 0,
+                M3Us: [
+                    {
+                        name: "Local",
+                        www: origin + "/category-fixture/channels.m3u",
+                    },
+                ],
+            })
+        );
+    }, origin);
+    async function ready(target) {
+        await target.waitForFunction(
+            () =>
+                window.commandChannelsReady &&
+                window.cList.length === 2 &&
+                window.curList[window.primaryIndex] != null
+        );
+    }
+    await page.goto("/f/pc/");
+    await ready(page);
+    await ensure(page);
+    const playing = await page.evaluate(() => {
+        const favorite = window.cList.find(
+            (id) => window.channels[id].channel_name === "Favorite channel"
+        );
+        if (window.setGlobalChannelFavorite(favorite, true) !== true)
+            throw Error("favorite add was not admitted");
+        return window.curList[window.primaryIndex];
+    });
+    await expect
+        .poll(() =>
+            page.evaluate(
+                async () =>
+                    (await window.__ottGlobalFavorites.store.snapshot()).entries
+                        .length
+            )
+        )
+        .toBe(1);
+    await page.evaluate(() => {
+        const category = window.__ottChannels.index("system:favorites");
+        window.bucketsList(category);
+    });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(
+        () =>
+            window.isListVisible &&
+            window.listArray.length === 1 &&
+            document
+                .getElementById("listCaption")
+                .textContent.includes("Favorites")
+    );
+    await expect(page.locator("#list")).toContainText("Favorite channel");
+    expect(await page.evaluate(() => window.curList[window.primaryIndex])).toBe(
+        playing
+    );
+    await page.evaluate(() => {
+        window.stbExit = () => {
+            window.__categoryQuit = true;
+        };
+    });
+    await page.keyboard.press("q");
+    await page.waitForFunction(() => window.__categoryQuit === true);
+    await page.close({ runBeforeUnload: true });
+    const reopened = await context.newPage();
+    await reopened.goto("/f/pc/");
+    await ready(reopened);
+    expect(
+        await reopened.evaluate(() => ({
+            name: window.m3uArr.M3Us[window.m3uArr.active].name,
+            playing: window.curList[window.primaryIndex],
+            visible: window.isListVisible,
+        }))
+    ).toEqual({ name: "Local", playing, visible: false });
+    await reopened.keyboard.press("Enter");
+    await reopened.waitForFunction(
+        () =>
+            window.isListVisible &&
+            window.listArray.length === 1 &&
+            document
+                .getElementById("listCaption")
+                .textContent.includes("Favorites")
+    );
+    await expect(reopened.locator("#list")).toContainText("Favorite channel");
+    expect(
+        await reopened.evaluate(() => window.curList[window.primaryIndex])
+    ).toBe(playing);
+    expect(errors).toEqual([]);
+});
+
+for (const membership of ["global", "category"])
+    test(`temporary Local shuffle retains ${membership} Favorites and can return to M3U`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        await install(context, baseURL, "origin");
+        await page.goto("/f/pc/");
+        await page.waitForFunction(() => window.commandChannelsReady);
+        await ensure(page);
+        const playing = await page.evaluate((membership) => {
+            const id = window.curList[window.primaryIndex];
+            if (
+                membership === "global" &&
+                window.setGlobalChannelFavorite(id, true) !== true
+            )
+                throw Error("global favorite add was not admitted");
+            return id;
+        }, membership);
+        if (membership === "category") {
+            await page.evaluate(() => {
+                window.sFavorites = 0;
+                window.channelsList(window.catIndex, window.primaryIndex);
+                window.showActionsDialog();
+            });
+            await expect(page.locator("#dialogbox")).toBeVisible();
+            await page.keyboard.press("Enter");
+            await expect(page.locator("#listCaption")).toHaveText(
+                "Select a category to add the channel"
+            );
+            await page.evaluate(() => {
+                window.selIndex = window.listArray.indexOf("Favorites");
+                if (window.selIndex < 0)
+                    throw Error("Favorites category absent");
+            });
+            await page.keyboard.press("Enter");
+        }
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    async () =>
+                        (await window.__ottGlobalFavorites.store.snapshot())
+                            .entries.length
+                )
+            )
+            .toBe(1);
+        const before = await page.evaluate(
+            async () =>
+                (await window.__ottGlobalFavorites.store.snapshot()).entries
+        );
+        await page.evaluate(async () => {
+            const media = window.__ottLocalMedia;
+            const catalog = await media.remoteCatalog();
+            const source = catalog.sources[0];
+            media.remoteActivate(
+                source.id,
+                catalog.items.map((item) => item.id),
+                catalog,
+                () => true,
+                37
+            );
+        });
+        await page.waitForFunction(
+            () =>
+                window.__ottActiveProviderDriver?.id === "offline" &&
+                window.commandChannelsReady &&
+                window.ottpStorage.localPlayback.active()
+        );
+        const persisted = await page.evaluate(
+            async () =>
+                (await window.__ottGlobalFavorites.store.snapshot()).entries
+        );
+        expect(persisted).toHaveLength(1);
+        expect(persisted).toEqual(before);
+        await page.evaluate(() =>
+            window.bucketsList(window.__ottChannels.index("system:favorites"))
+        );
+        await page.keyboard.press("Enter");
+        await page.waitForFunction(
+            () =>
+                window.isListVisible &&
+                window.listArray.length === 1 &&
+                document
+                    .getElementById("listCaption")
+                    .textContent.includes("Favorites")
+        );
+        await expect(page.locator("#list")).toContainText("One channel");
+        expect(await page.evaluate(() => window.favoritesArray.length)).toBe(0);
+        await page.keyboard.press("Enter");
+        await page.waitForFunction(
+            (id) =>
+                window.__ottActiveProviderDriver?.id === "m3u" &&
+                !window.__ottGlobalFavorites.router.busy() &&
+                window.curList[window.primaryIndex] === id,
+            playing
+        );
+        expect(
+            await page.evaluate(() => window.ottpStorage.localPlayback.active())
+        ).toBe(false);
+        expect(
+            await page.evaluate(
+                async () =>
+                    (await window.__ottGlobalFavorites.store.snapshot()).entries
+            )
+        ).toEqual(persisted);
+    });
+
 test("receiver with reordered profiles plays imported mixed Favorites through the real list", async ({
     browser,
     baseURL,
