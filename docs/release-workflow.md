@@ -280,6 +280,51 @@ projects receive the local client, whose contracts run in the toolkit. Update th
 add `--check` to detect drift without writing files. The installer is not vendored
 into consumer repositories.
 
+### Formatting regenerated workflows
+
+This repository also applies its pinned Biome formatter to the three generated
+workflow entry points. The canonical installer emits equivalent YAML with a
+different presentation, so regeneration must include this step. Preserve the
+project-specific sections of this guide before running the installer, then
+restore them alongside the updated canonical guidance.
+
+After regenerating from the reviewed toolkit checkout and installing the locked
+Node dependencies, run from this repository:
+
+```bash
+rendered_yaml_dir="$(mktemp -d)"
+for file in quality-gate release-pipeline release-quality-gate; do
+  cp ".github/workflows/$file.yml" "$rendered_yaml_dir/$file.yml"
+done
+node_modules/.bin/biome format --write \
+  .github/workflows/quality-gate.yml \
+  .github/workflows/release-pipeline.yml \
+  .github/workflows/release-quality-gate.yml
+python3 - "$rendered_yaml_dir" <<'PY'
+import pathlib
+import sys
+import yaml
+
+for name in ("quality-gate", "release-pipeline", "release-quality-gate"):
+    before = pathlib.Path(sys.argv[1], name + ".yml").read_text()
+    after = pathlib.Path(".github/workflows", name + ".yml").read_text()
+    for loader in (yaml.SafeLoader, yaml.BaseLoader):
+        original = yaml.load(before, Loader=loader)
+        formatted = yaml.load(after, Loader=loader)
+        assert "on" in original and "on" in formatted
+        assert original == formatted, name
+print("Generated workflow semantics preserved")
+PY
+npm run lint
+```
+
+The Python comparison uses PyYAML from the workflow-contract requirements. Keep
+the saved raw output until review is complete. These three workflows are checked
+for parsed equality rather than byte equality with canonical output; all other
+generated code still requires an exact comparison. An installer `--check` may
+therefore report these presentation differences and this guide's documented
+project sections. Inspect them explicitly instead of suppressing other drift.
+
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule),
 [protected environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
 [artifact provenance](https://docs.github.com/en/rest/actions/artifacts).
