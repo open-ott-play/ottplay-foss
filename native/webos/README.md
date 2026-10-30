@@ -51,8 +51,11 @@ python3 native/webos/build.py all \
 ```
 
 `WEBOS_SDK` is also accepted. The SDK is downloaded only when the chosen
-directory is absent, and its digest must match both manifests. The selected
-Rust version is read from the pinned upstream `rust-toolchain.toml`; the ARMv7
+directory is absent, and its digest must match both manifests. The
+SDK contains target-system absolute symlinks; extraction converts these to
+relative links contained inside the target sysroot, while preserving the
+archive path and link containment checks.
+The selected Rust version is read from the pinned upstream `rust-toolchain.toml`; the ARMv7
 GNU/Linux target and matching `rust-src` are installed through rustup. Android
 ARM libraries are not interchangeable with webOS.
 

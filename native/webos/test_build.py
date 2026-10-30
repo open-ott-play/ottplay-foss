@@ -174,6 +174,45 @@ class NativePackageTests(unittest.TestCase):
             self.verify(self.changed(change, control=True))
 
 
+class NativeSdkTests(unittest.TestCase):
+    def symlink(self, name, target):
+        member = tarfile.TarInfo(name)
+        member.type = tarfile.SYMTYPE
+        member.linkname = target
+        return member
+
+    def test_absolute_target_sysroot_link_is_relocated_inside_sdk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            member = self.symlink("sdk/arm-webos-linux-gnueabi/sysroot/sbin/udevadm", "/bin/udevadm")
+            result = build.sdk_extract_filter(member, directory, "sdk")
+            self.assertEqual(result.linkname, "../bin/udevadm")
+            self.assertEqual(member.linkname, "/bin/udevadm")
+
+    def test_absolute_host_link_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            member = self.symlink("sdk/bin/compiler", "/usr/bin/compiler")
+            with self.assertRaisesRegex(ValueError, "outside its target sysroot"):
+                build.sdk_extract_filter(member, directory, "sdk")
+
+    def test_absolute_link_cannot_traverse_or_follow_ancestor_out_of_sysroot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            member = self.symlink("sdk/arm-webos-linux-gnueabi/sysroot/sbin/udevadm", "/../escape")
+            with self.assertRaisesRegex(ValueError, "Unsafe archive"):
+                build.sdk_extract_filter(member, directory, "sdk")
+            sysroot = Path(directory) / "sdk/arm-webos-linux-gnueabi/sysroot"
+            sysroot.mkdir(parents=True)
+            (sysroot / "sbin").symlink_to(Path(directory), target_is_directory=True)
+            member.linkname = "/bin/udevadm"
+            with self.assertRaisesRegex(ValueError, "ancestor leaves"):
+                build.sdk_extract_filter(member, directory, "sdk")
+
+    def test_relative_link_cannot_escape_the_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            member = self.symlink("sdk/bin/compiler", "../../../outside")
+            with self.assertRaises(tarfile.LinkOutsideDestinationError):
+                build.sdk_extract_filter(member, directory, "sdk")
+
+
 class NativeFeedTests(unittest.TestCase):
     def test_metadata_and_download_origins_can_be_separate(self):
         with tempfile.TemporaryDirectory() as directory:

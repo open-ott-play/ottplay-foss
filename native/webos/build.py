@@ -14,6 +14,7 @@ import io
 import json
 import os
 import platform
+import posixpath
 import re
 import shutil
 import subprocess
@@ -200,6 +201,26 @@ def sdk_host() -> str:
     fail("Pinned SDK supports macOS arm64/x86_64 and Linux aarch64; use an ARM Linux CI runner")
 
 
+def sdk_extract_filter(member, destination, sdk_directory):
+    """Keep target absolute symlinks inside the extracted target sysroot."""
+    name = PurePosixPath(safe_name(member.name))
+    if member.issym() and PurePosixPath(member.linkname).is_absolute():
+        sysroot = PurePosixPath(sdk_directory) / "arm-webos-linux-gnueabi/sysroot"
+        if not name.is_relative_to(sysroot):
+            fail("Absolute SDK link is outside its target sysroot: " + member.name)
+        target = sysroot / safe_name(member.linkname.lstrip("/"))
+        root = Path(destination).resolve()
+        boundary = root.joinpath(*sysroot.parts)
+        if (
+            boundary.resolve() != boundary
+            or not root.joinpath(*name.parent.parts).resolve().is_relative_to(boundary)
+            or not root.joinpath(*target.parts).resolve().is_relative_to(boundary)
+        ):
+            fail("SDK symlink target or ancestor leaves its target sysroot: " + member.name)
+        member = member.replace(linkname=posixpath.relpath(str(target), str(name.parent)))
+    return tarfile.data_filter(member, destination)
+
+
 def bootstrap(args, spec):
     source = check_source(args, spec)
     env = build_env(args)
@@ -239,7 +260,12 @@ def bootstrap(args, spec):
             with tarfile.open(archive) as tar:
                 for entry in tar.getmembers():
                     safe_name(entry.name)
-                tar.extractall(staging, filter="data")
+                tar.extractall(
+                    staging,
+                    filter=lambda member, destination: sdk_extract_filter(
+                        member, destination, spec["sdk"]["directory"]
+                    ),
+                )
             canonical = Path(staging) / spec["sdk"]["directory"]
             canonical.rename(args.sdk)
         run(["sh", "./relocate-sdk.sh"], cwd=args.sdk, env=env)
@@ -641,6 +667,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, KeyError, OSError, tarfile.TarError, subprocess.CalledProcessError) as error:
         print("Native webOS build failed: " + str(error), file=sys.stderr)
         sys.exit(1)
