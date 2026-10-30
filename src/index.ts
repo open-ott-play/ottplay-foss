@@ -5521,6 +5521,7 @@ window.addChannel2bucket = function (): void {
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
+        var savedData = w.listDataArray;
         var savedGetListItem = w.getListItem;
         var savedDetailListAction = w.detailListAction;
         var savedListKeyHandler = w.listKeyHandlerFn;
@@ -5545,9 +5546,9 @@ window.addChannel2bucket = function (): void {
         if (!admitted()) return;
         w.selIndex = 0;
         w.listArray = w.catsArray.slice(1);
-        if (resume) w.listDataArray = w.listArray;
+        w.listDataArray = w.listArray;
         w.getListItem = function (item: any, _idx: number): string {
-            return "&nbsp;&nbsp;" + item;
+            return "&nbsp;&nbsp;" + metadataText(item);
         };
         w.detailListAction = function (): void {};
         w.listKeyHandlerFn = handler = function (e: number): boolean {
@@ -5609,6 +5610,7 @@ window.addChannel2bucket = function (): void {
                 w.restoreListPanelState();
             w.selIndex = savedIdx;
             w.listArray = savedList;
+            w.listDataArray = savedData;
             w.getListItem = savedGetListItem;
             w.detailListAction = savedDetailListAction;
             w.listKeyHandlerFn = savedListKeyHandler;
