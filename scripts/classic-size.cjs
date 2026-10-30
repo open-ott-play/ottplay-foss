@@ -571,8 +571,8 @@ const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
 // Entry contains only settings, loader and repaint hooks; the renderer stays lazy.
 // Evidence: docs/evidence/modern-interface-size-20261030.json.
 const MODERN_INTERFACE_ENTRY_ALLOWANCE = Object.freeze({
-    bytes: 3700,
-    gzipBytes: 1200,
+    bytes: 3820,
+    gzipBytes: 1250,
 });
 const MODERN_INTERFACE_OPTIONAL_ALLOWANCE = Object.freeze({
     bytes: 6200,

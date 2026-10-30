@@ -9,8 +9,8 @@
   "lockSha256": "b91fcfcd6c3d2ce2931aaaca4bcf5d0b98bded80126dd29b0edbd14c21646e02",
   "allowances": {
     "entry": {
-      "bytes": 3700,
-      "gzipBytes": 1200
+      "bytes": 3820,
+      "gzipBytes": 1250
     },
     "optional": {
       "bytes": 6200,
@@ -105,20 +105,20 @@
   },
   "nextCaps": {
     "BUDGET": {
-      "bytes": 1156341,
-      "gzipBytes": 354025
+      "bytes": 1156461,
+      "gzipBytes": 354075
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1309028,
-      "gzipBytes": 409324
+      "bytes": 1309148,
+      "gzipBytes": 409374
     },
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1675898,
-      "gzipBytes": 516624
+      "bytes": 1676018,
+      "gzipBytes": 516674
     },
     "TOTAL_BUDGET": {
-      "bytes": 1680378,
-      "gzipBytes": 518928
+      "bytes": 1680498,
+      "gzipBytes": 518978
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -585,7 +585,7 @@
     ]
   },
   "candidate": {
-    "head": "f4dc61d3c6dc107a4b76ff2968bf528b1ff53dd9",
+    "head": "cf4ceb55cbcb54aa57a309edd5421d8de9e58dac",
     "trackedSourceClean": false,
     "sourceRevisionAtBuild": "",
     "preparation": "Working changes atop baseline commit; no clean-source revision claimed. Final PR and release builds validate stamped production artifacts separately.",
@@ -594,9 +594,9 @@
     "measurements": [
       {
         "path": "dist/player.js",
-        "bytes": 1156159,
-        "gzipBytes": 353630,
-        "sha256": "66fbc785d1fd2f91cfdf08ccda3e5278f3600a1ecea9748f4826be7214dbfdce"
+        "bytes": 1156285,
+        "gzipBytes": 353673,
+        "sha256": "d3966371cb75f753daaeaa769c2ee894ffa125e91abfe8d9f03bf153bdc1ecaa"
       },
       {
         "path": "dist/provider-catalog.js",
@@ -732,9 +732,9 @@
       },
       {
         "path": "src-tauri/frontend/dist/player.js",
-        "bytes": 1156117,
-        "gzipBytes": 353687,
-        "sha256": "19289b4214fdc15829277e5f70a1453818d5f5da2383581b94320877c3488818"
+        "bytes": 1156243,
+        "gzipBytes": 353732,
+        "sha256": "ff356e65ffb9b1cacae17b7ebe6f6830eee6705141dc1e4e1eadf9bff1352a51"
       },
       {
         "path": "src-tauri/frontend/dist/provider-catalog.js",
@@ -870,9 +870,9 @@
       },
       {
         "path": "dist-mobile/dist/player.js",
-        "bytes": 1156117,
-        "gzipBytes": 353687,
-        "sha256": "19289b4214fdc15829277e5f70a1453818d5f5da2383581b94320877c3488818"
+        "bytes": 1156243,
+        "gzipBytes": 353732,
+        "sha256": "ff356e65ffb9b1cacae17b7ebe6f6830eee6705141dc1e4e1eadf9bff1352a51"
       },
       {
         "path": "dist-mobile/dist/provider-catalog.js",

@@ -902,13 +902,25 @@ export function showPage(presentationOnly = false): void {
     function scheduleLayoutRetry(key: string): void {
         var host = window as any;
         var pending = host[key];
-        if (pending && pending.owner === screenOwner) return;
-        var retry = { owner: screenOwner };
+        if (pending && pending.owner === screenOwner) {
+            pending.revision = paintRevision;
+            pending.presentationOnly = presentationOnly;
+            return;
+        }
+        var retry = {
+            owner: screenOwner,
+            presentationOnly: presentationOnly,
+            revision: paintRevision,
+        };
         host[key] = retry;
         requestAnimationFrame(function () {
             if (host[key] !== retry) return;
             host[key] = false;
-            if (currentPaint()) showPage(presentationOnly);
+            if (
+                screenOwner.active() &&
+                screenOwner.model.paintRevision === retry.revision
+            )
+                showPage(retry.presentationOnly);
         });
     }
     isListVisible = true;
@@ -1131,7 +1143,10 @@ export function showPage(presentationOnly = false): void {
     try {
         var pin = document.getElementById("it" + selIndex);
         var cursorRetry = (window as any).__ottListCursorRetry;
-        var retryCursor = !cursorRetry || cursorRetry.owner !== screenOwner;
+        var retryCursor =
+            !cursorRetry ||
+            cursorRetry.owner !== screenOwner ||
+            cursorRetry.revision !== paintRevision;
         if (pin) {
             $(pin).addClass("ott-selected");
             pin.style.backgroundColor = curColorB || "#668";

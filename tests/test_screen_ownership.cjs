@@ -847,9 +847,47 @@ for (const kind of ["cursor", "fit"])
                 1,
                 "replacement rerenders exactly once, then only queues layout"
             );
-            assert.equal(layouts(), 6);
+            assert.equal(
+                layouts(),
+                4,
+                "only the latest retry measures rows; superseded paint frames stay retired"
+            );
         }
     );
+test("coalesced layout retry preserves the latest presentation-only repaint", ({
+    w,
+}) => {
+    const { frames, listIn } = layoutFixture(w);
+    let videoGeometryCalls = 0;
+    w.settings.noSmall = 0;
+    w.stbSetWindow = () => videoGeometryCalls++;
+    w.showPage();
+    const owner = w.__ottClassicScreenPort.listOwner();
+    w.showPage(true);
+    assert.equal(videoGeometryCalls, 1);
+    assert.equal(frames.length, 3, "one retry serves both paints");
+    listIn.getBoundingClientRect = () => ({ bottom: 100, top: 0 });
+    frames.splice(0).forEach((callback) => callback());
+    assert.equal(w.__ottClassicScreenPort.listOwner(), owner);
+    assert.equal(frames.length, 1, "the retained retry performs one repaint");
+    assert.equal(
+        videoGeometryCalls,
+        1,
+        "a presentation-only retry does not restore the older video layout effect"
+    );
+});
+test("a valid newer paint retires an obsolete clipped-cursor retry", ({
+    w,
+}) => {
+    const { frames, layouts, listIn } = layoutFixture(w);
+    w.showPage();
+    listIn.getBoundingClientRect = () => ({ bottom: 100, top: 0 });
+    w.showPage(true);
+    frames.splice(0).forEach((callback) => callback());
+    assert.equal(frames.length, 0, "the old clipped paint cannot redraw again");
+    assert.equal(layouts(), 3, "only the latest frame may remeasure rows");
+    assert.equal(w.__ottListCursorRetry, false);
+});
 test("list callbacks, focus and cleanup have one authoritative owner", ({
     w,
     key,
