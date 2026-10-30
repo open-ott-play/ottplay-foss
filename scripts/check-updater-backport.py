@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "vendor"
 SOURCE = VENDOR / "tauri-plugin-updater-2.12.0"
 MANIFEST = json.loads((VENDOR / "tauri-plugin-updater-2.12.0.provenance.json").read_text())
+ZIP_VERSION = "9.1.3"
+ZIP_CHECKSUM = "1156b39d142a34b999c2310a50455e0cb3760bf7efad0122f796d813bee26ccb"
 
 
 def digest(data):
@@ -93,10 +95,13 @@ fn enforce_tls_verification(builder: ClientBuilder) -> ClientBuilder {
     packages = tomllib.loads((ROOT / "Cargo.lock").read_text())["package"]
     updater = [p for p in packages if p["name"] == "tauri-plugin-updater"]
     require(len(updater) == 1 and updater[0]["version"] == "2.12.0" and "source" not in updater[0] and "checksum" not in updater[0], "workspace updater must resolve to reviewed local source")
-    for lock in (ROOT / "Cargo.lock", ROOT / "tests/updater-zip-regression/Cargo.lock"):
+    regression = ROOT / "tests/updater-zip-regression"
+    regression_manifest = tomllib.loads((regression / "Cargo.toml").read_text())
+    require(regression_manifest["dev-dependencies"]["zip"] == {"version": "=" + ZIP_VERSION, "default-features": False}, "unexpected regression ZIP pin or features")
+    for lock in (ROOT / "Cargo.lock", regression / "Cargo.lock"):
         zip_packages = [p for p in tomllib.loads(lock.read_text())["package"] if p["name"] == "zip"]
-        require(len(zip_packages) == 1 and zip_packages[0]["version"] == "9.0.0" and zip_packages[0]["checksum"] == "711e8c9646791c49b7eb799a19c4ae70a9b8372ddc6a1fa4778defd1e2aa5d5e", f"unexpected ZIP lock: {lock}")
-    print("PASS: updater 2.12.0 published inventory, licenses, ZIP 9 and strict TLS patches, and locked graphs")
+        require(len(zip_packages) == 1 and zip_packages[0]["version"] == ZIP_VERSION and zip_packages[0]["checksum"] == ZIP_CHECKSUM, f"unexpected ZIP lock: {lock}")
+    print(f"PASS: updater 2.12.0 published inventory, licenses, ZIP {ZIP_VERSION} and strict TLS patches, and locked graphs")
 
 
 if __name__ == "__main__":
