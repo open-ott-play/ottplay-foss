@@ -125,6 +125,7 @@ try {
                 '<!doctype html><script src="/js/runtime-polyfills.js?v=1"></script><script>window.original=true;</script>',
             "js/licenses/@fixture-LICENSE.txt": "Fixture license",
             "js/runtime-polyfills.js": "/* runtime */",
+            "providers/d/maxtv/about.html": "",
         };
         const info = {
             bundleSha256: sha(files["dist/player.js"]),
@@ -197,6 +198,14 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     assert(inspected.config.includes('profile name="tv-samsung"'));
     assert.equal(inspected.identity.tizenVersion, "1.0.0");
     assert(!inspected.paths.some((name) => /signature\d?\.xml/.test(name)));
+    assert.equal(inspected.hashes["providers/d/maxtv/about.html"], sha(""));
+    assert.equal(
+        JSON.parse(fs.readFileSync(metadata)).entries.find(
+            (entry) => entry.path === "providers/d/maxtv/about.html"
+        ).bytes,
+        0,
+        "Empty provider about page must survive packaging and verification"
+    );
     for (const name of packager.NOTICE_FILES) {
         assert.equal(
             inspected.hashes[name],
@@ -219,6 +228,17 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     cli(["--local", "--verify"], false);
     fs.writeFileSync(requiredNotice, noticeBytes);
     cli(["--local", "--verify"]);
+    for (const name of [
+        "LICENSE",
+        "tizen/icon.png",
+        packager.NOTICE_FILES[0],
+    ]) {
+        const file = path.join(fixture, name);
+        const original = fs.readFileSync(file);
+        fs.writeFileSync(file, "");
+        cli(["--local"], false);
+        fs.writeFileSync(file, original);
+    }
 
     const policyHash = python(
         "import hashlib,json,sys;print(hashlib.sha256(json.dumps(json.loads(sys.argv[1]),sort_keys=True,separators=(',',':'),ensure_ascii=True).encode()).hexdigest())",

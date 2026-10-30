@@ -94,10 +94,13 @@ function localIdentity(root) {
     return projectIdentity(webos.localIdentity(root));
 }
 
-function readRegular(file, limit = MAX_UNPACKED) {
+function readRegular(file, limit = MAX_UNPACKED, allowEmpty = false) {
     const info = fs.lstatSync(file);
     assert(info.isFile() && !info.isSymbolicLink(), "Expected a regular file");
-    assert(info.size > 0 && info.size <= limit, "File exceeds bounded size");
+    assert(
+        info.size >= (allowEmpty ? 0 : 1) && info.size <= limit,
+        "File exceeds bounded size"
+    );
     const result = fs.readFileSync(file);
     assert.equal(result.length, info.size, "File changed while reading");
     return result;
@@ -165,7 +168,9 @@ function collectFiles(directory) {
             assert(!info.isSymbolicLink(), "Links are not allowed");
             if (info.isDirectory()) walk(child);
             else {
-                const bytes = readRegular(file);
+                // Empty provider about pages are valid Mode A payloads. Other
+                // source inputs retain readRegular's nonempty requirement.
+                const bytes = readRegular(file, MAX_UNPACKED, true);
                 total += bytes.length;
                 assert(
                     total <= MAX_UNPACKED && files.size < 10000,
