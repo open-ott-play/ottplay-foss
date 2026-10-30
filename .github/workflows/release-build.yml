@@ -55,7 +55,7 @@ jobs:
     runs-on: ${{ fromJSON((vars.CI_RUNNER_MODE == 'self-hosted' || vars.CI_RUNNER_MODE == 'k3s') && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) && (vars.CI_RUNNER_RELEASE_LABELS || '[]') || '["ubuntu-latest"]') }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - name: Checkout code
@@ -128,7 +128,7 @@ jobs:
         id: browser-artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-assets-web
+          name: release-assets-web-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: release-assets/web/*
           if-no-files-found: error
           retention-days: 14
@@ -152,7 +152,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - name: Checkout code
@@ -280,7 +280,7 @@ jobs:
         if: always() && (matrix.platform == 'ubuntu-24.04' || matrix.platform == 'ubuntu-24.04-arm')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: linux-playback-compat-${{ matrix.platform }}
+          name: linux-playback-compat-${{ matrix.platform }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             build/linux-playback-compat/*.json
             build/linux-playback-compat/*.log
@@ -302,7 +302,7 @@ jobs:
       - name: Store release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-assets-desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}
+          name: release-assets-desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: release-assets/desktop-${{ matrix.platform }}-${{ matrix.target || 'host' }}/*
           if-no-files-found: error
           retention-days: 14
@@ -313,7 +313,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - name: Checkout code
@@ -365,7 +365,7 @@ jobs:
       - name: Store release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-assets-mobile-android
+          name: release-assets-mobile-android-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: release-assets/mobile-android/*
           if-no-files-found: error
           retention-days: 14
@@ -375,7 +375,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - name: Checkout code
@@ -421,7 +421,7 @@ jobs:
       - name: Store release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-assets-mobile-ios
+          name: release-assets-mobile-ios-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: release-assets/mobile-ios/*
           if-no-files-found: error
           retention-days: 14
@@ -439,7 +439,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -473,12 +473,7 @@ jobs:
           provenance: mode=max
           cache-from: type=gha,scope=ottplay-container-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=ottplay-container-${{ matrix.arch }}
-          labels:
-            "org.opencontainers.image.version=${{ steps.image-version.outputs.version }}
-
-            org.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}
-
-            "
+          labels: "org.opencontainers.image.version=${{ steps.image-version.outputs.version }}\norg.opencontainers.image.revision=${{ steps.image-version.outputs.revision }}\n"
       - name: Verify exact native image EPG performance
         run: |
           sudo apt-get update && sudo apt-get install -y skopeo
@@ -492,7 +487,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: container-epg-${{ matrix.arch }}
+          name: container-epg-${{ matrix.arch }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             build/reports/container-epg-${{ matrix.arch }}.json
             epg-performance.json
@@ -502,7 +497,7 @@ jobs:
       - name: Store native OCI input
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: container-platform-${{ matrix.arch }}
+          name: container-platform-${{ matrix.arch }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: ottplay-container-${{ matrix.arch }}.oci.tar
           if-no-files-found: error
           compression-level: 0
@@ -514,7 +509,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -537,12 +532,12 @@ jobs:
       - name: Download native AMD64 image
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: container-platform-amd64
+          name: container-platform-amd64-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: .container-platforms/amd64
       - name: Download native ARM64 image
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: container-platform-arm64
+          name: container-platform-arm64-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: .container-platforms/arm64
       - name: Assemble and validate the exact multi-platform OCI archive
         env:
@@ -558,7 +553,7 @@ jobs:
       - name: Store OCI assembly evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: container-assembly-report
+          name: container-assembly-report-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: build/reports/container-assembly.json
           if-no-files-found: error
           retention-days: 14
@@ -571,7 +566,7 @@ jobs:
       - name: Store release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-assets-container
+          name: release-assets-container-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: release-assets/container/*
           if-no-files-found: error
           retention-days: 14

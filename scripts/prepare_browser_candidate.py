@@ -61,12 +61,17 @@ def prepare(artifacts, destination, diagnostics, source_sha, release=False):
     if checksum.read_text(encoding='utf-8').strip() != digest + '  ' + archive.name:
         raise ValueError('Candidate archive differs from its checksum')
     if release:
+        from version_receipt import current_producer, verify_producer_identity
+
         receipt_path = artifacts / 'release-inputs-web.json'
         if receipt_path.is_symlink() or not receipt_path.is_file() or receipt_path.stat().st_size > 2_000_000:
             raise ValueError('Candidate receipt is not a bounded regular file')
         receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
         if receipt.get('source_sha') != source_sha:
             raise ValueError('Candidate belongs to another source commit')
+        producer = current_producer(source_sha)
+        if producer is not None:
+            verify_producer_identity(receipt, producer)
         entries = [item for item in receipt.get('artifacts', []) if item.get('name') == archive.name]
         if len(entries) != 1 or entries[0].get('sha256') != digest or entries[0].get('size') != archive.stat().st_size:
             raise ValueError('Candidate archive differs from its build receipt')

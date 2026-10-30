@@ -10,6 +10,16 @@ documentation skips. Missing, failed or unexpectedly skipped workflows fail the
 gate. Unknown files, incomplete history, code, workflows and lockfile changes run
 full validation.
 
+The required ordinary **CI gate** uses `always()` so its existing result checks
+still run after cancellation. [GitHub accepts skipped required checks](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks),
+so using `!cancelled()` on this aggregate could allow an unfinished validator to
+be hidden behind a skipped gate. Failed, cancelled, missing or unauthorized
+skipped dependencies must produce a failing aggregate. A cancelled run whose
+validators already all succeeded retains that valid result. Superseded runs can
+therefore retain a short queued aggregate; do not trade this protection for
+faster queue cleanup. Keep the separate release publication and signing guards
+unchanged: cancellation must still stop those operations.
+
 The optional `change_scope` policy provides exact `documentation_paths`, exact
 `required_paths` for documentation used as a build input, and
 `always_validate_workflows` for independently required checks. Documentation paths
@@ -86,6 +96,14 @@ Candidate tags are unique and immutable: `vX.Y.Z-beta.N`, `vX.Y.Z-rc.N`, or
 never update stable/latest. All required platforms must build before publication.
 `release-manifest.json` records source SHA, workflow/run attempt and every payload
 SHA-256. The manifest is also saved in immutable Actions evidence for 90 days.
+Versioned Actions packages also record their producer repository, run ID, attempt
+and source in every receipt; publication requires the current verified run identity.
+The installer scopes build, signing and collection artifact names to that attempt.
+ID-selected candidate downloads require a separate consumer check of receipt
+producer identity and payload digest; the name-scoping helper does not verify them.
+After a partial failure, use **Re-run all jobs**: older-attempt packages must not
+fill missing current builds. Update shared fuzz workflow pins with the producer
+and collector rollout. Local offline receipts cannot qualify live publication.
 
 Automatic push betas and scheduled nightlies publish the current default HEAD.
 An older source is explicitly marked `superseded` only after ancestry and one
@@ -132,14 +150,16 @@ For a confirmed allocation failure before publication:
 A changed source, policy or promotion parent must follow the normal new-run
 workflow; do not force it into an existing reservation.
 
-The current protection is the complete rerun above plus latest-per-name artifact
-selection by the pinned downloader. Successful required builders must upload
-fresh artifacts; browser qualification also binds the exact web artifact ID.
-Package receipts validate source, plan, versions and payload hashes, but do not
-independently record each package's producer run attempt. The final manifest's
-attempt identifies publication, not verified production of every payload. Do
-not treat those checks as automatic per-package attempt isolation, or use them
-to justify partial/manual substitution from an earlier attempt.
+Every release payload receipt now binds its producer repository, source SHA,
+run ID and attempt. Publication compares those fields with the verified current
+Actions run. Build and collection artifact names also include the run ID and
+attempt, including native OCI inputs before assembly. This prevents an earlier
+package from being relabelled by a later assembly or signing step.
+
+Browser qualification checks both the exact web artifact ID and the producer
+identity in its receipt before extracting the candidate. An artifact ID alone
+does not establish the attempt that produced its contents. Missing or old
+producer identities fail closed; repeat all jobs to create fresh evidence.
 
 ## Stable promotion
 
@@ -158,12 +178,60 @@ Stable `vX.Y.Z` copies the tested RC bytes without rebuilding. No override or
 force-tag option exists. Expired/missing evidence requires a new RC. A partial
 upload remains an unpublished draft; inspect it before any manual recovery.
 
-GitHub may briefly expose stale run or gate metadata. The publisher waits up to
-five minutes in total for the exact run, attempt and successful Release gate;
-failed, skipped or conflicting results still fail immediately. Assets upload to
-the draft's verified release ID, without a second lookup by tag. An ambiguous
-upload result is not retried automatically; the draft remains available for
-inspection.
+Assets are uploaded to the draft's known release ID, using one bounded request
+per file. Publication does not repeat a tag lookup for each upload: a draft may
+not appear in the published-release-by-tag API. Each response must confirm a
+created asset with the expected name and size; the final verification still
+downloads and checks every payload before making the release public. A timeout,
+incomplete response or upload conflict stops publication without retrying or
+overwriting the asset. Preserve the draft and its evidence for inspection;
+do not reset the version allocation ledger to reuse the failed build number.
+
+Release-asset downloads use the expected size and SHA-256 from the validated
+inventory before opening a new destination. Every chunk is checked before it is
+written; a longer, shorter or different response is rejected. The transfer also
+has one deadline covering stdout, stderr and silent waiting. Failure or
+cancellation stops and reaps the transfer process and removes only its own
+incomplete file. Existing destinations are never overwritten.
+
+The shared `download_asset` helper requires `expected={"size": ..., "sha256": ...}`
+and a `DownloadBudget(max_bytes, reserve_bytes=...)`. Reuse one budget across the
+whole sequential inventory. `max_bytes` counts cumulative downloaded bytes, even
+if a verified staging file is removed before the next download; hashing the same
+bytes does not charge them twice. The separate `reserve_bytes` is the operator's
+minimum free space on the destination filesystem, checked before each file and
+during transfer, including silent waiting. Its default is zero; callers retain
+any additional environment-specific capacity admission and reserve. Neither
+parameter changes a consumer's release-size cap or reserves space against other
+processes. Before each asset, its full expected size must fit the remaining byte
+budget and currently free space above that floor.
+
+The built-in promotion, closed-build resolution, registry publication and
+versioned verification paths
+share a budget derived from their validated manifest. Upload readback uses the
+known local identities and a shared budget for its complete upload inventory.
+A consumer backport must update `release_control.py`, `release_closed.py`,
+`release_versioned.py` and any installed `publish_verified.py` atomically
+with their generated contract tests; the installer ships this complete bundle.
+Calling the raw transport with an unbounded file object is no longer accepted.
+The final release snapshot, provenance and signature checks still run after the
+transfer. The offline regression suite is `tests/test_release_download.py`.
+
+During publication, the current Actions run and its prerequisite gate can take
+time to appear consistently in the API. The publisher shares one five-minute
+wait across both updates and rechecks execution identity on every read. It
+publishes only after the exact Release gate reports completed success. Failed,
+skipped, duplicate or mismatched gates stop immediately; validating a previously
+completed release never uses this propagation wait.
+
+For a targeted consumer backport, record the reviewed toolkit commit and the
+resulting client/test file hashes in the change review. Preserve that consumer's
+signing requirements, asset restrictions and import adaptations. A partial
+backport does not update every vendored module, so it must not claim a new
+whole-toolkit revision. The installer reads files from its own checkout; a later
+full regeneration from an older checkout can overwrite the backport. Regenerate
+from a reviewed checkout containing these fixes, inspect the complete diff and
+update the general revision only as part of that full migration.
 
 GitHub releases do not deploy production. Existing push/tag/CI deployment hooks
 must be migrated or disabled before enabling automatic prereleases. Container
@@ -178,6 +246,10 @@ python3 scripts/publish_verified.py containers --tag v1.2.3 --execute --latest
 
 If publication partially fails, inspect the existing immutable version tags before
 retrying. The tool refuses to overwrite them. Never rebuild an image for stable.
+
+## Qualified GitHub CLI
+
+Release jobs install and check the exact native GitHub CLI before GitHub API operations. For local use, follow [the supported CLI installation and TLS profile](release-github-cli.md).
 
 ## Project limits and rollout requirements
 
@@ -209,12 +281,50 @@ projects receive the local client, whose contracts run in the toolkit. Update th
 add `--check` to detect drift without writing files. The installer is not vendored
 into consumer repositories.
 
-The publisher includes narrowly scoped upstream backports
-[`26b77fd2`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/26b77fd2be74e56bbeffdccfcef71f6970cdfbfc)
-(upload by release ID) and
-[`574d62e9`](https://github.com/victron-venus/venus-os-ci-toolkit/commit/574d62e90c072d333ca0a376399210a581cd6d04)
-(bounded gate-metadata wait). Application signing and asset restrictions are
-unchanged.
+### Formatting regenerated workflows
+
+This repository also applies its pinned Biome formatter to the three generated
+workflow entry points. The canonical installer emits equivalent YAML with a
+different presentation, so regeneration must include this step. Preserve the
+project-specific sections of this guide before running the installer, then
+restore them alongside the updated canonical guidance.
+
+After regenerating from the reviewed toolkit checkout and installing the locked
+Node dependencies, run from this repository:
+
+```bash
+rendered_yaml_dir="$(mktemp -d)"
+for file in quality-gate release-pipeline release-quality-gate; do
+  cp ".github/workflows/$file.yml" "$rendered_yaml_dir/$file.yml"
+done
+node_modules/.bin/biome format --write \
+  .github/workflows/quality-gate.yml \
+  .github/workflows/release-pipeline.yml \
+  .github/workflows/release-quality-gate.yml
+python3 - "$rendered_yaml_dir" <<'PY'
+import pathlib
+import sys
+import yaml
+
+for name in ("quality-gate", "release-pipeline", "release-quality-gate"):
+    before = pathlib.Path(sys.argv[1], name + ".yml").read_text()
+    after = pathlib.Path(".github/workflows", name + ".yml").read_text()
+    for loader in (yaml.SafeLoader, yaml.BaseLoader):
+        original = yaml.load(before, Loader=loader)
+        formatted = yaml.load(after, Loader=loader)
+        assert "on" in original and "on" in formatted
+        assert original == formatted, name
+print("Generated workflow semantics preserved")
+PY
+npm run lint
+```
+
+The Python comparison uses PyYAML from the workflow-contract requirements. Keep
+the saved raw output until review is complete. These three workflows are checked
+for parsed equality rather than byte equality with canonical output; all other
+generated code still requires an exact comparison. An installer `--check` may
+therefore report these presentation differences and this guide's documented
+project sections. Inspect them explicitly instead of suppressing other drift.
 
 References: [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule),
 [protected environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
@@ -224,4 +334,4 @@ References: [GitHub schedules](https://docs.github.com/en/actions/reference/work
 
 Run `python3 scripts/release.py prepare-version --pr` from the clean default-branch HEAD. The command refreshes tags and opens a PR with synchronized owned version fields. An existing unreleased base is retained; use `--bump minor`, `--bump major`, or `--version X.Y.Z` for explicit intent. See [version plans](VERSIONING.md) for build overlays, the dedicated allocation ledger and recovery.
 
-A local candidate package also needs the saved `.release-plan.json` at its exact source commit. Restore the `version_plan` object from the published `release-manifest.json` into a disposable checkout before `release.py package`; do not invent a tag or native counter locally. Ordinary development builds can use the project's native build command and explicitly local version identity.
+A local candidate package also needs the saved `.release-plan.json` at its exact source commit. Restore the `version_plan` object from the published `release-manifest.json` as `.release-plan.json` in a disposable checkout. Apply the recorded version fields with `python3 scripts/version_plan.py sync --root . --plan .release-plan.json` before `release.py package`; do not invent a tag or native counter locally. Ordinary development builds can use the project's native build command and explicitly local version identity.

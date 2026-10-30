@@ -6,6 +6,8 @@ not run on pull requests, pushes, beta releases, scheduled nightlies or stable
 promotion. Existing unit tests and fixed regression cases keep their usual
 schedule.
 
+Explore the [illustrated release process and verified rollout results](https://github.com/victron-venus/venus-os-ci-toolkit/blob/main/docs/rc-fuzzing-results.md), with SVG diagrams and links to the accepted RC reports.
+
 ## Adoption
 
 Add meaningful targets that call production parsing, validation or transformation
@@ -34,6 +36,59 @@ Use `--fuzz-only --check` to check the result without writing. Ordinary consumer
 CI rejects a wrapper, runtime or policy pin mismatch. Dependency-update tooling
 must update these references atomically; a standalone workflow digest update
 is not sufficient.
+
+### Standalone candidate assessment
+
+Repositories with a validation-only policy or a custom publisher can run the
+same bounded engine without adopting the toolkit's versioning or publication
+system. Add a reviewed manifest and targets, then a thin caller like this (replace
+both placeholders with the same reviewed 40-character toolkit commit):
+
+```yaml
+name: RC fuzz assessment
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        options: [rc]
+        default: rc
+        required: true
+permissions:
+  contents: read
+jobs:
+  fuzz:
+    if: ${{ github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'rc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    uses: victron-venus/venus-os-ci-toolkit/.github/workflows/fuzz.yml@FULL_REVIEWED_TOOLKIT_COMMIT_SHA
+    with:
+      toolkit-ref: FULL_REVIEWED_TOOLKIT_COMMIT_SHA
+      evidence-mode: candidate
+```
+
+Save the caller as `.github/workflows/fuzz-candidate.yml`. After review and
+merge, request a candidate assessment explicitly:
+
+```sh
+gh workflow run fuzz-candidate.yml --repo OWNER/REPOSITORY --ref main -f channel=rc
+```
+
+Use the repository's actual default branch in place of `main` when different.
+
+The default evidence mode remains `release`, which requires the frozen
+`release-plan-artifact`. Candidate mode rejects a supplied release plan and does
+not stage release assets, create tags, publish packages, or change existing
+device, signing, and acceptance gates. It retains `fuzz-candidate-<attempt>` for
+90 days and diagnostics for 30 days. The report binds the exact source commit,
+manifest, run and attempt, along with actual engine execution counts. Candidate
+reports use schema 3 and `evidence_mode: candidate`; release verifiers reject
+them, including older verifiers that accept only schemas 1 and 2. Passing this
+assessment is not proof that an application or firmware release was accepted.
+
+Use this caller only for explicitly requested release-candidate assessments.
+It has no push, pull-request, schedule, or beta trigger. Deterministic seed
+replay can still run in ordinary CI. The reusable workflow and engine both
+enforce the public/default-branch/RC boundary. Do not migrate a validation-only
+project to synthetic releases solely to enable fuzzing.
 
 Example manifest:
 
@@ -80,9 +135,6 @@ Each target needs a unique lowercase kebab-case name, `engine` (`go`, `atheris`
 or `libfuzzer`), argument-array `command`, and `seconds` (1–120). Optional `cwd`
 is relative to the repository. Optional `corpus` names a committed seed directory;
 the runner copies it before mutation. Go uses its native `testdata/fuzz` corpus.
-Preserve committed seed bytes, including intentional truncation and missing
-newlines. Whitespace and end-of-file hooks exclude `fuzz/corpus/`; changing a
-seed is an explicit corpus change, not a formatting repair.
 The total mutation budget is at most 600 seconds across at most 12 targets.
 `go-version-file` is optional, Go-only and names an existing regular file within
 the repository; directories and symlinks are rejected. For a
@@ -169,7 +221,10 @@ Dependency builds may access the network. Each target executes with the runner's
 unprivileged UID/GID in a new Linux network namespace, with no access to a real
 broker, Cerbo or actuator. Only toolchain environment variables are forwarded.
 This is network isolation, not a sandbox for malicious source code: adoption
-still requires review of the source, dependencies and commands.
+still requires review of the source, dependencies and commands. Execution counts
+and instrumentation records detect accidental empty or uninstrumented runs of
+that reviewed code. They are not independent attestation against a malicious
+harness that prints fabricated engine output or rewrites its own evidence.
 
 Go uses two fuzz workers and a 1536 MiB runtime memory target; libFuzzer/Atheris
 uses a 2048 MiB RSS limit and a 10-second per-input timeout. Go's memory target is
@@ -187,7 +242,13 @@ artifact storage. The preflight cannot qualify an RC.
 Every RC attempt saves `fuzz-diagnostics-<attempt>` for 30 days with setup logs,
 target logs, preflight evidence, copied/mutated seed corpora and failure inputs.
 Go diagnostics also copy the generated `$GOCACHE/fuzz` subtree, separately from
-the build cache and source `testdata/fuzz` regressions. Each generated-corpus
+the build cache and source `testdata/fuzz` regressions. Source regressions retain
+package-relative paths under `go-regressions/`, with one 10,000-file / 64-MiB
+budget across all packages per target. `go-regressions.json` and the target's
+`go_regressions` report field record retained files, bytes and truncation. Collection skips symlinks, the diagnostics output,
+Git metadata and vendored/npm dependencies; unreadable directories fail closed.
+The target name `preflight` is reserved for internal replay evidence.
+Each generated-corpus
 snapshot is limited to 10,000 files / 64 MiB; the report explicitly records
 truncation. These snapshots may include earlier targets from the same job, so
 the limit can omit inputs generated by later targets. The reported file and

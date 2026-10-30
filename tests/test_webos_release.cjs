@@ -59,7 +59,10 @@ for (const step of [prepared, packageStep, stageStep, upload]) {
 }
 assert.equal(web.if, undefined);
 assert.equal(web["continue-on-error"], undefined);
-assert.equal(upload.with.name, "release-assets-web");
+assert.equal(
+    upload.with.name,
+    "release-assets-web-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}"
+);
 assert.equal(upload.with.path, "release-assets/web/*");
 assert.equal(upload.with["if-no-files-found"], "error");
 
