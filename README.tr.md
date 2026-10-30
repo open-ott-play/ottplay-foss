@@ -69,7 +69,7 @@ Sentetik test deseni `scripts/generate-demo-media.sh` ile yeniden oluşturulabil
 - **Favoriler**: desteklenen cihazlarda yapılandırılmış sağlayıcı ve profiller arasında tek bir sıralı [karma koleksiyon](docs/mixed-favorites.md), CLI üzerinden taşınabilir dışa/içe aktarma; ebeveyn PIN’i. Yedek modda kaynağa özel favori listeleri kullanılabilir kalır.
 - **Ayarlar**: ayar ve favorilerin JSON dışa/içe aktarımı, desteklenen localStorage toplu işlemleri için geri alma günlüğü, kaynağı dikkate alan arşiv sürdürme ve denetleyici iş akışları için kayıtlı ayarların tam karşılaştırılması. Kurtarma tek yazıcı varsayar; özel depolama bağdaştırıcıları olanaklar ölçüsünde geri alma sağlar. [Ayar kurtarmaya](docs/settings-recovery.tr.md) bakın.
 - **Paylaşılan arayüz**: OTT Server, Tauri ve Capacitor aynı kanal listesi temasını ve görünürlük ayarlarını kullanır. Arayüz ayarları vurgu ve seçim renklerini; kanal listesi ayarları kanal adları, picon'lar, mevcut programlar, ilerleme ve arşiv işaretlerini kontrol eder.
-- **Sağlayıcılar**: M3U/M3U8, Xtream canlı TV ve [isteğe bağlı film/dizi katalogları](docs/xtream-media.tr.md), Stalker/Ministra, Plex ve VPortal. Sağlayıcı yetenekleri ile hesap erişimi kullanılabilir arşiv ve medya kitaplığı özelliklerini belirler.
+- **Sağlayıcılar**: M3U/M3U8, Xtream canlı TV ve [isteğe bağlı film/dizi katalogları](docs/xtream-media.tr.md), [filmleri ve iç içe klasörlerdeki bölümleri](docs/stalker-media.md) destekleyen Stalker/Ministra, Plex ve VPortal. Sağlayıcı yetenekleri ile hesap erişimi kullanılabilir arşiv ve medya kitaplığı özelliklerini belirler.
 - **Push komutları**: webhook üzerinden uzaktan kontrol — kanal, sağlayıcı ve liste değiştirme, açılır bildirim gösterme
 - **Uzaktan metin girişi (swop)**: TV ile telefon farklı ağlardayken Cloudflare Worker üzerinden telefon klavyesi (kurulum için yetkilendirilmiş oturumlar; sanal klavyede ♥™)
 - **Cihaza göre yönlendirme**: çok cihazlı kurulumlar için UUID tabanlı adresleme
@@ -82,6 +82,8 @@ Sentetik test deseni `scripts/generate-demo-media.sh` ile yeniden oluşturulabil
 - **88 arayüz dili**: uyumlu kataloglar, [yerelleştirilmiş hızlı başlangıçlar](docs/readme/README.md) ve [CLDR ile kontrol edilmiş klavye alfabeleri](docs/localization.md). Ana kılavuz ve eşlenik özellik kılavuzları [24 belge dilinde](docs/manual-translations.md) sunulur; diğer mühendislik başvuruları mevcut dillerini korur.
 
 [Teslim kılavuzu](docs/roadmap-delivery.tr.md), bu kaynak sürümündeki özellikleri, platform sınırlarını, şemaları ve doğrulamayı açıklar. Kurulu sürümler veya barındırılan dağıtımlar daha eski bir revizyon kullanabilir. Bağımsız yerel [Android uygulaması](https://github.com/open-ott-play/ottplay-android) da ses/altyazı seçimlerini manifest dizinleri yerine dil, rol ve etikete göre saklar; uygulaması ve sürümü bu frontend'den ayrıdır.
+
+[STB kaynak kodu incelemesi](docs/stb-player-improvements.md), medya, kaynak kullanımı ve kurtarma iyileştirmelerini, kaynak kodu karşılaştırmalarını ve mevcut sınırları açıklar.
 
 <a id="debug-hud"></a>
 
@@ -364,9 +366,11 @@ Kontroller `scripts/modea-smoke-checks.json` içindedir. Sır içermez. Komut ku
 
 ## Klasik Stalker / Ministra portalları
 
-**Stalker portalları** seçip sağlayıcının verdiği MAC'i ve tam portal URL'sini, örneğin `http://provider.example/stalker_portal/c/`, girin. `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` ve `/portal.php` URL'leri klasik MAG protokolünü seçer. Mevcut yalın sunucu yapılandırmaları JSON-RPC'yi korur. Sağlayıcı profil, türler ve sayfalı canlı kanalları ortak Stalker çekirdeğiyle yükler. Tarayıcı istekleri companion'ın `/stalker/api` uç noktasından geçer; yerel uygulamalar mevcut HTTP taşımasını kullanır. Tarayıcı ve companion dosyaları birlikte güncellenmelidir.
+**Stalker portalları** seçip sağlayıcının verdiği MAC'i ve tam portal URL'sini, örneğin `http://provider.example/stalker_portal/c/`, girin. `/c/index.html`, `/stalker_portal`, `/server/load.php`, `/load.php` ve `/portal.php` URL'leri klasik MAG protokolünü seçer. Mevcut yalın sunucu yapılandırmaları JSON-RPC'yi korur. Sağlayıcı profil, türler ve sayfalı canlı kanalları ortak Stalker çekirdeğiyle yükler, ardından klasik `type=vod` protokolü üzerinden filmleri ve iç içe klasörlerdeki bölümleri arka planda keşfeder. Klasör yolları normal Kanal listesinde kategorilere dönüşür; mevcut açıklamalar, posterler ve kalıcı genel Favoriler aynı medya arayüzünü kullanır. Bkz. [katalog davranışı ve sınırları](docs/stalker-media.md).
 
-Canlı oynatma akış açılırken geçici kanal komutlarını çözer; kanal değişimi, durdurma, PiP ve sağlayıcı değişimi eskimiş çözümlemeleri iptal eder. Açık, geçici olmayan HTTP(S) komutları doğrudan oynar. Kısa EPG desteklenir; klasik portal arşivi ve VOD bu sağlayıcıda henüz sunulmaz. Mevcut JSON-RPC arşiv/rehber davranışı değişmez. Özel LAN portalları, diğer companion proxy yollarında olduğu gibi kesin bir `OTTPLAY_PROXY_LAN_ORIGINS` girdisi ister.
+Kendi sunucunuzda barındırılan tarayıcı sürümünün istekleri companion'ın `/stalker/api` uç noktasından geçer; yerel uygulamalar mevcut HTTP taşımasını kullanır. Barındırma hizmetindeki tarayıcı sürümleri, [özel röle](docs/stalker-relay.md) üzerinden açıkça yapılandırılmış yollar gerektirir. Tarayıcı ve sunucu dosyaları birlikte güncellenmelidir.
+
+Canlı oynatma akış açılırken geçici kanal komutlarını çözer; kanal değişimi, durdurma, PiP ve sağlayıcı değişimi eskimiş çözümlemeleri iptal eder. Açık, geçici olmayan HTTP(S) komutları doğrudan oynar. Kısa EPG desteklenir. Klasik portal arşivi ve ayrı `type=series` protokol çeşidi bu sağlayıcıda sunulmaz. Mevcut JSON-RPC arşiv/rehber davranışı değişmez. Companion yolunu kullanan özel LAN portalları, diğer companion proxy yollarında olduğu gibi kesin bir `OTTPLAY_PROXY_LAN_ORIGINS` girdisi ister.
 
 Herkese açık Infomir demosu `http://middleware-stalker.com/stalker_portal/c/` adresindedir. 2026-09-26 tarihinde üç canlı katalog girdisi döndürdü ancak medya uç noktaları kullanılamıyordu; oynatma regresyonu için kontrollü portal/medya test verileri kullanın.
 

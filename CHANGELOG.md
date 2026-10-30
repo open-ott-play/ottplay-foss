@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Add classic Stalker movies and nested episodes to the normal Channel list,
+  categories and global Favorites. Publish live channels first, then discover
+  media in the background with bounded requests and current-source validation.
+- Add configured hosted Stalker routes and a dedicated relay mode to the Rust
+  server. Hosted deployments require the matching server and web updates.
+- Preserve Xtream movie, series and episode descriptions in the media details.
+- Use optional Android memory classification for subsequent playback engines
+  without delaying startup. Show playback failure details on request through
+  the compact error indicator, with guarded live-stream retry.
+- Require ten continuous seconds of local playback before replenishing retry
+  attempts; pauses, seeks and scheduling gaps interrupt that recovery interval.
+- Align the updater ZIP dependency and its regression lockfile on 9.1.3.
+
 - Restore Category and Play/Pause navigation from empty and populated Global
   Favorites lists. Preserve Enter selection, Back, configured category shortcuts
   and the current playback while browsing categories.
