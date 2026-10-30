@@ -283,7 +283,8 @@ function fixture(partial = false) {
 }
 async function seededPlayableFixture(title = "Seeded playable") {
     const f = fixture(),
-        w = f.w;
+        w = f.w,
+        categorySaves = [];
     let state = {
             generation: 1,
             phase: "playing",
@@ -292,7 +293,16 @@ async function seededPlayableFixture(title = "Seeded playable") {
         plays = 0;
     w._playSession = 11;
     w.__ottClassicPlayback = { checkpoint() {}, snapshot: () => state };
-    w.__ottChannels = { index: () => 0 };
+    w.__ottChannels = {
+        index: () => 0,
+        rememberCategory(group) {
+            categorySaves.push({
+                group,
+                provider: w.__ottActiveProviderDriver.id,
+            });
+            return true;
+        },
+    };
     w.catsArray = ["all"];
     w.cats = { all: [7] };
     w.playChannel = (group, index, force, current) => {
@@ -334,7 +344,7 @@ async function seededPlayableFixture(title = "Seeded playable") {
     );
     assert.equal(plays, 1);
     assert(f.host.router.captureCurrent());
-    return { ...f, id, plays: () => plays };
+    return { ...f, categorySaves, id, plays: () => plays };
 }
 function assertRawUnchanged(f, before) {
     assert.equal(f.data.size, before.size);
@@ -342,6 +352,53 @@ function assertRawUnchanged(f, before) {
         assert.equal(f.data.get(key), value, key);
 }
 async function main() {
+    {
+        const target = await seededPlayableFixture();
+        assert.deepEqual(target.categorySaves, [
+            { group: "system:favorites", provider: "m3u" },
+        ]);
+        target.categorySaves.length = 0;
+        const driver = target.w.__ottActiveProviderDriver;
+        target.w.__ottActiveProviderDriver = { id: "plex" };
+        target.w.stbSetItem = (key, value) => target.data.set(key, value);
+        target.w.loadProv = () => {
+            assert.equal(target.data.get("ottplayprov"), "m3u");
+            target.w.__ottActiveProviderDriver = driver;
+            target.w.__ottCommandChannelLoad = {};
+            target.w.commandChannelsReady = true;
+        };
+        const pending = target.host.router.select(target.id);
+        assert.deepEqual(
+            target.categorySaves,
+            [],
+            "loading cannot change a category"
+        );
+        assert.equal((await pending.result).status, "ok");
+        assert.deepEqual(
+            target.categorySaves,
+            [{ group: "system:favorites", provider: "m3u" }],
+            "completed cross-provider route remembers Favorites only in the target source"
+        );
+        target.host.dispose();
+    }
+    for (const outcome of ["failed", "stale"]) {
+        const target = await seededPlayableFixture();
+        target.categorySaves.length = 0;
+        target.w.playChannel = () => {
+            if (outcome === "stale") target.expireRuntime();
+            return outcome !== "failed";
+        };
+        assert.notEqual(
+            (await target.host.router.select(target.id).result).status,
+            "ok"
+        );
+        assert.deepEqual(
+            target.categorySaves,
+            [],
+            outcome + " playback cannot save a category"
+        );
+        target.host.dispose();
+    }
     const localA = fixture();
     await localA.host.committer.qualify();
     const foreign = {

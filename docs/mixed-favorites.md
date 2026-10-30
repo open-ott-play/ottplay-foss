@@ -5,6 +5,10 @@ the currently selected provider. It can mix Local videos, M3U channels from
 different profiles, VPortal videos and Plex videos. **Category → Favorites**
 opens the collection. On PC and PC2, plain **F** adds or removes the focused or
 currently playing item and shows a confirmation after persistence succeeds.
+**Actions → Add channel to category → Favorites** adds to the same collection.
+Temporary playback commands such as `ott t1 local shuffle ~/Videos/` do not
+replace or filter the collection: opening Favorites still shows its entries
+from every configured provider and profile.
 
 While a Global Favorites sequence is active in fullscreen, **Enter/OK** or
 **Channels** reopens the mixed list. Number keys select its one-based mixed

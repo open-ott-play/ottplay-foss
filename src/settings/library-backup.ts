@@ -119,45 +119,52 @@ function createLibraryBackupCodec() {
     );
     var numbers = dictionary(finite);
     var selection = record({ groupId: text, itemId: text });
-    var channelDocument = record({
-        groups: function (value) {
-            var ids: Record<string, boolean> = Object.create(null);
-            return array(
-                value,
-                function (value) {
-                    if (!group(value) || ids[value.id]) return false;
-                    ids[value.id] = true;
-                    return true;
-                },
-                1000
-            );
+    var channelDocument = record(
+        {
+            groups: function (value) {
+                var ids: Record<string, boolean> = Object.create(null);
+                return array(
+                    value,
+                    function (value) {
+                        if (!group(value) || ids[value.id]) return false;
+                        ids[value.id] = true;
+                        return true;
+                    },
+                    1000
+                );
+            },
+            hidden: strings,
+            locks: strings,
+            nextGroup: function (value) {
+                return (
+                    finite(value) &&
+                    value > 0 &&
+                    Math.floor(value) === value &&
+                    value <= 9007199254740991
+                );
+            },
+            preferences: record(
+                {},
+                {
+                    aspect: numbers,
+                    audio: numbers,
+                    subtitle: numbers,
+                    zoom: numbers,
+                }
+            ),
+            selected: function (value) {
+                return value === null || selection(value);
+            },
+            sourceId: text,
+            unlocks: strings,
+            version: 1,
         },
-        hidden: strings,
-        locks: strings,
-        nextGroup: function (value) {
-            return (
-                finite(value) &&
-                value > 0 &&
-                Math.floor(value) === value &&
-                value <= 9007199254740991
-            );
-        },
-        preferences: record(
-            {},
-            {
-                aspect: numbers,
-                audio: numbers,
-                subtitle: numbers,
-                zoom: numbers,
-            }
-        ),
-        selected: function (value) {
-            return value === null || selection(value);
-        },
-        sourceId: text,
-        unlocks: strings,
-        version: 1,
-    });
+        {
+            browsedGroup: function (value) {
+                return value === null || text(value);
+            },
+        }
+    );
     function channels(value: any): boolean {
         return (
             value === null ||
