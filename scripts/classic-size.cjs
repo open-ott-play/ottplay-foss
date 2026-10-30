@@ -558,14 +558,14 @@ const CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE = Object.freeze({
     bytes: 603,
     gzipBytes: 214,
 });
-// Packaged Tizen startup resolves shared-runtime and provider paths locally.
-// Clean, source-stamped 1.1.62 / Node22.23.4 builds add 95 raw bytes and at
-// most 65 gzip bytes to each entry. Preserve prior headroom and allow only
+// Packaged Tizen startup resolves shared-runtime and provider paths locally
+// and skips the local Swop endpoint. Clean, source-stamped 1.1.62 / Node22.23.4
+// builds add 116 raw bytes and at most 75 gzip bytes to each entry. Preserve prior headroom and allow only
 // 20 additional gzip bytes for source-identity variation. Other caps stay fixed.
 // Evidence: docs/evidence/tizen-package-boot-size-20261030.json.
 const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
-    bytes: 95,
-    gzipBytes: 85,
+    bytes: 116,
+    gzipBytes: 95,
 });
 const BUDGET = Object.freeze({
     bytes:

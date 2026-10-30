@@ -109,19 +109,10 @@ try {
     }
     assert.notEqual(tizenEvidence.baseline.head, tizenEvidence.candidate.head);
     assert.equal(tizenEvidence.baseline.buildExitCode, 0);
-    assert.equal(tizenEvidence.candidate.buildExitCode, 1);
+    assert.equal(tizenEvidence.candidate.buildExitCode, 0);
     assert.equal(tizenEvidence.candidate.complete, true);
     assert.deepEqual(tizenEvidence.candidate.inputErrors, []);
-    assert.deepEqual(
-        tizenEvidence.candidate.sizeViolations,
-        tizenEvidence.modes.map((mode) => ({
-            actual: mode.components[0].after.bytes,
-            budget: tizenEvidence.previousCaps.BUDGET.bytes,
-            metric: "bytes",
-            path: mode.path,
-            scope: "asset",
-        }))
-    );
+    assert.deepEqual(tizenEvidence.candidate.sizeViolations, []);
     for (const [name, budget] of Object.entries({
         BASE_TOTAL_BUDGET,
         BUDGET,
@@ -230,10 +221,18 @@ try {
                 ],
             ]) {
                 // BASE excludes the separately allocated local compatibility payload.
-                if (name !== "BASE_TOTAL_BUDGET")
+                if (name !== "BASE_TOTAL_BUDGET") {
                     assert(
                         after[metric] <= tizenEvidence.nextCaps[name][metric]
                     );
+                    assert(
+                        after[metric] <=
+                            tizenEvidence.candidate.budgetsAtBuild[name][
+                                metric
+                            ],
+                        "recorded candidate was already a successful production build"
+                    );
+                }
                 assert(
                     tizenEvidence.nextCaps[name][metric] - after[metric] >=
                         tizenEvidence.previousCaps[name][metric] -

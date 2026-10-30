@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Relative shared-runtime and provider asset paths for packaged Tizen startup; measured entry growth only. Provider and optional assets are unchanged.",
+  "scope": "Relative shared-runtime and provider asset paths plus local-Swop lookup suppression for packaged Tizen startup; measured entry growth only. Provider and optional assets are unchanged.",
   "version": "1.1.62",
   "toolchain": {
     "node": "22.23.4",
@@ -33,61 +33,57 @@
     "dependencySymlinkExcludedFromStatus": true
   },
   "candidate": {
-    "head": "a2a00be32dca4a52662db3d13b8c8a8cf215bcb7",
-    "sourceRevisionAtBuild": "a2a00be32dca4a52662db3d13b8c8a8cf215bcb7",
+    "head": "b302948af49b103324c24b83f3f155a605d1e77d",
+    "sourceRevisionAtBuild": "b302948af49b103324c24b83f3f155a605d1e77d",
     "trackedSourceClean": true,
-    "report": "build/reports/classic-size-diagnostics.json",
-    "reportSha256": "d6e8a101877f4b2ae3a5f10465fb44faa59e27359e76ed2f907ee750e231da2b",
-    "buildExitCode": 1,
+    "report": "build/reports/classic-bundle.json",
+    "reportSha256": "8803bedaec62cbaed17fddad5e548786e32fa3c2654702babc3673a389fc6580",
+    "buildExitCode": 0,
     "allArtifactHashesAndSizesReverified": true,
     "artifactCount": 66,
     "sourceStamps": [
       {
         "path": "dist/player.js",
-        "sourceRevision": "a2a00be32dca4a52662db3d13b8c8a8cf215bcb7"
+        "sourceRevision": "b302948af49b103324c24b83f3f155a605d1e77d"
       },
       {
         "path": "src-tauri/frontend/dist/player.js",
-        "sourceRevision": "a2a00be32dca4a52662db3d13b8c8a8cf215bcb7"
+        "sourceRevision": "b302948af49b103324c24b83f3f155a605d1e77d"
       },
       {
         "path": "dist-mobile/dist/player.js",
-        "sourceRevision": "a2a00be32dca4a52662db3d13b8c8a8cf215bcb7"
+        "sourceRevision": "b302948af49b103324c24b83f3f155a605d1e77d"
       }
     ],
     "complete": true,
-    "sizeViolations": [
-      {
-        "actual": 1152576,
-        "budget": 1152525,
-        "metric": "bytes",
-        "path": "dist/player.js",
-        "scope": "asset"
+    "sizeViolations": [],
+    "inputErrors": [],
+    "budgetsAtBuild": {
+      "BUDGET": {
+        "bytes": 1152620,
+        "gzipBytes": 352815
       },
-      {
-        "actual": 1152534,
-        "budget": 1152525,
-        "metric": "bytes",
-        "path": "src-tauri/frontend/dist/player.js",
-        "scope": "asset"
+      "BASE_TOTAL_BUDGET": {
+        "bytes": 1665117,
+        "gzipBytes": 512444
       },
-      {
-        "actual": 1152534,
-        "budget": 1152525,
-        "metric": "bytes",
-        "path": "dist-mobile/dist/player.js",
-        "scope": "asset"
+      "LEGACY_TOTAL_BUDGET": {
+        "bytes": 1305307,
+        "gzipBytes": 408114
+      },
+      "TOTAL_BUDGET": {
+        "bytes": 1669597,
+        "gzipBytes": 514748
       }
-    ],
-    "inputErrors": []
+    }
   },
   "sourceIdentityReserve": {
     "bytes": 0,
     "gzipBytes": 20
   },
   "allowance": {
-    "bytes": 95,
-    "gzipBytes": 85
+    "bytes": 116,
+    "gzipBytes": 95
   },
   "previousCaps": {
     "BUDGET": {
@@ -171,20 +167,20 @@
   },
   "nextCaps": {
     "BUDGET": {
-      "bytes": 1152620,
-      "gzipBytes": 352815
+      "bytes": 1152641,
+      "gzipBytes": 352825
     },
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1665117,
-      "gzipBytes": 512444
+      "bytes": 1665138,
+      "gzipBytes": 512454
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1305307,
-      "gzipBytes": 408114
+      "bytes": 1305328,
+      "gzipBytes": 408124
     },
     "TOTAL_BUDGET": {
-      "bytes": 1669597,
-      "gzipBytes": 514748
+      "bytes": 1669618,
+      "gzipBytes": 514758
     },
     "PROVIDER_BUDGET": {
       "bytes": 863400,
@@ -264,22 +260,22 @@
       },
       "after": {
         "legacyTotal": {
-          "bytes": 1304797,
-          "gzipBytes": 407816
+          "bytes": 1304818,
+          "gzipBytes": 407826
         },
         "completeTotal": {
-          "bytes": 1669467,
-          "gzipBytes": 514341
+          "bytes": 1669488,
+          "gzipBytes": 514351
         }
       },
       "delta": {
         "legacyTotal": {
-          "bytes": 95,
-          "gzipBytes": 65
+          "bytes": 116,
+          "gzipBytes": 75
         },
         "completeTotal": {
-          "bytes": 95,
-          "gzipBytes": 65
+          "bytes": 116,
+          "gzipBytes": 75
         }
       },
       "components": [
@@ -293,14 +289,14 @@
             "sha256": "0fa88567b2dd33049fc1981a3141ddeedc53c1733893b532455e70abca209809"
           },
           "after": {
-            "bytes": 1152576,
-            "gzipBytes": 352571,
+            "bytes": 1152597,
+            "gzipBytes": 352581,
             "path": "dist/player.js",
-            "sha256": "48404e71eaf03d0ca617e73bdef7e732cbd254b1c8ac9ae716a7eea7c7378a52"
+            "sha256": "e9c1ab5a3b3e3621782bc95cc4a9ed90cc8d4f3912007faf411bcdaad7b1d43c"
           },
           "delta": {
-            "bytes": 95,
-            "gzipBytes": 65
+            "bytes": 116,
+            "gzipBytes": 75
           }
         },
         {
@@ -739,22 +735,22 @@
       },
       "after": {
         "legacyTotal": {
-          "bytes": 1304755,
-          "gzipBytes": 407871
+          "bytes": 1304776,
+          "gzipBytes": 407879
         },
         "completeTotal": {
-          "bytes": 1669425,
-          "gzipBytes": 514396
+          "bytes": 1669446,
+          "gzipBytes": 514404
         }
       },
       "delta": {
         "legacyTotal": {
-          "bytes": 95,
-          "gzipBytes": 63
+          "bytes": 116,
+          "gzipBytes": 71
         },
         "completeTotal": {
-          "bytes": 95,
-          "gzipBytes": 63
+          "bytes": 116,
+          "gzipBytes": 71
         }
       },
       "components": [
@@ -768,14 +764,14 @@
             "sha256": "e59cfb9df96224e069b18d9bc3674ae6cd4da81350319a150c73c87fddd810e0"
           },
           "after": {
-            "bytes": 1152534,
-            "gzipBytes": 352626,
+            "bytes": 1152555,
+            "gzipBytes": 352634,
             "path": "src-tauri/frontend/dist/player.js",
-            "sha256": "abd2fa413377c0c76922a519d52766689f620d11bb243b46a71f18218aa830f4"
+            "sha256": "cd8c0adcea7fda5f362482a5368258eb7509d720365c917df166f01ca4b7a6a6"
           },
           "delta": {
-            "bytes": 95,
-            "gzipBytes": 63
+            "bytes": 116,
+            "gzipBytes": 71
           }
         },
         {
@@ -1214,22 +1210,22 @@
       },
       "after": {
         "legacyTotal": {
-          "bytes": 1304755,
-          "gzipBytes": 407871
+          "bytes": 1304776,
+          "gzipBytes": 407879
         },
         "completeTotal": {
-          "bytes": 1669425,
-          "gzipBytes": 514396
+          "bytes": 1669446,
+          "gzipBytes": 514404
         }
       },
       "delta": {
         "legacyTotal": {
-          "bytes": 95,
-          "gzipBytes": 63
+          "bytes": 116,
+          "gzipBytes": 71
         },
         "completeTotal": {
-          "bytes": 95,
-          "gzipBytes": 63
+          "bytes": 116,
+          "gzipBytes": 71
         }
       },
       "components": [
@@ -1243,14 +1239,14 @@
             "sha256": "e59cfb9df96224e069b18d9bc3674ae6cd4da81350319a150c73c87fddd810e0"
           },
           "after": {
-            "bytes": 1152534,
-            "gzipBytes": 352626,
+            "bytes": 1152555,
+            "gzipBytes": 352634,
             "path": "dist-mobile/dist/player.js",
-            "sha256": "abd2fa413377c0c76922a519d52766689f620d11bb243b46a71f18218aa830f4"
+            "sha256": "cd8c0adcea7fda5f362482a5368258eb7509d720365c917df166f01ca4b7a6a6"
           },
           "delta": {
-            "bytes": 95,
-            "gzipBytes": 63
+            "bytes": 116,
+            "gzipBytes": 71
           }
         },
         {
