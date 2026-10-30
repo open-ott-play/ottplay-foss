@@ -140,6 +140,7 @@ Základní test zařízení: [kontrolní seznam režimu B](docs/mode-b-device-sm
 | **macOS** | `.dmg` / `.app.zip` | Samostatná sestavení Apple Silicon a Intel; podpis ad-hoc, pokud není nastavený podpis Apple |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Různé distribuce |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode nebo Homebrew Channel](docs/lg-webos-installation.md); hostovaný přehrávač, vyžaduje síť |
 | **iOS** | `.ipa` přes AltStore / TestFlight / Xcode | Pouze boční instalace — zatím není v App Store |
 | **Android (sdílený frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Podepsané balíčky Capacitor; zvolte podporovanou verzi Androidu |
 | **Android (nativní Kotlin)** | Samostatná [nativní aplikace](https://github.com/open-ott-play/ottplay-android) | Veřejné úložiště; oddělená aplikace a proces vydávání |

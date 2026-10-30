@@ -1,0 +1,13 @@
+{
+  "id": "com.openottplay.player",
+  "title": "OTT-play FOSS",
+  "type": "web",
+  "main": "index.html",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "version": "1.0.0",
+  "vendor": "open-ott-play",
+  "appDescription": "Hosted IPTV and media player. Network connection required.",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": false
+}

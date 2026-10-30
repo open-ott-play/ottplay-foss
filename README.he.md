@@ -148,6 +148,7 @@ npm run android:api22:release # Android 5.1 compatibility APK, same Full interfa
 | **macOS** | `.dmg` / `.app.zip` | בניות נפרדות ל־Apple Silicon ול־Intel; חתימת ad-hoc אלא אם הוגדרה חתימת Apple |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | הפצות שונות |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode או Homebrew Channel](docs/lg-webos-installation.md); נגן מתארח, נדרש חיבור לרשת |
 | **iOS** | `.ipa` דרך AltStore / TestFlight / Xcode | התקנה צדדית בלבד — עדיין לא ב־App Store |
 | **Android (ממשק משותף)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | חבילות Capacitor חתומות; בחרו גרסת Android נתמכת |
 | **Android (Kotlin ילידי)** | [יישום ילידי](https://github.com/open-ott-play/ottplay-android) נפרד | מאגר ציבורי; יישום ותהליך שחרור נפרדים |

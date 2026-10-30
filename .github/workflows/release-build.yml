@@ -86,21 +86,21 @@ jobs:
       - name: Build bundle
         run: npm run build --ignore-scripts
       - name: Package validated server web root
-        run: "npm run check:bundle
-
+        run: |
+          npm run check:bundle
           npm run check:es5
-
           npm run package:modea
-
+      - name: Package and verify LG webOS delivery
+        run: |
+          npm run package:webos -- --plan .release-plan.json
+          npm run verify:webos -- --plan .release-plan.json
+          npm run package:webos-homebrew -- --plan .release-plan.json
+      - name: Prepare established web download names
+        run: |
           cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 .
-
-          # Keep the established download name, using only the audited staged web root.
-
+          # Preserve the established download name after source-bound packaging.
           cp ottplay-foss-modea.tar.gz ottplay-foss-dist.tar.gz
-
           sha256sum ottplay-foss-dist.tar.gz > checksums.txt
-
-          "
       - name: Verify and stage versioned release assets
         shell: bash
         env:
@@ -109,7 +109,21 @@ jobs:
           RELEASE_ASSET_PATTERN_1: checksums.txt
           RELEASE_ASSET_PATTERN_2: ottplay-foss-modea.tar.gz
           RELEASE_ASSET_PATTERN_3: ottplay-foss-modea.sha256
-        run: python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" --pattern "$RELEASE_ASSET_PATTERN_0" --pattern "$RELEASE_ASSET_PATTERN_1" --pattern "$RELEASE_ASSET_PATTERN_2" --pattern "$RELEASE_ASSET_PATTERN_3"
+          RELEASE_ASSET_PATTERN_4: build/packages/ottplay-foss-webos.ipk
+          RELEASE_ASSET_PATTERN_5: build/packages/ottplay-foss-webos.sha256
+          RELEASE_ASSET_PATTERN_6: build/packages/ottplay-foss-webos.json
+          RELEASE_ASSET_PATTERN_7: build/packages/ottplay-foss-webos-manifest.json
+          RELEASE_ASSET_PATTERN_8: build/packages/ottplay-foss-webos-repository.json
+          RELEASE_ASSET_PATTERN_9: build/packages/ottplay-foss-webos-icon.png
+          RELEASE_ASSET_PATTERN_10: build/packages/ottplay-foss-webos-description.html
+        run: |
+          python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" \
+            --pattern "$RELEASE_ASSET_PATTERN_0" --pattern "$RELEASE_ASSET_PATTERN_1" \
+            --pattern "$RELEASE_ASSET_PATTERN_2" --pattern "$RELEASE_ASSET_PATTERN_3" \
+            --pattern "$RELEASE_ASSET_PATTERN_4" --pattern "$RELEASE_ASSET_PATTERN_5" \
+            --pattern "$RELEASE_ASSET_PATTERN_6" --pattern "$RELEASE_ASSET_PATTERN_7" \
+            --pattern "$RELEASE_ASSET_PATTERN_8" --pattern "$RELEASE_ASSET_PATTERN_9" \
+            --pattern "$RELEASE_ASSET_PATTERN_10"
       - name: Store release assets
         id: browser-artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
