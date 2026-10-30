@@ -1,0 +1,73 @@
+OTTPlay Native runtime source supplement
+
+Keep this archive, the primary source archive and their matching IPK together.
+The source-set JSON binds both archives to the IPK by SHA-256. Do not publish
+the primary archive alone as a claim that all runtime source is present.
+
+The primary archive supplies the adapted application, Cargo dependencies,
+Rust runtime source, FFmpeg, the libass stack and other bundled dependencies.
+This supplement supplies the exact GCC 12.2.0 source, the glibc source fork
+used by the SDK, and the GPL Buildroot source tree with runtime patches and
+build recipes. It also supplies the collector, its source pins, complete
+license texts and evidence for every ELF in the final package.
+
+Evidence and limits
+-------------------
+The collector first checks each packaged ELF against its own final-link
+receipt, map and trace. The maps identify statically included runtime archive
+members; readelf records the ELF's DT_NEEDED entries and interpreter. Unknown
+SDK runtime inputs and unknown dynamic dependencies stop collection. Each
+linked runtime archive/object must match its bytes inside the original pinned
+SDK download, so a custom toolchain cannot silently inherit this source claim.
+
+The archive normalizes only source/SDK/user-home prefixes in maps and traces.
+Both original and distributed hashes are recorded. The original ELF hashes
+remain unchanged. This is a same-build correspondence record, not a claim
+that a separate clean rebuild has produced identical bytes.
+
+System dependencies
+-------------------
+LG's firmware graphics, window, media, loader and standard runtime libraries
+are not copied into either archive or the IPK. The native application uses
+their installed OS interfaces. The GPL section 1 System Library basis is
+documented in the primary tree's LICENSING.md and THIRD-PARTY-NOTICES.md and
+explicitly identified in RUNTIME-SOURCE-MANIFEST.json. This classification is
+not a license grant for redistributing LG firmware. No firmware permission is
+inferred from the fact that the SDK contains link-time copies.
+
+Runtime reconstruction facts
+----------------------------
+The general-purpose SDK release is webosbrew/native-toolchain webos-d7ed7ee.6,
+whose source commit is a2787d6c9607f70a5946454fcd06d99909a7a604. Its published
+host archive digest is recorded by the main integration. The port source
+repository has no identified license file; its complete archive is not
+relicensed or redistributed here. The following build facts are documented
+independently, and the underlying GPL Buildroot recipes are supplied:
+
+* Target triple: arm-webos-linux-gnueabi; GCC version: 12.2.0.
+* Base Buildroot: openlgtv/buildroot-nc4
+  79af0e655b4ae9252a93ec55a2cd786b335c4a6c, tag webos-d7ed7ee.
+* glibc: openlgtv/glibc ddbe4400ebed0b7fb34e989a3ac7a73a71669bf9.
+  package/glibc/glibc.mk and glibc.hash define its source and configuration.
+* The GCC port applies package/gcc/12.2.0 patches from that Buildroot tree.
+  Its target configuration uses cortex-a9, aapcs-linux, softfp, neon-fp16 and
+  ARM mode. It enables C/C++, shared libraries, POSIX threads, TLS, plugins
+  and LTO; disables multilib, libssp, libquadmath, libgomp and decimal float.
+* SDK sysroot and target headers come from the same Buildroot release.
+  Buildroot's configs/webos_tv_defconfig and its package recipes preserve the
+  remaining configuration. Use the source archives in this supplement for
+  GCC/glibc inputs, preserving the recorded patch order.
+* The application itself builds with RELEASE=1 FLAVOR=stable. Its complete
+  compile/link flags and project-local compiler wrapper are in the primary
+  archive. The wrapper explicitly excludes libglibc_polyfills.a.
+
+GCC runtime files retain GPLv3 and GCC Runtime Library Exception 3.1 notices.
+The exact glibc source retains LGPL notices and any per-file linking exception;
+this supplement supplies the source instead of relying on an unchecked
+assumption that every glibc fragment has the same exception.
+
+The original primary collector reports BLOCKED for runtime closure because
+that collector intentionally does not perform this second stage. Preserve
+that scoped report. The supplemental manifest records the additional
+sources and actual ELF evidence that resolve those source-scope gaps. It does
+not turn NOT_RUN/NOT_PROVEN independent-rebuild results into a successful test.

@@ -5,12 +5,17 @@ export const ASSETS = Object.freeze({
     "ottplay-foss-webos-icon.png": "image/png",
     "ottplay-foss-webos-manifest.json": "application/json; charset=utf-8",
     "ottplay-foss-webos-repository.json": "application/json; charset=utf-8",
+    "ottplay-native-webos-icon.png": "image/png",
+    "ottplay-native-webos-manifest.json": "application/json; charset=utf-8",
+    "ottplay-native-webos-repository.json": "application/json; charset=utf-8",
 });
 export const MAX_BYTES = 256 * 1024;
 export const DEADLINE_MS = 10000;
 export const MAX_REDIRECTS = 3;
 const RELEASE_TAG =
     /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:beta|rc)\.[1-9]\d*|-nightly\.\d{14}\.[1-9]\d*\.[1-9]\d*)?$/;
+const NATIVE_TAG =
+    /^native-webos-v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:beta|rc)\.[1-9]\d*)?$/;
 const DOWNLOAD_PREFIX =
     "https://github.com/open-ott-play/ottplay-foss/releases/download/";
 const DOWNLOAD_HOSTS = new Set([
@@ -50,12 +55,9 @@ function route(request) {
     )
         return null;
     const match = url.pathname.match(/^\/v1\/([^/]{1,128})\/([^/]{1,64})$/);
-    if (
-        !match ||
-        !RELEASE_TAG.test(match[1]) ||
-        !Object.hasOwn(ASSETS, match[2])
-    )
-        return null;
+    if (!match || !Object.hasOwn(ASSETS, match[2])) return null;
+    const native = match[2].startsWith("ottplay-native-");
+    if (!(native ? NATIVE_TAG : RELEASE_TAG).test(match[1])) return null;
     return { name: match[2], tag: match[1], type: ASSETS[match[2]] };
 }
 

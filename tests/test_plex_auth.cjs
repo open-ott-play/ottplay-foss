@@ -5,20 +5,25 @@ const vm = require("node:vm");
 const ts = require("typescript");
 const { webcrypto } = require("node:crypto");
 const { JSDOM } = require("jsdom");
-const modules = ["plex.ts", "plex-auth.ts"].map((file) => {
-    const source = ts.transpileModule(
-        fs.readFileSync(path.join(__dirname, "../src/plugins", file), "utf8"),
-        {
-            compilerOptions: {
-                module: ts.ModuleKind.ES2015,
-                target: ts.ScriptTarget.ES5,
-            },
-        }
-    ).outputText;
-    // The classic linker isolates each module. Cross-module calls must use
-    // their published API, even before emitted-bundle browser acceptance.
-    return "(function () {\n" + source + "\n})();";
-});
+const modules = ["plex-playback-policy.ts", "plex.ts", "plex-auth.ts"].map(
+    (file) => {
+        const source = ts.transpileModule(
+            fs.readFileSync(
+                path.join(__dirname, "../src/plugins", file),
+                "utf8"
+            ),
+            {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2015,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }
+        ).outputText;
+        // The classic linker isolates each module. Cross-module calls must use
+        // their published API, even before emitted-bundle browser acceptance.
+        return "(function () {\n" + source + "\n})();";
+    }
+);
 
 function loadModules(w, run) {
     modules.forEach(run);

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "inputs": [
+    {
+      "id": "glibc-runtime",
+      "file": "glibc-ddbe4400ebed0b7fb34e989a3ac7a73a71669bf9.tar.gz",
+      "url": "https://codeload.github.com/openlgtv/glibc/tar.gz/ddbe4400ebed0b7fb34e989a3ac7a73a71669bf9",
+      "sha256": "33fdcbc103f02ff1088f1bd3448d67885e7e4c0abf47eda53dc3bc4015111a60",
+      "provenance": "openlgtv/buildroot-nc4@79af0e655b4ae9252a93ec55a2cd786b335c4a6c package/glibc/glibc.mk and glibc.hash",
+      "licenses": ["COPYING", "COPYING.LIB", "LICENSES"]
+    },
+    {
+      "id": "gcc-runtime",
+      "file": "gcc-12.2.0.tar.xz",
+      "url": "https://gcc.gnu.org/pub/gcc/releases/gcc-12.2.0/gcc-12.2.0.tar.xz",
+      "sha512": "e9e857bd81bf7a370307d6848c81b2f5403db8c7b5207f54bce3f3faac3bde63445684092c2bc1a2427cddb6f7746496d9fbbef05fbbd77f2810b2998f1f9173",
+      "provenance": "GCC 12.2 release sha512.sum, also pinned by Buildroot package/gcc/gcc.hash",
+      "licenses": [
+        "COPYING",
+        "COPYING3",
+        "COPYING.RUNTIME",
+        "COPYING.LIB",
+        "COPYING3.LIB"
+      ]
+    },
+    {
+      "id": "buildroot-recipes",
+      "file": "buildroot-nc4-79af0e655b4ae9252a93ec55a2cd786b335c4a6c.tar.gz",
+      "url": "https://codeload.github.com/openlgtv/buildroot-nc4/tar.gz/79af0e655b4ae9252a93ec55a2cd786b335c4a6c",
+      "sha256": "f74dfa02569049e9ddffdf23909bbf1f469f1c23f248fc2b13921ecb5792cee2",
+      "provenance": "webosbrew/native-toolchain@a2787d6c9607f70a5946454fcd06d99909a7a604 pins webos-d7ed7ee",
+      "licenses": ["COPYING"]
+    }
+  ],
+  "sdk_recipe_reference": {
+    "repository": "https://github.com/webosbrew/native-toolchain",
+    "revision": "a2787d6c9607f70a5946454fcd06d99909a7a604",
+    "tag": "webos-d7ed7ee.6",
+    "source_archive_sha256": "73f7de7567205f2425d6427b64685372a5f95f50d82bcbd4190dd6634926bc2d",
+    "distribution": "Reference only: this port repository has no identified license file. Independent build facts are supplied in README.txt; linked GCC/glibc sources and GPL Buildroot recipes are included."
+  }
+}

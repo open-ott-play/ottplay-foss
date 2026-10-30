@@ -6,6 +6,24 @@ does not replace their licenses or establish permission for material whose
 provenance remains unverified. This is not a complete inventory of transitive
 native dependencies or a statement of store approval.
 
+## Separate native webOS application
+
+The optional **OTTPlay Native** Plex application derives from
+[PlxNative](https://github.com/GLinnik21/plx-native), copyright Gleb Linnik and
+contributors, at the exact revision recorded in
+[`native/webos/upstream.json`](native/webos/upstream.json). The adapted native
+runtime and its overlay patches are **GPL-3.0-or-later**, not relicensed by the
+root MIT notice. See [`native/webos/COPYING`](native/webos/COPYING) and the
+[native target guide](native/webos/README.md).
+
+Its SDL, FFmpeg, libass, fonts, Rust dependencies and other components retain
+their respective licenses. The native build preserves upstream notices and
+collects corresponding source, including vendored Cargo packages, bundled
+native dependency source and Rust runtime source. Each distributed IPK must
+be accompanied by the matching source asset and digest records. This target
+is an independent executable with a separate application ID and is not linked
+into the MIT web player, Tauri shell or OTT server.
+
 ## PLi-HD interface design
 
 The PLi-HD theme is a visual adaptation of the Enigma2 skin maintained by

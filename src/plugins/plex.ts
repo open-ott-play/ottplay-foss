@@ -1756,94 +1756,6 @@ function createPlexClient(
                 );
         } else request(path, params, token, accept);
     }
-    function codec(media: any, video: boolean): string {
-        var name = String(
-            video ? media.videoCodec : media.audioCodec
-        ).toLowerCase();
-        if (video) {
-            if (name === "h264") return "avc1.42E01E";
-            if (name === "hevc" || name === "h265") {
-                var ten = plexRows(
-                    plexRows(media.Part)[0] && plexRows(media.Part)[0].Stream
-                ).some(function (stream) {
-                    return (
-                        Number(stream.streamType) === 1 &&
-                        Number(stream.bitDepth) > 8
-                    );
-                });
-                return ten ? "hvc1.2.4.L153.B0" : "hvc1.1.6.L123.B0";
-            }
-            return name === "vp9"
-                ? "vp09.00.10.08"
-                : name === "vp8"
-                  ? "vp8"
-                  : name === "av1"
-                    ? "av01.0.08M.08"
-                    : "";
-        }
-        return name === "aac"
-            ? "mp4a.40.2"
-            : name === "mp3"
-              ? "mp3"
-              : name === "opus" || name === "vorbis" || name === "flac"
-                ? name
-                : "";
-    }
-    function originalMime(media: any): string {
-        var format = String(media.container || "").toLowerCase();
-        if (/^(mp4|m4v|mov)$/.test(format)) return "video/mp4";
-        if (format === "webm") return "video/webm";
-        if (format === "mkv") return "video/x-matroska";
-        if (format === "mp3") return "audio/mpeg";
-        if (format === "flac") return "audio/flac";
-        if (format === "m4a" || format === "aac") return "audio/mp4";
-        if (format === "ogg" || format === "opus") return "audio/ogg";
-        return "application/octet-stream";
-    }
-    function supports(media: any): boolean {
-        var mime = originalMime(media);
-        if (mime === "application/octet-stream" || mime === "video/x-matroska")
-            return false;
-        if (String(media.videoCodec).toLowerCase() === "h264") {
-            // The legacy AVC probe describes 8-bit Baseline, not High 10.
-            // Keep incomplete ordinary metadata compatible, but never use that
-            // probe to admit a file that Plex explicitly identifies as >8-bit.
-            var high10 = /^\s*high[ _-]*10(?:[ _-]|$)/i;
-            var part = plexRows(media.Part)[0];
-            if (
-                high10.test(String(media.videoProfile || "")) ||
-                plexRows(part && part.Stream).some(function (stream) {
-                    return (
-                        stream &&
-                        Number(stream.streamType) === 1 &&
-                        (Number(stream.bitDepth) > 8 ||
-                            high10.test(String(stream.profile || "")))
-                    );
-                })
-            )
-                return false;
-        }
-        var video = codec(media, true),
-            audio = codec(media, false);
-        if (
-            (!video && media.videoCodec) ||
-            (!audio && media.audioCodec) ||
-            (!video && !audio)
-        )
-            return false;
-        try {
-            return !!w.document
-                .createElement("video")
-                .canPlayType(
-                    mime +
-                        '; codecs="' +
-                        [video, audio].filter(Boolean).join(",") +
-                        '"'
-                );
-        } catch (_) {
-            return false;
-        }
-    }
     function resolve(item: any, done: (item: any) => void): void {
         cancel();
         var token = revision;
@@ -1890,30 +1802,36 @@ function createPlexClient(
                     return;
                 }
                 var entry = items(data)[0];
-                var media = entry && plexRows(entry.Media)[0];
-                var part = media && plexRows(media.Part)[0];
-                var path = part && plexPath(part.key);
-                if (!path) {
+                var policy = w.__ottPlexPlaybackPolicy;
+                var plan =
+                    entry &&
+                    policy &&
+                    policy.plan(entry.Media, config!.playback, {
+                        canPlayType: function (mime: string): string {
+                            return w.document
+                                .createElement("video")
+                                .canPlayType(mime);
+                        },
+                        path: plexPath,
+                    });
+                if (!plan) {
                     finish(null);
                     return;
                 }
+                var media = plan.media;
                 var playable = persist(item);
                 playable.plexSource = source;
-                if (
-                    config!.playback === "original" ||
-                    (config!.playback === "auto" && supports(media)) ||
-                    !media.videoCodec
-                ) {
-                    playable.stream_url = url(path, {});
+                if (plan.direct) {
+                    playable.stream_url = url(plan.path, {});
                     playable.__ottNativeFile = true;
                     playable.__ottPlexPlayback = {
-                        mime: originalMime(media),
+                        mime: plan.mime,
                         type: "file",
                     };
                     finish(playable);
                     return;
                 }
-                var videoCodec = codec(media, true);
+                var videoCodec = plan.videoCodec;
                 var negotiated = false;
                 function transcode(): void {
                     if (finished || negotiated || !current(token)) return;
@@ -1930,7 +1848,7 @@ function createPlexClient(
                         directStream: 1,
                         fastSeek: 1,
                         maxVideoBitrate: 12000,
-                        mediaIndex: 0,
+                        mediaIndex: plan.mediaIndex,
                         partIndex: 0,
                         path: requestPath,
                         protocol: "hls",
