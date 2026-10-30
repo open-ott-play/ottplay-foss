@@ -629,6 +629,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "تنظیمات MaxTV",
     Media: "رسانه",
+    "Media companion": "سرویس رسانه",
     "Media item is no longer available": "مورد رسانه دیگر در دسترس نیست",
     "Media Library": "کتابخانه رسانه",
     "Media Library URL": "کتابخانه رسانه URL",

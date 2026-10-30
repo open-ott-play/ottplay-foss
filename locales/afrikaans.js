@@ -639,6 +639,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV-instellings",
     Media: "Media",
+    "Media companion": "Mediadiens",
     "Media item is no longer available":
         "Media-item is nie meer beskikbaar nie",
     "Media Library": "Mediabiblioteek",

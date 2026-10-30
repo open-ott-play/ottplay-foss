@@ -1394,6 +1394,11 @@ function coreStreamFailure(
     if (coreStreamAttempt) coreStreamAttempt.fail(kind, status, position);
 }
 var coreSourcePreparationCancel: (() => void) | null = null;
+var coreCompanionRelease: (() => void) | null = null;
+function releaseCoreCompanion(): void {
+    if (coreCompanionRelease) coreCompanionRelease();
+    coreCompanionRelease = null;
+}
 function cancelCoreSourcePreparation(): void {
     var cancel = coreSourcePreparationCancel;
     coreSourcePreparationCancel = null;
@@ -1415,6 +1420,7 @@ function startCoreEngine(
         }
     }
     retireCompatibility(url);
+    releaseCoreCompanion();
     cancelCoreStreamAttempt();
     coreNativeAttached = false;
     _coreTransientPlayback = transient;
@@ -1668,7 +1674,22 @@ function startCoreEngine(
             if (!settled && typeof cancel === "function")
                 coreSourcePreparationCancel = cancel;
         }
-        if (url.indexOf("ottplay-stalker:") === 0 || coreCompat(url)) {
+        var companion = (window as any).__ottMediaCompanion;
+        if (companion && companion.isSource(url)) {
+            releaseCoreCompanion();
+            coreCompanionRelease = companion.resolve(
+                url,
+                function (resolved: string | null) {
+                    if (
+                        session !== _playSession ||
+                        currentRevision !== revision
+                    )
+                        return;
+                    if (resolved) prepare(resolved);
+                    else coreStreamFailure("network");
+                }
+            );
+        } else if (url.indexOf("ottplay-stalker:") === 0 || coreCompat(url)) {
             var driver = (window as any).__ottActiveProviderDriver;
             if (!driver || !driver.resolveStream) {
                 coreStreamFailure("auth");
@@ -2385,6 +2406,7 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 function stopCoreEngine(): void {
+    releaseCoreCompanion();
     var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
     (window as any).__ottCoreCompatibilityUrl = "";
     if (compatibilityUrl) cancelCoreCompat(compatibilityUrl);
@@ -4074,6 +4096,9 @@ export function getCoreMediaBackend(): any {
         },
         open: openCoreEngineLease,
         resolve: function (url: string, done: (url: string | null) => void) {
+            var companion = (window as any).__ottMediaCompanion;
+            if (companion && companion.isSource(url))
+                return companion.resolve(url, done);
             var driver = (window as any).__ottActiveProviderDriver;
             if (url.indexOf("ottplay-stalker:") === 0 || coreCompat(url)) {
                 if (driver && driver.resolveStream)

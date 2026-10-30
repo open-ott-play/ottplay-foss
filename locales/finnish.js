@@ -637,6 +637,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV asetukset",
     Media: "Media",
+    "Media companion": "Mediapalvelu",
     "Media item is no longer available": "Mediakohde ei ole enää saatavilla",
     "Media Library": "Mediakirjasto",
     "Media Library URL": "Mediakirjasto URL",

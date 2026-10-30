@@ -639,6 +639,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Mîhengên MaxTV",
     Media: "Medya",
+    "Media companion": "Xizmeta medyayê",
     "Media item is no longer available": "Tiştê medyayî êdî nîno",
     "Media Library": "Pirtûkxaneya Medyayê",
     "Media Library URL": "Pirtûkxaneya Medyayê URL",

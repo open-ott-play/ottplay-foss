@@ -620,6 +620,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     Media: "ಮಾಧ್ಯಮ",
+    "Media companion": "ಮಾಧ್ಯಮ ಸೇವೆ",
     "Media item is no longer available": "ಮಾಧ್ಯಮ ಐಟಂ ಇನ್ನು ಮುಂದೆ ಲಭ್ಯವಿರುವುದಿಲ್ಲ",
     "Media Library": "ಮಾಧ್ಯಮ ಗ್ರಂಥಾಲಯ",
     "Media Library URL": "ಮಾಧ್ಯಮ ಲೈಬ್ರರಿ URL",

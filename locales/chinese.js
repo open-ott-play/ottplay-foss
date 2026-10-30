@@ -603,6 +603,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV设定",
     Media: "媒体",
+    "Media companion": "媒体服务",
     "Media item is no longer available": "媒体项目不再可用",
     "Media Library": "媒体库",
     "Media Library URL": "媒体库URL",

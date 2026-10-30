@@ -112,12 +112,14 @@ class CargoIntegration(unittest.TestCase):
             '[workspace]\nresolver = "2"\nmembers = ["src-rs/core", "src-rs/server", "src-tauri"]\n[profile.release]\nlto = true\ncodegen-units = 1\nstrip = true\n',
         )
         (self.workspace / "vendor").mkdir()
+        write(self.workspace / "plugins/examples/direct-url.js", "// packaged resolver fixture\n")
         crate(
             self.workspace / "src-rs/core",
             "ottplay-core",
             "0.1.0",
             '[dependencies]\nlocked-dependency = "1"\n',
-            "pub fn value() -> u32 { locked_dependency::value() }",
+            'const SCRIPT: &str = include_str!("../../../plugins/examples/direct-url.js");\n'
+            'pub fn value() -> u32 { assert!(!SCRIPT.is_empty()); locked_dependency::value() }',
         )
         crate(
             self.workspace / "src-rs/server",
@@ -180,7 +182,7 @@ class CargoIntegration(unittest.TestCase):
         self.assertEqual(versions["locked-dependency"], "1.0.0")
         self.assertEqual((self.workspace / "Cargo.lock").read_bytes(), source_before)
         self.assertEqual((self.workspace / "Cargo.toml").read_bytes(), original_manifest)
-        for directory in ("src-rs", "vendor"):
+        for directory in ("src-rs", "vendor", "plugins"):
             shutil.copytree(self.workspace / directory, output / directory)
         # Compile the real minimal workspace with the final stage's strict
         # contract, without network or any production application process.
@@ -216,7 +218,7 @@ class CargoIntegration(unittest.TestCase):
         lock_before = (output / "Cargo.lock").read_bytes()
         names = {package["name"] for package in tomllib.loads(lock_before.decode())["package"]}
         self.assertTrue({"arm-only", "x86-only"} <= names)
-        for directory in ("src-rs", "vendor"):
+        for directory in ("src-rs", "vendor", "plugins"):
             shutil.copytree(self.workspace / directory, output / directory)
         for target, present, absent in (
             ("aarch64-unknown-linux-musl", "arm-only", "x86-only"),

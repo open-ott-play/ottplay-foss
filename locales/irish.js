@@ -647,6 +647,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Socruithe MaxTV",
     Media: "Meáin",
+    "Media companion": "Seirbhís meán",
     "Media item is no longer available":
         "Níl an mhír mheáin ar fáil a thuilleadh",
     "Media Library": "Leabharlann meán",

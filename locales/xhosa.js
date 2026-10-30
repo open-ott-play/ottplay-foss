@@ -656,6 +656,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Iisetingi ze-MaxTV",
     Media: "Imidhiya",
+    "Media companion": "Inkonzo yemidiya",
     "Media item is no longer available": "Le nto yemidhiya ayisafumaneki",
     "Media Library": "Ithala lemidhiya",
     "Media Library URL": "I-URL yethala lemidhiya",

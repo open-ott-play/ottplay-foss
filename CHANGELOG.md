@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add an on-demand native media companion for ordinary BitTorrent file playback
+  and packaged QuickJS source resolvers. Desktop players start their own private
+  service; other clients can use an explicitly configured OTT server endpoint.
+  Keep viewer leases independent, bound cache and execution resources, support
+  byte-range seeking, and cancel work on source changes, standby and page exit.
+  Load the shared controls only when needed and preserve existing Local sources.
+
 - Avoid repeated network metadata checks while scanning native Local folders.
   Reuse validated legacy records and no-follow enumeration types for known
   files, retain unavailable IDs, and reject changed or incomplete directories.

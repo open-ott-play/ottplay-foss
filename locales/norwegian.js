@@ -635,6 +635,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV innstillinger",
     Media: "Media",
+    "Media companion": "Medietjeneste",
     "Media item is no longer available":
         "Medieelementet er ikke lenger tilgjengelig",
     "Media Library": "Mediebibliotek",

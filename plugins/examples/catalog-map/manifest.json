@@ -1,0 +1,8 @@
+{
+  "id": "catalog-map",
+  "name": "Catalog filter",
+  "apiVersion": 1,
+  "script": "resolve.js",
+  "sha256": "ea62ea8e20a29711e5846471ce7790bf16a7229bf23ac6941f37cb219f39488f",
+  "allowedHosts": ["media.example"]
+}

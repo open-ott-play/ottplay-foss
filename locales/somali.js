@@ -651,6 +651,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Dejinta MaxTV",
     Media: "Warbaahin",
+    "Media companion": "Adeegga warbaahinta",
     "Media item is no longer available":
         "Qaybtan warbaahinta mar dambe lama heli karo",
     "Media Library": "Maktabadda warbaahinta",

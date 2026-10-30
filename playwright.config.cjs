@@ -19,6 +19,7 @@ module.exports = defineConfig({
     testMatch: [
         "device-detection.spec.cjs",
         "media-runtime.spec.cjs",
+        "media-companion.spec.cjs",
         "playback-runtime.spec.cjs",
         "nas-library.spec.cjs",
         "plex-provider.spec.cjs",

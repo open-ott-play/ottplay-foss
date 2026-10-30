@@ -10,6 +10,8 @@ strip = true
 # GTK3's dependency graph requires glib 0.18. Backport the upstream iterator
 # safety fix without advertising a different upstream version (see vendor/README.md).
 [patch.crates-io]
+# Bound magnet metadata discovery before allocating peer buffers.
+librqbit = { path = "vendor/librqbit-9.1.0" }
 glib = { path = "vendor/glib-0.18.5" }
 # Keep macOS drag callbacks safe when a pasteboard advertises unreadable data.
 wry = { path = "vendor/wry-0.55.1" }

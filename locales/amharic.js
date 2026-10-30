@@ -609,6 +609,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "የMaxTV ቅንብሮች",
     Media: "ሚዲያ",
+    "Media companion": "የሚዲያ አገልግሎት",
     "Media item is no longer available": "የሚዲያ ንጥሉ ከአሁን በኋላ አይገኝም",
     "Media Library": "የሚዲያ ቤተ መጻሕፍት",
     "Media Library URL": "የሚዲያ ቤተ መጻሕፍት URL",

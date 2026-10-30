@@ -647,6 +647,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Configurações de MaxTV",
     Media: "Multimédia",
+    "Media companion": "Serviço multimédia",
     "Media item is no longer available":
         "O conteúdo multimédia já não está disponível",
     "Media Library": "Mediateca",

@@ -5,6 +5,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    MEDIA_COMPANION_ENTRY_ALLOWANCE,
+    MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+    MEDIA_COMPANION_SETTINGS_ALLOWANCE,
     CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
     CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
@@ -59,12 +62,206 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
-    const tizenPackageBootDelta = (budget, metric) =>
+    // Historical receipts retain their original family set and exact caps.
+    // The new companion allocation is subtracted once at the newest boundary.
+    const historicalOptionalBudgets = Object.fromEntries(
+        Object.entries(OPTIONAL_BUDGETS)
+            .filter(([name]) => name !== "media-companion")
+            .map(([name, budget]) => [
+                name,
+                name === "remote-settings-lifecycle"
+                    ? {
+                          bytes:
+                              budget.bytes -
+                              MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes,
+                          gzipBytes:
+                              budget.gzipBytes -
+                              MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes,
+                      }
+                    : budget,
+            ])
+    );
+    const historicalOptionalBundles = Object.fromEntries(
+        Object.entries(CLASSIC_OPTIONAL_BUNDLES).filter(
+            ([name]) => name !== "media-companion"
+        )
+    );
+    const companionDelta = (budget, metric) =>
         [BUDGET, BASE_TOTAL_BUDGET, LEGACY_TOTAL_BUDGET, TOTAL_BUDGET].includes(
             budget
         )
+            ? MEDIA_COMPANION_ENTRY_ALLOWANCE[metric] +
+              ([BASE_TOTAL_BUDGET, TOTAL_BUDGET].includes(budget)
+                  ? MEDIA_COMPANION_OPTIONAL_ALLOWANCE[metric] +
+                    MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric]
+                  : 0)
+            : budget === OPTIONAL_BUDGETS["remote-settings-lifecycle"]
+              ? MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric]
+              : 0;
+    const beforeCompanionBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - companionDelta(budget, metric),
+            ])
+        );
+    const companionEvidence = require("../docs/evidence/media-companion-size-20261030.json");
+    assert.deepEqual(
+        MEDIA_COMPANION_ENTRY_ALLOWANCE,
+        companionEvidence.allowances.entry
+    );
+    assert.deepEqual(
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        companionEvidence.allowances.optional
+    );
+    assert(Object.isFrozen(MEDIA_COMPANION_ENTRY_ALLOWANCE));
+    assert(Object.isFrozen(MEDIA_COMPANION_OPTIONAL_ALLOWANCE));
+    assert(Object.isFrozen(MEDIA_COMPANION_SETTINGS_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+        companionEvidence.allowances.settings
+    );
+    assert.equal(
+        OPTIONAL_BUDGETS["media-companion"],
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE
+    );
+    assert.deepEqual(companionEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.equal(companionEvidence.baseline.sourceRevisionAtBuild, null);
+    assert.equal(companionEvidence.candidate.sourceRevisionAtBuild, null);
+    assert.equal(
+        companionEvidence.candidate.allArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.match(companionEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(companionEvidence.baseline.reportSha256, /^[a-f0-9]{64}$/);
+    assert.match(companionEvidence.candidate.reportSha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+        historicalOptionalBudgets,
+        companionEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        companionEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(budget, companionEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforeCompanionBudget(budget),
+            companionEvidence.previousCaps[name],
+            name + " counts companion cost once"
+        );
+    }
+    assert.deepEqual(
+        companionEvidence.modes.map((mode) => mode.path),
+        ARTIFACTS
+    );
+    for (const metric of ["bytes", "gzipBytes"]) {
+        const observedEntry = Math.max(
+            ...companionEvidence.modes.map((mode) => mode.delta.entry[metric])
+        );
+        const observedOptional = Math.max(
+            ...companionEvidence.modes.map(
+                (mode) =>
+                    mode.components.find(
+                        (row) => row.name === "media-companion.js"
+                    ).after[metric]
+            )
+        );
+        assert.equal(companionEvidence.observed.entry[metric], observedEntry);
+        assert.equal(
+            companionEvidence.observed.optional[metric],
+            observedOptional
+        );
+        const observedSettings = Math.max(
+            ...companionEvidence.modes.map(
+                (mode) =>
+                    mode.components.find(
+                        (row) => row.name === "remote-settings-lifecycle.js"
+                    ).delta[metric]
+            )
+        );
+        assert.equal(
+            MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric],
+            observedSettings + companionEvidence.reserve.settings[metric]
+        );
+        assert.equal(
+            MEDIA_COMPANION_ENTRY_ALLOWANCE[metric],
+            observedEntry + companionEvidence.reserve.entry[metric]
+        );
+        assert.equal(
+            MEDIA_COMPANION_OPTIONAL_ALLOWANCE[metric],
+            observedOptional + companionEvidence.reserve.optional[metric]
+        );
+    }
+    for (const mode of companionEvidence.modes) {
+        assert.equal(
+            mode.components.length,
+            1 +
+                Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
+                Object.keys(CLASSIC_OPTIONAL_BUNDLES).length
+        );
+        for (const row of mode.components) {
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (row.name === "media-companion.js")
+                assert.equal(row.before, null);
+            else if (
+                row.family !== "entry" &&
+                row.name !== "remote-settings-lifecycle.js"
+            )
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " remains byte-identical"
+                );
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - (row.before ? row.before[metric] : 0)
+                );
+        }
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(mode.delta.legacy[metric], mode.delta.entry[metric]);
+            assert.equal(
+                mode.after.total[metric],
+                mode.components.reduce((sum, row) => sum + row.after[metric], 0)
+            );
+            assert.equal(
+                mode.delta.total[metric],
+                mode.delta.entry[metric] +
+                    mode.components.find(
+                        (row) => row.name === "media-companion.js"
+                    ).after[metric] +
+                    mode.components.find(
+                        (row) => row.name === "remote-settings-lifecycle.js"
+                    ).delta[metric]
+            );
+            assert(
+                TOTAL_BUDGET[metric] - mode.after.total[metric] >=
+                    companionEvidence.previousCaps.TOTAL_BUDGET[metric] -
+                        mode.before.total[metric]
+            );
+        }
+    }
+    const tizenPackageBootDelta = (budget, metric) =>
+        companionDelta(budget, metric) +
+        ([
+            BUDGET,
+            BASE_TOTAL_BUDGET,
+            LEGACY_TOTAL_BUDGET,
+            TOTAL_BUDGET,
+        ].includes(budget)
             ? TIZEN_PACKAGE_BOOT_ALLOWANCE[metric]
-            : 0;
+            : 0);
     const beforeTizenPackageBootBudget = (budget) =>
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
@@ -88,7 +285,7 @@ try {
     const tizenComponentCount =
         1 +
         Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
-        Object.keys(CLASSIC_OPTIONAL_BUNDLES).length;
+        Object.keys(historicalOptionalBundles).length;
     for (const source of [tizenEvidence.baseline, tizenEvidence.candidate]) {
         assert.match(source.head, /^[a-f0-9]{40}$/);
         assert.match(source.reportSha256, /^[a-f0-9]{64}$/);
@@ -121,7 +318,10 @@ try {
         PROVIDER_BUDGET,
         TOTAL_BUDGET,
     })) {
-        assert.deepEqual(budget, tizenEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforeCompanionBudget(budget),
+            tizenEvidence.nextCaps[name]
+        );
         assert.deepEqual(
             beforeTizenPackageBootBudget(budget),
             tizenEvidence.previousCaps[name],
@@ -129,10 +329,13 @@ try {
         );
     }
     assert.deepEqual(
-        OPTIONAL_BUDGETS,
+        historicalOptionalBudgets,
         tizenEvidence.previousCaps.OPTIONAL_BUDGETS
     );
-    assert.deepEqual(OPTIONAL_BUDGETS, tizenEvidence.nextCaps.OPTIONAL_BUDGETS);
+    assert.deepEqual(
+        historicalOptionalBudgets,
+        tizenEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
     assert.deepEqual(
         tizenEvidence.modes.map((mode) => mode.path),
         ARTIFACTS
@@ -147,7 +350,7 @@ try {
                     "providers",
                     "provider-" + name + ".js",
                 ]),
-                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map((name) => [
+                ...Object.keys(historicalOptionalBundles).map((name) => [
                     "optionalAssets",
                     name + ".js",
                 ]),
@@ -322,10 +525,10 @@ try {
         navigationEvidence.previousCaps.OPTIONAL_BUDGET
     );
     assert.deepEqual(
-        OPTIONAL_BUDGETS,
+        historicalOptionalBudgets,
         navigationEvidence.nextCaps.OPTIONAL_BUDGETS
     );
-    for (const [name, budget] of Object.entries(OPTIONAL_BUDGETS))
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             name === "favorites-transfer"
                 ? beforeCategoryNavigationBudget(budget)
@@ -348,7 +551,7 @@ try {
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
                 .length,
-            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length
+            Object.keys(historicalOptionalBundles).length
         );
         assert.deepEqual(
             mode.components
@@ -569,7 +772,7 @@ try {
     assert.deepEqual(OPTIONAL_BUDGET, stbEvidence.previousCaps.OPTIONAL_BUDGET);
     assert.deepEqual(
         Object.fromEntries(
-            Object.entries(OPTIONAL_BUDGETS).map(([name, budget]) => [
+            Object.entries(historicalOptionalBudgets).map(([name, budget]) => [
                 name,
                 name === "favorites-transfer"
                     ? beforeCategoryNavigationBudget(budget)
@@ -578,7 +781,7 @@ try {
         ),
         stbEvidence.nextCaps.OPTIONAL_BUDGETS
     );
-    for (const [name, budget] of Object.entries(OPTIONAL_BUDGETS))
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             name === "favorites-transfer"
                 ? beforeStbPlayerBudget(budget)
@@ -601,7 +804,7 @@ try {
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
                 .length,
-            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length
+            Object.keys(historicalOptionalBundles).length
         );
         assert.deepEqual(
             mode.components
@@ -726,6 +929,7 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
+                    companionDelta(budget, metric) -
                     (name === "control-transport"
                         ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
                         : 0) -
@@ -777,7 +981,7 @@ try {
         OPTIONAL_BUDGET,
         presenceEvidence.previousCaps.OPTIONAL_BUDGET
     );
-    for (const [name, budget] of Object.entries(OPTIONAL_BUDGETS))
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             beforeSharedFeatureOptional(name, budget),
             presenceEvidence.previousCaps.OPTIONAL_BUDGETS[name],
@@ -942,7 +1146,7 @@ try {
         );
         assert.equal(
             mode.unchangedOptionalAssets,
-            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length - 1
+            Object.keys(historicalOptionalBundles).length - 1
         );
     }
     const pickerEvidence = require("../docs/evidence/category-picker-size-20261029.json");
@@ -1023,7 +1227,7 @@ try {
         );
         assert.equal(
             row.unchangedOptionalAssets,
-            Object.keys(CLASSIC_OPTIONAL_BUNDLES).length
+            Object.keys(historicalOptionalBundles).length
         );
     }
     const shakaTrackDelta = (budget, metric) =>
@@ -1060,7 +1264,7 @@ try {
             );
     assert.deepEqual(
         Object.fromEntries(
-            Object.entries(OPTIONAL_BUDGETS)
+            Object.entries(historicalOptionalBudgets)
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,
@@ -1489,7 +1693,7 @@ try {
     );
     assert.deepEqual(
         Object.fromEntries(
-            Object.entries(OPTIONAL_BUDGETS)
+            Object.entries(historicalOptionalBudgets)
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,

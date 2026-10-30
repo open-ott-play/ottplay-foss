@@ -621,6 +621,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "ការកំណត់ MaxTV",
     Media: "ប្រព័ន្ធផ្សព្វផ្សាយ",
+    "Media companion": "សេវាមេឌៀ",
     "Media item is no longer available": "ធាតុមេឌៀលែងមានទៀតហើយ",
     "Media Library": "បណ្ណាល័យប្រព័ន្ធផ្សព្វផ្សាយ",
     "Media Library URL": "បណ្ណាល័យប្រព័ន្ធផ្សព្វផ្សាយ URL",

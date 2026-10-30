@@ -624,6 +624,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ക്രമീകരണങ്ങൾ",
     Media: "മീഡിയ",
+    "Media companion": "മീഡിയ സേവനം",
     "Media item is no longer available": "മീഡിയ ഇനം ഇനി ലഭ്യമല്ല",
     "Media Library": "മീഡിയ ലൈബ്രറി",
     "Media Library URL": "മീഡിയ ലൈബ്രറി URL",

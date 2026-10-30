@@ -665,6 +665,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Fikirakirana MaxTV",
     Media: "Haino aman-jery",
+    "Media companion": "Tolotra haino aman-jery",
     "Media item is no longer available":
         "Tsy misy intsony ity singa haino aman-jery ity",
     "Media Library": "Tranombokin'ny haino aman-jery",

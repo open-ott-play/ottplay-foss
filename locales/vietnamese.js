@@ -630,6 +630,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Cài đặt MaxTV",
     Media: "Đa phương tiện",
+    "Media companion": "Dịch vụ đa phương tiện",
     "Media item is no longer available":
         "Nội dung đa phương tiện không còn khả dụng",
     "Media Library": "Thư viện đa phương tiện",

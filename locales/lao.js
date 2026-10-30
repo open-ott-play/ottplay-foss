@@ -606,6 +606,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "ການຕັ້ງຄ່າ MaxTV",
     Media: "ສື່",
+    "Media companion": "ບໍລິການມີເດຍ",
     "Media item is no longer available": "ລາຍການສື່ບໍ່ພ້ອມໃຊ້ແລ້ວ",
     "Media Library": "ຄັງສື່",
     "Media Library URL": "URL ຄັງສື່",

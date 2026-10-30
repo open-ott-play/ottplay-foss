@@ -158,7 +158,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             rules = entry.rules || {},
             fallback = entry.defaultValue;
         var sensitive =
-            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl)$/.test(
+            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl|companionEndpoint)$/.test(
                 id
             );
         var unavailable = entry.scope === "provider" && !providerReady();
@@ -208,7 +208,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             apply:
                 requiresLifecycle && lifecycle()
                     ? "after_ack"
-                    : /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage)$/.test(
+                    : /^(bufSize|players|streamMaxHeight|streamMaxBitrate|preferredAudioLanguage|preferredSubtitleLanguage|companionEndpoint)$/.test(
                             id
                         )
                       ? "next_stream"

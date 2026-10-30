@@ -71,6 +71,28 @@ Its [complete copyright and permission notice](vendor/block-0.1.6-LICENSE.txt)
 is preserved in the source and copied to `licenses/native/block-0.1.6-LICENSE.txt`
 in Tauri packages. The original license remains in force for the backport.
 
+## Media companion native dependencies
+
+The native media companion uses **librqbit 9.1.0** and its supporting Rust
+packages. The [consolidated notices](js/licenses/media-companion-native.txt)
+preserve upstream license texts and additional copyright and attribution files
+for the 82 registry-origin packages added or version-updated with this feature. This
+includes the additional BSD terms in `encoding_rs` and `matchit`, alongside the
+MIT, Apache 2.0, Zlib and ISC license texts supplied by these packages.
+
+The [source manifest](js/licenses/media-companion-native-sources.json) records
+each package version, Cargo archive checksum, license-file source and exact
+text hash. When an archive omitted its license file, the text was retrieved
+from the commit recorded in that archive's `.cargo_vcs_info.json`. Unchanged
+texts shared by several packages appear once, with all packages identified.
+The `librqbit` package is locally patched to bound metadata-reader concurrency,
+metadata allocation and discovered-peer queues. Its unchanged Apache 2.0
+license remains in [the vendored source](vendor/librqbit-9.1.0/LICENSE);
+[the modification record](vendor/librqbit-9.1.0/PATCHES.md) identifies the changes.
+Both files ship in `licenses/native/` in native frontend packages and remain
+under `js/licenses/` in web/server assets. Some listed dependencies only apply
+to particular build targets; this supplements the existing native inventory.
+
 ## Linux GStreamer playback compatibility plugin
 
 Linux DEB and AppImage builds include an app-private modified

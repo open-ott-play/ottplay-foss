@@ -10,6 +10,7 @@ export function loadRemoteFeature(
         | "runtime-debug-details"
         | "local-compatibility"
         | "local-media-ui"
+        | "media-companion"
         | "remote-local-runner",
     done: (error?: string) => void,
     readOnly?: "favorites-recovery"

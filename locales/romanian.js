@@ -651,6 +651,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Setări MaxTV",
     Media: "Media",
+    "Media companion": "Serviciu media",
     "Media item is no longer available":
         "Elementul media nu mai este disponibil",
     "Media Library": "Bibliotecă media",

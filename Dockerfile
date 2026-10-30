@@ -32,6 +32,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY vendor ./vendor
 COPY src-rs ./src-rs
+COPY plugins ./plugins
 COPY scripts/prepare-container-workspace.py ./scripts/prepare-container-workspace.py
 RUN python3 scripts/prepare-container-workspace.py --workspace /app --output /prepared
 
@@ -44,6 +45,7 @@ WORKDIR /app
 COPY --from=server-inputs /prepared/Cargo.toml /prepared/Cargo.lock ./
 COPY vendor ./vendor
 COPY src-rs ./src-rs
+COPY plugins ./plugins
 RUN cargo build --locked --release --bin ottplay-server
 
 # Musl runtime (no glibc). ca-certificates for outbound HTTPS (EPG / M3U).

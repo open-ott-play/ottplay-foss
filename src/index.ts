@@ -8,6 +8,7 @@ import {
 } from "./localization/assets";
 import { accessMediaPlugin, prepareAccessMedia } from "./plugins/access-media";
 import { installLocalMedia } from "./plugins/local-media";
+import { installMediaCompanion } from "./plugins/media-companion-loader";
 import { createSettingsEditor } from "./settings/editor";
 import {
     editSettingsText,
@@ -2228,6 +2229,7 @@ function onStbReady(): void {
         if ((window as any).__ottNasLibrary)
             (window as any).__ottNasLibrary.init();
         installLocalMedia(window);
+        installMediaCompanion(window);
         initUIReferences();
 
         // Apply settings
@@ -7576,6 +7578,14 @@ window.settingsCommands = function (): void {
 // Rebuild optionsArr now that all window.* settings functions are defined
 optionsArr.length = 0;
 var _o = window as any;
+_o.settingsMediaCompanion = function settingsMediaCompanion() {
+    if (_o.__ottParental && _o.__ottParental.needs("settings")) {
+        _o.enterPinAndSetAccess(_o.settingsMediaCompanion);
+        return;
+    }
+    _o.__ottMediaCompanion.open();
+};
+optionsArr.push({ action: _o.settingsMediaCompanion, name: "Media companion" });
 optionsArr.push({ action: _o.settingsInterface, name: "Interface settings" });
 optionsArr.push({ action: _o.settingsLists, name: "Lists settings" });
 optionsArr.push({ action: _o.settingsChannels, name: "Channel list settings" });

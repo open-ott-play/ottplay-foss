@@ -176,6 +176,7 @@
       "!src-tauri/**",
       "!vendor/glib-0.18.5/.cargo_vcs_info.json",
       "!vendor/tao-0.35.3/**",
+      "!vendor/librqbit-9.1.0/**",
       "!vendor/wry-0.55.1/**",
       "!vendor/tauri-plugin-updater-2.12.0/**",
       "!vendor/ottplay-core.js",

@@ -625,6 +625,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV جون سيٽنگون",
     Media: "ميڊيا",
+    "Media companion": "ميڊيا سروس",
     "Media item is no longer available": "ميڊيا شيءِ هاڻي موجود ناهي",
     "Media Library": "ميڊيا لائبريري",
     "Media Library URL": "ميڊيا لائبريري URL",

@@ -382,3 +382,9 @@ callbacks cannot advance to another file while the screen is off. Wake resumes
 the owned file at its saved position, or handles a deferred natural completion
 once. Changing provider, file, or entering Standby invalidates the old wake
 request. This uses the same native screen lifecycle as the Plex kiosk path.
+
+## Torrent sources and packaged resolvers
+
+For optional BitTorrent playback and operator-installed source resolvers, see
+[Media companion](media-companion.md). Its temporary piece cache is separate
+from Local videos, which continues to read original files without importing them.

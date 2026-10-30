@@ -619,6 +619,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "إعدادات MaxTV",
     Media: "وسائل الإعلام",
+    "Media companion": "خدمة الوسائط",
     "Media item is no longer available": "لم يعد عنصر الوسائط متوفرًا",
     "Media Library": "مكتبة الوسائط",
     "Media Library URL": "مكتبة الوسائط URL",

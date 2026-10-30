@@ -634,6 +634,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV sazlamalary",
     Media: "Mediýa",
+    "Media companion": "Media hyzmaty",
     "Media item is no longer available": "Media elementi indi elýeterli däl",
     "Media Library": "Media kitaphanasy",
     "Media Library URL": "Media kitaphanasynyň URL salgysy",

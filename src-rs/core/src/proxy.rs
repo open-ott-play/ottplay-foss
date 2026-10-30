@@ -446,6 +446,115 @@ pub(crate) async fn post_json(
     .await
 }
 
+/// Strict resolver transport. This does not inherit playlist LAN exceptions,
+/// headers, redirects or environment proxies. The caller owns its deadline.
+pub(crate) async fn fetch_plugin_text(
+    raw: &str,
+    allowed_hosts: &[String],
+    max_bytes: usize,
+) -> Result<String, &'static str> {
+    let url = plugin_url(raw, allowed_hosts)?;
+    let response = companion_get(url).await?;
+    plugin_response_text(response, max_bytes).await
+}
+
+/// Torrent metadata uses the same strict default address policy as resolvers.
+/// Unlike the configurable playlist proxy, it never opts into LAN origins.
+pub(crate) async fn fetch_companion_metadata(raw: &str) -> Result<Vec<u8>, &'static str> {
+    let url = Url::parse(raw).map_err(|_| "source_invalid")?;
+    if raw.len() > 16 * 1024
+        || raw.trim() != raw
+        || raw.chars().any(char::is_control)
+        || !matches!(url.scheme(), "http" | "https")
+        || !matches!(url.port_or_known_default(), Some(80 | 443))
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.fragment().is_some()
+        || url.host_str().is_none()
+    {
+        return Err("source_invalid");
+    }
+    tokio::time::timeout(TIMEOUT, async {
+        let response = companion_get(url).await?;
+        companion_response_bytes(response, 1024 * 1024).await
+    })
+    .await
+    .map_err(|_| "source_timeout")?
+}
+
+async fn companion_get(url: Url) -> Result<reqwest::Response, &'static str> {
+    let addresses = Policy::default()
+        .resolve(&url)
+        .await
+        .map_err(|_| "plugin_network_denied")?;
+    let client = Client::builder()
+        .no_proxy()
+        .redirect(redirect::Policy::none())
+        .no_gzip()
+        .no_brotli()
+        .no_deflate()
+        .no_zstd()
+        .resolve_to_addrs(url.host_str().ok_or("plugin_network_denied")?, &addresses)
+        .build()
+        .map_err(|_| "plugin_network_failed")?;
+    client
+        .get(url)
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send()
+        .await
+        .map_err(|_| "plugin_network_failed")
+}
+
+fn plugin_url(raw: &str, allowed_hosts: &[String]) -> Result<Url, &'static str> {
+    if raw.len() > 8192 || raw.trim() != raw || raw.chars().any(char::is_control) {
+        return Err("plugin_network_denied");
+    }
+    let url = Url::parse(raw).map_err(|_| "plugin_network_denied")?;
+    if url.scheme() != "https"
+        || url.port_or_known_default() != Some(443)
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.fragment().is_some()
+        || !allowed_hosts
+            .iter()
+            .any(|host| Some(host.as_str()) == url.host_str())
+    {
+        return Err("plugin_network_denied");
+    }
+    Ok(url)
+}
+
+async fn plugin_response_text(
+    response: reqwest::Response,
+    max_bytes: usize,
+) -> Result<String, &'static str> {
+    let bytes = companion_response_bytes(response, max_bytes).await?;
+    String::from_utf8(bytes).map_err(|_| "plugin_network_failed")
+}
+
+async fn companion_response_bytes(
+    response: reqwest::Response,
+    max_bytes: usize,
+) -> Result<Vec<u8>, &'static str> {
+    if !response.status().is_success()
+        || response
+            .headers()
+            .get_all(reqwest::header::CONTENT_ENCODING)
+            .iter()
+            .any(|value| {
+                value
+                    .to_str()
+                    .map_or(true, |value| !value.eq_ignore_ascii_case("identity"))
+            })
+    {
+        return Err("plugin_network_failed");
+    }
+    let (_, bytes) = read_bounded(response, max_bytes)
+        .await
+        .map_err(|_| "plugin_network_limit")?;
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -855,8 +964,10 @@ mod tests {
     async fn overload_rejects_without_running_work_and_errors_release_permits() {
         let requests = Semaphore::new(1);
         let held = requests.acquire().await.unwrap();
-        let result: Result<(), String> =
-            limited(&requests, TIMEOUT, async { panic!("busy work must not run") }).await;
+        let result: Result<(), String> = limited(&requests, TIMEOUT, async {
+            panic!("busy work must not run")
+        })
+        .await;
         assert_eq!(result.unwrap_err(), "Proxy is busy; retry later");
         drop(held);
         let failed: Result<(), String> =
@@ -875,15 +986,74 @@ mod tests {
     #[tokio::test]
     async fn deadline_cancels_pending_work_and_releases_its_slot() {
         let requests = Semaphore::new(1);
-        let result = limited::<()>(
-            &requests,
-            Duration::from_millis(10),
-            std::future::pending(),
-        )
-        .await;
+        let result =
+            limited::<()>(&requests, Duration::from_millis(10), std::future::pending()).await;
         assert_eq!(result.unwrap_err(), "Proxy request timed out");
         assert_eq!(requests.available_permits(), 1);
         let completed = limited(&requests, PLAYLIST_TIMEOUT, async { Ok(7) }).await;
         assert_eq!(completed.unwrap(), 7);
+    }
+
+    #[test]
+    fn plugin_transport_requires_exact_https_host_without_credentials() {
+        let hosts = vec!["media.example".to_owned()];
+        assert!(plugin_url("https://media.example/catalog.json", &hosts).is_ok());
+        for url in [
+            "http://media.example/catalog.json",
+            "https://media.example:8443/catalog.json",
+            "https://media.example.evil/catalog.json",
+            "https://other.example/catalog.json",
+            "https://user:secret@media.example/catalog.json",
+            "https://media.example/catalog.json#fragment",
+            " https://media.example/catalog.json",
+        ] {
+            assert_eq!(
+                plugin_url(url, &hosts).unwrap_err(),
+                "plugin_network_denied"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn companion_fetch_rejects_local_addresses_even_when_host_is_listed() {
+        for host in ["127.0.0.1", "169.254.169.254", "192.168.1.1", "[::1]"] {
+            let url = format!("https://{host}/catalog");
+            assert_eq!(
+                fetch_plugin_text(&url, &[host.to_owned()], 1024)
+                    .await
+                    .unwrap_err(),
+                "plugin_network_denied"
+            );
+            assert_eq!(
+                fetch_companion_metadata(&url).await.unwrap_err(),
+                "plugin_network_denied"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn plugin_response_limits_reject_redirects_encoding_and_oversized_bodies() {
+        for (response, expected) in [
+            (b"HTTP/1.1 302 Found\r\nLocation: https://media.example/next\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".as_slice(), "plugin_network_failed"),
+            (b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".as_slice(), "plugin_network_failed"),
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 9\r\nConnection: close\r\n\r\n123456789".as_slice(), "plugin_network_limit"),
+            (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n9\r\n123456789\r\n0\r\n\r\n".as_slice(), "plugin_network_limit"),
+        ] {
+            let (address, task) = fixture(response).await;
+            let url = http_url(&format!("http://response-fixture.invalid:{}/catalog", address.port())).unwrap();
+            let received = request_pinned(url, "fixture", &[address]).await.unwrap();
+            assert_eq!(plugin_response_text(received, 8).await.unwrap_err(), expected);
+            task.await.unwrap();
+        }
+        let (address, task) =
+            fixture(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").await;
+        let url = http_url(&format!(
+            "http://response-fixture.invalid:{}/catalog",
+            address.port()
+        ))
+        .unwrap();
+        let received = request_pinned(url, "fixture", &[address]).await.unwrap();
+        assert_eq!(plugin_response_text(received, 8).await.unwrap(), "{}");
+        task.await.unwrap();
     }
 }

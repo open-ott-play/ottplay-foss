@@ -567,8 +567,25 @@ const TIZEN_PACKAGE_BOOT_ALLOWANCE = Object.freeze({
     bytes: 116,
     gzipBytes: 95,
 });
+// Media companion dispatch/settings remain small at startup; session resolution,
+// file selection and packaged plugin UI live in a separately bounded family.
+// Paired Node22 measurements and explicit source/release reserves are recorded
+// in docs/evidence/media-companion-size-20261030.json. Count each allowance once.
+const MEDIA_COMPANION_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 2261,
+    gzipBytes: 795,
+});
+const MEDIA_COMPANION_SETTINGS_ALLOWANCE = Object.freeze({
+    bytes: 36,
+    gzipBytes: 9,
+});
+const MEDIA_COMPANION_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 12260,
+    gzipBytes: 4609,
+});
 const BUDGET = Object.freeze({
     bytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -587,6 +604,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -784,6 +802,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -806,6 +825,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -856,6 +876,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
     "local-compatibility": Object.freeze({ bytes: 4800, gzipBytes: 1900 }),
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
+    "media-companion": MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
     // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
@@ -880,8 +901,8 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // are optional. Node22 level9: extras5651/2255, combined entry1038397/320895.
     "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
     "remote-settings-lifecycle": Object.freeze({
-        bytes: 31000,
-        gzipBytes: 10000,
+        bytes: 31000 + MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes,
+        gzipBytes: 10000 + MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes,
     }),
     // Pure legacy snapshot projections move out of startup; no new polling.
     "runtime-debug-details": Object.freeze({ bytes: 3800, gzipBytes: 1900 }),
@@ -899,6 +920,9 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
+        MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
         STB_PLAYER_ENTRY_ALLOWANCE.bytes +
@@ -930,6 +954,9 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
         STB_PLAYER_ENTRY_ALLOWANCE.gzipBytes +
@@ -1140,6 +1167,9 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localCompatibilityAllowance: LOCAL_COMPATIBILITY_ALLOWANCE,
         localStallRecoveryAllowance: LOCAL_STALL_RECOVERY_ALLOWANCE,
         localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+        mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
+        mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
         mixedGlobalFavoritesEntryAllowance:
             MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
         mixedGlobalFavoritesOptionalAllowance:
@@ -1458,6 +1488,9 @@ function writeBuildBundleReport(
             favoritesTransferPlexAllowance: FAVORITES_TRANSFER_PLEX_ALLOWANCE,
             inputErrors,
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
+            mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
+            mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+            mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
             mixedGlobalFavoritesEntryAllowance:
                 MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
             mixedGlobalFavoritesOptionalAllowance:
@@ -1561,6 +1594,9 @@ module.exports = {
     LOCAL_COMPATIBILITY_ALLOWANCE,
     LOCAL_STALL_RECOVERY_ALLOWANCE,
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
+    MEDIA_COMPANION_ENTRY_ALLOWANCE,
+    MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+    MEDIA_COMPANION_SETTINGS_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,

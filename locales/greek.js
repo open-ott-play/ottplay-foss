@@ -656,6 +656,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Ρυθμίσεις MaxTV",
     Media: "Πολυμέσα",
+    "Media companion": "Υπηρεσία πολυμέσων",
     "Media item is no longer available":
         "Το στοιχείο πολυμέσων δεν είναι πλέον διαθέσιμο",
     "Media Library": "Βιβλιοθήκη πολυμέσων",

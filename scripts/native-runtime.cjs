@@ -161,6 +161,14 @@ function stageNativeRuntime(directory, platform) {
     for (const [source, destination] of [
         ["LICENSE", "licenses/project-MIT.txt"],
         ["js/licenses/SJCL-1.0.9.txt", "licenses/SJCL-1.0.9.txt"],
+        [
+            "js/licenses/media-companion-native.txt",
+            "licenses/native/media-companion-native.txt",
+        ],
+        [
+            "js/licenses/media-companion-native-sources.json",
+            "licenses/native/media-companion-native-sources.json",
+        ],
         ["docs/privacy-policy.md", "privacy-policy.txt"],
         ["THIRD-PARTY-NOTICES.md", "third-party-notices.txt"],
     ])
@@ -233,6 +241,15 @@ function auditNativeRuntime(directory) {
     );
     assert.equal(manifest.fonts, "system");
     assert.equal(manifest.components.length, LIBRARIES.length);
+    for (const name of [
+        "media-companion-native.txt",
+        "media-companion-native-sources.json",
+    ])
+        assert.equal(
+            sha(fs.readFileSync(path.join(directory, "licenses/native", name))),
+            sha(fs.readFileSync(path.join(root, "js/licenses", name))),
+            "Media companion dependency notices must remain intact: " + name
+        );
     if (manifest.platform === "tauri")
         assert.equal(
             sha(

@@ -650,6 +650,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Cilësimet MaxTV",
     Media: "Media",
+    "Media companion": "Shërbimi i medias",
     "Media item is no longer available": "Artikull media nuk disponohet më",
     "Media Library": "Biblioteka mediatike",
     "Media Library URL": "URL-ja e bibliotekës së mediave",

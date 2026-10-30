@@ -41,6 +41,7 @@ for (const [name, version] of [
     ["tao", "0.35.3"],
     ["glib", "0.18.5"],
     ["block", "0.1.6"],
+    ["librqbit", "9.1.0"],
 ]) {
     const entry = `name = "${name}"\nversion = "${version}"`;
     // Keeping the patch stanza must not mask a registry-resolved package.

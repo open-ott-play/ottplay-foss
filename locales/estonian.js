@@ -633,6 +633,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV seaded",
     Media: "Meedia",
+    "Media companion": "Meediateenus",
     "Media item is no longer available": "Meediumiüksus pole enam saadaval",
     "Media Library": "Meediumiteek",
     "Media Library URL": "Meediumiteek URL",

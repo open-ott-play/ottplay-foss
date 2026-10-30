@@ -619,6 +619,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ছেটিংছ",
     Media: "মিডিয়া",
+    "Media companion": "মিডিয়া সেৱা",
     "Media item is no longer available": "মিডিয়া বস্তুটো আৰু উপলব্ধ নহয়",
     "Media Library": "মিডিয়া লাইব্ৰেৰী",
     "Media Library URL": "মিডিয়া লাইব্ৰেৰীৰ URL",
