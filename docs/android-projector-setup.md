@@ -133,6 +133,18 @@ ADB server, keep its `-P PORT` option on **all** commands, including `connect` a
 adb -s "$OTT_ADB_SERIAL" shell getprop ro.build.version.release
 adb -s "$OTT_ADB_SERIAL" shell getprop ro.build.version.sdk
 adb -s "$OTT_ADB_SERIAL" shell getprop ro.product.cpu.abilist
+```
+
+The shell-based Home setup and verification below require **Android 7 / API 24
+or newer**. On **Android 5.1–6 / API 22–23**, use the UI-only Home setup,
+visual boot verification and default-Home rollback described below instead;
+`am get-current-user` and the `cmd package` Home commands are unavailable there.
+ADB installation and the basic device-information commands above can still be
+used on these older versions.
+
+On API 24 or newer, check the current Android user:
+
+```sh
 adb -s "$OTT_ADB_SERIAL" shell am get-current-user
 ```
 
@@ -141,8 +153,9 @@ different user, substitute that user in every `--user` command. Keep network ADB
 on a trusted LAN; do not forward its port to the internet. See the
 [official ADB connection guide](https://developer.android.com/tools/adb).
 
-**UI-only alternative:** if installing apps works but ADB is unavailable, install
-OTTPlay using the file manager, configure playback in its UI, and open
+**UI-only / Android 5.1–6 alternative:** if ADB is unavailable, install OTTPlay
+using the file manager. On API 22–23, either installation method is suitable,
+but use this UI path for Home setup. Configure playback in OTTPlay's UI and open
 `HomeSetupActivity` with Activity Launcher as described in step 6. Record the
 current manufacturer launcher name in Android's default-app settings before
 changing it; use that same settings page for rollback. Skip the ADB commands and
@@ -168,6 +181,12 @@ same release's `release-manifest.json`. For example, on macOS:
 
 ```sh
 shasum -a 256 /path/to/ottplay-foss-android-full.apk
+```
+
+Compare the printed hash with the release manifest. **Continue only if they
+match**; otherwise obtain and verify the correct download before installing.
+
+```sh
 adb -s "$OTT_ADB_SERIAL" install -r /path/to/ottplay-foss-android-full.apk
 adb -s "$OTT_ADB_SERIAL" shell dumpsys package play.ott.foss
 ```
