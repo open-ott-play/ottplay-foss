@@ -220,7 +220,7 @@ function createMediaCompanion(
     }
     function resolve(
         source: string,
-        done: (value: string | null) => void,
+        done: (value: string | null, transport?: "file" | "stream") => void,
         options?: any
     ): () => void {
         var lease: any = {
@@ -250,7 +250,11 @@ function createMediaCompanion(
             });
         }
         lease.cancel = cleanup;
-        function finish(error?: any, result?: string): void {
+        function finish(
+            error?: any,
+            result?: string,
+            transport?: "file" | "stream"
+        ): void {
             if (!lease.active || completed) return;
             completed = true;
             clearTimeout(timer);
@@ -259,7 +263,7 @@ function createMediaCompanion(
                 lease.error = String(error.message || "companion_unavailable");
                 cleanup();
             }
-            done(result || null);
+            done(result || null, transport);
         }
         function current(): boolean {
             if (
@@ -338,7 +342,7 @@ function createMediaCompanion(
                     finish(fail("companion_receipt_invalid"));
                     return;
                 }
-                finish(undefined, lease.base + "/" + path);
+                finish(undefined, lease.base + "/" + path, "file");
                 heartbeat();
                 return;
             }
@@ -447,7 +451,15 @@ function createMediaCompanion(
                         if (caps.torrent === true) torrent(url);
                         else finish(fail("companion_torrent_unavailable"));
                     } else if (/^https?:\/\//i.test(url))
-                        finish(undefined, url);
+                        finish(
+                            undefined,
+                            url,
+                            /\.(mp4|m4v|webm|mov|ogv)$/i.test(
+                                new URL(url).pathname
+                            )
+                                ? "file"
+                                : "stream"
+                        );
                     else finish(fail("companion_source_invalid"));
                 }, finish);
             } else if (caps.torrent === true) torrent(source);

@@ -482,3 +482,290 @@ console.log(
 console.log(
     "playback feedback: live OSD handoff preserves deadlines, engine recovery and terminal errors PASS"
 );
+
+// Exercise the actual resolver, core handoff, engine lease and feedback together.
+// Only HTTP receipts and the final decoder attachment are simulated.
+function companionCoreFixture() {
+    const f = fixture(),
+        w = f.w,
+        decoded = [],
+        callbacks = [];
+    const base = "http://127.0.0.1/companion/" + "a".repeat(32) + "/v1";
+    const state = { created: 0, ready: false };
+    let playCalls = 0;
+    Object.assign(w, {
+        _coreAutoHlsUsed: false,
+        _corePauseRevision: 0,
+        _corePendingSeekPosition: null,
+        _coreSeekRevision: 0,
+        _coreShakaTeardown: null,
+        _playSession: 0,
+        $: () => ({ hide() {} }),
+        cancelCoreAutoPlayback() {},
+        cancelCoreCompat() {},
+        cancelCoreNativeHls() {},
+        cancelCoreSeek() {},
+        clearPlayTimeInterval() {},
+        coreCompanionPreparing: false,
+        coreCompanionRelease: null,
+        coreCompat: () => false,
+        coreDeviceEffects: {},
+        corePlexPlaybackHint: () => "",
+        coreSourcePreparationCancel: null,
+        coreStreamAttempt: null,
+        countCoreAttempt() {},
+        destroyCoreShaka() {},
+        fetch: async (url, options) => {
+            const path = url.slice(base.length + 1);
+            const id = path.split("/")[1];
+            const value =
+                path === "capabilities"
+                    ? { schema: 1, torrent: true }
+                    : path === "sessions"
+                      ? { id: "s" + ++state.created, state: "metadata" }
+                      : state.ready
+                        ? {
+                              id,
+                              state: "ready",
+                              streamPath: "sessions/" + id + "/stream",
+                          }
+                        : { id, state: "metadata" };
+            return {
+                json: async () => value,
+                ok: true,
+                status: options.method === "DELETE" ? 204 : 200,
+            };
+        },
+        hlsInstance: null,
+        playCoreMedia: () => w.video.play(),
+        resetCoreNativeBitrate() {},
+        setCoreDemoMute() {},
+        settings: { companionEndpoint: base },
+        showShift() {},
+        startCorePlayback: (url) => {
+            decoded.push(url);
+            w.video.src = url;
+            f.event("loadstart");
+        },
+        video: f.video,
+    });
+    f.video.pause = () => {
+        f.pause(true);
+        f.event("pause");
+    };
+    f.video.play = () => {
+        playCalls++;
+        f.pause(false);
+        f.event("play");
+    };
+    f.video.load = () => {};
+    const ast = ts.createSourceFile(
+        "src/core/index.ts",
+        fs.readFileSync("src/core/index.ts", "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const names = [
+        "cancelCoreSourcePreparation",
+        "cancelCoreStreamAttempt",
+        "coreNormalizedMse",
+        "coreNormalizedTimeout",
+        "coreStreamFailure",
+        "createCoreStreamAttempt",
+        "openCoreEngineLease",
+        "releaseCoreCompanion",
+        "startCoreEngine",
+        "stopCoreEngine",
+    ];
+    const nodes = ast.statements.filter(
+        (node) =>
+            ts.isFunctionDeclaration(node) && names.includes(node.name?.text)
+    );
+    assert.equal(nodes.length, names.length);
+    w.eval(
+        ts.transpileModule(nodes.map((node) => node.getText(ast)).join("\n"), {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText
+    );
+    w.eval(
+        ts.transpileModule(
+            fs.readFileSync("src/plugins/media-companion.ts", "utf8"),
+            {
+                compilerOptions: { target: ts.ScriptTarget.ES5 },
+            }
+        ).outputText
+    );
+    const client = w.__ottMediaCompanionFactory(w);
+    w.__ottMediaCompanion = {
+        isSource: client.isSource,
+        resolve: (source, done) => {
+            callbacks.push(done);
+            return client.resolve(source, done);
+        },
+    };
+    return Object.assign(f, {
+        callbacks,
+        client,
+        decoded,
+        open: (url = "magnet:?xt=urn:btih:" + "0".repeat(40), options = {}) =>
+            w.openCoreEngineLease({ ...options, url }, () => {}),
+        playCalls: () => playCalls,
+        state,
+        step: async (ms) => {
+            f.advance(ms);
+            for (let i = 0; i < 30; i++) await Promise.resolve();
+        },
+    });
+}
+
+async function companionFeedbackTests() {
+    {
+        const f = companionCoreFixture();
+        const handle = f.open();
+        await f.step(0);
+        f.event("loadstart");
+        f.video.currentTime = 4;
+        f.event("timeupdate");
+        await f.step(31000);
+        assert.equal(f.text(), "Connecting...");
+        assert.equal(
+            f.busy(),
+            true,
+            "old decoder events cannot clear preparation"
+        );
+        assert.equal(f.decoded.length, 0);
+        handle.pause();
+        await f.step(1000);
+        assert.equal(f.busy(), false);
+        handle.resume();
+        assert.equal(
+            f.playCalls(),
+            0,
+            "resume must not play the previous source"
+        );
+        assert.equal(f.busy(), true);
+        await f.step(15000);
+        f.state.ready = true;
+        await f.step(750);
+        assert.equal(
+            f.decoded.length,
+            1,
+            "slow metadata still reaches the decoder"
+        );
+        await f.step(29000);
+        assert.doesNotMatch(f.text(), /timed out/);
+        await f.step(1000);
+        assert.match(
+            f.text(),
+            /timed out/,
+            "decoder has its own normal deadline"
+        );
+        handle.dispose();
+        f.w.close();
+    }
+    {
+        const f = companionCoreFixture();
+        const handle = f.open();
+        await f.step(0);
+        for (const backoff of [500, 1000]) {
+            await f.step(31000);
+            handle.pause();
+            await f.step(1000);
+            handle.resume();
+            await f.step(28000);
+            assert.equal(
+                f.client.status().error,
+                "companion_timeout",
+                "pause/resume does not extend the resolver deadline"
+            );
+            assert.equal(f.w.coreStreamAttempt.state().pending, true);
+            assert.doesNotMatch(f.text(), /timed out/);
+            await f.step(backoff);
+        }
+        await f.step(60000);
+        assert.equal(f.state.created, 3);
+        assert.equal(f.w.coreStreamAttempt.state().terminal, true);
+        assert.match(f.text(), /connection failed/);
+        assert.equal(
+            f.busy(),
+            false,
+            "exhausted preparation is bounded and terminal"
+        );
+        assert.equal(f.decoded.length, 0);
+        handle.dispose();
+        f.w.close();
+    }
+    {
+        const f = companionCoreFixture();
+        const handle = f.open(undefined, { transient: true });
+        await f.step(0);
+        await f.step(60000);
+        assert.equal(f.w.coreStreamAttempt, null);
+        assert.equal(f.state.created, 1);
+        assert.match(f.text(), /connection failed/);
+        assert.equal(
+            f.busy(),
+            false,
+            "a transient source fails without a retry owner"
+        );
+        handle.dispose();
+        f.w.close();
+    }
+    {
+        const f = companionCoreFixture();
+        const handle = f.open();
+        await f.step(0);
+        handle.pause();
+        f.state.ready = true;
+        await f.step(750);
+        assert.equal(f.decoded.length, 1);
+        assert.equal(
+            f.busy(),
+            false,
+            "preparation finishing while paused stays quiet"
+        );
+        handle.resume();
+        assert.equal(f.playCalls(), 1);
+        assert.equal(f.busy(), true);
+        handle.dispose();
+        assert.equal(f.client.status().active, false);
+        assert.equal(f.w.coreCompanionPreparing, false);
+        f.w.close();
+    }
+    for (const replacement of [false, true]) {
+        const f = companionCoreFixture();
+        const handle = f.open();
+        await f.step(0);
+        await f.step(10000);
+        handle.dispose();
+        const next = replacement
+            ? f.open("https://media.invalid/next.mp4")
+            : null;
+        await f.step(20000);
+        f.callbacks[0]("https://media.invalid/stale.mp4");
+        await f.step(10000);
+        assert.equal(f.decoded.length, replacement ? 1 : 0);
+        assert.equal(f.client.status().active, false);
+        if (replacement)
+            assert.match(
+                f.text(),
+                /timed out/,
+                "retired callback cannot renew next source's deadline"
+            );
+        else
+            assert.equal(
+                f.text(),
+                "",
+                "retired callback cannot reopen stopped feedback"
+            );
+        if (next) next.dispose();
+        f.w.close();
+    }
+    console.log(
+        "playback feedback: resolver-owned preparation, decoder deadline, pause/resume, bounded retries and cancellation PASS"
+    );
+}
+companionFeedbackTests().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

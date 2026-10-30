@@ -56,3 +56,26 @@ headroom stays at 128 raw / 128 gzip bytes. Entry, provider, legacy-total and
 unrelated optional limits stay fixed. The original companion and Modern receipts
 retain their recorded figures; tests subtract this transport increment when
 checking those earlier measurements.
+
+## Preparation and playback deadlines
+
+The [preparation receipt](evidence/media-companion-preparation-size-20261030.json)
+compares the compiled assets from `00cddd0107033805e4f2a502b0f1801d590037f8`
+with the separate source-preparation phase. This prevents a decoder-start timeout
+while the source is still being prepared within its own bounded deadline.
+
+Only the entry changes: 445 raw bytes in each output, 122 gzip bytes for web and
+124 gzip bytes for Tauri/mobile. Every provider and optional asset is unchanged.
+`MEDIA_COMPANION_PREPARATION_ALLOWANCE` adds exactly 445 raw / 124 gzip bytes
+once to entry, legacy-total and complete-payload caps, with no extra reserve.
+The generated web offline worker also gets a new content fingerprint; it adds
+no raw bytes. Historical receipts keep their original figures and limits.
+
+## Finite-stream decoder routing
+
+The [routing receipt](evidence/media-companion-playback-routing-size-20261030.json)
+uses the compiled preparation-fix working tree as its baseline. Selecting the
+direct media decoder for finite companion files adds 37 raw / at most 59 gzip
+bytes to the entry and 82 raw / 26 gzip bytes to the companion optional asset.
+All provider and other optional assets are unchanged. These additions fit the
+existing limits, so this change receives no additional budget allocation.

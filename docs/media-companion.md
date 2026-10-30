@@ -12,6 +12,21 @@ Local videos still reads original files without importing them into this cache.
 - Browser, hosted, Android and television web clients use a configured reachable
   endpoint. Their web bundle does not contain a TCP/UDP torrent engine.
 
+```mermaid
+flowchart LR
+    T[Tauri player] --> L[Private loopback companion]
+    W[Browser / hosted / Android / TV] --> S[Configured OTT server companion]
+    L --> V[Per-viewer torrent session]
+    S --> V
+    L --> P[Packaged resolver]
+    S --> P
+    V --> C[Bounded verified-piece cache]
+    C --> R[HTTP byte ranges]
+    P --> U[Resolved source URL]
+    R --> E[Player video engine]
+    U --> E
+```
+
 HTTPS, browser local-network permissions and network reachability still apply.
 The webOS and Tizen packages do not install a native torrent service on the TV;
 those clients can use the service on a computer or NAS.
@@ -34,6 +49,13 @@ the file list and starts a supported video file. Use the companion file list to
 choose another. References use stable zero-based file indices. Metadata loading
 has a deadline and can be cancelled.
 
+Source preparation shows **Connecting...** while the companion resolves the
+source, with a 60-second limit per resolution attempt. Loading the optional
+client beforehand has its own 15-second limit. The normal decoder startup
+deadline begins only after a playback URL is ready. Pause/resume does not
+extend source resolution or start the previous source while preparation is
+pending. Cancelling or switching sources discards late results.
+
 M3U entries can contain these source URIs too. Favorites for those catalogue
 entries retain the playlist identity and original source, never temporary lease
 URLs. The manual source editor opens a temporary item; it does not create a new
@@ -41,6 +63,12 @@ provider catalogue or a Favorites entry. Each playback
 gets a fresh viewer lease. Seeking reads byte ranges from the selected file.
 Codec support still depends on the video engine; receiving a file does not make
 an unsupported codec playable. External AceStream engines remain separate.
+
+Torrent file responses and resolver URLs with a recognized video-file extension
+use file playback without changing the saved streaming-engine preference.
+Other resolver URLs follow that preference. If a resolver returns a file URL
+without an extension, choose Auto or HTML5; the client does not probe arbitrary
+endpoints to guess their format.
 
 For a catalogue entry, add the original source to your own M3U:
 

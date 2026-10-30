@@ -590,6 +590,13 @@ const MEDIA_COMPANION_TRANSPORT_ALLOWANCE = Object.freeze({
     bytes: 412,
     gzipBytes: 125,
 });
+// Source preparation has its own bounded deadline before decoder startup.
+// Paired Node22 entry delta; provider/optional assets remain byte-identical.
+// Evidence: docs/evidence/media-companion-preparation-size-20261030.json.
+const MEDIA_COMPANION_PREPARATION_ALLOWANCE = Object.freeze({
+    bytes: 445,
+    gzipBytes: 124,
+});
 // Opt-in Modern presentation: measured separately from the existing catalogue.
 // Entry contains only settings, loader and repaint hooks; the renderer stays lazy.
 // Evidence: docs/evidence/modern-interface-size-20261030.json.
@@ -609,6 +616,7 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
 const BUDGET = Object.freeze({
     bytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
@@ -629,6 +637,7 @@ const BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
@@ -828,6 +837,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.bytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.bytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.bytes +
@@ -852,6 +862,7 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_ENTRY_ALLOWANCE.gzipBytes +
         TIZEN_PACKAGE_BOOT_ALLOWANCE.gzipBytes +
         CATEGORY_NAVIGATION_ENTRY_ALLOWANCE.gzipBytes +
@@ -975,6 +986,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
         MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes +
@@ -1016,6 +1028,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes +
@@ -1237,6 +1250,8 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         localStartupPreviewAllowance: LOCAL_STARTUP_PREVIEW_ALLOWANCE,
         mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
         mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        mediaCompanionPreparationAllowance:
+            MEDIA_COMPANION_PREPARATION_ALLOWANCE,
         mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
         mediaCompanionTransportAllowance: MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
         mixedGlobalFavoritesEntryAllowance:
@@ -1559,6 +1574,8 @@ function writeBuildBundleReport(
             legacyTotalBudget: LEGACY_TOTAL_BUDGET,
             mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
             mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+            mediaCompanionPreparationAllowance:
+                MEDIA_COMPANION_PREPARATION_ALLOWANCE,
             mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
             mediaCompanionTransportAllowance:
                 MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
@@ -1667,6 +1684,7 @@ module.exports = {
     LOCAL_STARTUP_PREVIEW_ALLOWANCE,
     MEDIA_COMPANION_ENTRY_ALLOWANCE,
     MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+    MEDIA_COMPANION_PREPARATION_ALLOWANCE,
     MEDIA_COMPANION_SETTINGS_ALLOWANCE,
     MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,

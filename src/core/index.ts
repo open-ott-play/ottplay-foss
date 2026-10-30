@@ -1395,7 +1395,9 @@ function coreStreamFailure(
 }
 var coreSourcePreparationCancel: (() => void) | null = null;
 var coreCompanionRelease: (() => void) | null = null;
+var coreCompanionPreparing = false;
 function releaseCoreCompanion(): void {
+    coreCompanionPreparing = false;
     if (coreCompanionRelease) coreCompanionRelease();
     coreCompanionRelease = null;
 }
@@ -1410,7 +1412,8 @@ function startCoreEngine(
     observe?: () => void,
     paused = false,
     sourceUrl = url,
-    transient = false
+    transient = false,
+    transport?: MediaSourceTransport
 ): void {
     function retireCompatibility(next?: string): void {
         var previous = (window as any).__ottCoreCompatibilityUrl;
@@ -1634,7 +1637,9 @@ function startCoreEngine(
                 position,
                 session,
                 url,
-                transient || plexHint === "file" || localFile,
+                transport === "file" ||
+                    (transport !== "stream" &&
+                        (transient || plexHint === "file" || localFile)),
                 (!transient && plexHint === "mse") || !!coreCompat(url)
             );
             if (
@@ -1677,16 +1682,36 @@ function startCoreEngine(
         var companion = (window as any).__ottMediaCompanion;
         if (companion && companion.isSource(url)) {
             releaseCoreCompanion();
+            coreCompanionPreparing = true;
+            var feedback = (window as any).__ottPlaybackFeedback;
+            if (feedback) feedback.prepare((window as any).forcePlay === false);
             coreCompanionRelease = companion.resolve(
                 url,
-                function (resolved: string | null) {
+                function (
+                    resolved: string | null,
+                    resolvedTransport?: MediaSourceTransport
+                ) {
                     if (
                         session !== _playSession ||
-                        currentRevision !== revision
+                        currentRevision !== revision ||
+                        (streamOwner && !streamOwner.active())
                     )
                         return;
-                    if (resolved) prepare(resolved);
-                    else coreStreamFailure("network");
+                    coreCompanionPreparing = false;
+                    transport = resolvedTransport;
+                    if (resolved) {
+                        if (feedback)
+                            feedback.begin(
+                                (window as any).forcePlay === false,
+                                false,
+                                coreNormalizedTimeout(resolved)
+                            );
+                        prepare(resolved);
+                    } else {
+                        coreStreamFailure("network");
+                        if (!coreStreamAttempt && feedback)
+                            feedback.fail("network");
+                    }
                 }
             );
         } else if (url.indexOf("ottplay-stalker:") === 0 || coreCompat(url)) {
@@ -1762,6 +1787,7 @@ function startCoreEngine(
                       // Shaka must finish its own pending MediaSource transition.
                       if (!_coreShakaTeardown) video.removeAttribute("src");
                   }
+                  transport = undefined;
                   url = next;
                   _coreAutoHlsUsed = false;
                   if (_coreShakaTeardown) {
@@ -3018,7 +3044,11 @@ export function stbSubtitleExists(): number {
  *
  * Side effects: Shows #videopip; attaches hls.js or native src; calls videoPip!.play().
  */
-function startCorePipEngine(url: string, engineLoaded = false): void {
+function startCorePipEngine(
+    url: string,
+    engineLoaded = false,
+    transport?: MediaSourceTransport
+): void {
     var previousCompatibilityUrl = (window as any).__ottCorePipCompatibilityUrl;
     if (previousCompatibilityUrl && previousCompatibilityUrl !== url)
         cancelCoreCompat(previousCompatibilityUrl);
@@ -3032,11 +3062,14 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         : playerMode === 3
           ? coreAutoMode(url, videoPip)
           : playerMode;
-    var local = !!(
-        (window as any).__ottLocalMedia &&
-        (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
-        !coreCompat(url)
-    );
+    var local =
+        transport === "file" ||
+        (transport !== "stream" &&
+            !!(
+                (window as any).__ottLocalMedia &&
+                (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
+                !coreCompat(url)
+            ));
     if (
         !engineLoaded &&
         !local &&
@@ -3044,7 +3077,8 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
         typeof (window as any).__ottLoadMediaEngine === "function"
     ) {
         loadCoreMediaEngine("hls", function () {
-            if (session === _corePipSession) startCorePipEngine(url, true);
+            if (session === _corePipSession)
+                startCorePipEngine(url, true, transport);
         });
         return;
     }
@@ -3053,11 +3087,7 @@ function startCorePipEngine(url: string, engineLoaded = false): void {
     var demoMp4 =
         ((window as any).ottplayDemoActive === true &&
             /\/demo\/pattern\.mp4(?:[?#]|$)/i.test(url)) ||
-        !!(
-            (window as any).__ottLocalMedia &&
-            (window as any).__ottLocalMedia.isPlaybackUrl(url) &&
-            !coreCompat(url)
-        );
+        local;
     if (_corePipAutoCancel) _corePipAutoCancel();
     _corePipAutoCancel = null;
     if (hlsPipInstance) {
@@ -4095,7 +4125,10 @@ export function getCoreMediaBackend(): any {
                 playback.observedPosition(position);
         },
         open: openCoreEngineLease,
-        resolve: function (url: string, done: (url: string | null) => void) {
+        resolve: function (
+            url: string,
+            done: (url: string | null, transport?: MediaSourceTransport) => void
+        ) {
             var companion = (window as any).__ottMediaCompanion;
             if (companion && companion.isSource(url))
                 return companion.resolve(url, done);
@@ -4401,6 +4434,11 @@ function openCoreEngineLease(
                 (window as any).forcePlay === false;
             if (!pip && waitingForPlayback) _corePauseRevision++;
             (window as any).forcePlay = true;
+            var feedback = !pip && (window as any).__ottPlaybackFeedback;
+            if (!pip && coreCompanionPreparing) {
+                if (feedback) feedback.prepare();
+                return;
+            }
             if (
                 !pip &&
                 waitingForPlayback &&
@@ -4409,7 +4447,6 @@ function openCoreEngineLease(
                 seekCoreMedia(sourcePosition(), session);
                 return;
             }
-            var feedback = !pip && (window as any).__ottPlaybackFeedback;
             // Repeated Play on ready media emits no new playing event. It must
             // neither create a deadline nor extend an existing buffering wait.
             if (feedback && waitingForPlayback && !feedback.visible())
@@ -4442,7 +4479,7 @@ function openCoreEngineLease(
     try {
         if (pip) {
             observe();
-            startCorePipEngine(request.url);
+            startCorePipEngine(request.url, false, request.transport);
         } else
             startCoreEngine(
                 request.url,
@@ -4450,7 +4487,8 @@ function openCoreEngineLease(
                 observe,
                 request.paused === true,
                 request.sourceUrl || request.url,
-                request.transient === true
+                request.transient === true,
+                request.transport
             );
     } catch (error) {
         lease.dispose();

@@ -6,6 +6,7 @@ interface MediaBackendContext {
     position: number;
     sourceActive?(): boolean;
 }
+type MediaSourceTransport = "file" | "stream";
 interface MediaBackendRequest {
     context?: MediaBackendContext;
     lane?: string;
@@ -14,6 +15,7 @@ interface MediaBackendRequest {
     sourceUrl?: string;
     timelineOffset?: number;
     transient?: boolean;
+    transport?: MediaSourceTransport;
     url: string;
 }
 interface MediaBackendSample {
@@ -69,7 +71,10 @@ interface MediaBackendPorts {
         request: MediaBackendRequest,
         event: (type: string) => void
     ): MediaEngineLease;
-    resolve?(url: string, done: (url: string | null) => void): () => void;
+    resolve?(
+        url: string,
+        done: (url: string | null, transport?: MediaSourceTransport) => void
+    ): () => void;
     setInterval(callback: () => void, delay: number): any;
 }
 function createMediaBackend(ports: MediaBackendPorts) {
@@ -480,7 +485,10 @@ function createMediaBackend(ports: MediaBackendPorts) {
             function valid() {
                 return handle.active() && !suspended && token === attachment;
             }
-            function attach(url: string | null) {
+            function attach(
+                url: string | null,
+                transport?: MediaSourceTransport
+            ) {
                 if (resolved || !valid()) return;
                 resolved = true;
                 if (!url) {
@@ -499,6 +507,7 @@ function createMediaBackend(ports: MediaBackendPorts) {
                             position: request.position,
                             sourceUrl: request.url,
                             transient: !!previewEvent,
+                            transport: transport,
                             url: url,
                         },
                         function (type: string) {

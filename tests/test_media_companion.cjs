@@ -31,7 +31,8 @@ function fixture(custom = {}) {
     const calls = [],
         timers = new Map(),
         listeners = {},
-        outcomes = [];
+        outcomes = [],
+        transports = [];
     let sequence = 0,
         nativeCalls = 0;
     const response = (value) => ({
@@ -128,7 +129,14 @@ function fixture(custom = {}) {
         nativeCalls: () => nativeCalls,
         outcomes,
         resolve: (value = source, options) =>
-            client.resolve(value, (v) => outcomes.push(v), options),
+            client.resolve(
+                value,
+                (v, transport) => {
+                    outcomes.push(v);
+                    transports.push(transport);
+                },
+                options
+            ),
         tick: async (ms) => {
             const ready = [...timers].filter(([, t]) => t.ms === ms);
             ready.forEach(([key, t]) => {
@@ -138,6 +146,7 @@ function fixture(custom = {}) {
             await flush();
         },
         timers,
+        transports,
         w,
     };
 }
@@ -151,6 +160,7 @@ test("two viewers own distinct leases and preserve the durable source URI", asyn
         base + "/sessions/s1/stream",
         base + "/sessions/s2/stream",
     ]);
+    assert.deepEqual(f.transports, ["file", "file"]);
     assert.equal(f.client.status().source, source);
     assert.equal(f.calls.filter((c) => c.path.endsWith("/select")).length, 2);
     assert.equal(
@@ -385,11 +395,30 @@ test("plugin references resolve without persisting resolved URLs", async () => {
     f.resolve(input);
     await flush();
     assert.deepEqual(f.outcomes, ["https://media.invalid/two.mp4"]);
+    assert.deepEqual(f.transports, ["file"]);
     assert.equal(f.client.status().source, input);
     assert.equal(
         f.client.choices()[0].source.startsWith("ottplay-plugin:"),
         true
     );
+});
+test("plugin HLS, DASH and extensionless URLs keep stream transport even with file query values", async () => {
+    for (const url of [
+        "https://media.invalid/video.m3u8",
+        "https://media.invalid/video.mpd",
+        "https://media.invalid/play?name=movie.mp4",
+    ]) {
+        const f = fixture({
+            handle: (path) =>
+                path === "plugins/demo/resolve"
+                    ? { streams: [{ title: "Media", url }] }
+                    : undefined,
+        });
+        f.resolve("ottplay-plugin:demo?input=movie");
+        await flush();
+        assert.deepEqual(f.outcomes, [url]);
+        assert.deepEqual(f.transports, ["stream"]);
+    }
 });
 test("explicit torrent URL selection preserves the original fetch URL", async () => {
     const f = fixture();
@@ -510,7 +539,7 @@ test("lazy loader cancellation prevents service startup and keeps the completed 
         __ottMediaCompanionFactory: () => ({
             resolve: (_source, done) => {
                 started++;
-                done("ready");
+                done("ready", "file");
                 return () => released++;
             },
         }),
@@ -534,9 +563,10 @@ test("lazy loader cancellation prevents service startup and keeps the completed 
     await flush();
     assert.equal(started, 0);
     assert.deepEqual(results, []);
-    const release = w.__ottMediaCompanion.resolve(source, (v) =>
-        results.push(v)
-    );
+    const release = w.__ottMediaCompanion.resolve(source, (v, transport) => {
+        assert.equal(transport, "file");
+        results.push(v);
+    });
     await flush();
     assert.deepEqual(results, ["ready"]);
     release();

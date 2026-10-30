@@ -471,6 +471,7 @@ try {
         clearPlayTimeInterval() {},
         console,
         coreAvTest: null,
+        coreCompanionPreparing: false,
         coreCompanionRelease() {
             companionReleased++;
         },

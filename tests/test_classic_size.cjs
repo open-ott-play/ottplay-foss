@@ -12,6 +12,7 @@ const {
     MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
     MEDIA_COMPANION_SETTINGS_ALLOWANCE,
     MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+    MEDIA_COMPANION_PREPARATION_ALLOWANCE,
     CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
     CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
@@ -66,6 +67,178 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const routingEvidence = require("../docs/evidence/media-companion-playback-routing-size-20261030.json");
+    assert.equal(routingEvidence.budgetsChanged, false);
+    assert.deepEqual(routingEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.equal(routingEvidence.baseline.includesPreparationFix, true);
+    assert.equal(routingEvidence.baseline.workingTree, true);
+    assert.match(routingEvidence.baseline.manifestSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        routingEvidence.candidate.allRecordedArtifactHashesAndSizesReverified,
+        true
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        OPTIONAL_BUDGETS,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        assert.deepEqual(
+            budget,
+            routingEvidence.caps[name],
+            name + " unchanged by finite-stream routing"
+        );
+    assert.deepEqual(
+        routingEvidence.modes.map((mode) => mode.path),
+        ARTIFACTS
+    );
+    for (const mode of routingEvidence.modes) {
+        assert.deepEqual(
+            mode.components.map((row) => row.name).sort(),
+            [
+                "player.js",
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                    (name) => "provider-" + name + ".js"
+                ),
+                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                    (name) => name + ".js"
+                ),
+            ].sort()
+        );
+        for (const row of mode.components) {
+            assert.match(row.before.sha256, /^[a-f0-9]{64}$/);
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (!["player.js", "media-companion.js"].includes(row.name))
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " unaffected by finite-stream routing"
+                );
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - row.before[metric]
+                );
+                if (row.name === "player.js")
+                    assert(row.after[metric] <= BUDGET[metric]);
+                if (row.name === "media-companion.js")
+                    assert(
+                        row.after[metric] <=
+                            OPTIONAL_BUDGETS["media-companion"][metric]
+                    );
+            }
+        }
+        for (const metric of ["bytes", "gzipBytes"])
+            assert(
+                mode.components.reduce(
+                    (sum, row) => sum + row.after[metric],
+                    0
+                ) <= TOTAL_BUDGET[metric]
+            );
+    }
+    const preparationDelta = (budget, metric) =>
+        [BUDGET, LEGACY_TOTAL_BUDGET, BASE_TOTAL_BUDGET, TOTAL_BUDGET].includes(
+            budget
+        )
+            ? MEDIA_COMPANION_PREPARATION_ALLOWANCE[metric]
+            : 0;
+    const beforePreparationBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - preparationDelta(budget, metric),
+            ])
+        );
+    const preparationEvidence = require("../docs/evidence/media-companion-preparation-size-20261030.json");
+    assert(Object.isFrozen(MEDIA_COMPANION_PREPARATION_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE,
+        preparationEvidence.allowance
+    );
+    assert.deepEqual(preparationEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.match(preparationEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(preparationEvidence.lockSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        preparationEvidence.candidate
+            .allRecordedArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.deepEqual(
+        preparationEvidence.modes.map((row) => row.path),
+        ARTIFACTS
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(budget, preparationEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforePreparationBudget(budget),
+            preparationEvidence.previousCaps[name],
+            name + " counts preparation entry once"
+        );
+    }
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        preparationEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        preparationEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            MEDIA_COMPANION_PREPARATION_ALLOWANCE[metric],
+            Math.max(
+                ...preparationEvidence.modes.map(
+                    (mode) =>
+                        mode.components.find((row) => row.name === "player.js")
+                            .delta[metric]
+                )
+            ) + preparationEvidence.reserve[metric]
+        );
+    for (const mode of preparationEvidence.modes) {
+        assert.deepEqual(
+            mode.components.map((row) => row.name).sort(),
+            [
+                "player.js",
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                    (name) => "provider-" + name + ".js"
+                ),
+                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                    (name) => name + ".js"
+                ),
+            ].sort()
+        );
+        for (const row of mode.components) {
+            assert.match(row.before.sha256, /^[a-f0-9]{64}$/);
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (row.name !== "player.js")
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " is unchanged by preparation feedback"
+                );
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - row.before[metric]
+                );
+        }
+    }
     const transportDelta = (budget, metric) =>
         [
             BASE_TOTAL_BUDGET,
@@ -78,7 +251,9 @@ try {
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - transportDelta(budget, metric),
+                budget[metric] -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
             ])
         );
     const transportEvidence = require("../docs/evidence/media-companion-transport-size-20261030.json");
@@ -104,14 +279,17 @@ try {
         )
     );
     for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
         BUDGET,
         LEGACY_TOTAL_BUDGET,
-        BASE_TOTAL_BUDGET,
-        TOTAL_BUDGET,
         OPTIONAL_BUDGET,
         PROVIDER_BUDGET,
+        TOTAL_BUDGET,
     })) {
-        assert.deepEqual(budget, transportEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforePreparationBudget(budget),
+            transportEvidence.nextCaps[name]
+        );
         assert.deepEqual(
             beforeTransportBudget(budget),
             transportEvidence.previousCaps[name],
@@ -173,7 +351,8 @@ try {
                 metric,
                 budget[metric] -
                     companionDelta(budget, metric) -
-                    transportDelta(budget, metric),
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
             ])
         );
     const modernDelta = (budget, metric) => {
@@ -199,7 +378,8 @@ try {
                 metric,
                 budget[metric] -
                     modernDelta(budget, metric) -
-                    transportDelta(budget, metric),
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
             ])
         );
     const beforeFeaturesBudget = (budget) =>
@@ -209,7 +389,8 @@ try {
                 budget[metric] -
                     companionDelta(budget, metric) -
                     modernDelta(budget, metric) -
-                    transportDelta(budget, metric),
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
             ])
         );
     const historicalOptionalBudgets = Object.fromEntries(
@@ -528,6 +709,7 @@ try {
         companionDelta(budget, metric) +
         modernDelta(budget, metric) +
         transportDelta(budget, metric) +
+        preparationDelta(budget, metric) +
         ([
             BUDGET,
             BASE_TOTAL_BUDGET,
@@ -1208,6 +1390,7 @@ try {
                     companionDelta(budget, metric) -
                     modernDelta(budget, metric) -
                     transportDelta(budget, metric) -
+                    preparationDelta(budget, metric) -
                     (name === "control-transport"
                         ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
                         : 0) -
@@ -2728,6 +2911,18 @@ try {
         "x".repeat(OPTIONAL_BUDGETS["local-media-ui"].bytes + 1)
     );
     const failed = diagnose();
+    for (const [key, allowance] of Object.entries({
+        mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
+        mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        mediaCompanionPreparationAllowance:
+            MEDIA_COMPANION_PREPARATION_ALLOWANCE,
+        mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+        mediaCompanionTransportAllowance: MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+    })) {
+        assert.deepEqual(strictReport[key], allowance);
+        assert.deepEqual(failed[key], strictReport[key]);
+    }
+    assert(!Object.hasOwn(failed, "MEDIA_COMPANION_PREPARATION_ALLOWANCE"));
     assert.equal(failed.diagnostic, true);
     assert.equal(failed.complete, true);
     assert.equal(failed.source, "exact-source");

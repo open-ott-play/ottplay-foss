@@ -1010,6 +1010,27 @@ test("async provider links belong to each lane and cannot start after stop, repl
     assert.equal(f.leases.length, 1);
 });
 
+test("resolved transport belongs to its attachment and never leaks to a replacement", () => {
+    const f = fixture();
+    const pending = [];
+    f.ports.resolve = (_url, done) => {
+        pending.push(done);
+        return () => {};
+    };
+    f.backend.open({ url: "torrent" });
+    pending[0]("https://media.test/stream", "file");
+    assert.equal(f.leases[0].request.transport, "file");
+    f.backend.open({ url: "plugin" });
+    pending[0]("https://media.test/stale", "file");
+    pending[1]("https://media.test/live.m3u8", "stream");
+    assert.equal(f.leases.length, 2);
+    assert.equal(f.leases[1].request.transport, "stream");
+    f.backend.open({ url: "ordinary" });
+    pending[2]("https://media.test/ordinary");
+    assert.equal(f.leases[2].request.transport, undefined);
+    f.backend.stop();
+});
+
 test("synchronous link resolution, failures and resolver reentry release the correct lease", () => {
     const f = fixture();
     let cancelled = 0;

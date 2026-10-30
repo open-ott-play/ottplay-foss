@@ -60,7 +60,10 @@ export function installMediaCompanion(w: any): void {
                 }
             );
         },
-        resolve: function (value: string, done: (url: string | null) => void) {
+        resolve: function (
+            value: string,
+            done: (url: string | null, transport?: "file" | "stream") => void
+        ) {
             var cancelled = false,
                 release = function () {};
             ensure().then(

@@ -1112,6 +1112,7 @@ for (const platform of Object.keys(nativeSources)) {
             streamRetries: 0,
         },
         coreAvTest: null,
+        coreCompanionPreparing: false,
         coreCompanionRelease() {
             companionReleased++;
         },
@@ -1215,7 +1216,11 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(w.coreStreamAttempt, null);
     assert.equal(destroyed, 1, platform + " Stop tears down HLS");
     assert.equal(cancelled, 1, platform + " Stop cancels pending preparation");
-    assert.equal(companionReleased, 1, platform + " Stop releases companion lease");
+    assert.equal(
+        companionReleased,
+        1,
+        platform + " Stop releases companion lease"
+    );
     assert.equal(w.coreCompanionRelease, null);
     assert.equal(w._playSession, 2);
 }
