@@ -68,3 +68,8 @@
 
 # Reversible SJCL patch bytes are pinned by source provenance.
 js/vendor/sjcl-pin-word-arrays.patch.json -text
+
+# Native webOS source overlays contain significant unified-diff context spaces
+# and binary patch data. Preserve the reviewed bytes across checkouts.
+/native/webos/patches/*.patch -text whitespace=-blank-at-eol
+/native/webos/COPYING -text

@@ -1,0 +1,70 @@
+name: Native webOS candidate
+
+on:
+  workflow_dispatch:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webos-native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.scope.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Classify native build inputs
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/webos-native-scope.py
+      - run: python3 -m unittest discover -s native/webos -p 'test_*.py' -v
+      - run: python3 -m unittest discover -s tests -p test_webos_runtime_sources.py -v
+
+  native-candidate:
+    needs: contracts
+    if: ${{ needs.contracts.outputs.build == 'true' }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    env:
+      JOBS: "2"
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build meson pkg-config autoconf automake libtool bzip2
+      - name: Build and verify native binary with corresponding source
+        run: python3 native/webos/build.py all --jobs 2
+      - name: Bind runtime sources and final linker evidence
+        run: |
+          native_version=$(python3 -c 'import json; print(json.load(open("native/webos/upstream.json"))["application"]["version"])')
+          python3 scripts/webos-runtime-sources.py \
+            --metadata "build/native-webos/dist/ottplay-native-webos-${native_version}.json" \
+            --source build/native-webos/source \
+            --sdk build/native-webos/toolchain/arm-webos-linux-gnueabi_sdk-buildroot
+      - name: Preserve the binary and matching source as one candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ottplay-native-webos-candidate
+          path: build/native-webos/dist/
+          if-no-files-found: error
+          retention-days: 30

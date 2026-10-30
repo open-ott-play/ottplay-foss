@@ -1215,6 +1215,10 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 [MIT](LICENSE) — free and open source. Provider content and third-party
 dependencies retain their own rights and licenses.
 
+The separate [OTTPlay Native webOS target](docs/native-webos.md), derived from
+PlxNative, is distributed under **GPL-3.0-or-later** with matching source.
+The root MIT license does not relicense that native application or its patches.
+
 ## Desktop updater / notarization (Mode B)
 
 The [desktop signing and updater guide](docs/tauri-updater-notarize.md) describes

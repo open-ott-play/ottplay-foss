@@ -1,0 +1,129 @@
+--- a/ci/build-ffmpeg.sh
++++ b/ci/build-ffmpeg.sh
+@@ -129,7 +129,10 @@
+ # silently made "builds are reproducible" false in the v0.2.0 and v0.2.1 release notes, on the one
+ # number a user has to check an unsigned download. `/plx` is a stand-in that exists nowhere.
+ #
+-# It does NOT make a local build reproducible, and nothing here can: `--cross-prefix` must be
++# The final configuration-report string is normalized before compilation. The
++# real flags and linker evidence keep the actual SDK/source paths. Older builds
++# embedded those paths directly. Their original rationale follows:
++# It did NOT make a local build reproducible, because: `--cross-prefix` must be
+ # absolute (see below — the NDK gcc is a wrapper that dies when invoked through PATH), so the
+ # configure string still carries wherever the NDK lives. Reproducibility is therefore a property
+ # of the CI BUILD, whose path is fixed for every GitHub runner — which is the real reason releases
+@@ -483,8 +486,11 @@
+   printf '%s' "$NEW_FLAGS" > "$FLAGS_FILE"
+ fi
+ 
++# Only the public configuration string is normalized; compile/link flags stay exact.
++python3 "$ROOT/ci/sanitize-ffmpeg-config.py" "$SRC/config.h" "$NDK" "$ROOT"
++
+ echo "ffmpeg: building"
+-make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)" > "$WORK/build.log" 2>&1 || {
++make -j"${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}" > "$WORK/build.log" 2>&1 || {
+   echo "ffmpeg: BUILD FAILED — $WORK/build.log" >&2; tail -20 "$WORK/build.log" >&2; exit 1; }
+ # DESTDIR redirects the /plx prefix onto the real tree: the libraries believe they were
+ # configured for /plx (so they record no build path) and land in $PREFIX regardless.
+--- a/ipkroot/ctl/control
++++ b/ipkroot/ctl/control
+@@ -4,7 +4,7 @@
+ Priority: optional
+ Architecture: arm
+ Installed-Size: 10117
+-Maintainer: OTTPlay
++Maintainer: OTTPlay contributors <4alvit@users.noreply.github.com>
+ Homepage: https://github.com/open-ott-play/ottplay-foss
+ License: GPL-3.0-or-later
+ Description: OTTPlay Native — native Plex client for LG webOS
+--- /dev/null
++++ b/ci/sanitize-ffmpeg-config.py
+@@ -0,0 +1,33 @@
++#!/usr/bin/env python3
++"""Normalize public FFmpeg configuration metadata without changing compiler flags."""
++
++import json
++import sys
++from pathlib import Path
++
++
++def sanitize(path, sdk, source):
++    text = path.read_text()
++    lines = text.splitlines(keepends=True)
++    matched = 0
++    for index, line in enumerate(lines):
++        prefix = '#define FFMPEG_CONFIGURATION '
++        if not line.startswith(prefix):
++            continue
++        matched += 1
++        value = json.loads(line[len(prefix):].strip())
++        for old, new in ((sdk, '/build/webos-sdk'), (source, '/build/ottplay-native')):
++            for spelling in {str(old), str(old.resolve())}:
++                value = value.replace(spelling, new)
++        lines[index] = prefix + json.dumps(value) + '\n'
++    if matched != 1:
++        raise ValueError('Expected exactly one FFMPEG_CONFIGURATION definition')
++    updated = ''.join(lines)
++    if updated != text:
++        path.write_text(updated)
++
++
++if __name__ == '__main__':
++    if len(sys.argv) != 4:
++        raise SystemExit('usage: sanitize-ffmpeg-config.py config.h sdk source')
++    sanitize(*(Path(arg) for arg in sys.argv[1:]))
+--- /dev/null
++++ b/ci/test_sanitize_ffmpeg_config.py
+@@ -0,0 +1,32 @@
++"""Only exported configuration metadata may change during path normalization."""
++import importlib.util
++import tempfile
++import unittest
++from pathlib import Path
++
++spec = importlib.util.spec_from_file_location('normalize', Path(__file__).with_name('sanitize-ffmpeg-config.py'))
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++
++
++class ConfigurationMetadataTests(unittest.TestCase):
++    def test_paths_change_only_in_configuration_macro_and_are_idempotent(self):
++        with tempfile.TemporaryDirectory() as directory:
++            config = Path(directory) / 'config.h'
++            config.write_text('#define FFMPEG_CONFIGURATION "--sysroot=/Users/test/sdk/root --cc=/Users/test/source/cc"\n#define OTHER "/Users/test/sdk"\n')
++            module.sanitize(config, Path('/Users/test/sdk'), Path('/Users/test/source'))
++            self.assertEqual(config.read_text(), '#define FFMPEG_CONFIGURATION "--sysroot=/build/webos-sdk/root --cc=/build/ottplay-native/cc"\n#define OTHER "/Users/test/sdk"\n')
++            timestamp = config.stat().st_mtime_ns
++            module.sanitize(config, Path('/Users/test/sdk'), Path('/Users/test/source'))
++            self.assertEqual(config.stat().st_mtime_ns, timestamp)
++
++    def test_missing_configuration_macro_fails(self):
++        with tempfile.TemporaryDirectory() as directory:
++            config = Path(directory) / 'config.h'
++            config.write_text('#define OTHER 1\n')
++            with self.assertRaisesRegex(ValueError, 'exactly one'):
++                module.sanitize(config, Path('/sdk'), Path('/source'))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/Makefile
++++ b/Makefile
+@@ -950,7 +950,7 @@
+ 
+ sentry-native: $(SENTRY_NATIVE_STAMP)
+ 
+-$(FFMPEG_INC)/libavformat/avformat.h: ci/build-ffmpeg.sh ci/deps.py ci/dependencies.json ci/arm-cc.py ci/check-link-evidence.py ci/stage-link-evidence.py
++$(FFMPEG_INC)/libavformat/avformat.h: ci/build-ffmpeg.sh ci/sanitize-ffmpeg-config.py ci/deps.py ci/dependencies.json ci/arm-cc.py ci/check-link-evidence.py ci/stage-link-evidence.py
+ 	RELEASE=$(RELEASE) ./ci/build-ffmpeg.sh
+ 
+ # The real files carry a full version (libavutil-plx.so.58.29.100); ship them under the SONAME.
+@@ -2319,7 +2319,7 @@
+ 	cd rust-modules && CARGO_INCREMENTAL=0 PLXNATIVE_APP_DIR="$(CURDIR)/pkg" PATH="$$HOME/.cargo/bin:$$PATH" \
+ 	  cargo +$(RUST_TOOLCHAIN) test --lib -p plx_gfx rtl:: -- --include-ignored
+ 
+-$(FFMPEG_HOST_INC)/libavformat/avformat.h: ci/build-ffmpeg.sh ci/deps.py ci/dependencies.json
++$(FFMPEG_HOST_INC)/libavformat/avformat.h: ci/build-ffmpeg.sh ci/sanitize-ffmpeg-config.py ci/deps.py ci/dependencies.json
+ 	HOST=1 ./ci/build-ffmpeg.sh
+ 
+ $(FFMPEG_HOST_STAGED): pkg/%.dylib: $(FFMPEG_HOST_INC)/libavformat/avformat.h ci/stage-host-ffmpeg.sh
