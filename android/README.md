@@ -28,6 +28,9 @@ The maintained XMLTV plugin lives in
 included directly in the Gradle source set. Do not add another copy.
 
 See [Android distributions and remote updates](../docs/android-distributions.md).
+For a new device, follow the [English projector setup guide](../docs/android-projector-setup.md):
+hidden settings, APK installation, permissions, playlists, remote control,
+automatic startup, power-on verification and rollback.
 
 ## Optional Home startup
 
