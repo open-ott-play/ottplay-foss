@@ -97,6 +97,7 @@ function fixture(custom = {}) {
         },
         settings: { companionEndpoint: custom.native ? "" : base },
     };
+    if (custom.noFetch) delete w.fetch;
     vm.runInNewContext(code, {
         clearTimeout: (key) => timers.delete(key),
         Error,
@@ -421,6 +422,32 @@ test("missing endpoint fails without network requests and unsafe endpoints are r
         assert.throws(() => f.client.endpointValue(value));
 });
 
+test("missing Fetch keeps startup idle and rejects companion use before native discovery", async () => {
+    for (const native of [false, true]) {
+        const f = fixture({ native, noFetch: true });
+        assert.equal(f.client.supportsTransport(), false);
+        assert.equal(f.client.status(), null);
+        assert.equal(f.timers.size, 0);
+        assert.equal(f.nativeCalls(), 0);
+        assert.equal(f.calls.length, 0);
+        await assert.rejects(f.client.plugins(), {
+            message: "companion_transport_unavailable",
+        });
+        f.resolve();
+        await flush();
+        assert.deepEqual(f.outcomes, [null]);
+        assert.equal(
+            f.client.status().error,
+            "companion_transport_unavailable"
+        );
+        assert.equal(f.client.status().active, false);
+        assert.equal(f.nativeCalls(), 0);
+        assert.equal(f.calls.length, 0);
+        assert.equal(f.timers.size, 0);
+        f.listeners.pagehide();
+    }
+});
+
 test("backend suspension releases the stream and resume reacquires from the original URI", async () => {
     const f = fixture({ native: true });
     const host = {},
@@ -619,6 +646,47 @@ test("companion UI keeps Back available and ignores plugin results after closing
     await flush();
     assert.equal(returns.length, 1);
     assert.equal(w.getListItem, null);
+});
+
+test("missing Fetch is explained in the shared UI without changing playback or blocking Back", async () => {
+    const f = fixture({ native: true, noFetch: true });
+    let accept,
+        handoffs = 0,
+        played = 0,
+        closed = 0;
+    Object.assign(f.w, {
+        __ottClassicPlayback: { snapshot: () => ({ generation: 1 }) },
+        __ottMedia: { beginSource: () => handoffs++ },
+        _playMedia: () => played++,
+        isListVisible: true,
+        keys: { ENTER: 13, EXIT: 8, RETURN: 27 },
+        listCaption: {},
+        listDetail: {},
+        listFooter: {},
+        optionsList: () => closed++,
+        renderButtonHint: () => "",
+        settingsMediaCompanion() {},
+        showPage: () => f.w.detailListAction(),
+    });
+    vm.runInNewContext(compile("src/plugins/media-companion-ui.ts"), {
+        window: f.w,
+    });
+    f.w.__ottMediaCompanionUi(f.w, f.client, (_caption, _value, done) => {
+        accept = done;
+    });
+    assert.match(f.w.listDetail.textContent, /lacks the Fetch API/);
+    assert.match(f.w.listDetail.textContent, /newer browser or WebView/);
+    f.w.listArray[1].action();
+    accept(source);
+    assert.equal(handoffs, 0);
+    assert.equal(played, 0);
+    f.w.listArray[2].action();
+    await flush();
+    assert.match(f.w.listDetail.textContent, /lacks the Fetch API/);
+    assert.equal(f.nativeCalls(), 0);
+    assert.equal(f.calls.length, 0);
+    assert.equal(f.w.listKeyHandler(27), true);
+    assert.equal(closed, 1);
 });
 
 for (const provider of ["plex", "m3u"]) {

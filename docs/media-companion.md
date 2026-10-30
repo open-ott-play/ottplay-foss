@@ -16,6 +16,13 @@ HTTPS, browser local-network permissions and network reachability still apply.
 The webOS and Tizen packages do not install a native torrent service on the TV;
 those clients can use the service on a computer or NAS.
 
+The optional companion client requires the browser's Fetch API. The shared
+player's ES5 runtime does not add it. Older TV browsers may therefore run the
+ordinary player but cannot use this feature; the companion screen explains
+that limitation without starting a service or sending a request. Use a newer
+browser or WebView where available. Browser API availability does not establish
+codec support or compatibility with every TV model and firmware.
+
 ## Playback
 
 Open **Settings → Media companion**. Tauri uses the built-in service when the

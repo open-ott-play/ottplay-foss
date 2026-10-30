@@ -40,3 +40,19 @@ limits by subtracting these named additions at the newest boundary. They also
 retain missing, stale and oversized artifact checks, independent optional-family
 limits, provider limits and complete-payload checks. The old providers cannot
 borrow the new companion asset's allocation.
+
+## Browser transport capability check
+
+The [transport receipt](evidence/media-companion-transport-size-20261030.json)
+compares the saved optional asset from `99a86835861b62e2dd85e77f7a474aae2c4f8527`
+with the capability check and unsupported-browser notice for browsers without
+`fetch`. No XMLHttpRequest fallback is installed. All three output
+variants grow from 12,132 to 12,544 raw bytes and from 4,481 to 4,606 gzip bytes
+on the same Node 22.23.4 toolchain.
+
+`MEDIA_COMPANION_TRANSPORT_ALLOWANCE` adds exactly 412 raw / 125 gzip bytes to
+the companion optional asset and complete-payload limits. The previous optional
+headroom stays at 128 raw / 128 gzip bytes. Entry, provider, legacy-total and
+unrelated optional limits stay fixed. The original companion and Modern receipts
+retain their recorded figures; tests subtract this transport increment when
+checking those earlier measurements.

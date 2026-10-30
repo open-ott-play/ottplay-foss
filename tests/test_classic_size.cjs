@@ -11,6 +11,7 @@ const {
     MEDIA_COMPANION_ENTRY_ALLOWANCE,
     MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
     MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+    MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
     CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
     CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
@@ -65,6 +66,93 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const transportDelta = (budget, metric) =>
+        [
+            BASE_TOTAL_BUDGET,
+            TOTAL_BUDGET,
+            OPTIONAL_BUDGETS["media-companion"],
+        ].includes(budget)
+            ? MEDIA_COMPANION_TRANSPORT_ALLOWANCE[metric]
+            : 0;
+    const beforeTransportBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - transportDelta(budget, metric),
+            ])
+        );
+    const transportEvidence = require("../docs/evidence/media-companion-transport-size-20261030.json");
+    assert(Object.isFrozen(MEDIA_COMPANION_TRANSPORT_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+        transportEvidence.allowance
+    );
+    assert.deepEqual(transportEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.match(transportEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(transportEvidence.lockSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        transportEvidence.candidate.allRecordedArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.deepEqual(
+        transportEvidence.modes.map((row) => row.path),
+        ARTIFACTS.map((file) =>
+            path.posix.join(path.posix.dirname(file), "media-companion.js")
+        )
+    );
+    for (const [name, budget] of Object.entries({
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        BASE_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+    })) {
+        assert.deepEqual(budget, transportEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforeTransportBudget(budget),
+            transportEvidence.previousCaps[name],
+            name + " counts transport only in complete payloads"
+        );
+    }
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        transportEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        Object.fromEntries(
+            Object.entries(OPTIONAL_BUDGETS).map(([name, budget]) => [
+                name,
+                beforeTransportBudget(budget),
+            ])
+        ),
+        transportEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    for (const row of transportEvidence.modes) {
+        assert.deepEqual(row.before, transportEvidence.baseline.measurement);
+        for (const measurement of [row.before, row.after])
+            assert.match(measurement.sha256, /^[a-f0-9]{64}$/);
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                row.delta[metric],
+                row.after[metric] - row.before[metric]
+            );
+            assert.equal(
+                MEDIA_COMPANION_TRANSPORT_ALLOWANCE[metric],
+                row.delta[metric] + transportEvidence.reserve[metric]
+            );
+            assert.equal(
+                OPTIONAL_BUDGETS["media-companion"][metric] - row.after[metric],
+                transportEvidence.previousCaps.OPTIONAL_BUDGETS[
+                    "media-companion"
+                ][metric] - row.before[metric],
+                "transport preserves previous optional headroom exactly"
+            );
+        }
+    }
     // Preserve the independently measured feature receipts. Historical caps
     // project out both features exactly once; neither allocation masks the other.
     const companionDelta = (budget, metric) =>
@@ -83,7 +171,9 @@ try {
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - companionDelta(budget, metric),
+                budget[metric] -
+                    companionDelta(budget, metric) -
+                    transportDelta(budget, metric),
             ])
         );
     const modernDelta = (budget, metric) => {
@@ -107,7 +197,9 @@ try {
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - modernDelta(budget, metric),
+                budget[metric] -
+                    modernDelta(budget, metric) -
+                    transportDelta(budget, metric),
             ])
         );
     const beforeFeaturesBudget = (budget) =>
@@ -116,7 +208,8 @@ try {
                 metric,
                 budget[metric] -
                     companionDelta(budget, metric) -
-                    modernDelta(budget, metric),
+                    modernDelta(budget, metric) -
+                    transportDelta(budget, metric),
             ])
         );
     const historicalOptionalBudgets = Object.fromEntries(
@@ -159,8 +252,8 @@ try {
         MEDIA_COMPANION_SETTINGS_ALLOWANCE,
         companionEvidence.allowances.settings
     );
-    assert.equal(
-        OPTIONAL_BUDGETS["media-companion"],
+    assert.deepEqual(
+        beforeTransportBudget(OPTIONAL_BUDGETS["media-companion"]),
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE
     );
     assert.deepEqual(companionEvidence.toolchain, {
@@ -434,6 +527,7 @@ try {
     const tizenPackageBootDelta = (budget, metric) =>
         companionDelta(budget, metric) +
         modernDelta(budget, metric) +
+        transportDelta(budget, metric) +
         ([
             BUDGET,
             BASE_TOTAL_BUDGET,
@@ -1113,6 +1207,7 @@ try {
                 budget[metric] -
                     companionDelta(budget, metric) -
                     modernDelta(budget, metric) -
+                    transportDelta(budget, metric) -
                     (name === "control-transport"
                         ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
                         : 0) -

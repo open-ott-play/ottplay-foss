@@ -36,6 +36,10 @@ function showMediaCompanionUi(w: any, client: any, editText: any): void {
     }
     function play(source: string, title: string): void {
         if (!current() || !client.isSource(source)) return;
+        if (client.supportsTransport && !client.supportsTransport()) {
+            render();
+            return;
+        }
         var media = w.__ottMedia;
         var playback = w.__ottClassicPlayback;
         if (!media || !media.beginSource || !playback || !playback.snapshot) {
@@ -190,6 +194,9 @@ function showMediaCompanionUi(w: any, client: any, editText: any): void {
     }
     function render(message?: string, entries?: any[]): void {
         if (locked()) return;
+        if (client.supportsTransport && !client.supportsTransport())
+            message =
+                "This browser cannot connect to the media companion because it lacks the Fetch API. Use a newer browser or WebView.";
         rows = entries || [
             {
                 action: function () {

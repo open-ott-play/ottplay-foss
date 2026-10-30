@@ -583,6 +583,13 @@ const MEDIA_COMPANION_OPTIONAL_ALLOWANCE = Object.freeze({
     bytes: 12260,
     gzipBytes: 4609,
 });
+// The browser transport capability notice stays in the optional companion family.
+// Exact Node22 delta, preserving its previous raw/gzip headroom unchanged.
+// Evidence: docs/evidence/media-companion-transport-size-20261030.json.
+const MEDIA_COMPANION_TRANSPORT_ALLOWANCE = Object.freeze({
+    bytes: 412,
+    gzipBytes: 125,
+});
 // Opt-in Modern presentation: measured separately from the existing catalogue.
 // Entry contains only settings, loader and repaint hooks; the renderer stays lazy.
 // Evidence: docs/evidence/modern-interface-size-20261030.json.
@@ -899,7 +906,14 @@ const OPTIONAL_BUDGETS = Object.freeze({
     // Isolated raw/gzip: compatibility3527/1529, UI8453/3297, runner2460/1155.
     "local-compatibility": Object.freeze({ bytes: 4800, gzipBytes: 1900 }),
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
-    "media-companion": MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+    "media-companion": Object.freeze({
+        bytes:
+            MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
+            MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes,
+        gzipBytes:
+            MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
+            MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes,
+    }),
     "modern-interface": MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
@@ -962,6 +976,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
+        MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes +
         MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
         Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
@@ -1002,6 +1017,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
     gzipBytes:
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
+        MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
         Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
@@ -1222,6 +1238,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
         mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
         mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+        mediaCompanionTransportAllowance: MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
         mixedGlobalFavoritesEntryAllowance:
             MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
         mixedGlobalFavoritesOptionalAllowance:
@@ -1543,6 +1560,8 @@ function writeBuildBundleReport(
             mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
             mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
             mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+            mediaCompanionTransportAllowance:
+                MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
             mixedGlobalFavoritesEntryAllowance:
                 MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
             mixedGlobalFavoritesOptionalAllowance:
@@ -1649,6 +1668,7 @@ module.exports = {
     MEDIA_COMPANION_ENTRY_ALLOWANCE,
     MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
     MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+    MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,

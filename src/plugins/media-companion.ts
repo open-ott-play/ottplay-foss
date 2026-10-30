@@ -9,6 +9,9 @@ function createMediaCompanion(
     function fail(code: string): Error {
         return new Error(code);
     }
+    function supportsTransport(): boolean {
+        return typeof w.fetch === "function";
+    }
     function backendError(value: any, fallback: string): string {
         return typeof value === "string" &&
             /^(?:busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
@@ -33,6 +36,8 @@ function createMediaCompanion(
         return u.href.replace(/\/$/, "");
     }
     function endpoint(): Promise<string> {
+        if (!supportsTransport())
+            return Promise.reject(fail("companion_transport_unavailable"));
         var configured = w.settings && w.settings.companionEndpoint;
         if (!configured && w.stbGetItem)
             configured = w.stbGetItem("sCompanionEndpoint");
@@ -55,6 +60,8 @@ function createMediaCompanion(
         body?: any,
         late?: (value: any) => void
     ): Promise<any> {
+        if (!supportsTransport())
+            return Promise.reject(fail("companion_transport_unavailable"));
         return new Promise(function (resolve, reject) {
             var finished = false;
             var controller = w.AbortController ? new w.AbortController() : null;
@@ -517,6 +524,7 @@ function createMediaCompanion(
                   }
                 : null;
         },
+        supportsTransport: supportsTransport,
     };
 }
 (window as any).__ottMediaCompanionFactory = createMediaCompanion;
