@@ -104,40 +104,43 @@ Mode does not remove this requirement. Follow
 
 Each release that includes the TV package also includes
 **`ottplay-foss-webos-repository.json`**. It is a small Homebrew Channel catalog
-pointing to that release's manifest, package and icon.
+pointing to that release's manifest, package and icon. Use the metadata gateway
+address below in Homebrew Channel, replacing `<release-tag>` with the chosen
+release's exact tag, including its leading `v`:
 
-1. In the selected GitHub release's **Assets**, copy the download link for
-   `ottplay-foss-webos-repository.json`.
+```text
+https://ottplay-webos.igw-2560801.workers.dev/v1/<release-tag>/ottplay-foss-webos-repository.json
+```
+
+1. Open the chosen GitHub release and check that its assets include the TV
+   package and repository JSON. Copy its exact release tag into the URL above.
 2. On the TV, open **Homebrew Channel → Settings → Add repository**.
-3. Enter the copied HTTPS URL, including the `.json` filename.
+3. Enter the completed gateway URL, including the `.json` filename.
 4. Return to the catalog, open **OTT-play**, and choose **Install**.
 5. Open OTT-play from the TV launcher when installation completes.
 
-Use the asset's download URL, not the GitHub release page or a `blob` page.
-Homebrew Channel reads the JSON at the exact URL entered; a separate catalog
-server is not required. The package manifest carries its SHA-256, which
-Homebrew Channel passes to its installer for verification. The format and
-resolution are implemented in its
+Homebrew Channel reads catalog metadata in its browser, where cross-origin
+access must be allowed. The gateway serves the release's catalog, manifest,
+HTML description and icon with the required CORS headers. GitHub release JSON
+downloads remain available for inspection and verification, but their download
+redirects do not provide the CORS headers needed for a Homebrew repository URL.
+Do not enter a GitHub release page, `blob` page or release-asset download URL.
+
+The IPK itself is downloaded from the exact GitHub release by Homebrew
+Channel's installation service. The manifest carries its SHA-256, which that
+service verifies before installation. The format and resolution are implemented in its
 [catalog reader](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/BrowserPanel.js)
 and [package detail view](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/DetailsPanel.js).
 
 ### Release snapshots and updates
 
-A URL containing `releases/download/<tag>/` is an **exact release snapshot**.
-It continues to offer that package; it does not follow newer betas. To install
-another beta or release candidate, use that release's repository asset URL or
-install its IPK through the computer. Remove obsolete snapshot repositories in
-Homebrew Channel Settings to avoid duplicate entries for the same app ID.
+Each gateway URL containing `/v1/<release-tag>/` is an **exact release snapshot**.
+It continues to offer that package; it does not follow newer betas or stable
+releases. To install another release, add the gateway URL with that release's
+exact tag or install its IPK through the computer. Remove the obsolete snapshot
+repository in Homebrew Channel Settings to avoid duplicate entries for the
+same app ID. There is no moving `latest` or automatic beta feed.
 
-After a stable release containing these TV assets is published, this address
-can follow the latest stable release:
-
-```text
-https://github.com/open-ott-play/ottplay-foss/releases/latest/download/ottplay-foss-webos-repository.json
-```
-
-GitHub's `latest` route excludes prereleases. Before the first stable release
-with this asset, it can return 404; use the exact release snapshot instead.
 An offered Homebrew Channel update still requires you to select **Update**.
 Neither the package nor this catalog silently installs a replacement IPK.
 
@@ -186,8 +189,9 @@ through this TV's webOS browser and playback engine.
   the current passphrase, and the TV's current IP address. Guest-network
   isolation or a VPN can prevent local connectivity.
 - **The app disappeared:** check Developer Mode expiry before reinstalling.
-- **Homebrew Channel has no OTT-play entry:** use the repository JSON download
-  URL from a release that actually includes it. Check TV network connectivity.
+- **Homebrew Channel has no OTT-play entry:** use the metadata gateway URL with
+  the exact tag of a release that includes the TV assets. Raw GitHub download
+  URLs are not supported as repository addresses. Check TV network connectivity.
 - **The launcher opens but the player does not load:** verify the canonical
   site and the TV's network/date settings. An installed launcher does not make
   an unreachable website available offline.

@@ -22,10 +22,16 @@ assert.equal(index.packages[0].iconUri, manifest.iconUri);
 assert(index.packages[0].shortDescription.length <= 80);
 const prefix =
     "https://github.com/open-ott-play/ottplay-foss/releases/download/v1.1.62-beta.3/";
-assert.equal(index.packages[0].manifestUrl, prefix + names.manifest);
-assert.equal(index.packages[0].fullDescriptionUrl, prefix + names.description);
+const metadataPrefix =
+    "https://ottplay-webos.igw-2560801.workers.dev/v1/v1.1.62-beta.3/";
+assert.equal(index.packages[0].manifestUrl, metadataPrefix + names.manifest);
+assert.equal(
+    index.packages[0].fullDescriptionUrl,
+    metadataPrefix + names.description
+);
 assert.equal(manifest.ipkUrl, prefix + names.ipk);
-assert.equal(manifest.iconUri, prefix + names.icon);
+assert.equal(manifest.iconUri, metadataPrefix + names.icon);
+assert(!JSON.stringify(index).includes("github.com"));
 assert.equal(manifest.ipkHash.sha256, fixture.sha256);
 assert.equal(manifest.ipkSize, 8192);
 assert.equal(manifest.installedSize, 16384); // Manifest units are bytes, not control-file KiB.
@@ -42,6 +48,7 @@ assert(
     )
 );
 assert(generated[names.description].includes("player.ottplay.here.now"));
+assert(generated[names.description].startsWith("<!doctype html>"));
 assert(!JSON.stringify(generated).includes("releases/latest"));
 
 // A later beta advances the package manager version without changing the app ID.
@@ -55,6 +62,11 @@ const next = JSON.parse(
     })[names.manifest]
 );
 assert.equal(next.id, manifest.id);
+assert.equal(
+    next.iconUri,
+    "https://ottplay-webos.igw-2560801.workers.dev/v1/v1.1.62-beta.4/" +
+        names.icon
+);
 assert(
     Number(next.version.split(".")[2]) > Number(manifest.version.split(".")[2])
 );
@@ -66,6 +78,11 @@ const rc = documents({
     releaseTag: "v1.1.62-rc.1",
 });
 assert(JSON.parse(rc[names.manifest]).ipkUrl.includes("/v1.1.62-rc.1/"));
+assert.equal(
+    JSON.parse(rc[names.repository]).packages[0].manifestUrl,
+    "https://ottplay-webos.igw-2560801.workers.dev/v1/v1.1.62-rc.1/" +
+        names.manifest
+);
 assert.deepEqual(
     rc,
     documents({

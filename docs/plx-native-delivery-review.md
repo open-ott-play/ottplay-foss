@@ -81,19 +81,48 @@ at **`1a2b969e992617c9ba4b8a891542cb93a9e07b0a`**.
 - [Settings](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/SettingsPanel.js)
   stores the exact repository URL entered. The
   [catalog reader](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/BrowserPanel.js)
-  downloads that URL and reads `data.packages`. A static JSON release asset is
-  sufficient; no special API path is required.
+  downloads that URL and reads `data.packages`. A static JSON response is
+  sufficient for the schema; its HTTP transport must also permit browser CORS.
 - The [detail view](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/DetailsPanel.js)
   resolves the package URL from the manifest and submits its SHA-256 to the
-  installer. Absolute URLs bound to an exact release avoid ambiguity when
-  repository or manifest downloads redirect.
+  installer. Absolute URLs bound to an exact release avoid resolving assets
+  relative to a repository or manifest URL.
 
-OTT-play therefore publishes an IPK, an app manifest, a small repository index
-and its icon as release assets. A prerelease repository URL is a snapshot, not
-an automatic beta subscription. The stable GitHub `latest` URL is useful only
-after a stable release includes these assets. Central webOSbrew catalog
-inclusion is a separate submission and review; our repository is not a claim
-of central catalog membership.
+OTT-play publishes an IPK, app manifest, repository index, HTML description and
+icon as verified release assets. Homebrew Channel uses the exact-tag metadata
+gateway described below; GitHub remains the source mirror and IPK download
+host. Every repository URL is a release snapshot, with no moving stable or
+beta subscription. Central webOSbrew catalog inclusion is a separate
+submission and review; our repository is not a claim of central catalog membership.
+
+### Metadata transport and redirects
+
+The pinned Homebrew Channel browser and detail views use Enyo `AjaxSource`.
+That dependency ultimately calls browser
+[`XMLHttpRequest`](https://github.com/enyojs/enyo/blob/514d966a1465e93aae0c3ba96ce64c570b161e53/src/xhr.js),
+not the installation service. LG confirms that its web apps follow
+[browser CORS rules](https://webostv.developer.lge.com/faq/how-to-solve-the-problem-if-cors-occurs).
+Header checks on 30 October 2026 found no `Access-Control-Allow-Origin` on the
+tested GitHub release-asset redirect chain or final asset response. A valid
+JSON catalog at such a URL is therefore insufficient for browser access.
+
+The public metadata gateway serves only supported release metadata paths at
+`https://ottplay-webos.igw-2560801.workers.dev/v1/<release-tag>/<asset-filename>`
+with CORS headers. The repository entry's `manifestUrl`, `fullDescriptionUrl`
+and `iconUri`, and the manifest's `iconUri`, use that exact-tag route.
+`fullDescriptionUrl` points to an HTML document: the pinned
+[detail view](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/frontend/views/DetailsPanel.js)
+fetches text, sanitizes it with DOMPurify and renders HTML; it does not parse
+Markdown.
+
+The manifest's `ipkUrl` remains the exact GitHub release asset. Homebrew
+Channel's [installation service](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/services/service.ts)
+downloads it through its
+[Node fetch wrapper](https://github.com/webosbrew/webos-homebrew-channel/blob/1a2b969e992617c9ba4b8a891542cb93a9e07b0a/services/fetch-wrapper.ts),
+which follows redirects without browser CORS enforcement, then checks the
+supplied SHA-256. `sourceUrl` continues to identify the exact GitHub source
+revision. This division preserves the verified release package while making
+the browser-read metadata accessible.
 
 ## Release and update design
 

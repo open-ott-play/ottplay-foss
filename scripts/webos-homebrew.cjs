@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const repository = "https://github.com/open-ott-play/ottplay-foss";
+const metadataOrigin = "https://ottplay-webos.igw-2560801.workers.dev";
 const names = {
     description: "ottplay-foss-webos-description.html",
     icon: "ottplay-foss-webos-icon.png",
@@ -49,11 +50,13 @@ function documents(metadata) {
             metadata.installedSize > 0
     );
     const base = repository + "/releases/download/" + metadata.releaseTag + "/";
+    // Homebrew reads metadata with browser XHR; GitHub release redirects lack CORS.
+    const metadataBase = metadataOrigin + "/v1/" + metadata.releaseTag + "/";
     const title = "OTT-play FOSS";
     const manifest = {
         appDescription:
             "Hosted IPTV and media player. Network connection required.",
-        iconUri: base + names.icon,
+        iconUri: metadataBase + names.icon,
         id: metadata.appId,
         installedSize: metadata.installedSize,
         ipkHash: { sha256: metadata.sha256 },
@@ -68,10 +71,10 @@ function documents(metadata) {
     const index = {
         packages: [
             {
-                fullDescriptionUrl: base + names.description,
-                iconUri: base + names.icon,
+                fullDescriptionUrl: metadataBase + names.description,
+                iconUri: metadataBase + names.icon,
                 id: metadata.appId,
-                manifestUrl: base + names.manifest,
+                manifestUrl: metadataBase + names.manifest,
                 shortDescription:
                     "Hosted IPTV and media player. Network connection required.",
                 title,

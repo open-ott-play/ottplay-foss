@@ -126,6 +126,7 @@ for (const suite of [
     "test_package_webos",
     "test_webos_homebrew",
     "test_webos_release",
+    "test_webos_feed_worker",
 ]) {
     assert(
         packageJson.scripts["test:webos"].includes(

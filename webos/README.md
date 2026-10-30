@@ -17,5 +17,8 @@ project artwork at `images/player-logo.png`. The original remains there; no
 third-party artwork was added.
 
 Build and installation instructions are in the main LG webOS installation
-guide. An ordinary local build requires the explicit `--local` option and uses
-version `1.0.0`; it must not be published in a release feed.
+guide. The separate metadata HTTP adapter is described in
+[Homebrew feed operations](../docs/webos-feed-operations.md); its Wrangler
+configuration is not part of the IPK. An ordinary local build requires the
+explicit `--local` option and uses version `1.0.0`; it must not be published in a
+release feed.
