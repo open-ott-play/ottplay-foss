@@ -9,11 +9,16 @@ bytes with `Access-Control-Allow-Origin: *`:
 https://ottplay-webos.igw-2560801.workers.dev/v1/<release-tag>/ottplay-foss-webos-repository.json
 ```
 
-The Worker accepts only the four declared metadata/artwork filenames for
+The Worker accepts only the declared hosted and native metadata/artwork filenames for
 `open-ott-play/ottplay-foss`, under an exact release tag. It has no credentials,
 provider data or storage bindings. It does not relay video or IPKs. Homebrew's
 installation service downloads the IPK directly from GitHub and verifies the
 SHA-256 recorded in the manifest.
+
+The separate native Plex application uses tags such as
+`native-webos-v0.1.0-beta.1` and `ottplay-native-webos-repository.json`.
+Hosted release tags cannot serve native metadata, and native tags cannot serve
+hosted metadata. Both routes use the same read-only endpoint and CORS rules.
 
 ## Deployment
 
@@ -34,7 +39,7 @@ Changing the endpoint requires updating the generator and installation guide,
 then publishing new release metadata.
 
 Deployments of this small HTTP adapter are independent of application release
-publication. New releases need no Worker redeployment: it reads the four files
+publication. New releases need no Worker redeployment: it reads the allowed files
 from the requested immutable release. Keep earlier release assets available so
 their installed repository snapshots continue to work. There is no moving
 `latest` or automatic beta subscription endpoint.

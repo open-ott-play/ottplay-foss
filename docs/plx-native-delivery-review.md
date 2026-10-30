@@ -4,8 +4,11 @@ Reviewed 30 October 2026. The reference project is
 [GLinnik21/plx-native](https://github.com/GLinnik21/plx-native/tree/aef53a3f6148e41378bb21abd527518a642d733a),
 revision **`aef53a3f6148e41378bb21abd527518a642d733a`**. This review separates
 reusable distribution concepts from that project's native player architecture.
-The resulting OTT-play user workflow is in
-[LG webOS installation](lg-webos-installation.md).
+The hosted OTT-play user workflow is in
+[LG webOS installation](lg-webos-installation.md). This review documents that
+hosted package. A separate, subsequently added native Plex target is described
+in [native webOS](native-webos.md); it has its own application ID, runtime and
+GPL source distribution.
 
 ## Application architecture
 
@@ -17,8 +20,8 @@ handle firmware-specific interfaces, native dependencies and packaging. Those
 requirements explain why its compatibility reports cannot be transferred to
 another player merely by adopting its installation method.
 
-OTT-play retains its existing web player and input handling. Its delivery
-package is a hosted `type: web` app for the canonical HTTPS player address.
+The hosted OTT-play variant retains its existing web player and input handling.
+Its delivery package is a hosted `type: web` app for the canonical HTTPS player address.
 It does not import PlxNative's SDL/Rust renderer, native media interfaces,
 storage service, telemetry, or sandbox repair paths. No performance, codec or
 firmware compatibility claim from that implementation is inherited.
@@ -167,8 +170,9 @@ simulator cannot supply that hardware evidence.
 
 PlxNative's [licensing statement](https://github.com/GLinnik21/plx-native/blob/aef53a3f6148e41378bb21abd527518a642d733a/LICENSING.md)
 identifies its current own code as GPL-3.0-or-later and describes the matching
-source obligations for distributed binaries. This work reviews its design;
-it does not copy its source, media, icons, fonts, native libraries or branding.
+source obligations for distributed binaries. The hosted launcher work reviewed its design;
+it did not copy its source, media, icons, fonts, native libraries or branding.
 The OTT-play launcher uses our assets and independently implemented package
-and manifest generation. Any future reuse of third-party code or assets needs
-its own attribution and license review.
+and manifest generation. The separate native target reuses the pinned GPL implementation with retained
+notices, matching complete source, and OTT-play branding; its licensing and
+build instructions are documented separately.

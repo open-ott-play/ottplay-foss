@@ -63,6 +63,16 @@ The **Playback** setting offers:
 
 Automatic uses compatible HLS when Plex explicitly identifies H.264 video as High 10 or greater than 8-bit; the ordinary H.264 browser probe cannot establish support for those files. Ordinary 8-bit files and incomplete metadata retain the existing capability check. **Original file** remains available as an explicit decoder choice.
 
+When Plex lists several versions of the same video, **Automatic** first checks
+whether the default version can play directly. If it cannot, the player checks
+the other single-file versions in server order before asking Plex to convert the
+default. This avoids a server conversion when, for example, an unsupported MKV
+has a supported MP4 version. Unknown decoder support keeps compatible HLS; the
+player does not infer support merely from a filename. At most 32 versions are
+examined. **Original file** and **Compatible HLS** retain the first available
+version. Consecutive parts of a split movie are never treated as alternative
+versions; a multipart default keeps its existing playback behavior.
+
 When the device supports HEVC through Media Source Extensions, compatible HLS uses fragmented MP4, preserves HEVC video at its source resolution and requests AAC audio. For HEVC/Opus files this avoids unnecessary video encoding on the NAS while adapting audio for WebKit.
 
 The selected server address, its access token and playback preference are stored in the current device's provider profile as `plexcfg`. Account sign-in also saves that server's identity and connection candidates. Each time the provider opens, it checks which connection is reachable, so a laptop can move between home Wi-Fi and the internet without signing in again. Browsing history stays associated with the same server and server credential. Editing the address or token manually clears these account connection candidates.
