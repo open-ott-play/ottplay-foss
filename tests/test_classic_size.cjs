@@ -15,6 +15,8 @@ const {
     SHAKA_TRACKS_ENTRY_ALLOWANCE,
     RELATIVE_SEEK_ENTRY_ALLOWANCE,
     PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
+    PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+    PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
     FAVORITES_TRANSFER_ENTRY_ALLOWANCE,
     FAVORITES_TRANSFER_PLEX_ALLOWANCE,
     FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE,
@@ -47,6 +49,143 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
+    const presenceDelta = (budget, metric) =>
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE[metric] +
+        (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
+            ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
+            : 0);
+    const beforePresenceBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - presenceDelta(budget, metric),
+            ])
+        );
+    const beforePresenceOptional = (name, budget = OPTIONAL_BUDGETS[name]) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] -
+                    (name === "control-transport"
+                        ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
+                        : 0),
+            ])
+        );
+    const presenceEvidence = require("../docs/evidence/player-presence-size-20261029.json");
+    for (const [name, allowance] of Object.entries({
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
+    })) {
+        assert(Object.isFrozen(allowance));
+        const evidence = presenceEvidence.allowances[name];
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                allowance[metric],
+                (evidence.projectedMaximum || evidence.observed)[metric] +
+                    evidence.identityReserve[metric]
+            );
+    }
+    assert.deepEqual(PLAYER_PRESENCE_ENTRY_ALLOWANCE, {
+        bytes: 7747,
+        gzipBytes: 2609,
+    });
+    assert.deepEqual(PLAYER_PRESENCE_TRANSPORT_ALLOWANCE, {
+        bytes: 27,
+        gzipBytes: 10,
+    });
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        assert.deepEqual(
+            beforePresenceBudget(budget),
+            presenceEvidence.previousCaps[name],
+            name + " counts each presence component exactly once"
+        );
+    assert.deepEqual(
+        PROVIDER_BUDGET,
+        presenceEvidence.previousCaps.PROVIDER_BUDGET
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGET,
+        presenceEvidence.previousCaps.OPTIONAL_BUDGET
+    );
+    for (const [name, budget] of Object.entries(OPTIONAL_BUDGETS))
+        assert.deepEqual(
+            beforePresenceOptional(name, budget),
+            presenceEvidence.previousCaps.OPTIONAL_BUDGETS[name],
+            name + " preserves prior optional headroom"
+        );
+    assert.equal(presenceEvidence.sourceBuild.sourceRevisionAtBuild, null);
+    assert.equal(presenceEvidence.sourceBuild.buildExitCode, 1);
+    assert.equal(presenceEvidence.sourceBuild.sizeViolations, 18);
+    assert.equal(
+        presenceEvidence.baseline.allSavedArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.equal(presenceEvidence.modes.length, 3);
+    for (const mode of presenceEvidence.modes) {
+        assert.equal(
+            mode.components.filter((row) => row.family === "providers").length,
+            8
+        );
+        assert.equal(
+            mode.components.filter((row) => row.family === "optionalAssets")
+                .length,
+            13
+        );
+        for (const row of mode.components) {
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.after[metric] - row.before[metric],
+                    row.delta[metric]
+                );
+            if (
+                row.family === "providers" ||
+                (row.family === "optionalAssets" &&
+                    row.name !== "control-transport.js")
+            )
+                assert.deepEqual(
+                    row.after,
+                    row.before,
+                    row.name + " bytes unchanged"
+                );
+        }
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                mode.components.reduce(
+                    (sum, row) => sum + row.delta[metric],
+                    0
+                ),
+                mode.initialDelta[metric],
+                "all emitted artifacts counted once"
+            );
+            assert.equal(
+                mode.projectedCompleteDelta[metric],
+                mode.projectedEntryDelta[metric] +
+                    PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
+            );
+            for (const [kind, name, budget] of [
+                ["entry", "BUDGET", BUDGET],
+                ["legacy", "LEGACY_TOTAL_BUDGET", LEGACY_TOTAL_BUDGET],
+                ["complete", "TOTAL_BUDGET", TOTAL_BUDGET],
+            ]) {
+                assert.equal(
+                    mode.projection[kind][metric] - mode.initial[kind][metric],
+                    mode.projection.identityIncrement[metric],
+                    "source identity projection added once"
+                );
+                assert(
+                    budget[metric] - mode.projection[kind][metric] >=
+                        presenceEvidence.previousCaps[name][metric] -
+                            mode.baseline[kind][metric],
+                    kind + " prior headroom retained"
+                );
+            }
+        }
+    }
     const shakaTrackDelta = (budget, metric) =>
         SHAKA_TRACKS_ENTRY_ALLOWANCE[metric] +
         (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
@@ -72,6 +211,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    presenceDelta(budget, metric) -
                     rollbackEvidence.increment[metric] -
                     shakaTrackDelta(budget, metric) -
                     plexEvidence.previousCaps[name][metric],
@@ -80,9 +220,12 @@ try {
             );
     assert.deepEqual(
         Object.fromEntries(
-            Object.entries(OPTIONAL_BUDGETS).filter(
-                ([name]) => name !== "shaka-tracks"
-            )
+            Object.entries(OPTIONAL_BUDGETS)
+                .filter(([name]) => name !== "shaka-tracks")
+                .map(([name, value]) => [
+                    name,
+                    beforePresenceOptional(name, value),
+                ])
         ),
         plexEvidence.previousCaps.optionalBudgets
     );
@@ -104,6 +247,7 @@ try {
             );
             assert.equal(
                 TOTAL_BUDGET[metric] -
+                    presenceDelta(TOTAL_BUDGET, metric) -
                     rollbackEvidence.increment[metric] -
                     shakaTrackDelta(TOTAL_BUDGET, metric) -
                     variant.completeAfter[metric],
@@ -200,7 +344,10 @@ try {
                 .map(([, budget]) => budget)
                 .reduce((sum, budget) => sum + budget.gzipBytes, 0)
     );
-    assert.deepEqual(BASE_TOTAL_BUDGET, { bytes: 1637960, gzipBytes: 503842 });
+    assert.deepEqual(beforePresenceBudget(BASE_TOTAL_BUDGET), {
+        bytes: 1637960,
+        gzipBytes: 503842,
+    });
     assert.deepEqual(LOCAL_COMMAND_SESSION_ALLOWANCE, {
         bytes: 5632,
         gzipBytes: 1792,
@@ -213,9 +360,15 @@ try {
         bytes: 4480,
         gzipBytes: 2304,
     });
-    assert.deepEqual(TOTAL_BUDGET, { bytes: 1642440, gzipBytes: 506146 });
-    assert.deepEqual(BUDGET, { bytes: 1136586, gzipBytes: 347622 });
-    assert.deepEqual(LEGACY_TOTAL_BUDGET, {
+    assert.deepEqual(beforePresenceBudget(TOTAL_BUDGET), {
+        bytes: 1642440,
+        gzipBytes: 506146,
+    });
+    assert.deepEqual(beforePresenceBudget(BUDGET), {
+        bytes: 1136586,
+        gzipBytes: 347622,
+    });
+    assert.deepEqual(beforePresenceBudget(LEGACY_TOTAL_BUDGET), {
         bytes: 1281422,
         gzipBytes: 400312,
     });
@@ -251,6 +404,7 @@ try {
     // Exact raw boundaries still pass; one byte beyond each named asset fails.
     for (const [name, cap] of [
         ["entry", BUDGET],
+        ["control-transport", OPTIONAL_BUDGETS["control-transport"]],
         ["favorites-transfer", OPTIONAL_BUDGETS["favorites-transfer"]],
     ]) {
         const atBoundary = "a".repeat(cap.bytes);
@@ -321,6 +475,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    presenceDelta(budget, metric) -
                     shakaTrackDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
@@ -351,7 +506,7 @@ try {
         mixedEvidence.unchangedOptionalCaps
     ))
         assert.deepEqual(
-            OPTIONAL_BUDGETS[name],
+            beforePresenceOptional(name),
             budget,
             name + " cap unchanged"
         );
@@ -468,6 +623,7 @@ try {
     })) {
         assert.equal(
             budget.bytes -
+                presenceDelta(budget, "bytes") -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes -
                 plexStepDelta(budget, "bytes") -
                 mixedDelta(budget, "bytes") -
@@ -478,6 +634,7 @@ try {
         );
         assert.equal(
             budget.gzipBytes -
+                presenceDelta(budget, "gzipBytes") -
                 RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes -
                 plexStepDelta(budget, "gzipBytes") -
                 mixedDelta(budget, "gzipBytes") -
@@ -494,6 +651,10 @@ try {
         Object.fromEntries(
             Object.entries(OPTIONAL_BUDGETS)
                 .filter(([name]) => name !== "shaka-tracks")
+                .map(([name, value]) => [
+                    name,
+                    beforePresenceOptional(name, value),
+                ])
                 .map(([name, value]) => [
                     name,
                     name === "favorites-transfer"
@@ -567,6 +728,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    presenceDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
@@ -604,7 +766,7 @@ try {
     ))
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
-                OPTIONAL_BUDGETS[name][metric] -
+                beforePresenceOptional(name)[metric] -
                     (name === "favorites-transfer"
                         ? MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE[metric]
                         : 0) -
@@ -694,6 +856,7 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
+                    presenceDelta(budget, metric) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                     plexStepDelta(budget, metric) -
                     mixedDelta(budget, metric) -
@@ -713,7 +876,7 @@ try {
         favoritesEvidence.previousCaps.OPTIONAL_BUDGETS
     ))
         assert.deepEqual(
-            OPTIONAL_BUDGETS[name],
+            beforePresenceOptional(name),
             budget,
             "existing optional cap unchanged: " + name
         );
@@ -756,6 +919,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    presenceDelta(actual, key) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
@@ -808,6 +972,7 @@ try {
         for (const key of ["bytes", "gzipBytes"])
             assert.equal(
                 actual[key] -
+                    presenceDelta(actual, key) -
                     RELATIVE_SEEK_ENTRY_ALLOWANCE[key] -
                     plexStepDelta(actual, key) -
                     mixedDelta(actual, key) -
@@ -845,6 +1010,7 @@ try {
                 ...startupEvidence.canonical.complete.map(
                     (item) =>
                         TOTAL_BUDGET[metric] -
+                        presenceDelta(TOTAL_BUDGET, metric) -
                         RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         plexStepDelta(TOTAL_BUDGET, metric) -
                         mixedDelta(TOTAL_BUDGET, metric) -
@@ -862,6 +1028,7 @@ try {
                 (item) =>
                     item[metric] <=
                     BUDGET[metric] -
+                        presenceDelta(BUDGET, metric) -
                         RELATIVE_SEEK_ENTRY_ALLOWANCE[metric] -
                         mixedDelta(BUDGET, metric) -
                         shakaTrackDelta(BUDGET, metric) -
@@ -1233,6 +1400,14 @@ try {
     assert.equal(failed.artifacts.length, 3);
     assert.deepEqual(failed.budget, BUDGET);
     assert.deepEqual(failed.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        failed.playerPresenceEntryAllowance,
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        failed.playerPresenceTransportAllowance,
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE
+    );
     assert.deepEqual(
         failed.plexQueueStepTotalAllowance,
         PLEX_QUEUE_STEP_TOTAL_ALLOWANCE
@@ -1798,6 +1973,14 @@ try {
         LOCAL_COMPATIBILITY_ALLOWANCE
     );
     assert.deepEqual(report.totalBudget, TOTAL_BUDGET);
+    assert.deepEqual(
+        report.playerPresenceEntryAllowance,
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.playerPresenceTransportAllowance,
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE
+    );
     assert.deepEqual(
         report.shakaRetirementEntryAllowance,
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE

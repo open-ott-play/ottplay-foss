@@ -486,6 +486,21 @@ const SHAKA_TRACKS_ENTRY_ALLOWANCE = Object.freeze({
     bytes: 576,
     gzipBytes: 128,
 });
+// Negotiated presence and confirmed-media projection: Node22.23.4 observes
+// +7707 raw/+2542 gzip over 1d85ec9c before the source commit was embedded.
+// Inserting the full b9840aa7 identity in memory gives +7747/+2589 maximum;
+// retain 20 gzip bytes for final identity variation, pending clean-source CI.
+// Hosted transport adds exactly +27/+10 in its optional asset. Count both
+// once in complete totals and preserve all previous headroom and other caps.
+// See docs/evidence/player-presence-size-20261029.json.
+const PLAYER_PRESENCE_ENTRY_ALLOWANCE = Object.freeze({
+    bytes: 7747,
+    gzipBytes: 2609,
+});
+const PLAYER_PRESENCE_TRANSPORT_ALLOWANCE = Object.freeze({
+    bytes: 27,
+    gzipBytes: 10,
+});
 const BUDGET = Object.freeze({
     bytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.bytes +
@@ -498,7 +513,8 @@ const BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         328314 +
@@ -509,7 +525,8 @@ const BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
 });
 // The SJCL repair changes only the entry; retain the previous per-provider caps.
 const PROVIDER_BUDGET = Object.freeze({ bytes: 863400, gzipBytes: 268490 });
@@ -703,7 +720,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.bytes +
         SHAKA_RETIREMENT_ENTRY_ALLOWANCE.bytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -716,13 +734,17 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         DESKTOP_FAVORITES_KEY_ALLOWANCE.gzipBytes +
         FAVORITES_RECOVERY_ENTRY_ALLOWANCE.gzipBytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
-        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes,
+        RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes,
 });
 const OPTIONAL_BUDGET = Object.freeze({ bytes: 7800, gzipBytes: 3300 });
 // Optional hosted transport and remote settings retain independent feature caps.
 // Their union does not change the legacy entry/provider or subtitle limits.
 const OPTIONAL_BUDGETS = Object.freeze({
-    "control-transport": Object.freeze({ bytes: 6000, gzipBytes: 2000 }),
+    "control-transport": Object.freeze({
+        bytes: 6000 + PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
+        gzipBytes: 2000 + PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes,
+    }),
     "favorites-transfer": Object.freeze({
         bytes:
             FAVORITES_TRANSFER_OPTIONAL_ALLOWANCE.bytes +
@@ -798,7 +820,9 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         OPTIONAL_BUDGETS["shaka-tracks"].bytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.bytes +
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
-        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes,
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
         MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE.gzipBytes +
         MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE.gzipBytes +
@@ -816,7 +840,9 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         OPTIONAL_BUDGETS["shaka-tracks"].gzipBytes +
         SHAKA_TRACKS_ENTRY_ALLOWANCE.gzipBytes +
         RELATIVE_SEEK_ENTRY_ALLOWANCE.gzipBytes +
-        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes,
+        PLEX_QUEUE_STEP_TOTAL_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_ENTRY_ALLOWANCE.gzipBytes +
+        PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.gzipBytes,
 });
 // Reviewed net-new AVI/MKV behavior only. This does not allocate the relocated
 // Local UI or command runner a second copy of their existing payload allowance.
@@ -1001,6 +1027,8 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
         optionalBudgets: OPTIONAL_BUDGETS,
+        playerPresenceEntryAllowance: PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+        playerPresenceTransportAllowance: PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
         plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
         privateModules: Object.fromEntries(
             Object.entries(CLASSIC_PRIVATE_MODULES).filter(([file]) =>
@@ -1306,6 +1334,9 @@ function writeBuildBundleReport(
                 stagedExpectedSha256: expectedSha256,
             },
             optionalBudgets: OPTIONAL_BUDGETS,
+            playerPresenceEntryAllowance: PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+            playerPresenceTransportAllowance:
+                PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
             plexQueueStepTotalAllowance: PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
             providerBudget: PROVIDER_BUDGET,
             providerBundles: sets,
@@ -1390,6 +1421,8 @@ module.exports = {
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,
+    PLAYER_PRESENCE_ENTRY_ALLOWANCE,
+    PLAYER_PRESENCE_TRANSPORT_ALLOWANCE,
     PLEX_QUEUE_STEP_TOTAL_ALLOWANCE,
     PROVIDER_BUDGET,
     RELATIVE_SEEK_ENTRY_ALLOWANCE,
