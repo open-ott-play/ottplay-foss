@@ -11,5 +11,7 @@ npm run check:es5
 npx playwright install chromium
 npm run test:devices:browser
 npm run package:modea
+npm run package:webos -- --local
+npm run verify:webos -- --local
 cargo test --locked -p ottplay-core -p ottplay-server
 cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml

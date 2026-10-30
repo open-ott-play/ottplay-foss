@@ -138,6 +138,7 @@ iOS界面使用横屏。设置、提供商配置、远程控制授权和JSON导�
 | **macOS** | `.dmg` / `.app.zip` | Apple Silicon与Intel分别构建；未配置Apple签名时使用临时签名 |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | 多种发行版 |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode 或 Homebrew Channel](docs/lg-webos-installation.md)；托管播放器，需要网络连接 |
 | **iOS** | 通过AltStore / TestFlight / Xcode安装`.ipa` | 仅侧载，尚未上架App Store |
 | **Android（共享前端）** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | 已签名Capacitor包；选择支持的Android版本 |
 | **Android（原生Kotlin）** | 独立[原生应用](https://github.com/open-ott-play/ottplay-android) | 公开仓库，独立应用与发布工作流 |

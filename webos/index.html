@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <meta content="no-referrer" name="referrer">
+        <title>OTT-play FOSS</title>
+        <style>
+        body {
+            padding: 8%;
+            font: 32px sans-serif;
+            color: #f5f7fb;
+            background: #101214;
+        }
+        a {
+            color: #a7d4ff;
+        }
+        a:focus {
+            outline: 3px solid #a7d4ff;
+            outline-offset: 8px;
+        }
+        </style>
+    </head>
+    <body>
+        <h1>OTT-play FOSS</h1>
+        <p>Opening the player. A network connection is required.</p>
+        <p>
+            <a href="https://player.ottplay.here.now/" id="open-player"
+                >Open player</a
+            >
+        </p>
+        <p>
+            If the player does not open, check the TV network connection and try
+            again. Press Back to close.
+        </p>
+        <script>
+        (function () {
+            "use strict";
+            var target = "https://player.ottplay.here.now/";
+            document.getElementById("open-player").focus();
+            document.addEventListener("keydown", function (event) {
+                var key = event.keyCode || event.which;
+                if (key === 461 || key === 27) {
+                    event.preventDefault();
+                    window.close();
+                }
+            });
+            window.location.replace(target);
+        })();
+        </script>
+    </body>
+</html>

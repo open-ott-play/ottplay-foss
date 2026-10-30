@@ -182,6 +182,7 @@ Tauri desktop smoke: [desktop checklist](docs/mode-b-tauri-smoke.md).
 | **macOS** | `.dmg` / `.app.zip` | Separate Apple Silicon and Intel builds; ad-hoc signed unless Apple signing is configured |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Various distributions |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode or Homebrew Channel](docs/lg-webos-installation.md); hosted player, network required |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Sideload only — not on App Store yet |
 | **Android (shared frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Signed Capacitor packages; choose the supported Android version |
 | **Android (native Kotlin)** | Separate [native application](https://github.com/open-ott-play/ottplay-android) | Public repository; separate application and release workflow |

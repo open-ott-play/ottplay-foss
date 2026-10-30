@@ -140,6 +140,7 @@ Test urządzenia: [lista kontrolna trybu B](docs/mode-b-device-smoke.md) i `./sc
 | **macOS** | `.dmg` / `.app.zip` | Oddzielne kompilacje Apple Silicon i Intel; podpis ad-hoc, jeśli nie skonfigurowano podpisywania Apple |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Różne dystrybucje |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode lub Homebrew Channel](docs/lg-webos-installation.md); odtwarzacz hostowany, wymaga sieci |
 | **iOS** | `.ipa` przez AltStore / TestFlight / Xcode | Tylko instalacja boczna — jeszcze bez App Store |
 | **Android (wspólny frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Podpisane pakiety Capacitor; wybierz obsługiwaną wersję Androida |
 | **Android (natywny Kotlin)** | Oddzielna [aplikacja natywna](https://github.com/open-ott-play/ottplay-android) | Publiczne repozytorium; osobna aplikacja i proces wydawania |

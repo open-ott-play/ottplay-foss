@@ -140,6 +140,7 @@ iPhone में वीडियो इंटरफ़ेस के अंदर
 | **macOS** | `.dmg` / `.app.zip` | Apple Silicon और Intel के अलग बिल्ड; Apple हस्ताक्षर कॉन्फ़िगर न हों तो ad-hoc हस्ताक्षर |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | विभिन्न वितरण |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode या Homebrew Channel](docs/lg-webos-installation.md); होस्ट किया गया प्लेयर, नेटवर्क आवश्यक |
 | **iOS** | AltStore / TestFlight / Xcode से `.ipa` | केवल साइडलोड — अभी App Store पर नहीं |
 | **Android (साझा frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | हस्ताक्षरित Capacitor पैकेज; समर्थित Android संस्करण चुनें |
 | **Android (मूल Kotlin)** | अलग [मूल ऐप](https://github.com/open-ott-play/ottplay-android) | सार्वजनिक रिपॉज़िटरी; अलग ऐप और रिलीज़ प्रक्रिया |

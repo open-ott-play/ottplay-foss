@@ -22,6 +22,8 @@
     "npx playwright install chromium",
     "npm run test:devices:browser",
     "npm run package:modea",
+    "npm run package:webos -- --local",
+    "npm run verify:webos -- --local",
     "cargo test --locked -p ottplay-core -p ottplay-server",
     "cargo test --locked --release --manifest-path tests/glib-variant-regression/Cargo.toml"
   ],
@@ -33,7 +35,8 @@
     "Tauri bundle metadata keeps the base SemVer because MSI rejects beta and RC labels. Under promote-bytes, RC and stable package/Cargo version fields use the final base version from the version plan; the full candidate tag, source and run identity remain in manifests and receipts.",
     "Production automatic updating is not configured: updater public key is a placeholder and latest.json is not generated. Manual installers are supported; unsigned iOS packages need operator signing/sideloading.",
     "Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation.",
-    "The separate Capacitor 6 API 22 APK supports Android 5.1/6 devices with WebView 60+. It shares the Full application ID, profile origin and signing certificate; modern devices keep Capacitor 8. Both APKs are built for beta/RC and promoted unchanged to stable."
+    "The separate Capacitor 6 API 22 APK supports Android 5.1/6 devices with WebView 60+. It shares the Full application ID, profile origin and signing certificate; modern devices keep Capacitor 8. Both APKs are built for beta/RC and promoted unchanged to stable.",
+    "LG webOS delivery includes one unprivileged hosted web-app IPK for Developer Mode and an existing Homebrew Channel. The launcher loads the canonical HTTPS player and requires network access; it is not an LG Content Store package. Numeric installer versions use 1.0.<frozen build number>; RC-to-stable promotion preserves the package and feed bytes."
   ],
   "version_companions": [
     "src-tauri/Cargo.toml",
@@ -184,6 +187,18 @@
         "value": "build",
         "member": "assets/public/android-distribution.json",
         "field": "versionCode"
+      },
+      {
+        "path": "ottplay-foss-webos.json",
+        "format": "json",
+        "value": "package",
+        "field": "packageVersion"
+      },
+      {
+        "path": "ottplay-foss-webos.json",
+        "format": "json",
+        "value": "build",
+        "field": "buildNumber"
       }
     ],
     "toolkit_revision": "e209548e66577e456f116f4486113932e1598b1a"

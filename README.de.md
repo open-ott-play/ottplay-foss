@@ -138,6 +138,7 @@ Geräteprüfung: [Modus-B-Checkliste](docs/mode-b-device-smoke.md) und `./script
 | **macOS** | `.dmg` / `.app.zip` | Getrennte Apple-Silicon- und Intel-Builds; ad-hoc-signiert, sofern keine Apple-Signierung eingerichtet ist |
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Verschiedene Distributionen |
+| **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode oder Homebrew Channel](docs/lg-webos-installation.md); gehosteter Player, Netzwerk erforderlich |
 | **iOS** | `.ipa` über AltStore / TestFlight / Xcode | Nur Sideloading — noch nicht im App Store |
 | **Android (gemeinsames Frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Signierte Capacitor-Pakete; passende Android-Version wählen |
 | **Android (natives Kotlin)** | Separate [native App](https://github.com/open-ott-play/ottplay-android) | Öffentliches Repository; eigene App und eigener Release-Ablauf |

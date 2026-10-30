@@ -134,6 +134,10 @@
 
 ### Changes
 
+- Add an installable LG webOS hosted player for Developer Mode and an existing
+  Homebrew Channel. Release packages include a verified IPK, checksums and a
+  version-pinned Homebrew repository and manifest. The app opens the canonical
+  hosted player and requires a network connection.
 - Add classic Stalker movies and nested episodes to the normal Channel list,
   categories and global Favorites. Publish live channels first, then discover
   media in the background with bounded requests and current-source validation.
