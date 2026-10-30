@@ -41,6 +41,7 @@ store, service, and production deployment acceptance remain separate checks.
 ## Owned files
 
 - `Cargo.lock`
+- `android/version.json`
 - `ios/App/App.xcodeproj/project.pbxproj`
 - `package-lock.json`
 - `package.json`
