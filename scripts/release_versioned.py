@@ -31,7 +31,7 @@ if __package__:
         reserve_plan,
         verify_reservation,
     )
-    from .version_receipt import verify_declared_artifacts, verify_receipts
+    from .version_receipt import producer_identity, verify_declared_artifacts, verify_receipts
 else:
     import release as client
     import release_control as rc
@@ -43,7 +43,7 @@ else:
         reserve_plan,
         verify_reservation,
     )
-    from version_receipt import verify_declared_artifacts, verify_receipts
+    from version_receipt import producer_identity, verify_declared_artifacts, verify_receipts
 
 PLAN = Path(".release-plan.json")
 MAX_TOOLCHAIN_DIAGNOSTICS = 100
@@ -214,10 +214,16 @@ def verified_rc(
     rc.require(manifests[0]["size"] == len(raw), "RC asset size mismatch")
     with tempfile.TemporaryDirectory(prefix="verified-rc-") as temp:
         payload = Path(temp) / "payload"
+        budget = rc.DownloadBudget(sum(cast(int, item["size"]) for item in expected.values()))
         for item in assets:
             if item["name"] == rc.MANIFEST:
                 continue
-            identity = rc.download_asset(gh, item["id"], payload)
+            identity = rc.download_asset(
+                gh, item["id"], payload,
+                expected=cast(rc.AssetIdentity, {
+                    key: expected[item["name"]][key] for key in ("size", "sha256")
+                }), budget=budget,
+            )
             payload.unlink()
             rc.require(item["size"] == identity["size"], "RC asset size mismatch")
             declaration = expected[item["name"]]
@@ -559,6 +565,11 @@ def prepare(args: argparse.Namespace) -> dict[str, object]:
         return closed
     if channel in {"beta", "rc", "stable"}:
         rc.ensure_absent(gh, f"v{base}")
+    if policy.get("release_notes") is not None:
+        # Every channel selects the base-version section; do not allocate a
+        # sequence or build number merely to discover unpublishable notes.
+        # The publisher independently validates the same source again.
+        rc.release_notes(gh, f"v{base}", cast(str, run["head_sha"]), "")
     plan = reserve_plan(
         gh,
         policy,
@@ -669,7 +680,10 @@ def publish_versioned(args: argparse.Namespace) -> dict[str, object]:
         stage = Path(temp)
         assets = rc.stage_assets(Path(args.assets), stage)
         verify_candidate_fuzz_report(stage, policy, plan, run, gh.repo)
-        receipts = verify_receipts(stage, plan, assets, policy)
+        receipts = verify_receipts(stage, plan, assets, policy, producer_identity(
+            gh.repo, cast(int, run["id"]), cast(int, run["run_attempt"]),
+            cast(str, run["head_sha"]),
+        ))
         receipts, validation_receipts = candidate_fuzz_receipts(policy, channel, receipts)
         rc.verify_required_signatures(stage, gh.repo, cast(str, plan["source_sha"]))
         if parent:

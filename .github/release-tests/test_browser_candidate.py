@@ -4,14 +4,18 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
 SPEC = importlib.util.spec_from_file_location('candidate', ROOT / 'scripts/prepare_browser_candidate.py')
 CANDIDATE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CANDIDATE)
@@ -43,6 +47,7 @@ class CandidateTests(unittest.TestCase):
                 self.assertEqual(archive.visited, count)
 
     def setUp(self):
+        self.enterContext(patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}))
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -104,6 +109,27 @@ class CandidateTests(unittest.TestCase):
         value['artifacts'][0]['sha256'] = 'b' * 64
         receipt.write_text(json.dumps(value))
         with self.assertRaises(ValueError): self.prepare()
+
+    def test_actions_candidate_requires_the_current_producer_attempt(self):
+        self.archive()
+        receipt = self.artifacts / 'release-inputs-web.json'
+        original = json.loads(receipt.read_text())
+        producer = {'repository': 'example/player', 'run_id': 42,
+                    'run_attempt': 2, 'source_sha': SHA}
+        with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true',
+                                    'GITHUB_REPOSITORY': 'example/player',
+                                    'GITHUB_RUN_ID': '42', 'GITHUB_RUN_ATTEMPT': '2'}):
+            for invalid in (None, {**producer, 'run_attempt': 1},
+                            {**producer, 'run_id': 41},
+                            {**producer, 'repository': 'other/player'},
+                            {**producer, 'source_sha': 'b' * 40}):
+                with self.subTest(producer=invalid):
+                    receipt.write_text(json.dumps({**original, 'producer': invalid}))
+                    with self.assertRaisesRegex(ValueError, 'producer'):
+                        self.prepare()
+                    self.assertFalse((self.root / 'web').exists())
+            receipt.write_text(json.dumps({**original, 'producer': producer}))
+            self.assertEqual(self.prepare()['sourceSha'], SHA)
 
     def test_archive_checksum_and_symlink_rejected(self):
         archive = self.archive()
