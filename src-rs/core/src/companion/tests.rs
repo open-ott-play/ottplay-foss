@@ -63,6 +63,27 @@ async fn private_routes_validate_auth_before_parsing_and_bound_requests() {
     assert_eq!(caps["schema"], 1);
     assert_eq!(caps["torrent"], true);
     let wrong = base.replace(&"a".repeat(48), &"b".repeat(48));
+    for (endpoint, authorized) in [(&base, true), (&wrong, false)] {
+        let response = client
+            .request(reqwest::Method::OPTIONS, format!("{endpoint}/sessions"))
+            .header("origin", "https://player.example")
+            .header("access-control-request-method", "POST")
+            .header("access-control-request-private-network", "true")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            response
+                .headers()
+                .get("access-control-allow-private-network")
+                .is_some(),
+            authorized
+        );
+        assert!(response
+            .headers()
+            .get("access-control-allow-credentials")
+            .is_none());
+    }
     assert_eq!(
         client
             .post(format!("{wrong}/sessions"))

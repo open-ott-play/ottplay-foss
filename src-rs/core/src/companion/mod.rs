@@ -120,6 +120,11 @@ async fn authenticate(State(c): State<Companion>, request: Request<Body>, next: 
     if c.0.cancel.is_cancelled() {
         return failure("service_stopped");
     }
+    let private_network_preflight = request.method() == Method::OPTIONS
+        && request
+            .headers()
+            .get("access-control-request-private-network")
+            .is_some_and(|value| value == "true");
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
@@ -128,6 +133,12 @@ async fn authenticate(State(c): State<Companion>, request: Request<Body>, next: 
     // The private URL is the sole bearer credential. Allow uncredentialed web/TV
     // clients explicitly, never ambient cookies or Access-Control-Allow-Credentials.
     headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+    if private_network_preflight {
+        headers.insert(
+            "access-control-allow-private-network",
+            "true".parse().unwrap(),
+        );
+    }
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_METHODS,
         "GET, HEAD, POST, DELETE, OPTIONS".parse().unwrap(),
