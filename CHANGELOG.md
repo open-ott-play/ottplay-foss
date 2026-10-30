@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add an on-demand native media companion for ordinary BitTorrent file playback
+  and packaged QuickJS source resolvers. Desktop players start their own private
+  service; other clients can use an explicitly configured OTT server endpoint.
+  Keep viewer leases independent, bound cache and execution resources, support
+  byte-range seeking, and cancel work on source changes, standby and page exit.
+  Load the shared controls only when needed and preserve existing Local sources.
 - Add an optional Modern interface with poster grids for media and spacious TV
   rows. Keep Classic as the default, share playback, categories and Favorites,
   and switch views from Interface settings or the remote `interfaceMode`

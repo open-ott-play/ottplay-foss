@@ -1,0 +1,9 @@
+{
+  "id": "network-catalog",
+  "name": "HTTPS catalog resolver",
+  "apiVersion": 1,
+  "script": "resolve.js",
+  "sha256": "4e788240b77858e280b3e3f3f71e0eaac687408c6bc4e6107cd46e443de9705c",
+  "allowedHosts": ["catalog.example", "media.example"],
+  "network": true
+}

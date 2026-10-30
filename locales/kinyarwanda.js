@@ -656,6 +656,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Igenamiterere rya MaxTV",
     Media: "Ibitangazamakuru",
+    "Media companion": "Serivisi y’itangazamakuru",
     "Media item is no longer available": "Iki gitangazamakuru ntikikiboneka",
     "Media Library": "Isomero ry'ibitangazamakuru",
     "Media Library URL": "URL y'isomero ry'ibitangazamakuru",

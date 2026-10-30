@@ -648,6 +648,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV mipangilio",
     Media: "Vyombo vya habari",
+    "Media companion": "Huduma ya media",
     "Media item is no longer available":
         "Kipengee cha maudhui hakipatikani tena",
     "Media Library": "Maktaba ya media",

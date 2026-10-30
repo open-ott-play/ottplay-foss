@@ -649,6 +649,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Issettjar ta’ MaxTV",
     Media: "Midja",
+    "Media companion": "Servizz tal-midja",
     "Media item is no longer available":
         "Dan l-oġġett tal-midja m’għadux disponibbli",
     "Media Library": "Librerija tal-midja",

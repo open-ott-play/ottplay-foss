@@ -630,6 +630,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV 설정",
     Media: "미디어",
+    "Media companion": "미디어 서비스",
     "Media item is no longer available":
         "미디어 항목을 더 이상 사용할 수 없습니다.",
     "Media Library": "미디어 라이브러리",

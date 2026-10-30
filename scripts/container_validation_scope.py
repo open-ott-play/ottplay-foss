@@ -16,6 +16,8 @@ PATTERNS = (
     "src-rs/core/src/xmltv.rs", "src-rs/core/src/xmltv/**", "src-rs/core/src/xmltv_differential_tests.rs",
     "src-rs/core/src/shared_guide.rs", "src-rs/core/src/m3u.rs",
     "src-rs/core/src/lib.rs", "src-rs/core/src/native_xmltv.rs", "src-rs/server/src/main.rs", "vendor/ottplay-core.*",
+    "src-rs/core/src/companion/**", "src-rs/server/src/companion.rs", "plugins/examples/**",
+    "vendor/librqbit-9.1.0/**", "vendor/librqbit-9.1.0*", "scripts/check-librqbit-backport.cjs",
     "tests/test_container_workspace.py", ".github/release-tests/test_container_*.py",
 )
 

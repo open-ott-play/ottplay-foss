@@ -54,6 +54,7 @@ pub async fn set_background_standby(
     // Closing admission is immediate; waking is allowed only after durable intent.
     let media_stopped = if standby {
         work.set_standby(true);
+        app.state::<super::companion::CompanionState>().stop().await;
         hls.stop_all().await;
         let _ = super::media_session::stop_media_session(app.state()).await;
         super::tauri_commands::stop_pip(app.clone(), None).await.map(|_| ())

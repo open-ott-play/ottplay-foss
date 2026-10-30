@@ -18,6 +18,10 @@ class ContainerValidationScopeTests(unittest.TestCase):
     def test_unrelated_changes_skip_builds(self):
         self.assertFalse(scope.relevant(["README.md", ".github/workflows/auto-approve.yml", "src/ui.ts"]))
 
+    def test_media_companion_and_packaged_scripts_require_container_validation(self):
+        for path in ["src-rs/core/src/companion/plugins.rs", "src-rs/server/src/companion.rs", "plugins/examples/direct-url.js", "vendor/librqbit-9.1.0/src/dht_utils.rs", "vendor/librqbit-9.1.0.provenance.json"]:
+            self.assertTrue(scope.relevant([path]), path)
+
     def test_native_record_kernel_and_its_oracle_require_container_validation(self):
         for path in ["src-rs/core/src/xmltv/server_records.rs", "src-rs/core/src/xmltv_differential_tests.rs"]:
             self.assertTrue(scope.relevant([path]), path)

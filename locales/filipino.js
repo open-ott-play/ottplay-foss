@@ -653,6 +653,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV na mga setting",
     Media: "Media",
+    "Media companion": "Serbisyo ng media",
     "Media item is no longer available": "Hindi na available ang media item",
     "Media Library": "Library ng media",
     "Media Library URL": "URL ng library ng media",

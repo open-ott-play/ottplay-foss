@@ -619,6 +619,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ဆက်တင်များ",
     Media: "မီဒီယာ",
+    "Media companion": "မီဒီယာဝန်ဆောင်မှု",
     "Media item is no longer available": "မီဒီယာကို မရနိုင်တော့ပါ။",
     "Media Library": "မီဒီယာစာကြည့်တိုက်",
     "Media Library URL": "မီဒီယာစာကြည့်တိုက် URL",

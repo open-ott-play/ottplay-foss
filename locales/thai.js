@@ -619,6 +619,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "การตั้งค่า MaxTV",
     Media: "สื่อ",
+    "Media companion": "บริการสื่อ",
     "Media item is no longer available": "รายการสื่อไม่สามารถใช้ได้อีกต่อไป",
     "Media Library": "ไลบรารีสื่อ",
     "Media Library URL": "ไลบรารีสื่อ URL",

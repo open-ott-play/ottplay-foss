@@ -1344,8 +1344,10 @@ pub async fn set_pip_bounds(
 /// Browser `window.close()` does not quit a Tauri app; Escape → confirm → Enter
 /// calls `stbExit()`, which must invoke this under `__TAURI__`.
 #[tauri::command]
-pub fn exit_app(app: tauri::AppHandle) {
+pub async fn exit_app(app: tauri::AppHandle) {
     use tauri::Manager;
+    app.state::<ottplay_core::background_work::BackgroundWork>().set_standby(true);
+    app.state::<super::companion::CompanionState>().stop().await;
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.close();
     }

@@ -624,6 +624,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV सेटिङहरू",
     Media: "मिडिया",
+    "Media companion": "मिडिया सेवा",
     "Media item is no longer available": "मिडिया वस्तु अब उपलब्ध छैन",
     "Media Library": "मिडिया लाइब्रेरी",
     "Media Library URL": "मिडिया लाइब्रेरी URL",

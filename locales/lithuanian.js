@@ -640,6 +640,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV nustatymai",
     Media: "Medija",
+    "Media companion": "Medijos paslauga",
     "Media item is no longer available": "Medijos elementas nebepasiekiamas",
     "Media Library": "Medijos biblioteka",
     "Media Library URL": "Mediatekos URL",

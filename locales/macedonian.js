@@ -649,6 +649,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Поставки за MaxTV",
     Media: "Медиуми",
+    "Media companion": "Медиумска услуга",
     "Media item is no longer available":
         "Медиумската ставка повеќе не е достапна",
     "Media Library": "Медиумска библиотека",

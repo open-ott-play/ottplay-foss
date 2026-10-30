@@ -623,6 +623,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV සැකසුම්",
     Media: "මාධ්‍ය",
+    "Media companion": "මාධ්‍ය සේවාව",
     "Media item is no longer available": "මාධ්‍ය අයිතමය තවදුරටත් නොමැත",
     "Media Library": "මාධ්‍ය පුස්තකාලය",
     "Media Library URL": "මාධ්‍ය පුස්තකාලය URL",

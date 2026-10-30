@@ -633,6 +633,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV அமைப்புகள்",
     Media: "ஊடகம்",
+    "Media companion": "ஊடகச் சேவை",
     "Media item is no longer available": "மீடியா உருப்படி இனி கிடைக்காது",
     "Media Library": "ஊடக நூலகம்",
     "Media Library URL": "ஊடக நூலகம் URL",

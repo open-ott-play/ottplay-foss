@@ -636,6 +636,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTVの設定",
     Media: "メディア",
+    "Media companion": "メディアサービス",
     "Media item is no longer available":
         "メディアアイテムは利用できなくなりました",
     "Media Library": "メディアライブラリー",

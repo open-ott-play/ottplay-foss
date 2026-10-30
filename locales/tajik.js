@@ -643,6 +643,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Танзимоти MaxTV",
     Media: "Медиа",
+    "Media companion": "Хидмати расонаӣ",
     "Media item is no longer available": "Ин маводи медиа дигар дастрас нест",
     "Media Library": "Китобхонаи медиа",
     "Media Library URL": "URL-и китобхонаи медиа",

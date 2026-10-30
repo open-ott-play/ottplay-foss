@@ -638,6 +638,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV баптаулары",
     Media: "Медиа",
+    "Media companion": "Медиа қызметі",
     "Media item is no longer available": "Бұл медиа енді қолжетімсіз",
     "Media Library": "Медиа кітапханасы",
     "Media Library URL": "Медиа кітапханасының URL мекенжайы",

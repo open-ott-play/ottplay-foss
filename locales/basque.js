@@ -646,6 +646,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ezarpenak",
     Media: "Multimedia",
+    "Media companion": "Multimedia zerbitzua",
     "Media item is no longer available":
         "Multimedia-elementua ez dago jada erabilgarri",
     "Media Library": "Multimedia-liburutegia",

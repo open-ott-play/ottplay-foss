@@ -1,4 +1,5 @@
 mod debug_api;
+mod companion;
 mod control_discovery;
 mod hosted_epg;
 mod msx;
@@ -286,6 +287,14 @@ async fn serve_listeners(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    anyhow::ensure!(
+        !companion::configured()
+            || (!cli.stalker_relay_only
+                && std::env::var_os("OTT_OFFLINE_MEDIA_READONLY_PATHS").is_none()
+                && std::env::var("OTT_NORMALIZATION_ONLY").as_deref() != Ok("1")
+                && !hosted_epg::enabled()?),
+        "Media services cannot be combined with a dedicated relay mode"
+    );
     let stalker_relay = if cli.stalker_relay_only {
         anyhow::ensure!(
             std::env::var_os("OTT_OFFLINE_MEDIA_READONLY_PATHS").is_none()
@@ -353,6 +362,8 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    let companion = companion::from_env(&cli.host).await?;
+
     let app = Router::new()
         .route("/", get(root))
         .route("/index.html", get(root))
@@ -387,9 +398,20 @@ async fn main() -> anyhow::Result<()> {
         .merge(nas_library::routes_from_env()?)
         .merge(normalization::routes_from_env(&cli.host).await?)
         .merge(control_discovery::routes())
-        .merge(offline_media_routes(None).await?);
+        .merge(offline_media_routes(None).await?)
+        .merge(companion.as_ref().map(|service| service.routes()).unwrap_or_default());
 
-    serve_listeners(listeners, app, tls_config).await
+    if let Some(service) = companion {
+        let result = tokio::select! {
+            result = serve_listeners(listeners, app, tls_config) => result,
+            _ = normalization::stop_signal() => Ok(()),
+        };
+        service.shutdown().await;
+        normalization::shutdown().await;
+        result
+    } else {
+        serve_listeners(listeners, app, tls_config).await
+    }
 }
 
 /// Media import is disabled unless an operator configures both storage and a secret.

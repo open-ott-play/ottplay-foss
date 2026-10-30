@@ -482,6 +482,10 @@ jobs:
         run: python3 tests/test_container_workspace.py
       - name: Test core and server including shared XMLTV differential contracts
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Verify bounded torrent metadata acquisition
+        run: |
+          node scripts/check-librqbit-backport.cjs
+          cargo test --locked --manifest-path tests/librqbit-resource-regression/Cargo.toml --no-default-features --features rust-tls --lib resource_bounds_tests
       - name: Install media tools for isolated normalization checks
         run: |
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then

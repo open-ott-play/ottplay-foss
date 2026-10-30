@@ -1074,12 +1074,14 @@ const coreControls = functions("src/core/index.ts", [
     "sampleCoreLiveRecovery",
     "openCoreEngineLease",
     "stopCoreEngine",
+    "releaseCoreCompanion",
     "stbIsPlaying",
     "stbIsStandby",
 ]);
 for (const platform of Object.keys(nativeSources)) {
     let destroyed = 0,
-        cancelled = 0;
+        cancelled = 0,
+        companionReleased = 0;
     let timerId = 0;
     const timers = new Map();
     const w = {
@@ -1110,6 +1112,10 @@ for (const platform of Object.keys(nativeSources)) {
             streamRetries: 0,
         },
         coreAvTest: null,
+        coreCompanionPreparing: false,
+        coreCompanionRelease() {
+            companionReleased++;
+        },
         coreDeviceEffects: {},
         coreLiveRecovery: null,
         coreMediaBackend: null,
@@ -1210,6 +1216,12 @@ for (const platform of Object.keys(nativeSources)) {
     assert.equal(w.coreStreamAttempt, null);
     assert.equal(destroyed, 1, platform + " Stop tears down HLS");
     assert.equal(cancelled, 1, platform + " Stop cancels pending preparation");
+    assert.equal(
+        companionReleased,
+        1,
+        platform + " Stop releases companion lease"
+    );
+    assert.equal(w.coreCompanionRelease, null);
     assert.equal(w._playSession, 2);
 }
 

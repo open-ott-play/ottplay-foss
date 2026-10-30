@@ -27,6 +27,8 @@ jobs:
         run: python3 scripts/check-updater-features.py
       - name: Exercise shared guide through the actual native engine
         run: cargo test --locked -p ottplay-core -p ottplay-server
+      - name: Exercise bounded torrent metadata acquisition
+        run: cargo test --locked --manifest-path tests/librqbit-resource-regression/Cargo.toml --no-default-features --features rust-tls --lib resource_bounds_tests
 
   windows-installers:
     name: Windows installer lifecycle

@@ -3021,7 +3021,7 @@ function classicMediaRuntime(): any {
             rollback: function () {
                 if (!owned()) return;
                 var candidate = mediaClassicInstance;
-                ++mediaClassicContextRevision;
+                var restoredRevision = ++mediaClassicContextRevision;
                 mediaClassicSourceHandoff = null;
                 mediaClassicContext = previous.context;
                 mediaClassicInstance = previous.instance;
@@ -3029,6 +3029,13 @@ function classicMediaRuntime(): any {
                 mediaClassicProvider = previous.provider;
                 mediaClassicSource = previous.source;
                 if (candidate) candidate.cancel();
+                if (
+                    restoredRevision === mediaClassicContextRevision &&
+                    mediaClassicContext === previous.context &&
+                    mediaClassicInstance === previous.instance &&
+                    previous.instance
+                )
+                    previous.instance.restoreProjection();
             },
         };
     },

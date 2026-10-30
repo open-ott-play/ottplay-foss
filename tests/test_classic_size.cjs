@@ -5,6 +5,14 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const {
+    MODERN_INTERFACE_ENTRY_ALLOWANCE,
+    MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
+    MODERN_INTERFACE_RELATED_ALLOWANCES,
+    MEDIA_COMPANION_ENTRY_ALLOWANCE,
+    MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+    MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+    MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+    MEDIA_COMPANION_PREPARATION_ALLOWANCE,
     CATEGORY_NAVIGATION_ENTRY_ALLOWANCE,
     CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
@@ -13,9 +21,6 @@ const {
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
-    MODERN_INTERFACE_ENTRY_ALLOWANCE,
-    MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
-    MODERN_INTERFACE_RELATED_ALLOWANCES,
     FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
     FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,
@@ -62,14 +67,294 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 try {
-    // Historical evidence predates the opt-in renderer. Subtract each new
-    // component exactly once without changing its recorded caps or inventory.
-    const historicalOptionalNames = Object.keys(
-        CLASSIC_OPTIONAL_BUNDLES
-    ).filter((name) => name !== "modern-interface");
-    const historicalOptionalEntries = Object.entries(OPTIONAL_BUDGETS).filter(
-        ([name]) => name !== "modern-interface"
+    const routingEvidence = require("../docs/evidence/media-companion-playback-routing-size-20261030.json");
+    assert.equal(routingEvidence.budgetsChanged, false);
+    assert.deepEqual(routingEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.equal(routingEvidence.baseline.includesPreparationFix, true);
+    assert.equal(routingEvidence.baseline.workingTree, true);
+    assert.match(routingEvidence.baseline.manifestSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        routingEvidence.candidate.allRecordedArtifactHashesAndSizesReverified,
+        true
     );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        OPTIONAL_BUDGETS,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    }))
+        assert.deepEqual(
+            budget,
+            routingEvidence.caps[name],
+            name + " unchanged by finite-stream routing"
+        );
+    assert.deepEqual(
+        routingEvidence.modes.map((mode) => mode.path),
+        ARTIFACTS
+    );
+    for (const mode of routingEvidence.modes) {
+        assert.deepEqual(
+            mode.components.map((row) => row.name).sort(),
+            [
+                "player.js",
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                    (name) => "provider-" + name + ".js"
+                ),
+                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                    (name) => name + ".js"
+                ),
+            ].sort()
+        );
+        for (const row of mode.components) {
+            assert.match(row.before.sha256, /^[a-f0-9]{64}$/);
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (!["player.js", "media-companion.js"].includes(row.name))
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " unaffected by finite-stream routing"
+                );
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - row.before[metric]
+                );
+                if (row.name === "player.js")
+                    assert(row.after[metric] <= BUDGET[metric]);
+                if (row.name === "media-companion.js")
+                    assert(
+                        row.after[metric] <=
+                            OPTIONAL_BUDGETS["media-companion"][metric]
+                    );
+            }
+        }
+        for (const metric of ["bytes", "gzipBytes"])
+            assert(
+                mode.components.reduce(
+                    (sum, row) => sum + row.after[metric],
+                    0
+                ) <= TOTAL_BUDGET[metric]
+            );
+    }
+    const preparationDelta = (budget, metric) =>
+        [BUDGET, LEGACY_TOTAL_BUDGET, BASE_TOTAL_BUDGET, TOTAL_BUDGET].includes(
+            budget
+        )
+            ? MEDIA_COMPANION_PREPARATION_ALLOWANCE[metric]
+            : 0;
+    const beforePreparationBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - preparationDelta(budget, metric),
+            ])
+        );
+    const preparationEvidence = require("../docs/evidence/media-companion-preparation-size-20261030.json");
+    assert(Object.isFrozen(MEDIA_COMPANION_PREPARATION_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_PREPARATION_ALLOWANCE,
+        preparationEvidence.allowance
+    );
+    assert.deepEqual(preparationEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.match(preparationEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(preparationEvidence.lockSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        preparationEvidence.candidate
+            .allRecordedArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.deepEqual(
+        preparationEvidence.modes.map((row) => row.path),
+        ARTIFACTS
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(budget, preparationEvidence.nextCaps[name]);
+        assert.deepEqual(
+            beforePreparationBudget(budget),
+            preparationEvidence.previousCaps[name],
+            name + " counts preparation entry once"
+        );
+    }
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        preparationEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        preparationEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            MEDIA_COMPANION_PREPARATION_ALLOWANCE[metric],
+            Math.max(
+                ...preparationEvidence.modes.map(
+                    (mode) =>
+                        mode.components.find((row) => row.name === "player.js")
+                            .delta[metric]
+                )
+            ) + preparationEvidence.reserve[metric]
+        );
+    for (const mode of preparationEvidence.modes) {
+        assert.deepEqual(
+            mode.components.map((row) => row.name).sort(),
+            [
+                "player.js",
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                    (name) => "provider-" + name + ".js"
+                ),
+                ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                    (name) => name + ".js"
+                ),
+            ].sort()
+        );
+        for (const row of mode.components) {
+            assert.match(row.before.sha256, /^[a-f0-9]{64}$/);
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (row.name !== "player.js")
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " is unchanged by preparation feedback"
+                );
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - row.before[metric]
+                );
+        }
+    }
+    const transportDelta = (budget, metric) =>
+        [
+            BASE_TOTAL_BUDGET,
+            TOTAL_BUDGET,
+            OPTIONAL_BUDGETS["media-companion"],
+        ].includes(budget)
+            ? MEDIA_COMPANION_TRANSPORT_ALLOWANCE[metric]
+            : 0;
+    const beforeTransportBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
+            ])
+        );
+    const transportEvidence = require("../docs/evidence/media-companion-transport-size-20261030.json");
+    assert(Object.isFrozen(MEDIA_COMPANION_TRANSPORT_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+        transportEvidence.allowance
+    );
+    assert.deepEqual(transportEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.match(transportEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(transportEvidence.lockSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+        transportEvidence.candidate.allRecordedArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.deepEqual(
+        transportEvidence.modes.map((row) => row.path),
+        ARTIFACTS.map((file) =>
+            path.posix.join(path.posix.dirname(file), "media-companion.js")
+        )
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(
+            beforePreparationBudget(budget),
+            transportEvidence.nextCaps[name]
+        );
+        assert.deepEqual(
+            beforeTransportBudget(budget),
+            transportEvidence.previousCaps[name],
+            name + " counts transport only in complete payloads"
+        );
+    }
+    assert.deepEqual(
+        OPTIONAL_BUDGETS,
+        transportEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        Object.fromEntries(
+            Object.entries(OPTIONAL_BUDGETS).map(([name, budget]) => [
+                name,
+                beforeTransportBudget(budget),
+            ])
+        ),
+        transportEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    for (const row of transportEvidence.modes) {
+        assert.deepEqual(row.before, transportEvidence.baseline.measurement);
+        for (const measurement of [row.before, row.after])
+            assert.match(measurement.sha256, /^[a-f0-9]{64}$/);
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(
+                row.delta[metric],
+                row.after[metric] - row.before[metric]
+            );
+            assert.equal(
+                MEDIA_COMPANION_TRANSPORT_ALLOWANCE[metric],
+                row.delta[metric] + transportEvidence.reserve[metric]
+            );
+            assert.equal(
+                OPTIONAL_BUDGETS["media-companion"][metric] - row.after[metric],
+                transportEvidence.previousCaps.OPTIONAL_BUDGETS[
+                    "media-companion"
+                ][metric] - row.before[metric],
+                "transport preserves previous optional headroom exactly"
+            );
+        }
+    }
+    // Preserve the independently measured feature receipts. Historical caps
+    // project out both features exactly once; neither allocation masks the other.
+    const companionDelta = (budget, metric) =>
+        [BUDGET, BASE_TOTAL_BUDGET, LEGACY_TOTAL_BUDGET, TOTAL_BUDGET].includes(
+            budget
+        )
+            ? MEDIA_COMPANION_ENTRY_ALLOWANCE[metric] +
+              ([BASE_TOTAL_BUDGET, TOTAL_BUDGET].includes(budget)
+                  ? MEDIA_COMPANION_OPTIONAL_ALLOWANCE[metric] +
+                    MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric]
+                  : 0)
+            : budget === OPTIONAL_BUDGETS["remote-settings-lifecycle"]
+              ? MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric]
+              : 0;
+    const beforeCompanionBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] -
+                    companionDelta(budget, metric) -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
+            ])
+        );
     const modernDelta = (budget, metric) => {
         if (budget === BUDGET || budget === LEGACY_TOTAL_BUDGET)
             return MODERN_INTERFACE_ENTRY_ALLOWANCE[metric];
@@ -91,15 +376,200 @@ try {
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] - modernDelta(budget, metric),
+                budget[metric] -
+                    modernDelta(budget, metric) -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
             ])
         );
-    const historicalOptionalCaps = Object.fromEntries(
-        historicalOptionalEntries.map(([name, budget]) => [
-            name,
-            beforeModernBudget(budget),
-        ])
+    const beforeFeaturesBudget = (budget) =>
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] -
+                    companionDelta(budget, metric) -
+                    modernDelta(budget, metric) -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric),
+            ])
+        );
+    const historicalOptionalBudgets = Object.fromEntries(
+        Object.entries(OPTIONAL_BUDGETS)
+            .filter(
+                ([name]) =>
+                    name !== "media-companion" && name !== "modern-interface"
+            )
+            .map(([name, budget]) => [name, beforeFeaturesBudget(budget)])
     );
+    const historicalOptionalBundles = Object.fromEntries(
+        Object.entries(CLASSIC_OPTIONAL_BUNDLES).filter(
+            ([name]) =>
+                name !== "media-companion" && name !== "modern-interface"
+        )
+    );
+    const withoutModernOptionalBudgets = Object.fromEntries(
+        Object.entries(OPTIONAL_BUDGETS)
+            .filter(([name]) => name !== "modern-interface")
+            .map(([name, budget]) => [name, beforeModernBudget(budget)])
+    );
+    const withoutCompanionOptionalBudgets = Object.fromEntries(
+        Object.entries(OPTIONAL_BUDGETS)
+            .filter(([name]) => name !== "media-companion")
+            .map(([name, budget]) => [name, beforeCompanionBudget(budget)])
+    );
+    const companionEvidence = require("../docs/evidence/media-companion-size-20261030.json");
+    assert.deepEqual(
+        MEDIA_COMPANION_ENTRY_ALLOWANCE,
+        companionEvidence.allowances.entry
+    );
+    assert.deepEqual(
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        companionEvidence.allowances.optional
+    );
+    assert(Object.isFrozen(MEDIA_COMPANION_ENTRY_ALLOWANCE));
+    assert(Object.isFrozen(MEDIA_COMPANION_OPTIONAL_ALLOWANCE));
+    assert(Object.isFrozen(MEDIA_COMPANION_SETTINGS_ALLOWANCE));
+    assert.deepEqual(
+        MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+        companionEvidence.allowances.settings
+    );
+    assert.deepEqual(
+        beforeTransportBudget(OPTIONAL_BUDGETS["media-companion"]),
+        MEDIA_COMPANION_OPTIONAL_ALLOWANCE
+    );
+    assert.deepEqual(companionEvidence.toolchain, {
+        node: "22.23.4",
+        zlib: "1.3.1-e00f703",
+    });
+    assert.equal(companionEvidence.baseline.sourceRevisionAtBuild, null);
+    assert.equal(companionEvidence.candidate.sourceRevisionAtBuild, null);
+    assert.equal(
+        companionEvidence.candidate.allArtifactHashesAndSizesReverified,
+        true
+    );
+    assert.match(companionEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(companionEvidence.baseline.reportSha256, /^[a-f0-9]{64}$/);
+    assert.match(companionEvidence.candidate.reportSha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+        historicalOptionalBudgets,
+        companionEvidence.previousCaps.OPTIONAL_BUDGETS
+    );
+    assert.deepEqual(
+        withoutModernOptionalBudgets,
+        companionEvidence.nextCaps.OPTIONAL_BUDGETS
+    );
+    for (const [name, budget] of Object.entries({
+        BASE_TOTAL_BUDGET,
+        BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGET,
+        PROVIDER_BUDGET,
+        TOTAL_BUDGET,
+    })) {
+        assert.deepEqual(
+            beforeModernBudget(budget),
+            companionEvidence.nextCaps[name]
+        );
+        assert.deepEqual(
+            beforeFeaturesBudget(budget),
+            companionEvidence.previousCaps[name],
+            name + " counts companion cost once"
+        );
+    }
+    assert.deepEqual(
+        companionEvidence.modes.map((mode) => mode.path),
+        ARTIFACTS
+    );
+    for (const metric of ["bytes", "gzipBytes"]) {
+        const observedEntry = Math.max(
+            ...companionEvidence.modes.map((mode) => mode.delta.entry[metric])
+        );
+        const observedOptional = Math.max(
+            ...companionEvidence.modes.map(
+                (mode) =>
+                    mode.components.find(
+                        (row) => row.name === "media-companion.js"
+                    ).after[metric]
+            )
+        );
+        assert.equal(companionEvidence.observed.entry[metric], observedEntry);
+        assert.equal(
+            companionEvidence.observed.optional[metric],
+            observedOptional
+        );
+        const observedSettings = Math.max(
+            ...companionEvidence.modes.map(
+                (mode) =>
+                    mode.components.find(
+                        (row) => row.name === "remote-settings-lifecycle.js"
+                    ).delta[metric]
+            )
+        );
+        assert.equal(
+            MEDIA_COMPANION_SETTINGS_ALLOWANCE[metric],
+            observedSettings + companionEvidence.reserve.settings[metric]
+        );
+        assert.equal(
+            MEDIA_COMPANION_ENTRY_ALLOWANCE[metric],
+            observedEntry + companionEvidence.reserve.entry[metric]
+        );
+        assert.equal(
+            MEDIA_COMPANION_OPTIONAL_ALLOWANCE[metric],
+            observedOptional + companionEvidence.reserve.optional[metric]
+        );
+    }
+    for (const mode of companionEvidence.modes) {
+        assert.equal(
+            mode.components.length,
+            1 +
+                Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
+                Object.keys(CLASSIC_OPTIONAL_BUNDLES).filter(
+                    (name) => name !== "modern-interface"
+                ).length
+        );
+        for (const row of mode.components) {
+            assert.match(row.after.sha256, /^[a-f0-9]{64}$/);
+            if (row.name === "media-companion.js")
+                assert.equal(row.before, null);
+            else if (
+                row.family !== "entry" &&
+                row.name !== "remote-settings-lifecycle.js"
+            )
+                assert.deepEqual(
+                    row.before,
+                    row.after,
+                    row.name + " remains byte-identical"
+                );
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    row.delta[metric],
+                    row.after[metric] - (row.before ? row.before[metric] : 0)
+                );
+        }
+        for (const metric of ["bytes", "gzipBytes"]) {
+            assert.equal(mode.delta.legacy[metric], mode.delta.entry[metric]);
+            assert.equal(
+                mode.after.total[metric],
+                mode.components.reduce((sum, row) => sum + row.after[metric], 0)
+            );
+            assert.equal(
+                mode.delta.total[metric],
+                mode.delta.entry[metric] +
+                    mode.components.find(
+                        (row) => row.name === "media-companion.js"
+                    ).after[metric] +
+                    mode.components.find(
+                        (row) => row.name === "remote-settings-lifecycle.js"
+                    ).delta[metric]
+            );
+            assert(
+                beforeModernBudget(TOTAL_BUDGET)[metric] -
+                    mode.after.total[metric] >=
+                    companionEvidence.previousCaps.TOTAL_BUDGET[metric] -
+                        mode.before.total[metric]
+            );
+        }
+    }
     const modernEvidence = require("../docs/evidence/modern-interface-size-20261030.json");
     for (const [name, allowance] of Object.entries({
         entry: MODERN_INTERFACE_ENTRY_ALLOWANCE,
@@ -119,19 +589,22 @@ try {
         LEGACY_TOTAL_BUDGET,
         TOTAL_BUDGET,
     })) {
-        assert.deepEqual(budget, modernEvidence.nextCaps[name]);
         assert.deepEqual(
-            beforeModernBudget(budget),
+            beforeCompanionBudget(budget),
+            modernEvidence.nextCaps[name]
+        );
+        assert.deepEqual(
+            beforeFeaturesBudget(budget),
             modernEvidence.previousCaps[name],
             name + " counts each Modern component exactly once"
         );
     }
     assert.deepEqual(
-        historicalOptionalCaps,
+        historicalOptionalBudgets,
         modernEvidence.previousCaps.OPTIONAL_BUDGETS
     );
     assert.deepEqual(
-        OPTIONAL_BUDGETS,
+        withoutCompanionOptionalBudgets,
         modernEvidence.nextCaps.OPTIONAL_BUDGETS
     );
     assert.deepEqual(
@@ -139,8 +612,13 @@ try {
         MODERN_INTERFACE_OPTIONAL_ALLOWANCE
     );
     for (const [source, optionalNames] of [
-        [modernEvidence.baseline, historicalOptionalNames],
-        [modernEvidence.candidate, Object.keys(CLASSIC_OPTIONAL_BUNDLES)],
+        [modernEvidence.baseline, Object.keys(historicalOptionalBundles)],
+        [
+            modernEvidence.candidate,
+            Object.keys(CLASSIC_OPTIONAL_BUNDLES).filter(
+                (name) => name !== "media-companion"
+            ),
+        ],
     ]) {
         assert.match(source.head, /^[a-f0-9]{40}$/);
         assert.equal(typeof source.trackedSourceClean, "boolean");
@@ -184,7 +662,7 @@ try {
             assert(
                 renderer[metric] <= MODERN_INTERFACE_OPTIONAL_ALLOWANCE[metric]
             );
-            assert(entryAfter[metric] <= BUDGET[metric]);
+            assert(entryAfter[metric] <= beforeCompanionBudget(BUDGET)[metric]);
             assert(
                 entryAfter[metric] - entryBefore[metric] <=
                     MODERN_INTERFACE_ENTRY_ALLOWANCE[metric]
@@ -197,9 +675,11 @@ try {
                 (sum, row) => sum + row[metric],
                 0
             );
-            assert(completeAfter <= TOTAL_BUDGET[metric]);
             assert(
-                TOTAL_BUDGET[metric] - completeAfter >=
+                completeAfter <= beforeCompanionBudget(TOTAL_BUDGET)[metric]
+            );
+            assert(
+                beforeCompanionBudget(TOTAL_BUDGET)[metric] - completeAfter >=
                     modernEvidence.previousCaps.TOTAL_BUDGET[metric] -
                         completeBefore,
                 file + " preserves pre-Modern complete payload headroom"
@@ -218,23 +698,31 @@ try {
                     newRow[metric] - oldRow[metric] <= allowance[metric],
                     name + " has a bounded Modern increment"
                 );
-                assert(newRow[metric] <= OPTIONAL_BUDGETS[name][metric]);
+                assert(
+                    newRow[metric] <=
+                        withoutCompanionOptionalBudgets[name][metric]
+                );
             }
         }
     }
     const tizenPackageBootDelta = (budget, metric) =>
-        [BUDGET, BASE_TOTAL_BUDGET, LEGACY_TOTAL_BUDGET, TOTAL_BUDGET].includes(
-            budget
-        )
+        companionDelta(budget, metric) +
+        modernDelta(budget, metric) +
+        transportDelta(budget, metric) +
+        preparationDelta(budget, metric) +
+        ([
+            BUDGET,
+            BASE_TOTAL_BUDGET,
+            LEGACY_TOTAL_BUDGET,
+            TOTAL_BUDGET,
+        ].includes(budget)
             ? TIZEN_PACKAGE_BOOT_ALLOWANCE[metric]
-            : 0;
+            : 0);
     const beforeTizenPackageBootBudget = (budget) =>
         Object.fromEntries(
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
-                budget[metric] -
-                    modernDelta(budget, metric) -
-                    tizenPackageBootDelta(budget, metric),
+                budget[metric] - tizenPackageBootDelta(budget, metric),
             ])
         );
     const tizenEvidence = require("../docs/evidence/tizen-package-boot-size-20261030.json");
@@ -253,7 +741,7 @@ try {
     const tizenComponentCount =
         1 +
         Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
-        historicalOptionalNames.length;
+        Object.keys(historicalOptionalBundles).length;
     for (const source of [tizenEvidence.baseline, tizenEvidence.candidate]) {
         assert.match(source.head, /^[a-f0-9]{40}$/);
         assert.match(source.reportSha256, /^[a-f0-9]{64}$/);
@@ -287,7 +775,7 @@ try {
         TOTAL_BUDGET,
     })) {
         assert.deepEqual(
-            beforeModernBudget(budget),
+            beforeFeaturesBudget(budget),
             tizenEvidence.nextCaps[name]
         );
         assert.deepEqual(
@@ -297,11 +785,11 @@ try {
         );
     }
     assert.deepEqual(
-        historicalOptionalCaps,
+        historicalOptionalBudgets,
         tizenEvidence.previousCaps.OPTIONAL_BUDGETS
     );
     assert.deepEqual(
-        historicalOptionalCaps,
+        historicalOptionalBudgets,
         tizenEvidence.nextCaps.OPTIONAL_BUDGETS
     );
     assert.deepEqual(
@@ -318,7 +806,7 @@ try {
                     "providers",
                     "provider-" + name + ".js",
                 ]),
-                ...historicalOptionalNames.map((name) => [
+                ...Object.keys(historicalOptionalBundles).map((name) => [
                     "optionalAssets",
                     name + ".js",
                 ]),
@@ -423,7 +911,8 @@ try {
             ) + tizenEvidence.sourceIdentityReserve[metric]
         );
     const categoryNavigationDelta = (budget, metric) =>
-        budget === OPTIONAL_BUDGETS["favorites-transfer"]
+        budget === OPTIONAL_BUDGETS["favorites-transfer"] ||
+        budget === historicalOptionalBudgets["favorites-transfer"]
             ? CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE[metric]
             : CATEGORY_NAVIGATION_ENTRY_ALLOWANCE[metric] +
               (budget === BASE_TOTAL_BUDGET || budget === TOTAL_BUDGET
@@ -493,14 +982,14 @@ try {
         navigationEvidence.previousCaps.OPTIONAL_BUDGET
     );
     assert.deepEqual(
-        historicalOptionalCaps,
+        historicalOptionalBudgets,
         navigationEvidence.nextCaps.OPTIONAL_BUDGETS
     );
-    for (const [name, budget] of historicalOptionalEntries)
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             name === "favorites-transfer"
                 ? beforeCategoryNavigationBudget(budget)
-                : beforeModernBudget(budget),
+                : budget,
             navigationEvidence.previousCaps.OPTIONAL_BUDGETS[name]
         );
     assert.deepEqual(
@@ -519,7 +1008,7 @@ try {
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
                 .length,
-            historicalOptionalNames.length
+            Object.keys(historicalOptionalBundles).length
         );
         assert.deepEqual(
             mode.components
@@ -610,7 +1099,8 @@ try {
             ) + navigationEvidence.sourceIdentityReserve[metric]
         );
     const stbPlayerDelta = (budget, metric) =>
-        budget === OPTIONAL_BUDGETS["favorites-transfer"]
+        budget === OPTIONAL_BUDGETS["favorites-transfer"] ||
+        budget === historicalOptionalBudgets["favorites-transfer"]
             ? STB_PLAYER_FAVORITES_ALLOWANCE[metric]
             : STB_PLAYER_ENTRY_ALLOWANCE[metric] +
               (budget === BUDGET
@@ -625,7 +1115,6 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
-                    modernDelta(budget, metric) -
                     tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric),
@@ -741,20 +1230,20 @@ try {
     assert.deepEqual(OPTIONAL_BUDGET, stbEvidence.previousCaps.OPTIONAL_BUDGET);
     assert.deepEqual(
         Object.fromEntries(
-            historicalOptionalEntries.map(([name, budget]) => [
+            Object.entries(historicalOptionalBudgets).map(([name, budget]) => [
                 name,
                 name === "favorites-transfer"
                     ? beforeCategoryNavigationBudget(budget)
-                    : beforeModernBudget(budget),
+                    : budget,
             ])
         ),
         stbEvidence.nextCaps.OPTIONAL_BUDGETS
     );
-    for (const [name, budget] of historicalOptionalEntries)
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             name === "favorites-transfer"
                 ? beforeStbPlayerBudget(budget)
-                : beforeModernBudget(budget),
+                : budget,
             stbEvidence.previousCaps.OPTIONAL_BUDGETS[name]
         );
     assert.deepEqual(
@@ -773,7 +1262,7 @@ try {
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
                 .length,
-            historicalOptionalNames.length
+            Object.keys(historicalOptionalBundles).length
         );
         assert.deepEqual(
             mode.components
@@ -877,7 +1366,6 @@ try {
             : 0);
     // Preserve historical evidence by subtracting each later entry delta once.
     const sharedFeatureDelta = (budget, metric) =>
-        modernDelta(budget, metric) +
         tizenPackageBootDelta(budget, metric) +
         categoryNavigationDelta(budget, metric) +
         stbPlayerDelta(budget, metric) +
@@ -899,7 +1387,10 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
+                    companionDelta(budget, metric) -
                     modernDelta(budget, metric) -
+                    transportDelta(budget, metric) -
+                    preparationDelta(budget, metric) -
                     (name === "control-transport"
                         ? PLAYER_PRESENCE_TRANSPORT_ALLOWANCE[metric]
                         : 0) -
@@ -951,7 +1442,7 @@ try {
         OPTIONAL_BUDGET,
         presenceEvidence.previousCaps.OPTIONAL_BUDGET
     );
-    for (const [name, budget] of historicalOptionalEntries)
+    for (const [name, budget] of Object.entries(historicalOptionalBudgets))
         assert.deepEqual(
             beforeSharedFeatureOptional(name, budget),
             presenceEvidence.previousCaps.OPTIONAL_BUDGETS[name],
@@ -1018,7 +1509,6 @@ try {
                 );
                 assert(
                     budget[metric] -
-                        modernDelta(budget, metric) -
                         tizenPackageBootDelta(budget, metric) -
                         categoryNavigationDelta(budget, metric) -
                         stbPlayerDelta(budget, metric) -
@@ -1062,7 +1552,6 @@ try {
             ["bytes", "gzipBytes"].map((metric) => [
                 metric,
                 budget[metric] -
-                    modernDelta(budget, metric) -
                     tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric) -
@@ -1118,7 +1607,7 @@ try {
         );
         assert.equal(
             mode.unchangedOptionalAssets,
-            historicalOptionalNames.length - 1
+            Object.keys(historicalOptionalBundles).length - 1
         );
     }
     const pickerEvidence = require("../docs/evidence/category-picker-size-20261029.json");
@@ -1149,7 +1638,6 @@ try {
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 budget[metric] -
-                    modernDelta(budget, metric) -
                     tizenPackageBootDelta(budget, metric) -
                     categoryNavigationDelta(budget, metric) -
                     stbPlayerDelta(budget, metric) -
@@ -1185,7 +1673,6 @@ try {
             ])
                 assert.equal(
                     budget[metric] -
-                        modernDelta(budget, metric) -
                         tizenPackageBootDelta(budget, metric) -
                         categoryNavigationDelta(budget, metric) -
                         stbPlayerDelta(budget, metric) -
@@ -1201,7 +1688,7 @@ try {
         );
         assert.equal(
             row.unchangedOptionalAssets,
-            historicalOptionalNames.length
+            Object.keys(historicalOptionalBundles).length
         );
     }
     const shakaTrackDelta = (budget, metric) =>
@@ -1238,7 +1725,7 @@ try {
             );
     assert.deepEqual(
         Object.fromEntries(
-            historicalOptionalEntries
+            Object.entries(historicalOptionalBudgets)
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,
@@ -1314,13 +1801,15 @@ try {
         Object.keys(OPTIONAL_BUDGETS).sort(),
         Object.keys(CLASSIC_OPTIONAL_BUNDLES).sort()
     );
-    assert.deepEqual(
-        beforeModernBudget(OPTIONAL_BUDGETS["subtitle-appearance"]),
-        {
-            bytes: 8100,
-            gzipBytes: 3400,
-        }
-    );
+    assert.deepEqual(OPTIONAL_BUDGETS["subtitle-appearance"], {
+        bytes:
+            8100 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"].bytes,
+        gzipBytes:
+            3400 +
+            MODERN_INTERFACE_RELATED_ALLOWANCES["subtitle-appearance"]
+                .gzipBytes,
+    });
     assert.deepEqual(OPTIONAL_BUDGETS["remote-settings-extras"], {
         bytes: 7000,
         gzipBytes: 2800,
@@ -1670,7 +2159,7 @@ try {
     );
     assert.deepEqual(
         Object.fromEntries(
-            historicalOptionalEntries
+            Object.entries(historicalOptionalBudgets)
                 .filter(([name]) => name !== "shaka-tracks")
                 .map(([name, value]) => [
                     name,
@@ -2422,6 +2911,18 @@ try {
         "x".repeat(OPTIONAL_BUDGETS["local-media-ui"].bytes + 1)
     );
     const failed = diagnose();
+    for (const [key, allowance] of Object.entries({
+        mediaCompanionEntryAllowance: MEDIA_COMPANION_ENTRY_ALLOWANCE,
+        mediaCompanionOptionalAllowance: MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
+        mediaCompanionPreparationAllowance:
+            MEDIA_COMPANION_PREPARATION_ALLOWANCE,
+        mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
+        mediaCompanionTransportAllowance: MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+    })) {
+        assert.deepEqual(strictReport[key], allowance);
+        assert.deepEqual(failed[key], strictReport[key]);
+    }
+    assert(!Object.hasOwn(failed, "MEDIA_COMPANION_PREPARATION_ALLOWANCE"));
     assert.equal(failed.diagnostic, true);
     assert.equal(failed.complete, true);
     assert.equal(failed.source, "exact-source");

@@ -62,6 +62,7 @@ pub fn run() {
         .manage(background.clone())
         .manage(commands::background::BackgroundPersistence::default())
         .manage(commands::offline_media::OfflineMediaState::default())
+        .manage(commands::companion::CompanionState::default())
         .manage(commands::queue::QueueHttpRuntime::default())
         .manage(MediaSessionState::default())
         .manage(commands::native_hls::NativeHlsState::default())
@@ -78,6 +79,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::tauri_commands::ping,
+            commands::companion::companion_endpoint,
             commands::background::background_standby_status,
             commands::background::set_background_standby,
             commands::offline_media::offline_media_endpoint,
@@ -132,7 +134,11 @@ pub fn run() {
             if window.label() == "main" && payload.event() == tauri::webview::PageLoadEvent::Started
             {
                 let app = window.app_handle().clone();
+                let generation = app.state::<commands::companion::CompanionState>().advance_page();
                 tauri::async_runtime::spawn(async move {
+                    app.state::<commands::companion::CompanionState>()
+                        .stop_before(generation)
+                        .await;
                     app.state::<commands::native_hls::NativeHlsState>()
                         .stop_all()
                         .await;

@@ -10,6 +10,7 @@ pub mod audio_normalization;
 pub mod local_compatibility;
 pub mod background_work;
 pub mod control_discovery;
+pub mod companion;
 pub mod db;
 pub mod m3u;
 pub mod native_xmltv;

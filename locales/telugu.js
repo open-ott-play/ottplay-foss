@@ -617,6 +617,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV సెట్టింగ్‌లు",
     Media: "మీడియా",
+    "Media companion": "మీడియా సేవ",
     "Media item is no longer available": "మీడియా అంశం ఇకపై అందుబాటులో లేదు",
     "Media Library": "మీడియా లైబ్రరీ",
     "Media Library URL": "మీడియా లైబ్రరీ URL",

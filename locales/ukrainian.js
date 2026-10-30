@@ -635,6 +635,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Налаштування MaxTV",
     Media: "Медіа",
+    "Media companion": "Медіасервіс",
     "Media item is no longer available": "Цей матеріал більше недоступний",
     "Media Library": "Медіатека",
     "Media Library URL": "Адреса медіатеки",

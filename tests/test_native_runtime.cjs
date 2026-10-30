@@ -677,6 +677,22 @@ async function main() {
         pass(
             "Tauri staging preserves the complete Blocks runtime license notice"
         );
+        for (const name of [
+            "media-companion-native.txt",
+            "media-companion-native-sources.json",
+        ]) {
+            const notice = path.join(tauri, "licenses/native", name);
+            const originalNotice = fs.readFileSync(notice);
+            fs.writeFileSync(notice, "incomplete notice");
+            assert.throws(
+                () => auditNativeRuntime(tauri),
+                /Media companion dependency notices must remain intact/
+            );
+            fs.writeFileSync(notice, originalNotice);
+        }
+        pass(
+            "native media companion notices and source provenance remain intact"
+        );
         const core = path.join(tauri, "js/ottplay-core.js");
         const coreBytes = fs.readFileSync(core);
         fs.rmSync(core);

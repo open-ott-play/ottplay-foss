@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "feature": "Browser companion transport capability check",
+  "version": "1.1.62",
+  "toolchain": {
+    "node": "22.23.4",
+    "zlib": "1.3.1-e00f703"
+  },
+  "lockSha256": "b91fcfcd6c3d2ce2931aaaca4bcf5d0b98bded80126dd29b0edbd14c21646e02",
+  "baseline": {
+    "revision": "99a86835861b62e2dd85e77f7a474aae2c4f8527",
+    "savedOptionalAsset": true,
+    "measurement": {
+      "bytes": 12132,
+      "gzipBytes": 4481,
+      "sha256": "4a78b751a8c550614df0b99dd37c3d40ce64dabc1f8b2358dc1f24f29bd61e51"
+    }
+  },
+  "candidate": {
+    "workingTree": true,
+    "allRecordedArtifactHashesAndSizesReverified": true
+  },
+  "allowance": {
+    "bytes": 412,
+    "gzipBytes": 125
+  },
+  "reserve": {
+    "bytes": 0,
+    "gzipBytes": 0
+  },
+  "previousCaps": {
+    "BUDGET": {
+      "bytes": 1158722,
+      "gzipBytes": 354870
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1311409,
+      "gzipBytes": 410169
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1690575,
+      "gzipBytes": 522087
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1695055,
+      "gzipBytes": 524391
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 244739,
+        "gzipBytes": 63014
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 12260,
+        "gzipBytes": 4609
+      },
+      "modern-interface": {
+        "bytes": 6200,
+        "gzipBytes": 2650
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31736,
+        "gzipBytes": 10265
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    }
+  },
+  "nextCaps": {
+    "BUDGET": {
+      "bytes": 1158722,
+      "gzipBytes": 354870
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1311409,
+      "gzipBytes": 410169
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1690987,
+      "gzipBytes": 522212
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1695467,
+      "gzipBytes": 524516
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 244739,
+        "gzipBytes": 63014
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 12672,
+        "gzipBytes": 4734
+      },
+      "modern-interface": {
+        "bytes": 6200,
+        "gzipBytes": 2650
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31736,
+        "gzipBytes": 10265
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    }
+  },
+  "modes": [
+    {
+      "path": "dist/media-companion.js",
+      "before": {
+        "bytes": 12132,
+        "gzipBytes": 4481,
+        "sha256": "4a78b751a8c550614df0b99dd37c3d40ce64dabc1f8b2358dc1f24f29bd61e51"
+      },
+      "after": {
+        "bytes": 12544,
+        "gzipBytes": 4606,
+        "sha256": "6482ba82e7987241175d1dcdb39dd7e56a38016b38d1238a3b37ded48325bf55"
+      },
+      "delta": {
+        "bytes": 412,
+        "gzipBytes": 125
+      }
+    },
+    {
+      "path": "src-tauri/frontend/dist/media-companion.js",
+      "before": {
+        "bytes": 12132,
+        "gzipBytes": 4481,
+        "sha256": "4a78b751a8c550614df0b99dd37c3d40ce64dabc1f8b2358dc1f24f29bd61e51"
+      },
+      "after": {
+        "bytes": 12544,
+        "gzipBytes": 4606,
+        "sha256": "6482ba82e7987241175d1dcdb39dd7e56a38016b38d1238a3b37ded48325bf55"
+      },
+      "delta": {
+        "bytes": 412,
+        "gzipBytes": 125
+      }
+    },
+    {
+      "path": "dist-mobile/dist/media-companion.js",
+      "before": {
+        "bytes": 12132,
+        "gzipBytes": 4481,
+        "sha256": "4a78b751a8c550614df0b99dd37c3d40ce64dabc1f8b2358dc1f24f29bd61e51"
+      },
+      "after": {
+        "bytes": 12544,
+        "gzipBytes": 4606,
+        "sha256": "6482ba82e7987241175d1dcdb39dd7e56a38016b38d1238a3b37ded48325bf55"
+      },
+      "delta": {
+        "bytes": 412,
+        "gzipBytes": 125
+      }
+    }
+  ]
+}

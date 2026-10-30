@@ -631,6 +631,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Ntọala MaxTV",
     Media: "Mgbasa ozi",
+    "Media companion": "Ọrụ mgbasa ozi",
     "Media item is no longer available": "Ihe mgbasa ozi a adịkwaghị",
     "Media Library": "Ọba mgbasa ozi",
     "Media Library URL": "URL ọba mgbasa ozi",

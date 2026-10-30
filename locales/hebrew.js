@@ -614,6 +614,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "הגדרות MaxTV",
     Media: "מדיה",
+    "Media companion": "שירות מדיה",
     "Media item is no longer available": "פריט המדיה אינו זמין עוד",
     "Media Library": "ספריית מדיה",
     "Media Library URL": "כתובת ספריית מדיה",

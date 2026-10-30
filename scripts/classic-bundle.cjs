@@ -102,6 +102,9 @@ const CLASSIC_MODULES = [
     "build/offline/local-media-progress.js",
     "build/offline/playback-selection.js",
     "build/offline/profiles.js",
+    "build/plugins/media-companion.js",
+    "build/plugins/media-companion-ui.js",
+    "build/plugins/media-companion-loader.js",
     "build/plugins/local-compatibility.js",
     "build/plugins/local-media-ui.js",
     "build/plugins/local-media.js",
@@ -264,6 +267,10 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     ],
     "local-compatibility": ["build/plugins/local-compatibility.js"],
     "local-media-ui": ["build/plugins/local-media-ui.js"],
+    "media-companion": [
+        "build/plugins/media-companion.js",
+        "build/plugins/media-companion-ui.js",
+    ],
     "modern-interface": ["build/ui/modern.js"],
 
     "perf-capture": [
@@ -370,6 +377,12 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/plugins/local-media-ui.js": Object.freeze([
         "window.__ottLocalMediaUiFactory",
+    ]),
+    "build/plugins/media-companion-ui.js": Object.freeze([
+        "window.__ottMediaCompanionUi",
+    ]),
+    "build/plugins/media-companion.js": Object.freeze([
+        "window.__ottMediaCompanionFactory",
     ]),
     "build/plugins/native-http.js": Object.freeze([
         "window.installTauriHttpTransport",

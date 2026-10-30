@@ -629,6 +629,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV settings",
     Media: "Media",
+    "Media companion": "Media companion",
     "Media item is no longer available": "Media item is no longer available",
     "Media Library": "Media library",
     "Media Library URL": "Media library URL",

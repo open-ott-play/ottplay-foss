@@ -29,6 +29,7 @@
     "core:window:allow-start-dragging",
     "allow-ping",
     "allow-offline-media",
+    "allow-media-companion",
     "allow-get-epg",
     "allow-proxy-fetch",
     "allow-proxy-http",

@@ -637,6 +637,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV կարգավորումներ",
     Media: "Մեդիա",
+    "Media companion": "Մեդիա ծառայություն",
     "Media item is no longer available": "Մեդիա տարրն այլևս հասանելի չէ",
     "Media Library": "Մեդիա գրադարան",
     "Media Library URL": "Մեդիա գրադարանի URL",

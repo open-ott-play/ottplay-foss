@@ -10,6 +10,10 @@ cargo-fuzz = true
 
 [workspace]
 
+[patch.crates-io]
+# This standalone workspace must use the same bounded metadata reader as releases.
+librqbit = { path = "../vendor/librqbit-9.1.0" }
+
 [dependencies]
 libfuzzer-sys = "=0.4.13"
 ottplay-core = { path = "../src-rs/core" }

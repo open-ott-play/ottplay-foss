@@ -640,6 +640,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV postavke",
     Media: "Mediji",
+    "Media companion": "Medijski servis",
     "Media item is no longer available": "Medijska stavka više nije dostupna",
     "Media Library": "Medijateka",
     "Media Library URL": "URL medijske biblioteke",

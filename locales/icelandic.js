@@ -627,6 +627,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Stillingar fyrir MaxTV",
     Media: "Miðlar",
+    "Media companion": "Miðlunarþjónusta",
     "Media item is no longer available": "Miðlaatriðið er ekki lengur tiltækt",
     "Media Library": "Miðlasafn",
     "Media Library URL": "Vefslóð miðlasafns",

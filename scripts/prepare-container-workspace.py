@@ -92,7 +92,7 @@ def prepare(workspace, output, *, cargo="cargo", offline=False, timeout=300):
         scratch = Path(temporary).resolve()
         (scratch / "Cargo.toml").write_text(manifest)
         (scratch / "Cargo.lock").write_text(original_lock)
-        for directory in ("src-rs", "vendor"):
+        for directory in ("src-rs", "vendor", "plugins"):
             shutil.copytree(workspace / directory, scratch / directory, symlinks=True)
         # --workspace retains existing external versions. Quiet also avoids the
         # large removed-package report; metadata would download dependency source.

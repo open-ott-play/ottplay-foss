@@ -626,6 +626,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Ètò MaxTV",
     Media: "Mídíà",
+    "Media companion": "Iṣẹ́ ìròyìn",
     "Media item is no longer available": "Ohun mídíà kò sí lárọ̀ọ́wọ́tó mọ́",
     "Media Library": "Ilé-ìkàwé mídíà",
     "Media Library URL": "URL ilé-ìkàwé mídíà",

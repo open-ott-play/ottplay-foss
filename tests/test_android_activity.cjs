@@ -437,6 +437,7 @@ try {
         "sampleCoreLiveRecovery",
         "openCoreEngineLease",
         "stopCoreEngine",
+        "releaseCoreCompanion",
     ]);
     const video = {
         pause() {
@@ -450,7 +451,8 @@ try {
         readyState: 0,
         removeAttribute() {},
     };
-    let destroyed = 0;
+    let destroyed = 0,
+        companionReleased = 0;
     const w = {
         _coreAutoCancel: null,
         _coreDemoMute: null,
@@ -469,6 +471,10 @@ try {
         clearPlayTimeInterval() {},
         console,
         coreAvTest: null,
+        coreCompanionPreparing: false,
+        coreCompanionRelease() {
+            companionReleased++;
+        },
         coreDeviceEffects: {},
         coreLiveRecovery: null,
         coreMediaBackend: null,
@@ -577,6 +583,8 @@ try {
     assert.equal(w._playSession, 2);
     assert.equal(w._coreNativeAttempt, 1);
     assert.equal(destroyed, 1);
+    assert.equal(companionReleased, 1, "Stop releases companion lease");
+    assert.equal(w.coreCompanionRelease, null);
     assert.equal(video.paused, true);
     console.log(
         "PASS Android activity: native hardware volume independent of WebView, persisted standby before plugin registration and bridge, boot fallback, media repeat suppression, actual PC/Android keymaps, idempotent Play/Pause and toggle lifecycle"

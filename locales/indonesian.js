@@ -637,6 +637,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Pengaturan MaxTV",
     Media: "Media",
+    "Media companion": "Layanan media",
     "Media item is no longer available": "Item media tidak lagi tersedia",
     "Media Library": "Pustaka media",
     "Media Library URL": "URL pustaka media",

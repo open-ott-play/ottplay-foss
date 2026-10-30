@@ -11,12 +11,19 @@
 /vendor/ottplay-core.* -text
 /licenses/native/* -text
 /vendor/hosted-epg/** -text
+# Packaged resolver manifests verify the exact script bytes on Windows too.
+/plugins/examples/** -text
 
 # Preserve the published bytes used by native dependency provenance checks.
 /vendor/wry-0.55.1/** -text
 /vendor/tao-0.35.3/** -text
 /vendor/wry-0.55.1.provenance.json -text
 /vendor/tao-0.35.3.provenance.json -text
+/vendor/librqbit-9.1.0/** -text
+/vendor/librqbit-9.1.0.provenance.json -text
+/vendor/librqbit-9.1.0-metadata-bounds.patch -text whitespace=-blank-at-eol
+/tests/librqbit-resource-regression/Cargo.toml text eol=lf
+/tests/librqbit-resource-regression/Cargo.lock text eol=lf
 /vendor/block-0.1.6/** -text
 /vendor/block-0.1.6.provenance.json -text
 /vendor/block-0.1.6-LICENSE.txt -text

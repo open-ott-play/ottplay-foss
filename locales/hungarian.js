@@ -644,6 +644,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV beállításai",
     Media: "Média",
+    "Media companion": "Médiaszolgáltatás",
     "Media item is no longer available": "A médiaelem már nem érhető el",
     "Media Library": "Médiatár",
     "Media Library URL": "Médiatár URL",

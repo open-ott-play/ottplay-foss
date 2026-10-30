@@ -641,6 +641,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV iestatījumi",
     Media: "Multivide",
+    "Media companion": "Multivides pakalpojums",
     "Media item is no longer available":
         "Multivides vienums vairs nav pieejams",
     "Media Library": "Multivides bibliotēka",

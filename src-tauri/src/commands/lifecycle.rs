@@ -30,8 +30,11 @@ pub fn lifecycle_capabilities(
 
 /// Called only after the remote result is acknowledged; restarts this app.
 #[tauri::command]
-pub fn restart_app(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+pub async fn restart_app(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    use tauri::Manager;
     require_main(window.label())?;
+    app.state::<ottplay_core::background_work::BackgroundWork>().set_standby(true);
+    app.state::<super::companion::CompanionState>().stop().await;
     app.restart()
 }
 

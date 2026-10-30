@@ -638,6 +638,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "Saitunan MaxTV",
     Media: "Kafofin watsa labarai",
+    "Media companion": "Sabis na kafofin watsa labarai",
     "Media item is no longer available":
         "Wannan abu na kafofin watsa labarai ba ya samuwa kuma",
     "Media Library": "Ɗakin kafofin watsa labarai",

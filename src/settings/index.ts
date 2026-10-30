@@ -128,6 +128,7 @@ export interface PlayerSettings {
     commandServerAddress: string;
     commandServerEnabled: number;
     commandServerToken: string;
+    companionEndpoint: string;
     deviceUuid: string;
     editor: number;
     eFun: number;
@@ -238,6 +239,7 @@ export function defaultSettings(): PlayerSettings {
         commandServerAddress: "",
         commandServerEnabled: 0,
         commandServerToken: "",
+        companionEndpoint: "",
         deviceUuid: "",
         editor: 0,
         eFun: webos ? 1 : 0,
@@ -435,6 +437,37 @@ function defineSetting(
     };
 }
 export const settingsSchema: SettingDefinition[] = [
+    {
+        defaultValue: "",
+        effects: [],
+        id: "companionEndpoint",
+        key: "sCompanionEndpoint",
+        scope: "application",
+        validate: function (value) {
+            if (value === "") return true;
+            if (
+                typeof value !== "string" ||
+                value.length > 4096 ||
+                /[\x00-\x20\x7f]/.test(value)
+            )
+                return false;
+            try {
+                var url = new URL(value);
+                return (
+                    /^https?:$/.test(url.protocol) &&
+                    !url.username &&
+                    !url.password &&
+                    !url.search &&
+                    !url.hash &&
+                    /\/companion\/[A-Za-z0-9_-]{32,128}\/v1\/?$/.test(
+                        url.pathname
+                    )
+                );
+            } catch (_) {
+                return false;
+            }
+        },
+    },
     defineSetting(
         "liveRecoveryAttempts",
         "sLiveRecoveryAttempts",

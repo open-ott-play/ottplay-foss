@@ -5,6 +5,7 @@
     var expired = false;
     var timer: ReturnType<typeof setTimeout> | null = null;
     var armed = false;
+    var preparing = false;
     var recoveryOverlay = false;
     var lastMessage = "";
     var source = "";
@@ -173,7 +174,7 @@
         sampledAt = Date.now();
     }
     function progressing(): boolean {
-        if (!active || !media) return false;
+        if (!active || !media || preparing) return false;
         if (source !== sourceKey()) {
             armed = true;
             sample();
@@ -251,6 +252,7 @@
     function fail(message?: string): void {
         clear();
         closeDetails();
+        preparing = false;
         expired = true;
         failure = captureFailure(
             message || host._("Stream timed out. Select the channel to retry.")
@@ -266,6 +268,12 @@
             render(failure ? failure.message : lastMessage);
             return;
         }
+        // Source resolvers have their own bounded preparation deadline. Old
+        // decoder events must neither time them out nor acknowledge playback.
+        if (preparing) {
+            render(host._("Connecting..."));
+            return;
+        }
         render(message);
         // Repeated progress/waiting/retry events must not extend the deadline.
         if (!timer) {
@@ -279,13 +287,15 @@
     function begin(
         paused?: boolean,
         resuming?: boolean,
-        timeout?: number
+        timeout?: number,
+        preparation = false
     ): void {
         clear();
         generation++;
         clearFailure();
         active = !paused;
         expired = false;
+        preparing = preparation;
         // begin runs before the previous source is detached. Its remaining
         // frames cannot acknowledge the replacement source's startup.
         armed = !!resuming;
@@ -335,6 +345,9 @@
         inactive: function (): boolean {
             return !active;
         },
+        prepare: function (paused?: boolean): void {
+            begin(paused, false, undefined, true);
+        },
         retry: function (): void {
             waiting(host._("Retrying..."), 30000);
         },
@@ -345,7 +358,7 @@
         },
         stop: stop,
         visible: function (): boolean {
-            return !!(timer || expired);
+            return !!(timer || expired || (active && preparing));
         },
     };
 })(window as any);

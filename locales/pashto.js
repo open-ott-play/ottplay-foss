@@ -634,6 +634,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV ترتیبات",
     Media: "رسنۍ",
+    "Media companion": "د رسنیو خدمت",
     "Media item is no longer available": "د رسنیو توکي نور شتون نلري",
     "Media Library": "د رسنیو کتابتون",
     "Media Library URL": "د رسنیو کتابتون URL",

@@ -645,6 +645,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV nastavenia",
     Media: "Médiá",
+    "Media companion": "Mediálna služba",
     "Media item is no longer available":
         "Mediálna položka už nie je k dispozícii",
     "Media Library": "Knižnica médií",

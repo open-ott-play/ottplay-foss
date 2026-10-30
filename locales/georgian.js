@@ -640,6 +640,7 @@ var keyStrings = {
     MaxTV: "MaxTV",
     "MaxTV settings": "MaxTV პარამეტრები",
     Media: "მედია",
+    "Media companion": "მედიასერვისი",
     "Media item is no longer available":
         "მედია ერთეული აღარ არის ხელმისაწვდომი",
     "Media Library": "მედია ბიბლიოთეკა",
