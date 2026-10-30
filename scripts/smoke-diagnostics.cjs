@@ -153,8 +153,8 @@ async function worker(dir) {
         }
         const wire = require("../tests/load-wire.cjs")();
         const transport = load("src/plugins/command-server.ts", (name) =>
-            name === "./remote-notifications"
-                ? load("src/plugins/remote-notifications.ts", () => {})
+            name === "./remote-notifications" || name === "./player-state"
+                ? load("src/plugins/" + name.slice(2) + ".ts", () => {})
                 : wire
         );
         const buffer = load("src/plugins/diagnostic-buffer.ts", () => {});

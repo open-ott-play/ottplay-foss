@@ -814,6 +814,7 @@ function moduleOf(file, requireFn, window) {
                             host
                         )
                       : name === "./remote-favorites-transfer" ||
+                          name === "./player-state" ||
                           name === "./remote-favorites-global" ||
                           name === "./remote-favorites-global-items" ||
                           name === "./remote-favorites-global-recovery" ||
@@ -1016,9 +1017,10 @@ function moduleOf(file, requireFn, window) {
             const transport = moduleOf(
                 "src/plugins/command-server.ts",
                 (name) =>
-                    name === "./remote-notifications"
+                    name === "./remote-notifications" ||
+                    name === "./player-state"
                         ? moduleOf(
-                              "src/plugins/remote-notifications.ts",
+                              "src/plugins/" + name.slice(2) + ".ts",
                               () => {},
                               host
                           )

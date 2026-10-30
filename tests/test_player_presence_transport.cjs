@@ -323,3 +323,101 @@ test("late completion from an earlier attempt cannot accept an in-flight retry",
     f.ack(next);
     f.reporter.stop();
 });
+
+test("cross-repository smoke loaders resolve both real presence modules", () => {
+    const fs = require("node:fs");
+    const vm = require("node:vm");
+    const ts = require("typescript");
+    const time = clock();
+    const host = {
+        clearTimeout: time.clearTimeout,
+        setTimeout: time.setTimeout,
+    };
+    const wire = require("./load-wire.cjs")();
+    function moduleOf(file, dependencies, window = host) {
+        const exports = {};
+        const code = ts.transpileModule(fs.readFileSync(file, "utf8"), {
+            compilerOptions: {
+                module: ts.ModuleKind.CommonJS,
+                target: ts.ScriptTarget.ES5,
+            },
+        }).outputText;
+        vm.runInNewContext(code, {
+            Date: time.Date,
+            exports,
+            require: dependencies,
+            URL,
+            window,
+        });
+        return exports;
+    }
+    const context = { host, load: moduleOf, moduleOf, require, wire };
+    for (const file of [
+        "scripts/smoke-remote-cli.cjs",
+        "scripts/smoke-diagnostics.cjs",
+    ]) {
+        const source = ts.createSourceFile(
+            file,
+            fs.readFileSync(file, "utf8"),
+            ts.ScriptTarget.Latest,
+            true
+        );
+        let resolver;
+        let commandDependencies;
+        function visit(node) {
+            if (
+                ts.isCallExpression(node) &&
+                node.arguments[0] &&
+                ts.isStringLiteral(node.arguments[0]) &&
+                node.arguments[0].text === "src/plugins/command-server.ts"
+            )
+                resolver = node.arguments[1];
+            if (
+                ts.isVariableDeclaration(node) &&
+                node.name.getText(source) === "dependencies"
+            )
+                commandDependencies = node.initializer;
+            ts.forEachChild(node, visit);
+        }
+        visit(source);
+        assert.ok(resolver, file + " must exercise the real command transport");
+        const dependencies = vm.runInNewContext(
+            "(" + resolver.getText(source) + ")",
+            context
+        );
+        const transport = moduleOf(
+            "src/plugins/command-server.ts",
+            dependencies
+        );
+        const controller = transport.createCommandServer(
+            host,
+            () => {
+                throw new Error(
+                    "The loader regression must never contact a controller"
+                );
+            },
+            () => {},
+            () => {}
+        );
+        assert.equal(controller.status().state, "disconnected");
+        assert.equal(typeof host.__ottPlayerState.changed, "function");
+        if (file.endsWith("smoke-remote-cli.cjs")) {
+            assert.ok(commandDependencies);
+            const projection = vm.runInNewContext(
+                "var dependencies = " +
+                    commandDependencies.getText(source) +
+                    "; dependencies('./player-state')",
+                context
+            );
+            assert.equal(
+                projection.readPlayerState(host, {
+                    platform: "browser",
+                    runtime: "smoke-loader",
+                    standby: false,
+                    version: "test",
+                }).playback.state,
+                "unknown"
+            );
+        }
+    }
+});
