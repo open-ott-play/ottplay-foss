@@ -97,7 +97,7 @@ try {
     assert.equal(stbEvidence.initialCandidate.sizeViolations, 24);
     assert.equal(
         stbEvidence.candidate.dependencySymlinkExcludedFromStatus,
-        true
+        false
     );
     assert.equal(
         stbEvidence.resolverCandidate.changesSinceInitial.length,
@@ -106,10 +106,11 @@ try {
     for (const change of stbEvidence.resolverCandidate.changesSinceInitial) {
         assert.equal(path.basename(change.path), "provider-stalker.js");
         assert.deepEqual(change.delta, { bytes: 252, gzipBytes: 89 });
-        const component = stbEvidence.modes
-            .flatMap((mode) => mode.components)
-            .find((row) => row.after.path === change.path);
-        assert.deepEqual(change.after, component.after);
+        const hostedChange =
+            stbEvidence.hostedCandidate.changesSincePrevious.find(
+                (row) => row.path === change.path
+            );
+        assert.deepEqual(change.after, hostedChange.before);
         for (const metric of ["bytes", "gzipBytes"])
             assert.equal(
                 change.after[metric] - change.before[metric],
@@ -134,6 +135,28 @@ try {
             );
     }
     assert.deepEqual(stbEvidence.candidate.inputErrors, []);
+    assert.equal(stbEvidence.hostedCandidate.initialSizeViolations, 9);
+    assert.deepEqual(stbEvidence.hostedCandidate.inputErrors, []);
+    assert.equal(
+        stbEvidence.hostedCandidate.changesSincePrevious.length,
+        ARTIFACTS.length * 2
+    );
+    for (const change of stbEvidence.hostedCandidate.changesSincePrevious) {
+        assert(
+            ["player.js", "provider-stalker.js"].includes(
+                path.basename(change.path)
+            )
+        );
+        const component = stbEvidence.modes
+            .flatMap((mode) => mode.components)
+            .find((row) => row.after.path === change.path);
+        assert.deepEqual(change.after, component.after);
+        for (const metric of ["bytes", "gzipBytes"])
+            assert.equal(
+                change.after[metric] - change.before[metric],
+                change.delta[metric]
+            );
+    }
     assert.equal(
         stbEvidence.baseline.allArtifactHashesAndSizesReverified,
         true

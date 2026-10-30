@@ -574,7 +574,21 @@ function createClassicStalkerDriver(
         done: (data: any) => void,
         fail: (...args: any[]) => void
     ) {
+        if (!active() || !current.active()) return;
         var native = ports.m3u && ports.m3u.native();
+        var relay: string | null =
+            (ports.relay || "").replace(/\/+$/, "") + "/stalker/api";
+        if (!native && ports.hostedStalkerRoute) {
+            try {
+                relay = ports.hostedStalkerRoute(config.endpoint);
+            } catch (_) {
+                relay = null;
+            }
+            if (!relay) {
+                fail();
+                return;
+            }
+        }
         transport.send(
             current,
             native
@@ -594,9 +608,7 @@ function createClassicStalkerDriver(
                       dataType: "json",
                       timeout: 20000,
                       type: "POST",
-                      url:
-                          (ports.relay || "").replace(/\/+$/, "") +
-                          "/stalker/api",
+                      url: relay,
                   },
             done,
             fail

@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { parse } = require("acorn");
+const { JSDOM } = require("jsdom");
 const code = fs.readFileSync(
     path.join(__dirname, "../devices/pc2/device.js"),
     "utf8"
@@ -137,20 +138,11 @@ function fixture() {
     const f = fixture(),
         timers = new Map();
     let serial = 0;
-    const label = {
-            removeAttribute() {},
-            setAttribute() {},
-            style: {},
-            textContent: "",
-        },
-        spinner = { style: {} };
-    f.w.document = {
-        getElementById: (id) =>
-            ({
-                buffering: spinner,
-                video_res: label,
-            })[id] || null,
-    };
+    const dom = new JSDOM(
+        '<div id="buffering"></div><div id="video_res"></div>'
+    );
+    f.w.document = dom.window.document;
+    const label = f.w.document.getElementById("video_res");
     f.w.setTimeout = (fn, ms) => {
         timers.set(++serial, { fn, ms });
         return serial;
@@ -173,6 +165,7 @@ function fixture() {
         { url: "https://fixture.test/film.mp4" },
         () => {}
     );
+    assert.equal(label.getAttribute("aria-label"), "Connecting...");
     f.ready[0]();
     f.players[0].readyLevel = 4;
     f.engineMedia.currentTime = 0;
@@ -188,6 +181,7 @@ function fixture() {
         "Video.js repeated Play does not create feedback timeout"
     );
     assert.equal(label.textContent, "");
+    assert.equal(label.hasAttribute("aria-label"), false);
     lease.pause();
     lease.resume();
     assert.equal(
@@ -197,6 +191,7 @@ function fixture() {
     );
     lease.dispose();
     assert.equal(timers.size, 0);
+    dom.window.close();
 }
 
 {

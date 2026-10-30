@@ -529,12 +529,12 @@ const CATEGORY_PICKER_ENTRY_ALLOWANCE = Object.freeze({
 // artifacts still require validation. Providers retain their existing cap.
 // Evidence: docs/evidence/stb-player-improvements-size-20261029.json.
 const STB_PLAYER_ENTRY_ALLOWANCE = Object.freeze({
-    bytes: 4821,
-    gzipBytes: 1483,
+    bytes: 5356,
+    gzipBytes: 1666,
 });
 const STB_PLAYER_STALKER_ALLOWANCE = Object.freeze({
-    bytes: 7672,
-    gzipBytes: 2547,
+    bytes: 7803,
+    gzipBytes: 2601,
 });
 const STB_PLAYER_XTREAM_ALLOWANCE = Object.freeze({
     bytes: 48,

@@ -17,6 +17,29 @@ The implementation uses the bundled OttPlayCore 0.1.4 `StalkerClient` APIs:
 No second Stalker parser or authentication implementation is introduced. The
 legacy JSON-RPC provider path retains its existing live-channel behavior.
 
+## Classic hosted browser routing
+
+For classic MAG/Stalker profiles, a hosted browser deployment publishes
+`__OTTPLAY_HOSTED__.version = 1` and `stalker.routes`, an array of `{ upstream, path }`
+entries. `upstream` must exactly
+match the queryless endpoint produced by the bundled core (for example,
+`https://portal.example/server/load.php` for `https://portal.example/c/`). The
+browser does not normalize the deployment entries a second time. Each `path`
+must match `/stalker/<name>`, with lowercase letters, digits and single separating
+hyphens. Names are at most 64 characters, and `api` is reserved. A deployment
+contains at most 32 routes; exactly one entry must match the endpoint.
+
+The chosen same-origin path receives the existing JSON POST `{ url, headers }`
+for live, guide and VOD operations. The deployment configuration contains only
+route mapping, not relay credentials. A missing or malformed hosted deployment,
+an unmatched endpoint or a duplicate match stops the classic operation without
+falling back to another transport. An ordinary self-hosted browser retains `/stalker/api`
+on its configured relay; Capacitor and Tauri retain direct native GET requests.
+The separate legacy JSON-RPC dialect keeps its existing direct POST behavior,
+including in hosted browsers; it is not a fallback for a failed classic route.
+See [the hosted relay setup](stalker-relay.md) for the server mode, private
+configuration, publication and verification steps.
+
 ## Scope and limits
 
 - This supports the core's `type=vod` movie, season and episode folders. It does
@@ -79,3 +102,6 @@ The actual host/library regression also covers a VOD-only account and preserves
 an open editor's owner, value, caret and focus as media categories arrive.
 Neither test contacts a provider. Relay Rust tests are defined in
 `src-rs/core/src/stalker.rs`; their execution is separate from these JS tests.
+`node --test tests/test_hosted_stalker.cjs` covers the actual mounted driver and
+bundled core with named hosted routes, rejected configurations, native/self-host
+compatibility and canceled requests, using synthetic responses only.
