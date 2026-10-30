@@ -141,6 +141,7 @@ Cihaz temel testi: [Mod B kontrol listesi](docs/mode-b-device-smoke.md) ve `./sc
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Çeşitli dağıtımlar |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode veya Homebrew Channel](docs/lg-webos-installation.md); barındırılan oynatıcı, ağ gerekir |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode ve yerel imzalama; imzasız TV paketi, Family Hub’dan ayrı](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode ile `.ipa` | Yalnızca dışarıdan yükleme — henüz App Store'da değil |
 | **Android (ortak frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | İmzalı Capacitor paketleri; desteklenen Android sürümünü seçin |
 | **Android (yerel Kotlin)** | Ayrı [yerel uygulama](https://github.com/open-ott-play/ottplay-android) | Herkese açık depo; ayrı uygulama ve sürüm iş akışı |
@@ -1040,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB tuş eşlemeleri
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, renkler 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, renkler 403-406
 - **Samsung Maple**: dpad 4/5/6/8, özgün SDK kodları
 - **LG WebOS**: `RETURN=461`, HbbTV uyumlu renkler
 - **LG NetCast**: `RETURN=8`, HbbTV kodları

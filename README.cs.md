@@ -141,6 +141,7 @@ Základní test zařízení: [kontrolní seznam režimu B](docs/mode-b-device-sm
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Různé distribuce |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode nebo Homebrew Channel](docs/lg-webos-installation.md); hostovaný přehrávač, vyžaduje síť |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode a místní podpis; nepodepsaný balíček pro TV, oddělený od Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` přes AltStore / TestFlight / Xcode | Pouze boční instalace — zatím není v App Store |
 | **Android (sdílený frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Podepsané balíčky Capacitor; zvolte podporovanou verzi Androidu |
 | **Android (nativní Kotlin)** | Samostatná [nativní aplikace](https://github.com/open-ott-play/ottplay-android) | Veřejné úložiště; oddělená aplikace a proces vydávání |
@@ -1040,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Mapování kláves STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, barvy 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, barvy 403-406
 - **Samsung Maple**: dpad 4/5/6/8, původní kódy SDK
 - **LG WebOS**: `RETURN=461`, barvy kompatibilní s HbbTV
 - **LG NetCast**: `RETURN=8`, kódy HbbTV

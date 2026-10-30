@@ -141,6 +141,7 @@ Uji dasar perangkat: [daftar periksa Mode B](docs/mode-b-device-smoke.md) dan `.
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Berbagai distribusi |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode atau Homebrew Channel](docs/lg-webos-installation.md); pemutar di server, memerlukan jaringan |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode dan penandatanganan lokal; paket TV belum ditandatangani, terpisah dari Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` melalui AltStore / TestFlight / Xcode | Hanya sideload — belum di App Store |
 | **Android (frontend bersama)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Paket Capacitor ditandatangani; pilih versi Android yang didukung |
 | **Android (Kotlin native)** | [Aplikasi native](https://github.com/open-ott-play/ottplay-android) terpisah | Repositori publik; aplikasi dan alur rilis terpisah |
@@ -1040,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Pemetaan tombol STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, warna 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, warna 403-406
 - **Samsung Maple**: dpad 4/5/6/8, kode SDK asli
 - **LG WebOS**: `RETURN=461`, warna kompatibel HbbTV
 - **LG NetCast**: `RETURN=8`, kode HbbTV

@@ -149,6 +149,7 @@ npm run android:api22:release # Android 5.1 compatibility APK, same Full interfa
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | הפצות שונות |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode או Homebrew Channel](docs/lg-webos-installation.md); נגן מתארח, נדרש חיבור לרשת |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode וחתימה מקומית; חבילת טלוויזיה לא חתומה, נפרדת מ־Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` דרך AltStore / TestFlight / Xcode | התקנה צדדית בלבד — עדיין לא ב־App Store |
 | **Android (ממשק משותף)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | חבילות Capacitor חתומות; בחרו גרסת Android נתמכת |
 | **Android (Kotlin ילידי)** | [יישום ילידי](https://github.com/open-ott-play/ottplay-android) נפרד | מאגר ציבורי; יישום ותהליך שחרור נפרדים |
@@ -1312,7 +1313,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## מיפויי מקשים ל־STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, צבעים 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, צבעים 403-406
 - **Samsung Maple**: dpad 4/5/6/8, קודי SDK מקוריים
 - **LG WebOS**: `RETURN=461`, צבעים תואמי HbbTV
 - **LG NetCast**: `RETURN=8`, קודי HbbTV

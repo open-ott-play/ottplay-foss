@@ -139,6 +139,7 @@ iOS界面使用横屏。设置、提供商配置、远程控制授权和JSON导�
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | 多种发行版 |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode 或 Homebrew Channel](docs/lg-webos-installation.md)；托管播放器，需要网络连接 |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode 和本地签名；未签名的电视软件包，与 Family Hub 分开](docs/samsung-tizen-installation.md) |
 | **iOS** | 通过AltStore / TestFlight / Xcode安装`.ipa` | 仅侧载，尚未上架App Store |
 | **Android（共享前端）** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | 已签名Capacitor包；选择支持的Android版本 |
 | **Android（原生Kotlin）** | 独立[原生应用](https://github.com/open-ott-play/ottplay-android) | 公开仓库，独立应用与发布工作流 |
@@ -1038,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## 机顶盒按键映射
 
-- **Samsung Tizen**：`RETURN=10009`、`ENTER=10008`，彩色键10300–10303。
+- **Samsung Tizen**：`RETURN=10009`、`ENTER=13`，彩色键403–406。
 - **Samsung Maple**：方向键4/5/6/8，原始SDK代码。
 - **LG WebOS**：`RETURN=461`，兼容HbbTV的彩色键。
 - **LG NetCast**：`RETURN=8`，HbbTV代码。

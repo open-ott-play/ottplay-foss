@@ -4642,7 +4642,7 @@ function loadSubtitleAppearance(open?: (loaded: boolean) => void): void {
         if (action) action(loaded);
     }
     script.src = hostUrl + "/dist/subtitle-appearance.js?" + PLAYER_VERSION;
-    script.crossOrigin = "anonymous";
+    if (!/^file:/.test(script.src)) script.crossOrigin = "anonymous";
     script.onload = function () {
         finish(true);
     };

@@ -61,7 +61,12 @@ export function detectDevice(): string {
  * adapter and calls startPlayer(). detectDevice() always returns a nonempty route.
  */
 
-export let host = window.location.origin || "http://localhost:8080";
+// Early HTML boot validates the package marker and native API shape once.
+// Consume its file base without changing HTTP or embedded web-root origins.
+export let host =
+    (window.location.protocol === "file:" && (window as any).__ottPkgBase) ||
+    window.location.origin ||
+    "http://localhost:8080";
 export let __cv = (window as any).__cv || "local";
 export let __av = (window as any).__av || "local";
 export let dnt = false;

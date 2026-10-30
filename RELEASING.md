@@ -145,6 +145,7 @@ does not substitute for acceptance of the selected RC.
 - Full Capacitor APKs are signed with the established update certificate and preserve the play.ott.foss application ID and localhost settings origin. Android installation may require on-device permission/confirmation.
 - The separate Capacitor 6 API 22 APK supports Android 5.1/6 devices with WebView 60+. It shares the Full application ID, profile origin and signing certificate; modern devices keep Capacitor 8. Both APKs are built for beta/RC and promoted unchanged to stable.
 - LG webOS delivery includes one unprivileged hosted web-app IPK for Developer Mode and an existing Homebrew Channel. The launcher loads the canonical HTTPS player and requires network access; it is not an LG Content Store package. Numeric installer versions use 1.0.<frozen build number>; RC-to-stable promotion preserves the package and feed bytes.
+- Samsung Tizen TV delivery bundles the shared web player in an unsigned WGT. Installation requires an existing Samsung author/distributor profile accepted by the target TV; certificates stay on the operator computer. Family Hub is a separate, unqualified installation target. Frozen build numbers are projected into bounded numeric widget versions; RC-to-stable promotion preserves package bytes.
 
 Local checks run all commands in `local_checks`; missing toolchains, container
 runtimes or credentials are failures, not successful skips. They help reproduce

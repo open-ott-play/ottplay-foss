@@ -14,7 +14,7 @@ import { setTranslations } from "./index";
  *
  * @sideEffects
  * - Creates and appends a `<script>` element to `document.body`.
- * - Sets `crossOrigin = 'anonymous'` if supported.
+ * - Sets `crossOrigin = 'anonymous'` for non-file resources if supported.
  * - Mutates the module-level `translations` variable on success.
  *
  * @remarks
@@ -34,7 +34,7 @@ export function loadLanguage(
     var script = document.createElement("script");
     script.src = scriptUrl;
     script.type = "text/javascript";
-    if (typeof (script as any).crossOrigin !== "undefined") {
+    if (script.crossOrigin !== undefined && !/^file:/.test(script.src)) {
         (script as any).crossOrigin = "anonymous";
     }
     script.onload = function () {

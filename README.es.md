@@ -139,6 +139,7 @@ Prueba de dispositivo: [lista de comprobación del modo B](docs/mode-b-device-sm
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Varias distribuciones |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode o Homebrew Channel](docs/lg-webos-installation.md); reproductor alojado, requiere red |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode y firma local; paquete de TV sin firmar, distinto de Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` mediante AltStore / TestFlight / Xcode | Solo instalación externa — todavía no está en App Store |
 | **Android (frontend compartido)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Paquetes Capacitor firmados; elija la versión Android compatible |
 | **Android (Kotlin nativo)** | [Aplicación nativa](https://github.com/open-ott-play/ottplay-android) independiente | Repositorio público; aplicación y proceso de publicación separados |
@@ -1038,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Asignaciones de teclas STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, colores 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, colores 403–406.
 - **Samsung Maple**: cruceta 4/5/6/8, códigos SDK originales.
 - **LG WebOS**: `RETURN=461`, colores compatibles HbbTV.
 - **LG NetCast**: `RETURN=8`, códigos HbbTV.

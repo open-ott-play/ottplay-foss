@@ -141,6 +141,7 @@ iPhone-এ ভিডিও ইন্টারফেসের মধ্যেই 
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | বিভিন্ন ডিস্ট্রিবিউশন |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode বা Homebrew Channel](docs/lg-webos-installation.md); হোস্ট করা প্লেয়ার, নেটওয়ার্ক প্রয়োজন |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode ও স্থানীয় স্বাক্ষর; স্বাক্ষরবিহীন TV প্যাকেজ, Family Hub থেকে পৃথক](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode দিয়ে `.ipa` | শুধু সাইডলোড — এখনো App Store-এ নেই |
 | **Android (যৌথ frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | স্বাক্ষরিত Capacitor প্যাকেজ; সমর্থিত Android সংস্করণ বেছে নিন |
 | **Android (নেটিভ Kotlin)** | আলাদা [নেটিভ অ্যাপ](https://github.com/open-ott-play/ottplay-android) | পাবলিক রিপোজিটরি; আলাদা অ্যাপ ও রিলিজ প্রক্রিয়া |
@@ -1040,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB কী ম্যাপিং
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, রং 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, রং 403-406
 - **Samsung Maple**: dpad 4/5/6/8, মূল SDK কোড
 - **LG WebOS**: `RETURN=461`, HbbTV-সামঞ্জস্যপূর্ণ রং
 - **LG NetCast**: `RETURN=8`, HbbTV কোড

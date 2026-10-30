@@ -139,6 +139,7 @@ iPhone에서는 동영상이 인라인 재생됩니다. 화면 아래를 탭해 
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | 여러 배포판 |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode 또는 Homebrew Channel](docs/lg-webos-installation.md); 호스팅 플레이어, 네트워크 필요 |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode 및 로컬 서명; 서명되지 않은 TV 패키지, Family Hub와 별개](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode로 `.ipa` 설치 | 사이드로드만 지원, 아직 App Store에 없음 |
 | **Android(공유 프런트엔드)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | 서명된 Capacitor 패키지, 지원 Android 버전 선택 |
 | **Android(네이티브 Kotlin)** | 별도 [네이티브 앱](https://github.com/open-ott-play/ottplay-android) | 공개 저장소, 별도 앱 및 릴리스 워크플로 |
@@ -1038,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## STB 키 매핑
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, 색상 키 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, 색상 키 403–406.
 - **Samsung Maple**: 방향 패드 4/5/6/8, 원래 SDK 코드.
 - **LG WebOS**: `RETURN=461`, HbbTV 호환 색상.
 - **LG NetCast**: `RETURN=8`, HbbTV 코드.

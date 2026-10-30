@@ -139,6 +139,7 @@ npm run android:api22:release # Android 5.1 compatibility APK, same Full interfa
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Различные дистрибутивы |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode или Homebrew Channel](docs/lg-webos-installation.md); веб-плеер, требуется сеть |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode и локальная подпись; неподписанный пакет для ТВ, отдельный от Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` через AltStore / TestFlight / Xcode | Только сторонняя установка — в App Store пока нет |
 | **Android (общий интерфейс)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Подписанные пакеты Capacitor; выберите поддерживаемую версию Android |
 | **Android (нативный Kotlin)** | Отдельное [нативное приложение](https://github.com/open-ott-play/ottplay-android) | Публичный репозиторий; отдельное приложение и процесс выпуска |
@@ -1038,7 +1039,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Назначения клавиш приставок
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, цвета 10300–10303.
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, цвета 403–406.
 - **Samsung Maple**: крестовина 4/5/6/8, исходные коды SDK.
 - **LG WebOS**: `RETURN=461`, цвета, совместимые с HbbTV.
 - **LG NetCast**: `RETURN=8`, коды HbbTV.

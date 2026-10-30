@@ -141,6 +141,7 @@ Kiểm tra cơ bản thiết bị: [danh sách kiểm tra Chế độ B](docs/mo
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Nhiều bản phân phối |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode hoặc Homebrew Channel](docs/lg-webos-installation.md); trình phát được lưu trên máy chủ, cần kết nối mạng |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode và ký cục bộ; gói TV chưa ký, tách biệt với Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` qua AltStore / TestFlight / Xcode | Chỉ cài ngoài — chưa có trên App Store |
 | **Android (frontend chung)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Gói Capacitor có chữ ký; chọn phiên bản Android được hỗ trợ |
 | **Android (Kotlin gốc)** | [Ứng dụng gốc](https://github.com/open-ott-play/ottplay-android) riêng | Kho công khai; ứng dụng và quy trình phát hành riêng |
@@ -1040,7 +1041,7 @@ EPG_URLS="http://example.com/epg.xml.gz" ./target/release/ottplay-server --port 
 
 ## Ánh xạ phím STB
 
-- **Samsung Tizen**: `RETURN=10009`, `ENTER=10008`, màu 10300-10303
+- **Samsung Tizen**: `RETURN=10009`, `ENTER=13`, màu 403-406
 - **Samsung Maple**: dpad 4/5/6/8, mã SDK gốc
 - **LG WebOS**: `RETURN=461`, màu tương thích HbbTV
 - **LG NetCast**: `RETURN=8`, mã HbbTV
