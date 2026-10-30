@@ -457,6 +457,7 @@ try {
         _coreNativeAttempt: 0,
         _coreNativeHls: null,
         _coreNativeHlsCleanup: null,
+        _corePauseRevision: 0,
         _corePendingSeek: null,
         _corePendingSeekPosition: null,
         _corePipSession: 0,
@@ -503,7 +504,9 @@ try {
     w.getCoreMediaBackend().open({ url: "fixture.mp4" });
     for (const readyState of [0, 1, 2]) {
         video.readyState = readyState;
+        const pauseRevision = w._corePauseRevision;
         w.stbPause();
+        assert.equal(w._corePauseRevision, pauseRevision + 1);
         for (let i = 0; i < 2; i++) {
             vm.runInContext(scripts.MEDIA_PLAY, w);
             assert.equal(
