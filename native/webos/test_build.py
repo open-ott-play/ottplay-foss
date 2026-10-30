@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location("native_webos_build", Path(__file__).with_name("build.py"))
 build = importlib.util.module_from_spec(SPEC)
@@ -175,6 +176,23 @@ class NativePackageTests(unittest.TestCase):
 
 
 class NativeSdkTests(unittest.TestCase):
+    def test_bootstrap_does_not_update_global_rustup_manager(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sdk = root / "sdk"
+            (sdk / "bin").mkdir(parents=True)
+            (sdk / "bin/arm-webos-linux-gnueabi-gcc").write_text("fixture")
+            source = root / "source"
+            (source / "rust-modules").mkdir(parents=True)
+            (source / "rust-modules/rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99.1"\n')
+            args = SimpleNamespace(work_dir=root, sdk=sdk)
+            with patch.object(build, "check_source", return_value=source), patch.object(build, "run") as run:
+                build.bootstrap(args, build.manifest())
+            command = run.call_args_list[0].args[0]
+            self.assertEqual(command[:3], ["rustup", "toolchain", "install"])
+            self.assertIn("--no-self-update", command)
+            self.assertIn("1.99.1", command)
+
     def symlink(self, name, target):
         member = tarfile.TarInfo(name)
         member.type = tarfile.SYMTYPE

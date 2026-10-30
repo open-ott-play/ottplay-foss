@@ -274,6 +274,7 @@ def bootstrap(args, spec):
             "rustup",
             "toolchain",
             "install",
+            "--no-self-update",
             toolchain(source),
             "--profile",
             "minimal",
