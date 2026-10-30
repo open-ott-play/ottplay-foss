@@ -65,6 +65,12 @@ package first:
 python3 ottplay-foss-tizen-install.py verify
 ```
 
+On Windows with the Python launcher installed, use:
+
+```powershell
+py -3 ottplay-foss-tizen-install.py verify
+```
+
 Use the **profile name** displayed in Certificate Manager for `MySamsungTV`.
 This is not a password. Sign into a new output directory:
 

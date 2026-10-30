@@ -125,7 +125,9 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     const document = {
         body: { className: "booting", style: {} },
         createElement(tagName) {
-            return { style: {}, tagName };
+            const element = { style: {}, tagName };
+            if (tagName === "script") element.crossOrigin = "";
+            return element;
         },
         getElementById(id) {
             if (!elements.has(id))
