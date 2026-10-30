@@ -5518,18 +5518,10 @@ window.addChannel2bucket = function (): void {
                 )
             );
         };
-        // This picker replaces the list owner. An overlay panel snapshot would
-        // be discarded with that owner, so retain its presentation locally.
-        var savedPanel = resume
-            ? null
-            : ["listCaption", "listPodval", "listDetail"].map(function (id) {
-                  var element = document.getElementById(id);
-                  return element
-                      ? { element: element, html: element.innerHTML }
-                      : null;
-              });
-        if (resume && typeof w.saveListPanelState === "function")
-            w.saveListPanelState();
+        // Retain the serialized panel across replacement of its list owner.
+        if (typeof w.saveListPanelState === "function") w.saveListPanelState();
+        var panels = w.__ottClassicScreenPort;
+        var savedPanel = panels.savedPanel();
         if (!admitted()) return;
         var savedIdx = w.selIndex;
         var savedList = w.listArray;
@@ -5611,25 +5603,22 @@ window.addChannel2bucket = function (): void {
                     return false;
             }
             if (!admitted()) return true;
-            if (resume) {
-                w.getListItem = savedGetListItem;
-                w.detailListAction = savedDetailListAction;
-                resume(admitted);
-                if (pickedFavorite) addPickedFavorite();
-                return true;
-            }
-            savedPanel?.forEach(function (panel) {
-                if (panel) panel.element.innerHTML = panel.html;
-            });
-            w.selIndex = savedIdx;
-            w.listArray = savedList;
-            w.listDataArray = savedData;
             w.getListItem = savedGetListItem;
             w.detailListAction = savedDetailListAction;
-            w.listKeyHandlerFn = savedListKeyHandler;
-            if (typeof w.showPage === "function") w.showPage();
-            if (popupVisible && typeof $ !== "undefined")
-                $("#listPopUp").show();
+            if (resume) {
+                resume(admitted);
+            } else {
+                panels.savePanel(savedPanel);
+                if (typeof w.restoreListPanelState === "function")
+                    w.restoreListPanelState();
+                w.selIndex = savedIdx;
+                w.listArray = savedList;
+                w.listDataArray = savedData;
+                w.listKeyHandlerFn = savedListKeyHandler;
+                if (typeof w.showPage === "function") w.showPage();
+                if (popupVisible && typeof $ !== "undefined")
+                    $("#listPopUp").show();
+            }
             if (pickedFavorite) addPickedFavorite();
             return true;
         };
