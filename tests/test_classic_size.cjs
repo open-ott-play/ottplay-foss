@@ -68,8 +68,8 @@ const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
 const currentCaps = {
-    BUDGET,
     BASE_TOTAL_BUDGET,
+    BUDGET,
     LEGACY_TOTAL_BUDGET,
     OPTIONAL_BUDGETS,
     TOTAL_BUDGET,
