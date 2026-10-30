@@ -445,7 +445,24 @@
 
         <script>
         "use strict";
-        var host = window.location.origin ||
+        // Validate the packaged-file base once, before loading the bundle.
+        function packagedTizenAssetBase() {
+            try {
+                var w = window;
+                var marker = w.__OTTPLAY_TIZEN_PACKAGE__;
+                var location = w.location;
+                if (!marker || marker.schema !== 1 || location.protocol !== "file:") return "";
+                var tizen = w.tizen;
+                if (!tizen || !tizen.application ||
+                    typeof tizen.application.getCurrentApplication !== "function") return "";
+                var href = String(location.href).split(/[?#]/)[0];
+                var end = href.lastIndexOf("/");
+                return href.indexOf("file:///") === 0 && end > 7 ? href.substring(0, end) : "";
+            } catch (_) { return ""; }
+        }
+        window.__ottPkgBase = packagedTizenAssetBase();
+        if (window.__ottPkgBase) window.__host = window.__ottPkgBase;
+        var host = window.__ottPkgBase || window.location.origin ||
             (window.location.host ? window.location.protocol + "//" + window.location.host : "http://localhost:8080");
         if (!Date.now) Date.now = function () { return new Date().getTime(); };
         var __dev = "__OTTP_VERSION__".charAt(0) === "_"; // Unstamped source keeps development cache keys.
@@ -1009,7 +1026,8 @@
                 var scriptTag = document.createElement("script");
                 scriptTag.src = url;
                 scriptTag.type = "text/javascript";
-                if (typeof scriptTag.crossOrigin !== "undefined")
+                // Local widget files are not cross-origin HTTP resources.
+                if (scriptTag.crossOrigin !== undefined && !/^file:/.test(scriptTag.src))
                     scriptTag.crossOrigin = "anonymous";
                 scriptTag.onload = cb;
                 scriptTag.onerror = function (e) {

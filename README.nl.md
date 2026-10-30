@@ -141,6 +141,7 @@ Apparaat-smoketest: [checklist voor Modus B](docs/mode-b-device-smoke.md) en `./
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Verschillende distributies |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode of Homebrew Channel](docs/lg-webos-installation.md); gehoste speler, netwerk vereist |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode en lokaal ondertekenen; niet-ondertekend tv-pakket, apart van Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Alleen sideloading — nog niet in de App Store |
 | **Android (gedeelde frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Ondertekende Capacitor-pakketten; kies de ondersteunde Android-versie |
 | **Android (native Kotlin)** | Afzonderlijke [native app](https://github.com/open-ott-play/ottplay-android) | Publieke repository; afzonderlijke app en releaseworkflow |

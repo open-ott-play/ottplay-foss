@@ -141,6 +141,7 @@ iPhone में वीडियो इंटरफ़ेस के अंदर
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | विभिन्न वितरण |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode या Homebrew Channel](docs/lg-webos-installation.md); होस्ट किया गया प्लेयर, नेटवर्क आवश्यक |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode और स्थानीय हस्ताक्षर; अहस्ताक्षरित TV पैकेज, Family Hub से अलग](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode से `.ipa` | केवल साइडलोड — अभी App Store पर नहीं |
 | **Android (साझा frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | हस्ताक्षरित Capacitor पैकेज; समर्थित Android संस्करण चुनें |
 | **Android (मूल Kotlin)** | अलग [मूल ऐप](https://github.com/open-ott-play/ottplay-android) | सार्वजनिक रिपॉज़िटरी; अलग ऐप और रिलीज़ प्रक्रिया |

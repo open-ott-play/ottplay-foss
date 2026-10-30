@@ -89,6 +89,10 @@ assert.deepEqual(
         "build/packages/ottplay-foss-webos-repository.json",
         "build/packages/ottplay-foss-webos-icon.png",
         "build/packages/ottplay-foss-webos-description.html",
+        "build/packages/ottplay-foss-tizen-unsigned.wgt",
+        "build/packages/ottplay-foss-tizen.sha256",
+        "build/packages/ottplay-foss-tizen.json",
+        "build/packages/ottplay-foss-tizen-install.py",
     ])
 );
 assert.equal(assets.length, new Set(assets).size);

@@ -112,6 +112,9 @@ for (const adapter of adapters) {
 
 function runFixture(fixture, detector, legacy, nativeOverride) {
     const requests = [];
+    const documentUrl = fixture.documentUrl && new URL(fixture.documentUrl);
+    const packageBase =
+        documentUrl && new URL(".", documentUrl).href.slice(0, -1);
     let starts = 0;
     let bootDevice;
     let nativeCalls = 0;
@@ -142,7 +145,24 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     document.head = {
         appendChild(tag) {
             if (tag.tagName !== "script") return;
-            const requestPath = new URL(tag.src).pathname;
+            const requested = new URL(tag.src);
+            if (packageBase) {
+                assert(
+                    tag.src.startsWith(packageBase + "/"),
+                    "Widget assets stay inside its package"
+                );
+                assert.notEqual(
+                    tag.crossOrigin,
+                    "anonymous",
+                    "File scripts do not request HTTP CORS"
+                );
+            }
+            const requestPath = packageBase
+                ? "/" +
+                  requested.pathname.slice(
+                      new URL(packageBase + "/").pathname.length
+                  )
+                : requested.pathname;
             requests.push(requestPath);
             if (requestPath === "/js/ottplay-core.js") {
                 assert.equal(context.OttPlayCore, core);
@@ -205,7 +225,7 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
             },
             setItem() {},
         },
-        location: {
+        location: documentUrl || {
             host: "device-matrix.test",
             origin: "http://device-matrix.test",
             pathname: fixture.pathname,
@@ -247,6 +267,12 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
         });
     }
     if (nativeOverride) nativeOverride(context, noNativeCalls);
+    if (fixture.packagedTizen) {
+        context.__OTTPLAY_TIZEN_PACKAGE__ = { schema: 1 };
+        context.tizen = {
+            application: { getCurrentApplication: noNativeCalls },
+        };
+    }
     // Initialize the real core before removing APIs for this detector-only
     // matrix. Full script loading with shipped polyfills is tested separately.
     core = require("./helpers/shared-core-runtime.cjs")(context);
@@ -261,6 +287,12 @@ function runFixture(fixture, detector, legacy, nativeOverride) {
     for (const script of scripts)
         vm.runInContext(script, context, { filename: "index.html boot" });
     assert.equal(starts, 1, "Boot reaches startPlayer once");
+    if (packageBase)
+        assert.equal(
+            context.host,
+            packageBase,
+            "Module preserves package asset base"
+        );
     assert.deepEqual(requests, [
         "/js/ottplay-core.js",
         ...(fixture.expectedDevice === "pc2" ? ["/js/video.min.js"] : []),
@@ -309,6 +341,19 @@ for (const detector of detectors) {
     for (const legacy of [false, true]) {
         for (const fixture of [...fixtures, ...routeFixtures])
             check(fixture, detector, legacy);
+        check(
+            {
+                documentUrl:
+                    "file:///opt/usr/apps/OttPlayFOS/res/wgt/index.html?debug=1#screen",
+                expectedDevice: "samsung/tizen",
+                name: "Installed Samsung TV widget",
+                packagedTizen: true,
+                pathname: "/opt/usr/apps/OttPlayFOS/res/wgt/index.html",
+                userAgent: "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.5)",
+            },
+            detector,
+            legacy
+        );
         // Each supported API spelling must suffice independently. Merely named,
         // non-callable methods and throwing method getters must not identify MAG.
         for (const method of [

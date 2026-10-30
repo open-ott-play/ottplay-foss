@@ -134,6 +134,10 @@
 
 ### Changes
 
+- Add a bundled Samsung Tizen TV WGT with verified release metadata and an
+  explicit local signing/install helper. Preserve the TV application context
+  for packaged assets and remote input. Family Hub remains a separate browser
+  target without a claimed TV WGT installation path.
 - Add an installable LG webOS hosted player for Developer Mode and an existing
   Homebrew Channel. Release packages include a verified IPK, checksums and a
   version-pinned Homebrew repository and manifest. The app opens the canonical

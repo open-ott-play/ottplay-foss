@@ -366,7 +366,7 @@ export function log(elementId: string, text: string): void {
  *
  * @sideEffects
  * - Creates and appends a `<script>` element to `location`.
- * - Sets `crossOrigin = 'anonymous'` if the property is supported.
+ * - Sets `crossOrigin = 'anonymous'` for non-file resources if supported.
  * - On error: logs to console, calls `alert()`, and invokes `errorCb`.
  */
 export function loadScript(
@@ -392,7 +392,7 @@ export function loadScript(
     var script = document.createElement("script");
     script.src = url;
     script.type = "text/javascript";
-    if (typeof (script as any).crossOrigin !== "undefined")
+    if (script.crossOrigin !== undefined && !/^file:/.test(script.src))
         (script as any).crossOrigin = "anonymous";
     script.onload = function () {
         release();

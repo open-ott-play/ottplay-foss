@@ -141,6 +141,7 @@ Uji dasar perangkat: [daftar periksa Mode B](docs/mode-b-device-smoke.md) dan `.
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Berbagai distribusi |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode atau Homebrew Channel](docs/lg-webos-installation.md); pemutar di server, memerlukan jaringan |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode dan penandatanganan lokal; paket TV belum ditandatangani, terpisah dari Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` melalui AltStore / TestFlight / Xcode | Hanya sideload — belum di App Store |
 | **Android (frontend bersama)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Paket Capacitor ditandatangani; pilih versi Android yang didukung |
 | **Android (Kotlin native)** | [Aplikasi native](https://github.com/open-ott-play/ottplay-android) terpisah | Repositori publik; aplikasi dan alur rilis terpisah |

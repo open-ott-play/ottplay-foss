@@ -142,6 +142,7 @@ Teste básico no dispositivo: [lista de verificação do Modo B](docs/mode-b-dev
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Várias distribuições |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode ou Homebrew Channel](docs/lg-webos-installation.md); reprodutor hospedado, requer rede |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode e assinatura local; pacote de TV não assinado, separado do Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` via AltStore / TestFlight / Xcode | Apenas instalação externa — ainda não está na App Store |
 | **Android (frontend partilhado)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | Pacotes Capacitor assinados; escolha a versão Android suportada |
 | **Android (Kotlin nativo)** | [Aplicação nativa](https://github.com/open-ott-play/ottplay-android) separada | Repositório público; aplicação e fluxo de lançamento separados |

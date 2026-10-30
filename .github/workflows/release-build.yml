@@ -95,6 +95,10 @@ jobs:
           npm run package:webos -- --plan .release-plan.json
           npm run verify:webos -- --plan .release-plan.json
           npm run package:webos-homebrew -- --plan .release-plan.json
+      - name: Package and verify Samsung Tizen TV delivery
+        run: |
+          npm run package:tizen -- --plan .release-plan.json
+          npm run verify:tizen -- --plan .release-plan.json
       - name: Prepare established web download names
         run: |
           cp build/packages/ottplay-foss-modea.tar.gz build/packages/ottplay-foss-modea.sha256 .
@@ -116,6 +120,10 @@ jobs:
           RELEASE_ASSET_PATTERN_8: build/packages/ottplay-foss-webos-repository.json
           RELEASE_ASSET_PATTERN_9: build/packages/ottplay-foss-webos-icon.png
           RELEASE_ASSET_PATTERN_10: build/packages/ottplay-foss-webos-description.html
+          RELEASE_ASSET_PATTERN_11: build/packages/ottplay-foss-tizen-unsigned.wgt
+          RELEASE_ASSET_PATTERN_12: build/packages/ottplay-foss-tizen.sha256
+          RELEASE_ASSET_PATTERN_13: build/packages/ottplay-foss-tizen.json
+          RELEASE_ASSET_PATTERN_14: build/packages/ottplay-foss-tizen-install.py
         run: |
           python3 scripts/stage_release_assets.py --target "$RELEASE_ASSET_TARGET" \
             --pattern "$RELEASE_ASSET_PATTERN_0" --pattern "$RELEASE_ASSET_PATTERN_1" \
@@ -123,7 +131,9 @@ jobs:
             --pattern "$RELEASE_ASSET_PATTERN_4" --pattern "$RELEASE_ASSET_PATTERN_5" \
             --pattern "$RELEASE_ASSET_PATTERN_6" --pattern "$RELEASE_ASSET_PATTERN_7" \
             --pattern "$RELEASE_ASSET_PATTERN_8" --pattern "$RELEASE_ASSET_PATTERN_9" \
-            --pattern "$RELEASE_ASSET_PATTERN_10"
+            --pattern "$RELEASE_ASSET_PATTERN_10" --pattern "$RELEASE_ASSET_PATTERN_11" \
+            --pattern "$RELEASE_ASSET_PATTERN_12" --pattern "$RELEASE_ASSET_PATTERN_13" \
+            --pattern "$RELEASE_ASSET_PATTERN_14"
       - name: Store release assets
         id: browser-artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

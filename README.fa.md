@@ -149,6 +149,7 @@ npm run android:api22:release # Android 5.1 compatibility APK, same Full interfa
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | توزیع‌های گوناگون |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode یا Homebrew Channel](docs/lg-webos-installation.md)؛ پخش‌کنندهٔ میزبانی‌شده، نیازمند شبکه |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode و امضای محلی؛ بستهٔ تلویزیون بدون امضا، جدا از Family Hub](docs/samsung-tizen-installation.md) |
 | **iOS** | `.ipa` از AltStore / TestFlight / Xcode | فقط نصب جانبی — هنوز در App Store نیست |
 | **Android (رابط مشترک)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | بسته‌های امضاشدهٔ Capacitor؛ نسخهٔ مناسب Android را انتخاب کنید |
 | **Android (Kotlin بومی)** | [برنامهٔ بومی](https://github.com/open-ott-play/ottplay-android) جداگانه | مخزن عمومی؛ برنامه و گردش انتشار جداگانه |

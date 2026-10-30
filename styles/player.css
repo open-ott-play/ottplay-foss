@@ -2,39 +2,39 @@
 /* @import url('https://fonts.googleapis.com/css?family=Caveat:700|Roboto|Roboto+Condensed&subset=cyrillic,latin-ext'); */
 @font-face {
     font-family: "Liberation";
-    src: url(/fonts/LiberationSans-Regular.ttf);
+    src: url(../fonts/LiberationSans-Regular.ttf);
 }
 @font-face {
     font-family: "Roboto";
-    src: url(/fonts/Roboto-Regular.ttf);
+    src: url(../fonts/Roboto-Regular.ttf);
 }
 @font-face {
     font-family: "RobotoCondensed";
-    src: url(/fonts/RobotoCondensed-Regular.ttf);
+    src: url(../fonts/RobotoCondensed-Regular.ttf);
 }
 @font-face {
     font-family: "Caveat";
-    src: url(/fonts/Caveat-Regular.ttf);
+    src: url(../fonts/Caveat-Regular.ttf);
 }
 @font-face {
     font-family: "Gabriela";
-    src: url(/fonts/Gabriela-Regular.ttf);
+    src: url(../fonts/Gabriela-Regular.ttf);
 }
 @font-face {
     font-family: "PTSansNarrow";
-    src: url(/fonts/PTSansNarrow-Regular.ttf);
+    src: url(../fonts/PTSansNarrow-Regular.ttf);
 }
 
 /* FONTELLO - BEGIN */
 @font-face {
     font-family: "fontello";
-    src: url("/fonts/fontello.eot?14681539");
+    src: url("../fonts/fontello.eot?14681539");
     src:
-        url("/fonts/fontello.eot?14681539#iefix") format("embedded-opentype"),
-        url("/fonts/fontello.woff2?14681539") format("woff2"),
-        url("/fonts/fontello.woff?14681539") format("woff"),
-        url("/fonts/fontello.ttf?14681539") format("truetype"),
-        url("/fonts/fontello.svg?14681539#fontello") format("svg");
+        url("../fonts/fontello.eot?14681539#iefix") format("embedded-opentype"),
+        url("../fonts/fontello.woff2?14681539") format("woff2"),
+        url("../fonts/fontello.woff?14681539") format("woff"),
+        url("../fonts/fontello.ttf?14681539") format("truetype"),
+        url("../fonts/fontello.svg?14681539#fontello") format("svg");
     font-weight: normal;
     font-style: normal;
 }

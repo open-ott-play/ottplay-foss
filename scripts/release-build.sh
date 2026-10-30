@@ -39,3 +39,19 @@ else
     build/packages/ottplay-foss-webos.json release-output/webos-development/
   echo "Development webOS package: release-output/webos-development (no release feed)"
 fi
+
+# Tizen certificates remain on the operator's computer. Release WGTs are unsigned.
+if [ -f "$WEBOS_RELEASE_PLAN" ]; then
+  npm run package:tizen -- --plan "$WEBOS_RELEASE_PLAN"
+  npm run verify:tizen -- --plan "$WEBOS_RELEASE_PLAN"
+  TIZEN_DELIVERY_DIR=release-output
+else
+  npm run package:tizen -- --local
+  npm run verify:tizen -- --local
+  TIZEN_DELIVERY_DIR=release-output/tizen-development
+fi
+mkdir -p "$TIZEN_DELIVERY_DIR"
+cp build/packages/ottplay-foss-tizen-unsigned.wgt \
+  build/packages/ottplay-foss-tizen.sha256 \
+  build/packages/ottplay-foss-tizen.json \
+  build/packages/ottplay-foss-tizen-install.py "$TIZEN_DELIVERY_DIR/"

@@ -139,6 +139,7 @@ iPhoneでは動画をインライン再生します。画面下部をタップ�
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | 各種ディストリビューション |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode または Homebrew Channel](docs/lg-webos-installation.md)。ホスト型プレーヤーのためネットワーク接続が必要 |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode とローカル署名。未署名のTVパッケージで、Family Hubとは別](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode経由の`.ipa` | サイドロードのみ。App Store未公開 |
 | **Android（共有フロントエンド）** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | 署名済みCapacitorパッケージ。対応Android版を選択 |
 | **Android（ネイティブKotlin）** | 独立した[ネイティブアプリ](https://github.com/open-ott-play/ottplay-android) | 公開リポジトリー。アプリとリリース手順は独立 |

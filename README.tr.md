@@ -141,6 +141,7 @@ Cihaz temel testi: [Mod B kontrol listesi](docs/mode-b-device-smoke.md) ve `./sc
 | **Windows** | `.msi` / `.exe` | x64 |
 | **Linux** | `.AppImage`, `.deb`, `.rpm` | Çeşitli dağıtımlar |
 | **LG webOS** | `ottplay-foss-webos.ipk` | [Developer Mode veya Homebrew Channel](docs/lg-webos-installation.md); barındırılan oynatıcı, ağ gerekir |
+| **Samsung Tizen TV** | `ottplay-foss-tizen-unsigned.wgt` | [Developer Mode ve yerel imzalama; imzasız TV paketi, Family Hub’dan ayrı](docs/samsung-tizen-installation.md) |
 | **iOS** | AltStore / TestFlight / Xcode ile `.ipa` | Yalnızca dışarıdan yükleme — henüz App Store'da değil |
 | **Android (ortak frontend)** | `ottplay-foss-android-full.apk` / `ottplay-foss-android-api22.apk` | İmzalı Capacitor paketleri; desteklenen Android sürümünü seçin |
 | **Android (yerel Kotlin)** | Ayrı [yerel uygulama](https://github.com/open-ott-play/ottplay-android) | Herkese açık depo; ayrı uygulama ve sürüm iş akışı |
