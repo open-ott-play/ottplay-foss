@@ -22,6 +22,23 @@ export function globalFavoriteChannelId(
 ): string | null {
     if (!row) return null;
     var media = row.__ottMediaItem;
+    if (
+        provider === "torrent" &&
+        row.__ottMediaProvider === "torrent" &&
+        media?.request?.kind === "torrent" &&
+        media.itemId === row.itemId &&
+        row.itemId ===
+            "torrent:" +
+                media.request.catalogId +
+                ":" +
+                media.request.entryId +
+                ":" +
+                media.request.fileIndex &&
+        /^torrent:[A-Za-z0-9_-]{1,64}:[A-Za-z0-9_-]{1,64}:\d{1,9}$/.test(
+            row.itemId
+        )
+    )
+        return row.itemId;
     var stalker = globalFavoriteProviderId(row.__ottStalkerMediaKey);
     if (
         provider === "stalker" &&

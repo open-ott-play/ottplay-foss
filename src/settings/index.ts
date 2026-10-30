@@ -8,7 +8,7 @@ import { languageNames } from "../localization/assets";
  *
  * Loaded from persistent storage on startup (see `loadSettings`) and
  * persisted on change (see `saveSettings`). The `PlayerSettings` interface
- * defines every tunable parameter exposed to the user via the settings UI.
+ * defines the player and installation parameters used by settings adapters.
  */
 import { storage } from "../storage/index";
 import {
@@ -438,6 +438,7 @@ function defineSetting(
 }
 export const settingsSchema: SettingDefinition[] = [
     {
+        // Installation-only access: configured through authenticated remote settings.
         defaultValue: "",
         effects: [],
         id: "companionEndpoint",
@@ -1104,16 +1105,16 @@ export function exportSettings(): string {
             );
     }
     if (!context.current()) throw new Error("Settings source changed");
+    var portable = w.OttPlayCore.classicPortableSnapshot(settings, false);
+    delete portable.companionEndpoint;
+    delete portable.sCompanionEndpoint;
     return JSON.stringify(
         {
             offline_profiles: w.__ottOfflineProfiles
                 ? w.__ottOfflineProfiles.read()
                 : undefined,
             settings: writeLegacySettingsFields(
-                w.__ottPinSecurity.protectSnapshot(
-                    w.OttPlayCore.classicPortableSnapshot(settings, false),
-                    "parentPin"
-                )
+                w.__ottPinSecurity.protectSnapshot(portable, "parentPin")
             ),
             timestamp: Date.now(),
             tv: tv,
@@ -1220,6 +1221,8 @@ export function importSettings(
         });
         settingsSchema.forEach(function (entry) {
             if (
+                // Restoring a backup must leave this installation's endpoint alone.
+                entry.id !== "companionEndpoint" &&
                 Object.prototype.hasOwnProperty.call(input, entry.id) &&
                 !request.set(entry.id, input[entry.id])
             )

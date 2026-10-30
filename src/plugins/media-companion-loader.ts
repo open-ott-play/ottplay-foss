@@ -1,10 +1,43 @@
 import { loadRemoteFeature } from "../commands/remote-feature";
-import { editSettingsText } from "../settings/transfer-ui";
 import { tauriInvoke } from "./native-bridge";
-/** No service or optional script starts until a companion source/UI is requested. */
+/** Native capability discovery is static; the service starts only for a source. */
 export function installMediaCompanion(w: any): void {
     if (w.__ottMediaCompanion) return;
     var pending: Promise<any> | null = null;
+    var pendingNative: Promise<any> | null = null;
+    var nativeAvailable: boolean | null = w.__TAURI__ ? null : false;
+    var capabilityRequest: Promise<any> | null = null;
+    function capabilities(): Promise<any> {
+        if (!w.__TAURI__) return Promise.resolve(null);
+        if (!capabilityRequest)
+            capabilityRequest = tauriInvoke("companion_capabilities", {}).then(
+                function (value: any) {
+                    nativeAvailable = !!(
+                        value &&
+                        value.schema === 1 &&
+                        value.local === true &&
+                        value.available === true &&
+                        value.torrent === true
+                    );
+                    return nativeAvailable ? value : null;
+                },
+                function () {
+                    nativeAvailable = false;
+                    return null;
+                }
+            );
+        return capabilityRequest;
+    }
+    function available(): boolean {
+        return (
+            typeof w.fetch === "function" &&
+            !!(
+                (w.settings && w.settings.companionEndpoint) ||
+                (w.stbGetItem && w.stbGetItem("sCompanionEndpoint")) ||
+                nativeAvailable === true
+            )
+        );
+    }
     function source(value: any): boolean {
         return (
             typeof value === "string" &&
@@ -12,8 +45,9 @@ export function installMediaCompanion(w: any): void {
                 /^https?:\/\/[^?#]*\.torrent(?:[?#]|$)/i.test(value))
         );
     }
-    function ensure(): Promise<any> {
-        if (pending) return pending;
+    function ensure(nativeOnly = false): Promise<any> {
+        if (nativeOnly ? pendingNative : pending)
+            return (nativeOnly ? pendingNative : pending)!;
         var loading = new Promise(function (resolve, reject) {
             function ready(error?: string): void {
                 if (error || !w.__ottMediaCompanionFactory) {
@@ -26,12 +60,21 @@ export function installMediaCompanion(w: any): void {
                             w,
                             w.__TAURI__
                                 ? function () {
-                                      return tauriInvoke(
-                                          "companion_endpoint",
-                                          {}
+                                      return capabilities().then(
+                                          function (value) {
+                                              if (!value)
+                                                  throw new Error(
+                                                      "companion_unavailable"
+                                                  );
+                                              return tauriInvoke(
+                                                  "companion_endpoint",
+                                                  {}
+                                              );
+                                          }
                                       );
                                   }
-                                : undefined
+                                : undefined,
+                            nativeOnly
                         )
                     );
                 } catch (failure) {
@@ -41,24 +84,24 @@ export function installMediaCompanion(w: any): void {
             if (w.__ottMediaCompanionFactory) ready();
             else loadRemoteFeature(w, "media-companion", ready);
         });
-        pending = loading;
+        if (nativeOnly) pendingNative = loading;
+        else pending = loading;
         loading.catch(function () {
-            if (pending === loading) pending = null;
+            if (nativeOnly && pendingNative === loading) pendingNative = null;
+            else if (!nativeOnly && pending === loading) pending = null;
         });
         return loading;
     }
     w.__ottMediaCompanion = {
+        available: available,
+        capabilities: capabilities,
         ensure: ensure,
         isSource: source,
-        open: function () {
-            ensure().then(
-                function (client) {
-                    w.__ottMediaCompanionUi(w, client, editSettingsText);
-                },
-                function () {
-                    if (w.showShift) w.showShift("Media companion unavailable");
-                }
-            );
+        nativePending: function () {
+            return !!w.__TAURI__ && nativeAvailable === null;
+        },
+        providerAvailable: function () {
+            return typeof w.fetch === "function" && nativeAvailable === true;
         },
         resolve: function (
             value: string,
@@ -66,7 +109,13 @@ export function installMediaCompanion(w: any): void {
         ) {
             var cancelled = false,
                 release = function () {};
-            ensure().then(
+            var nativeOnly = false;
+            try {
+                nativeOnly =
+                    /^ottplay-torrent:/i.test(value) &&
+                    new URL(value).searchParams.get("native") === "1";
+            } catch (_) {}
+            ensure(nativeOnly).then(
                 function (client) {
                     if (cancelled) return;
                     release = client.resolve(value, done);

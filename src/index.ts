@@ -7582,14 +7582,6 @@ window.settingsCommands = function (): void {
 // Rebuild optionsArr now that all window.* settings functions are defined
 optionsArr.length = 0;
 var _o = window as any;
-_o.settingsMediaCompanion = function settingsMediaCompanion() {
-    if (_o.__ottParental && _o.__ottParental.needs("settings")) {
-        _o.enterPinAndSetAccess(_o.settingsMediaCompanion);
-        return;
-    }
-    _o.__ottMediaCompanion.open();
-};
-optionsArr.push({ action: _o.settingsMediaCompanion, name: "Media companion" });
 optionsArr.push({ action: _o.settingsInterface, name: "Interface settings" });
 optionsArr.push({ action: _o.settingsLists, name: "Lists settings" });
 optionsArr.push({ action: _o.settingsChannels, name: "Channel list settings" });

@@ -224,6 +224,44 @@ check("malformed complete response does not mutate storage", (f) => {
     assert.equal(f.restarts(), 0);
 });
 check(
+    "cloud restore cannot replace or clear the installation companion",
+    (f) => {
+        const own = "http://127.0.0.1:8793/companion/" + "a".repeat(48) + "/v1";
+        const copied =
+            "https://copied.invalid/companion/" + "b".repeat(48) + "/v1";
+        f.stored.set("sCompanionEndpoint", own);
+        f.stored.set("companionEndpoint", own);
+        f.deliver(
+            "<properties><comment>OTT-Play Preferences</comment>" +
+                '<entry key="sCompanionEndpoint">' +
+                copied +
+                "</entry>" +
+                '<entry key="companionEndpoint">' +
+                copied +
+                "</entry>" +
+                '<entry key="ordinary">restored</entry></properties>'
+        );
+        assert.equal(f.stored.get("ordinary"), "restored");
+        assert.equal(f.stored.get("sCompanionEndpoint"), own);
+        assert.equal(f.stored.get("companionEndpoint"), own);
+        assert.equal(f.restarts(), 1);
+        f.deliver();
+        assert.equal(f.stored.get("sCompanionEndpoint"), own);
+        assert.equal(f.stored.get("companionEndpoint"), own);
+        assert.equal(f.restarts(), 2);
+    }
+);
+check("cloud restore cannot configure an unconfigured companion", (f) => {
+    f.deliver(
+        "<properties><comment>OTT-Play Preferences</comment>" +
+            '<entry key="sCompanionEndpoint">https://copied.invalid/companion/' +
+            "b".repeat(48) +
+            "/v1</entry></properties>"
+    );
+    assert.equal(f.stored.has("sCompanionEndpoint"), false);
+    assert.equal(f.restarts(), 1);
+});
+check(
     "full replacement verifies writes and deletions, then retires authority",
     (f) => {
         f.stored.set("sLocalHttpEnabled", "1");

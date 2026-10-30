@@ -120,6 +120,8 @@ group(
             "commandServerEnabled",
             "sLocalHttpEnabled",
             "sLocalHttpDeviceCode",
+            "companionEndpoint",
+            "sCompanionEndpoint",
             "stb_settings_backup",
         ];
         const input = { ordinary: "value" };

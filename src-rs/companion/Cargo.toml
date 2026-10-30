@@ -1,0 +1,27 @@
+[package]
+name = "ottplay-companion"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.96"
+
+[features]
+webos-legacy-glibc = []
+
+[dependencies]
+ottplay-core = { path = "../core" }
+anyhow = "1"
+axum = "0.7"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+
+[target.'cfg(all(target_arch = "arm", target_os = "linux"))'.dependencies]
+# The 0.14 release bundles stale ARM bindings for JS_NewArrayBuffer. Generate
+# them from the matching C header for this target without patching the engine.
+rquickjs = { version = "=0.14.0", features = ["bindgen"] }
+libc = "0.2"
+
+[target.'cfg(not(all(target_arch = "arm", target_os = "linux")))'.dev-dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+reqwest = { version = "0.12", default-features = false }
+uuid = { version = "1", features = ["v4"] }

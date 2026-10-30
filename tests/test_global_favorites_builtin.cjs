@@ -113,6 +113,7 @@ async function main() {
         "playlist",
         "catalog",
         "edem",
+        "torrent",
     ]);
     for (const row of registryHost.__ottProviderDriverProfiles) {
         assert(

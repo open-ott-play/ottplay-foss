@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "allow-media-companion"
-description = "Allow the main player to open its private media service."
-commands.allow = ["companion_endpoint"]
+description = "Allow the main player to inspect and open its private media service."
+commands.allow = ["companion_capabilities", "companion_endpoint"]

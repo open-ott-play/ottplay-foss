@@ -10,7 +10,7 @@ const { stagePlayProviders } = require("../scripts/android-distribution.cjs");
 const { isRetiredRuntimeScript } = require("../scripts/runtime-assets.cjs");
 const root = path.resolve(__dirname, "..");
 const ids = managedProviderIds();
-assert.equal(ids.length, 51);
+assert.equal(ids.length, 52);
 for (const id of ["antifriz", "edem", "kb-team", "m3u", "plex"])
     assert(ids.includes(id), "new independent driver asset boundary: " + id);
 function compatibilityProviders(directory, prefix = "") {

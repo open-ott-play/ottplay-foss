@@ -8,6 +8,7 @@ const PLAY_PROVIDERS = [
     "m3u",
     "plex",
     "stalker",
+    "torrent",
     "vportal",
     "xtream",
 ];

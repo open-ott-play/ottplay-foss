@@ -19,7 +19,7 @@ from pathlib import Path
 
 import tomllib
 
-MEMBERS = ("src-rs/core", "src-rs/server", "src-tauri")
+MEMBERS = ("src-rs/core", "src-rs/server", "src-rs/companion", "src-tauri")
 SERVER_MEMBERS = MEMBERS[:2]
 
 
@@ -72,7 +72,7 @@ def verify_locked_packages(original, derived):
         if identity not in before or before[identity] != checksum:
             raise ValueError("Cargo changed a locked package; update the source lockfile first")
     names = {identity[0] for identity in after}
-    if "ottplay-tauri" in names or not {"ottplay-core", "ottplay-server"} <= names:
+    if {"ottplay-tauri", "ottplay-companion"} & names or not {"ottplay-core", "ottplay-server"} <= names:
         raise ValueError("Derived lockfile does not describe the server-only workspace")
     return len(before), len(after)
 

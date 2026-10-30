@@ -362,7 +362,7 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let companion = companion::from_env(&cli.host).await?;
+    let companion = companion::from_env().await?;
 
     let app = Router::new()
         .route("/", get(root))
@@ -398,12 +398,13 @@ async fn main() -> anyhow::Result<()> {
         .merge(nas_library::routes_from_env()?)
         .merge(normalization::routes_from_env(&cli.host).await?)
         .merge(control_discovery::routes())
-        .merge(offline_media_routes(None).await?)
-        .merge(companion.as_ref().map(|service| service.routes()).unwrap_or_default());
+        .merge(offline_media_routes(None).await?);
 
-    if let Some(service) = companion {
+    if let Some(companion) = companion {
+        let service = companion.service();
         let result = tokio::select! {
             result = serve_listeners(listeners, app, tls_config) => result,
+            result = companion.serve() => result,
             _ = normalization::stop_signal() => Ok(()),
         };
         service.shutdown().await;

@@ -44,6 +44,34 @@ pub struct Endpoint {
     endpoint: String,
 }
 
+#[derive(Serialize)]
+pub struct Capabilities {
+    schema: u8,
+    local: bool,
+    available: bool,
+    torrent: bool,
+    plugins: bool,
+}
+
+fn installed_capabilities(window_label: &str) -> Result<Capabilities, String> {
+    if window_label != "main" {
+        return Err("Media services are controlled by the main player".into());
+    }
+    Ok(Capabilities {
+        schema: 1,
+        local: true,
+        available: true,
+        torrent: true,
+        plugins: true,
+    })
+}
+
+/// Reports compiled-in support without touching storage, listeners or sessions.
+#[tauri::command]
+pub fn companion_capabilities(window: WebviewWindow) -> Result<Capabilities, String> {
+    installed_capabilities(window.label())
+}
+
 #[tauri::command]
 pub async fn companion_endpoint(
     app: AppHandle,
@@ -135,6 +163,20 @@ pub async fn companion_endpoint(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn capabilities_report_support_without_starting_a_runtime() {
+        let state = CompanionState::default();
+        let capabilities = installed_capabilities("main").unwrap();
+        assert_eq!(
+            serde_json::to_value(capabilities).unwrap(),
+            serde_json::json!({
+                "schema": 1, "local": true, "available": true, "torrent": true, "plugins": true
+            })
+        );
+        assert!(state.0.lock().await.is_none());
+        assert!(installed_capabilities("pip").is_err());
+    }
 
     #[tokio::test]
     async fn delayed_old_page_cleanup_preserves_current_runtime() {

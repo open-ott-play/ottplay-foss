@@ -22,6 +22,7 @@
     { id: "m3u", kind: "m3u", prefix: "m3u", title: "M3U playlist" },
     { id: "plex", kind: "plex", prefix: "plex", title: "Plex" },
     { id: "vportal", kind: "vportal", prefix: "vportal", title: "VPortal" },
+    { id: "torrent", kind: "torrent", prefix: "torrent", title: "Torrent" },
     // OTTPLAY_FULL_ONLY_BEGIN
     { id: "antifriz", kind: "playlist", prefix: "az", title: "Antifriz" },
     { id: "kb-team", kind: "playlist", prefix: "kbc", title: "KBC (Kinoboom)" },

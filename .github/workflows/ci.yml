@@ -484,7 +484,7 @@ jobs:
       - name: Test isolated container workspace and lockfile inputs
         run: python3 tests/test_container_workspace.py
       - name: Test core and server including shared XMLTV differential contracts
-        run: cargo test --locked -p ottplay-core -p ottplay-server
+        run: cargo test --locked -p ottplay-core -p ottplay-server -p ottplay-companion
       - name: Verify bounded torrent metadata acquisition
         run: |
           node scripts/check-librqbit-backport.cjs
@@ -521,6 +521,10 @@ jobs:
         run: |
           cargo build --locked --release -p ottplay-server
           python3 scripts/check-epg-performance.py --server target/release/ottplay-server --output reports/epg/performance.json
+      - name: Verify companion listener isolation
+        env:
+          OTTPLAY_SERVER_BIN: target/release/ottplay-server
+        run: python3 tests/native_companion/listener_smoke.py
       - name: Preserve EPG performance evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

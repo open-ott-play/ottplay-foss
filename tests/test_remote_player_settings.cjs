@@ -260,6 +260,60 @@ check("secrets remain redacted in get, schema and failure", () => {
     assert(!JSON.stringify(f.set(get, "PRIVATE_NEW")).includes("PRIVATE"));
 });
 check(
+    "companion endpoint remains writable through masked remote settings",
+    () => {
+        const ast = ts.createSourceFile(
+            "settings.ts",
+            fs.readFileSync("src/settings/index.ts", "utf8"),
+            ts.ScriptTarget.Latest,
+            true
+        );
+        const schema = ast.statements
+            .filter(ts.isVariableStatement)
+            .flatMap((node) => [...node.declarationList.declarations])
+            .find(
+                (node) => node.name.getText(ast) === "settingsSchema"
+            ).initializer;
+        const definition = schema.elements.find((node) =>
+            node.properties?.some(
+                (property) =>
+                    property.name?.getText(ast) === "id" &&
+                    property.initializer?.text === "companionEndpoint"
+            )
+        );
+        assert(definition, "Use the production companion setting validator");
+        const f = fixture([
+            vm.runInNewContext("(" + definition.getText(ast) + ")", { URL }),
+        ]);
+        const endpoint =
+            "http://127.0.0.1:8793/companion/" + "a".repeat(48) + "/v1";
+        const get = f.get("companionEndpoint");
+        assert.equal(get.data.descriptor.scope, "application");
+        assert.equal(get.data.descriptor.sensitive, true);
+        assert.equal(get.data.descriptor.access.read, false);
+        assert.equal(get.data.descriptor.access.write, true);
+        assert.equal(get.data.descriptor.apply, "next_stream");
+        const set = f.set(get, endpoint);
+        assert.equal(set.status, "ok");
+        assert.equal(f.data.get("sCompanionEndpoint"), endpoint);
+        assert(!JSON.stringify(set).includes(endpoint));
+        const saved = f.get("companionEndpoint");
+        assert.equal(saved.data.setting.redacted, true);
+        assert.equal(saved.data.setting.configured, true);
+        assert.equal(saved.data.setting.value, undefined);
+        assert.equal(saved.data.setting.persisted_value, undefined);
+        assert.equal(saved.data.descriptor.default_value, undefined);
+        assert(!JSON.stringify(saved).includes(endpoint));
+        assert.equal(
+            f.set(saved, "https://invalid.example/").status,
+            "rejected"
+        );
+        assert.equal(f.data.get("sCompanionEndpoint"), endpoint);
+        assert.equal(f.set(f.get("companionEndpoint"), "").status, "ok");
+        assert.equal(f.data.get("sCompanionEndpoint"), "");
+    }
+);
+check(
     "runtime, provider, profile and saved-byte changes invalidate receipts",
     () => {
         for (const mutation of [

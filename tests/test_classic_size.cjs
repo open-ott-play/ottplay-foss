@@ -4,7 +4,8 @@ const os = require("node:os");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
-const {
+let {
+    TORRENT_PROVIDER_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,
@@ -66,7 +67,98 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
+const currentCaps = {
+    BUDGET,
+    BASE_TOTAL_BUDGET,
+    LEGACY_TOTAL_BUDGET,
+    OPTIONAL_BUDGETS,
+    TOTAL_BUDGET,
+};
+const torrentDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "catalog"]
+              : ["entry", "catalog", "favorites", "settings", "companion"];
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) => sum + TORRENT_PROVIDER_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+const subtract = (budget, delta) =>
+    Object.freeze(
+        Object.fromEntries(
+            ["bytes", "gzipBytes"].map((metric) => [
+                metric,
+                budget[metric] - delta[metric],
+            ])
+        )
+    );
+const historicalCaps = Object.fromEntries(
+    Object.entries(currentCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.freeze(
+                  Object.fromEntries(
+                      Object.entries(budget).map(([key, value]) => [
+                          key,
+                          key === "favorites-transfer"
+                              ? subtract(
+                                    value,
+                                    TORRENT_PROVIDER_ALLOWANCE.favorites
+                                )
+                              : key === "media-companion"
+                                ? subtract(
+                                      value,
+                                      TORRENT_PROVIDER_ALLOWANCE.companion
+                                  )
+                                : value,
+                      ])
+                  )
+              )
+            : subtract(budget, torrentDelta(name)),
+    ])
+);
 try {
+    const torrentEvidence = require("../docs/evidence/torrent-provider-size-20261030.json");
+    assert.deepEqual(TORRENT_PROVIDER_ALLOWANCE, torrentEvidence.allowance);
+    assert(Object.isFrozen(TORRENT_PROVIDER_ALLOWANCE));
+    for (const [name, key] of [
+        ["BUDGET", "entry"],
+        ["LEGACY_TOTAL_BUDGET", "legacyTotal"],
+        ["TOTAL_BUDGET", "total"],
+    ]) {
+        assert.deepEqual(historicalCaps[name], torrentEvidence.beforeCaps[key]);
+        assert.deepEqual(currentCaps[name], torrentEvidence.afterCaps[key]);
+    }
+    for (const [name, key] of [
+        ["media-companion", "companion"],
+        ["favorites-transfer", "favorites"],
+    ]) {
+        assert.deepEqual(
+            historicalCaps.OPTIONAL_BUDGETS[name],
+            torrentEvidence.beforeCaps[key]
+        );
+        assert.deepEqual(
+            currentCaps.OPTIONAL_BUDGETS[name],
+            torrentEvidence.afterCaps[key]
+        );
+    }
+    // Historical feature receipts retain their original caps; the new allocation
+    // is verified above, then removed once while replaying those receipts.
+    ({
+        BUDGET,
+        BASE_TOTAL_BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGETS,
+        TOTAL_BUDGET,
+    } = historicalCaps);
     const routingEvidence = require("../docs/evidence/media-companion-playback-routing-size-20261030.json");
     assert.equal(routingEvidence.budgetsChanged, false);
     assert.deepEqual(routingEvidence.toolchain, {
@@ -103,9 +195,9 @@ try {
             mode.components.map((row) => row.name).sort(),
             [
                 "player.js",
-                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
-                    (name) => "provider-" + name + ".js"
-                ),
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES)
+                    .filter((name) => name !== "torrent")
+                    .map((name) => "provider-" + name + ".js"),
                 ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
                     (name) => name + ".js"
                 ),
@@ -215,9 +307,9 @@ try {
             mode.components.map((row) => row.name).sort(),
             [
                 "player.js",
-                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
-                    (name) => "provider-" + name + ".js"
-                ),
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES)
+                    .filter((name) => name !== "torrent")
+                    .map((name) => "provider-" + name + ".js"),
                 ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
                     (name) => name + ".js"
                 ),
@@ -522,7 +614,9 @@ try {
         assert.equal(
             mode.components.length,
             1 +
-                Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
+                Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+                    (name) => name !== "torrent"
+                ).length +
                 Object.keys(CLASSIC_OPTIONAL_BUNDLES).filter(
                     (name) => name !== "modern-interface"
                 ).length
@@ -624,12 +718,14 @@ try {
         assert.equal(typeof source.trackedSourceClean, "boolean");
         const expectedPaths = ARTIFACTS.flatMap((file) => [
             file,
-            ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map((name) =>
-                path.posix.join(
-                    path.posix.dirname(file),
-                    "provider-" + name + ".js"
-                )
-            ),
+            ...Object.keys(CLASSIC_PROVIDER_BUNDLES)
+                .filter((name) => name !== "torrent")
+                .map((name) =>
+                    path.posix.join(
+                        path.posix.dirname(file),
+                        "provider-" + name + ".js"
+                    )
+                ),
             ...optionalNames.map((name) =>
                 path.posix.join(path.posix.dirname(file), name + ".js")
             ),
@@ -740,7 +836,9 @@ try {
     assert.match(tizenEvidence.lockSha256, /^[a-f0-9]{64}$/);
     const tizenComponentCount =
         1 +
-        Object.keys(CLASSIC_PROVIDER_BUNDLES).length +
+        Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+            (name) => name !== "torrent"
+        ).length +
         Object.keys(historicalOptionalBundles).length;
     for (const source of [tizenEvidence.baseline, tizenEvidence.candidate]) {
         assert.match(source.head, /^[a-f0-9]{40}$/);
@@ -802,10 +900,9 @@ try {
             mode.components.map((row) => [row.family, row.name]),
             [
                 ["entry", "player.js"],
-                ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map((name) => [
-                    "providers",
-                    "provider-" + name + ".js",
-                ]),
+                ...Object.keys(CLASSIC_PROVIDER_BUNDLES)
+                    .filter((name) => name !== "torrent")
+                    .map((name) => ["providers", "provider-" + name + ".js"]),
                 ...Object.keys(historicalOptionalBundles).map((name) => [
                     "optionalAssets",
                     name + ".js",
@@ -1003,7 +1100,9 @@ try {
         );
         assert.equal(
             mode.components.filter((row) => row.family === "providers").length,
-            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+                (name) => name !== "torrent"
+            ).length
         );
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
@@ -1257,7 +1356,9 @@ try {
         );
         assert.equal(
             mode.components.filter((row) => row.family === "providers").length,
-            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+                (name) => name !== "torrent"
+            ).length
         );
         assert.equal(
             mode.components.filter((row) => row.family === "optionalAssets")
@@ -1603,7 +1704,9 @@ try {
         }
         assert.equal(
             mode.unchangedProviders,
-            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+                (name) => name !== "torrent"
+            ).length
         );
         assert.equal(
             mode.unchangedOptionalAssets,
@@ -1684,7 +1787,9 @@ try {
         }
         assert.equal(
             row.unchangedProviders,
-            Object.keys(CLASSIC_PROVIDER_BUNDLES).length
+            Object.keys(CLASSIC_PROVIDER_BUNDLES).filter(
+                (name) => name !== "torrent"
+            ).length
         );
         assert.equal(
             row.unchangedOptionalAssets,
@@ -2549,6 +2654,13 @@ try {
             )
         );
     }
+    ({
+        BUDGET,
+        BASE_TOTAL_BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGETS,
+        TOTAL_BUDGET,
+    } = currentCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -2610,12 +2722,12 @@ try {
     fs.writeFileSync(extrasPath, source);
     const sets = inspectBundleSets(root);
     assert.equal(sets.length, 3);
-    assert.equal(sets[0].providers.length, 8);
+    assert.equal(sets[0].providers.length, 9);
     const optionalCount = Object.keys(CLASSIC_OPTIONAL_BUNDLES).length;
-    assert.equal(sets[0].total.bytes, measurement.bytes * (9 + optionalCount));
+    assert.equal(sets[0].total.bytes, measurement.bytes * (10 + optionalCount));
     assert.equal(
         sets[0].total.gzipBytes,
-        measurement.gzipBytes * (9 + optionalCount)
+        measurement.gzipBytes * (10 + optionalCount)
     );
     // A complete distribution can use exactly one approved allowance; even a
     // one-byte overrun must fail while all component/legacy caps still pass.
@@ -2648,7 +2760,7 @@ try {
         const m3u = path.join(root, "dist/provider-m3u.js");
         fs.writeFileSync(
             m3u,
-            "x".repeat(LEGACY_TOTAL_BUDGET.bytes - BUDGET.bytes - 7)
+            "x".repeat(LEGACY_TOTAL_BUDGET.bytes - BUDGET.bytes - 8)
         );
         let remaining = TOTAL_BUDGET.bytes - LEGACY_TOTAL_BUDGET.bytes;
         let spare;
@@ -2733,7 +2845,9 @@ try {
                                   STB_PLAYER_STALKER_ALLOWANCE.gzipBytes +
                                   STB_PLAYER_XTREAM_ALLOWANCE.gzipBytes
                           )
-                        : Buffer.from("x"),
+                        : name === "torrent"
+                          ? dense(TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes)
+                          : Buffer.from("x"),
                 file: "dist/provider-" + name + ".js",
             })),
             ...Object.entries(OPTIONAL_BUDGETS).map(([name, budget]) => ({
@@ -2746,7 +2860,7 @@ try {
             fs.writeFileSync(path.join(root, member.file), member.bytes);
             return measureBundle(member.bytes, member.file, member.budget);
         });
-        const legacy = measured.slice(0, 9);
+        const legacy = measured.slice(0, 10);
         assert(
             legacy.reduce((sum, item) => sum + item.gzipBytes, 0) <
                 LEGACY_TOTAL_BUDGET.gzipBytes

@@ -428,7 +428,9 @@ const permitted = [
     "offline",
 ];
 const fullIds = Array.from(fixture("full").w.arrayProvaiders).filter(Boolean);
-const excluded = fullIds.filter((id) => !permitted.includes(id));
+const excluded = fullIds.filter(
+    (id) => id !== "torrent" && !permitted.includes(id)
+);
 
 test("transformed Play executes only its permitted driver families without Full implementations", () => {
     const full = fixture("full").w;
@@ -470,7 +472,7 @@ test("transformed Play executes only its permitted driver families without Full 
     );
     assert.deepEqual(
         Array.from(play.__ottProviderDrivers.registry.ids()).sort(),
-        permitted.slice().sort()
+        permitted.concat("torrent").sort()
     );
     for (const api of [
         "__ottCatalogDrivers",

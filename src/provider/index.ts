@@ -77,6 +77,8 @@ export function checkProviderUrl(url: string): boolean {
 }
 
 export function isProviderAllowed(id: string): boolean {
+    if (id === "torrent")
+        return !!(window as any).__ottMediaCompanion?.providerAvailable();
     return (
         !isPlayDistribution() ||
         id === "m3u" ||
@@ -98,6 +100,7 @@ export var providerIds = [
     "",
     "demo",
     "offline",
+    "torrent",
     // OTTPLAY_FULL_ONLY_BEGIN
     "ottclub",
     "edem",
@@ -926,6 +929,17 @@ export function loadProv(
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
+    var nativeCompanion = (window as any).__ottMediaCompanion;
+    if (
+        (providerId || stbGetItem("ottplayprov")) === "torrent" &&
+        nativeCompanion?.nativePending()
+    ) {
+        nativeCompanion.capabilities().then(function () {
+            if ((window as any).__ottCommandChannelLoad === commandLoad)
+                loadProv(providerId, localSession);
+        });
+        return;
+    }
     (window as any).__ottMissingCatalogSelection = false;
     (window as any).__ottPlayerState?.changed();
     (window as any).__ottCatalogSelectedId = undefined;
@@ -1579,6 +1593,15 @@ export function showProviderSelection(): void {
         enterPinAndSetAccess(showProviderSelection);
         return;
     }
+    var nativeCompanion = (window as any).__ottMediaCompanion;
+    if (nativeCompanion?.nativePending()) {
+        var priorListItem = (window as any).getListItem;
+        nativeCompanion.capabilities().then(function () {
+            if ((window as any).getListItem === priorListItem)
+                showProviderSelection();
+        });
+        return;
+    }
     if (isPlayDistribution()) {
         // Imported/recent Full selections cannot expand this registry.
         providerIds = [
@@ -1590,6 +1613,7 @@ export function showProviderSelection(): void {
             "",
             "demo",
             "offline",
+            "torrent",
         ];
         providerLabels = null;
     }
@@ -1607,6 +1631,7 @@ export function showProviderSelection(): void {
             "",
             _("Demo — moving test pattern"),
             _("Local videos"),
+            "Torrent",
             // OTTPLAY_FULL_ONLY_BEGIN
             "OTTCLUB",
             "Эдем / iLookTV",
@@ -1645,6 +1670,16 @@ export function showProviderSelection(): void {
             "Гомельсат (cbilling)",
             // OTTPLAY_FULL_ONLY_END
         ];
+
+    var torrentIndex = providerIds.indexOf("torrent");
+    if (!isProviderAllowed("torrent") && torrentIndex >= 0) {
+        providerIds.splice(torrentIndex, 1);
+        providerLabels.splice(torrentIndex, 1);
+    } else if (isProviderAllowed("torrent") && torrentIndex < 0) {
+        torrentIndex = providerIds.indexOf("offline") + 1;
+        providerIds.splice(torrentIndex, 0, "torrent");
+        providerLabels.splice(torrentIndex, 0, "Torrent");
+    }
 
     // OTTPLAY_FULL_ONLY_BEGIN
     var cbkey = stbGetItem("cbkey");
@@ -1705,7 +1740,10 @@ export function showProviderSelection(): void {
         if (savedProvId === id) {
             var edit = (window as any).__ottEditProvider;
             if (
-                (id === "stalker" || id === "plex" || id === "vportal") &&
+                (id === "stalker" ||
+                    id === "plex" ||
+                    id === "vportal" ||
+                    id === "torrent") &&
                 !Number.parseInt(stbGetItem("noProvParam") || "0") &&
                 edit &&
                 edit()
