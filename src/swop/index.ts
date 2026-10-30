@@ -137,11 +137,12 @@ function persistSwopBaseUrl(url: string): void {
 
 /**
  * Fetch optional same-origin `/local/swop.json` and apply base URL + clientId.
+ * Hosted and packaged apps do not have a local server configuration.
  * Safe no-op on 404 / network errors (public builds have no such file).
  */
 export function applyLocalSwopConfig(done?: () => void): void {
     var finish = typeof done === "function" ? done : function () {};
-    if ((window as any).__OTTPLAY_HOSTED__) {
+    if ((window as any).__OTTPLAY_HOSTED__ || (window as any).__ottPkgBase) {
         finish();
         return;
     }

@@ -296,6 +296,27 @@ for (const base of [local, "https://player.example"]) {
     }
 }
 
+const localSwop = functions("src/swop/index.ts", ["applyLocalSwopConfig"]);
+for (const fixture of [
+    { requests: 0, state: { __ottPkgBase: local } },
+    { requests: 0, state: { __OTTPLAY_HOSTED__: true } },
+    { requests: 1, state: { __OTTPLAY_TIZEN_PACKAGE__: { schema: 1 } } },
+    { requests: 1, state: {} },
+]) {
+    const requests = [];
+    let finished = 0;
+    const context = {
+        ...fixture.state,
+        $: { ajax: (request) => requests.push(request) },
+    };
+    context.window = context;
+    vm.runInNewContext(localSwop, context);
+    context.applyLocalSwopConfig(() => finished++);
+    assert.equal(requests.length, fixture.requests);
+    assert.equal(finished, fixture.requests ? 0 : 1);
+    if (requests.length) assert.equal(requests[0].url, "/local/swop.json");
+}
+
 const fontUrls = [
     ...read("styles/player.css").matchAll(/url\(["']?(\.\.\/fonts\/[^)"']+)/g),
 ].map((match) => match[1]);

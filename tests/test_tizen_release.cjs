@@ -168,6 +168,75 @@ for (const command of [
     assert(read("scripts/ci.sh").includes(command));
 }
 
+// CI exercises the emitted WGT under file: after packaging, before publishing
+// its base bundle. A successful source-only test must not bypass this boundary.
+const ci = workflow("ci.yml");
+const browserJobs = Object.values(ci.jobs).filter((entry) =>
+    entry.steps?.some((step) => step.id === "tizen-browser")
+);
+assert.equal(
+    browserJobs.length,
+    1,
+    "one required packaged Tizen browser check"
+);
+const browserJob = browserJobs[0];
+const browserSteps = browserJob.steps;
+const tizenBrowser = browserSteps.find((step) => step.id === "tizen-browser");
+const ciModea = browserSteps.filter(
+    (step) => step.run === "npm run package:modea"
+);
+assert.equal(ciModea.length, 1);
+assert.equal(tizenBrowser.if, undefined);
+assert.equal(tizenBrowser["continue-on-error"], undefined);
+assert.equal(browserJob["continue-on-error"], undefined);
+assert.equal(tizenBrowser["timeout-minutes"], 3);
+assert.deepEqual(tizenBrowser.run.trim().split("\n"), [
+    "npm run package:tizen -- --local",
+    "npm run verify:tizen -- --local",
+    "npm run test:tizen:browser -- --package-dir build/packages --output build/tizen-browser",
+]);
+assert.equal(
+    scripts["test:tizen:browser"],
+    "node scripts/tizen-browser-acceptance.cjs"
+);
+assert(browserSteps.indexOf(ciModea[0]) < browserSteps.indexOf(tizenBrowser));
+assert(
+    browserSteps.some(
+        (step, index) =>
+            index < browserSteps.indexOf(tizenBrowser) &&
+            /playwright install[^\n]*chromium/.test(step.run || "")
+    )
+);
+const tizenEvidence = browserSteps.filter(
+    (step) => step.with?.path === "build/tizen-browser/"
+);
+assert.equal(tizenEvidence.length, 1);
+assert.match(tizenEvidence[0].uses, /^actions\/upload-artifact@[a-f0-9]{40}$/);
+assert.equal(
+    tizenEvidence[0].if,
+    "always() && steps.tizen-browser.outcome != 'skipped'"
+);
+assert.equal(
+    tizenEvidence[0].with.name,
+    "tizen-browser-${{ github.sha }}-${{ github.run_attempt }}"
+);
+assert.equal(tizenEvidence[0].with["retention-days"], 7);
+assert(
+    browserSteps.indexOf(tizenBrowser) < browserSteps.indexOf(tizenEvidence[0])
+);
+const ciBaseUpload = browserSteps.find(
+    (step) => step.id === "browser-artifact"
+);
+assert(ciBaseUpload);
+assert.equal(
+    ciBaseUpload.if,
+    undefined,
+    "failed WGT startup cannot publish the base bundle"
+);
+assert(
+    browserSteps.indexOf(tizenEvidence[0]) < browserSteps.indexOf(ciBaseUpload)
+);
+
 // Run the real metadata and receipt validators against tiny WGTs, not SDK builds.
 // Toolchain discovery is mocked so this fixture never launches Go or platform SDKs.
 const receiptFixture = String.raw`

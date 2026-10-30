@@ -195,6 +195,19 @@ npm run package:tizen -- --local
 npm run verify:tizen -- --local
 ```
 
+The normal CI build also opens the verified WGT in isolated headless Chromium
+using a simulated Tizen bridge. It checks local asset loading, remote-key
+navigation, engines, providers, subtitles and fonts without contacting a TV or
+provider. Run the same check after packaging locally:
+
+```sh
+npx playwright install chromium
+npm run test:tizen:browser -- --package-dir build/packages --output build/tizen-browser
+```
+
+The JSON result and screenshot are saved in the output directory. This checks
+packaged browser startup; it does not replace testing on an actual Samsung TV.
+
 Local packages use an explicit development identity and are not qualified release
 assets. Official builds instead use the applied frozen `.release-plan.json`:
 

@@ -402,6 +402,23 @@ jobs:
       - name: Package base OTT for device testing
         run: npm run package:modea
 
+      - name: Validate bundled Tizen TV startup
+        id: tizen-browser
+        timeout-minutes: 3
+        run: |
+          npm run package:tizen -- --local
+          npm run verify:tizen -- --local
+          npm run test:tizen:browser -- --package-dir build/packages --output build/tizen-browser
+
+      - name: Upload Tizen package browser evidence
+        if: always() && steps.tizen-browser.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tizen-browser-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/tizen-browser/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload base OTT test bundle
         id: browser-artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
