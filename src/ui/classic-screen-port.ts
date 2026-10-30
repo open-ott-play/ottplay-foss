@@ -45,6 +45,9 @@ function createClassicScreenPort(host: any) {
         owner: ScreenOwner,
         callback: any
     ) {
+        // Grid navigation belongs to the current presentation, while ordinary
+        // lists and fullscreen playback keep their configured key semantics.
+        if (host.__ottModernUi?.navigation(command, owner)) return;
         var direction =
             command.id === "left" ? -1 : command.id === "right" ? 1 : 0;
         if (direction && host.sArrowFun === 1) {

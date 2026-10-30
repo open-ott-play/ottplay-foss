@@ -563,6 +563,7 @@ var keyStrings = {
     "Infobar settings": "Tetapan bar maklumat",
     Information: "Maklumat",
     "Interface credits": "Penghargaan antara muka",
+    "Interface mode": "Mod antara muka",
     "Interface settings": "Tetapan antara muka",
     "Interface theme": "Tema antara muka",
     "Interface transparency": "Ketelusan antara muka",
@@ -640,6 +641,9 @@ var keyStrings = {
     "Media Library URL": "URL pustaka media",
     Menu: "Menu",
     "Menu items settings": "Tetapan item menu",
+    Modern: "Moden",
+    "Modern interface is unavailable. Classic remains active.":
+        "Antara muka moden tidak tersedia. Antara muka klasik kekal aktif.",
     "Move category down": "Alih kategori ke bawah",
     "Move category up": "Alih kategori ke atas",
     "Move channel down": "Alih saluran ke bawah",

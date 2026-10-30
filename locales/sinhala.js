@@ -552,6 +552,7 @@ var keyStrings = {
     "Infobar settings": "තොරතුරු තීරු සැකසුම්",
     Information: "තොරතුරු",
     "Interface credits": "අතුරු මුහුණතට දායක වූවන්",
+    "Interface mode": "අතුරුමුහුණත් මාදිලිය",
     "Interface settings": "අතුරු මුහුණත් සැකසුම්",
     "Interface theme": "අතුරු මුහුණත තේමාව",
     "Interface transparency": "අතුරු මුහුණත විනිවිදභාවය",
@@ -627,6 +628,9 @@ var keyStrings = {
     "Media Library URL": "මාධ්‍ය පුස්තකාලය URL",
     Menu: "මෙනුව",
     "Menu items settings": "මෙනු අයිතම සැකසුම්",
+    Modern: "නවීන",
+    "Modern interface is unavailable. Classic remains active.":
+        "නවීන අතුරුමුහුණත නොමැත. සම්භාව්‍ය අතුරුමුහුණත සක්‍රියව පවතී.",
     "Move category down": "කාණ්ඩය පහළට ගෙන යන්න",
     "Move category up": "කාණ්ඩය ඉහළට ගෙන යන්න",
     "Move channel down": "නාලිකාව පහළට ගෙන යන්න",

@@ -110,6 +110,7 @@ export function applyTimezoneSetting(index: number): number {
  * @property parentPin         - Parental control PIN code.
  * @property hideMenus         - List of menu IDs to hide.
  * @property interfaceTheme    - Interface preset: Classic (0), PLi-HD (1), Studio 2026 (2).
+ * @property interfaceMode     - Presentation: Classic (0) or Modern (1), independent of theme.
  * @property highlightColorSel - Classic selection colour (HSV H,S; V=50).
  * @property highlightColor    - Classic accent colour (HSV H,S; V=100).
  * @property highlightColorB   - Classic background colour (HSV H,V; S=100).
@@ -146,6 +147,7 @@ export interface PlayerSettings {
     infoSlide: number;
     infoSwitch: number;
     infoTimeout: number;
+    interfaceMode: number;
     interfaceTheme: number;
     listPosition: number;
     liveRecoveryAttempts: number;
@@ -255,6 +257,7 @@ export function defaultSettings(): PlayerSettings {
         infoSlide: 1,
         infoSwitch: 1,
         infoTimeout: 5,
+        interfaceMode: 0,
         interfaceTheme: 2,
         listPosition: 0,
         liveRecoveryAttempts: 0,
@@ -593,6 +596,9 @@ export const settingsSchema: SettingDefinition[] = [
         },
         ["setColor"]
     ),
+    defineSetting("interfaceMode", "sInterfaceMode", { range: [0, 1] }, [
+        "setInterfaceMode",
+    ]),
     defineSetting(
         "interfaceTheme",
         "sInterfaceTheme",

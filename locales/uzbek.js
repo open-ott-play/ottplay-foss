@@ -573,6 +573,7 @@ var keyStrings = {
     "Infobar settings": "Axborot paneli sozlamalari",
     Information: "Maʼlumot",
     "Interface credits": "Interfeys mualliflari",
+    "Interface mode": "Interfeys rejimi",
     "Interface settings": "Interfeys sozlamalari",
     "Interface theme": "Interfeys mavzusi",
     "Interface transparency": "Interfeys shaffofligi",
@@ -650,6 +651,9 @@ var keyStrings = {
     "Media Library URL": "Media kutubxonasi URL",
     Menu: "Menyu",
     "Menu items settings": "Menyu elementlari sozlamalari",
+    Modern: "Zamonaviy",
+    "Modern interface is unavailable. Classic remains active.":
+        "Zamonaviy interfeys mavjud emas. Klassik faol qoladi.",
     "Move category down": "Turkumni pastga koʻchirish",
     "Move category up": "Turkumni yuqoriga koʻchirish",
     "Move channel down": "Kanalni pastga siljitish",

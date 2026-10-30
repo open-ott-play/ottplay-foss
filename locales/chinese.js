@@ -533,6 +533,7 @@ var keyStrings = {
     "Infobar settings": "信息栏设置",
     Information: "信息",
     "Interface credits": "界面制作人员",
+    "Interface mode": "界面模式",
     "Interface settings": "界面设置",
     "Interface theme": "界面主题",
     "Interface transparency": "界面透明",
@@ -608,6 +609,9 @@ var keyStrings = {
     "Media Library URL": "媒体库URL",
     Menu: "菜单",
     "Menu items settings": "菜单项目设置",
+    Modern: "现代",
+    "Modern interface is unavailable. Classic remains active.":
+        "现代界面不可用，经典界面仍处于启用状态。",
     "Move category down": "类别下移",
     "Move category up": "上移类别",
     "Move channel down": "向下移动频道",

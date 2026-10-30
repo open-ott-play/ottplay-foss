@@ -575,6 +575,7 @@ var keyStrings = {
     "Infobar settings": "Mipangilio ya upau wa habari",
     Information: "Maelezo",
     "Interface credits": "Shukrani kwa wachangiaji wa kiolesura",
+    "Interface mode": "Hali ya kiolesura",
     "Interface settings": "Mipangilio ya kiolesura",
     "Interface theme": "Mandhari ya kiolesura",
     "Interface transparency": "Uwazi wa kiolesura",
@@ -653,6 +654,9 @@ var keyStrings = {
     "Media Library URL": "Maktaba ya midia URL",
     Menu: "Menyu",
     "Menu items settings": "Mipangilio ya kipengee cha menyu",
+    Modern: "Kisasa",
+    "Modern interface is unavailable. Classic remains active.":
+        "Kiolesura cha kisasa hakipatikani. Cha kawaida kinaendelea kutumika.",
     "Move category down": "Sogeza kategoria chini",
     "Move category up": "Sogeza kategoria juu",
     "Move channel down": "Sogeza kituo chini",

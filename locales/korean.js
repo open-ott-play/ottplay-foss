@@ -558,6 +558,7 @@ var keyStrings = {
     "Infobar settings": "정보 표시줄 설정",
     Information: "정보",
     "Interface credits": "인터페이스 크레딧",
+    "Interface mode": "인터페이스 모드",
     "Interface settings": "인터페이스 설정",
     "Interface theme": "인터페이스 테마",
     "Interface transparency": "인터페이스 투명성",
@@ -635,6 +636,9 @@ var keyStrings = {
     "Media Library URL": "미디어 라이브러리 URL",
     Menu: "메뉴",
     "Menu items settings": "메뉴 항목 설정",
+    Modern: "모던",
+    "Modern interface is unavailable. Classic remains active.":
+        "모던 인터페이스를 사용할 수 없습니다. 클래식이 계속 활성화됩니다.",
     "Move category down": "카테고리를 아래로 이동",
     "Move category up": "카테고리 위로 이동",
     "Move channel down": "채널을 아래로 이동",

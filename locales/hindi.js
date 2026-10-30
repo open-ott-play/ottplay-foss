@@ -548,6 +548,7 @@ var keyStrings = {
     "Infobar settings": "जानकारी बार सेटिंग्स",
     Information: "जानकारी",
     "Interface credits": "इंटरफ़ेस के योगदानकर्ता",
+    "Interface mode": "इंटरफ़ेस मोड",
     "Interface settings": "इंटरफ़ेस सेटिंग्स",
     "Interface theme": "इंटरफ़ेस थीम",
     "Interface transparency": "इंटरफ़ेस पारदर्शिता",
@@ -623,6 +624,9 @@ var keyStrings = {
     "Media Library URL": "मीडिया लाइब्रेरी URL",
     Menu: "मेनू",
     "Menu items settings": "मेनू आइटम सेटिंग्स",
+    Modern: "आधुनिक",
+    "Modern interface is unavailable. Classic remains active.":
+        "आधुनिक इंटरफ़ेस उपलब्ध नहीं है। क्लासिक सक्रिय रहेगा।",
     "Move category down": "श्रेणी को नीचे ले जाएँ",
     "Move category up": "श्रेणी ऊपर ले जाएँ",
     "Move channel down": "चैनल को नीचे ले जाएँ",

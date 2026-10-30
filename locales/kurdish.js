@@ -568,6 +568,7 @@ var keyStrings = {
     "Infobar settings": "Mîhengên barika agahdariyê",
     Information: "Agahî",
     "Interface credits": "Afirînerên navberê",
+    "Interface mode": "Moda navrûyê",
     "Interface settings": "Mîhengên navberê",
     "Interface theme": "Rûkara navberê",
     "Interface transparency": "Zelalbûna navberê",
@@ -644,6 +645,9 @@ var keyStrings = {
     "Media Library URL": "Pirtûkxaneya Medyayê URL",
     Menu: "Menu",
     "Menu items settings": "Mîhengên hêmanên pêşek",
+    Modern: "Nûjen",
+    "Modern interface is unavailable. Classic remains active.":
+        "Navrûya nûjen ne berdest e. Ya klasîk çalak dimîne.",
     "Move category down": "Kategorî berjêr bikşîne",
     "Move category up": "Kategorî bikişîne jor",
     "Move channel down": "Kanalê berjêr bikin",

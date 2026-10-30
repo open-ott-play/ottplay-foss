@@ -567,6 +567,7 @@ var keyStrings = {
     "Infobar settings": "Informacijos juostos nustatymai",
     Information: "Informacija",
     "Interface credits": "Sąsajos kūrėjai",
+    "Interface mode": "Sąsajos režimas",
     "Interface settings": "Sąsajos nustatymai",
     "Interface theme": "Sąsajos tema",
     "Interface transparency": "Sąsajos permatomumas",
@@ -644,6 +645,9 @@ var keyStrings = {
     "Media Library URL": "Mediatekos URL",
     Menu: "Meniu",
     "Menu items settings": "Meniu elementų nustatymai",
+    Modern: "Modernus",
+    "Modern interface is unavailable. Classic remains active.":
+        "Moderni sąsaja nepasiekiama. Klasikinė lieka aktyvi.",
     "Move category down": "Perkelti kategoriją žemyn",
     "Move category up": "Perkelti kategoriją aukštyn",
     "Move channel down": "Perkelti kanalą žemyn",

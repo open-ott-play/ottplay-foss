@@ -570,6 +570,7 @@ var keyStrings = {
     "Infobar settings": "Танзимоти навори иттилоотӣ",
     Information: "Маълумот",
     "Interface credits": "Саҳмгузорони интерфейс",
+    "Interface mode": "Ҳолати интерфейс",
     "Interface settings": "Танзимоти интерфейс",
     "Interface theme": "Мавзӯи интерфейс",
     "Interface transparency": "Шаффофияти интерфейс",
@@ -647,6 +648,9 @@ var keyStrings = {
     "Media Library URL": "URL-и китобхонаи медиа",
     Menu: "Меню",
     "Menu items settings": "Танзимоти бандҳои меню",
+    Modern: "Муосир",
+    "Modern interface is unavailable. Classic remains active.":
+        "Интерфейси муосир дастнорас аст. Интерфейси классикӣ фаъол мемонад.",
     "Move category down": "Гурӯҳро поён баред",
     "Move category up": "Гурӯҳро боло баред",
     "Move channel down": "Каналро поён баред",

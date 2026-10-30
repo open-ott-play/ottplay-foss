@@ -575,6 +575,7 @@ var keyStrings = {
     "Infobar settings": "Маалымат тилкесинин жөндөөлөрү",
     Information: "Маалымат",
     "Interface credits": "Интерфейстин авторлору",
+    "Interface mode": "Интерфейс режими",
     "Interface settings": "Интерфейстин жөндөөлөрү",
     "Interface theme": "Интерфейстин темасы",
     "Interface transparency": "Интерфейстин тунуктугу",
@@ -653,6 +654,9 @@ var keyStrings = {
     "Media Library URL": "Медиатеканын URL дареги",
     Menu: "Меню",
     "Menu items settings": "Меню пункттарынын жөндөөлөрү",
+    Modern: "Заманбап",
+    "Modern interface is unavailable. Classic remains active.":
+        "Заманбап интерфейс жеткиликсиз. Классикалык интерфейс активдүү бойдон калат.",
     "Move category down": "Категорияны ылдый жылдыруу",
     "Move category up": "Категорияны өйдө жылдыруу",
     "Move channel down": "Каналды ылдый жылдыруу",

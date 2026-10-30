@@ -2290,6 +2290,35 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
                 : "")
         );
     };
+    // Typed projection for optional renderers. Tying it to this formatter
+    // prevents a subsequent settings/category screen reading a stale catalogue.
+    (channelItemFormatter as any).__ottCatalog = {
+        kind:
+            view && view.id === "system:global-favorites" ? "mixed" : "catalog",
+        picon: function (id: string): string {
+            var row = channelRow(id) || {};
+            try {
+                return (
+                    (view
+                        ? view.picon(id)
+                        : typeof getChannelPicon === "function"
+                          ? getChannelPicon(id)
+                          : "") ||
+                    row.logo ||
+                    row.icon ||
+                    ""
+                );
+            } catch (_) {
+                return row.logo || row.icon || "";
+            }
+        },
+        playing: function (id: string): boolean {
+            return view
+                ? view.playing(id)
+                : playType >= 0 && String(id) === String(curList[primaryIndex]);
+        },
+        row: channelRow,
+    };
     getListItemFn = channelItemFormatter;
     wglob.applyChannelListStyles = function (container: HTMLElement): void {
         // A later menu/provider can replace the formatter. Never apply channel

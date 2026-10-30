@@ -471,11 +471,19 @@ export function uiInit(): void {
                         | undefined;
                     if (!item) {
                         var y = ev.clientY;
+                        var grid =
+                            listInClickRoot.classList.contains("modern-grid");
                         var nodes = listInClickRoot.querySelectorAll(".item");
                         for (var ii = 0; ii < nodes.length; ii++) {
                             var el = nodes[ii] as HTMLElement;
                             var rr = el.getBoundingClientRect();
-                            if (y >= rr.top && y <= rr.bottom) {
+                            if (
+                                y >= rr.top &&
+                                y <= rr.bottom &&
+                                (!grid ||
+                                    (ev.clientX >= rr.left &&
+                                        ev.clientX <= rr.right))
+                            ) {
                                 item = el;
                                 break;
                             }
@@ -873,19 +881,46 @@ export function showChannelInfo(timeoutSec: number): void {
  *             Each item is rendered as a `<div id="it{i}">` with the result of `getListItemFn(item, i)`.
  *             The scrollbar shows the current page position as a colored bar.
  */
-export function showPage(): void {
+export function showPage(presentationOnly = false): void {
     var screenOwner = (window as any).__ottClassicScreenPort.commitList();
     if (!screenOwner.active()) return;
+    var paintRevision = (screenOwner.model.paintRevision || 0) + 1;
+    screenOwner.model.paintRevision = paintRevision;
+    function currentPaint(): boolean {
+        return (
+            screenOwner.active() &&
+            screenOwner.model.paintRevision === paintRevision
+        );
+    }
+    var modernHost = window as any;
+    if (
+        modernHost.sInterfaceMode === 1 &&
+        modernHost.__ottInterfaceModeState?.status === "classic" &&
+        typeof modernHost.setInterfaceMode === "function"
+    )
+        modernHost.setInterfaceMode();
     function scheduleLayoutRetry(key: string): void {
         var host = window as any;
         var pending = host[key];
-        if (pending && pending.owner === screenOwner) return;
-        var retry = { owner: screenOwner };
+        if (pending && pending.owner === screenOwner) {
+            pending.revision = paintRevision;
+            pending.presentationOnly = presentationOnly;
+            return;
+        }
+        var retry = {
+            owner: screenOwner,
+            presentationOnly: presentationOnly,
+            revision: paintRevision,
+        };
         host[key] = retry;
         requestAnimationFrame(function () {
             if (host[key] !== retry) return;
             host[key] = false;
-            if (screenOwner.active()) showPage();
+            if (
+                screenOwner.active() &&
+                screenOwner.model.paintRevision === retry.revision
+            )
+                showPage(retry.presentationOnly);
         });
     }
     isListVisible = true;
@@ -899,21 +934,25 @@ export function showPage(): void {
         (window as any).__ottClassicGuide.cancelConsumers();
     } catch (_q) {}
 
+    var restoreRowFocus =
+        !!listInElement && listInElement.contains(document.activeElement);
     if (listInElement) listInElement.innerHTML = "";
     try {
-        if (settings.noSmall) {
-            if (
-                $("#list_window").is(":visible") &&
-                typeof (window as any).stbToFullScreen === "function"
-            )
-                (window as any).stbToFullScreen();
-            $("#list_window").hide();
-            $("#list_osd").show();
-        } else {
-            $("#list_osd").hide();
-            $("#list_window").show();
-            if (typeof (window as any).stbSetWindow === "function")
-                (window as any).stbSetWindow();
+        if (!presentationOnly) {
+            if (settings.noSmall) {
+                if (
+                    $("#list_window").is(":visible") &&
+                    typeof (window as any).stbToFullScreen === "function"
+                )
+                    (window as any).stbToFullScreen();
+                $("#list_window").hide();
+                $("#list_osd").show();
+            } else {
+                $("#list_osd").hide();
+                $("#list_window").show();
+                if (typeof (window as any).stbSetWindow === "function")
+                    (window as any).stbSetWindow();
+            }
         }
     } catch (e) {
         console.error(e);
@@ -935,15 +974,23 @@ export function showPage(): void {
               : [];
     // Preserve the configured row count; enlarged fonts reduce only this page's
     // visible rows. Selection still pages across the complete list.
-    var pageSz = listFitPageSize(settings.pageSize || 25);
+    var modern = modernHost.__ottModernUi;
+    var modernLayout = modern
+        ? modern.prepare(dataArr, getListItemFn, listInElement)
+        : null;
+    var pageSz = modernLayout
+        ? modernLayout.pageSize
+        : listFitPageSize(settings.pageSize || 25);
     (window as any).listPageSize = pageSz;
     var pageStart = Math.floor(selIndex / pageSz) * pageSz;
     var pageEnd = Math.min(pageStart + pageSz, dataArr.length);
-    var itemHeight = Math.max(1, Math.floor(listRowHeight(pageSz)));
+    var itemHeight = modernLayout
+        ? modernLayout.cellHeight
+        : Math.max(1, Math.floor(listRowHeight(pageSz)));
     (window as any).__ottListRowH = itemHeight;
     var html = "";
     // OTT showPage: scrollbar only when sShowScroll (Lists settings) is on.
-    var showScroll = settings.showScroll;
+    var showScroll = modernLayout ? 0 : settings.showScroll;
     var scrollWidth = 0;
     var totalPages = 1;
     var currentPage = 0;
@@ -978,8 +1025,6 @@ export function showPage(): void {
             (window as any).channelListItemWidth = itemWidth;
         }
     } catch (_wCap) {}
-    var restoreRowFocus =
-        !!listInElement && listInElement.contains(document.activeElement);
     for (var i = pageStart; i < pageEnd; i++) {
         html +=
             '<div id="it' +
@@ -993,7 +1038,11 @@ export function showPage(): void {
             '" class="item"';
         html += ">";
         try {
-            html += getListItemFn ? getListItemFn(dataArr[i], i) : "";
+            // The formatter owns live-guide subscriptions even when another
+            // renderer draws the row from its typed catalogue projection.
+            var classicRow = getListItemFn ? getListItemFn(dataArr[i], i) : "";
+            var modernRow = modernLayout ? modern.render(dataArr[i], i) : null;
+            html += modernRow === null ? classicRow : modernRow;
         } catch (e) {
             html += "ERROR:" + metadataText((e as any).message);
         }
@@ -1041,55 +1090,63 @@ export function showPage(): void {
             };
         }
         var applyChannelStyles = (window as any).applyChannelListStyles;
-        if (typeof applyChannelStyles === "function")
+        if (!modernLayout && typeof applyChannelStyles === "function")
             applyChannelStyles(listInElement);
+        if (modernLayout) modern.decorate(listInElement, pageStart, pageEnd);
     }
     // The formatter and channel style pass already paint warm programme rows.
     // Cold rows update through their guide callbacks; detail rendering is debounced below.
     // Force exact integer row boxes after layout (WKWebView may expand flex
     // rows 1px+ each → pageSize 25 collapses to ~21 visible).
-    try {
-        packListRowBoxes(pageStart, pageEnd, pageSz);
-        requestAnimationFrame(function () {
-            if (!screenOwner.active()) return;
-            try {
-                var h2 = packListRowBoxes(pageStart, pageEnd, pageSz);
-                if (h2 > 0) (window as any).__ottListRowH = h2;
-                // If the last row on this page is still clipped, one more shrink.
-                var box = document.getElementById("listIn");
-                var last = document.getElementById("it" + (pageEnd - 1));
-                if (box && last && pageEnd > pageStart) {
-                    var lr = box.getBoundingClientRect();
-                    var er = last.getBoundingClientRect();
-                    if (er.bottom > lr.bottom + 0.5) {
-                        var avail2 =
-                            typeof (window as any).listInContentHeight ===
-                            "function"
-                                ? (window as any).listInContentHeight()
-                                : box.clientHeight;
-                        var h3 = Math.max(1, Math.floor(avail2 / pageSz) - 1);
-                        for (var j = pageStart; j < pageEnd; j++) {
-                            var n = document.getElementById(
-                                "it" + j
-                            ) as HTMLElement | null;
-                            if (!n) continue;
-                            n.style.height = h3 + "px";
-                            n.style.maxHeight = h3 + "px";
-                            n.style.minHeight = h3 + "px";
-                            n.style.lineHeight = h3 + "px";
+    if (!modernLayout)
+        try {
+            packListRowBoxes(pageStart, pageEnd, pageSz);
+            requestAnimationFrame(function () {
+                if (!currentPaint()) return;
+                try {
+                    var h2 = packListRowBoxes(pageStart, pageEnd, pageSz);
+                    if (h2 > 0) (window as any).__ottListRowH = h2;
+                    // If the last row on this page is still clipped, one more shrink.
+                    var box = document.getElementById("listIn");
+                    var last = document.getElementById("it" + (pageEnd - 1));
+                    if (box && last && pageEnd > pageStart) {
+                        var lr = box.getBoundingClientRect();
+                        var er = last.getBoundingClientRect();
+                        if (er.bottom > lr.bottom + 0.5) {
+                            var avail2 =
+                                typeof (window as any).listInContentHeight ===
+                                "function"
+                                    ? (window as any).listInContentHeight()
+                                    : box.clientHeight;
+                            var h3 = Math.max(
+                                1,
+                                Math.floor(avail2 / pageSz) - 1
+                            );
+                            for (var j = pageStart; j < pageEnd; j++) {
+                                var n = document.getElementById(
+                                    "it" + j
+                                ) as HTMLElement | null;
+                                if (!n) continue;
+                                n.style.height = h3 + "px";
+                                n.style.maxHeight = h3 + "px";
+                                n.style.minHeight = h3 + "px";
+                                n.style.lineHeight = h3 + "px";
+                            }
+                            (window as any).__ottListRowH = h3;
                         }
-                        (window as any).__ottListRowH = h3;
                     }
-                }
-            } catch (_pack2) {}
-        });
-    } catch (_pack) {}
+                } catch (_pack2) {}
+            });
+        } catch (_pack) {}
     // Pin selection styles after remount (page-boundary ↓/L/R and first open
     // used to leave #itN without a visible cursor when only page HTML flipped).
     try {
         var pin = document.getElementById("it" + selIndex);
         var cursorRetry = (window as any).__ottListCursorRetry;
-        var retryCursor = !cursorRetry || cursorRetry.owner !== screenOwner;
+        var retryCursor =
+            !cursorRetry ||
+            cursorRetry.owner !== screenOwner ||
+            cursorRetry.revision !== paintRevision;
         if (pin) {
             $(pin).addClass("ott-selected");
             pin.style.backgroundColor = curColorB || "#668";
@@ -1126,7 +1183,9 @@ export function showPage(): void {
             selIndex,
             restoreRowFocus
         );
-    scheduleListDetailUpdate();
+    // A presentation swap preserves the current detail and preview session.
+    // The next selection follows the ordinary owned detail callback.
+    if (!presentationOnly) scheduleListDetailUpdate();
 }
 
 /**
@@ -2164,7 +2223,12 @@ function scheduleListDetailUpdate(): void {
         owner.guard(function () {
             if (owner.model.detailCleanup !== release) return;
             release();
-            if (owner.foreground() && detail) detail();
+            if (owner.foreground() && detail) {
+                var modern = (window as any).__ottModernUi;
+                if (modern && modern.beforeDetail) modern.beforeDetail();
+                detail();
+                if (modern) modern.detail();
+            }
         }),
         200
     );
@@ -3981,6 +4045,7 @@ function showMediaList1(view?: any): void {
             )
         );
     };
+    w.getListItemFn.__ottMediaRows = true;
     var controls = mediaPlaybackControls(view);
     w.detailListActionFn = function () {
         w.__ottMedia.highlight(w.selIndex, view.revision);

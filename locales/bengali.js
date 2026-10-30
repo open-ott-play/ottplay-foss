@@ -549,6 +549,7 @@ var keyStrings = {
     "Infobar settings": "তথ্য বার সেটিংস",
     Information: "তথ্য",
     "Interface credits": "ইন্টারফেসের অবদানকারীরা",
+    "Interface mode": "ইন্টারফেস মোড",
     "Interface settings": "ইন্টারফেস সেটিংস",
     "Interface theme": "ইন্টারফেস থিম",
     "Interface transparency": "ইন্টারফেসের স্বচ্ছতা",
@@ -624,6 +625,9 @@ var keyStrings = {
     "Media Library URL": "মিডিয়া লাইব্রেরি URL",
     Menu: "মেনু",
     "Menu items settings": "মেনু আইটেম সেটিংস",
+    Modern: "আধুনিক",
+    "Modern interface is unavailable. Classic remains active.":
+        "আধুনিক ইন্টারফেস উপলব্ধ নয়। ক্লাসিক সক্রিয় থাকবে।",
     "Move category down": "বিভাগ নিচে সরান",
     "Move category up": "বিভাগ উপরে সরান",
     "Move channel down": "চ্যানেল নিচে সরান",

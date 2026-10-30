@@ -572,6 +572,7 @@ var keyStrings = {
     "Infobar settings": "Настройки на информационния панел",
     Information: "Информация",
     "Interface credits": "Автори на интерфейса",
+    "Interface mode": "Режим на интерфейса",
     "Interface settings": "Настройки на интерфейса",
     "Interface theme": "Тема на интерфейса",
     "Interface transparency": "Прозрачност на интерфейса",
@@ -649,6 +650,9 @@ var keyStrings = {
     "Media Library URL": "URL на медиятеката",
     Menu: "Меню",
     "Menu items settings": "Настройки на елементите на менюто",
+    Modern: "Модерен",
+    "Modern interface is unavailable. Classic remains active.":
+        "Модерният интерфейс е недостъпен. Класическият остава активен.",
     "Move category down": "Преместване на категорията надолу",
     "Move category up": "Преместване на категорията нагоре",
     "Move channel down": "Премести канала надолу",

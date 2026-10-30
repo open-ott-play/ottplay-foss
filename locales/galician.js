@@ -584,6 +584,7 @@ var keyStrings = {
     "Infobar settings": "Configuración da barra de información",
     Information: "Información",
     "Interface credits": "Créditos da interface",
+    "Interface mode": "Modo da interface",
     "Interface settings": "Configuración da interface",
     "Interface theme": "Tema da interface",
     "Interface transparency": "Transparencia da interface",
@@ -662,6 +663,9 @@ var keyStrings = {
     "Media Library URL": "URL da biblioteca multimedia",
     Menu: "Menú",
     "Menu items settings": "Configuración dos elementos do menú",
+    Modern: "Moderno",
+    "Modern interface is unavailable. Classic remains active.":
+        "A interface moderna non está dispoñible. A clásica segue activa.",
     "Move category down": "Mover a categoría abaixo",
     "Move category up": "Mover a categoría arriba",
     "Move channel down": "Mover a canle abaixo",

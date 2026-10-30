@@ -584,6 +584,7 @@ var keyStrings = {
     "Infobar settings": "Ρυθμίσεις γραμμής πληροφοριών",
     Information: "Πληροφορίες",
     "Interface credits": "Συντελεστές περιβάλλοντος",
+    "Interface mode": "Λειτουργία διεπαφής",
     "Interface settings": "Ρυθμίσεις περιβάλλοντος",
     "Interface theme": "Θέμα περιβάλλοντος",
     "Interface transparency": "Διαφάνεια περιβάλλοντος",
@@ -662,6 +663,9 @@ var keyStrings = {
     "Media Library URL": "URL βιβλιοθήκης πολυμέσων",
     Menu: "Μενού",
     "Menu items settings": "Ρυθμίσεις στοιχείων μενού",
+    Modern: "Σύγχρονο",
+    "Modern interface is unavailable. Classic remains active.":
+        "Η σύγχρονη διεπαφή δεν είναι διαθέσιμη. Η κλασική παραμένει ενεργή.",
     "Move category down": "Μετακίνηση κατηγορίας κάτω",
     "Move category up": "Μετακίνηση κατηγορίας πάνω",
     "Move channel down": "Μετακίνηση καναλιού κάτω",
