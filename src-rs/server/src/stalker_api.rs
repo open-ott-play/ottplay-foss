@@ -1,4 +1,5 @@
 use axum::{
+    body::{Body, Bytes},
     extract::{rejection::JsonRejection, DefaultBodyLimit, OriginalUri, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -9,10 +10,12 @@ use hmac::{Hmac, Mac};
 use reqwest::Url;
 use serde::Deserialize;
 use sha2::Sha256;
-use std::{collections::HashSet, io::Read, path::Path, sync::Arc};
+use std::{collections::HashSet, future::Future, io::Read, path::Path, sync::Arc};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 const MAX_CONFIG_BYTES: u64 = 64 * 1024;
 const RELAY_HEADER: &str = "x-ott-stalker-relay";
+const MAX_RELAY_EXCHANGES: usize = 8;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -32,6 +35,20 @@ struct RouteConfig {
 struct RelayRoute {
     upstream: Url,
     credential: String,
+    admission: Arc<Semaphore>,
+}
+
+// Bytes owns this value through all frame clones and slices, including after
+// the response body has yielded its data to the downstream HTTP transport.
+struct RelayBody {
+    bytes: Vec<u8>,
+    _permit: OwnedSemaphorePermit,
+}
+
+impl AsRef<[u8]> for RelayBody {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
 }
 
 /// Dedicated hosted relay: no assets, generic URL relay, control or media routes.
@@ -71,6 +88,10 @@ pub fn relay_routes(path: &Path) -> anyhow::Result<Router> {
 }
 
 fn configured_relay(bytes: &[u8]) -> Result<Router, ()> {
+    configured_relay_with_admission(bytes, Arc::new(Semaphore::new(MAX_RELAY_EXCHANGES)))
+}
+
+fn configured_relay_with_admission(bytes: &[u8], admission: Arc<Semaphore>) -> Result<Router, ()> {
     if bytes.len() > MAX_CONFIG_BYTES as usize {
         return Err(());
     }
@@ -123,6 +144,7 @@ fn configured_relay(bytes: &[u8]) -> Result<Router, ()> {
                 .with_state(Arc::new(RelayRoute {
                     upstream,
                     credential: entry.credential,
+                    admission: admission.clone(),
                 }))
                 .layer(DefaultBodyLimit::max(
                     ottplay_core::stalker::MAX_REQUEST_BYTES,
@@ -181,9 +203,22 @@ async fn handle_named(
     if uri.query().is_some() || !route.accepts(&request) {
         return no_store((StatusCode::BAD_REQUEST, "Invalid Stalker request").into_response());
     }
+    let permit = match route.admission.clone().try_acquire_owned() {
+        Ok(permit) => permit,
+        Err(_) => {
+            return no_store(
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    [("retry-after", "1")],
+                    "Stalker relay busy",
+                )
+                    .into_response(),
+            );
+        }
+    };
     // Only the validated inner provider headers reach its fixed upstream.
-    // The outer operator credential is never forwarded to the provider.
-    handle(Json(request)).await
+    // The admission permit follows the owned response bytes through delivery.
+    complete_named(permit, ottplay_core::stalker::request(request)).await
 }
 
 pub fn routes() -> Router {
@@ -196,11 +231,34 @@ pub fn routes() -> Router {
 }
 
 async fn handle(Json(request): Json<ottplay_core::stalker::Request>) -> Response {
-    let response = if request.validate().is_err() {
-        (StatusCode::BAD_REQUEST, "Invalid Stalker request").into_response()
-    } else {
-        match ottplay_core::stalker::request(request).await {
-            Ok((status, body)) => (
+    if request.validate().is_err() {
+        return no_store((StatusCode::BAD_REQUEST, "Invalid Stalker request").into_response());
+    }
+    // Ordinary/local mode retains its existing upstream-only admission policy.
+    upstream_response(ottplay_core::stalker::request(request).await, None)
+}
+
+async fn complete_named(
+    permit: OwnedSemaphorePermit,
+    work: impl Future<Output = Result<(reqwest::StatusCode, Vec<u8>), String>>,
+) -> Response {
+    upstream_response(work.await, Some(permit))
+}
+
+fn upstream_response(
+    result: Result<(reqwest::StatusCode, Vec<u8>), String>,
+    permit: Option<OwnedSemaphorePermit>,
+) -> Response {
+    let response = match result {
+        Ok((status, bytes)) => {
+            let body = match permit {
+                Some(permit) => Body::from(Bytes::from_owner(RelayBody {
+                    bytes,
+                    _permit: permit,
+                })),
+                None => Body::from(bytes),
+            };
+            (
                 status,
                 [
                     ("content-type", "application/json; charset=utf-8"),
@@ -208,19 +266,19 @@ async fn handle(Json(request): Json<ottplay_core::stalker::Request>) -> Response
                 ],
                 body,
             )
-                .into_response(),
-            Err(error) => {
-                let status = match error.as_str() {
-                    "Proxy destination is not allowed" => StatusCode::FORBIDDEN,
-                    "Proxy request timed out" => StatusCode::GATEWAY_TIMEOUT,
-                    "Proxy is busy; retry later" | "Proxy DNS is busy; retry later" => {
-                        StatusCode::SERVICE_UNAVAILABLE
-                    }
-                    _ => StatusCode::BAD_GATEWAY,
-                };
-                // Credentials and upstream response details never enter logs/errors.
-                (status, "Stalker request failed").into_response()
-            }
+                .into_response()
+        }
+        Err(error) => {
+            let status = match error.as_str() {
+                "Proxy destination is not allowed" => StatusCode::FORBIDDEN,
+                "Proxy request timed out" => StatusCode::GATEWAY_TIMEOUT,
+                "Proxy is busy; retry later" | "Proxy DNS is busy; retry later" => {
+                    StatusCode::SERVICE_UNAVAILABLE
+                }
+                _ => StatusCode::BAD_GATEWAY,
+            };
+            // Credentials and upstream response details never enter logs/errors.
+            (status, "Stalker request failed").into_response()
         }
     };
     no_store(response)
@@ -351,6 +409,7 @@ mod tests {
         let route = RelayRoute {
             upstream: Url::parse("https://portal.example/server/load.php").unwrap(),
             credential: "a".repeat(43),
+            admission: Arc::new(Semaphore::new(MAX_RELAY_EXCHANGES)),
         };
         for kind_action in [
             "type=stb&action=handshake",
@@ -650,5 +709,161 @@ mod tests {
             let body = to_bytes(response.into_body(), 4096).await.unwrap();
             assert!(!String::from_utf8_lossy(&body).contains("fixture-secret"));
         }
+    }
+
+    #[tokio::test]
+    async fn relay_admission_follows_cloned_and_sliced_response_frames() {
+        use futures_util::StreamExt;
+        let admission = Arc::new(Semaphore::new(1));
+        let permit = admission.clone().try_acquire_owned().unwrap();
+        let response = complete_named(permit, async {
+            Ok((StatusCode::OK, b"fixture-body".to_vec()))
+        })
+        .await;
+        assert_eq!(admission.available_permits(), 0);
+        let mut stream = response.into_body().into_data_stream();
+        let frame = stream.next().await.unwrap().unwrap();
+        let clone = frame.clone();
+        let slice = frame.slice(1..);
+        drop(stream);
+        drop(frame);
+        assert_eq!(admission.available_permits(), 0);
+        drop(clone);
+        assert_eq!(admission.available_permits(), 0);
+        drop(slice);
+        assert_eq!(admission.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn relay_admission_releases_on_unpolled_body_drop_and_upstream_error() {
+        let admission = Arc::new(Semaphore::new(1));
+        let response = complete_named(admission.clone().try_acquire_owned().unwrap(), async {
+            Ok((StatusCode::BAD_REQUEST, b"provider-error-body".to_vec()))
+        })
+        .await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(admission.available_permits(), 0);
+        drop(response);
+        assert_eq!(admission.available_permits(), 1);
+        for error in [
+            "Proxy request timed out",
+            "Proxy is busy; retry later",
+            "Proxy destination is not allowed",
+        ] {
+            let response = complete_named(admission.clone().try_acquire_owned().unwrap(), async {
+                Err(error.to_string())
+            })
+            .await;
+            assert!(response.status().is_client_error() || response.status().is_server_error());
+            assert_eq!(admission.available_permits(), 1);
+            assert_eq!(
+                to_bytes(response.into_body(), 64).await.unwrap(),
+                "Stalker request failed"
+            );
+        }
+        let response = complete_named(admission.clone().try_acquire_owned().unwrap(), async {
+            Ok((StatusCode::OK, Vec::new()))
+        })
+        .await;
+        drop(response);
+        assert_eq!(admission.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn relay_admission_releases_when_pending_upstream_future_is_cancelled() {
+        let admission = Arc::new(Semaphore::new(1));
+        let permit = admission.clone().try_acquire_owned().unwrap();
+        let mut request = Box::pin(complete_named(permit, std::future::pending()));
+        std::future::poll_fn(|cx| {
+            assert!(request.as_mut().poll(cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+        assert_eq!(admission.available_permits(), 0);
+        drop(request);
+        assert_eq!(admission.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn named_routes_share_one_budget_and_keep_auth_before_admission() {
+        let admission = Arc::new(Semaphore::new(1));
+        let value = serde_json::json!({"version":1,"routes":[
+            {"name":"one","upstream":"http://127.0.0.1/one/load.php","credential":"a".repeat(43)},
+            {"name":"two","upstream":"http://127.0.0.1/two/load.php","credential":"b".repeat(43)}
+        ]});
+        let app = configured_relay_with_admission(
+            &serde_json::to_vec(&value).unwrap(),
+            admission.clone(),
+        )
+        .unwrap();
+        let held = admission.clone().try_acquire_owned().unwrap();
+        for (name, credential) in [("one", "a"), ("two", "b")] {
+            let body = serde_json::json!({
+                "url":format!("http://127.0.0.1/{name}/load.php?type=vod&action=get_categories&JsHttpRequest=1-xml"),
+                "headers":{"Cookie":"mac=fixture-only"}
+            }).to_string();
+            let response = app
+                .clone()
+                .call(
+                    Request::post(format!("/stalker/{name}"))
+                        .header("content-type", "application/json")
+                        .header(RELAY_HEADER, credential.repeat(43))
+                        .body(Body::from(body.clone()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            assert_eq!(response.headers()["retry-after"], "1");
+            assert_eq!(response.headers()["cache-control"], "no-store");
+            assert_eq!(
+                to_bytes(response.into_body(), 64).await.unwrap(),
+                "Stalker relay busy"
+            );
+            let response = app
+                .clone()
+                .call(
+                    Request::post(format!("/stalker/{name}"))
+                        .header("content-type", "application/json")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+            assert!(!response.headers().contains_key("retry-after"));
+        }
+        let response = app
+            .clone()
+            .call(Request::get("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        drop(held);
+        assert_eq!(admission.available_permits(), 1);
+        // Literal loopback is rejected by existing core policy without a connection.
+        let response = app.clone().call(Request::post("/stalker/one")
+            .header("content-type", "application/json").header(RELAY_HEADER, "a".repeat(43))
+            .body(Body::from(serde_json::json!({
+                "url":"http://127.0.0.1/one/load.php?type=vod&action=get_categories&JsHttpRequest=1-xml",
+                "headers":{"Cookie":"mac=fixture-only"}
+            }).to_string())).unwrap()).await.unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(admission.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn ordinary_response_path_keeps_headers_body_and_status() {
+        let response = upstream_response(Ok((StatusCode::OK, b"ordinary-fixture".to_vec())), None);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers()["content-type"],
+            "application/json; charset=utf-8"
+        );
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        assert_eq!(
+            to_bytes(response.into_body(), 64).await.unwrap(),
+            "ordinary-fixture"
+        );
     }
 }

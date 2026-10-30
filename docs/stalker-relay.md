@@ -98,6 +98,18 @@ upstream from these protections. Errors never echo URLs, credentials or
 upstream response details. API responses/errors are `no-store`; the dedicated
 router does not grant permissive browser CORS.
 
+The dedicated router additionally admits at most **eight exchanges across all
+named routes**. Admission remains held while the upstream request runs and while
+any copy or slice of its returned response bytes is retained by the downstream
+transport. A full budget returns `503` with `Retry-After: 1` immediately, without
+queuing another upstream request. Dropping a request or its final response-byte
+owner releases its slot. Health and invalid/unauthorized requests do not consume
+this budget. The ordinary local `/stalker/api` path keeps its existing policy.
+
+This is an exchange/response-retention bound, not a total process RSS limit or a
+new response-write deadline. Runtime buffers, allocations and other server work
+still require measurement on the deployment image before choosing memory limits.
+
 ## Hosted configuration and publication
 
 The public hosted profile associates the already selected API endpoint with
