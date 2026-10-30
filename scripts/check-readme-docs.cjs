@@ -61,6 +61,7 @@ function checkDocumentation(repository = root) {
         "README.ru.md",
         "android/README.md",
         "docs/android-distributions.md",
+        "docs/android-projector-setup.md",
         "docs/android-autostart-RU.md",
         "docs/wiki/Home.md",
         "docs/wiki/Home.ru.md",
