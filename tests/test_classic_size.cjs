@@ -7,6 +7,7 @@ const ts = require("typescript");
 let {
     TORRENT_DISCOVERY_ALLOWANCE,
     TORRENT_STREAMS_ALLOWANCE,
+    TORZNAB_DISCOVERY_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
@@ -69,7 +70,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
-const streamsCaps = {
+const torznabCaps = {
     BASE_TOTAL_BUDGET,
     BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -99,6 +100,48 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+const torznabDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "catalog"]
+              : Object.keys(TORZNAB_DISCOVERY_ALLOWANCE);
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) => sum + TORZNAB_DISCOVERY_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+const torznabOptionalKinds = {
+    "favorites-transfer": "favorites",
+    "media-companion": "companion",
+    "remote-settings-lifecycle": "settings",
+};
+const streamsCaps = Object.fromEntries(
+    Object.entries(torznabCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.fromEntries(
+                  Object.entries(budget).map(([key, value]) => [
+                      key,
+                      torznabOptionalKinds[key]
+                          ? subtract(
+                                value,
+                                TORZNAB_DISCOVERY_ALLOWANCE[
+                                    torznabOptionalKinds[key]
+                                ]
+                            )
+                          : value,
+                  ])
+              )
+            : subtract(budget, torznabDelta(name)),
+    ])
+);
 const streamsDelta = (name) => {
     const kinds =
         name === "BUDGET"
@@ -197,7 +240,136 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const torznabEvidence = require("../docs/evidence/torznab-discovery-size-20261030.json");
+    assert.deepEqual(torznabEvidence.allowance, TORZNAB_DISCOVERY_ALLOWANCE);
+    assert.deepEqual(torznabEvidence.beforeCaps, streamsCaps);
+    assert.deepEqual(torznabEvidence.afterCaps, torznabCaps);
+    assert.deepEqual(torznabEvidence.protectedCaps, {
+        optional: OPTIONAL_BUDGET,
+        provider: PROVIDER_BUDGET,
+    });
+    assert.deepEqual(torznabEvidence.toolchain, {
+        gzipLevel: 9,
+        node: "26.8.2",
+        zlib: "1.2.12",
+    });
+    assert.equal(
+        torznabEvidence.baseline.revision,
+        "94fe329822e9e12b88674102f6002593dd693de1"
+    );
+    assert.equal(
+        torznabEvidence.baseline.runtimeArchiveRevision,
+        "c59cc470e9bac730dae785fe7d8688dfae5e04d0"
+    );
+    assert.equal(
+        torznabEvidence.baseline.archiveSha256,
+        "2259667775b0ccfb5d91c4bb70f510f95bda466d95f596658bf84163082ae3c8"
+    );
+    const torznabKinds = {
+        "favorites-transfer.js": "favorites",
+        "media-companion.js": "companion",
+        "player.js": "entry",
+        "provider-torrent.js": "catalog",
+        "remote-settings-lifecycle.js": "settings",
+    };
+    const torznabNames = [
+        "player.js",
+        ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+            (name) => `provider-${name}.js`
+        ),
+        ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map((name) => `${name}.js`),
+    ].sort();
+    const torznabComponents = [
+        ...torznabEvidence.components,
+        ...torznabEvidence.unchangedComponents,
+    ];
+    assert.deepEqual(
+        torznabEvidence.components.map((row) => row.name).sort(),
+        Object.keys(torznabKinds).sort()
+    );
+    assert.deepEqual(
+        torznabComponents.map((row) => row.name).sort(),
+        torznabNames
+    );
+    assert.equal(
+        torznabEvidence.nativeBaseline
+            .candidateTransformVerifiedArtifactsPerVariant,
+        torznabNames.length
+    );
+    assert(Object.isFrozen(TORZNAB_DISCOVERY_ALLOWANCE));
+    for (const allowance of Object.values(TORZNAB_DISCOVERY_ALLOWANCE))
+        assert(Object.isFrozen(allowance));
+    for (const row of torznabComponents) {
+        assert.deepEqual(Object.keys(row.variants).sort(), [
+            "mobile",
+            "native",
+            "web",
+        ]);
+        for (const variant of Object.values(row.variants)) {
+            for (const state of ["before", "after"])
+                assert.match(variant[state].sha256, /^[a-f0-9]{64}$/);
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    variant.delta[metric],
+                    variant.after[metric] - variant.before[metric]
+                );
+            if (!torznabKinds[row.name])
+                assert.deepEqual(variant.after, variant.before);
+        }
+        if (torznabKinds[row.name])
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert.equal(
+                    TORZNAB_DISCOVERY_ALLOWANCE[torznabKinds[row.name]][metric],
+                    Math.max(
+                        ...Object.values(row.variants).map(
+                            (variant) => variant.delta[metric]
+                        )
+                    )
+                );
+            }
+    }
+    for (const [variant, totals] of Object.entries(torznabEvidence.totals)) {
+        for (const state of ["before", "after"])
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert.equal(
+                    totals[state].complete[metric],
+                    torznabComponents.reduce(
+                        (sum, row) =>
+                            sum + row.variants[variant][state][metric],
+                        0
+                    )
+                );
+                assert.equal(
+                    totals[state].legacy[metric],
+                    torznabComponents
+                        .filter(
+                            (row) =>
+                                row.name === "player.js" ||
+                                row.name.startsWith("provider-")
+                        )
+                        .reduce(
+                            (sum, row) =>
+                                sum + row.variants[variant][state][metric],
+                            0
+                        )
+                );
+            }
+    }
     const streamsEvidence = require("../docs/evidence/torrent-streams-size-20261030.json");
+    const archivedStreams = [
+        ...streamsEvidence.components,
+        ...streamsEvidence.unchangedComponents,
+    ];
+    for (const row of torznabComponents)
+        for (const [variant, measurement] of Object.entries(row.variants)) {
+            assert.deepEqual(
+                measurement.before,
+                archivedStreams.find((old) => old.name === row.name).variants[
+                    variant
+                ].after
+            );
+        }
+
     assert.deepEqual(streamsEvidence.allowance, TORRENT_STREAMS_ALLOWANCE);
     assert.deepEqual(streamsEvidence.beforeCaps, discoveryCaps);
     assert.deepEqual(streamsEvidence.afterCaps, streamsCaps);
@@ -2940,7 +3112,7 @@ try {
         LEGACY_TOTAL_BUDGET,
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
-    } = streamsCaps);
+    } = torznabCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -3127,7 +3299,9 @@ try {
                           )
                         : name === "torrent"
                           ? dense(
-                                TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
+                                TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
+                                    TORRENT_PROVIDER_ALLOWANCE.catalog
+                                        .gzipBytes +
                                     TORRENT_STREAMS_ALLOWANCE.catalog
                                         .gzipBytes +
                                     TORRENT_DISCOVERY_ALLOWANCE.catalog

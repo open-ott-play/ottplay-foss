@@ -644,8 +644,20 @@ const TORRENT_STREAMS_ALLOWANCE = Object.freeze({
     entry: Object.freeze({ bytes: 6550, gzipBytes: 1741 }),
     settings: Object.freeze({ bytes: 490, gzipBytes: 155 }),
 });
+// Local Torznab discovery keeps indexer transport and parsing in the native companion.
+// Count only measured web/native hooks, portable identities and redacted diagnostics;
+// preserve every earlier allowance with no additional reserve.
+// Evidence: docs/evidence/torznab-discovery-size-20261030.json.
+const TORZNAB_DISCOVERY_ALLOWANCE = Object.freeze({
+    catalog: Object.freeze({ bytes: 7200, gzipBytes: 2049 }),
+    companion: Object.freeze({ bytes: 1516, gzipBytes: 463 }),
+    entry: Object.freeze({ bytes: 4257, gzipBytes: 1089 }),
+    favorites: Object.freeze({ bytes: 81, gzipBytes: 30 }),
+    settings: Object.freeze({ bytes: 165, gzipBytes: 60 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
@@ -670,6 +682,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
@@ -873,7 +886,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.catalog.bytes +
         TORRENT_STREAMS_ALLOWANCE.catalog.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.catalog.bytes +
@@ -904,7 +919,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.catalog.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
@@ -944,6 +961,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.favorites.bytes +
             TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"].bytes +
             CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE.bytes +
@@ -953,6 +971,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.favorites.gzipBytes +
             TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"]
                 .gzipBytes +
@@ -970,11 +989,13 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     "media-companion": Object.freeze({
         bytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.companion.bytes +
             TORRENT_STREAMS_ALLOWANCE.companion.bytes +
             TORRENT_PROVIDER_ALLOWANCE.companion.bytes +
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
             MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes,
         gzipBytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.companion.gzipBytes +
             TORRENT_STREAMS_ALLOWANCE.companion.gzipBytes +
             TORRENT_PROVIDER_ALLOWANCE.companion.gzipBytes +
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
@@ -1006,6 +1027,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
     "remote-settings-lifecycle": Object.freeze({
         bytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.settings.bytes +
             TORRENT_STREAMS_ALLOWANCE.settings.bytes +
             TORRENT_DISCOVERY_ALLOWANCE.settings.bytes +
             31000 +
@@ -1013,6 +1035,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
             MODERN_INTERFACE_RELATED_ALLOWANCES["remote-settings-lifecycle"]
                 .bytes,
         gzipBytes:
+            TORZNAB_DISCOVERY_ALLOWANCE.settings.gzipBytes +
             TORRENT_STREAMS_ALLOWANCE.settings.gzipBytes +
             TORRENT_DISCOVERY_ALLOWANCE.settings.gzipBytes +
             10000 +
@@ -1044,15 +1067,20 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.catalog.bytes +
         TORRENT_STREAMS_ALLOWANCE.catalog.bytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.companion.bytes +
         TORRENT_STREAMS_ALLOWANCE.companion.bytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.settings.bytes +
         TORRENT_STREAMS_ALLOWANCE.settings.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.catalog.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.settings.bytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.bytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.favorites.bytes +
         TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
         TORRENT_PROVIDER_ALLOWANCE.settings.bytes +
         TORRENT_PROVIDER_ALLOWANCE.companion.bytes +
@@ -1098,15 +1126,20 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.catalog.gzipBytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.companion.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.companion.gzipBytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.settings.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.settings.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.settings.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
+        TORZNAB_DISCOVERY_ALLOWANCE.favorites.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.settings.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.companion.gzipBytes +
@@ -1369,6 +1402,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         torrentDiscoveryAllowance: TORRENT_DISCOVERY_ALLOWANCE,
         torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
         torrentStreamsAllowance: TORRENT_STREAMS_ALLOWANCE,
+        torznabDiscoveryAllowance: TORZNAB_DISCOVERY_ALLOWANCE,
         totalBudget: TOTAL_BUDGET,
     };
     const output = path.join(root, "build/reports/classic-bundle.json");
@@ -1702,6 +1736,7 @@ function writeBuildBundleReport(
             torrentDiscoveryAllowance: TORRENT_DISCOVERY_ALLOWANCE,
             torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
             torrentStreamsAllowance: TORRENT_STREAMS_ALLOWANCE,
+            torznabDiscoveryAllowance: TORZNAB_DISCOVERY_ALLOWANCE,
             totalBudget: TOTAL_BUDGET,
             violations,
         };
@@ -1800,6 +1835,7 @@ module.exports = {
     TORRENT_DISCOVERY_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
     TORRENT_STREAMS_ALLOWANCE,
+    TORZNAB_DISCOVERY_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
     writeBundleReport,
