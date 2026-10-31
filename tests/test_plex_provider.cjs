@@ -320,6 +320,14 @@ function remote(f) {
                     );
                 },
             };
+        if (name === "./remote-torrent-catalog")
+            return {
+                executeRemoteTorrentCatalog() {
+                    throw new Error(
+                        "Plex provider settings must not change the Torrent catalog"
+                    );
+                },
+            };
         if (name === "../provider")
             return {
                 checkProviderUrl: (url) => f.host.checkProviderUrl(url),
