@@ -180,6 +180,46 @@ function chooseInstalledAddon(f, index = 0) {
     f.host.listKeyHandler(f.host.keys.ENTER);
 }
 
+test("older native clients show the effective Stremio mode and do not offer unsupported Torznab", () => {
+    for (const capability of [false, undefined]) {
+        const f = setup(null);
+        f.host.settings = { torrentDiscoveryMode: "local" };
+        if (capability !== undefined)
+            f.host.__ottMediaCompanion.indexerAvailable = () => capability;
+        f.host.__ottEditProvider();
+        assert.equal(f.host.listArray[0].name, "Search: Stremio");
+        chooseSetting(f, "Search:");
+        assert.deepEqual(copy(f.host.listArray.map((row) => row.name)), [
+            "Stremio",
+        ]);
+        assert.equal(
+            f.host.settings.torrentDiscoveryMode,
+            "local",
+            "rendering never overwrites the preference"
+        );
+    }
+});
+
+test("capable native clients offer both modes and persist explicit Stremio selection", () => {
+    const f = setup(null);
+    f.host.__ottMediaCompanion.indexerAvailable = () => true;
+    f.host.settings = {};
+    f.host.saveSettings = (settings) => {
+        Object.assign(f.host.settings, settings);
+        return true;
+    };
+    f.host.__ottEditProvider();
+    assert.equal(f.host.listArray[0].name, "Search: Torznab");
+    chooseSetting(f, "Search:");
+    assert.deepEqual(copy(f.host.listArray.map((row) => row.name)), [
+        "Torznab",
+        "Stremio",
+    ]);
+    chooseSetting(f, "Stremio");
+    assert.equal(f.host.settings.torrentDiscoveryMode, "catalog");
+    assert.equal(f.host.listArray[0].name, "Search: Stremio");
+});
+
 test("saved Torrent catalog loads stable categories and file identities without a service", () => {
     const f = setup(),
         catalog = load(f);

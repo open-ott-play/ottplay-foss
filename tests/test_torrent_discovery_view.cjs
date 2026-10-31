@@ -29,6 +29,7 @@ function setup(initial = {}, realStreams = false, local = false) {
             ensure() {
                 throw new Error("Discovery must not start a service");
             },
+            indexerAvailable: () => local,
             providerAvailable: () => true,
         },
         __ottTorrentCatalogLanguage: () =>
@@ -1381,4 +1382,68 @@ test("local indexers use native channel rows, manual pages and durable playback 
         ),
         false
     );
+});
+
+test("older native capabilities preserve configured Stremio discovery without overwriting the preferred mode", () => {
+    for (const capability of [false, undefined]) {
+        for (const preferred of [undefined, "local"]) {
+            const f = setup({}, false, true);
+            f.host.settings.torrentCatalogEndpoint =
+                "https://catalog.example.test";
+            if (preferred === undefined)
+                delete f.host.settings.torrentDiscoveryMode;
+            else f.host.settings.torrentDiscoveryMode = preferred;
+            if (capability === undefined)
+                delete f.host.__ottMediaCompanion.indexerAvailable;
+            else f.host.__ottMediaCompanion.indexerAvailable = () => capability;
+            f.open();
+            assert.equal(
+                f.requests.length,
+                1,
+                "the supported catalog path is requested"
+            );
+            assert.equal(
+                f.indexerRequests.length,
+                0,
+                "unsupported native API is not requested"
+            );
+            f.requests[0].done(page([movie(1)]));
+            assert.deepEqual(Array.from(f.view.rows), ["tmdb:movie:1"]);
+            assert.equal(f.host.settings.torrentDiscoveryMode, preferred);
+        }
+    }
+});
+
+test("capable native clients default to local indexers even with an optional Stremio catalog", async () => {
+    const f = setup({}, false, true);
+    delete f.host.settings.torrentDiscoveryMode;
+    f.host.settings.torrentCatalogEndpoint = "https://catalog.example.test";
+    f.open();
+    for (let i = 0; i < 100; i++) await Promise.resolve();
+    assert.deepEqual(
+        f.indexerRequests.map((row) => row.op),
+        ["list", "caps", "search"]
+    );
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.view.rows.length, 1);
+});
+
+test("capable native clients with no indexers show Not configured without catalog fallback", async () => {
+    const f = setup({}, false, true);
+    delete f.host.settings.torrentDiscoveryMode;
+    f.host.settings.torrentCatalogEndpoint = "https://catalog.example.test";
+    const operations = [];
+    f.host.__ottMediaCompanion.ensure = async () => ({
+        torznab: async (op) => {
+            operations.push(op);
+            assert.equal(op, "list");
+            return { schema: 1, sources: [] };
+        },
+    });
+    f.open();
+    for (let i = 0; i < 100; i++) await Promise.resolve();
+    assert.deepEqual(operations, ["list"]);
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.view.rows.length, 0);
+    assert.equal(f.host.listDetail.textContent, "Not configured");
 });

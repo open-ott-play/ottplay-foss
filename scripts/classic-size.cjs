@@ -649,7 +649,7 @@ const TORRENT_STREAMS_ALLOWANCE = Object.freeze({
 // preserve every earlier allowance with no additional reserve.
 // Evidence: docs/evidence/torznab-discovery-size-20261030.json.
 const TORZNAB_DISCOVERY_ALLOWANCE = Object.freeze({
-    catalog: Object.freeze({ bytes: 7200, gzipBytes: 2049 }),
+    catalog: Object.freeze({ bytes: 7503, gzipBytes: 2124 }),
     companion: Object.freeze({ bytes: 1516, gzipBytes: 463 }),
     entry: Object.freeze({ bytes: 4257, gzipBytes: 1089 }),
     favorites: Object.freeze({ bytes: 81, gzipBytes: 30 }),

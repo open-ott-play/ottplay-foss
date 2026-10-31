@@ -119,6 +119,7 @@ then prepares the selected torrent in the app's owned companion. It does not
 send torrent traffic through here.now, the public OTT server, or the command
 server. The native app must advertise `localTorznab`; updating web assets alone
 cannot add this engine API to an older installed binary.
+Older binaries keep Stremio discovery until the native app is upgraded.
 
 ```mermaid
 flowchart LR

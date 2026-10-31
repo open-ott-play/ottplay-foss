@@ -3,6 +3,13 @@ function normalizeTorrentConfiguration(value: any): any {
     return (window as any).__ottTorrentCodec.normalize(value);
 }
 
+function useLocalTorrentDiscovery(host: any): boolean {
+    return (
+        host.__ottMediaCompanion?.indexerAvailable?.() === true &&
+        host.settings?.torrentDiscoveryMode !== "catalog"
+    );
+}
+
 function torrentAddonFailureMessage(
     host: any,
     result: any,
@@ -642,7 +649,7 @@ function createTorrentDiscoveryView(
         },
     });
     function useLocal(): boolean {
-        return host.settings?.torrentDiscoveryMode !== "catalog";
+        return useLocalTorrentDiscovery(host);
     }
     function getData(): any {
         return useLocal() ? localData : data;
@@ -728,7 +735,7 @@ function createTorrentDiscoveryView(
             "\n" +
             (host.settings?.torrentCatalogEndpoint || "") +
             "\n" +
-            (host.settings?.torrentDiscoveryMode || "local") +
+            (useLocal() ? "local" : "catalog") +
             "\n" +
             (host.__ottTorznabRevision || 0)
         );
@@ -2281,6 +2288,11 @@ function mountTorrentProvider(
         }
         function selectMode(mode: string): void {
             if (!current()) return;
+            if (
+                mode === "local" &&
+                host.__ottMediaCompanion?.indexerAvailable?.() !== true
+            )
+                return;
             if (!host.saveSettings?.({ torrentDiscoveryMode: mode })) {
                 render(host._("Settings could not be saved"));
                 return;
@@ -2330,28 +2342,32 @@ function mountTorrentProvider(
                     [
                         {
                             action: function () {
-                                render("", [
-                                    {
-                                        action: function () {
-                                            selectMode("local");
-                                        },
-                                        name: "Torznab",
-                                    },
+                                var modes = [
                                     {
                                         action: function () {
                                             selectMode("catalog");
                                         },
                                         name: "Stremio",
                                     },
-                                ]);
+                                ];
+                                if (
+                                    host.__ottMediaCompanion?.indexerAvailable?.() ===
+                                    true
+                                )
+                                    modes.unshift({
+                                        action: function () {
+                                            selectMode("local");
+                                        },
+                                        name: "Torznab",
+                                    });
+                                render("", modes);
                             },
                             name:
                                 host._("Search") +
                                 ": " +
-                                (host.settings?.torrentDiscoveryMode ===
-                                "catalog"
-                                    ? "Stremio"
-                                    : "Torznab"),
+                                (useLocalTorrentDiscovery(host)
+                                    ? "Torznab"
+                                    : "Stremio"),
                         },
                         { action: add, name: host._("Add new list") },
                         {
