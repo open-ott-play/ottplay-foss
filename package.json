@@ -33,7 +33,7 @@
     "docs:manuals": "node scripts/manual-documentation.cjs",
     "fix": "ultracite fix",
     "lint": "biome check . && npm run lint:correctness",
-    "lint:correctness": "biome lint --config-path=biome-correctness.json .",
+    "lint:correctness": "biome check --config-path=biome-correctness.json src",
     "lint:fix": "biome check --write .",
     "measure:classic": "tsc && node scripts/measure-classic-options.cjs",
     "measure:composition": "node scripts/measure-classic-composition.cjs",
