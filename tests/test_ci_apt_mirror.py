@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The CI transport repair changes one mirror host, never APT trust or packages."""
+"""The CI transport repair preserves APT trust, suites and package policy."""
 
 import importlib.util
 import os
@@ -14,7 +14,7 @@ SPEC.loader.exec_module(mirror)
 
 
 class MirrorTests(unittest.TestCase):
-    def test_only_exact_archive_host_changes(self):
+    def test_only_official_archive_origins_change(self):
         original = """# http://azure.archive.ubuntu.com/ubuntu leave comment
 deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu.gpg] http://azure.archive.ubuntu.com/ubuntu noble main # keep https://azure.archive.ubuntu.com/ubuntu
 deb https://azure.archive.ubuntu.com.evil/ubuntu noble main
@@ -24,8 +24,50 @@ deb http://ports.ubuntu.com/ubuntu-ports noble main
 deb https://ppa.launchpadcontent.net/example/ppa/ubuntu noble main
 """
         expected = original.replace("http://azure.archive.ubuntu.com/ubuntu noble", "http://archive.ubuntu.com/ubuntu noble")
+        expected = expected.replace("http://ports.ubuntu.com/ubuntu-ports noble", "https://ports.ubuntu.com/ubuntu-ports noble")
         self.assertEqual(mirror.rewrite(original), expected)
         self.assertEqual(mirror.rewrite(expected), expected)
+
+    def test_ports_sources_preserve_everything_except_transport(self):
+        original = """# http://ports.ubuntu.com/ubuntu-ports stays in this comment
+deb [arch=arm64 signed-by=/usr/share/keyrings/ubuntu.gpg] http://ports.ubuntu.com/ubuntu-ports noble main # http://ports.ubuntu.com/ubuntu-ports
+Types: deb deb-src
+URIs: http://ports.ubuntu.com/ubuntu-ports/ https://example.invalid/ubuntu
+ http://ports.ubuntu.com/ubuntu-ports
+Suites: noble noble-updates noble-security
+Components: main universe
+Architectures: arm64
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+"""
+        expected = original.replace(
+            "] http://ports.ubuntu.com/ubuntu-ports noble", "] https://ports.ubuntu.com/ubuntu-ports noble"
+        ).replace(
+            "URIs: http://ports.ubuntu.com/ubuntu-ports/", "URIs: https://ports.ubuntu.com/ubuntu-ports/"
+        ).replace("\n http://ports.ubuntu.com/ubuntu-ports\n", "\n https://ports.ubuntu.com/ubuntu-ports\n")
+        self.assertEqual(mirror.rewrite(original), expected)
+        self.assertEqual(mirror.rewrite(expected), expected)
+        for suffix in ("", "/", "\r\n", "/\r\n"):
+            source = "http://ports.ubuntu.com/ubuntu-ports" + suffix
+            self.assertEqual(mirror.rewrite(source), "https://ports.ubuntu.com/ubuntu-ports" + suffix)
+
+    def test_ports_does_not_rewrite_other_urls_or_comments(self):
+        urls = [
+            "https://ports.ubuntu.com/ubuntu-ports",
+            "http://ports.ubuntu.com.evil/ubuntu-ports",
+            "http://user@ports.ubuntu.com/ubuntu-ports",
+            "http://ports.ubuntu.com:80/ubuntu-ports",
+            "http://ports.ubuntu.com/ubuntu-ports-other",
+            "http://ports.ubuntu.com/ubuntu-ports/nested",
+            "http://ports.ubuntu.com/ubuntu-ports?query=1",
+            "http://ports.ubuntu.com/ubuntu",
+            "mirror+http://ports.ubuntu.com/ubuntu-ports",
+            "https://example.invalid/?url=http://ports.ubuntu.com/ubuntu-ports",
+            "# http://ports.ubuntu.com/ubuntu-ports",
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                original = "deb " + url + " noble main\n"
+                self.assertEqual(mirror.rewrite(original), original)
 
     def test_deb822_lists_mirror_file_and_arm_preserve_policy(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -43,9 +85,11 @@ deb https://ppa.launchpadcontent.net/example/ppa/ubuntu noble main
             }
             for name, content in files.items():
                 (apt / name).write_text(content)
-            self.assertEqual(len(mirror.configure(root)), 3)
+            self.assertEqual(len(mirror.configure(root)), 4)
             for name, content in files.items():
                 expected = content if name.endswith(".save") else content.replace("azure.archive.ubuntu.com", "archive.ubuntu.com")
+                if not name.endswith(".save"):
+                    expected = expected.replace("http://ports.ubuntu.com/ubuntu-ports", "https://ports.ubuntu.com/ubuntu-ports")
                 self.assertEqual((apt / name).read_text(), expected)
             self.assertEqual(mirror.configure(root), [])
 

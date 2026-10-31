@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Use Ubuntu's primary archive for CI instead of the slow Azure archive mirror."""
+"""Use Ubuntu's primary archive and HTTPS ARM ports transport in CI."""
 
 import argparse
 import os
@@ -9,6 +9,7 @@ import sys
 
 
 AZURE = re.compile(r"(?<![\w@./:-])(https?://)azure\.archive\.ubuntu\.com(?=[/\s]|$)")
+PORTS = re.compile(r"(?<!\S)http://ports\.ubuntu\.com/ubuntu-ports(?=/?(?:\s|$))")
 
 
 def rewrite(text):
@@ -16,7 +17,9 @@ def rewrite(text):
     lines = []
     for line in text.splitlines(keepends=True):
         active, marker, comment = line.partition("#")
-        lines.append(AZURE.sub(r"\1archive.ubuntu.com", active) + marker + comment)
+        active = AZURE.sub(r"\1archive.ubuntu.com", active)
+        active = PORTS.sub("https://ports.ubuntu.com/ubuntu-ports", active)
+        lines.append(active + marker + comment)
     return "".join(lines)
 
 
@@ -48,7 +51,7 @@ def main(argv=None):
         print("APT mirror unchanged: host mutation is only enabled in Linux CI")
         return 0
     changed = configure(root)
-    print("APT archive host updated in: " + (", ".join(changed) or "no files"))
+    print("APT source transport updated in: " + (", ".join(changed) or "no files"))
     return 0
 
 

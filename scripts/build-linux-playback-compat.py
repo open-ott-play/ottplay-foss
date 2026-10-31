@@ -17,6 +17,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -68,15 +70,35 @@ def fetch(item, destination, cache=None):
         with (cache / item["name"]).open("rb") as stream:
             data = stream.read(item["size"] + 1)
     else:
-        # Read one extra byte to reject oversized responses without unbounded memory.
-        with urllib.request.urlopen(item["url"], timeout=60) as response:
-            require(response.url.startswith("https://ports.ubuntu.com/ubuntu-ports/"),
-                    "Source download redirected outside the pinned origin")
-            data = response.read(item["size"] + 1)
+        # Retry only transient network failures; never relax origin or integrity checks.
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(item["url"], timeout=60) as response:
+                    require(response.url.startswith("https://ports.ubuntu.com/ubuntu-ports/"),
+                            "Source download redirected outside the pinned origin")
+                    # One extra byte rejects oversized responses without unbounded memory.
+                    data = response.read(item["size"] + 1)
+                break
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+                if isinstance(error, urllib.error.HTTPError):
+                    retryable = error.code in (500, 502, 503, 504) and error.geturl() == item["url"]
+                    error.close()
+                elif isinstance(error, urllib.error.URLError):
+                    retryable = isinstance(error.reason, (TimeoutError, ConnectionError))
+                else:
+                    retryable = True
+                if not retryable or attempt == 2:
+                    raise
+                print(f"Retrying source download ({attempt + 2}/3): {item['name']}")
+                time.sleep(attempt + 1)
     require(len(data) == item["size"], "Source download size mismatch: " + item["name"])
     require(hashlib.sha256(data).hexdigest() == item["sha256"],
             "Source download digest mismatch: " + item["name"])
-    destination.write_bytes(data)
+    # Publish only complete, verified bytes, including when replacing a cached download.
+    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".source-download-") as temporary:
+        staged = Path(temporary) / "source"
+        staged.write_bytes(data)
+        staged.replace(destination)
 
 
 def extract_source(archive, destination):
