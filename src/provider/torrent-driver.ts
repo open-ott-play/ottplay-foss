@@ -2505,7 +2505,12 @@ function mountTorrentProvider(
             }
             function form(message?: string): void {
                 render(
-                    message || "",
+                    message ||
+                        (source
+                            ? source.label +
+                              " · " +
+                              host._("saved on this device")
+                            : ""),
                     [
                         {
                             action: function () {
@@ -2521,7 +2526,12 @@ function mountTorrentProvider(
                             name:
                                 host._("Server address") +
                                 ": " +
-                                (draft.endpoint || host._("Not configured")),
+                                (draft.endpoint ||
+                                    host._(
+                                        source
+                                            ? "Enter value"
+                                            : "Not configured"
+                                    )),
                         },
                         {
                             action: function () {
@@ -2538,7 +2548,11 @@ function mountTorrentProvider(
                             name:
                                 host._("Access key") +
                                 ": " +
-                                (draft.key ? "••••••••" : ""),
+                                (draft.key
+                                    ? "••••••••"
+                                    : source
+                                      ? host._("Enter value")
+                                      : ""),
                         },
                         {
                             action: function () {
@@ -2559,7 +2573,9 @@ function mountTorrentProvider(
                     ],
                     leave
                 );
-                host.listCaption.textContent = "Prowlarr / Torznab";
+                host.listCaption.textContent = source
+                    ? host._("Replace") + ": " + source.label
+                    : "Prowlarr / Torznab";
             }
             form();
         }

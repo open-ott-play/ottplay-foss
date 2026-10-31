@@ -1101,6 +1101,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Gbanwee ọnọdụ mbugharị",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ntọala Top-Tv",
+    "Torrent cache limit exceeded.": "Agafela oke ebe nchekwa nwa oge torrent.",
     "Torrent source limit reached.": "Eruola oke ọnụọgụ isi iyi torrent.",
     "Touchscreen locked": "Akpọchiela ihuenyo mmetụ",
     "Touchscreen unlocked": "Emegheela mkpọchi ihuenyo mmetụ",

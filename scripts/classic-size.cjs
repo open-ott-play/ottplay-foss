@@ -665,8 +665,18 @@ const MODERN_EXPERIENCE_ALLOWANCE = Object.freeze({
     entry: Object.freeze({ bytes: 2152, gzipBytes: 636 }),
     renderer: Object.freeze({ bytes: 7161, gzipBytes: 2221 }),
 });
+// Passive playback-only companion diagnostics and bounded native error notices.
+// Count the measured delta against the delivered Modern candidate on each
+// platform exactly once; no additional reserve or unrelated provider growth.
+// Evidence: docs/evidence/companion-diagnostics-size-20261031.json.
+const COMPANION_DIAGNOSTICS_ALLOWANCE = Object.freeze({
+    catalog: Object.freeze({ bytes: 114, gzipBytes: 53 }),
+    companion: Object.freeze({ bytes: 663, gzipBytes: 192 }),
+    entry: Object.freeze({ bytes: 2158, gzipBytes: 737 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        COMPANION_DIAGNOSTICS_ALLOWANCE.entry.bytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
@@ -693,6 +703,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        COMPANION_DIAGNOSTICS_ALLOWANCE.entry.gzipBytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
@@ -898,6 +909,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        COMPANION_DIAGNOSTICS_ALLOWANCE.entry.bytes +
+        COMPANION_DIAGNOSTICS_ALLOWANCE.catalog.bytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
         MODERN_EXPERIENCE_ALLOWANCE.catalog.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
@@ -933,6 +946,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        COMPANION_DIAGNOSTICS_ALLOWANCE.entry.gzipBytes +
+        COMPANION_DIAGNOSTICS_ALLOWANCE.catalog.gzipBytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
         MODERN_EXPERIENCE_ALLOWANCE.catalog.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
@@ -1005,12 +1020,14 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "local-media-ui": Object.freeze({ bytes: 8500, gzipBytes: 3400 }),
     "media-companion": Object.freeze({
         bytes:
+            COMPANION_DIAGNOSTICS_ALLOWANCE.companion.bytes +
             TORZNAB_DISCOVERY_ALLOWANCE.companion.bytes +
             TORRENT_STREAMS_ALLOWANCE.companion.bytes +
             TORRENT_PROVIDER_ALLOWANCE.companion.bytes +
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.bytes +
             MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes,
         gzipBytes:
+            COMPANION_DIAGNOSTICS_ALLOWANCE.companion.gzipBytes +
             TORZNAB_DISCOVERY_ALLOWANCE.companion.gzipBytes +
             TORRENT_STREAMS_ALLOWANCE.companion.gzipBytes +
             TORRENT_PROVIDER_ALLOWANCE.companion.gzipBytes +
@@ -1090,6 +1107,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        Object.values(COMPANION_DIAGNOSTICS_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.bytes,
+            0
+        ) +
         Object.values(MODERN_EXPERIENCE_ALLOWANCE).reduce(
             (sum, cap) => sum + cap.bytes,
             0
@@ -1153,6 +1174,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        Object.values(COMPANION_DIAGNOSTICS_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.gzipBytes,
+            0
+        ) +
         Object.values(MODERN_EXPERIENCE_ALLOWANCE).reduce(
             (sum, cap) => sum + cap.gzipBytes,
             0
@@ -1382,6 +1407,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         categorySelectionEntryAllowance: CATEGORY_SELECTION_ENTRY_ALLOWANCE,
         categorySelectionFavoritesAllowance:
             CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+        companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
         desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
         favoritesRecoveryEntryAllowance: FAVORITES_RECOVERY_ENTRY_ALLOWANCE,
         favoritesRecoveryOptionalAllowance:
@@ -1712,6 +1738,7 @@ function writeBuildBundleReport(
             categorySelectionFavoritesAllowance:
                 CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
             collectedAt: new Date().toISOString(),
+            companionDiagnosticsAllowance: COMPANION_DIAGNOSTICS_ALLOWANCE,
             complete: !inputErrors.length,
             desktopFavoritesKeyAllowance: DESKTOP_FAVORITES_KEY_ALLOWANCE,
             diagnostic: true,
@@ -1824,6 +1851,7 @@ module.exports = {
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
+    COMPANION_DIAGNOSTICS_ALLOWANCE,
     clearBuildSizeReports,
     collectBundleMeasurement,
     DESKTOP_FAVORITES_KEY_ALLOWANCE,

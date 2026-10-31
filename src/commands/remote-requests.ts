@@ -32,7 +32,10 @@ import { executeRemoteLocalMedia } from "./remote-local-media";
 import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
-import { providerDiagnosticsSnapshot } from "./remote-provider-diagnostics";
+import {
+    companionDiagnosticsSnapshot,
+    providerDiagnosticsSnapshot,
+} from "./remote-provider-diagnostics";
 import {
     executeRemoteControl,
     executeRemoteRestart,
@@ -1194,17 +1197,23 @@ export function executeRemoteRequest(
     }
     if (request.action === "status") {
         var player = remotePlayerInfo(w);
+        // Capture the established provider schema before consulting other producers.
+        var providerDiagnostics = providerDiagnosticsSnapshot(
+            w,
+            player.runtime
+        );
         reply({
             channels: channels().length,
             playback: readPlayerState(w, player).playback,
             player: player,
             ...(w.__ottKiosk ? { kiosk: w.__ottKiosk.snapshot() } : {}),
             diagnostics: {
+                companion: companionDiagnosticsSnapshot(w, player.runtime),
                 epg: remoteSnapshot(
                     w.__ottHostedEpg && w.__ottHostedEpg.remoteSnapshot
                 ),
                 input: remoteSnapshot(w.__ottDebugInputSnapshot),
-                provider: providerDiagnosticsSnapshot(w, player.runtime),
+                provider: providerDiagnostics,
                 version: 1,
             },
             provider: activeProvider(),

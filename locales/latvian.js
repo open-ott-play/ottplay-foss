@@ -1118,6 +1118,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Mainīt tālummaiņas režīmu",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv iestatījumi",
+    "Torrent cache limit exceeded.":
+        "Pārsniegts torrenta kešatmiņas ierobežojums.",
     "Torrent source limit reached.":
         "Sasniegts maksimālais torrentu avotu skaits.",
     "Touchscreen locked": "Skārienekrāns ir bloķēts",

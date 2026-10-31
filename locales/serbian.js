@@ -1116,6 +1116,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Промените режим зумирања",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv подешавања",
+    "Torrent cache limit exceeded.": "Прекорачено је ограничење кеша торента.",
     "Torrent source limit reached.":
         "Достигнут је максималан број торент извора.",
     "Touchscreen locked": "Екран осетљив на додир је закључан",

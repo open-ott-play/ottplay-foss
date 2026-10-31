@@ -6,6 +6,7 @@ function createMediaCompanion(
 ): any {
     var owned: any[] = [];
     var last: any = null;
+    var playback: any = null;
     var requestTimeout = 10000;
     function fail(code: string): Error {
         return new Error(code);
@@ -15,11 +16,23 @@ function createMediaCompanion(
     }
     function backendError(value: any, fallback: string): string {
         return typeof value === "string" &&
-            /^(?:torznab_(?:invalid_(?:source|link|query|category|xml|page)|local_only|search_unavailable|source_(?:missing|changed|limit)|reference_missing|busy|cancelled|timeout|network_error|http_error|response_limit|xml_limit|api_error|store_(?:unavailable|busy|limit))|busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
+            /^(?:torznab_(?:invalid_(?:source|link|query|category|xml|page)|local_only|search_unavailable|source_(?:missing|changed|limit)|reference_missing|busy|cancelled|timeout|network_error|http_error|response_limit|xml_limit|api_error|store_(?:unavailable|busy|limit))|busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|webseed_(?:unavailable|timeout|invalid_range|hash_mismatch|network_denied)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
                 value
             )
             ? value
             : fallback;
+    }
+    function publicError(value: any): string {
+        return value === "" ||
+            (typeof value === "string" &&
+                /^companion_(?:access_denied|endpoint_invalid|transport_unavailable|not_configured|timeout|request_failed|source_invalid|selection_invalid|receipt_invalid|too_many_files|no_playable_files|torrent_unavailable|unavailable)$/.test(
+                    value
+                ))
+            ? value
+            : backendError(value, "companion_unavailable");
+    }
+    function progressBytes(value: any): number | null {
+        return Number.isSafeInteger(value) && value >= 0 ? value : null;
     }
     function endpointValue(value: any): string {
         if (typeof value !== "string" || value.length > 4096)
@@ -276,6 +289,11 @@ function createMediaCompanion(
             completed = false;
         owned.push(lease);
         last = lease;
+        if (!options || !options.metadataOnly) playback = lease;
+        function reportError(code: any): void {
+            lease.error = publicError(code);
+            if (options && options.failed) options.failed(lease.error);
+        }
         function cleanup(): void {
             if (!lease.active) return;
             lease.active = false;
@@ -297,9 +315,9 @@ function createMediaCompanion(
             clearTimeout(timer);
             clearTimeout(deadline);
             if (error) {
-                lease.error = String(error.message || "companion_unavailable");
+                lease.state = "error";
                 cleanup();
-                if (options && options.failed) options.failed(lease.error);
+                reportError(error.message);
             }
             done(result || null, transport);
         }
@@ -328,17 +346,15 @@ function createMediaCompanion(
                     function (value) {
                         if (!current()) return;
                         if (!value || value.id !== lease.id) {
-                            lease.error = "companion_receipt_invalid";
+                            lease.state = "error";
                             cleanup();
+                            reportError("companion_receipt_invalid");
                             return;
                         }
                         progress(value);
                         if (value.state === "error") {
-                            lease.error = backendError(
-                                value.error,
-                                "companion_unavailable"
-                            );
                             cleanup();
+                            reportError(value.error);
                             return;
                         }
                         lease.error = "";
@@ -621,6 +637,21 @@ function createMediaCompanion(
     return {
         cancelAll: cancelAll,
         choices: choices,
+        diagnostics: function () {
+            return playback
+                ? {
+                      active: playback.active === true,
+                      downloaded: progressBytes(playback.downloaded),
+                      error: publicError(playback.error),
+                      state: /^(metadata|select|preparing|ready|error)$/.test(
+                          playback.state
+                      )
+                          ? playback.state
+                          : "unknown",
+                      total: progressBytes(playback.total),
+                  }
+                : null;
+        },
         endpoint: endpoint,
         endpointValue: endpointValue,
         isSource: isSource,

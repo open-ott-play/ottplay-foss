@@ -1111,6 +1111,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Tukar mod zum",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Tetapan Top-Tv",
+    "Torrent cache limit exceeded.": "Had cache torrent telah dilebihi.",
     "Torrent source limit reached.":
         "Bilangan maksimum sumber torrent telah dicapai.",
     "Touchscreen locked": "Skrin sentuh dikunci",

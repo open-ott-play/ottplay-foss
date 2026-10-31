@@ -1115,6 +1115,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ズームモードを変更する",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tvの設定",
+    "Torrent cache limit exceeded.": "トレントのキャッシュ上限を超えました。",
     "Torrent source limit reached.": "トレントソースの数が上限に達しました。",
     "Touchscreen locked": "タッチスクリーンをロックしました",
     "Touchscreen unlocked": "タッチスクリーンのロックを解除しました",

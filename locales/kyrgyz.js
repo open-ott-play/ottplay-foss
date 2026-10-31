@@ -1126,6 +1126,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Масштаб режимин өзгөртүү",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv жөндөөлөрү",
+    "Torrent cache limit exceeded.": "Торрент кэшинин чеги ашты.",
     "Torrent source limit reached.": "Торрент булактарынын саны чегине жетти.",
     "Touchscreen locked": "Сенсордук экран кулпуланды",
     "Touchscreen unlocked": "Сенсордук экрандын кулпусу ачылды",

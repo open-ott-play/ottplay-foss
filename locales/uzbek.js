@@ -1126,6 +1126,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Masshtab rejimini almashtirish",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sozlamalari",
+    "Torrent cache limit exceeded.": "Torrent kesh chegarasi oshib ketdi.",
     "Torrent source limit reached.":
         "Torrent manbalari soni chegarasiga yetildi.",
     "Touchscreen locked": "Sensorli ekran qulflandi",

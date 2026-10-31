@@ -1103,6 +1103,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ஜூம் பயன்முறையை மாற்றவும்",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv அமைப்புகள்",
+    "Torrent cache limit exceeded.": "டொரன்ட் தற்காலிக சேமிப்பின் வரம்பு மீறப்பட்டது.",
     "Torrent source limit reached.": "டொரண்ட் மூலங்களின் எண்ணிக்கை வரம்பை எட்டிவிட்டது.",
     "Touchscreen locked": "தொடுதிரை பூட்டப்பட்டது",
     "Touchscreen unlocked": "தொடுதிரையின் பூட்டு நீக்கப்பட்டது",

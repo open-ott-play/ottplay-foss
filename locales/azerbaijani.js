@@ -1115,6 +1115,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Miqyas rejimini dəyiş",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Torrent cache limit exceeded.": "Torrent keş limiti aşılıb.",
     "Torrent source limit reached.":
         "Torrent mənbələrinin say həddinə çatılıb.",
     "Touchscreen locked": "Toxunma ekranı kilidləndi",

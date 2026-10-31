@@ -1141,6 +1141,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Tshintsha imo yokwandisa umfanekiso",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Iisetingi ze-Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Kugqithiwe kumda wendawo yokugcina yethutyana yetorrent.",
     "Torrent source limit reached.":
         "Kufikelelwe kwelona nani liphezulu lemithombo ye-torrent.",
     "Touchscreen locked": "Isikrini sokuchukumisa sitshixiwe",

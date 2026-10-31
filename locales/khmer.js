@@ -1091,6 +1091,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ប្តូររបៀបពង្រីក",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ការកំណត់ Top-Tv",
+    "Torrent cache limit exceeded.": "បានលើសដែនកំណត់ឃ្លាំងសម្ងាត់ torrent។",
     "Torrent source limit reached.": "បានដល់ចំនួនអតិបរមានៃប្រភព torrent ហើយ។",
     "Touchscreen locked": "អេក្រង់ប៉ះត្រូវបានចាក់សោ",
     "Touchscreen unlocked": "អេក្រង់ប៉ះត្រូវបានដោះសោ",

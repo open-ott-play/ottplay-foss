@@ -1130,6 +1130,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Nagyítási mód váltása",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv beállításai",
+    "Torrent cache limit exceeded.":
+        "A torrent gyorsítótárának korlátja túllépve.",
     "Torrent source limit reached.":
         "Elérte a torrentforrások maximális számát.",
     "Touchscreen locked": "Érintőképernyő zárolva",

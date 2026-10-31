@@ -1106,6 +1106,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змяніць рэжым маштабавання",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налады Top-Tv",
+    "Torrent cache limit exceeded.": "Перавышаны ліміт кэша торэнта.",
     "Torrent source limit reached.":
         "Дасягнута абмежаванне колькасці торэнт-крыніц.",
     "Touchscreen locked": "Сэнсарны экран заблакаваны",

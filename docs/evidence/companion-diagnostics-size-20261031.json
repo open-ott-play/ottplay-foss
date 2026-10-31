@@ -1,0 +1,538 @@
+{
+  "schema": 1,
+  "feature": "Passive companion playback diagnostics, bounded error notices and distinct indexer replacement drafts",
+  "baseline": {
+    "revision": "127bd3cec155051b83ae1a51c7e3f8e65ddcc1a9",
+    "archiveSha256": "c1132f94aad1c16350413057cd791c03b1ddf886023df8f3a595b5629488df6d",
+    "method": "Web component hashes rechecked against the delivered immutable candidate staging. Native/Capacitor before metrics are the hash-bound after metrics from modern-provider-experience-size-20261031.json, whose web hashes match this candidate."
+  },
+  "candidate": {
+    "workingTree": true,
+    "sourceRevisionClaimed": false,
+    "version": "1.1.62",
+    "measuredAt": "2026-10-31T15:15:40.329Z",
+    "method": "npm run build produced all web/Tauri/Capacitor artifacts; initial run reached the size gate with no input errors. Measure the exact emitted bytes and retain existing budget headroom without adding reserve."
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "lockSha256": "b91fcfcd6c3d2ce2931aaaca4bcf5d0b98bded80126dd29b0edbd14c21646e02",
+  "scope": "Every existing entry, provider and optional JavaScript artifact remains counted on all three platforms. External dictionaries and stylesheet are measured separately, outside the existing JavaScript gate.",
+  "allocation": "Maximum paired measured component delta across variants, counted once in applicable entry/legacy/complete caps; no additional reserve.",
+  "allowance": {
+    "catalog": {
+      "bytes": 114,
+      "gzipBytes": 53
+    },
+    "companion": {
+      "bytes": 663,
+      "gzipBytes": 192
+    },
+    "entry": {
+      "bytes": 2158,
+      "gzipBytes": 737
+    }
+  },
+  "components": [
+    {
+      "name": "player.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 1178289,
+            "gzipBytes": 358343,
+            "sha256": "b93294954f53a2142c6d38ef2b6b53b48f15468c0605965bfaede66493c3a184"
+          },
+          "after": {
+            "bytes": 1180447,
+            "gzipBytes": 359080,
+            "sha256": "f4a440c9075c11f71ddc0894ba2903c133e636fda7ee43f3a813d800a57a3cf6"
+          },
+          "delta": {
+            "bytes": 2158,
+            "gzipBytes": 737
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 1178247,
+            "gzipBytes": 358393,
+            "sha256": "104d492537fb06ca0aabcbdba9a83fba10f8bf5c5189debf949f27ab197ff2ef"
+          },
+          "after": {
+            "bytes": 1180405,
+            "gzipBytes": 359130,
+            "sha256": "9ee4a8656d03884838ba4a4f0446cc3c3638a5151801d34235b93973d32adb32"
+          },
+          "delta": {
+            "bytes": 2158,
+            "gzipBytes": 737
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 1178247,
+            "gzipBytes": 358393,
+            "sha256": "104d492537fb06ca0aabcbdba9a83fba10f8bf5c5189debf949f27ab197ff2ef"
+          },
+          "after": {
+            "bytes": 1180405,
+            "gzipBytes": 359130,
+            "sha256": "9ee4a8656d03884838ba4a4f0446cc3c3638a5151801d34235b93973d32adb32"
+          },
+          "delta": {
+            "bytes": 2158,
+            "gzipBytes": 737
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-torrent.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 91552,
+            "gzipBytes": 28630,
+            "sha256": "b565a7355ac19841452da3b03de2e58deb05a72c23ad49c08f936169edfce185"
+          },
+          "after": {
+            "bytes": 91666,
+            "gzipBytes": 28683,
+            "sha256": "661a39c982f5ebeabde0edcf85e079dc4c07996611d70f6e68aaef3107f3c920"
+          },
+          "delta": {
+            "bytes": 114,
+            "gzipBytes": 53
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 91552,
+            "gzipBytes": 28630,
+            "sha256": "b565a7355ac19841452da3b03de2e58deb05a72c23ad49c08f936169edfce185"
+          },
+          "after": {
+            "bytes": 91666,
+            "gzipBytes": 28683,
+            "sha256": "661a39c982f5ebeabde0edcf85e079dc4c07996611d70f6e68aaef3107f3c920"
+          },
+          "delta": {
+            "bytes": 114,
+            "gzipBytes": 53
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 91552,
+            "gzipBytes": 28630,
+            "sha256": "b565a7355ac19841452da3b03de2e58deb05a72c23ad49c08f936169edfce185"
+          },
+          "after": {
+            "bytes": 91666,
+            "gzipBytes": 28683,
+            "sha256": "661a39c982f5ebeabde0edcf85e079dc4c07996611d70f6e68aaef3107f3c920"
+          },
+          "delta": {
+            "bytes": 114,
+            "gzipBytes": 53
+          }
+        }
+      }
+    },
+    {
+      "name": "media-companion.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 10972,
+            "gzipBytes": 3812,
+            "sha256": "d07198ae40afd17702b9a846fd00779d02764f2ac2d9b23fddab83a5c35e1b59"
+          },
+          "after": {
+            "bytes": 11635,
+            "gzipBytes": 4004,
+            "sha256": "ed158cce01e9cb1fd0aa9a48852c2289ab36df234856e340fca080f42683b2f1"
+          },
+          "delta": {
+            "bytes": 663,
+            "gzipBytes": 192
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 10972,
+            "gzipBytes": 3812,
+            "sha256": "d07198ae40afd17702b9a846fd00779d02764f2ac2d9b23fddab83a5c35e1b59"
+          },
+          "after": {
+            "bytes": 11635,
+            "gzipBytes": 4004,
+            "sha256": "ed158cce01e9cb1fd0aa9a48852c2289ab36df234856e340fca080f42683b2f1"
+          },
+          "delta": {
+            "bytes": 663,
+            "gzipBytes": 192
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 10972,
+            "gzipBytes": 3812,
+            "sha256": "d07198ae40afd17702b9a846fd00779d02764f2ac2d9b23fddab83a5c35e1b59"
+          },
+          "after": {
+            "bytes": 11635,
+            "gzipBytes": 4004,
+            "sha256": "ed158cce01e9cb1fd0aa9a48852c2289ab36df234856e340fca080f42683b2f1"
+          },
+          "delta": {
+            "bytes": 663,
+            "gzipBytes": 192
+          }
+        }
+      }
+    }
+  ],
+  "unchangedComponents": [
+    {
+      "name": "modern-interface.js",
+      "webSha256": "4d44dc6f4d45d8162500bf296ed6e53025dac33815d19abd19efeca22e2886d5",
+      "nativeSha256": "4d44dc6f4d45d8162500bf296ed6e53025dac33815d19abd19efeca22e2886d5",
+      "mobileSha256": "4d44dc6f4d45d8162500bf296ed6e53025dac33815d19abd19efeca22e2886d5"
+    },
+    {
+      "name": "provider-catalog.js",
+      "webSha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d",
+      "nativeSha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d",
+      "mobileSha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+    },
+    {
+      "name": "provider-edem.js",
+      "webSha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696",
+      "nativeSha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696",
+      "mobileSha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+    },
+    {
+      "name": "provider-m3u.js",
+      "webSha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227",
+      "nativeSha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227",
+      "mobileSha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+    },
+    {
+      "name": "provider-playlist.js",
+      "webSha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c",
+      "nativeSha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c",
+      "mobileSha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+    },
+    {
+      "name": "provider-plex.js",
+      "webSha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6",
+      "nativeSha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6",
+      "mobileSha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+    },
+    {
+      "name": "provider-stalker.js",
+      "webSha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298",
+      "nativeSha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298",
+      "mobileSha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+    },
+    {
+      "name": "provider-vportal.js",
+      "webSha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7",
+      "nativeSha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7",
+      "mobileSha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+    },
+    {
+      "name": "provider-xtream.js",
+      "webSha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02",
+      "nativeSha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02",
+      "mobileSha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+    },
+    {
+      "name": "control-transport.js",
+      "webSha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2",
+      "nativeSha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2",
+      "mobileSha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+    },
+    {
+      "name": "favorites-transfer.js",
+      "webSha256": "02eacba1bbc4e9f4880421c355e0eada69909d203d74dccbfd5477adf655c38a",
+      "nativeSha256": "02eacba1bbc4e9f4880421c355e0eada69909d203d74dccbfd5477adf655c38a",
+      "mobileSha256": "02eacba1bbc4e9f4880421c355e0eada69909d203d74dccbfd5477adf655c38a"
+    },
+    {
+      "name": "local-compatibility.js",
+      "webSha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b",
+      "nativeSha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b",
+      "mobileSha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+    },
+    {
+      "name": "local-media-ui.js",
+      "webSha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6",
+      "nativeSha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6",
+      "mobileSha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+    },
+    {
+      "name": "perf-capture.js",
+      "webSha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d",
+      "nativeSha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d",
+      "mobileSha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+    },
+    {
+      "name": "remote-local-runner.js",
+      "webSha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d",
+      "nativeSha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d",
+      "mobileSha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+    },
+    {
+      "name": "remote-provider-fields.js",
+      "webSha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3",
+      "nativeSha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3",
+      "mobileSha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+    },
+    {
+      "name": "remote-settings.js",
+      "webSha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251",
+      "nativeSha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251",
+      "mobileSha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+    },
+    {
+      "name": "remote-settings-extras.js",
+      "webSha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e",
+      "nativeSha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e",
+      "mobileSha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+    },
+    {
+      "name": "remote-settings-lifecycle.js",
+      "webSha256": "07f58615db14ab171e2f7111184b1f01c29dc0c2aca74b13ca50a8d224a52d2b",
+      "nativeSha256": "07f58615db14ab171e2f7111184b1f01c29dc0c2aca74b13ca50a8d224a52d2b",
+      "mobileSha256": "07f58615db14ab171e2f7111184b1f01c29dc0c2aca74b13ca50a8d224a52d2b"
+    },
+    {
+      "name": "runtime-debug-details.js",
+      "webSha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82",
+      "nativeSha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82",
+      "mobileSha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+    },
+    {
+      "name": "shaka-tracks.js",
+      "webSha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29",
+      "nativeSha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29",
+      "mobileSha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+    },
+    {
+      "name": "subtitle-appearance.js",
+      "webSha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf",
+      "nativeSha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf",
+      "mobileSha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+    }
+  ],
+  "supplementalAssets": {
+    "locales": {
+      "count": 88,
+      "before": {
+        "bytes": 7421670,
+        "gzipBytes": 1863084
+      },
+      "after": {
+        "bytes": 7430682,
+        "gzipBytes": 1865704
+      },
+      "maximumPerLocaleDelta": {
+        "bytes": 186,
+        "gzipBytes": 44
+      }
+    },
+    "stylesheet": {
+      "before": {
+        "bytes": 56638,
+        "gzipBytes": 10552,
+        "sha256": "ab456730ad0af6a449ba972935c8bb66a8480c2efe6038077aafbf139854032f"
+      },
+      "after": {
+        "bytes": 56638,
+        "gzipBytes": 10552,
+        "sha256": "ab456730ad0af6a449ba972935c8bb66a8480c2efe6038077aafbf139854032f"
+      }
+    }
+  },
+  "beforeCaps": {
+    "BUDGET": {
+      "bytes": 1178492,
+      "gzipBytes": 360002
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1422880,
+      "gzipBytes": 443977
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1813706,
+      "gzipBytes": 559053
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1818186,
+      "gzipBytes": 561357
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 249069,
+        "gzipBytes": 64165
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 11018,
+        "gzipBytes": 3918
+      },
+      "modern-interface": {
+        "bytes": 13361,
+        "gzipBytes": 4871
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 32884,
+        "gzipBytes": 10640
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    }
+  },
+  "afterCaps": {
+    "BUDGET": {
+      "bytes": 1180650,
+      "gzipBytes": 360739
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1425152,
+      "gzipBytes": 444767
+    },
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1816641,
+      "gzipBytes": 560035
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1821121,
+      "gzipBytes": 562339
+    },
+    "PROVIDER_BUDGET": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "OPTIONAL_BUDGET": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 249069,
+        "gzipBytes": 64165
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 11681,
+        "gzipBytes": 4110
+      },
+      "modern-interface": {
+        "bytes": 13361,
+        "gzipBytes": 4871
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 32884,
+        "gzipBytes": 10640
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    }
+  }
+}

@@ -1111,6 +1111,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yakınlaştırma modunu değiştir",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ayarları",
+    "Torrent cache limit exceeded.": "Torrent önbellek sınırı aşıldı.",
     "Torrent source limit reached.":
         "En fazla torrent kaynağı sayısına ulaşıldı.",
     "Touchscreen locked": "Dokunmatik ekran kilitlendi",

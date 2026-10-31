@@ -1133,6 +1133,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ibdel il-modalità taż-żum",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Issettjar ta’ Top-Tv",
+    "Torrent cache limit exceeded.": "Inqabeż il-limitu tal-cache tat-torrent.",
     "Torrent source limit reached.":
         "Intlaħaq l-għadd massimu ta' sorsi tat-torrent.",
     "Touchscreen locked": "L-iskrin tal-mess imsakkar",

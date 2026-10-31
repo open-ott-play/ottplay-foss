@@ -1142,6 +1142,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Baguhin ang zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv na mga setting",
+    "Torrent cache limit exceeded.": "Lumampas sa limitasyon ng torrent cache.",
     "Torrent source limit reached.":
         "Naabot na ang limitasyon ng mga pinagmumulan ng torrent.",
     "Touchscreen locked": "Naka-lock ang touchscreen",

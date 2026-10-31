@@ -1052,6 +1052,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "更改缩放模式",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv设定",
+    "Torrent cache limit exceeded.": "已超出种子缓存限制。",
     "Torrent source limit reached.": "已达到种子来源数量上限。",
     "Touchscreen locked": "触摸屏已锁定",
     "Touchscreen unlocked": "触摸屏已解锁",
