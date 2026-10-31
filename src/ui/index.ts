@@ -607,6 +607,7 @@ export function uiInit(): void {
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
     var seekInProgress = false;
+    var progressClickSeeked = false;
 
     function canSeekProgress(): boolean {
         var w = window as any;
@@ -640,6 +641,7 @@ export function uiInit(): void {
             return;
         }
         seekInProgress = true;
+        progressClickSeeked = false;
     });
 
     function seekProgress(e: any, eventName: string): void {
@@ -703,11 +705,20 @@ export function uiInit(): void {
         }
     }
     $progressDiv.on("mouseup.ottUi", function (e: any) {
-        if (!seekInProgress) return;
+        if (!seekInProgress) {
+            // A release with no admitted press starts a fresh click sequence.
+            progressClickSeeked = false;
+            return;
+        }
         seekInProgress = false;
+        // A press/release also emits a click. Seek once on release and let
+        // that click pass without seeking the same position again. A fresh
+        // press or stray release clears the gate for the next gesture.
+        progressClickSeeked = true;
         seekProgress(e, "mouseup");
     });
     $progressDiv.on("click.ottUi", function (e: any) {
+        if (progressClickSeeked && e.clientX !== undefined) return;
         seekProgress(e, "click");
     });
 
