@@ -1122,6 +1122,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Փոխել խոշորացման ռեժիմը",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv կարգավորումներ",
+    "Torrent cache limit exceeded.": "Գերազանցվել է տորենտի քեշի սահմանաչափը։",
     "Torrent source limit reached.":
         "Հասել եք տորենտ աղբյուրների սահմանաչափին։",
     "Touchscreen locked": "Սենսորային էկրանը կողպված է",

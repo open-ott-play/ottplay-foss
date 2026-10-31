@@ -909,6 +909,7 @@ async function checkStatusDiagnostics() {
                     available: false,
                     capturedAt: data.diagnostics.provider.capturedAt,
                     catalog: null,
+                    companion: null,
                     lookup: null,
                     provider: null,
                     requests: [],

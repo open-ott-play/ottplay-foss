@@ -1110,6 +1110,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Muutke suumirežiimi",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv seaded",
+    "Torrent cache limit exceeded.": "Torrenti vahemälu piirang on ületatud.",
     "Torrent source limit reached.": "Torrentiallikate ülempiir on saavutatud.",
     "Touchscreen locked": "Puuteekraan on lukustatud",
     "Touchscreen unlocked": "Puuteekraani lukustus on avatud",

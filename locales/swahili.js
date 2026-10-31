@@ -1129,6 +1129,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Badilisha modi ya kukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv mipangilio",
+    "Torrent cache limit exceeded.": "Kikomo cha akiba ya torrent kimezidiwa.",
     "Torrent source limit reached.":
         "Idadi ya juu zaidi ya vyanzo vya torrent imefikiwa.",
     "Touchscreen locked": "Skrini ya mguso imefungwa",

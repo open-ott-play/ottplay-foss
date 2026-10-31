@@ -1088,6 +1088,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ဇူးမ်မုဒ်ကို ပြောင်းပါ။",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ဆက်တင်များ",
+    "Torrent cache limit exceeded.": "Torrent ယာယီမှတ်ဉာဏ် ကန့်သတ်ချက်ကို ကျော်လွန်သွားပါပြီ။",
     "Torrent source limit reached.": "တော်ရင့်ရင်းမြစ် အရေအတွက် ကန့်သတ်ချက်သို့ ရောက်ရှိနေပါပြီ။",
     "Touchscreen locked": "ထိတွေ့မျက်နှာပြင်ကို လော့ခ်ချထားသည်",
     "Touchscreen unlocked": "ထိတွေ့မျက်နှာပြင်၏ လော့ခ်ကို ဖွင့်ထားသည်",

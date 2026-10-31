@@ -1113,6 +1113,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Byt zoomläge",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-inställningar",
+    "Torrent cache limit exceeded.":
+        "Gränsen för torrentcache har överskridits.",
     "Torrent source limit reached.": "Maximalt antal torrentkällor har nåtts.",
     "Touchscreen locked": "Pekskärmen är låst",
     "Touchscreen unlocked": "Pekskärmen är upplåst",

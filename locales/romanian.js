@@ -1137,6 +1137,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Schimbă modul de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Setări Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Limita memoriei cache pentru torrent a fost depășită.",
     "Torrent source limit reached.":
         "A fost atins numărul maxim de surse torrent.",
     "Touchscreen locked": "Ecranul tactil este blocat",

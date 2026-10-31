@@ -1111,6 +1111,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Vaihda zoomaustilaa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv asetukset",
+    "Torrent cache limit exceeded.": "Torrentin välimuistin raja ylittyi.",
     "Torrent source limit reached.":
         "Torrent-lähteiden enimmäismäärä on saavutettu.",
     "Touchscreen locked": "Kosketusnäyttö on lukittu",

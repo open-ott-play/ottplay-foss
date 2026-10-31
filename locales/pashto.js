@@ -1104,6 +1104,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "د لویولو حالت بدل کړئ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "د Top-Tv ترتیبات",
+    "Torrent cache limit exceeded.": "د ټورېنټ د لنډمهاله زېرمې حد اوښتی دی.",
     "Torrent source limit reached.":
         "د تورېنټ سرچینو شمېر ټاکلي حد ته رسېدلی دی.",
     "Touchscreen locked": "لمس پرده قلف شوه",

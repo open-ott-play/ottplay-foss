@@ -92,6 +92,30 @@ for that transfer. Private companion endpoints remain installation settings thro
 Codec support still depends on the video engine; receiving a file does not make
 an unsupported codec playable. External AceStream engines remain separate.
 
+### HTTP mirrors and unavailable releases
+
+Torrent metadata can include HTTP(S) mirrors in its BEP 19 `url-list`. When
+peers do not provide a requested piece promptly, the native companion can read
+it from these mirrors. It verifies the whole piece against the torrent's SHA-1
+hash before returning any of its bytes to the player, including data from
+adjacent files when a piece crosses a file boundary. A mirror with a bad hash
+is discarded. HTTP requests use public-address checks on every redirect and
+do not carry the indexer's API key or browser credentials.
+
+The mirror path keeps a small bounded piece cache in memory rather than
+importing another complete video. Seeking still uses the selected file's byte
+ranges. The existing 2 GiB selected-piece cache admission limit remains; this
+does not make arbitrarily large torrents eligible for playback.
+
+An Internet Archive search result is an item description, not a promise that
+its torrent contains a video. Some items contain only subtitles or metadata;
+the player reports **Nothing to play** for those. When video files exist but
+neither peers nor mirrors can provide them, playback reports a bounded error.
+`ott t1 doctor --provider` includes a passive `companion` snapshot with its
+state, error, downloaded bytes and total bytes, without source URLs or secrets.
+Downloaded bytes describe received, verified data; they do not establish that
+the video decoder has displayed a frame.
+
 Torrent file responses and resolver URLs with a recognized video-file extension
 use file playback without changing the saved streaming-engine preference.
 Other resolver URLs follow that preference. If a resolver returns a file URL
@@ -145,6 +169,8 @@ Saved sources are listed by name and offer **Load**, **Replace**, and **Delete**
 Replacement keeps the source ID but requires re-entering its address and key:
 the native API never reads those private values back into the interface. Changing
 the endpoint or key invalidates that source's old playback references.
+Empty fields in **Replace** are a new draft, not the current saved connection.
+Use **Load** from the saved-source list to keep using its stored address and key.
 
 The provider settings also have a top-level **Load** action. For Torznab it opens
 the only configured source, offers a choice when several exist, or opens the

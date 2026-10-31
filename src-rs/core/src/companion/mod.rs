@@ -26,6 +26,7 @@ mod torznab_store;
 #[cfg(test)]
 mod torznab_tests;
 mod torznab_xml;
+mod webseed;
 
 #[derive(Clone)]
 pub struct Companion(Arc<Inner>);

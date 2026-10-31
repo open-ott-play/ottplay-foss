@@ -482,6 +482,210 @@ pub(crate) async fn fetch_companion_metadata(raw: &str) -> Result<Vec<u8>, &'sta
     .map_err(|_| "source_timeout")?
 }
 
+/// A web seed is an untrusted public peer. Recheck and pin every redirect;
+/// never inherit the playlist proxy's LAN exceptions or ambient credentials.
+pub(crate) fn companion_range_url(raw: &str) -> Result<Url, &'static str> {
+    let url = Url::parse(raw).map_err(|_| "webseed_network_denied")?;
+    if raw.len() > 8192
+        || raw.trim() != raw
+        || raw.chars().any(char::is_control)
+        || !matches!(url.scheme(), "http" | "https")
+        || !matches!(url.port_or_known_default(), Some(80 | 443))
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.fragment().is_some()
+        || url.host_str().is_none()
+    {
+        return Err("webseed_network_denied");
+    }
+    Ok(url)
+}
+
+pub(crate) async fn fetch_companion_range(
+    raw: &str,
+    start: u64,
+    length: u64,
+    total: u64,
+    cancel: &tokio_util::sync::CancellationToken,
+) -> Result<Vec<u8>, &'static str> {
+    let url = companion_range_url(raw)?;
+    tokio::select! {
+        _ = cancel.cancelled() => Err("session_stopped"),
+        result = tokio::time::timeout(TIMEOUT, companion_range_with(url, start, length, total, |url| async move {
+            Policy::default().resolve(&url).await.map_err(|_| "webseed_network_denied")
+        })) => result.map_err(|_| "webseed_timeout")?,
+    }
+}
+
+async fn companion_range_with<F, Fut>(
+    mut url: Url,
+    start: u64,
+    length: u64,
+    total: u64,
+    resolve: F,
+) -> Result<Vec<u8>, &'static str>
+where
+    F: Fn(Url) -> Fut,
+    Fut: Future<Output = Result<Vec<SocketAddr>, &'static str>>,
+{
+    let end = start.checked_add(length).ok_or("webseed_invalid_range")?;
+    if length == 0 || length > 16 * 1024 * 1024 || end > total {
+        return Err("webseed_invalid_range");
+    }
+    for hop in 0..=MAX_REDIRECTS {
+        let addresses = resolve(url.clone()).await?;
+        let client = Client::builder()
+            .no_proxy()
+            .redirect(redirect::Policy::none())
+            .no_gzip()
+            .no_brotli()
+            .no_deflate()
+            .no_zstd()
+            .resolve_to_addrs(url.host_str().ok_or("webseed_network_denied")?, &addresses)
+            .build()
+            .map_err(|_| "webseed_unavailable")?;
+        let mut response = client
+            .get(url.clone())
+            .header(reqwest::header::ACCEPT_ENCODING, "identity")
+            .header(reqwest::header::RANGE, format!("bytes={start}-{}", end - 1))
+            .send()
+            .await
+            .map_err(|_| "webseed_unavailable")?;
+        if response.status().is_redirection() {
+            if hop == MAX_REDIRECTS {
+                return Err("webseed_unavailable");
+            }
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or("webseed_unavailable")?;
+            let next = url.join(location).map_err(|_| "webseed_network_denied")?;
+            url = companion_range_url(next.as_str())?;
+            continue;
+        }
+        if response
+            .headers()
+            .get(reqwest::header::CONTENT_ENCODING)
+            .is_some_and(|v| v != "identity")
+        {
+            return Err("webseed_invalid_range");
+        }
+        let expected = format!("bytes {start}-{}/{total}", end - 1);
+        if response.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+            if response
+                .headers()
+                .get(reqwest::header::CONTENT_RANGE)
+                .and_then(|v| v.to_str().ok())
+                != Some(expected.as_str())
+            {
+                return Err("webseed_invalid_range");
+            }
+        } else if response.status() != reqwest::StatusCode::OK || start != 0 || length != total {
+            return Err("webseed_invalid_range");
+        }
+        if response.content_length().is_some_and(|n| n != length) {
+            return Err("webseed_invalid_range");
+        }
+        let mut bytes = Vec::with_capacity(length as usize);
+        while let Some(chunk) = response.chunk().await.map_err(|_| "webseed_unavailable")? {
+            if bytes.len() + chunk.len() > length as usize {
+                return Err("webseed_invalid_range");
+            }
+            bytes.extend_from_slice(&chunk);
+        }
+        return if bytes.len() == length as usize {
+            Ok(bytes)
+        } else {
+            Err("webseed_invalid_range")
+        };
+    }
+    Err("webseed_unavailable")
+}
+
+#[cfg(test)]
+mod webseed_range_tests {
+    use super::*;
+    use axum::{response::IntoResponse, routing::get, Router};
+
+    #[tokio::test]
+    async fn pinned_ranges_validate_status_length_encoding_and_every_redirect() {
+        let app = Router::new().route("/:kind", get(|axum::extract::Path(kind): axum::extract::Path<String>, headers: HeaderMap| async move {
+            assert_eq!(headers.get("range").unwrap(), "bytes=2-4");
+            assert_eq!(headers.get("accept-encoding").unwrap(), "identity");
+            assert!(!headers.contains_key("authorization"));
+            assert!(!headers.contains_key("cookie"));
+            match kind.as_str() {
+                "redirect" => (axum::http::StatusCode::FOUND, [("location", "http://private.invalid/data")], "").into_response(),
+                "oversize" => (axum::http::StatusCode::PARTIAL_CONTENT, [("content-range", "bytes 2-4/10")], "toolong").into_response(),
+                "short" => (axum::http::StatusCode::PARTIAL_CONTENT, [("content-range", "bytes 2-4/10")], "ab").into_response(),
+                "wrong" => (axum::http::StatusCode::PARTIAL_CONTENT, [("content-range", "bytes 0-2/10")], "abc").into_response(),
+                "full" => (axum::http::StatusCode::OK, [("content-range", "bytes 2-4/10")], "abc").into_response(),
+                "encoded" => (axum::http::StatusCode::PARTIAL_CONTENT, [("content-range", "bytes 2-4/10"), ("content-encoding", "gzip")], "abc").into_response(),
+                _ => (axum::http::StatusCode::PARTIAL_CONTENT, [("content-range", "bytes 2-4/10")], "abc").into_response(),
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        for kind in [
+            "ok", "oversize", "short", "wrong", "full", "encoded", "redirect",
+        ] {
+            let url = companion_range_url(&format!("http://webseed.invalid/{kind}")).unwrap();
+            let result = companion_range_with(url, 2, 3, 10, |url| async move {
+                if url.host_str() == Some("webseed.invalid") {
+                    Ok(vec![address])
+                } else {
+                    Err("webseed_network_denied")
+                }
+            })
+            .await;
+            if kind == "ok" {
+                assert_eq!(result.unwrap(), b"abc");
+            } else if kind == "redirect" {
+                assert_eq!(result.unwrap_err(), "webseed_network_denied");
+            } else {
+                assert_eq!(result.unwrap_err(), "webseed_invalid_range", "{kind}");
+            }
+        }
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn webseed_public_policy_rejects_lan_and_cancellation() {
+        for url in [
+            "http://127.0.0.1/a",
+            "http://169.254.169.254/latest",
+            "http://10.1.2.3/a",
+            "http://[::1]/a",
+        ] {
+            let cancel = tokio_util::sync::CancellationToken::new();
+            assert_eq!(
+                fetch_companion_range(url, 0, 1, 1, &cancel)
+                    .await
+                    .unwrap_err(),
+                "webseed_network_denied"
+            );
+        }
+        for url in [
+            "http://user:pass@example.test/a",
+            "file:///tmp/a",
+            "https://example.test:9000/a",
+            "https://example.test/a#b",
+        ] {
+            assert!(companion_range_url(url).is_err());
+        }
+        let cancel = tokio_util::sync::CancellationToken::new();
+        cancel.cancel();
+        assert_eq!(
+            fetch_companion_range("http://example.invalid/a", 0, 1, 1, &cancel)
+                .await
+                .unwrap_err(),
+            "session_stopped"
+        );
+    }
+}
+
 async fn companion_get(url: Url) -> Result<reqwest::Response, &'static str> {
     let addresses = Policy::default()
         .resolve(&url)

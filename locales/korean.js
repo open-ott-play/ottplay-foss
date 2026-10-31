@@ -1102,6 +1102,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "줌 모드 변경",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv 설정",
+    "Torrent cache limit exceeded.": "토렌트 캐시 한도를 초과했습니다.",
     "Torrent source limit reached.": "토렌트 소스 수가 한도에 도달했습니다.",
     "Touchscreen locked": "터치스크린이 잠겼습니다",
     "Touchscreen unlocked": "터치스크린 잠금이 해제되었습니다",

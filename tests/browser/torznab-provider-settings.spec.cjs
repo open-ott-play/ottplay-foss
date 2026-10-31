@@ -48,10 +48,10 @@ async function startNativePlayer(page, context, baseURL, mode, options = {}) {
             return route.abort();
         return route.continue();
     });
-    await context.addInitScript(() => {
-        localStorage.setItem("ottplaylang", "_eng");
+    await context.addInitScript((language) => {
+        localStorage.setItem("ottplaylang", language);
         localStorage.setItem("ottplayprov", "demo");
-    });
+    }, options.language || "_eng");
     await page.goto("/f/pc/");
     await page.waitForFunction(() => window.commandChannelsReady === true);
     await page.evaluate(
@@ -189,13 +189,60 @@ for (const mode of [0, 1]) {
         await chooseRow(page, "Prowlarr / Torznab");
         await chooseRow(page, "Prowlarr / Torznab");
         await chooseRow(page, "Replace");
+        await expect(page.locator("#listCaption")).toContainText(
+            "Replace: Prowlarr / Torznab"
+        );
         await expect(page.locator("#list")).toContainText(
-            "Server address: Not configured"
+            "Server address: Enter value"
+        );
+        await expect(page.locator("#list")).toContainText(
+            "Access key: Enter value"
+        );
+        await expect(page.locator("#listDetail")).toContainText(
+            "Prowlarr / Torznab · saved on this device"
         );
         await expect(page.locator("#list")).not.toContainText("••••••••");
         await expect(page.locator("#list")).not.toContainText("127.0.0.1:9696");
         await chooseRow(page, "Cancel");
         await expect(page.locator("#list")).toContainText("Add new list");
+        expect(errors).toEqual([]);
+    });
+}
+
+for (const mode of [0, 1]) {
+    test(`Russian replacement keeps saved connection distinct from draft (interface ${mode})`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const errors = await startNativePlayer(page, context, baseURL, mode, {
+            initialSource: { id: "archive", label: "Archive" },
+            language: "_rus",
+        });
+        await page.evaluate(() => window.__ottEditProvider());
+        await chooseRow(page, "Prowlarr / Torznab");
+        await chooseRow(page, "Archive");
+        await chooseRow(page, "Заменить");
+        await expect(page.locator("#listCaption")).toContainText(
+            "Заменить: Archive"
+        );
+        await expect(page.locator("#list")).toContainText(
+            "Адрес сервера: Введите значение"
+        );
+        await expect(page.locator("#list")).toContainText(
+            "Ключ доступа: Введите значение"
+        );
+        await expect(page.locator("#listDetail")).toContainText(
+            "Archive · сохранено на этом устройстве"
+        );
+        await chooseRow(page, "Отмена");
+        expect(
+            await page.evaluate(() =>
+                window.__settingsIndexerCalls.some(
+                    (call) => call.operation === "configure"
+                )
+            )
+        ).toBe(false);
         expect(errors).toEqual([]);
     });
 }

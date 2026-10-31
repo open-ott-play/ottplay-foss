@@ -1123,6 +1123,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Томруулах горим өөрчлөх",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-ийн тохиргоо",
+    "Torrent cache limit exceeded.": "Торрент кэшийн хязгаар хэтэрсэн.",
     "Torrent source limit reached.":
         "Торрент эх сурвалжийн тоо дээд хязгаарт хүрсэн.",
     "Touchscreen locked": "Мэдрэгчтэй дэлгэц түгжигдсэн",

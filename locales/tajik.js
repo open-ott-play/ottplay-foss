@@ -1120,6 +1120,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ҳолати калонкуниро иваз кунед",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Танзимоти Top-Tv",
+    "Torrent cache limit exceeded.": "Ҳадди кеши торрент гузашт.",
     "Torrent source limit reached.":
         "Шумораи манбаъҳои торрент ба ҳадди аксар расид.",
     "Touchscreen locked": "Экрани ламсӣ қулф шуд",

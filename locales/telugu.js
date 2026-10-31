@@ -1075,6 +1075,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "జూమ్ మోడ్‌ని మార్చండి",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv సెట్టింగ్‌లు",
+    "Torrent cache limit exceeded.": "టొరెంట్ కాష్ పరిమితి మించిపోయింది.",
     "Torrent source limit reached.": "టొరెంట్ మూలాల సంఖ్య గరిష్ఠ పరిమితికి చేరుకుంది.",
     "Touchscreen locked": "టచ్‌స్క్రీన్ లాక్ చేయబడింది",
     "Touchscreen unlocked": "టచ్‌స్క్రీన్ లాక్ తీసివేయబడింది",

@@ -1102,6 +1102,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Đổi chế độ thu phóng",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cài đặt Top-Tv",
+    "Torrent cache limit exceeded.": "Đã vượt quá giới hạn bộ nhớ đệm torrent.",
     "Torrent source limit reached.": "Đã đạt số lượng nguồn torrent tối đa.",
     "Touchscreen locked": "Đã khóa màn hình cảm ứng",
     "Touchscreen unlocked": "Đã mở khóa màn hình cảm ứng",

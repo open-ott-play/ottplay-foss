@@ -1117,6 +1117,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Verander zoemmodus",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv-instellings",
+    "Torrent cache limit exceeded.": "Torrent-kaslimiet oorskry.",
     "Torrent source limit reached.": "Die limiet vir torrentbronne is bereik.",
     "Touchscreen locked": "Raakskerm gesluit",
     "Touchscreen unlocked": "Raakskerm ontsluit",

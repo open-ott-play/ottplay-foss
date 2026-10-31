@@ -1097,6 +1097,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Change zoom mode",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv settings",
+    "Torrent cache limit exceeded.": "Torrent cache limit exceeded.",
     "Torrent source limit reached.": "Torrent source limit reached.",
     "Touchscreen locked": "Touchscreen locked",
     "Touchscreen unlocked": "Touchscreen unlocked",

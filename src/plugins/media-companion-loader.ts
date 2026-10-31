@@ -8,6 +8,8 @@ export function installMediaCompanion(w: any): void {
     var nativeAvailable: boolean | null = w.__TAURI__ ? null : false;
     var nativeIndexer = false;
     var capabilityRequest: Promise<any> | null = null;
+    var playbackClient: any = null;
+    var playbackRequest: any = null;
     function capabilities(): Promise<any> {
         if (!w.__TAURI__) return Promise.resolve(null);
         if (!capabilityRequest)
@@ -104,6 +106,9 @@ export function installMediaCompanion(w: any): void {
     w.__ottMediaCompanion = {
         available: available,
         capabilities: capabilities,
+        diagnostics: function () {
+            return playbackClient?.diagnostics?.() || null;
+        },
         ensure: ensure,
         indexerAvailable: function () {
             return typeof w.fetch === "function" && nativeIndexer;
@@ -121,6 +126,9 @@ export function installMediaCompanion(w: any): void {
         ) {
             var cancelled = false,
                 release = function () {};
+            var request = {};
+            playbackRequest = request;
+            playbackClient = null;
             var nativeOnly = false;
             try {
                 nativeOnly =
@@ -130,7 +138,31 @@ export function installMediaCompanion(w: any): void {
             ensure(nativeOnly).then(
                 function (client) {
                     if (cancelled) return;
-                    release = client.resolve(value, done);
+                    if (playbackRequest === request) playbackClient = client;
+                    release = client.resolve(value, done, {
+                        failed: function (code: string) {
+                            if (
+                                cancelled ||
+                                playbackRequest !== request ||
+                                w.__ottStandby?.blocked()
+                            )
+                                return;
+                            var message =
+                                code === "companion_no_playable_files" ||
+                                code === "no_files"
+                                    ? w._("Nothing to play")
+                                    : code === "cache_limit"
+                                      ? w._("Torrent cache limit exceeded.")
+                                      : code === "stream_timeout" ||
+                                          code === "webseed_timeout" ||
+                                          code === "companion_timeout"
+                                        ? w._(
+                                              "Stream timed out. Select the channel to retry."
+                                          )
+                                        : "";
+                            if (message) w.showShift?.(message);
+                        },
+                    });
                     if (cancelled) release();
                 },
                 function () {

@@ -1134,6 +1134,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Cambiar modo de zoom",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ajustes de Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Se ha superado el límite de la caché del torrent.",
     "Torrent source limit reached.":
         "Se ha alcanzado el número máximo de fuentes torrent.",
     "Touchscreen locked": "Pantalla táctil bloqueada",

@@ -1113,6 +1113,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Sauya yanayin zuƙowa",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Saitunan Top-Tv",
+    "Torrent cache limit exceeded.":
+        "An wuce iyakar ma'ajiyar wucin gadi ta torrent.",
     "Torrent source limit reached.": "An kai iyakar adadin majiyoyin torrent.",
     "Touchscreen locked": "An kulle allon taɓawa",
     "Touchscreen unlocked": "An buɗe makullin allon taɓawa",

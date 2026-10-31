@@ -1086,6 +1086,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "විශාලන මාදිලිය වෙනස් කරන්න",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv සැකසුම්",
+    "Torrent cache limit exceeded.": "ටොරන්ට් හැඹිලි සීමාව ඉක්මවා ඇත.",
     "Torrent source limit reached.": "ටොරන්ට් මූලාශ්‍ර ගණනේ උපරිම සීමාවට ළඟා වී ඇත.",
     "Touchscreen locked": "ස්පර්ශ තිරය අගුළු දමා ඇත",
     "Touchscreen unlocked": "ස්පර්ශ තිරයේ අගුල ඉවත් කර ඇත",

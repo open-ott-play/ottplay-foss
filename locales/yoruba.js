@@ -1097,6 +1097,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Yí ipò súnmọ́/súnjìnnà padà",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ètò Top-Tv",
+    "Torrent cache limit exceeded.":
+        "A ti kọjá ààlà ibi ìpamọ́ ìgbà díẹ̀ torrent.",
     "Torrent source limit reached.":
         "A ti dé iye tó pọ̀ jù fún àwọn orísun torrent.",
     "Touchscreen locked": "A ti ti iboju ìfọwọ́kàn pa",

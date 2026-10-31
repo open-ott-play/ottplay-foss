@@ -101,6 +101,7 @@ test("unavailable, replaced and throwing producers return explicit unavailable e
         available: false,
         capturedAt: 1000,
         catalog: null,
+        companion: null,
         lookup: null,
         provider: null,
         requests: [],
@@ -219,4 +220,94 @@ test("sparse request arrays and replaced producers cannot bypass projection", ()
         },
     });
     assert.deepEqual(snapshot(host), snapshot({}));
+});
+
+test("companion diagnostics expose only passive bounded playback evidence", () => {
+    const { host } = fixture();
+    const status = {
+        active: true,
+        downloaded: 1048576,
+        error: "stream_timeout",
+        state: "ready",
+        total: 2097152,
+    };
+    for (const key of ["url", "source", "endpoint", "apiKey", "files"])
+        Object.defineProperty(status, key, {
+            get: () => assert.fail("private companion field read"),
+        });
+    let reads = 0;
+    host.__ottMediaCompanion = {
+        diagnostics: () => {
+            reads++;
+            return status;
+        },
+        ensure: () => assert.fail("must not start companion"),
+    };
+    host.fetch = () => assert.fail("must not fetch");
+    const result = snapshot(host);
+    assert.deepEqual(result.companion, status);
+    assert.equal(reads, 1);
+    result.companion.downloaded = 0;
+    assert.equal(status.downloaded, 1048576);
+    assert.equal(result.catalog.loadedCount, 1500);
+});
+
+test("invalid companion data cannot leak or hide valid catalogue evidence", () => {
+    for (const invalid of [
+        { error: secret },
+        { state: secret },
+        { downloaded: Infinity },
+        { downloaded: 0.5 },
+        { total: -1 },
+        { active: "true" },
+    ]) {
+        const { host } = fixture();
+        host.__ottMediaCompanion = {
+            diagnostics: () => ({
+                active: false,
+                downloaded: null,
+                error: "companion_no_playable_files",
+                state: "error",
+                total: null,
+                ...invalid,
+            }),
+        };
+        const result = snapshot(host);
+        assert.equal(result.available, true);
+        assert.equal(result.companion, null);
+        assert.equal(JSON.stringify(result).includes(secret), false);
+    }
+    const { host } = fixture();
+    host.__ottMediaCompanion = {
+        diagnostics: () => {
+            host.__ottMediaCompanion = null;
+            return null;
+        },
+    };
+    assert.deepEqual(snapshot(host), snapshot({}));
+});
+
+test("companion failures retain approved actionable codes without sources", () => {
+    for (const error of [
+        "companion_no_playable_files",
+        "cache_limit",
+        "stream_timeout",
+        "webseed_unavailable",
+        "webseed_timeout",
+        "webseed_invalid_range",
+        "webseed_hash_mismatch",
+        "webseed_network_denied",
+    ]) {
+        const { host } = fixture();
+        host.__ottMediaCompanion = {
+            diagnostics: () => ({
+                active: false,
+                downloaded: 0,
+                error,
+                state: "error",
+                total: null,
+            }),
+        };
+        assert.equal(snapshot(host).companion.error, error);
+    }
 });

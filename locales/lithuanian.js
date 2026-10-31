@@ -1112,6 +1112,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Keisti mastelio režimą",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv nustatymai",
+    "Torrent cache limit exceeded.": "Viršyta torento podėlio riba.",
     "Torrent source limit reached.":
         "Pasiektas didžiausias torrentų šaltinių skaičius.",
     "Touchscreen locked": "Jutiklinis ekranas užrakintas",

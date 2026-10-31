@@ -1135,6 +1135,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Beddel habka weyneynta",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Dejinta Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Waxaa la dhaafay xadka kaydka ku meel gaarka ah ee torrent-ka.",
     "Torrent source limit reached.":
         "Waxaa la gaaray tirada ugu badan ee ilaha torrent.",
     "Touchscreen locked": "Shaashadda taabashada waa la qufulay",

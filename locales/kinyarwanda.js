@@ -1142,6 +1142,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Hindura uburyo bwo gukuza",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Igenamiterere rya Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Ingano ntarengwa y'ububiko bw'agateganyo bwa torrent yarenze.",
     "Torrent source limit reached.":
         "Umubare ntarengwa w'amasoko ya torrent wagezweho.",
     "Touchscreen locked": "Ekarani ikorwaho yafunzwe",
