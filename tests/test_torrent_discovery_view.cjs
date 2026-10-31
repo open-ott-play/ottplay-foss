@@ -273,6 +273,53 @@ test("first page stays usable while later pages load automatically and retain li
     assert.equal(f.playCalls.length, 0);
 });
 
+test("returning to movies resumes a cancelled append without accepting its stale replies", () => {
+    for (const mode of ["sources", "close"]) {
+        const f = setup();
+        f.open();
+        f.requests[0].done(page([movie(1), movie(2)], 2));
+        f.host.selIndex = 1;
+        f.nextPage();
+        const abandoned = f.requests[1];
+        f.key("NEXT");
+        assert.equal(f.requests.length, 2, mode);
+        if (mode === "sources") {
+            f.key("ENTER");
+            f.key("RETURN");
+        } else {
+            f.host.closeList();
+            assert.equal(f.driver.catalogBrowser.restore(), true, mode);
+        }
+        assert.equal(abandoned.cancelled, true, mode);
+        assert.equal(f.view.selected, 1, mode);
+        assert.equal(f.view.more, true, mode);
+        assert.equal(f.timers.size, 1, mode);
+        abandoned.done(page([movie(99)], 99));
+        assert.deepEqual(
+            Array.from(f.view.rows),
+            ["tmdb:movie:1", "tmdb:movie:2"],
+            mode
+        );
+        f.nextPage();
+        assert.deepEqual(f.requests[2].args, ["popular", 2], mode);
+        f.key("NEXT");
+        f.nextPage();
+        assert.equal(f.requests.length, 3, mode);
+        f.requests[2].done(page([movie(2), movie(3)], 3));
+        assert.equal(f.view.selected, 1, mode);
+        assert.equal(f.view.rows.length, 3, mode);
+        abandoned.done({ error: "timeout", ok: false });
+        f.nextPage();
+        assert.deepEqual(f.requests[3].args, ["popular", 3], mode);
+        f.requests[3].done(page([movie(4)]));
+        f.nextPage();
+        assert.equal(f.requests.length, 4, mode);
+        assert.equal(f.view.rows.length, 4, mode);
+        assert.equal(f.view.more, false, mode);
+        assert.equal(f.timers.size, 0, mode);
+    }
+});
+
 test("background loading admits twenty thousand movies without a 500-item cutoff", () => {
     const f = setup();
     f.open();

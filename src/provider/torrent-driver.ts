@@ -999,8 +999,8 @@ function createTorrentDiscoveryView(
         if (!append) {
             resetMovies();
             autoPages = true;
+            next = null;
         }
-        next = null;
         failure = "";
         busy = true;
         if (!append) show(selected);

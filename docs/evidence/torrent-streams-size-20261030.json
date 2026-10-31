@@ -12,9 +12,8 @@
     "workingTree": true,
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
-    "diagnosticAttempt": "d5a698aa-208f-4d93-bb41-96b833f0232d",
-    "diagnosticCollectedAt": "2026-10-31T02:37:48.517Z",
-    "verifiedReport": "build/reports/classic-size-diagnostics.json"
+    "verifiedReport": "build/reports/classic-bundle.json",
+    "measuredAt": "2026-10-31T02:44:42.402Z"
   },
   "toolchain": {
     "node": "26.8.2",
@@ -35,7 +34,7 @@
     },
     "catalog": {
       "bytes": 23011,
-      "gzipBytes": 6647
+      "gzipBytes": 6649
     },
     "companion": {
       "bytes": 207,
@@ -111,12 +110,12 @@
           },
           "after": {
             "bytes": 70603,
-            "gzipBytes": 22649,
-            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
+            "gzipBytes": 22651,
+            "sha256": "6ae45cb544d554acba4cc69f78d4f79b7020ed474e6bb033780a3eddd3a593d4"
           },
           "delta": {
             "bytes": 23011,
-            "gzipBytes": 6647
+            "gzipBytes": 6649
           }
         },
         "native": {
@@ -127,12 +126,12 @@
           },
           "after": {
             "bytes": 70603,
-            "gzipBytes": 22649,
-            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
+            "gzipBytes": 22651,
+            "sha256": "6ae45cb544d554acba4cc69f78d4f79b7020ed474e6bb033780a3eddd3a593d4"
           },
           "delta": {
             "bytes": 23011,
-            "gzipBytes": 6647
+            "gzipBytes": 6649
           }
         },
         "mobile": {
@@ -143,12 +142,12 @@
           },
           "after": {
             "bytes": 70603,
-            "gzipBytes": 22649,
-            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
+            "gzipBytes": 22651,
+            "sha256": "6ae45cb544d554acba4cc69f78d4f79b7020ed474e6bb033780a3eddd3a593d4"
           },
           "delta": {
             "bytes": 23011,
-            "gzipBytes": 6647
+            "gzipBytes": 6649
           }
         }
       }
@@ -1391,11 +1390,11 @@
       "after": {
         "legacy": {
           "bytes": 1392222,
-          "gzipBytes": 433611
+          "gzipBytes": 433613
         },
         "complete": {
           "bytes": 1778721,
-          "gzipBytes": 547740
+          "gzipBytes": 547742
         }
       }
     },
@@ -1414,11 +1413,11 @@
       "after": {
         "legacy": {
           "bytes": 1392180,
-          "gzipBytes": 433666
+          "gzipBytes": 433668
         },
         "complete": {
           "bytes": 1778679,
-          "gzipBytes": 547795
+          "gzipBytes": 547797
         }
       }
     },
@@ -1437,11 +1436,11 @@
       "after": {
         "legacy": {
           "bytes": 1392180,
-          "gzipBytes": 433666
+          "gzipBytes": 433668
         },
         "complete": {
           "bytes": 1778679,
-          "gzipBytes": 547795
+          "gzipBytes": 547797
         }
       }
     }
@@ -1539,7 +1538,7 @@
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
       "bytes": 1774511,
-      "gzipBytes": 547590
+      "gzipBytes": 547592
     },
     "BUDGET": {
       "bytes": 1169169,
@@ -1547,7 +1546,7 @@
     },
     "LEGACY_TOTAL_BUDGET": {
       "bytes": 1392608,
-      "gzipBytes": 435288
+      "gzipBytes": 435290
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1613,7 +1612,7 @@
     },
     "TOTAL_BUDGET": {
       "bytes": 1778991,
-      "gzipBytes": 549894
+      "gzipBytes": 549896
     }
   }
 }
