@@ -606,7 +606,8 @@ export function uiInit(): void {
 
     // Progress bar drag-to-seek — press on progress bar and drag to seek, release to seek
     var $progressDiv = $("#progress_div");
-    var seekInProgress = false;
+    // 0/undefined idle, 1 pressed, 2 released; the trailing click is ignored.
+    var seekInProgress;
 
     function canSeekProgress(): boolean {
         var w = window as any;
@@ -639,7 +640,7 @@ export function uiInit(): void {
             console.error("$progress_div[mousedown] evt.clientX not exist");
             return;
         }
-        seekInProgress = true;
+        seekInProgress = 1;
     });
 
     function seekProgress(e: any, eventName: string): void {
@@ -703,11 +704,14 @@ export function uiInit(): void {
         }
     }
     $progressDiv.on("mouseup.ottUi", function (e: any) {
-        if (!seekInProgress) return;
-        seekInProgress = false;
+        if (seekInProgress != 1) return;
+        seekInProgress = 2;
         seekProgress(e, "mouseup");
     });
     $progressDiv.on("click.ottUi", function (e: any) {
+        // A press/release also emits a click; seek once on release and let
+        // that trailing click pass. A new press resets the phase.
+        if (seekInProgress > 1 && e.clientX != null) return;
         seekProgress(e, "click");
     });
 

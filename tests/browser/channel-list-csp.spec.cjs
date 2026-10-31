@@ -5308,8 +5308,11 @@ test("Modern fullscreen timeline and audio picker preserve the playback owner", 
             showChannelInfo(10);
             $("#info1").finish();
         });
-        await expect(page.locator("#info1")).toBeVisible();
-        await expect(page.locator("#info1")).toContainText("Northern Passage");
+        await expect(page.locator("#modernPlayer")).toBeVisible();
+        await expect(page.locator("#modernPlayerTitle")).toHaveText(
+            "Northern Passage"
+        );
+        await expect(page.locator("#info1")).toBeHidden();
         const clockBounds = await page.evaluate(() => ({
             channelRight: document
                 .getElementById("channel")

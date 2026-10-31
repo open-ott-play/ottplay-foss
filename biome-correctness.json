@@ -12,12 +12,17 @@
     "enabled": false
   },
   "assist": {
-    "enabled": false
+    "enabled": true,
+    "actions": {
+      "source": {
+        "useSortedKeys": "on"
+      }
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
+      "preset": "none",
       "correctness": {
         "noUnreachable": "error",
         "noUnsafeFinally": "error",

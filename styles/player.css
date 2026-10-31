@@ -2301,3 +2301,496 @@ body.interface-modern #numprog [aria-pressed="true"] {
         transition: none;
     }
 }
+
+/* Modern playback overlay. It is created only by the optional Modern asset;
+   Classic keeps its own footer, shortcuts and click bands untouched. */
+body.interface-modern.modern-player-ready #info1 {
+    visibility: hidden !important;
+}
+body.interface-modern.modern-player-ready #permanentTime {
+    top: 2vh !important;
+    right: 2.4vw !important;
+    padding: 0.35em 0.7em !important;
+    font-size: 0.9em;
+    color: var(--modern-muted) !important;
+    text-shadow: none;
+    background: rgba(12, 14, 19, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: none;
+}
+#modernPlayer {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-family: inherit;
+    color: var(--modern-text, #f5f5f7);
+    pointer-events: none;
+}
+#modernPlayer[hidden] {
+    display: none !important;
+}
+#modernPlayer .modern-player-scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+    touch-action: manipulation;
+    background: transparent;
+}
+#modernPlayer .modern-player-panel {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 100%;
+    max-height: 86vh;
+    padding: 13vh 5vw calc(3.4vh + env(safe-area-inset-bottom, 0px));
+    overflow: auto hidden;
+    pointer-events: auto;
+    scrollbar-width: none;
+    background: linear-gradient(
+        180deg,
+        rgba(8, 9, 13, 0) 0%,
+        rgba(8, 9, 13, 0.42) 24%,
+        rgba(8, 9, 13, 0.86) 48%,
+        rgba(8, 9, 13, 0.97) 76%,
+        rgba(8, 9, 13, 0.99) 100%
+    );
+}
+#modernPlayer .modern-player-panel::-webkit-scrollbar {
+    display: none;
+}
+#modernPlayer .modern-player-head {
+    display: flex;
+    gap: 3vw;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+#modernPlayer .modern-player-heading {
+    min-width: 0;
+    max-width: 62%;
+    text-align: start;
+}
+#modernPlayer .modern-player-kicker {
+    display: inline-flex;
+    gap: 0.5em;
+    align-items: center;
+    font-size: clamp(11px, 0.78vw, 15px);
+    font-weight: 700;
+    color: var(--modern-accent, #e9ad36);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+}
+#modernPlayer.modern-player-live .modern-player-kicker::before {
+    display: inline-block;
+    width: 0.55em;
+    height: 0.55em;
+    content: "";
+    background: currentColor;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0.2em rgba(233, 173, 54, 0.22);
+}
+#modernPlayer .modern-player-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    margin: 0.16em 0 0.12em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    font-size: clamp(24px, 3.2vw, 54px);
+    font-weight: 700;
+    line-height: 1.06;
+    color: var(--modern-text, #f5f5f7);
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+#modernPlayer .modern-player-meta {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(13px, 0.95vw, 20px);
+    color: var(--modern-muted, #b5b8c3);
+    white-space: nowrap;
+}
+#modernPlayer .modern-player-summary {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    max-width: 56vw;
+    margin: 0.9em 0 0;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    font-size: clamp(13px, 0.9vw, 19px);
+    line-height: 1.45;
+    color: #d6d9e2;
+    text-align: start;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+#modernPlayer .modern-player-summary[hidden],
+#modernPlayer .modern-player-next[hidden],
+#modernPlayer .modern-player-status[hidden] {
+    display: none !important;
+}
+#modernPlayer .modern-player-actions {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    gap: clamp(8px, 0.6vw, 14px);
+    align-items: center;
+    justify-content: flex-end;
+    max-width: 48%;
+    direction: ltr;
+}
+#modernPlayer .modern-player-action[hidden] {
+    display: none !important;
+}
+#modernPlayer .modern-player-action {
+    position: relative;
+    box-sizing: border-box;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: clamp(44px, 3.1vw, 58px);
+    height: clamp(44px, 3.1vw, 58px);
+    padding: 0;
+    color: var(--modern-text, #f5f5f7);
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    transition:
+        background-color 120ms ease,
+        transform 120ms ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+#modernPlayer .modern-player-action:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+#modernPlayer .modern-player-action:focus {
+    outline: 3px solid #ffffff;
+    outline-offset: 3px;
+}
+#modernPlayer .modern-player-action.modern-player-primary {
+    width: clamp(56px, 3.9vw, 72px);
+    height: clamp(56px, 3.9vw, 72px);
+    color: #17140d;
+    background: var(--modern-accent, #e9ad36);
+    border-color: transparent;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+#modernPlayer .modern-player-action.modern-player-primary:hover {
+    background: #f2bd55;
+}
+#modernPlayer .modern-player-action[data-modern-player-action="play"] svg path {
+    fill: currentColor;
+    stroke: none;
+}
+#modernPlayer .modern-player-action-icon {
+    display: block;
+    width: 52%;
+    height: 52%;
+    pointer-events: none;
+}
+#modernPlayer .modern-player-action-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+#modernPlayer .modern-player-action-icon svg text {
+    font-family: inherit;
+    font-size: 8px;
+    font-weight: 700;
+    fill: currentColor;
+    stroke: none;
+}
+#modernPlayer .modern-player-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+}
+#modernPlayer .modern-player-timeline {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: clamp(10px, 1vw, 18px);
+    align-items: center;
+    margin-top: 2.2vh;
+    direction: ltr;
+}
+#modernPlayer .modern-player-elapsed,
+#modernPlayer .modern-player-remaining {
+    min-width: 3.4em;
+    font-size: clamp(12px, 0.86vw, 18px);
+    font-variant-numeric: tabular-nums;
+    color: var(--modern-text, #f5f5f7);
+    white-space: nowrap;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+#modernPlayer .modern-player-remaining {
+    color: var(--modern-muted, #b5b8c3);
+    text-align: right;
+}
+#modernPlayer .modern-player-track {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    height: 2.2em;
+    cursor: pointer;
+}
+#modernPlayer .modern-player-timeline[hidden] {
+    display: none !important;
+}
+#modernPlayer .modern-player-progress {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    box-sizing: border-box !important;
+    flex: 1 1 auto;
+    width: 100% !important;
+    height: 6px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    touch-action: none;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.24) !important;
+    border: 0 !important;
+    border-radius: 999px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35) !important;
+}
+#modernPlayer .modern-player-progress #progress {
+    position: relative;
+    min-width: 6px;
+    height: 100% !important;
+    background: var(--modern-accent, #e9ad36) !important;
+    border-radius: 999px;
+}
+#modernPlayer .modern-player-progress #progress::after {
+    position: absolute;
+    top: 50%;
+    right: -0.55em;
+    width: 1.1em;
+    height: 1.1em;
+    content: "";
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    transform: translateY(-50%);
+}
+#modernPlayer .modern-player-progress #progress_r {
+    display: none !important;
+}
+#modernPlayer .modern-player-progress:focus {
+    outline: 3px solid #ffffff;
+    outline-offset: 5px;
+}
+#modernPlayer .modern-player-progress .tooltip {
+    position: fixed !important;
+    z-index: 9;
+    padding: 0 !important;
+    color: #15130d;
+    background: #ffffff !important;
+    border-radius: 999px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+}
+#modernPlayer .modern-player-progress .tooltip span {
+    top: 0 !important;
+    display: block;
+    padding: 0.2em 0.6em !important;
+    font-size: 12px;
+    color: inherit;
+    background: transparent !important;
+}
+#modernPlayer .modern-player-next {
+    margin-top: 0.8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(12px, 0.85vw, 18px);
+    color: var(--modern-muted, #b5b8c3);
+    text-align: start;
+    white-space: nowrap;
+}
+#modernPlayer .modern-player-next::before {
+    margin-inline-end: 0.5em;
+    color: var(--modern-accent, #e9ad36);
+    content: "›";
+}
+#modernPlayer .modern-player-status {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.32em 0.7em;
+    margin-top: 0.7em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(12px, 0.8vw, 17px);
+    color: #f0d79c;
+    white-space: nowrap;
+    background: rgba(55, 43, 20, 0.72);
+    border: 1px solid rgba(233, 173, 54, 0.38);
+    border-radius: 8px;
+}
+#modernPlayer .modern-player-status-action {
+    cursor: pointer;
+}
+#modernPlayer .modern-player-status-action:focus {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+}
+#modernPlayer .modern-player-actions-focus .modern-player-timeline {
+    opacity: 0.72;
+}
+#modernPlayer .modern-player-panel {
+    animation: modern-player-rise 180ms ease-out both;
+}
+@keyframes modern-player-rise {
+    from {
+        opacity: 0;
+        transform: translateY(1.2vh);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@media (max-width: 760px) {
+    #modernPlayer .modern-player-panel {
+        max-height: 88vh;
+        padding: 9vh 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    #modernPlayer .modern-player-head {
+        flex-direction: column;
+        gap: 1.1em;
+        align-items: stretch;
+    }
+    #modernPlayer .modern-player-heading {
+        max-width: 100%;
+    }
+    #modernPlayer .modern-player-title {
+        font-size: clamp(22px, 7vw, 32px);
+        white-space: normal;
+    }
+    #modernPlayer .modern-player-meta,
+    #modernPlayer .modern-player-kicker {
+        font-size: 13px;
+    }
+    #modernPlayer .modern-player-summary {
+        max-width: 100%;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        font-size: 13px;
+    }
+    #modernPlayer .modern-player-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-start;
+        max-width: 100%;
+    }
+    #modernPlayer .modern-player-action {
+        width: 46px;
+        height: 46px;
+    }
+    #modernPlayer .modern-player-action.modern-player-primary {
+        width: 54px;
+        height: 54px;
+    }
+    #modernPlayer .modern-player-elapsed,
+    #modernPlayer .modern-player-remaining {
+        min-width: 3em;
+        font-size: 13px;
+    }
+    #modernPlayer .modern-player-timeline {
+        margin-top: 1.1em;
+    }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+    #modernPlayer .modern-player-panel {
+        padding-top: 4.5vh;
+    }
+    #modernPlayer .modern-player-summary,
+    #modernPlayer .modern-player-next {
+        display: none !important;
+    }
+    #modernPlayer .modern-player-title {
+        font-size: clamp(20px, 4.4vh, 30px);
+    }
+    #modernPlayer .modern-player-action {
+        width: 42px;
+        height: 42px;
+    }
+    #modernPlayer .modern-player-action.modern-player-primary {
+        width: 50px;
+        height: 50px;
+    }
+}
+/* Ten-foot layouts need larger targets and type without losing the rail. */
+@media (min-width: 1440px) {
+    #modernPlayer .modern-player-panel {
+        padding-top: 11vh;
+        padding-right: 4.5vw;
+        padding-left: 4.5vw;
+    }
+    #modernPlayer .modern-player-title {
+        font-size: clamp(34px, 3.4vw, 60px);
+    }
+    #modernPlayer .modern-player-meta,
+    #modernPlayer .modern-player-summary {
+        font-size: clamp(16px, 1.05vw, 22px);
+    }
+    #modernPlayer .modern-player-action {
+        width: clamp(58px, 3.6vw, 72px);
+        height: clamp(58px, 3.6vw, 72px);
+    }
+    #modernPlayer .modern-player-action.modern-player-primary {
+        width: clamp(70px, 4.4vw, 88px);
+        height: clamp(70px, 4.4vw, 88px);
+    }
+    #modernPlayer .modern-player-progress {
+        height: 8px !important;
+    }
+    #modernPlayer .modern-player-elapsed,
+    #modernPlayer .modern-player-remaining {
+        font-size: clamp(15px, 0.95vw, 20px);
+    }
+}
+#modernPlayer .modern-player-action:active {
+    transform: scale(0.96);
+}
+@media (hover: none) {
+    #modernPlayer .modern-player-action:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
+    #modernPlayer .modern-player-action.modern-player-primary:hover {
+        background: var(--modern-accent, #e9ad36);
+    }
+}
+[data-ui-direction="rtl"] #modernPlayer .modern-player-heading,
+[data-ui-direction="rtl"] #modernPlayer .modern-player-summary,
+[data-ui-direction="rtl"] #modernPlayer .modern-player-next {
+    text-align: right;
+}
+@media (prefers-reduced-motion: reduce) {
+    #modernPlayer .modern-player-panel {
+        animation: none;
+    }
+    #modernPlayer .modern-player-action {
+        transition: none;
+    }
+}

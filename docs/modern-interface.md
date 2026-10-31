@@ -53,6 +53,16 @@ card selection treatment and surface shapes.
   navigation shell. Search and text entry use a scrollable editor with visible
   confirmation and cancellation controls. Context menus, dialogs, track
   selection and the playback OSD use the same surfaces and focus treatment.
+- Playback uses a full-width bottom overlay instead of the Classic footer. It
+  presents the current programme, channel identity, description, next programme
+  and a large scrubber with elapsed and remaining time. Transport, mute, audio,
+  subtitle, aspect, details, channel list, menu and Back are grouped as
+  circular actions, with Play/Pause emphasized.
+- The overlay follows live, archive and VOD state from the existing session.
+  It opens on the normal info gesture or a pointer tap, auto-hides with the
+  configured info timeout, and dismisses on Back, a click outside the panel or
+  when a dialog, number entry, popup or list takes over. Play/Pause uses the
+  same live pause, VOD resume and archive resume paths as Classic.
 - Media descriptions, existing controls and their callbacks retain their
   original ownership. Actions and input handling remain shared with Classic.
 
@@ -75,8 +85,12 @@ editor or confirmation dialog keeps input ownership until it closes; covered
 navigation cannot change the provider behind it.
 
 The full-screen video shortcuts are unchanged: the presentation mode does not
-remap volume, seeking, previous/next or Favorites. Kiosk restrictions remain in
-force and are not relaxed by switching the presentation.
+remap volume, previous/next or Favorites. With the playback overlay open,
+Left/Right seek ten seconds on the scrubber, Down enters the action row,
+Left/Right move between actions, Enter activates one and Up returns to the
+scrubber. Keys outside that set continue to reach the shared handler, and a
+dialog or number entry always keeps input priority. Kiosk restrictions remain
+in force and are not relaxed by switching the presentation.
 
 The two modes share the current provider, category, global Favorites, selected
 item, source order, playback position, volume and track choices. Switching the
@@ -117,16 +131,17 @@ retained separately from the effective
 mode. Select Classic, then Modern to retry; verify the installed frontend
 version and asset availability if the message returns.
 
-## Design reference and implementation
+## Implementation and validation
 
-The visual study used [PlxNative](https://github.com/GLinnik21/plx-native):
-artwork-led catalogues, readable detail hierarchy, clear remote focus and
-compact playback controls. OTT-play's implementation uses its own HTML/CSS,
-existing fonts, data models and actions. No PlxNative source code, logo,
-screenshots or demonstration artwork is bundled for this feature. Runtime
-artwork comes from the selected provider or media source.
+The catalogue, playback overlay and focus treatment are an independent
+implementation built on the player's existing HTML/CSS, fonts, data models and
+actions. No third-party source code, logo, screenshots or demonstration artwork
+is bundled. Runtime artwork comes from the selected provider or media source.
 
-The reference's native rendering performance and hardware support do not
-transfer to a browser/WebView implementation. Release validation must cover
-the actual frontend bundles, settings persistence, switching while playing,
-keyboard/pointer navigation, missing artwork and responsive layouts.
+The overlay is one optional asset with the catalogue renderer; Classic startup
+loads neither. Its layout is responsive from phone portrait and landscape to
+the ten-foot television layout, honors safe-area insets, uses semantic buttons
+and a slider, and keeps at least 44 CSS-pixel touch targets. Release validation
+must cover the actual frontend bundles, settings persistence, switching while
+playing, keyboard/pointer/touch navigation, dialogs and number entry over
+playback, missing artwork and the responsive layouts.
