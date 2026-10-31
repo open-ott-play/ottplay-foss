@@ -17,6 +17,7 @@ import {
 } from "./settings/transfer-ui";
 import { validDeviceToken, validSwopClientId } from "./shared/wire-contracts";
 import { showSettingsRecovery } from "./storage/recovery-ui";
+import { createModernActions } from "./ui/modern-actions";
 import {
     hasTmdbService,
     listPreviewRect,
@@ -6021,6 +6022,13 @@ window.colorDialog = colorDialog;
 window.selColorDialog = selColorDialog;
 window.backColorDialog = backColorDialog;
 window.optionsList = optionsList;
+(window as any).__ottModernActions = createModernActions(window, {
+    providers: showProviderSelection,
+    providersAvailable: function () {
+        return findOptionIndex(showProviderSelection) >= 0;
+    },
+    settings: optionsList,
+});
 window.restart = restart;
 window.formatSeekOffset = formatSeekOffset;
 window.noop = noop;

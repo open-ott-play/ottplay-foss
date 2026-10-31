@@ -1001,8 +1001,14 @@ for (const kind of [
             await expect(page.locator("#list")).toContainText(
                 "Add Stremio addon…"
             );
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
+            const addonRow = await page.evaluate(() =>
+                window.listArray.findIndex(
+                    (row) => row.name === "Add Stremio addon…"
+                )
+            );
+            expect(addonRow).toBeGreaterThanOrEqual(0);
+            for (let row = 0; row < addonRow; row++)
+                await page.keyboard.press("ArrowDown");
             await expect(
                 page.locator("#list .item.ott-selected")
             ).toContainText("Add Stremio addon…");

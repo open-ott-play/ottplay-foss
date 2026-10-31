@@ -585,6 +585,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC(Kinoboom) 접속 상세",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV 설정",
+    "Label (optional)": "이름 (선택 사항)",
     "List created": "목록이 생성되었습니다",
     "List deleted": "목록 삭제됨",
     "List location": "목록 위치",

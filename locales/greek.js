@@ -611,6 +611,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Στοιχεία πρόσβασης KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Ρυθμίσεις KORONA TV",
+    "Label (optional)": "Ετικέτα (προαιρετικό)",
     "List created": "Η λίστα δημιουργήθηκε",
     "List deleted": "Η λίστα διαγράφηκε",
     "List location": "Θέση λίστας",

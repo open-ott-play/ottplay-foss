@@ -592,6 +592,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) մուտքի տվյալներ",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV կարգավորումներ",
+    "Label (optional)": "Անվանում (ոչ պարտադիր)",
     "List created": "Ցուցակը ստեղծված է",
     "List deleted": "Ցուցակը ջնջված է",
     "List location": "Ցուցակի դիրք",

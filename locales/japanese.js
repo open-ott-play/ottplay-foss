@@ -590,6 +590,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC（Kinoboom）アクセス詳細",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TVの設定",
+    "Label (optional)": "名前（任意）",
     "List created": "リスト作成",
     "List deleted": "リスト削除",
     "List location": "リスト位置",

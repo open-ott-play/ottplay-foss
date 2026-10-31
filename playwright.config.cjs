@@ -20,6 +20,7 @@ module.exports = defineConfig({
         "device-detection.spec.cjs",
         "media-runtime.spec.cjs",
         "media-companion.spec.cjs",
+        "torznab-provider-settings.spec.cjs",
         "playback-runtime.spec.cjs",
         "nas-library.spec.cjs",
         "plex-provider.spec.cjs",

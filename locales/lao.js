@@ -562,6 +562,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "ຂໍ້ມູນເຂົ້າໃຊ້ KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "ການຕັ້ງຄ່າ KORONA TV",
+    "Label (optional)": "ຊື່ (ບໍ່ຈຳເປັນ)",
     "List created": "ສ້າງລາຍການແລ້ວ",
     "List deleted": "ລຶບລາຍການແລ້ວ",
     "List location": "ຕຳແໜ່ງລາຍການ",

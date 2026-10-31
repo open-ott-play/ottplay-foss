@@ -130,7 +130,29 @@ flowchart LR
     E --> V["Player video engine"]
 ```
 
-Configure an indexer through the authenticated OTT CLI. Put only its API key in
+On a native-capable player, open **Torrent provider settings → Prowlarr / Torznab**.
+Enter the indexer's **Server address** and **Access key**. **Label (optional)**
+is a friendly name for the source; leaving it blank uses “Prowlarr / Torznab”.
+Select **Load** to save the source in the private native store, check its
+capabilities, and open its catalogue. A connection failure leaves an editable
+saved source; it does not publish the key or silently switch to another service.
+**Cancel** or Back discards fields that have not been submitted.
+
+The address is the indexer's Torznab feed URL, for example
+`http://127.0.0.1:9696/1/api`, not the Prowlarr dashboard URL. The access-key editor
+is masked. Neither field is written into the player profile or exported with it.
+Saved sources are listed by name and offer **Load**, **Replace**, and **Delete**.
+Replacement keeps the source ID but requires re-entering its address and key:
+the native API never reads those private values back into the interface. Changing
+the endpoint or key invalidates that source's old playback references.
+
+The provider settings also have a top-level **Load** action. For Torznab it opens
+the only configured source, offers a choice when several exist, or opens the
+configuration form when none exist. Stremio remains available through **Search**.
+Browsers and older native packages do not offer private source configuration
+without the native `localTorznab` capability.
+
+Alternatively, configure an indexer through the authenticated OTT CLI. Put only its API key in
 a private local text file; do not place it in a playlist, command argument,
 profile export, issue, or screenshot. For a Prowlarr service forwarded to this
 Mac, an example is:

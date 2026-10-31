@@ -593,6 +593,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) pääsytiedot",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV asetukset",
+    "Label (optional)": "Nimi (valinnainen)",
     "List created": "Luettelo luotu",
     "List deleted": "Lista poistettu",
     "List location": "Listaa sijainti",

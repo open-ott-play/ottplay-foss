@@ -604,6 +604,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Faahfaahinta gelitaanka KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Dejinta KORONA TV",
+    "Label (optional)": "Magac (ikhtiyaari)",
     "List created": "Liiska waa la abuuray",
     "List deleted": "Liiska waa la tirtiray",
     "List location": "Booska liiska",

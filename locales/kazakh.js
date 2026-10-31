@@ -592,6 +592,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) кіру деректері",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV баптаулары",
+    "Label (optional)": "Атауы (міндетті емес)",
     "List created": "Тізім жасалды",
     "List deleted": "Тізім жойылды",
     "List location": "Тізім орны",

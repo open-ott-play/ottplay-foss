@@ -572,6 +572,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) యాక్సెస్ వివరాలు",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV సెట్టింగ్‌లు",
+    "Label (optional)": "పేరు (ఐచ్ఛికం)",
     "List created": "జాబితా సృష్టించబడింది",
     "List deleted": "జాబితా తొలగించబడింది",
     "List location": "జాబితా స్థానం",

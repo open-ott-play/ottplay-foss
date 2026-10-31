@@ -574,6 +574,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) ဝင်ရောက်ကြည့်ရှုမှုအသေးစိတ်",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV ဆက်တင်များ",
+    "Label (optional)": "အမည် (မဖြည့်လည်းရ)",
     "List created": "စာရင်းဖန်တီးထားသည်။",
     "List deleted": "စာရင်းကို ဖျက်လိုက်ပါပြီ။",
     "List location": "စာရင်းအနေအထား",

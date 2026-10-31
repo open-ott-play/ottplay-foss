@@ -611,6 +611,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Iinkcukacha zokufikelela kwi-KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Iisetingi ze-KORONA TV",
+    "Label (optional)": "Igama (akunyanzelwanga)",
     "List created": "Uluhlu lwenziwe",
     "List deleted": "Uluhlu lucinyiwe",
     "List location": "Indawo yoluhlu",

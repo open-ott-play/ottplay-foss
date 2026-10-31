@@ -607,6 +607,7 @@ var keyStrings = {
         "Mga detalye ng pag-access ng KBC (Kinoboom).",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV na mga setting",
+    "Label (optional)": "Label (opsyonal)",
     "List created": "Nagawa ang listahan",
     "List deleted": "Tinanggal ang listahan",
     "List location": "Posisyon ng listahan",

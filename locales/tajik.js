@@ -597,6 +597,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Маълумоти дастрасии KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Танзимоти KORONA TV",
+    "Label (optional)": "Ном (ихтиёрӣ)",
     "List created": "Рӯйхат сохта шуд",
     "List deleted": "Рӯйхат нест шуд",
     "List location": "Ҷойгиршавии рӯйхат",

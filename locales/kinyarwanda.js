@@ -609,6 +609,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Amakuru yo kwinjira ya KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Igenamiterere rya KORONA TV",
+    "Label (optional)": "Izina (si ngombwa)",
     "List created": "Urutonde rwakozwe",
     "List deleted": "Urutonde rwasibwe",
     "List location": "Umwanya w'urutonde",

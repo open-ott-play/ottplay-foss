@@ -9,6 +9,7 @@ let {
     TORRENT_STREAMS_ALLOWANCE,
     TORZNAB_DISCOVERY_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
+    MODERN_EXPERIENCE_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,
@@ -70,7 +71,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
-const torznabCaps = {
+const modernExperienceCaps = {
     BASE_TOTAL_BUDGET,
     BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -100,6 +101,41 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+const modernExperienceDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "catalog"]
+              : Object.keys(MODERN_EXPERIENCE_ALLOWANCE);
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) => sum + MODERN_EXPERIENCE_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+const torznabCaps = Object.fromEntries(
+    Object.entries(modernExperienceCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.fromEntries(
+                  Object.entries(budget).map(([key, value]) => [
+                      key,
+                      key === "modern-interface"
+                          ? subtract(
+                                value,
+                                MODERN_EXPERIENCE_ALLOWANCE.renderer
+                            )
+                          : value,
+                  ])
+              )
+            : subtract(budget, modernExperienceDelta(name)),
+    ])
+);
 const torznabDelta = (name) => {
     const kinds =
         name === "BUDGET"
@@ -240,6 +276,100 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const experienceEvidence = require("../docs/evidence/modern-provider-experience-size-20261031.json");
+    assert.deepEqual(experienceEvidence.allowance, MODERN_EXPERIENCE_ALLOWANCE);
+    assert.deepEqual(experienceEvidence.beforeCaps, torznabCaps);
+    assert.deepEqual(experienceEvidence.afterCaps, modernExperienceCaps);
+    assert.deepEqual(experienceEvidence.protectedCaps, {
+        optional: OPTIONAL_BUDGET,
+        provider: PROVIDER_BUDGET,
+    });
+    assert.equal(
+        experienceEvidence.baseline.revision,
+        "517f169ec871cce2df0f944cce67bfb0afb4b0b7"
+    );
+    assert.deepEqual(experienceEvidence.toolchain, {
+        gzipLevel: 9,
+        node: "26.8.2",
+        zlib: "1.2.12",
+    });
+    const experienceKinds = {
+        "modern-interface.js": "renderer",
+        "player.js": "entry",
+        "provider-torrent.js": "catalog",
+    };
+    const experienceComponents = [
+        ...experienceEvidence.components,
+        ...experienceEvidence.unchangedComponents,
+    ];
+    assert.deepEqual(
+        experienceEvidence.components.map((row) => row.name).sort(),
+        Object.keys(experienceKinds).sort()
+    );
+    assert.deepEqual(
+        experienceComponents.map((row) => row.name).sort(),
+        [
+            "player.js",
+            ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                (name) => `provider-${name}.js`
+            ),
+            ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                (name) => `${name}.js`
+            ),
+        ].sort()
+    );
+    assert(Object.isFrozen(MODERN_EXPERIENCE_ALLOWANCE));
+    for (const allowance of Object.values(MODERN_EXPERIENCE_ALLOWANCE))
+        assert(Object.isFrozen(allowance));
+    for (const row of experienceComponents) {
+        assert.deepEqual(Object.keys(row.variants).sort(), [
+            "mobile",
+            "native",
+            "web",
+        ]);
+        for (const variant of Object.values(row.variants)) {
+            for (const state of ["before", "after"])
+                assert.match(variant[state].sha256, /^[a-f0-9]{64}$/);
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    variant.delta[metric],
+                    variant.after[metric] - variant.before[metric]
+                );
+            if (!experienceKinds[row.name])
+                assert.deepEqual(variant.after, variant.before);
+        }
+        if (experienceKinds[row.name])
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    MODERN_EXPERIENCE_ALLOWANCE[experienceKinds[row.name]][
+                        metric
+                    ],
+                    Math.max(
+                        ...Object.values(row.variants).map(
+                            (variant) => variant.delta[metric]
+                        )
+                    )
+                );
+    }
+    for (const [variant, totals] of Object.entries(experienceEvidence.totals))
+        for (const state of ["before", "after"])
+            for (const metric of ["bytes", "gzipBytes"])
+                for (const scope of ["legacy", "complete"])
+                    assert.equal(
+                        totals[state][scope][metric],
+                        experienceComponents
+                            .filter(
+                                (row) =>
+                                    scope === "complete" ||
+                                    row.name === "player.js" ||
+                                    row.name.startsWith("provider-")
+                            )
+                            .reduce(
+                                (sum, row) =>
+                                    sum + row.variants[variant][state][metric],
+                                0
+                            )
+                    );
     const torznabEvidence = require("../docs/evidence/torznab-discovery-size-20261030.json");
     assert.deepEqual(torznabEvidence.allowance, TORZNAB_DISCOVERY_ALLOWANCE);
     assert.deepEqual(torznabEvidence.beforeCaps, streamsCaps);
@@ -3112,7 +3242,7 @@ try {
         LEGACY_TOTAL_BUDGET,
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
-    } = torznabCaps);
+    } = modernExperienceCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -3299,7 +3429,9 @@ try {
                           )
                         : name === "torrent"
                           ? dense(
-                                TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
+                                MODERN_EXPERIENCE_ALLOWANCE.catalog.gzipBytes +
+                                    TORZNAB_DISCOVERY_ALLOWANCE.catalog
+                                        .gzipBytes +
                                     TORRENT_PROVIDER_ALLOWANCE.catalog
                                         .gzipBytes +
                                     TORRENT_STREAMS_ALLOWANCE.catalog

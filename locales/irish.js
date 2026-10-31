@@ -603,6 +603,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Sonraí rochtana KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Socruithe KORONA TV",
+    "Label (optional)": "Lipéad (roghnach)",
     "List created": "Liosta cruthaithe",
     "List deleted": "Liosta scriosta",
     "List location": "Suíomh sa liosta",

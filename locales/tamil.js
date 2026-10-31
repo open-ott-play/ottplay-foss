@@ -587,6 +587,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) அணுகல் விவரங்கள்",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV அமைப்புகள்",
+    "Label (optional)": "பெயர் (விருப்பத்தேர்வு)",
     "List created": "பட்டியல் உருவாக்கப்பட்டது",
     "List deleted": "பட்டியல் நீக்கப்பட்டது",
     "List location": "பட்டியல் நிலை",

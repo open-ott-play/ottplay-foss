@@ -574,6 +574,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) ઍક્સેસ વિગતો",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV સેટિંગ્સ",
+    "Label (optional)": "નામ (વૈકલ્પિક)",
     "List created": "યાદી બનાવી",
     "List deleted": "યાદી કાઢી નાખી",
     "List location": "યાદી સ્થિતિ",

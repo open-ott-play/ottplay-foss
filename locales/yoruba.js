@@ -580,6 +580,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Àlàyé ìwọlé KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Ètò KORONA TV",
+    "Label (optional)": "Orúkọ (àṣàyàn)",
     "List created": "A ti dá àkójọ sílẹ̀",
     "List deleted": "A ti pa àkójọ rẹ́",
     "List location": "Ipò àkójọ",

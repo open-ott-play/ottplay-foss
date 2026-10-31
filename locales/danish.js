@@ -594,6 +594,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) adgang til detaljer",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV indstillinger",
+    "Label (optional)": "Etiket (valgfri)",
     "List created": "Liste oprettet",
     "List deleted": "Liste slettet",
     "List location": "Listeposition",

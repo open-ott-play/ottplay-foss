@@ -44,6 +44,14 @@
         // control; a wait dialog's first button may be Cancel.
         (root.id === "dialogbox" ? root : candidates[0] || root).focus();
     }
+    function afterInputDispatch(callback: () => void): void {
+        // A queued key event must never target a control from a closed overlay.
+        // Wait for synchronous save callbacks and rerenders, but not a timer turn.
+        if (typeof host.queueMicrotask === "function")
+            host.queueMicrotask(callback);
+        else if (host.Promise) host.Promise.resolve().then(callback);
+        else host.setTimeout(callback, 0);
+    }
     function install(): void {
         opened = opened.filter(function (entry) {
             return host.document.documentElement.contains(entry.root);
@@ -55,8 +63,10 @@
             root.setAttribute("role", "dialog");
             root.setAttribute("aria-modal", "true");
             root.tabIndex = -1;
+            var generation = 0;
             host.$(root)
                 .on("show.ottA11y", function () {
+                    generation++;
                     var existing = opened.some(function (entry) {
                         return entry.root === root;
                     });
@@ -98,7 +108,9 @@
                     if (!entry || !root.contains(host.document.activeElement))
                         return;
                     var lastFocus = host.document.activeElement;
-                    host.setTimeout(function () {
+                    var closedGeneration = generation;
+                    afterInputDispatch(function () {
+                        if (generation !== closedGeneration) return;
                         var parent = top();
                         var currentFocus = host.document.activeElement;
                         if (
@@ -113,6 +125,8 @@
                         )
                             return;
                         if (
+                            entry.previous !== host.document.body &&
+                            entry.previous !== host.document.documentElement &&
                             visible(entry.previous) &&
                             (!parent || parent.contains(entry.previous))
                         )
@@ -124,7 +138,7 @@
                             ) as HTMLElement;
                             if (visible(selected)) selected.focus();
                         }
-                    }, 0);
+                    });
                 });
         });
         var list = host.document.getElementById("listIn");

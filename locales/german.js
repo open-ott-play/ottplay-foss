@@ -606,6 +606,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Zugangsdaten für KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Einstellungen für KORONA TV",
+    "Label (optional)": "Bezeichnung (optional)",
     "List created": "Liste erstellt",
     "List deleted": "Liste gelöscht",
     "List location": "Listenposition",

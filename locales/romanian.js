@@ -606,6 +606,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Date de acces KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Setări KORONA TV",
+    "Label (optional)": "Etichetă (opțional)",
     "List created": "Lista a fost creată",
     "List deleted": "Lista a fost ștearsă",
     "List location": "Poziția listei",

@@ -415,12 +415,18 @@ test("Classic and non-catalogue screens remove Modern layout without changing se
     try {
         f.api.prepare(f.ids, f.formatter, f.container);
         assert(f.container.classList.contains("modern-grid"));
-        assert.equal(
-            f.api.prepare(f.ids, () => "Settings row", f.container),
-            null
-        );
+        const menu = f.api.prepare(f.ids, () => "Settings row", f.container);
+        assert.equal(menu.menu, true);
+        assert.equal(menu.grid, false);
+        assert.equal(menu.columns, 1);
+        assert(menu.pageSize <= 12);
+        assert.equal(f.api.render(f.ids[0], 0), null);
         assert.equal(f.container.classList.contains("modern-catalog"), false);
-        assert.equal(f.container.style.gridTemplateColumns, "");
+        assert.equal(f.container.classList.contains("modern-options"), true);
+        assert.equal(
+            f.container.style.gridTemplateColumns,
+            "repeat(1, minmax(0, 1fr))"
+        );
         assert.equal(f.api.prepare(f.ids, f.formatter, null), null);
         f.w.settings.interfaceMode = 0;
         assert.equal(f.api.prepare(f.ids, f.formatter, f.container), null);
@@ -472,21 +478,29 @@ test("metadata remains text and rejected artwork leaves a usable fallback", () =
     }
 });
 
-test("mixed Favorites keep one list shape while focus moves between films and live channels", () => {
+test("mixed Favorites keep one grid shape and source identity while focus moves between films and live channels", () => {
     const f = rendererFixture();
     try {
         f.formatter.__ottCatalog.kind = "mixed";
         f.formatter.__ottCatalog.row = (id) => ({
             __ottMediaItem: id === "live" ? null : { name: id },
             channel_name: id,
+            modernMeta: id === "live" ? "M3U / Home" : "Plex / Films / " + id,
         });
         const rows = ["film", "live", "film-two"];
         for (let selected = 0; selected < rows.length; selected++) {
             f.w.selIndex = selected;
             const layout = f.api.prepare(rows, f.formatter, f.container);
-            assert.equal(layout.grid, false);
-            assert.equal(f.container.classList.contains("modern-live"), true);
-            assert.equal(f.container.classList.contains("modern-grid"), false);
+            assert.equal(layout.grid, true);
+            assert.equal(f.container.classList.contains("modern-live"), false);
+            assert.equal(f.container.classList.contains("modern-grid"), true);
+            f.container.innerHTML = f.api.render(rows[selected], selected);
+            assert.equal(
+                f.container.querySelector(".modern-meta").textContent,
+                selected === 1
+                    ? "M3U / Home"
+                    : "Plex / Films / " + rows[selected]
+            );
         }
     } finally {
         f.dom.window.close();
@@ -518,4 +532,388 @@ test("live artwork comes from the same provider projection as the Classic list",
     } finally {
         f.dom.window.close();
     }
+});
+
+function shellFixture() {
+    const f = rendererFixture();
+    const doc = f.w.document;
+    const list = doc.createElement("section");
+    list.id = "list";
+    doc.body.appendChild(list);
+    list.appendChild(f.container);
+    list.appendChild(doc.getElementById("listDetail"));
+    const caption = list.appendChild(doc.createElement("header"));
+    caption.id = "listCaption";
+    caption.textContent = "My library";
+    const footer = list.appendChild(doc.createElement("footer"));
+    footer.id = "listPodval";
+    footer.innerHTML =
+        '<span data-ott-key="123" aria-label="Categories">Category</span>';
+    let active = true;
+    const owner = { foreground: () => active, model: { render: f.formatter } };
+    const effects = [];
+    Object.assign(f.w, {
+        __ottClassicScreenPort: { listOwner: () => owner },
+        __ottKiosk: { enabled: () => false, locked: () => false },
+        __ottModernActions: () => [
+            {
+                id: "settings",
+                label: "Settings",
+                run: () => effects.push("settings"),
+            },
+        ],
+        _doKey: (key) => effects.push(key),
+    });
+    return {
+        ...f,
+        doc,
+        effects,
+        foreground: (value) => {
+            active = value;
+        },
+        list,
+        owner,
+    };
+}
+
+test("Modern mounts one shared shell with typed selected-item information and removes it on Classic", () => {
+    const f = shellFixture();
+    try {
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert(f.list.classList.contains("modern-screen-grid"));
+        assert.equal(f.doc.querySelectorAll("#modernRail").length, 1);
+        assert.equal(
+            f.doc.querySelector("#modernRail").getAttribute("aria-label"),
+            "Menu"
+        );
+        assert.equal(
+            f.doc.querySelector(".modern-hero-title").textContent,
+            "Film item-3450"
+        );
+        assert.equal(
+            f.doc.querySelector(".modern-hero-summary").textContent,
+            "Shared source metadata"
+        );
+        assert.equal(
+            f.doc.querySelector(".modern-library-count").textContent,
+            "3451 / 10000"
+        );
+        f.w.selIndex = 6;
+        f.api.detail();
+        assert.equal(
+            f.doc.querySelector(".modern-hero-title").textContent,
+            "Film item-6"
+        );
+        assert.equal(
+            f.doc.querySelector(".modern-library-count").textContent,
+            "7 / 10000"
+        );
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert.equal(f.doc.querySelectorAll("#modernShell").length, 1);
+        f.w.settings.interfaceMode = 0;
+        f.api.refresh();
+        assert.equal(f.doc.querySelector("#modernShell"), null);
+        assert(!f.list.classList.contains("modern-screen"));
+        assert.equal(f.w.selIndex, 6);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("rail focus uses current owned actions and Back returns to the same media item", () => {
+    const f = shellFixture();
+    try {
+        f.w.selIndex = 0;
+        const row = f.container.appendChild(f.doc.createElement("div"));
+        row.id = "it0";
+        row.tabIndex = 0;
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert.equal(f.api.navigation({ id: "left" }, f.owner), true);
+        assert.equal(f.doc.activeElement.dataset.modernAction, "browse");
+        f.api.navigation({ id: "down" }, f.owner);
+        assert.equal(f.doc.activeElement.dataset.modernAction, "settings");
+        f.api.navigation({ id: "accept" }, f.owner);
+        assert.deepEqual(f.effects, ["settings"]);
+        f.api.navigation({ id: "left" }, f.owner);
+        assert.equal(f.api.navigation({ id: "back" }, f.owner), true);
+        assert.equal(f.doc.activeElement, row);
+        assert.equal(f.w.selIndex, 0);
+        f.foreground(false);
+        assert.equal(f.api.navigation({ id: "left" }, f.owner), false);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("host navigation keeps contextual footer actions out of the rail", () => {
+    const f = shellFixture();
+    try {
+        const footer = f.doc.getElementById("listPodval");
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert.equal(
+            f.doc.querySelector('#modernRail [data-modern-action="key-123"]'),
+            null
+        );
+        assert.equal(footer.querySelectorAll("[data-ott-key]").length, 1);
+        delete f.w.__ottModernActions;
+        f.api.syncScreen();
+        const fallback = f.doc.querySelector(
+            '#modernRail [data-modern-action="key-123"]'
+        );
+        assert(fallback);
+        fallback.click();
+        assert.deepEqual(f.effects, [123]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("rail buttons reject stale renderers, covered screens and kiosk restrictions", () => {
+    const f = shellFixture();
+    try {
+        f.api.prepare(f.ids, f.formatter, f.container);
+        const old = f.doc.querySelector('[data-modern-action="settings"]');
+        f.api.syncScreen();
+        old.click();
+        assert.deepEqual(f.effects, []);
+        const current = () =>
+            f.doc.querySelector('[data-modern-action="settings"]');
+        f.foreground(false);
+        current().click();
+        assert.deepEqual(f.effects, []);
+        f.foreground(true);
+        f.w.__ottKiosk.locked = () => true;
+        current().click();
+        assert.deepEqual(f.effects, []);
+        f.w.__ottKiosk.locked = () => false;
+        current().click();
+        assert.deepEqual(f.effects, ["settings"]);
+        f.owner.model.render = () => "Other";
+        current().click();
+        assert.deepEqual(f.effects, ["settings"]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("settings and empty catalogues retain Modern navigation without stale selected media", () => {
+    const f = shellFixture();
+    try {
+        f.api.prepare(f.ids, f.formatter, f.container);
+        const render = () => "Settings";
+        f.owner.model.render = render;
+        f.api.prepare([{ name: "First setting" }], render, f.container);
+        assert(f.list.classList.contains("modern-screen-menu"));
+        assert(!f.list.classList.contains("modern-screen-grid"));
+        assert.equal(f.doc.getElementById("modernHero").hidden, true);
+        f.owner.model.render = f.formatter;
+        f.api.prepare([], f.formatter, f.container);
+        assert.equal(f.doc.getElementById("modernHero").hidden, true);
+        assert.equal(
+            f.doc.querySelector(".modern-library-count").textContent,
+            ""
+        );
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("empty or unprojectable catalogues expose the original status detail until media arrives", () => {
+    const f = shellFixture();
+    try {
+        const detail = f.doc.getElementById("listDetail");
+        const message = detail.appendChild(f.doc.createElement("p"));
+        const retry = detail.appendChild(f.doc.createElement("button"));
+        let retried = 0;
+        retry.onclick = () => retried++;
+        for (const status of [
+            "Loading...",
+            "Not found",
+            "Failed to load!",
+            "Not configured",
+        ]) {
+            message.textContent = status;
+            f.api.prepare([], f.formatter, f.container);
+            assert(f.list.classList.contains("modern-empty"));
+            assert.equal(f.doc.getElementById("modernHero").hidden, true);
+            assert.equal(detail.firstChild, message);
+            assert.equal(detail.textContent, status);
+            assert.equal(detail.lastChild, retry);
+        }
+        retry.click();
+        assert.equal(retried, 1);
+        const row = f.formatter.__ottCatalog.row;
+        f.formatter.__ottCatalog.row = () => null;
+        f.w.selIndex = 0;
+        f.api.prepare(["unavailable"], f.formatter, f.container);
+        assert(f.list.classList.contains("modern-empty"));
+        f.formatter.__ottCatalog.row = row;
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert(!f.list.classList.contains("modern-empty"));
+        assert.equal(f.doc.getElementById("modernHero").hidden, false);
+        f.api.prepare([], f.formatter, f.container);
+        const menu = () => "Settings";
+        f.owner.model.render = menu;
+        f.api.prepare([], menu, f.container);
+        assert(!f.list.classList.contains("modern-empty"));
+        f.owner.model.render = f.formatter;
+        f.api.prepare([], f.formatter, f.container);
+        f.w.settings.interfaceMode = 0;
+        f.api.refresh();
+        assert(!f.list.classList.contains("modern-empty"));
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("existing media controls keep their callbacks and are exposed without copying their DOM", () => {
+    const f = shellFixture();
+    try {
+        f.api.prepare(f.ids, f.formatter, f.container);
+        const detail = f.doc.getElementById("listDetail");
+        const controls = detail.appendChild(f.doc.createElement("div"));
+        controls.id = "mediaPlaybackControls";
+        const button = controls.appendChild(f.doc.createElement("span"));
+        button.setAttribute("data-ott-key", "13");
+        let calls = 0;
+        button.onclick = () => calls++;
+        f.api.detail();
+        assert(f.list.classList.contains("modern-has-controls"));
+        assert.equal(
+            f.doc.querySelectorAll("#mediaPlaybackControls").length,
+            1
+        );
+        assert.equal(controls.parentNode, detail);
+        button.click();
+        assert.equal(calls, 1);
+        controls.remove();
+        f.api.detail();
+        assert(!f.list.classList.contains("modern-has-controls"));
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("global Library action replaces the local Browse fallback and cannot double fire on keyboard Enter", () => {
+    const f = shellFixture();
+    try {
+        f.w.__ottModernActions = () => [
+            {
+                id: "library",
+                label: "Library",
+                run: () => f.effects.push("library"),
+            },
+        ];
+        f.api.prepare(f.ids, f.formatter, f.container);
+        assert.equal(
+            f.doc.querySelector('[data-modern-action="browse"]'),
+            null
+        );
+        const button = f.doc.querySelector('[data-modern-action="library"]');
+        const event = new f.w.KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key: "Enter",
+        });
+        button.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, true);
+        assert.deepEqual(f.effects, ["library"]);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("Modern option pages fit larger measured rows while preserving the original formatter and controls", () => {
+    const f = shellFixture();
+    try {
+        const render = () => '<span class="original">Setting value</span>';
+        f.owner.model.render = render;
+        const rows = Array.from({ length: 30 }, (_, index) => ({
+            name: "Setting " + index,
+        }));
+        const layout = f.api.prepare(rows, render, f.container);
+        assert.equal(layout.menu, true);
+        assert.equal(layout.columns, 1);
+        assert(layout.pageSize > 0 && layout.pageSize <= 12);
+        assert(layout.cellHeight >= 50);
+        const row = f.container.appendChild(f.doc.createElement("div"));
+        row.id = "it0";
+        const button = row.appendChild(f.doc.createElement("button"));
+        button.textContent = "Original action";
+        let calls = 0;
+        button.onclick = () => calls++;
+        f.api.decorate(f.container, 0, 1);
+        assert(row.classList.contains("modern-option"));
+        assert.equal(f.api.render(rows[0], 0), null);
+        assert.equal(row.firstChild, button);
+        button.click();
+        assert.equal(calls, 1);
+        assert.equal(f.api.navigation({ id: "down" }, f.owner), false);
+        assert.equal(f.doc.getElementById("modernHero").hidden, true);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
+test("Modern host navigation uses shared routing and rejects stale or covered actions", () => {
+    const output = ts.transpileModule(
+        fs.readFileSync(path.join(root, "src/ui/modern-actions.ts"), "utf8"),
+        { compilerOptions: { module: ts.ModuleKind.CommonJS } }
+    ).outputText;
+    const context = { exports: {} };
+    require("node:vm").runInNewContext(output, context);
+    const calls = [];
+    let foreground = true;
+    let locked = false;
+    let providers = true;
+    let owner = { foreground: () => foreground };
+    const host = {
+        _: (value) => value,
+        __ottActiveProviderDriver: {
+            catalogBrowser: {
+                restore: () => {
+                    calls.push("library");
+                    return true;
+                },
+            },
+        },
+        __ottChannelSearch: { open: () => calls.push("search") },
+        __ottChannels: { browsingIndex: () => 3 },
+        __ottClassicScreenPort: { listOwner: () => owner },
+        __ottKiosk: { locked: () => locked },
+        bucketsList: (index) => calls.push("category:" + index),
+        openGlobalFavorites: () => calls.push("favorites"),
+    };
+    const get = context.exports.createModernActions(host, {
+        providers: () => calls.push("providers"),
+        providersAvailable: () => providers,
+        settings: () => calls.push("settings"),
+    });
+    const actions = get();
+    assert.equal(host.__ottGlobalFavorites, undefined);
+    assert(actions.some((action) => action.id === "favorites"));
+    for (const action of actions) action.run();
+    assert.deepEqual(calls, [
+        "library",
+        "favorites",
+        "category:3",
+        "search",
+        "providers",
+        "settings",
+    ]);
+    calls.length = 0;
+    foreground = false;
+    for (const action of actions) action.run();
+    assert.equal(get().length, 0);
+    foreground = true;
+    owner = { foreground: () => true };
+    for (const action of actions) action.run();
+    assert.deepEqual(calls, []);
+    providers = false;
+    assert.equal(
+        get().some((action) => action.id === "providers"),
+        false
+    );
+    locked = true;
+    assert.equal(get().length, 0);
 });

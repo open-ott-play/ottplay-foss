@@ -593,6 +593,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Bayanan shiga KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Saitunan KORONA TV",
+    "Label (optional)": "Suna (na zaɓi)",
     "List created": "An ƙirƙiri jeri",
     "List deleted": "An goge jeri",
     "List location": "Matsayin jeri",

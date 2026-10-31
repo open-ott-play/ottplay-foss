@@ -304,11 +304,24 @@ export function uiInit(): void {
         $("#listIn").show();
     });
     $("#listEdit").on("show.ottUi", function () {
+        (this as any).__ottEditorVisibilityGeneration =
+            ((this as any).__ottEditorVisibilityGeneration || 0) + 1;
         $("#listIn").hide();
     });
     $("#listEdit").on("hide.ottUi", function () {
         $("#listIn").show();
-        $("#listEdit").text("");
+        // Visibility listeners still need the outgoing focused control to
+        // restore focus to its owner. Clear only after they have captured it,
+        // and never erase an editor reopened during the same input dispatch.
+        var editor = this as HTMLElement;
+        var generation = (editor as any).__ottEditorVisibilityGeneration;
+        setTimeout(function () {
+            if (
+                editor.style.display === "none" &&
+                (editor as any).__ottEditorVisibilityGeneration === generation
+            )
+                $(editor).text("");
+        }, 0);
     });
     $("#dialogbox").on("show.ottUi", function () {
         $(this)
@@ -1185,6 +1198,7 @@ export function showPage(presentationOnly = false): void {
         );
     // A presentation swap preserves the current detail and preview session.
     // The next selection follows the ordinary owned detail callback.
+    if (modern?.syncScreen) modern.syncScreen();
     if (!presentationOnly) scheduleListDetailUpdate();
 }
 
@@ -1320,6 +1334,7 @@ export function setSelect(index: number): void {
  */
 export function closeList(restorePip = true): void {
     var wasListVisible = isListVisible;
+    (window as any).__ottModernUi?.hide?.();
     if (wasListVisible && (window as any).__ottClassicGuide)
         (window as any).__ottClassicGuide.cancelConsumers();
     (window as any).__ottClassicScreenPort.closeList();

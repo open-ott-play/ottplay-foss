@@ -595,6 +595,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) prieigos duomenys",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV nustatymai",
+    "Label (optional)": "Pavadinimas (neprivaloma)",
     "List created": "Sąrašas sukurtas",
     "List deleted": "Sąrašas pašalintas",
     "List location": "Sąrašo padėtis",
