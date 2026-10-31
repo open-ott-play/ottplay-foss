@@ -174,7 +174,8 @@ mod tests {
         assert_eq!(
             serde_json::to_value(capabilities).unwrap(),
             serde_json::json!({
-                "schema": 1, "local": true, "available": true, "torrent": true, "plugins": true
+                "schema": 1, "local": true, "available": true, "torrent": true,
+                "plugins": true, "localTorznab": true
             })
         );
         assert!(state.0.lock().await.is_none());
