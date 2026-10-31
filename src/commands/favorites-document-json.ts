@@ -5,8 +5,8 @@ const MAX_DEPTH = 20;
 function invalid(): never {
     throw new Error("codec_error");
 }
-function utf8Decode(bytes: Uint8Array): string {
-    if (!(bytes instanceof Uint8Array) || bytes.length > MAX_BYTES) invalid();
+function utf8Decode(bytes: Uint8Array, maxBytes: number): string {
+    if (!(bytes instanceof Uint8Array) || bytes.length > maxBytes) invalid();
     var result: string[] = [],
         i = 0;
     while (i < bytes.length) {
@@ -51,7 +51,7 @@ function checkString(text: string, maxBytes = MAX_BYTES): void {
     if (
         typeof maxBytes !== "number" ||
         maxBytes < 1 ||
-        maxBytes > 2097152 ||
+        maxBytes > 8388608 ||
         Math.floor(maxBytes) !== maxBytes
     )
         invalid();
@@ -65,6 +65,11 @@ function checkString(text: string, maxBytes = MAX_BYTES): void {
     }
 }
 export function utf8Encode(text: string, maxBytes = MAX_BYTES): Uint8Array {
+    if (maxBytes > 2097152) invalid();
+    return encodeBoundedUtf8(text, maxBytes);
+}
+/** Explicit bounds for independently versioned documents; default Favorites limits do not change. */
+export function encodeBoundedUtf8(text: string, maxBytes: number): Uint8Array {
     checkString(text, maxBytes);
     // Calculate before allocation; serialized JSON can expand escaped control characters.
     var length = 0,
@@ -103,7 +108,25 @@ export function utf8Encode(text: string, maxBytes = MAX_BYTES): Uint8Array {
     return bytes;
 }
 export function parseFavoritesDocumentJson(bytes: Uint8Array): any {
-    var text = utf8Decode(bytes),
+    return parseBoundedJson(bytes, MAX_BYTES, MAX_DEPTH, MAX_NODES);
+}
+export function parseBoundedJson(
+    bytes: Uint8Array,
+    maxBytes: number,
+    maxDepth: number,
+    maxNodes: number
+): any {
+    checkString("", maxBytes);
+    if (
+        !Number.isInteger(maxDepth) ||
+        maxDepth < 1 ||
+        maxDepth > MAX_DEPTH ||
+        !Number.isInteger(maxNodes) ||
+        maxNodes < 1 ||
+        maxNodes > 65536
+    )
+        invalid();
+    var text = utf8Decode(bytes, maxBytes),
         at = 0,
         nodes = 0;
     function whitespace(): void {
@@ -120,7 +143,7 @@ export function parseFavoritesDocumentJson(bytes: Uint8Array): any {
                 } catch (_) {
                     return invalid();
                 }
-                checkString(value);
+                checkString(value, maxBytes);
                 return value;
             }
             if (c < 32) invalid();
@@ -137,7 +160,7 @@ export function parseFavoritesDocumentJson(bytes: Uint8Array): any {
         return invalid();
     }
     function value(depth: number): any {
-        if (depth > MAX_DEPTH || ++nodes > MAX_NODES) invalid();
+        if (depth > maxDepth || ++nodes > maxNodes) invalid();
         whitespace();
         var c = text.charAt(at),
             result: any;

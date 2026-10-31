@@ -3,6 +3,180 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("../helpers/browser-test.cjs");
 
+for (const preview of [0, 1, 2]) {
+    test(`Torrent discovery uses localized native lists without playback preview=${preview}`, async ({
+        page,
+        context,
+        baseURL,
+    }) => {
+        const origin = new URL(baseURL).origin;
+        const requests = [];
+        const errors = [];
+        let engineCalls = 0;
+        page.on("pageerror", (error) => errors.push(error.message));
+        await context.routeWebSocket("**/*", (socket) => socket.close());
+        await context.route("**/*", async (route) => {
+            const url = new URL(route.request().url());
+            if (url.pathname.includes("/companion/")) {
+                engineCalls++;
+                return route.abort();
+            }
+            if (url.origin === "https://catalog.test") {
+                const headers = { "access-control-allow-origin": "*" };
+                const parts = url.pathname.split("/").filter(Boolean);
+                const language = JSON.parse(
+                    decodeURIComponent(parts[0])
+                ).language;
+                const resource = parts.slice(1).join("/");
+                requests.push({ language, resource });
+                const movie = (id) => ({
+                    description: language.startsWith("ru")
+                        ? "Полное описание фильма. Вторая фраза тоже сохранена."
+                        : "Complete movie description. Its second sentence is retained.",
+                    id: "tmdb:" + id,
+                    name: language.startsWith("ru")
+                        ? "Фильм " + id
+                        : "Movie " + id,
+                    poster: "https://images.test/poster.svg",
+                    releaseInfo: "2026",
+                    type: "movie",
+                });
+                if (resource === "manifest.json")
+                    return route.fulfill({
+                        headers,
+                        json: {
+                            catalogs: [
+                                {
+                                    extra: [
+                                        {
+                                            name: "genre",
+                                            options: ["Драма", "Comedy"],
+                                        },
+                                    ],
+                                    id: "tmdb.top",
+                                    type: "movie",
+                                },
+                            ],
+                        },
+                    });
+                if (resource.startsWith("meta/movie/"))
+                    return route.fulfill({
+                        headers,
+                        json: { meta: movie(603) },
+                    });
+                if (resource.includes("tmdb.search"))
+                    return route.fulfill({
+                        headers,
+                        json: { metas: [movie(603)] },
+                    });
+                const extra = new URLSearchParams(
+                    decodeURIComponent(parts[parts.length - 1]).replace(
+                        /\.json$/,
+                        ""
+                    )
+                );
+                const offset = Number(extra.get("skip") || 0);
+                return route.fulfill({
+                    headers,
+                    json: {
+                        metas: offset
+                            ? [movie(621)]
+                            : Array.from({ length: 20 }, (_, index) =>
+                                  movie(601 + index)
+                              ),
+                    },
+                });
+            }
+            if (url.origin === "https://images.test")
+                return route.fulfill({
+                    body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="navy"/></svg>',
+                    contentType: "image/svg+xml",
+                });
+            if (url.origin !== origin) return route.abort();
+            return route.continue();
+        });
+        await context.addInitScript(() => {
+            localStorage.setItem("ottplaylang", "_eng");
+            localStorage.setItem("ottplayprov", "demo");
+            localStorage.setItem(
+                "sTorrentCatalogEndpoint",
+                "https://catalog.test"
+            );
+            if (!localStorage.getItem("torrentsTorrentCatalogLanguage"))
+                localStorage.setItem("torrentsTorrentCatalogLanguage", "_rus");
+        });
+        await page.goto("/f/pc/");
+        await page.waitForFunction(() => window.commandChannelsReady === true);
+        async function openTorrent() {
+            await page.evaluate((mode) => {
+                window.__ottMediaCompanion.providerAvailable = () => true;
+                window.settings.preview = mode;
+                window.stbSetItem("ottplayprov", "torrent");
+                window.loadProv();
+            }, preview);
+            await page.waitForFunction(
+                () =>
+                    Array.isArray(window.listArray) &&
+                    String(window.listArray[0]).startsWith("tmdb:movie:")
+            );
+        }
+        await openTorrent();
+        expect(
+            await page.evaluate(() => window.__ottTorrentCatalogLanguage())
+        ).toBe("ru");
+        await expect(page.locator("#listDetail")).toContainText(
+            "Вторая фраза тоже сохранена."
+        );
+        expect(await page.evaluate(() => window.listArray.length)).toBe(20);
+        expect(
+            await page.evaluate(() => localStorage.getItem("torrentcfg"))
+        ).toBeNull();
+        await page.evaluate(() => window.listKeyHandlerFn(window.keys.NEXT));
+        await page.waitForFunction(() => window.listArray.length === 21);
+        await page.evaluate(() =>
+            window.__ottActiveProviderDriver.catalogBrowser.categories()
+        );
+        expect(await page.evaluate(() => window.listArray)).toContain(
+            "Favorites"
+        );
+        await page.evaluate(() => {
+            window.__ottActiveProviderDriver.catalogBrowser.search();
+            window.editvar = "Матрица";
+            window.setEdit();
+        });
+        await page.waitForFunction(
+            () =>
+                window.listArray.length === 1 &&
+                window.listArray[0] === "tmdb:movie:603"
+        );
+        await expect(page.locator("#listDetail")).toContainText("Фильм 603");
+        expect(
+            requests.some(
+                (entry) =>
+                    entry.resource.includes("tmdb.search") &&
+                    entry.language === "ru"
+            )
+        ).toBe(true);
+        expect(
+            await page.evaluate(() =>
+                window.saveSettings({ torrentCatalogLanguage: "_eng" })
+            )
+        ).toBe(true);
+        await expect(page.locator("#listDetail")).toContainText("Movie 603");
+        expect(
+            await page.evaluate(() =>
+                localStorage.getItem("torrentsTorrentCatalogLanguage")
+            )
+        ).toBe("_eng");
+        await page.reload();
+        await page.waitForFunction(() => !!window.__ottMediaCompanion);
+        await openTorrent();
+        await expect(page.locator("#listDetail")).toContainText("Movie 601");
+        expect(engineCalls).toBe(0);
+        expect(errors).toEqual([]);
+    });
+}
+
 test.use({
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
 });

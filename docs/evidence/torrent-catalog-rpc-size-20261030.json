@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "feature": "Authenticated headless Torrent catalog RPC v1",
+  "baseline": {
+    "revision": "35a1598a",
+    "archiveSha256": "0a352587c6548864619671cf38d7e3da791ca9ea30464a653f9fca93065792dd",
+    "method": "Immutable pre-RPC Mode A production archive; existing headroom preserved component by component."
+  },
+  "candidate": {
+    "workingTree": true,
+    "sourceRevisionClaimed": false
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "allocation": "Main contains only authenticated dispatch, capability and owned storage/selection ports. Strict JSON/UTF-8 parser and catalog runtime stay in provider-torrent; favorites-transfer shares the strict catalog reader. Existing provider and transfer document limits remain unchanged.",
+  "components": [
+    {
+      "name": "player.js",
+      "before": {
+        "bytes": 1161250,
+        "gzipBytes": 353886,
+        "sha256": "2b84df376f77c5fe54207de27584681fee5693e0c572a317b50fbcdb3a78b632"
+      },
+      "after": {
+        "bytes": 1163536,
+        "gzipBytes": 354424,
+        "sha256": "56213f72c29612c1e837fe9263db0697d676b53c51a56b2d039eb1f08407f35a"
+      },
+      "delta": {
+        "bytes": 2286,
+        "gzipBytes": 538
+      }
+    },
+    {
+      "name": "provider-torrent.js",
+      "before": {
+        "bytes": 8277,
+        "gzipBytes": 3302,
+        "sha256": "fcbd06e56a955ef5b17954a60496b5da660b425e341fd64d540d145f12106544"
+      },
+      "after": {
+        "bytes": 33336,
+        "gzipBytes": 11262,
+        "sha256": "41d2d3a261438937c2f5e34e11d62c5cced6f5a6ed4c0ba4c4bffd200a647c73"
+      },
+      "delta": {
+        "bytes": 25059,
+        "gzipBytes": 7960
+      }
+    },
+    {
+      "name": "favorites-transfer.js",
+      "before": {
+        "bytes": 245661,
+        "gzipBytes": 62956,
+        "sha256": "fcea0f86c27d5fc23e5054286dac848787b6bf1aff6abe46be571d128e9ccc1e"
+      },
+      "after": {
+        "bytes": 248716,
+        "gzipBytes": 63807,
+        "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+      },
+      "delta": {
+        "bytes": 3055,
+        "gzipBytes": 851
+      }
+    },
+    {
+      "name": "media-companion.js",
+      "before": {
+        "bytes": 8963,
+        "gzipBytes": 3189,
+        "sha256": "886192f702572cd3906949c158945f9955ce284dc10f1571650dbf14e4d3ec3b"
+      },
+      "after": {
+        "bytes": 9249,
+        "gzipBytes": 3270,
+        "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+      },
+      "delta": {
+        "bytes": 286,
+        "gzipBytes": 81
+      }
+    }
+  ],
+  "bindingFix": "Unique Torrent helper and constant names avoid concatenated classic globals shared with Favorites. Actual main/provider/Favorites deltas include 42/308/92 raw bytes and 7/49/4 gzip bytes respectively; existing headroom remains unchanged."
+}

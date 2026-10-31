@@ -86,9 +86,9 @@ saving private endpoints or temporary lease URLs. Each playback
 gets a fresh viewer lease. Seeking reads byte ranges from the selected file.
 Raw and cloud settings backups include the `torrentcfg` catalogue. Importing
 Favorites alone transfers references, so the receiving player also needs the
-matching catalogue. The current CLI named presets and structured settings JSON
-do not provision a Torrent catalogue; use the full raw/cloud backup for that
-transfer. Private companion endpoints remain installation settings throughout.
+matching catalogue. Named presets and structured settings JSON do not provision
+a Torrent catalogue; use the typed catalog API below or a full raw/cloud backup
+for that transfer. Private companion endpoints remain installation settings throughout.
 Codec support still depends on the video engine; receiving a file does not make
 an unsupported codec playable. External AceStream engines remain separate.
 
@@ -110,6 +110,93 @@ Do not copy a running session's `/sessions/.../stream` address into a playlist.
 That URL expires with its viewer. The original reference obtains a new session
 on the next playback. A file choice is carried as a zero-based `so` index in a
 magnet reference, or `index` in an `ottplay-torrent:` reference.
+
+## Movie discovery and language
+
+The first discovery stage adds movie categories, search and metadata details to
+the native **Torrent** provider. A metadata result is not a playable torrent:
+this stage does not discover streams or promise playback for every film. The
+manually maintained source catalog and its file playback remain separate and
+available when metadata requests fail or the catalog service is offline.
+
+On a supported native installation, choose **Torrent** in the provider settings.
+An empty source catalog opens the movie list. **Category selection** offers
+**Popular**, **New releases**, **Genre**, **My sources** and **Favorites**.
+Use the normal Search action to find a movie; select a result to read its full
+information. **Next page** fetches another page only when requested. Merely
+opening a list, highlighting a film or reading its description does not start
+a torrent download. **My sources** returns to your existing playable sources.
+Choose **Catalog language** in the Torrent provider settings to override the
+interface language for movie metadata.
+
+`torrentCatalogLanguage` is a portable preference for the current provider. Its
+default empty value follows the effective interface language. An explicit value
+uses one of the existing language identifiers, such as `_rus` or `_fra`, and
+applies to subsequent categories, searches and details. It does not change the
+interface, audio tracks or subtitles. Metadata services may still return their
+own fallback text when a translation is unavailable.
+
+By default discovery uses the existing TMDB transport. The installation-only
+`torrentCatalogEndpoint` can select a compatible public Stremio TMDB addon for
+local validation without a private TMDB key. Its production default is empty;
+no public service is selected automatically. Operators configure it through
+the existing authenticated settings API, with no endpoint editor in the UI:
+
+```sh
+ott TARGET setting torrentCatalogEndpoint --value-file /absolute/private/catalog-base-url.txt
+```
+
+The file must contain an HTTPS addon **base URL**, not a `/manifest.json` URL or
+a preconfigured JSON path. User information, query strings and fragments are
+rejected. Paths can contain private configuration, so reads are masked and both
+`torrentCatalogEndpoint` and `sTorrentCatalogEndpoint` are excluded from JSON,
+raw and cloud backups. Restoring a backup preserves this installation's current
+endpoint. A configured public service receives metadata requests and search
+terms; setting it does not enable Torrent on unsupported web-only clients.
+Operating a private TMDB-backed service with an operator's own API key remains
+a future deployment option; this setting neither stores nor provisions a TMDB
+API key.
+
+Movie metadata and images are supplied by [TMDB](https://www.themoviedb.org).
+The built-in credits include its official logo and attribution notice.
+The logo is retained unchanged from the [official asset](https://www.themoviedb.org/assets/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg).
+
+## Remote catalog control
+
+Authenticated remote control exposes `torrent_catalog: {version: 1}` only when
+the player supports its own native service. An external companion endpoint does
+not grant this capability. Requests use action `torrent_catalog`, the current
+`runtime`, and one of `read`, `read_chunk`, `metadata`, `status`, `cancel`,
+`write_begin`, `write_chunk`, `write_commit`, or `play`. Each operation has its own
+controller permission, `torrent_catalog.OP`; existing player restrictions still
+apply. The API does not enable remote access or change its authorization.
+
+Reads return immutable catalog snapshots without selecting a provider or starting
+network activity. `metadata` prepares a playable file list without saving or
+playing it. File indices are the native zero-based indices, not positions in a
+displayed list. Catalogs preserve stable catalog and entry IDs and original
+source references; they contain no private endpoints or temporary stream URLs.
+
+Writes upload strict UTF-8 JSON in canonical base64 chunks of at most 6,144 decoded
+bytes, with an 8 MiB document limit and SHA-256 verification. `write_commit` checks
+the original catalog revision again and confirms the persisted result. `replace`
+adopts the incoming catalog; `merge` requires matching catalog IDs, preserves
+existing order and name, and rejects conflicting entries as a whole. Importing
+never selects a provider or starts playback. The updated list appears on the next
+explicit provider load or play.
+
+Use a UUID for each mutation and retain it if a response is lost. Identical
+requests reuse their retained receipt; `status` recovers the result and `cancel`
+cancels pending work. Records and snapshots expire after 600 seconds of inactivity;
+valid status or chunk access extends the corresponding lifetime. Metadata has a
+75-second total deadline. After expiry or reload, an unknown result must not be
+automatically retried as a new mutation. `play` uses the normal guarded playback
+path; acceptance confirms dispatch, not decoder startup. Cancelling an accepted
+play does not stop it.
+
+Catalog and optional portable Favorites imports are separate commits. A client
+must validate both before writing and report partial success if Favorites fails.
+Unresolved Favorites keep their original references rather than being remapped.
 
 ## Server configuration
 

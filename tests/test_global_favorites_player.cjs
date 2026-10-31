@@ -1,5 +1,6 @@
 "use strict";
 const {
+    actualModule,
     createMainPorts,
 } = require("./helpers/global-favorites-main-ports.cjs");
 const assert = require("node:assert/strict"),
@@ -29,10 +30,9 @@ function moduleAt(file, deps, window) {
             Promise,
             require: (name) => {
                 if (name === "./global-favorites-providers")
-                    return moduleAt(
+                    return actualModule(
                         "src/media/global-favorites-providers.ts",
-                        {},
-                        window
+                        window || {}
                     );
                 if (!deps[name]) throw new Error(name);
                 return deps[name];

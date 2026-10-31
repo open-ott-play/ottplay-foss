@@ -636,6 +636,136 @@ function actual() {
     return { data, events, store, typed, w };
 }
 check(
+    "catalog settings notify only the existing browser after durable local and remote writes",
+    () => {
+        const { w, typed, data } = actual();
+        w.URL = URL;
+        w.installSettingsFacade(w);
+        const calls = [];
+        const forbidden = () =>
+            assert.fail(
+                "Setting a catalog preference must not open a provider or start playback"
+            );
+        const driver = {
+            catalogBrowser: {
+                open: forbidden,
+                settingsChanged() {
+                    calls.push([
+                        typed.torrentCatalogLanguage,
+                        typed.torrentCatalogEndpoint,
+                    ]);
+                    assert.equal(
+                        data.get("torrent:sTorrentCatalogLanguage"),
+                        typed.torrentCatalogLanguage
+                    );
+                    assert.equal(
+                        data.get("sTorrentCatalogEndpoint"),
+                        typed.torrentCatalogEndpoint
+                    );
+                },
+            },
+            id: "torrent",
+            settingsChanged: forbidden,
+            storageKey: (key) => "torrent:" + key,
+        };
+        w.__ottActiveProviderDriver = driver;
+        w.__ottEditProvider = forbidden;
+        w.__ottMediaCompanion = { ensure: forbidden };
+        w.loadSettings();
+        assert.equal(
+            w.saveSettings({
+                torrentCatalogEndpoint: "https://catalog.invalid",
+                torrentCatalogLanguage: "_rus",
+            }),
+            true
+        );
+        assert.deepEqual(
+            calls,
+            [["_rus", "https://catalog.invalid"]],
+            "a batch publishes both values before one notification"
+        );
+        vm.runInContext(
+            ts.transpileModule(
+                fs.readFileSync(
+                    path.join(root, "src/plugins/remote-settings.ts"),
+                    "utf8"
+                ),
+                {
+                    compilerOptions: {
+                        module: ts.ModuleKind.None,
+                        target: ts.ScriptTarget.ES5,
+                    },
+                }
+            ).outputText,
+            w
+        );
+        const remote = w.__ottPlayerSettingsFactory.create(
+            w,
+            () => "runtime-1"
+        );
+        function request(params) {
+            let result;
+            remote.request(
+                {
+                    action: "player_settings",
+                    params: { runtime: "runtime-1", ...params },
+                },
+                (value) => {
+                    result = value;
+                }
+            );
+            return result;
+        }
+        function set(id, value) {
+            const get = request({ id, op: "get" });
+            assert.equal(get.data.descriptor.apply, "immediate");
+            return request({
+                context: get.data.context.token,
+                id,
+                op: "set",
+                revision: get.data.setting.revision,
+                value,
+            });
+        }
+        assert.equal(set("torrentCatalogLanguage", "_fra").status, "ok");
+        assert.equal(
+            set("torrentCatalogEndpoint", "https://replacement.invalid").status,
+            "ok"
+        );
+        assert.deepEqual(calls.slice(1), [
+            ["_fra", "https://catalog.invalid"],
+            ["_fra", "https://replacement.invalid"],
+        ]);
+        assert.equal(
+            set("torrentCatalogLanguage", "invalid").status,
+            "rejected"
+        );
+        assert.equal(w.saveSettings({ fontSize: 2 }), true);
+        assert.equal(calls.length, 3);
+        const originalSet = w.storage.set;
+        w.storage.set = () => {};
+        assert.equal(
+            w.saveSettings({
+                torrentCatalogEndpoint: "https://rejected.invalid",
+            }),
+            false
+        );
+        assert.equal(
+            calls.length,
+            3,
+            "failed writes do not invalidate a pending catalog request"
+        );
+        w.storage.set = originalSet;
+        delete driver.catalogBrowser;
+        assert.equal(w.saveSettings({ torrentCatalogEndpoint: "" }), true);
+        assert.equal(
+            calls.length,
+            3,
+            "provisioning a hidden or unavailable browser does not open it"
+        );
+    }
+);
+check(
     "Studio 2026 is the default; switching themes preserves the Classic palette",
     () => {
         const { w, typed, data, events } = actual();

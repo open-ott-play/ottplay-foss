@@ -15,6 +15,29 @@ function source(path) {
     acorn.parse(code, { ecmaVersion: 5 });
     return code;
 }
+function productionSetting(id) {
+    const ast = ts.createSourceFile(
+        "settings.ts",
+        fs.readFileSync("src/settings/index.ts", "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const schema = ast.statements
+        .filter(ts.isVariableStatement)
+        .flatMap((node) => [...node.declarationList.declarations])
+        .find(
+            (node) => node.name.getText(ast) === "settingsSchema"
+        ).initializer;
+    const definition = schema.elements.find((node) =>
+        node.properties?.some(
+            (property) =>
+                property.name?.getText(ast) === "id" &&
+                property.initializer?.text === id
+        )
+    );
+    assert(definition, "Use the production setting validator: " + id);
+    return vm.runInNewContext("(" + definition.getText(ast) + ")", { URL });
+}
 const domain = { exports: {} };
 vm.runInNewContext(source("src/settings/store.ts"), domain);
 const plugin = source("src/plugins/remote-settings.ts");
@@ -262,29 +285,7 @@ check("secrets remain redacted in get, schema and failure", () => {
 check(
     "companion endpoint remains writable through masked remote settings",
     () => {
-        const ast = ts.createSourceFile(
-            "settings.ts",
-            fs.readFileSync("src/settings/index.ts", "utf8"),
-            ts.ScriptTarget.Latest,
-            true
-        );
-        const schema = ast.statements
-            .filter(ts.isVariableStatement)
-            .flatMap((node) => [...node.declarationList.declarations])
-            .find(
-                (node) => node.name.getText(ast) === "settingsSchema"
-            ).initializer;
-        const definition = schema.elements.find((node) =>
-            node.properties?.some(
-                (property) =>
-                    property.name?.getText(ast) === "id" &&
-                    property.initializer?.text === "companionEndpoint"
-            )
-        );
-        assert(definition, "Use the production companion setting validator");
-        const f = fixture([
-            vm.runInNewContext("(" + definition.getText(ast) + ")", { URL }),
-        ]);
+        const f = fixture([productionSetting("companionEndpoint")]);
         const endpoint =
             "http://127.0.0.1:8793/companion/" + "a".repeat(48) + "/v1";
         const get = f.get("companionEndpoint");
@@ -313,6 +314,64 @@ check(
         assert.equal(f.data.get("sCompanionEndpoint"), "");
     }
 );
+check("catalog base remains private and validates operator input", () => {
+    const f = fixture([productionSetting("torrentCatalogEndpoint")]);
+    const endpoint = "https://catalog.invalid/PRIVATE_PATH_TOKEN";
+    const get = f.get("torrentCatalogEndpoint");
+    assert.equal(get.data.descriptor.scope, "application");
+    assert.equal(get.data.descriptor.sensitive, true);
+    assert.equal(get.data.descriptor.access.read, false);
+    assert.equal(get.data.descriptor.access.write, true);
+    assert.equal(f.set(get, endpoint).status, "ok");
+    assert.equal(f.data.get("sTorrentCatalogEndpoint"), endpoint);
+    const saved = f.get("torrentCatalogEndpoint");
+    assert.equal(saved.data.setting.redacted, true);
+    assert.equal(saved.data.setting.configured, true);
+    assert.equal(saved.data.setting.value, undefined);
+    assert.equal(saved.data.setting.persisted_value, undefined);
+    assert.equal(saved.data.descriptor.default_value, undefined);
+    assert(!JSON.stringify(saved).includes("PRIVATE"));
+    assert(
+        !JSON.stringify(
+            f.request({ op: "schema", runtime: f.runtime })
+        ).includes("PRIVATE")
+    );
+    for (const invalid of [
+        "http://catalog.invalid",
+        "https://user:PRIVATE@catalog.invalid",
+        "https://catalog.invalid?token=PRIVATE",
+        "https://catalog.invalid/#PRIVATE",
+        "https://catalog.invalid?",
+        "https://catalog.invalid#",
+        "https://catalog.invalid/manifest.json",
+        "https://catalog.invalid/%7B%22language%22%3A%22ru%22%7D",
+        "https://catalog.invalid/%xx",
+        "https://catalog.invalid/private%20path",
+        "https://catalog.invalid/%6danifest.json/",
+        "https://catalog.invalid/\n",
+        "https:\\catalog.invalid",
+        "https://catalog.invalid/" + "a".repeat(4096),
+        null,
+        7,
+    ]) {
+        const rejected = f.set(f.get("torrentCatalogEndpoint"), invalid);
+        assert.equal(rejected.status, "rejected", String(invalid));
+        assert(!JSON.stringify(rejected).includes("PRIVATE"));
+        assert.equal(f.data.get("sTorrentCatalogEndpoint"), endpoint);
+    }
+    for (const valid of [
+        "https://catalog.invalid",
+        "https://catalog.invalid/service/",
+        "HTTPS://catalog.invalid/private-path",
+        "",
+    ]) {
+        assert.equal(
+            f.set(f.get("torrentCatalogEndpoint"), valid).status,
+            "ok"
+        );
+        assert.equal(f.data.get("sTorrentCatalogEndpoint"), valid);
+    }
+});
 check(
     "runtime, provider, profile and saved-byte changes invalidate receipts",
     () => {

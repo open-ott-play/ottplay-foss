@@ -508,41 +508,52 @@ export function createCommandServer(
                                 libraryError: string,
                                 localError = "native_error"
                             ): any {
-                                return item.action === "favorites_transfer"
+                                return item.action === "torrent_catalog"
                                     ? {
-                                          error:
+                                          error: "Torrent catalog request failed.",
+                                          op: item.params.op,
+                                          reason:
                                               localError === "catalog_loading"
                                                   ? "expired"
-                                                  : "storage_unavailable",
-                                          op: item.params.op,
+                                                  : "effect_failed",
                                           runtime: item.params.runtime,
                                           version: 1,
                                       }
-                                    : item.action === "local_media"
+                                    : item.action === "favorites_transfer"
                                       ? {
-                                            error: localError,
+                                            error:
+                                                localError === "catalog_loading"
+                                                    ? "expired"
+                                                    : "storage_unavailable",
                                             op: item.params.op,
                                             runtime: item.params.runtime,
-                                            state: "error",
                                             version: 1,
                                         }
-                                      : item.action === "favorites"
+                                      : item.action === "local_media"
                                         ? {
-                                              error: "timeout",
+                                              error: localError,
                                               op: item.params.op,
                                               runtime: item.params.runtime,
                                               state: "error",
                                               version: 1,
                                           }
-                                        : item.action === "plex_library"
+                                        : item.action === "favorites"
                                           ? {
-                                                error: libraryError,
+                                                error: "timeout",
                                                 op: item.params.op,
                                                 runtime: item.params.runtime,
                                                 state: "error",
                                                 version: 1,
                                             }
-                                          : { error: message };
+                                          : item.action === "plex_library"
+                                            ? {
+                                                  error: libraryError,
+                                                  op: item.params.op,
+                                                  runtime: item.params.runtime,
+                                                  state: "error",
+                                                  version: 1,
+                                              }
+                                            : { error: message };
                             };
                             var executionTimer = w.setTimeout(function () {
                                 var abortWork = cancelExecution;
@@ -690,6 +701,7 @@ export function createCommandServer(
                                     item.action === "player_settings_patch" ||
                                     item.action === "plex_folders" ||
                                     item.action === "local_media" ||
+                                    item.action === "torrent_catalog" ||
                                     item.action === "provider_settings" ||
                                     item.action === "settings_compare"
                                 )

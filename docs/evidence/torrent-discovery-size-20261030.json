@@ -1,0 +1,1612 @@
+{
+  "schema": 1,
+  "feature": "Torrent movie discovery: localized metadata lists, search and details",
+  "baseline": {
+    "revision": "31d83c69",
+    "equivalentFrontendRevision": "4451ddfa4783b0399467b67cb6ecf182b33c1914",
+    "archive": "web-31d83c69/ottplay-foss-modea.tar.gz",
+    "archiveSha256": "09f1d223f713ced6c533eeccca593ed8049b8a1b7039408da86c28c3c422d18d",
+    "method": "Read the immutable Mode A tar archive directly. SHA-256 of all 25 classic JavaScript artifacts matches baseline-bundles.json for 4451ddfa; that revision changes only test fixtures. Recompress the actual archive bytes with the same Node/zlib process as the candidate. Ignore previously summarized gzip sizes."
+  },
+  "candidate": {
+    "workingTree": true,
+    "sourceRevisionClaimed": false,
+    "version": "1.1.62"
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "nativeBaseline": {
+    "method": "Projected from archived web bytes using the unchanged scripts/play-system-icons.cjs transformPlaySystemIcons. The same transform exactly reproduces every current native and mobile classic artifact from current web bytes; these are projections, not archived native builds.",
+    "transformSha256": "0d2adac364da1fe44d3025868cda8f448094074019c4a2cd9105416fa58bd21a",
+    "candidateTransformVerifiedArtifactsPerVariant": 25
+  },
+  "allocation": "Use the maximum paired delta across web, native and mobile for each changed component, adding no new reserve. Existing headroom and all independent provider/optional limits remain. Movie transport, caching and rendering stay in provider-torrent; only registry/search hooks and setting declarations enter player.js. Endpoint validation and remote setting dispatch remain in remote-settings-lifecycle. All other classic assets are byte-identical.",
+  "scope": "The existing size gate counts player.js, every CLASSIC_PROVIDER_BUNDLES member and every CLASSIC_OPTIONAL_BUNDLES member. Translation files, styles, icons and offline-worker are outside this pre-existing classic JavaScript gate; coverage is not changed.",
+  "allowance": {
+    "entry": {
+      "bytes": 1794,
+      "gzipBytes": 456
+    },
+    "catalog": {
+      "bytes": 14256,
+      "gzipBytes": 4740
+    },
+    "settings": {
+      "bytes": 493,
+      "gzipBytes": 160
+    }
+  },
+  "components": [
+    {
+      "name": "player.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 1163536,
+            "gzipBytes": 354424,
+            "sha256": "56213f72c29612c1e837fe9263db0697d676b53c51a56b2d039eb1f08407f35a"
+          },
+          "after": {
+            "bytes": 1165330,
+            "gzipBytes": 354877,
+            "sha256": "f978f0d153418214f1631ff8d9a770bad8494addb8b163931fe27e31b8f6f5de"
+          },
+          "delta": {
+            "bytes": 1794,
+            "gzipBytes": 453
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 1163494,
+            "gzipBytes": 354478,
+            "sha256": "285cde4d6e076a0542710da84a3079eda02508586a394167a3528aa48065006d"
+          },
+          "after": {
+            "bytes": 1165288,
+            "gzipBytes": 354934,
+            "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
+          },
+          "delta": {
+            "bytes": 1794,
+            "gzipBytes": 456
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 1163494,
+            "gzipBytes": 354478,
+            "sha256": "285cde4d6e076a0542710da84a3079eda02508586a394167a3528aa48065006d"
+          },
+          "after": {
+            "bytes": 1165288,
+            "gzipBytes": 354934,
+            "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
+          },
+          "delta": {
+            "bytes": 1794,
+            "gzipBytes": 456
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-torrent.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 33336,
+            "gzipBytes": 11262,
+            "sha256": "41d2d3a261438937c2f5e34e11d62c5cced6f5a6ed4c0ba4c4bffd200a647c73"
+          },
+          "after": {
+            "bytes": 47592,
+            "gzipBytes": 16002,
+            "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
+          },
+          "delta": {
+            "bytes": 14256,
+            "gzipBytes": 4740
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 33336,
+            "gzipBytes": 11262,
+            "sha256": "41d2d3a261438937c2f5e34e11d62c5cced6f5a6ed4c0ba4c4bffd200a647c73"
+          },
+          "after": {
+            "bytes": 47592,
+            "gzipBytes": 16002,
+            "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
+          },
+          "delta": {
+            "bytes": 14256,
+            "gzipBytes": 4740
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 33336,
+            "gzipBytes": 11262,
+            "sha256": "41d2d3a261438937c2f5e34e11d62c5cced6f5a6ed4c0ba4c4bffd200a647c73"
+          },
+          "after": {
+            "bytes": 47592,
+            "gzipBytes": 16002,
+            "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
+          },
+          "delta": {
+            "bytes": 14256,
+            "gzipBytes": 4740
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-settings-lifecycle.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 31403,
+            "gzipBytes": 9864,
+            "sha256": "de17fe815b6f7ff272366836e31402f85511978a5afdb1ee7145b17e48bfa8f1"
+          },
+          "after": {
+            "bytes": 31896,
+            "gzipBytes": 10024,
+            "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
+          },
+          "delta": {
+            "bytes": 493,
+            "gzipBytes": 160
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 31403,
+            "gzipBytes": 9864,
+            "sha256": "de17fe815b6f7ff272366836e31402f85511978a5afdb1ee7145b17e48bfa8f1"
+          },
+          "after": {
+            "bytes": 31896,
+            "gzipBytes": 10024,
+            "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
+          },
+          "delta": {
+            "bytes": 493,
+            "gzipBytes": 160
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 31403,
+            "gzipBytes": 9864,
+            "sha256": "de17fe815b6f7ff272366836e31402f85511978a5afdb1ee7145b17e48bfa8f1"
+          },
+          "after": {
+            "bytes": 31896,
+            "gzipBytes": 10024,
+            "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
+          },
+          "delta": {
+            "bytes": 493,
+            "gzipBytes": 160
+          }
+        }
+      }
+    }
+  ],
+  "unchangedComponents": [
+    {
+      "name": "provider-catalog.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "after": {
+            "bytes": 9463,
+            "gzipBytes": 3582,
+            "sha256": "5012077163c1a5ae7f2b13950a32f89983a14367dcf242aa8c7ed211ceabd91d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-edem.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "after": {
+            "bytes": 15631,
+            "gzipBytes": 6092,
+            "sha256": "ca17f87feeea33e1c396a35546b5b60f6b8e19423013ea21d4038879afa7f696"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-m3u.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "after": {
+            "bytes": 19349,
+            "gzipBytes": 7080,
+            "sha256": "2f97ccc12eebd6f91f8e367fb12cf359823cae8e78988c9ded237bb8677ac227"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-playlist.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "after": {
+            "bytes": 11808,
+            "gzipBytes": 4393,
+            "sha256": "5c2ecfb02025d42aeb5bea9e490b943e0e03ef190778cf257a5b44433eafba2c"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-plex.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "after": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "after": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "after": {
+            "bytes": 62116,
+            "gzipBytes": 21202,
+            "sha256": "887781ce9f1c27315c195991b2ca57c81e276b347b22a01cee5cb05fb43c09b6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-stalker.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "after": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "after": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "after": {
+            "bytes": 18737,
+            "gzipBytes": 6876,
+            "sha256": "25b0780e974eecb11b79fd9d523d6fc65422eb31b0a68f1bc27463355db2f298"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-vportal.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "after": {
+            "bytes": 11391,
+            "gzipBytes": 4350,
+            "sha256": "ebed15144be661da7d56a9a2850920d4167700d99fdcad5fc2959eeadf976db7"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "provider-xtream.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "after": {
+            "bytes": 4158,
+            "gzipBytes": 1752,
+            "sha256": "6a2976cb23d56eb03469f7a8e40223d75b8aac7292258cd8523af88460fe2a02"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "control-transport.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "after": {
+            "bytes": 3011,
+            "gzipBytes": 1350,
+            "sha256": "16ec458031cf82a1b7f46548062b68579d63f9e461df15713bb01fb9b29f43b2"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "favorites-transfer.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "after": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "after": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "after": {
+            "bytes": 248716,
+            "gzipBytes": 63807,
+            "sha256": "16f9c3482787a44d6bf42cdaf619749938b1431bebad342044703bb7434fa93b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "local-compatibility.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "after": {
+            "bytes": 4012,
+            "gzipBytes": 1729,
+            "sha256": "2aaa2fa4d8855ca97f2669d54a5e7dd5979e3f3e0d2aac364dae935446404b0b"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "local-media-ui.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "after": {
+            "bytes": 8455,
+            "gzipBytes": 3330,
+            "sha256": "d85090f057655f4b0c7f581a675daf7977f7a6aa7a05096cda00f1e6aa30d6a6"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "media-companion.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "after": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "after": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "after": {
+            "bytes": 9249,
+            "gzipBytes": 3270,
+            "sha256": "c21e8759c86f835e119c2bca85a58d0d1462e8a9702fcadf0534a1eb67abacdc"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "modern-interface.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "after": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "after": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "after": {
+            "bytes": 6076,
+            "gzipBytes": 2547,
+            "sha256": "a7e19ce2e25c714b486760f077bf6631060603d28760ddbd8aeb7c744f67cc72"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "perf-capture.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "after": {
+            "bytes": 21388,
+            "gzipBytes": 7942,
+            "sha256": "b4ed252d985259e1089d59c26c63440c7fa23cb4c61fdc55cf14bf9a6409643d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-local-runner.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "after": {
+            "bytes": 2504,
+            "gzipBytes": 1175,
+            "sha256": "177641cb02b08c568da15d7a2990166f0a11948e455595eb0da3ac1f7708b56d"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-provider-fields.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "after": {
+            "bytes": 15788,
+            "gzipBytes": 5509,
+            "sha256": "4aa7e64c91a9055c8c688c0dece5df35821c7587f14a71f3a9aeb01da8e03ea3"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-settings.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "after": {
+            "bytes": 15851,
+            "gzipBytes": 5185,
+            "sha256": "6caf45f7044b361660448277090e7354da860969cf0e48509859495391c9e251"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-settings-extras.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "after": {
+            "bytes": 6603,
+            "gzipBytes": 2507,
+            "sha256": "5c52bae088d0205cc562abdb58f0e618bfe3297b44ee5e4ab47c2f95ed48f02e"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "runtime-debug-details.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "after": {
+            "bytes": 3311,
+            "gzipBytes": 1551,
+            "sha256": "0be90cea3b767a83435497ed92356c2fd6af56cb532f857600d3c4f6f43b4a82"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "shaka-tracks.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "after": {
+            "bytes": 1144,
+            "gzipBytes": 596,
+            "sha256": "5b6c13f17f9848fda41410fc880620979b7978acc3b8d52c0a1aca278f5fed29"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "subtitle-appearance.js",
+      "variants": {
+        "web": {
+          "before": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "after": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "native": {
+          "before": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "after": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "mobile": {
+          "before": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "after": {
+            "bytes": 7798,
+            "gzipBytes": 3373,
+            "sha256": "3a033f70433a5abf2e3d55e9be15eb80bcc37ed49ccd993efa2b4d503522dcdf"
+          },
+          "delta": {
+            "bytes": 0,
+            "gzipBytes": 0
+          }
+        }
+      }
+    }
+  ],
+  "totals": {
+    "web": {
+      "path": "dist",
+      "before": {
+        "legacy": {
+          "bytes": 1349525,
+          "gzipBytes": 421013
+        },
+        "complete": {
+          "bytes": 1734834,
+          "gzipBytes": 534748
+        }
+      },
+      "after": {
+        "legacy": {
+          "bytes": 1365575,
+          "gzipBytes": 426206
+        },
+        "complete": {
+          "bytes": 1751377,
+          "gzipBytes": 540101
+        }
+      }
+    },
+    "native": {
+      "path": "src-tauri/frontend/dist",
+      "before": {
+        "legacy": {
+          "bytes": 1349483,
+          "gzipBytes": 421067
+        },
+        "complete": {
+          "bytes": 1734792,
+          "gzipBytes": 534802
+        }
+      },
+      "after": {
+        "legacy": {
+          "bytes": 1365533,
+          "gzipBytes": 426263
+        },
+        "complete": {
+          "bytes": 1751335,
+          "gzipBytes": 540158
+        }
+      }
+    },
+    "mobile": {
+      "path": "dist-mobile/dist",
+      "before": {
+        "legacy": {
+          "bytes": 1349483,
+          "gzipBytes": 421067
+        },
+        "complete": {
+          "bytes": 1734792,
+          "gzipBytes": 534802
+        }
+      },
+      "after": {
+        "legacy": {
+          "bytes": 1365533,
+          "gzipBytes": 426263
+        },
+        "complete": {
+          "bytes": 1751335,
+          "gzipBytes": 540158
+        }
+      }
+    }
+  },
+  "beforeCaps": {
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1730624,
+      "gzipBytes": 534595
+    },
+    "BUDGET": {
+      "bytes": 1163739,
+      "gzipBytes": 356080
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1349911,
+      "gzipBytes": 422687
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 248988,
+        "gzipBytes": 64135
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 9295,
+        "gzipBytes": 3376
+      },
+      "modern-interface": {
+        "bytes": 6200,
+        "gzipBytes": 2650
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 31736,
+        "gzipBytes": 10265
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1735104,
+      "gzipBytes": 536899
+    }
+  },
+  "afterCaps": {
+    "BASE_TOTAL_BUDGET": {
+      "bytes": 1747167,
+      "gzipBytes": 539951
+    },
+    "BUDGET": {
+      "bytes": 1165533,
+      "gzipBytes": 356536
+    },
+    "LEGACY_TOTAL_BUDGET": {
+      "bytes": 1365961,
+      "gzipBytes": 427883
+    },
+    "OPTIONAL_BUDGETS": {
+      "control-transport": {
+        "bytes": 6027,
+        "gzipBytes": 2010
+      },
+      "favorites-transfer": {
+        "bytes": 248988,
+        "gzipBytes": 64135
+      },
+      "local-compatibility": {
+        "bytes": 4800,
+        "gzipBytes": 1900
+      },
+      "local-media-ui": {
+        "bytes": 8500,
+        "gzipBytes": 3400
+      },
+      "media-companion": {
+        "bytes": 9295,
+        "gzipBytes": 3376
+      },
+      "modern-interface": {
+        "bytes": 6200,
+        "gzipBytes": 2650
+      },
+      "perf-capture": {
+        "bytes": 22200,
+        "gzipBytes": 8528
+      },
+      "remote-local-runner": {
+        "bytes": 2700,
+        "gzipBytes": 1300
+      },
+      "remote-provider-fields": {
+        "bytes": 18000,
+        "gzipBytes": 6200
+      },
+      "remote-settings": {
+        "bytes": 17500,
+        "gzipBytes": 5800
+      },
+      "remote-settings-extras": {
+        "bytes": 7000,
+        "gzipBytes": 2800
+      },
+      "remote-settings-lifecycle": {
+        "bytes": 32229,
+        "gzipBytes": 10425
+      },
+      "runtime-debug-details": {
+        "bytes": 3800,
+        "gzipBytes": 1900
+      },
+      "shaka-tracks": {
+        "bytes": 1200,
+        "gzipBytes": 640
+      },
+      "subtitle-appearance": {
+        "bytes": 8196,
+        "gzipBytes": 3432
+      }
+    },
+    "TOTAL_BUDGET": {
+      "bytes": 1751647,
+      "gzipBytes": 542255
+    }
+  },
+  "protectedCaps": {
+    "provider": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    },
+    "optional": {
+      "bytes": 7800,
+      "gzipBytes": 3300
+    }
+  }
+}

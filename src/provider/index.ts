@@ -2520,16 +2520,19 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
                     ? strPREV
                     : ""
         ) +
-        (!view || view.actions
+        (!view || view.actions || view.search
             ? renderButtonHint(
                   keys.YELLOW,
-                  view ? "−" : "",
-                  view ? "Favorites" : "Actions",
+                  view && !view.search ? "−" : "",
+                  view ? (view.search ? "Search" : "Favorites") : "Actions",
                   strTools,
                   "0"
               )
             : "") +
         renderButtonHint(keys.N2, strInfo, "Description", "2") +
+        (view && view.more
+            ? renderButtonHint(keys.NEXT, strNEXT, "Next")
+            : "") +
         (!view && typeof stbPlayPip === "function"
             ? renderButtonHint(keys.PIP, strPip, "Open in PiP", strSTOP, "5")
             : "");

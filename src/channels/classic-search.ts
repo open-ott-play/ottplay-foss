@@ -8,6 +8,7 @@ function createClassicChannelSearch(host: any) {
         pending = null;
     }
     function open(): void {
+        if (host.__ottActiveProviderDriver?.catalogBrowser?.search()) return;
         cancelPlay();
         var request = ++sequence;
         var port = host.__ottClassicScreenPort;

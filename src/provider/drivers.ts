@@ -111,6 +111,14 @@ interface ProviderDriver {
         mediaPlaylist?: boolean;
         libraryOnly?: boolean;
     };
+    /** Optional metadata browsing; saved playable channel catalogs stay separate. */
+    catalogBrowser?: {
+        open(): boolean;
+        categories(): boolean;
+        search(): boolean;
+        close(): void;
+        settingsChanged(): boolean;
+    };
     commitStartupPreview?(): boolean;
     configuration?(): any;
     continueStartupPreview?(generation: number): void;

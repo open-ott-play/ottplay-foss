@@ -74,6 +74,9 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             ["sNotificationsEnabled", "0"],
             ["sCompanionEndpoint", ownCompanion],
             ["companionEndpoint", ownCompanion],
+            ["sTorrentCatalogEndpoint", "https://own.invalid/private-token"],
+            ["torrentCatalogEndpoint", "https://own.invalid/private-token"],
+            ["torrent:sTorrentCatalogLanguage", "_rus"],
             ["m3u:m3uArr", providerPayload],
             ["plexcfg", plexPayload],
             ["ottplayStorageFallback", "pending"],
@@ -143,6 +146,12 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         vm.runInContext(policy + controller + cloud, c);
         assert.equal(c.stbGetAllItems().sCompanionEndpoint, undefined);
         assert.equal(c.stbGetAllItems().companionEndpoint, undefined);
+        assert.equal(c.stbGetAllItems().torrentCatalogEndpoint, undefined);
+        assert.equal(c.stbGetAllItems().sTorrentCatalogEndpoint, undefined);
+        assert.equal(
+            c.stbGetAllItems()["torrent:sTorrentCatalogLanguage"],
+            "_rus"
+        );
         c.__ottCommandServer = c.createCommandServer(
             c,
             (request, complete) => {
@@ -196,11 +205,13 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         assert(!upload.data.d.includes("sNotificationsEnabled"));
         assert(!upload.data.d.includes("Companion"));
         assert(!upload.data.d.includes("companion"));
+        assert(!upload.data.d.includes("private-token"));
         c[names[0]]();
         const saved = JSON.parse(stored.get("stb_settings_backup"));
         assert.deepEqual(saved, {
             "m3u:m3uArr": providerPayload,
             plexcfg: plexPayload,
+            "torrent:sTorrentCatalogLanguage": "_rus",
         });
         assert.equal(
             c.__ottCommandServer.status().enabled,
@@ -224,9 +235,12 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
                 sLocalHttpDeviceCode: "copied-device-code",
                 sLocalHttpEnabled: "1",
                 sNotificationsEnabled: "1",
+                sTorrentCatalogEndpoint: "https://copied.invalid/private-token",
                 stb_settings_backup: JSON.stringify({
                     commandServerToken: copiedToken,
                 }),
+                "torrent:sTorrentCatalogLanguage": "_fra",
+                torrentCatalogEndpoint: "https://copied.invalid/private-token",
             })
         );
         c[names[1]]();
@@ -253,6 +267,15 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         assert.equal(stored.get("sLocalHttpDeviceCode"), "this-device-code");
         assert.equal(stored.get("sCompanionEndpoint"), ownCompanion);
         assert.equal(stored.get("companionEndpoint"), ownCompanion);
+        assert.equal(
+            stored.get("torrentCatalogEndpoint"),
+            "https://own.invalid/private-token"
+        );
+        assert.equal(
+            stored.get("sTorrentCatalogEndpoint"),
+            "https://own.invalid/private-token"
+        );
+        assert.equal(stored.get("torrent:sTorrentCatalogLanguage"), "_fra");
         assert.equal(stored.get("stb_settings_backup"), undefined);
         assert.equal(stored.get("m3u:m3uArr"), providerPayload);
         assert.equal(stored.get("plexcfg"), plexPayload);
@@ -268,12 +291,20 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         );
         stored.delete("sCompanionEndpoint");
         stored.delete("companionEndpoint");
+        stored.delete("torrentCatalogEndpoint");
+        stored.delete("sTorrentCatalogEndpoint");
         c.restoreLocalSettingsSnapshot({
             companionEndpoint: copiedCompanion,
             sCompanionEndpoint: copiedCompanion,
         });
         assert.equal(stored.has("sCompanionEndpoint"), false);
         assert.equal(stored.has("companionEndpoint"), false);
+        c.restoreLocalSettingsSnapshot({
+            sTorrentCatalogEndpoint: "https://copied.invalid/token",
+            torrentCatalogEndpoint: "https://copied.invalid/token",
+        });
+        assert.equal(stored.has("torrentCatalogEndpoint"), false);
+        assert.equal(stored.has("sTorrentCatalogEndpoint"), false);
         if (profile === "static-core") {
             stored.set("stb_settings_backup", "{}");
             const before = JSON.stringify([...stored]);

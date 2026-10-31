@@ -1,10 +1,8 @@
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const vm = require("node:vm");
-const ts = require("typescript");
 const test = require("node:test");
 const { fixture } = require("./helpers/provider-driver-fixture.cjs");
 const runtime = require("./helpers/private-runtime.cjs");
+const { actualModule } = require("./helpers/global-favorites-main-ports.cjs");
 const source = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=Public+sample";
 const config = {
     entries: [
@@ -38,9 +36,34 @@ function setup(value = config) {
         ensure() {
             throw new Error("Browsing must not start a service");
         },
+        providerAvailable: () => true,
     };
     runtime(f.host, "src/provider/source-identity.ts");
     f.driver = f.mount("torrent");
+    const storage = {
+        getItem: (key) => f.saved.get(key) ?? null,
+        removeItem: (key) => f.saved.delete(key),
+        setItem: (key, value) => f.saved.set(key, value),
+    };
+    Object.assign(f.host, {
+        localStorage: storage,
+        location: { origin: "https://player.test" },
+        navigator: {
+            locks: { request: (_name, _options, callback) => callback({}) },
+        },
+    });
+    const grant = actualModule(
+        "src/storage/favorites-physical-storage.ts",
+        f.host
+    ).createFavoritesPhysicalStorageGrant(f.host, storage, () => true);
+    const saveHost = actualModule(
+        "src/plugins/torrent-catalog-runtime.ts",
+        f.host
+    ).createTorrentCatalogHost(f.host, {
+        runtime: () => "torrent-test",
+        storage: () => grant,
+    });
+    f.host.__ottTorrentCatalogAccess = () => saveHost;
     return f;
 }
 function load(f) {
@@ -188,6 +211,7 @@ test("adding a source saves cached metadata then uses the normal channel reload"
     await flush();
     assert.equal(inspections.length, 1);
     inspections[0].done([{ index: 2, length: 200, name: "film.mp4" }]);
+    await flush();
     assert.equal(f.reloads, 1);
     const saved = JSON.parse(f.saved.get("torrentcfg"));
     assert.equal(saved.entries[0].source, source);
@@ -206,7 +230,10 @@ test("closing the source editor cancels metadata and ignores a late result", asy
         },
     });
     f.host.__ottEditProvider();
-    f.host.selIndex = 1;
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Public sample (2)"
+    );
+    assert.ok(f.host.selIndex >= 0);
     f.host.listKeyHandler(f.host.keys.ENTER);
     f.host.listKeyHandler(f.host.keys.ENTER);
     await flush();
@@ -218,6 +245,33 @@ test("closing the source editor cancels metadata and ignores a late result", asy
     assert.equal(f.reloads, 0);
 });
 
+test("source editor cannot overwrite a catalog changed while metadata was loading", async () => {
+    const f = setup(),
+        inspections = [];
+    f.host.__ottMediaCompanion.ensure = async () => ({
+        metadata(_source, done) {
+            inspections.push(done);
+            return () => {};
+        },
+    });
+    f.host.__ottEditProvider();
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Public sample (2)"
+    );
+    assert.ok(f.host.selIndex >= 0);
+    f.host.listKeyHandler(f.host.keys.ENTER);
+    f.host.listKeyHandler(f.host.keys.ENTER);
+    await flush();
+    const external = copy(config);
+    external.name = "Changed by a concurrent import";
+    const raw = JSON.stringify(external);
+    f.saved.set("torrentcfg", raw);
+    inspections[0]([{ index: 0, length: 1, name: "new.mp4" }]);
+    await flush();
+    assert.equal(f.saved.get("torrentcfg"), raw);
+    assert.equal(f.reloads, 0);
+});
+
 test("global Favorites reuse the stable channel locator and catalog identity", () => {
     const f = setup(),
         catalog = load(f),
@@ -226,13 +280,7 @@ test("global Favorites reuse the stable channel locator and catalog identity", (
         "src/media/global-favorites-identities.ts",
         "src/media/global-favorites-providers.ts",
     ]) {
-        const code = ts.transpileModule(fs.readFileSync(path, "utf8"), {
-            compilerOptions: {
-                module: ts.ModuleKind.CommonJS,
-                target: ts.ScriptTarget.ES5,
-            },
-        }).outputText;
-        vm.runInNewContext(code, { exports: exported });
+        Object.assign(exported, actualModule(path, f.host));
     }
     const item = catalog.channels[catalog.ids[0]];
     assert.equal(

@@ -251,6 +251,26 @@ check(
         assert.equal(f.restarts(), 2);
     }
 );
+check(
+    "cloud restore preserves catalog endpoint and transfers language",
+    (f) => {
+        const own = "https://catalog.invalid/private-token";
+        f.stored.set("sTorrentCatalogEndpoint", own);
+        f.stored.set("torrentCatalogEndpoint", own);
+        f.deliver(
+            "<properties><comment>OTT-Play Preferences</comment>" +
+                '<entry key="sTorrentCatalogEndpoint">https://copied.invalid/token</entry>' +
+                '<entry key="torrentCatalogEndpoint">https://copied.invalid/token</entry>' +
+                '<entry key="torrent:sTorrentCatalogLanguage">_rus</entry></properties>'
+        );
+        assert.equal(f.stored.get("sTorrentCatalogEndpoint"), own);
+        assert.equal(f.stored.get("torrentCatalogEndpoint"), own);
+        assert.equal(f.stored.get("torrent:sTorrentCatalogLanguage"), "_rus");
+        f.deliver();
+        assert.equal(f.stored.get("sTorrentCatalogEndpoint"), own);
+        assert.equal(f.stored.get("torrentCatalogEndpoint"), own);
+    }
+);
 check("cloud restore cannot configure an unconfigured companion", (f) => {
     f.deliver(
         "<properties><comment>OTT-Play Preferences</comment>" +

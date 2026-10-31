@@ -97,6 +97,10 @@ const CLASSIC_MODULES = [
     "build/plugins/plex-queue.js",
     "build/provider/plex-driver.js",
     "build/provider/vportal-driver.js",
+    "build/provider/torrent-catalog-codec.js",
+    "build/provider/torrent-catalog.js",
+    "build/plugins/torrent-catalog-runtime.js",
+    "build/provider/torrent-discovery-data.js",
     "build/provider/torrent-driver.js",
     "build/provider/xtream-media.js",
     "build/provider/drivers.js",
@@ -121,6 +125,7 @@ const CLASSIC_MODULES = [
     "build/commands/remote-favorites-global-items.js",
     "build/commands/remote-favorites-global-recovery.js",
     "build/commands/remote-settings.js",
+    "build/commands/remote-torrent-catalog.js",
     "build/commands/remote-perf.js",
     "build/commands/remote-favorites-contract.js",
     "build/commands/remote-favorites.js",
@@ -230,7 +235,14 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
         "build/provider/plex-driver.js",
     ],
     stalker: ["build/provider/stalker-driver.js"],
-    torrent: ["build/provider/torrent-driver.js"],
+    torrent: [
+        "build/commands/favorites-document-json.js",
+        "build/provider/torrent-catalog-codec.js",
+        "build/provider/torrent-catalog.js",
+        "build/plugins/torrent-catalog-runtime.js",
+        "build/provider/torrent-discovery-data.js",
+        "build/provider/torrent-driver.js",
+    ],
     vportal: ["build/provider/vportal-driver.js"],
     xtream: ["build/provider/xtream-media.js"],
 });
@@ -238,6 +250,7 @@ const CLASSIC_OPTIONAL_BUNDLES = Object.freeze({
     "control-transport": ["build/plugins/hosted-control-transport.js"],
     "favorites-transfer": [
         "build/commands/favorites-document-json.js",
+        "build/provider/torrent-catalog-codec.js",
         "build/commands/favorites-transfer.js",
         "build/commands/favorites-recovery.js",
         "build/settings/favorites-bindings.js",
@@ -464,6 +477,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/provider/torrent-discovery-data.js": Object.freeze([
+        "window.__ottTorrentDiscoveryData",
     ]),
     "build/provider/torrent-driver.js": Object.freeze([
         "window.__ottTorrentDriver",

@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { actualModule } = require("./helpers/global-favorites-main-ports.cjs");
 function load(file, supplied = {}) {
     const exports = {};
     const code = ts.transpileModule(fs.readFileSync(file, "utf8"), {
@@ -23,7 +24,10 @@ function load(file, supplied = {}) {
         Promise,
         require(name) {
             if (name === "./global-favorites-providers")
-                return load("src/media/global-favorites-providers.ts");
+                return actualModule(
+                    "src/media/global-favorites-providers.ts",
+                    {}
+                );
             if (!(name in supplied))
                 throw new Error("Unprovided dependency " + name);
             return supplied[name];

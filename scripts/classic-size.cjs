@@ -618,15 +618,26 @@ const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
 // registry plumbing. Retired companion UI savings are deducted once, and the
 // existing global Favorites/remote-settings changes are accounted separately.
 // Evidence: docs/evidence/torrent-provider-size-20261030.json.
+// Catalog RPC deltas preserve existing headroom; parser and engine stay in lazy assets.
+// Evidence: docs/evidence/torrent-catalog-rpc-size-20261030.json.
 const TORRENT_PROVIDER_ALLOWANCE = Object.freeze({
-    catalog: Object.freeze({ bytes: 8426, gzipBytes: 3348 }),
-    companion: Object.freeze({ bytes: -3663, gzipBytes: -1439 }),
-    entry: Object.freeze({ bytes: 2286, gzipBytes: 548 }),
-    favorites: Object.freeze({ bytes: 1194, gzipBytes: 270 }),
+    catalog: Object.freeze({ bytes: 8426 + 25059, gzipBytes: 3348 + 7960 }),
+    companion: Object.freeze({ bytes: -3663 + 286, gzipBytes: -1439 + 81 }),
+    entry: Object.freeze({ bytes: 2286 + 2286, gzipBytes: 548 + 538 }),
+    favorites: Object.freeze({ bytes: 1194 + 3055, gzipBytes: 270 + 851 }),
     settings: Object.freeze({ bytes: 263, gzipBytes: 102 }),
+});
+// Localized movie discovery stays in the lazy Torrent asset. Count the measured
+// entry hooks and optional settings validation separately, preserving old room.
+// Paired Node 26 gzip-9 receipts: docs/evidence/torrent-discovery-size-20261030.json.
+const TORRENT_DISCOVERY_ALLOWANCE = Object.freeze({
+    catalog: Object.freeze({ bytes: 14256, gzipBytes: 4740 }),
+    entry: Object.freeze({ bytes: 1794, gzipBytes: 456 }),
+    settings: Object.freeze({ bytes: 493, gzipBytes: 160 }),
 });
 const BUDGET = Object.freeze({
     bytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.bytes +
@@ -649,6 +660,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_PREPARATION_ALLOWANCE.gzipBytes +
@@ -850,6 +862,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
+        TORRENT_DISCOVERY_ALLOWANCE.catalog.bytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.bytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.bytes +
@@ -877,6 +891,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
+        TORRENT_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
         MEDIA_COMPANION_ENTRY_ALLOWANCE.gzipBytes +
@@ -973,11 +989,13 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "remote-settings-extras": Object.freeze({ bytes: 7000, gzipBytes: 2800 }),
     "remote-settings-lifecycle": Object.freeze({
         bytes:
+            TORRENT_DISCOVERY_ALLOWANCE.settings.bytes +
             31000 +
             MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["remote-settings-lifecycle"]
                 .bytes,
         gzipBytes:
+            TORRENT_DISCOVERY_ALLOWANCE.settings.gzipBytes +
             10000 +
             MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["remote-settings-lifecycle"]
@@ -1007,6 +1025,9 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
+        TORRENT_DISCOVERY_ALLOWANCE.catalog.bytes +
+        TORRENT_DISCOVERY_ALLOWANCE.settings.bytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.bytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.bytes +
         TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
@@ -1054,6 +1075,9 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
+        TORRENT_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
+        TORRENT_DISCOVERY_ALLOWANCE.settings.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.entry.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
         TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
@@ -1315,6 +1339,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         stbPlayerXtreamAllowance: STB_PLAYER_XTREAM_ALLOWANCE,
         tizenPackageBootAllowance: TIZEN_PACKAGE_BOOT_ALLOWANCE,
         toolchain: { node: process.versions.node, zlib: process.versions.zlib },
+        torrentDiscoveryAllowance: TORRENT_DISCOVERY_ALLOWANCE,
         torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
         totalBudget: TOTAL_BUDGET,
     };
@@ -1646,6 +1671,7 @@ function writeBuildBundleReport(
                 node: process.versions.node,
                 zlib: process.versions.zlib,
             },
+            torrentDiscoveryAllowance: TORRENT_DISCOVERY_ALLOWANCE,
             torrentProviderAllowance: TORRENT_PROVIDER_ALLOWANCE,
             totalBudget: TOTAL_BUDGET,
             violations,
@@ -1742,6 +1768,7 @@ module.exports = {
     STB_PLAYER_STALKER_ALLOWANCE,
     STB_PLAYER_XTREAM_ALLOWANCE,
     TIZEN_PACKAGE_BOOT_ALLOWANCE,
+    TORRENT_DISCOVERY_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
     TOTAL_BUDGET,
     writeBuildBundleReport,
