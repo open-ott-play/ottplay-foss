@@ -155,9 +155,13 @@ settings API, with no endpoint editor in the UI:
 ott TARGET setting torrentCatalogEndpoint --value-file /absolute/private/catalog-base-url.txt
 ```
 
-The file must contain an HTTPS addon **base URL**, not a `/manifest.json` URL or
-a preconfigured JSON path. User information, query strings and fragments are
-rejected. Paths can contain private configuration, so reads are masked and both
+The file must contain an addon **base URL**, not a `/manifest.json` URL or a
+preconfigured JSON path. External addons require HTTPS. HTTP is accepted only
+for the exact loopback hosts `localhost`, `127.0.0.1` and `[::1]`, with an optional
+port. Other `127.*` addresses, alternative numeric forms, `*.localhost` and names
+that merely resolve to loopback are not accepted. User information, query
+strings and fragments are rejected. Paths can contain private configuration,
+so reads are masked and both
 `torrentCatalogEndpoint` and `sTorrentCatalogEndpoint` are excluded from JSON,
 raw and cloud backups. Restoring a backup preserves this installation's current
 endpoint. A configured public service receives metadata requests and search
@@ -174,15 +178,16 @@ until an operator configures one through the authenticated CLI:
 ott TARGET setting torrentStreamAddons --value-file /absolute/private/stream-addons.json
 ```
 
-The file contains a JSON array of up to eight HTTPS **manifest URLs**, for
+The file contains a JSON array of up to eight **manifest URLs**, for
 example `["https://addon.example/private-config/manifest.json"]`. The limit is
 4,096 UTF-8 bytes for the complete compact JSON string, including quotes and
 commas. Whitespace around URLs, final slashes and exact duplicate URLs are
-normalized while preserving
-order and configuration paths, including percent-encoded JSON configuration.
+normalized while preserving order and configuration paths, including
+percent-encoded JSON configuration.
 The `/manifest.json` suffix is required; credentials in the URL authority,
-query strings and fragments are rejected. There is no addon endpoint editor in
-the player UI and no default public stream service.
+query strings and fragments are rejected. External URLs require HTTPS; HTTP
+uses the same exact loopback exception as the catalog endpoint. There is no
+addon endpoint editor in the player UI and no default public stream service.
 
 Manifest paths can contain private credentials, so remote reads are masked.
 Both `torrentStreamAddons` and its storage alias `sTorrentStreamAddons` are
@@ -202,7 +207,8 @@ routes. The film is licensed under [CC BY 3.0](https://peach.blender.org/about/)
 Video and artwork remain on Blender's servers; the example never downloads,
 caches or proxies them. It is not started or configured by the player build.
 
-Run its HTTP-only JSON smoke endpoint locally:
+Run the addon locally; its default HTTP loopback endpoint is accepted by the
+player without a certificate:
 
 ```sh
 node docs/examples/stremio-open-movie.cjs
@@ -210,8 +216,8 @@ curl --fail http://127.0.0.1:8794/manifest.json
 curl --fail 'http://127.0.0.1:8794/catalog/movie/open-movies/search=Big%20Buck%20Bunny.json'
 ```
 
-Player settings require HTTPS. Supply an existing certificate and matching key
-whose hostname/IP is valid and whose issuer the player already trusts:
+To use HTTPS instead, supply an existing certificate and matching key whose
+hostname/IP is valid and whose issuer the player already trusts:
 
 ```sh
 node docs/examples/stremio-open-movie.cjs --host 127.0.0.1 --port 8794 \
@@ -224,10 +230,10 @@ The default bind is `127.0.0.1:8794`; using another address requires an explicit
 operator choice. TLS validation remains enabled. `--media-url HTTPS_URL` or
 `OTT_OPEN_MOVIE_MEDIA_URL` can select another authorized Big Buck Bunny mirror.
 
-For a certificate valid for `127.0.0.1`, put
-`https://127.0.0.1:8794` in a private catalog value file and the compact JSON
-`["https://127.0.0.1:8794/manifest.json"]` in a private addon value file. Apply
-them with the two `ott TARGET setting ... --value-file ...` commands above.
+For the default local server, put `http://127.0.0.1:8794` in a private catalog
+value file and the compact JSON `["http://127.0.0.1:8794/manifest.json"]` in a
+private addon value file. Use `https://` for both if running the TLS variant.
+Apply them with the two `ott TARGET setting ... --value-file ...` commands above.
 Open Torrent, find Big Buck Bunny, choose its source and start playback. The
 example exercises real metadata/source selection and direct HTTPS playback;
 it does not exercise torrent transfer. Press Ctrl+C to stop the example and

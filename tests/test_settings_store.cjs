@@ -745,7 +745,7 @@ check(
             ["_fra", "https://catalog.invalid"],
             ["_fra", "https://replacement.invalid"],
         ]);
-        const addons = '["https://streams.invalid/PRIVATE/manifest.json"]';
+        const addons = '["http://127.0.0.1:8794/PRIVATE/manifest.json"]';
         assert.equal(w.saveSettings({ torrentStreamAddons: addons }), true);
         assert.deepEqual(sourceCalls, [addons]);
         assert.equal(set("torrentStreamAddons", "[]").status, "ok");

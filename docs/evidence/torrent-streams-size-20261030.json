@@ -12,7 +12,9 @@
     "workingTree": true,
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
-    "verifiedReport": "build/reports/classic-bundle.json"
+    "diagnosticAttempt": "b85133ea-26da-4d9e-beed-379123f64525",
+    "diagnosticCollectedAt": "2026-10-31T01:27:12.663Z",
+    "verifiedReport": "build/reports/classic-size-diagnostics.json"
   },
   "toolchain": {
     "node": "26.8.2",
@@ -28,20 +30,20 @@
   "scope": "The unchanged classic size gate covers player.js, every CLASSIC_PROVIDER_BUNDLES member, and every CLASSIC_OPTIONAL_BUNDLES member. Locales, styles, icons and offline-worker remain outside that pre-existing scope.",
   "allowance": {
     "entry": {
-      "bytes": 2432,
-      "gzipBytes": 557
+      "bytes": 2683,
+      "gzipBytes": 626
     },
     "catalog": {
-      "bytes": 18773,
-      "gzipBytes": 5371
+      "bytes": 19059,
+      "gzipBytes": 5475
     },
     "companion": {
       "bytes": 207,
       "gzipBytes": 79
     },
     "settings": {
-      "bytes": 358,
-      "gzipBytes": 110
+      "bytes": 490,
+      "gzipBytes": 155
     }
   },
   "components": [
@@ -55,13 +57,13 @@
             "sha256": "f978f0d153418214f1631ff8d9a770bad8494addb8b163931fe27e31b8f6f5de"
           },
           "after": {
-            "bytes": 1167762,
-            "gzipBytes": 355434,
-            "sha256": "9d1e507b083355f8c82d4472aea41a18080ac2f2463d597ef60778d164691149"
+            "bytes": 1168013,
+            "gzipBytes": 355503,
+            "sha256": "bd51276a3de0c211be45794d7d6e876528b9464a554d96be6ef7cd1141ec9f2a"
           },
           "delta": {
-            "bytes": 2432,
-            "gzipBytes": 557
+            "bytes": 2683,
+            "gzipBytes": 626
           }
         },
         "native": {
@@ -71,13 +73,13 @@
             "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
           },
           "after": {
-            "bytes": 1167720,
-            "gzipBytes": 355491,
-            "sha256": "9263cf04a2ddf8a0d433b936f5f9ae52e20f64a5883d9c151e10259be2415aea"
+            "bytes": 1167971,
+            "gzipBytes": 355559,
+            "sha256": "1bf0e11e093e28ba78d6697e40f4df0f0eb26d9371345873ebb560fe968af289"
           },
           "delta": {
-            "bytes": 2432,
-            "gzipBytes": 557
+            "bytes": 2683,
+            "gzipBytes": 625
           }
         },
         "mobile": {
@@ -87,13 +89,13 @@
             "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
           },
           "after": {
-            "bytes": 1167720,
-            "gzipBytes": 355491,
-            "sha256": "9263cf04a2ddf8a0d433b936f5f9ae52e20f64a5883d9c151e10259be2415aea"
+            "bytes": 1167971,
+            "gzipBytes": 355559,
+            "sha256": "1bf0e11e093e28ba78d6697e40f4df0f0eb26d9371345873ebb560fe968af289"
           },
           "delta": {
-            "bytes": 2432,
-            "gzipBytes": 557
+            "bytes": 2683,
+            "gzipBytes": 625
           }
         }
       }
@@ -108,13 +110,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 66365,
-            "gzipBytes": 21373,
-            "sha256": "34a35c8bad34f24b17560b2b032cd941c8facc27aaa60dbff60bad2cba46b417"
+            "bytes": 66651,
+            "gzipBytes": 21477,
+            "sha256": "881207885490422bc38d76dfb5ad9f80340050e75e26379521b01c533aed4328"
           },
           "delta": {
-            "bytes": 18773,
-            "gzipBytes": 5371
+            "bytes": 19059,
+            "gzipBytes": 5475
           }
         },
         "native": {
@@ -124,13 +126,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 66365,
-            "gzipBytes": 21373,
-            "sha256": "34a35c8bad34f24b17560b2b032cd941c8facc27aaa60dbff60bad2cba46b417"
+            "bytes": 66651,
+            "gzipBytes": 21477,
+            "sha256": "881207885490422bc38d76dfb5ad9f80340050e75e26379521b01c533aed4328"
           },
           "delta": {
-            "bytes": 18773,
-            "gzipBytes": 5371
+            "bytes": 19059,
+            "gzipBytes": 5475
           }
         },
         "mobile": {
@@ -140,13 +142,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 66365,
-            "gzipBytes": 21373,
-            "sha256": "34a35c8bad34f24b17560b2b032cd941c8facc27aaa60dbff60bad2cba46b417"
+            "bytes": 66651,
+            "gzipBytes": 21477,
+            "sha256": "881207885490422bc38d76dfb5ad9f80340050e75e26379521b01c533aed4328"
           },
           "delta": {
-            "bytes": 18773,
-            "gzipBytes": 5371
+            "bytes": 19059,
+            "gzipBytes": 5475
           }
         }
       }
@@ -214,13 +216,13 @@
             "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
           },
           "after": {
-            "bytes": 32254,
-            "gzipBytes": 10134,
-            "sha256": "66842aa063da00b3f08fa8825c277ed4ac44f7e2a41300b4b95a963ea8582590"
+            "bytes": 32386,
+            "gzipBytes": 10179,
+            "sha256": "c691c4a5d20ac69291eb90ce0ebf8625fc674c91880cd578b6eb69d044a1a2bf"
           },
           "delta": {
-            "bytes": 358,
-            "gzipBytes": 110
+            "bytes": 490,
+            "gzipBytes": 155
           }
         },
         "native": {
@@ -230,13 +232,13 @@
             "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
           },
           "after": {
-            "bytes": 32254,
-            "gzipBytes": 10134,
-            "sha256": "66842aa063da00b3f08fa8825c277ed4ac44f7e2a41300b4b95a963ea8582590"
+            "bytes": 32386,
+            "gzipBytes": 10179,
+            "sha256": "c691c4a5d20ac69291eb90ce0ebf8625fc674c91880cd578b6eb69d044a1a2bf"
           },
           "delta": {
-            "bytes": 358,
-            "gzipBytes": 110
+            "bytes": 490,
+            "gzipBytes": 155
           }
         },
         "mobile": {
@@ -246,13 +248,13 @@
             "sha256": "5dd18376a9595e0d9f6abccd744bb34b219f24fba33c45284e251560073a321b"
           },
           "after": {
-            "bytes": 32254,
-            "gzipBytes": 10134,
-            "sha256": "66842aa063da00b3f08fa8825c277ed4ac44f7e2a41300b4b95a963ea8582590"
+            "bytes": 32386,
+            "gzipBytes": 10179,
+            "sha256": "c691c4a5d20ac69291eb90ce0ebf8625fc674c91880cd578b6eb69d044a1a2bf"
           },
           "delta": {
-            "bytes": 358,
-            "gzipBytes": 110
+            "bytes": 490,
+            "gzipBytes": 155
           }
         }
       }
@@ -1388,12 +1390,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1386780,
-          "gzipBytes": 432134
+          "bytes": 1387317,
+          "gzipBytes": 432307
         },
         "complete": {
-          "bytes": 1773147,
-          "gzipBytes": 546218
+          "bytes": 1773816,
+          "gzipBytes": 546436
         }
       }
     },
@@ -1411,12 +1413,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1386738,
-          "gzipBytes": 432191
+          "bytes": 1387275,
+          "gzipBytes": 432363
         },
         "complete": {
-          "bytes": 1773105,
-          "gzipBytes": 546275
+          "bytes": 1773774,
+          "gzipBytes": 546492
         }
       }
     },
@@ -1434,12 +1436,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1386738,
-          "gzipBytes": 432191
+          "bytes": 1387275,
+          "gzipBytes": 432363
         },
         "complete": {
-          "bytes": 1773105,
-          "gzipBytes": 546275
+          "bytes": 1773774,
+          "gzipBytes": 546492
         }
       }
     }
@@ -1536,16 +1538,16 @@
   },
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1768937,
-      "gzipBytes": 546068
+      "bytes": 1769606,
+      "gzipBytes": 546286
     },
     "BUDGET": {
-      "bytes": 1167965,
-      "gzipBytes": 357093
+      "bytes": 1168216,
+      "gzipBytes": 357162
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1387166,
-      "gzipBytes": 433811
+      "bytes": 1387703,
+      "gzipBytes": 433984
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1593,8 +1595,8 @@
         "gzipBytes": 2800
       },
       "remote-settings-lifecycle": {
-        "bytes": 32587,
-        "gzipBytes": 10535
+        "bytes": 32719,
+        "gzipBytes": 10580
       },
       "runtime-debug-details": {
         "bytes": 3800,
@@ -1610,8 +1612,8 @@
       }
     },
     "TOTAL_BUDGET": {
-      "bytes": 1773417,
-      "gzipBytes": 548372
+      "bytes": 1774086,
+      "gzipBytes": 548590
     }
   }
 }

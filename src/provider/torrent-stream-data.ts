@@ -64,7 +64,11 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
         if (
             !match ||
             match[0] !== value ||
-            (secure && match[1].toLowerCase() !== "https")
+            (secure &&
+                match[1].toLowerCase() !== "https" &&
+                !/^(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?$/i.test(
+                    match[2]
+                ))
         )
             return "";
         try {

@@ -752,3 +752,53 @@ test("generic unadvertised meta, malformed manifests and cancelled discovery sto
     cancelled.requests[0].done(null, genericManifest);
     assert.equal(cancelled.requests.length, 1);
 });
+test("HTTP metadata bases allow exact literal loopback without DNS normalization", () => {
+    for (const authority of [
+        "localhost",
+        "LOCALHOST:7000",
+        "127.0.0.1:7000",
+        "[::1]:7000",
+    ]) {
+        const f = fixture(undefined, true);
+        const base = "http://" + authority + "/config";
+        f.setEndpoint(base);
+        f.instance.categories(() => {});
+        assert.equal(f.requests[0].url, base + "/manifest.json");
+    }
+    for (const authority of [
+        "localhost.evil",
+        "a.localhost",
+        "localhost.",
+        "127.0.0.2",
+        "127.1",
+        "2130706433",
+        "0x7f000001",
+        "127.000.0.1",
+        "[0:0:0:0:0:0:0:1]",
+        "u:p@localhost",
+        "localhost:99999",
+    ]) {
+        const f = fixture(undefined, true);
+        f.setEndpoint("http://" + authority);
+        let result;
+        f.instance.categories((v) => (result = v));
+        f.tick();
+        assert.equal(f.requests.length, 0, authority);
+        assert.equal(result.error, "invalid_request", authority);
+    }
+});
+test("loopback metadata base retains the exact 4096-byte setting boundary", () => {
+    const prefix = "http://localhost/";
+    for (const length of [4096, 4097]) {
+        const f = fixture(undefined, true);
+        f.setEndpoint(prefix + "p".repeat(length - prefix.length));
+        let result;
+        f.instance.categories((v) => (result = v));
+        f.tick();
+        if (length === 4096) assert.equal(f.requests.length, 1);
+        else {
+            assert.equal(f.requests.length, 0);
+            assert.equal(result.error, "invalid_request");
+        }
+    }
+});

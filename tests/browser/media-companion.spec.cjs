@@ -685,13 +685,17 @@ test("Torrent provider is hidden for external endpoints until native capability 
     expect(commands).toEqual(["companion_capabilities"]);
 });
 
-for (const kind of ["url", "torrent", "empty"]) {
+for (const kind of ["url", "torrent", "empty", "loopback"]) {
     test(`Stremio movie selection reaches sources and playback: ${kind}`, async ({
         page,
         context,
         baseURL,
     }) => {
         const origin = new URL(baseURL).origin;
+        const addonOrigin =
+            kind === "loopback"
+                ? "http://localhost:" + new URL(origin).port
+                : "https://addon.test";
         const companion = "/companion/" + "a".repeat(32) + "/v1";
         const clip = movieFixture();
         const apiCalls = [],
@@ -730,7 +734,7 @@ for (const kind of ["url", "torrent", "empty"]) {
             const request = route.request(),
                 url = new URL(request.url());
             const headers = { "access-control-allow-origin": "*" };
-            if (url.origin === "https://addon.test") {
+            if (url.origin === addonOrigin) {
                 apiCalls.push(url.pathname);
                 if (url.pathname === "/manifest.json")
                     return route.fulfill({ headers, json: manifest });
@@ -746,7 +750,7 @@ for (const kind of ["url", "torrent", "empty"]) {
                                 kind === "empty"
                                     ? []
                                     : [
-                                          kind === "url"
+                                          kind !== "torrent"
                                               ? {
                                                     name: "Direct HD",
                                                     url: "https://media.test/movie.mp4",
@@ -817,16 +821,13 @@ for (const kind of ["url", "torrent", "empty"]) {
             return route.continue();
         });
         await context.addInitScript(
-            ({ origin, companion }) => {
+            ({ origin, companion, addonOrigin }) => {
                 localStorage.setItem("ottplaylang", "_eng");
                 localStorage.setItem("ottplayprov", "demo");
-                localStorage.setItem(
-                    "sTorrentCatalogEndpoint",
-                    "https://addon.test"
-                );
+                localStorage.setItem("sTorrentCatalogEndpoint", addonOrigin);
                 localStorage.setItem(
                     "sTorrentStreamAddons",
-                    JSON.stringify(["https://addon.test/manifest.json"])
+                    JSON.stringify([addonOrigin + "/manifest.json"])
                 );
                 localStorage.setItem("sCompanionEndpoint", origin + companion);
                 const play = HTMLMediaElement.prototype.play;
@@ -835,7 +836,7 @@ for (const kind of ["url", "torrent", "empty"]) {
                     return play.call(this);
                 };
             },
-            { companion, origin }
+            { addonOrigin, companion, origin }
         );
         await page.goto("/f/pc/");
         await page.waitForFunction(() => window.commandChannelsReady === true);

@@ -476,3 +476,35 @@ test("settings JSON is bounded to the shared 4096-byte wire limit", () => {
     array.tick();
     assert.equal(array.results[0].error, "invalid_request");
 });
+test("HTTP manifests allow only literal loopback hosts before URL normalization", () => {
+    for (const authority of [
+        "localhost",
+        "LOCALHOST:7000",
+        "127.0.0.1:7000",
+        "[::1]:7000",
+    ]) {
+        const url = "http://" + authority + "/config/manifest.json";
+        const f = fixture({ urls: [url] });
+        f.lookup();
+        assert.equal(f.requests[0].url, url);
+    }
+    for (const authority of [
+        "localhost.evil",
+        "a.localhost",
+        "localhost.",
+        "127.0.0.2",
+        "127.1",
+        "2130706433",
+        "0x7f000001",
+        "127.000.0.1",
+        "[0:0:0:0:0:0:0:1]",
+        "u:p@localhost",
+        "localhost:99999",
+    ]) {
+        const f = fixture({ urls: ["http://" + authority + "/manifest.json"] });
+        f.lookup();
+        f.tick();
+        assert.equal(f.requests.length, 0, authority);
+        assert.equal(f.results[0].error, "invalid_request", authority);
+    }
+});

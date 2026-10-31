@@ -458,14 +458,20 @@ export function normalizeTorrentStreamAddons(value: any): string | null {
             var manifest = input[i].trim().replace(/\/+$/, "");
             if (
                 bytes(manifest) > 4096 ||
-                !/^https:\/\//i.test(manifest) ||
-                /^https:\/\/[^/?#]*@/i.test(manifest) ||
+                !/^https?:\/\//i.test(manifest) ||
+                /^https?:\/\/[^/?#]*@/i.test(manifest) ||
                 /[\s\x00-\x1f\x7f\\?#<>"']/.test(manifest)
             )
                 return null;
             var url = new URL(manifest);
             if (
-                url.protocol !== "https:" ||
+                (url.protocol !== "https:" &&
+                    !(
+                        url.protocol === "http:" &&
+                        /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?(?:\/|$)/i.test(
+                            manifest
+                        )
+                    )) ||
                 !url.hostname ||
                 url.username ||
                 url.password ||
@@ -511,7 +517,8 @@ export const settingsSchema: SettingDefinition[] = [
             if (
                 typeof value !== "string" ||
                 value.length > 4096 ||
-                !/^https:\/\//i.test(value) ||
+                !/^https?:\/\//i.test(value) ||
+                /^https?:\/\/[^/?#]*@/i.test(value) ||
                 /[\x00-\x20\x7f\\?#<>"']/.test(value)
             )
                 return false;
@@ -519,7 +526,11 @@ export const settingsSchema: SettingDefinition[] = [
                 var url = new URL(value);
                 var path = decodeURIComponent(url.pathname);
                 return (
-                    url.protocol === "https:" &&
+                    (url.protocol === "https:" ||
+                        (url.protocol === "http:" &&
+                            /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?(?:\/|$)/i.test(
+                                value
+                            ))) &&
                     !!url.hostname &&
                     !url.username &&
                     !url.password &&

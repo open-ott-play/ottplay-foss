@@ -488,6 +488,70 @@ check(
     }
 );
 check(
+    "addon HTTP exceptions use exact loopback authorities without DNS",
+    () => {
+        for (const id of ["torrentCatalogEndpoint", "torrentStreamAddons"]) {
+            const f = fixture([productionSetting(id)]);
+            const value = (base) =>
+                id === "torrentStreamAddons"
+                    ? JSON.stringify([base + "/manifest.json"])
+                    : base;
+            const key =
+                id === "torrentStreamAddons"
+                    ? "sTorrentStreamAddons"
+                    : "sTorrentCatalogEndpoint";
+            for (const base of [
+                "http://localhost",
+                "http://localhost:8794/private",
+                "HTTP://LOCALHOST:8794/private",
+                "http://127.0.0.1:8794",
+                "http://[::1]:8794/private",
+                "https://external.invalid/private",
+            ]) {
+                assert.equal(
+                    f.set(f.get(id), value(base)).status,
+                    "ok",
+                    id + ": " + base
+                );
+                assert.equal(f.data.get(key), value(base));
+                assert.equal(f.get(id).data.setting.value, undefined);
+            }
+            const before = f.data.get(key);
+            for (const base of [
+                "http://external.invalid",
+                "http://192.168.1.2",
+                "http://127.0.0.2",
+                "http://127.1",
+                "http://127.000.000.001",
+                "http://2130706433",
+                "http://0x7f000001",
+                "http://0177.0.0.1",
+                "http://[::ffff:127.0.0.1]",
+                "http://[0:0:0:0:0:0:0:1]",
+                "http://localhost.",
+                "http://a.localhost",
+                "http://localhost.external.invalid",
+                "http://%6cocalhost",
+                "http://@localhost",
+                "http://user@localhost",
+                "https://@localhost",
+                "http://localhost@external.invalid",
+                "http://localhost:65536",
+                "http://localhost?private",
+                "http://localhost#private",
+                "ftp://localhost",
+            ]) {
+                assert.equal(
+                    f.set(f.get(id), value(base)).status,
+                    "rejected",
+                    id + ": " + base
+                );
+                assert.equal(f.data.get(key), before);
+            }
+        }
+    }
+);
+check(
     "runtime, provider, profile and saved-byte changes invalidate receipts",
     () => {
         for (const mutation of [

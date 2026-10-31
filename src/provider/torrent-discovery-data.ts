@@ -96,6 +96,20 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             : "";
     }
 
+    function catalogBaseUrl(value: string): boolean {
+        if (byteLength(value) > 4096) return false;
+        if (httpsUrl(value, 4096)) return true;
+        var local =
+            /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::([0-9]{1,5}))?(?:\/|$)/i.exec(
+                value
+            );
+        return (
+            !!local &&
+            (!local[2] || Number(local[2]) <= 65535) &&
+            !!httpsUrl(value.replace(/^http:/i, "https:"), 4097)
+        );
+    }
+
     function cancel(): void {
         Object.keys(lanes).forEach(function (key) {
             var job = lanes[key];
@@ -141,7 +155,7 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             var decodedBase = decodeURIComponent(base);
             if (
                 base &&
-                (!httpsUrl(base, 4096) ||
+                (!catalogBaseUrl(base) ||
                     /[?#]/.test(base) ||
                     /[\s\\{}]/.test(decodedBase) ||
                     /\/manifest\.json\/*$/i.test(decodedBase))
