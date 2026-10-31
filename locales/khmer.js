@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "កំពុងពិនិត្យមើលការភ្ជាប់ម៉ាស៊ីនមេ Plex…",
     "Choose a folder in the browser window": "ជ្រើសរើសថតនៅក្នុងបង្អួចកម្មវិធីរុករក",
     "Choose a profile": "ជ្រើសរើសប្រវត្តិរូប",
+    "Choose a source": "ជ្រើសរើសប្រភព",
     "Choose files in the browser window": "ជ្រើសរើសឯកសារនៅក្នុងបង្អួចកម្មវិធីរុករក",
     "Choose from": "ជ្រើសរើសពី",
     "Choose language": "ជ្រើសរើសភាសា",
@@ -1108,6 +1109,7 @@ var keyStrings = {
     Unavailable: "មិនអាចប្រើបាន",
     "Unlock the player's settings before changing its playlist.":
         "សូមដោះសោការកំណត់កម្មវិធីចាក់ មុនពេលប្តូរបញ្ជីចាក់។",
+    "Unsupported source": "ប្រភពមិនត្រូវបានគាំទ្រ",
     Untitled: "គ្មានចំណងជើង",
     "Untitled folder": "ថតគ្មានចំណងជើង",
     "Update installed. Please restart OttPlay FOSS.":

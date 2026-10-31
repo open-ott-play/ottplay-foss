@@ -176,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Ka dooro gal daaqadda biraawsarka",
     "Choose a profile": "Dooro astaanta isticmaalaha",
+    "Choose a source": "Dooro il",
     "Choose files in the browser window":
         "Ka dooro faylal daaqadda biraawsarka",
     "Choose from": "Ka dooro",
@@ -1153,6 +1154,7 @@ var keyStrings = {
     Unavailable: "Lama heli karo",
     "Unlock the player's settings before changing its playlist.":
         "Fur qufulka dejinta daaraha ka hor intaadan beddelin liiskiisa daarista.",
+    "Unsupported source": "Isha lama taageero",
     Untitled: "Aan magac lahayn",
     "Untitled folder": "Gal aan magac lahayn",
     "Update installed. Please restart OttPlay FOSS.":

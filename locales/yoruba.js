@@ -169,6 +169,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Yan àpò fáìlì nínú fèrèsé aṣàwákiri",
     "Choose a profile": "Yan prófáìlì",
+    "Choose a source": "Yan orísun",
     "Choose files in the browser window":
         "Yan àwọn fáìlì nínú fèrèsé aṣàwákiri",
     "Choose from": "Yan láti",
@@ -1115,6 +1116,7 @@ var keyStrings = {
     Unavailable: "Kò sí lárọ̀ọ́wọ́tó",
     "Unlock the player's settings before changing its playlist.":
         "Ṣí títìpa ètò ẹ̀rọ ìṣeré kí o tó yí àkójọ ìṣeré rẹ̀ padà.",
+    "Unsupported source": "Orísun tí a kò ṣe àtìlẹ́yìn fún",
     Untitled: "Kò ní àkọlé",
     "Untitled folder": "Fódà tí kò ní àkọlé",
     "Update installed. Please restart OttPlay FOSS.":

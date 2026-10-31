@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex सर्भर जडान जाँच गर्दै...",
     "Choose a folder in the browser window": "ब्राउजर विन्डोमा फोल्डर छान्नुहोस्",
     "Choose a profile": "प्रोफाइल छान्नुहोस्",
+    "Choose a source": "स्रोत छान्नुहोस्",
     "Choose files in the browser window": "ब्राउजर विन्डोमा फाइलहरू छान्नुहोस्",
     "Choose from": "बाट छनौट गर्नुहोस्",
     "Choose language": "भाषा छान्नुहोस्",
@@ -1105,6 +1106,7 @@ var keyStrings = {
     Unavailable: "उपलब्ध छैन",
     "Unlock the player's settings before changing its playlist.":
         "प्लेलिस्ट बदल्नुअघि प्लेयरका सेटिङहरूको लक खोल्नुहोस्।",
+    "Unsupported source": "समर्थन नगरिएको स्रोत",
     Untitled: "शीर्षकविहीन",
     "Untitled folder": "शीर्षकविहीन फोल्डर",
     "Update installed. Please restart OttPlay FOSS.":

@@ -172,6 +172,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "ブラウザーのウィンドウでフォルダーを選択してください",
     "Choose a profile": "プロフィールを選択してください",
+    "Choose a source": "ソースを選択",
     "Choose files in the browser window":
         "ブラウザーのウィンドウでファイルを選択してください",
     "Choose from": "からお選びください",
@@ -1132,6 +1133,7 @@ var keyStrings = {
     Unavailable: "利用できません",
     "Unlock the player's settings before changing its playlist.":
         "プレイリストを変更する前に、プレーヤーの設定のロックを解除してください。",
+    "Unsupported source": "未対応のソース",
     Untitled: "無題",
     "Untitled folder": "無題のフォルダ",
     "Update installed. Please restart OttPlay FOSS.":

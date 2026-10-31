@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Chọn một thư mục trong cửa sổ trình duyệt",
     "Choose a profile": "Chọn hồ sơ",
+    "Choose a source": "Chọn nguồn",
     "Choose files in the browser window":
         "Chọn các tệp trong cửa sổ trình duyệt",
     "Choose from": "Chọn từ",
@@ -1119,6 +1120,7 @@ var keyStrings = {
     Unavailable: "Không khả dụng",
     "Unlock the player's settings before changing its playlist.":
         "Mở khóa cài đặt của trình phát trước khi thay đổi danh sách phát.",
+    "Unsupported source": "Nguồn không được hỗ trợ",
     Untitled: "Không có tiêu đề",
     "Untitled folder": "Thư mục chưa đặt tên",
     "Update installed. Please restart OttPlay FOSS.":

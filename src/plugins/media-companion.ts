@@ -189,13 +189,17 @@ function createMediaCompanion(
             var wrapped = new URL(value);
             var original = wrapped.searchParams.get("source") || "";
             var chosen = wrapped.searchParams.get("index");
+            var largest = wrapped.searchParams.get("selection") === "largest";
             if (
                 !/^(?:https?:\/\/|magnet:|ottplay-plugin:)/i.test(original) ||
-                chosen === null ||
-                !/^\d{1,9}$/.test(chosen)
+                (largest
+                    ? chosen !== null
+                    : chosen === null || !/^\d{1,9}$/.test(chosen))
             )
                 throw fail("companion_source_invalid");
-            return { fileIndex: Number(chosen), source: original };
+            return largest
+                ? { largest: true, source: original }
+                : { fileIndex: Number(chosen), source: original };
         }
         if (!/^magnet:/i.test(value)) return { source: value };
         var url = new URL(value),
@@ -240,6 +244,7 @@ function createMediaCompanion(
         var timer: any,
             deadline: any,
             wrappedFileIndex: number | undefined,
+            largestFile = false,
             completed = false;
         owned.push(lease);
         last = lease;
@@ -383,7 +388,13 @@ function createMediaCompanion(
                     return;
                 }
                 if (!lease.selectionSubmitted) {
-                    selected(lease.files[0].index);
+                    var chosen = lease.files[0];
+                    if (largestFile)
+                        lease.files.forEach(function (file: any) {
+                            if (Number(file.length) > Number(chosen.length))
+                                chosen = file;
+                        });
+                    selected(chosen.index);
                     return;
                 }
             }
@@ -421,6 +432,7 @@ function createMediaCompanion(
             else if (wrappedFileIndex !== undefined)
                 selection.fileIndex = wrappedFileIndex;
             if (options && options.metadataOnly) delete selection.fileIndex;
+            delete selection.largest;
             lease.selectionSubmitted = selection.fileIndex !== undefined;
             request(
                 lease.base,
@@ -455,6 +467,7 @@ function createMediaCompanion(
                     var wrapped = fileSelection(source);
                     requested = wrapped.source;
                     wrappedFileIndex = wrapped.fileIndex;
+                    largestFile = wrapped.largest === true;
                 } catch (error) {
                     finish(error);
                     return;

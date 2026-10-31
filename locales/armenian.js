@@ -170,6 +170,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Ընտրեք պանակ զննարկչի պատուհանում",
     "Choose a profile": "Ընտրել պրոֆիլը",
+    "Choose a source": "Ընտրեք աղբյուր",
     "Choose files in the browser window": "Ընտրեք ֆայլեր զննարկչի պատուհանում",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
@@ -1140,6 +1141,7 @@ var keyStrings = {
     Unavailable: "Հասանելի չէ",
     "Unlock the player's settings before changing its playlist.":
         "Նվագացանկը փոխելուց առաջ ապակողպեք նվագարկչի կարգավորումները։",
+    "Unsupported source": "Չաջակցվող աղբյուր",
     Untitled: "Անվերնագիր",
     "Untitled folder": "Անանուն պանակ",
     "Update installed. Please restart OttPlay FOSS.":

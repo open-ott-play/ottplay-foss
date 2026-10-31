@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex සේවාදායක සම්බන්ධතාව පරීක්ෂා කරමින්...",
     "Choose a folder in the browser window": "බ්‍රවුසර කවුළුව තුළ ෆෝල්ඩරයක් තෝරන්න",
     "Choose a profile": "පැතිකඩක් තෝරන්න",
+    "Choose a source": "මූලාශ්‍රයක් තෝරන්න",
     "Choose files in the browser window": "බ්‍රවුසර කවුළුව තුළ ගොනු තෝරන්න",
     "Choose from": "තෝරන්න",
     "Choose language": "භාෂාව තෝරන්න",
@@ -1103,6 +1104,7 @@ var keyStrings = {
     Unavailable: "ලබා ගත නොහැක",
     "Unlock the player's settings before changing its playlist.":
         "ධාවන ලැයිස්තුව වෙනස් කිරීමට පෙර වාදකයේ සැකසුම් අගුල අරින්න.",
+    "Unsupported source": "සහාය නොදක්වන මූලාශ්‍රය",
     Untitled: "මාතෘකා නැත",
     "Untitled folder": "නම් නොකළ ෆෝල්ඩරය",
     "Update installed. Please restart OttPlay FOSS.":

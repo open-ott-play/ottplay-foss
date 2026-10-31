@@ -269,7 +269,9 @@ var cloudSettingsTransfer = (function () {
                         key !== "companionEndpoint" &&
                         key !== "sCompanionEndpoint" &&
                         key !== "torrentCatalogEndpoint" &&
-                        key !== "sTorrentCatalogEndpoint"
+                        key !== "sTorrentCatalogEndpoint" &&
+                        key !== "torrentStreamAddons" &&
+                        key !== "sTorrentStreamAddons"
                     );
                 })
                 .map(function (key) {

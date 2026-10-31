@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Chagua folda katika dirisha la kivinjari",
     "Choose a profile": "Chagua wasifu",
+    "Choose a source": "Chagua chanzo",
     "Choose files in the browser window":
         "Chagua faili katika dirisha la kivinjari",
     "Choose from": "Chagua kutoka",
@@ -1147,6 +1148,7 @@ var keyStrings = {
     Unavailable: "Haipatikani",
     "Unlock the player's settings before changing its playlist.":
         "Fungua kufuli ya mipangilio ya kichezaji kabla ya kubadilisha orodha yake ya kucheza.",
+    "Unsupported source": "Chanzo hakiauniwi",
     Untitled: "Bila kichwa",
     "Untitled folder": "Folda isiyo na jina",
     "Update installed. Please restart OttPlay FOSS.":

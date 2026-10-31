@@ -158,7 +158,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             rules = entry.rules || {},
             fallback = entry.defaultValue;
         var sensitive =
-            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl|companionEndpoint|torrentCatalogEndpoint)$/.test(
+            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl|companionEndpoint|torrentCatalogEndpoint|torrentStreamAddons)$/.test(
                 id
             );
         var unavailable = entry.scope === "provider" && !providerReady();
@@ -242,6 +242,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (id === "torrentCatalogLanguage")
             result.description =
                 "Metadata language for this provider. Empty follows the interface language. Used by subsequent catalog and search requests; it does not change audio or subtitles.";
+        if (id === "torrentStreamAddons")
+            result.description =
+                "Installation-only JSON array of up to eight HTTPS stream addon manifest URLs, excluded from portable backups. Private configuration paths are supported; user information, query strings and fragments are rejected. An empty array disables addon stream discovery. Saving does not start playback.";
         if (result.apply === "after_ack")
             result.description =
                 "Saved atomically with its companion fields, then applied after acknowledgement. Failed connection changes roll back; use the group transition to confirm the outcome.";

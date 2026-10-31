@@ -170,6 +170,7 @@ var keyStrings = {
         "Праверка злучэння з серверам Plex…",
     "Choose a folder in the browser window": "Выберыце папку ў акне браўзера",
     "Choose a profile": "Выберыце профіль",
+    "Choose a source": "Выберыце крыніцу",
     "Choose files in the browser window": "Выберыце файлы ў акне браўзера",
     "Choose from": "Выбраць з",
     "Choose language": "Выберыце мову",
@@ -1124,6 +1125,7 @@ var keyStrings = {
     Unavailable: "Недаступна",
     "Unlock the player's settings before changing its playlist.":
         "Разблакуйце налады плэера перад зменай плэйліста.",
+    "Unsupported source": "Крыніца не падтрымліваецца",
     Untitled: "Без назвы",
     "Untitled folder": "Папка без назвы",
     "Update installed. Please restart OttPlay FOSS.":

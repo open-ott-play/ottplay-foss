@@ -163,6 +163,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "בודק את חיבור השרת Plex...",
     "Choose a folder in the browser window": "בחר תיקייה בחלון הדפדפן",
     "Choose a profile": "בחר פרופיל",
+    "Choose a source": "בחירת מקור",
     "Choose files in the browser window": "בחר קבצים בחלון הדפדפן",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
@@ -1090,6 +1091,7 @@ var keyStrings = {
     Unavailable: "לא זמין",
     "Unlock the player's settings before changing its playlist.":
         "יש לבטל את נעילת הגדרות הנגן לפני שינוי רשימת ההשמעה.",
+    "Unsupported source": "מקור לא נתמך",
     Untitled: "ללא כותרת",
     "Untitled folder": "תיקייה ללא שם",
     "Update installed. Please restart OttPlay FOSS.":

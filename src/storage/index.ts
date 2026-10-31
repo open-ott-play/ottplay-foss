@@ -1419,6 +1419,8 @@ export function stbGetAllItems(): Record<string, string> {
             key === "sCompanionEndpoint" ||
             key === "torrentCatalogEndpoint" ||
             key === "sTorrentCatalogEndpoint" ||
+            key === "torrentStreamAddons" ||
+            key === "sTorrentStreamAddons" ||
             /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
@@ -1438,6 +1440,8 @@ export function isPortableSettingsKey(key: string): boolean {
         key !== "sCompanionEndpoint" &&
         key !== "torrentCatalogEndpoint" &&
         key !== "sTorrentCatalogEndpoint" &&
+        key !== "torrentStreamAddons" &&
+        key !== "sTorrentStreamAddons" &&
         !/^__ottRemoteLifecycleToken_/.test(key) &&
         !isStorageMetadataKey(key) &&
         (window as any).OttPlayCore.classicPortableKey(key, true)
@@ -1462,6 +1466,8 @@ export function portableSettingsSnapshot(
             key === "sCompanionEndpoint" ||
             key === "torrentCatalogEndpoint" ||
             key === "sTorrentCatalogEndpoint" ||
+            key === "torrentStreamAddons" ||
+            key === "sTorrentStreamAddons" ||
             /^__ottRemoteLifecycleToken_/.test(key) ||
             isStorageMetadataKey(key)
         )
@@ -1524,6 +1530,8 @@ export function restoreLocalSettingsSnapshot(items: Record<string, any>): void {
                 key !== "sCompanionEndpoint" &&
                 key !== "torrentCatalogEndpoint" &&
                 key !== "sTorrentCatalogEndpoint" &&
+                key !== "torrentStreamAddons" &&
+                key !== "sTorrentStreamAddons" &&
                 !isStorageMetadataKey(key)
             );
         })

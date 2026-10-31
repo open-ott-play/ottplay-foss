@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Vyberte priečinok v okne prehliadača",
     "Choose a profile": "Vyberte profil",
+    "Choose a source": "Vyberte zdroj",
     "Choose files in the browser window": "Vyberte súbory v okne prehliadača",
     "Choose from": "Vyberte si z",
     "Choose language": "Vyberte jazyk",
@@ -1144,6 +1145,7 @@ var keyStrings = {
     Unavailable: "Nedostupné",
     "Unlock the player's settings before changing its playlist.":
         "Pred zmenou zoznamu skladieb odomknite nastavenia prehrávača.",
+    "Unsupported source": "Nepodporovaný zdroj",
     Untitled: "Bez názvu",
     "Untitled folder": "Priečinok bez názvu",
     "Update installed. Please restart OttPlay FOSS.":

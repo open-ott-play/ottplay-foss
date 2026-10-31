@@ -172,6 +172,7 @@ var keyStrings = {
         "Preverjanje povezave s strežnikom Plex ...",
     "Choose a folder in the browser window": "Izberite mapo v oknu brskalnika",
     "Choose a profile": "Izberite profil",
+    "Choose a source": "Izberite vir",
     "Choose files in the browser window": "Izberite datoteke v oknu brskalnika",
     "Choose from": "Izbiraj med",
     "Choose language": "Izberite jezik",
@@ -1142,6 +1143,7 @@ var keyStrings = {
     Unavailable: "Ni na voljo",
     "Unlock the player's settings before changing its playlist.":
         "Pred spremembo seznama predvajanja odklenite nastavitve predvajalnika.",
+    "Unsupported source": "Nepodprt vir",
     Untitled: "Brez naslova",
     "Untitled folder": "Mapa brez imena",
     "Update installed. Please restart OttPlay FOSS.":

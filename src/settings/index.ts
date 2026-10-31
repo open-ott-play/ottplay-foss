@@ -210,6 +210,7 @@ export interface PlayerSettings {
     timezone: number;
     torrentCatalogEndpoint: string;
     torrentCatalogLanguage: string;
+    torrentStreamAddons: string;
     uiFontScale: number;
     useGraphicalIndicators: number;
     volumeStep: number;
@@ -323,6 +324,7 @@ export function defaultSettings(): PlayerSettings {
         timezone: 0,
         torrentCatalogEndpoint: "",
         torrentCatalogLanguage: "",
+        torrentStreamAddons: "[]",
         uiFontScale: 100,
         useGraphicalIndicators: 0,
         volumeStep: 5,
@@ -440,7 +442,63 @@ function defineSetting(
         },
     };
 }
+/** Preserve private addon configuration paths while canonicalizing the list. */
+export function normalizeTorrentStreamAddons(value: any): string | null {
+    if (typeof value !== "string" || value.length > 4096) return null;
+    function bytes(text: string): number {
+        return encodeURIComponent(text).replace(/%[0-9A-F]{2}/g, "x").length;
+    }
+    try {
+        if (bytes(value) > 4096) return null;
+        var input = JSON.parse(value);
+        if (!Array.isArray(input) || input.length > 8) return null;
+        var result: string[] = [];
+        for (var i = 0; i < input.length; i++) {
+            if (typeof input[i] !== "string") return null;
+            var manifest = input[i].trim().replace(/\/+$/, "");
+            if (
+                bytes(manifest) > 4096 ||
+                !/^https:\/\//i.test(manifest) ||
+                /^https:\/\/[^/?#]*@/i.test(manifest) ||
+                /[\s\x00-\x1f\x7f\\?#<>"']/.test(manifest)
+            )
+                return null;
+            var url = new URL(manifest);
+            if (
+                url.protocol !== "https:" ||
+                !url.hostname ||
+                url.username ||
+                url.password ||
+                url.search ||
+                url.hash ||
+                !/\/manifest\.json$/.test(url.pathname) ||
+                /[\x00-\x1f\x7f\\]/.test(decodeURIComponent(url.pathname))
+            )
+                return null;
+            if (result.indexOf(manifest) < 0) result.push(manifest);
+        }
+        var normalized = JSON.stringify(result);
+        return bytes(normalized) <= 4096 ? normalized : null;
+    } catch (_) {
+        return null;
+    }
+}
 export const settingsSchema: SettingDefinition[] = [
+    {
+        // Manifest paths may embed private addon credentials or configuration.
+        decode: function (value) {
+            return normalizeTorrentStreamAddons(value) ?? value;
+        },
+        defaultValue: "[]",
+        effects: ["__ottTorrentSourcesChanged"],
+        id: "torrentStreamAddons",
+        key: "sTorrentStreamAddons",
+        prepare: normalizeTorrentStreamAddons,
+        scope: "application",
+        validate: function (value) {
+            return normalizeTorrentStreamAddons(value) !== null;
+        },
+    },
     {
         // Addon paths may contain credentials; keep this installation-only.
         defaultValue: "",
@@ -1000,6 +1058,11 @@ export function installSettingsFacade(target: Record<string, any>): void {
         if (browser && typeof browser.settingsChanged === "function")
             browser.settingsChanged();
     };
+    target.__ottTorrentSourcesChanged = function (): void {
+        var browser = target.__ottActiveProviderDriver?.catalogBrowser;
+        if (browser && typeof browser.sourcesChanged === "function")
+            browser.sourcesChanged();
+    };
     target.__ottPlayerSettingsHost = {
         commit: commitSettingsWrites,
         languages: Object.keys(languageNames),
@@ -1168,6 +1231,8 @@ export function exportSettings(): string {
     delete portable.sCompanionEndpoint;
     delete portable.torrentCatalogEndpoint;
     delete portable.sTorrentCatalogEndpoint;
+    delete portable.torrentStreamAddons;
+    delete portable.sTorrentStreamAddons;
     return JSON.stringify(
         {
             offline_profiles: w.__ottOfflineProfiles
@@ -1284,6 +1349,7 @@ export function importSettings(
                 // Restoring a backup must leave this installation's endpoint alone.
                 entry.id !== "companionEndpoint" &&
                 entry.id !== "torrentCatalogEndpoint" &&
+                entry.id !== "torrentStreamAddons" &&
                 Object.prototype.hasOwnProperty.call(input, entry.id) &&
                 !request.set(entry.id, input[entry.id])
             )

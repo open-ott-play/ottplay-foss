@@ -129,6 +129,29 @@ function fixture() {
     };
     return f;
 }
+check("JSON backups cannot export, replace or enable stream addons", () => {
+    const copied = '["https://copied.invalid/PRIVATE/manifest.json"]';
+    for (const own of [
+        undefined,
+        "[]",
+        '["https://own.invalid/PRIVATE/manifest.json"]',
+        "legacy-invalid-value",
+    ]) {
+        const f = fixture();
+        if (own !== undefined) f.data.set("sTorrentStreamAddons", own);
+        f.w.loadSettings();
+        const exported = f.export();
+        assert.equal(exported.settings.torrentStreamAddons, undefined);
+        assert.equal(exported.settings.sTorrentStreamAddons, undefined);
+        assert(!JSON.stringify(exported).includes("PRIVATE"));
+        exported.settings.torrentStreamAddons = copied;
+        exported.settings.sTorrentStreamAddons = copied;
+        f.import(exported);
+        assert.equal(f.accept(), true);
+        assert.equal(f.data.get("sTorrentStreamAddons"), own);
+        assert.equal(f.data.has("torrentStreamAddons"), false);
+    }
+});
 check(
     "JSON backups exclude companion access and preserve local configuration",
     () => {

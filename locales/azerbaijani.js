@@ -173,6 +173,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Brauzer pəncərəsində qovluq seçin",
     "Choose a profile": "Profil seçin",
+    "Choose a source": "Mənbə seçin",
     "Choose files in the browser window": "Brauzer pəncərəsində fayllar seçin",
     "Choose from": "Buradan seçin",
     "Choose language": "Dil seçin",
@@ -1133,6 +1134,7 @@ var keyStrings = {
     Unavailable: "Əlçatan deyil",
     "Unlock the player's settings before changing its playlist.":
         "Oynatma siyahısını dəyişməzdən əvvəl pleyerin ayarlarının kilidini açın.",
+    "Unsupported source": "Dəstəklənməyən mənbə",
     Untitled: "Adsız",
     "Untitled folder": "Adsız qovluq",
     "Update installed. Please restart OttPlay FOSS.":

@@ -181,6 +181,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Choisissez un dossier dans la fenêtre du navigateur",
     "Choose a profile": "Choisir un profil",
+    "Choose a source": "Choisir une source",
     "Choose files in the browser window":
         "Choisissez des fichiers dans la fenêtre du navigateur",
     "Choose from": "Choisir parmi",
@@ -1167,6 +1168,7 @@ var keyStrings = {
     Unavailable: "Indisponible",
     "Unlock the player's settings before changing its playlist.":
         "Déverrouillez les paramètres du lecteur avant de modifier sa liste de lecture.",
+    "Unsupported source": "Source non prise en charge",
     Untitled: "Sans titre",
     "Untitled folder": "Dossier sans nom",
     "Update installed. Please restart OttPlay FOSS.":

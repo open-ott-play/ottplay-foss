@@ -170,6 +170,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "د براوزر په کړکۍ کې یوه پوښۍ غوره کړئ",
     "Choose a profile": "پروفایل غوره کړئ",
+    "Choose a source": "یوه سرچینه وټاکئ",
     "Choose files in the browser window":
         "د براوزر په کړکۍ کې فایلونه غوره کړئ",
     "Choose from": "له دې څخه غوره کړئ",
@@ -1122,6 +1123,7 @@ var keyStrings = {
     Unavailable: "د لاسرسي وړ نه دی",
     "Unlock the player's settings before changing its playlist.":
         "د پلې لېست بدلولو مخکې د پلیر د امستنو قلف خلاص کړئ.",
+    "Unsupported source": "د سرچینې ملاتړ نه کېږي",
     Untitled: "بې سرلیک",
     "Untitled folder": "بې سرلیکه پوښۍ",
     "Update installed. Please restart OttPlay FOSS.":

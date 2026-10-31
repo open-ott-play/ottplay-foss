@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Изберете папка в прозореца на браузъра",
     "Choose a profile": "Изберете профил",
+    "Choose a source": "Изберете източник",
     "Choose files in the browser window":
         "Изберете файлове в прозореца на браузъра",
     "Choose from": "Избор от",
@@ -1148,6 +1149,7 @@ var keyStrings = {
     Unavailable: "Недостъпно",
     "Unlock the player's settings before changing its playlist.":
         "Отключете настройките на плейъра, преди да промените плейлиста.",
+    "Unsupported source": "Неподдържан източник",
     Untitled: "Без заглавие",
     "Untitled folder": "Папка без име",
     "Update installed. Please restart OttPlay FOSS.":

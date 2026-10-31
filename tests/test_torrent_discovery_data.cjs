@@ -17,7 +17,7 @@ const compiled = ts.transpileModule(source, {
     },
 }).outputText;
 const copy = (value) => JSON.parse(JSON.stringify(value));
-function fixture(onContextChanged) {
+function fixture(onContextChanged, generic = false) {
     let time = 0,
         nextTimer = 0,
         language = "ru-RU",
@@ -43,6 +43,20 @@ function fixture(onContextChanged) {
         now: () => time,
         onContextChanged,
         request(url, done) {
+            if (
+                !generic &&
+                endpoint &&
+                url === endpoint.replace(/\/+$/, "") + "/manifest.json"
+            ) {
+                done(null, {
+                    catalogs: ["tmdb.top", "tmdb.latest", "tmdb.search"].map(
+                        (id) => ({ id, type: "movie" })
+                    ),
+                    resources: ["catalog", "meta"],
+                    types: ["movie"],
+                });
+                return () => {};
+            }
             const request = { aborted: 0, done, url };
             requests.push(request);
             return () => request.aborted++;
@@ -126,7 +140,10 @@ test("direct lists, search and details carry locale and stable movie identity", 
         "Матрица & Neo"
     );
     f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
-    assert.match(f.requests[3].url, /movie\/603\?language=ru-RU$/);
+    assert.match(
+        f.requests[3].url,
+        /movie\/603\?language=ru-RU&append_to_response=external_ids$/
+    );
     f.requests[3].done(null, movie());
     assert.equal(result.item.id, "tmdb:movie:603");
     assert.equal(Object.hasOwn(result.item, "stream_url"), false);
@@ -239,6 +256,7 @@ test("explicit addon base uses selected locale, translated genres and metadata o
     assert.equal(result.next, null);
     assert.equal(Object.hasOwn(result.items[0], "streams"), false);
     f.instance.categories((v) => (result = copy(v)));
+    f.tick();
     f.requests[1].done(null, {
         catalogs: [
             {
@@ -249,12 +267,14 @@ test("explicit addon base uses selected locale, translated genres and metadata o
         ],
     });
     f.instance.load(result.categories[2].id, 2, () => {});
+    f.tick();
     assert.match(f.requests[2].url, /skip=20&genre=/);
     assert.equal(
         decodeURIComponent(f.requests[2].url.split("genre=")[1]),
         "Боевик.json"
     );
     f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    f.tick();
     assert.match(f.requests[3].url, /meta\/movie\/tmdb:603.json$/);
     f.requests[3].done(null, {
         meta: { id: "tmdb:603", name: "Матрица", type: "movie" },
@@ -433,6 +453,7 @@ test("addon search has no fake pagination when upstream ignores skip", () => {
     assert.equal(result.next, null);
     f.instance.search("Matrix", 2, (v) => (result = copy(v)));
     f.tick();
+    f.tick();
     assert.deepEqual(result, { error: "invalid_request", ok: false });
     assert.equal(f.requests.length, 1);
 });
@@ -555,4 +576,179 @@ test("invalid changed settings settle through the observer without sending to th
     assert.deepEqual(result, { error: "invalid_request", ok: false });
     assert.equal(changes, 1);
     assert.equal(f.requests.length, 1);
+});
+
+test("details preserve validated IMDb identity without changing catalog IDs", () => {
+    const f = fixture();
+    let result;
+    f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    f.requests[0].done(
+        null,
+        movie(603, { external_ids: { imdb_id: "tt0133093" } })
+    );
+    assert.equal(result.item.id, "tmdb:movie:603");
+    assert.equal(result.item.imdbId, "tt0133093");
+    const addon = fixture();
+    addon.setEndpoint("https://metadata.example");
+    addon.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    addon.requests[0].done(null, {
+        meta: { id: "tmdb:603", imdb_id: "tt0133093", name: "Matrix" },
+    });
+    assert.equal(result.item.imdbId, "tt0133093");
+    const invalid = fixture();
+    invalid.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    invalid.requests[0].done(null, movie(603, { imdb_id: "tt0133093\n" }));
+    assert.equal(Object.hasOwn(result.item, "imdbId"), false);
+});
+
+const genericManifest = {
+    catalogs: [
+        {
+            extra: [{ name: "skip" }],
+            id: "open movies",
+            name: "Открытые фильмы",
+            type: "movie",
+        },
+        {
+            extra: [{ isRequired: true, name: "search" }],
+            id: "find",
+            name: "Поиск",
+            type: "movie",
+        },
+        { id: "not-movies", type: "series" },
+        {
+            extra: [{ isRequired: true, name: "token" }],
+            id: "needs-login",
+            type: "movie",
+        },
+    ],
+    idPrefixes: ["tt", "custom:"],
+    resources: ["catalog", "meta"],
+    types: ["movie"],
+};
+function genericFixture() {
+    const f = fixture(undefined, true);
+    f.setEndpoint("https://movies.example/addon");
+    return f;
+}
+const bunny = {
+    description: "Blender open movie",
+    id: "tt1254207",
+    name: "Big Buck Bunny",
+    releaseInfo: "2008",
+    type: "movie",
+};
+test("generic manifests expose actual movie catalogs and advertised search", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.categories((v) => (result = copy(v)));
+    assert.equal(
+        f.requests[0].url,
+        "https://movies.example/addon/manifest.json"
+    );
+    f.requests[0].done(null, genericManifest);
+    assert.deepEqual(result, {
+        categories: [
+            {
+                id: "catalog:open%20movies",
+                searchSupported: false,
+                title: "Открытые фильмы",
+            },
+        ],
+        mode: "stremio",
+        ok: true,
+        searchSupported: true,
+    });
+    assert.equal(f.requests.length, 1);
+});
+test("generic pages carry real catalog identity, IMDb IDs and exact offset pagination", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.load("popular", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    assert.equal(
+        f.requests[1].url,
+        "https://movies.example/addon/catalog/movie/open%20movies/skip=0.json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.items[0].id, "imdb:movie:tt1254207");
+    assert.equal(result.items[0].imdbId, "tt1254207");
+    assert.equal(result.next, 1);
+    assert.equal(result.mode, "stremio");
+    assert.equal(result.catalog.id, "catalog:open%20movies");
+    f.instance.load(result.catalog.id, result.next, (v) => (result = copy(v)));
+    f.tick();
+    assert.equal(
+        f.requests[2].url,
+        "https://movies.example/addon/catalog/movie/open%20movies/skip=1.json"
+    );
+    f.requests[2].done(null, { metas: [] });
+    assert.equal(result.next, null);
+});
+test("generic search uses only advertised catalog and does not invent locale config", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.search("Кролик & друзья", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    assert.equal(
+        f.requests[1].url,
+        "https://movies.example/addon/catalog/movie/find/search=" +
+            encodeURIComponent("Кролик & друзья") +
+            ".json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.next, null);
+    const none = genericFixture();
+    none.instance.search("Bunny", null, (v) => (result = copy(v)));
+    none.requests[0].done(null, {
+        ...genericManifest,
+        catalogs: [genericManifest.catalogs[0]],
+    });
+    none.tick();
+    assert.equal(result.ok, false);
+    assert.equal(none.requests.length, 1);
+});
+test("generic custom IDs round-trip through metadata resource and reject wrong identity", () => {
+    const f = genericFixture();
+    let result;
+    const custom = { ...bunny, id: "custom:some/ид" };
+    f.instance.load("popular", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    f.requests[1].done(null, { metas: [custom] });
+    const id = result.items[0].id;
+    assert.equal(id, "stremio:movie:" + encodeURIComponent(custom.id));
+    f.instance.details(id, (v) => (result = copy(v)));
+    f.tick();
+    assert.equal(
+        f.requests[2].url,
+        "https://movies.example/addon/meta/movie/" +
+            encodeURIComponent(custom.id) +
+            ".json"
+    );
+    f.requests[2].done(null, { meta: custom });
+    assert.equal(result.item.id, id);
+    f.instance.details("imdb:movie:tt1254207", (v) => (result = copy(v)));
+    f.tick();
+    f.requests[3].done(null, { meta: custom });
+    assert.equal(result.error, "invalid_response");
+});
+test("generic unadvertised meta, malformed manifests and cancelled discovery stop before resource", () => {
+    const no = genericFixture();
+    let result;
+    no.instance.details("imdb:movie:tt1254207", (v) => (result = copy(v)));
+    no.requests[0].done(null, { ...genericManifest, resources: ["catalog"] });
+    no.tick();
+    assert.equal(result.ok, false);
+    assert.equal(no.requests.length, 1);
+    const bad = genericFixture();
+    bad.instance.categories((v) => (result = copy(v)));
+    bad.requests[0].done(null, { catalogs: [], resources: null });
+    assert.equal(result.error, "invalid_response");
+    const cancelled = genericFixture();
+    const stop = cancelled.instance.load("popular", null, () =>
+        assert.fail("stale")
+    );
+    stop();
+    cancelled.requests[0].done(null, genericManifest);
+    assert.equal(cancelled.requests.length, 1);
 });

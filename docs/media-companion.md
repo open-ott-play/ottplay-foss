@@ -113,21 +113,27 @@ magnet reference, or `index` in an `ottplay-torrent:` reference.
 
 ## Movie discovery and language
 
-The first discovery stage adds movie categories, search and metadata details to
-the native **Torrent** provider. A metadata result is not a playable torrent:
-this stage does not discover streams or promise playback for every film. The
-manually maintained source catalog and its file playback remain separate and
-available when metadata requests fail or the catalog service is offline.
+Movie categories, search and metadata details belong to the native **Torrent**
+provider. As in the Nuvio/Stremio flow, metadata and playable sources come from
+separate services: a metadata result alone is not a playable torrent. Selecting
+sources for a film queries the operator's configured stream addons; choosing a
+supported result then starts playback. No addon or film is guaranteed to have
+available, compatible sources. The manually maintained source catalog and its
+file playback remain separate and available when discovery services fail or
+are offline.
 
 On a supported native installation, choose **Torrent** in the provider settings.
-An empty source catalog opens the movie list. **Category selection** offers
-**Popular**, **New releases**, **Genre**, **My sources** and **Favorites**.
-Use the normal Search action to find a movie; select a result to read its full
-information. **Next page** fetches another page only when requested. Merely
-opening a list, highlighting a film or reading its description does not start
-a torrent download. **My sources** returns to your existing playable sources.
-Choose **Catalog language** in the Torrent provider settings to override the
-interface language for movie metadata.
+An empty source catalog opens the movie list. With the default TMDB catalog,
+**Category selection** offers **Popular**, **New releases** and **Genre**.
+A generic Stremio addon instead supplies its catalog names from its manifest.
+**My sources** and **Favorites** remain available; **My sources** returns to your
+existing playable sources. Use the normal Search action when the catalog
+supports search. Press **Enter/OK** on a film to open its source chooser, or
+**INFO/EPG** to read its full information. **Next page** fetches another page only
+when requested and supported by that catalog. Merely opening a list,
+highlighting a film or reading its description does not start a torrent
+download. Choose **Catalog language** in the Torrent provider settings to
+override the interface language for movie metadata.
 
 `torrentCatalogLanguage` is a portable preference for the current provider. Its
 default empty value follows the effective interface language. An explicit value
@@ -137,10 +143,13 @@ interface, audio tracks or subtitles. Metadata services may still return their
 own fallback text when a translation is unavailable.
 
 By default discovery uses the existing TMDB transport. The installation-only
-`torrentCatalogEndpoint` can select a compatible public Stremio TMDB addon for
-local validation without a private TMDB key. Its production default is empty;
-no public service is selected automatically. Operators configure it through
-the existing authenticated settings API, with no endpoint editor in the UI:
+`torrentCatalogEndpoint` can select a compatible Stremio metadata addon. The
+player reads its manifest for movie catalogs, search support and metadata
+resources; the supported Stremio TMDB catalog layout also remains available.
+A public addon can be used for local validation without provisioning a private
+TMDB key. Its production default is empty; no public service is selected
+automatically. Operators configure it through the existing authenticated
+settings API, with no endpoint editor in the UI:
 
 ```sh
 ott TARGET setting torrentCatalogEndpoint --value-file /absolute/private/catalog-base-url.txt
@@ -157,7 +166,81 @@ Operating a private TMDB-backed service with an operator's own API key remains
 a future deployment option; this setting neither stores nor provisions a TMDB
 API key.
 
-Movie metadata and images are supplied by [TMDB](https://www.themoviedb.org).
+Stream discovery requires the separate installation-only `torrentStreamAddons`
+setting. Its default is the JSON string `[]`, so no stream addon is contacted
+until an operator configures one through the authenticated CLI:
+
+```sh
+ott TARGET setting torrentStreamAddons --value-file /absolute/private/stream-addons.json
+```
+
+The file contains a JSON array of up to eight HTTPS **manifest URLs**, for
+example `["https://addon.example/private-config/manifest.json"]`. The limit is
+4,096 UTF-8 bytes for the complete compact JSON string, including quotes and
+commas. Whitespace around URLs, final slashes and exact duplicate URLs are
+normalized while preserving
+order and configuration paths, including percent-encoded JSON configuration.
+The `/manifest.json` suffix is required; credentials in the URL authority,
+query strings and fragments are rejected. There is no addon endpoint editor in
+the player UI and no default public stream service.
+
+Manifest paths can contain private credentials, so remote reads are masked.
+Both `torrentStreamAddons` and its storage alias `sTorrentStreamAddons` are
+excluded from JSON, raw and cloud backup exports and imports; restoring a
+backup preserves this installation's current addon configuration. Saving a
+change cancels stale source discovery and updates an already visible source
+chooser without opening a hidden screen or starting playback. Addons receive
+the selected film identifier when sources are requested. This setting does
+not enable Torrent on unsupported web-only clients or supply a TMDB API key.
+
+### Reproducible open-movie qualification
+
+[`examples/stremio-open-movie.cjs`](examples/stremio-open-movie.cjs) is a separate
+Node.js example serving one real film: **Big Buck Bunny** (Blender Foundation,
+2008). It implements Stremio manifest, catalog/search, metadata and stream JSON
+routes. The film is licensed under [CC BY 3.0](https://peach.blender.org/about/).
+Video and artwork remain on Blender's servers; the example never downloads,
+caches or proxies them. It is not started or configured by the player build.
+
+Run its HTTP-only JSON smoke endpoint locally:
+
+```sh
+node docs/examples/stremio-open-movie.cjs
+curl --fail http://127.0.0.1:8794/manifest.json
+curl --fail 'http://127.0.0.1:8794/catalog/movie/open-movies/search=Big%20Buck%20Bunny.json'
+```
+
+Player settings require HTTPS. Supply an existing certificate and matching key
+whose hostname/IP is valid and whose issuer the player already trusts:
+
+```sh
+node docs/examples/stremio-open-movie.cjs --host 127.0.0.1 --port 8794 \
+  --cert /absolute/private/localhost.crt --key /absolute/private/localhost.key
+```
+
+The equivalent environment variables are `OTT_OPEN_MOVIE_HOST`,
+`OTT_OPEN_MOVIE_PORT`, `OTT_OPEN_MOVIE_TLS_CERT` and `OTT_OPEN_MOVIE_TLS_KEY`.
+The default bind is `127.0.0.1:8794`; using another address requires an explicit
+operator choice. TLS validation remains enabled. `--media-url HTTPS_URL` or
+`OTT_OPEN_MOVIE_MEDIA_URL` can select another authorized Big Buck Bunny mirror.
+
+For a certificate valid for `127.0.0.1`, put
+`https://127.0.0.1:8794` in a private catalog value file and the compact JSON
+`["https://127.0.0.1:8794/manifest.json"]` in a private addon value file. Apply
+them with the two `ott TARGET setting ... --value-file ...` commands above.
+Open Torrent, find Big Buck Bunny, choose its source and start playback. The
+example exercises real metadata/source selection and direct HTTPS playback;
+it does not exercise torrent transfer. Press Ctrl+C to stop the example and
+restore the installation's previous settings when qualification is complete.
+
+The default media URL is returned by Blender's
+[official video API](https://video.blender.org/api/v1/videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898).
+On 2026-10-31 UTC, HEAD returned `200`, `video/mp4`, 110,916,740 bytes;
+`Range: bytes=0-1023` returned `206` and exactly 1,024 bytes with an MP4 header.
+This validates the remote origin at that time, not playback on every device.
+
+The default TMDB catalog's metadata and images are supplied by
+[TMDB](https://www.themoviedb.org).
 The built-in credits include its official logo and attribution notice.
 The logo is retained unchanged from the [official asset](https://www.themoviedb.org/assets/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg).
 

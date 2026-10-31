@@ -162,6 +162,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "ກຳລັງກວດສອບການເຊື່ອມຕໍ່ເຊີບເວີ Plex…",
     "Choose a folder in the browser window": "ເລືອກໂຟນເດີໃນໜ້າຕ່າງບຣາວເຊີ",
     "Choose a profile": "ເລືອກໂປຣໄຟລ໌",
+    "Choose a source": "ເລືອກແຫຼ່ງຂໍ້ມູນ",
     "Choose files in the browser window": "ເລືອກໄຟລ໌ໃນໜ້າຕ່າງບຣາວເຊີ",
     "Choose from": "ເລືອກຈາກ",
     "Choose language": "ເລືອກພາສາ",
@@ -1075,6 +1076,7 @@ var keyStrings = {
     Unavailable: "ບໍ່ພ້ອມໃຊ້ງານ",
     "Unlock the player's settings before changing its playlist.":
         "ປົດລັອກການຕັ້ງຄ່າໂປຣແກຣມຫຼິ້ນກ່ອນປ່ຽນລາຍການຫຼິ້ນ.",
+    "Unsupported source": "ແຫຼ່ງຂໍ້ມູນທີ່ບໍ່ຮອງຮັບ",
     Untitled: "ບໍ່ມີຊື່",
     "Untitled folder": "ໂຟນເດີບໍ່ມີຊື່",
     "Update installed. Please restart OttPlay FOSS.":

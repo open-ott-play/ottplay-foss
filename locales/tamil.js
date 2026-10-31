@@ -170,6 +170,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "உலாவி சாளரத்தில் ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்",
     "Choose a profile": "சுயவிவரத்தைத் தேர்வு செய்யவும்",
+    "Choose a source": "மூலத்தைத் தேர்ந்தெடுக்கவும்",
     "Choose files in the browser window":
         "உலாவி சாளரத்தில் கோப்புகளைத் தேர்ந்தெடுக்கவும்",
     "Choose from": "இதிலிருந்து தேர்வு செய்யவும்",
@@ -1120,6 +1121,7 @@ var keyStrings = {
     Unavailable: "கிடைக்கவில்லை",
     "Unlock the player's settings before changing its playlist.":
         "இயக்கப்பட்டியலை மாற்றும் முன் இயக்கியின் அமைப்புகளின் பூட்டை நீக்கவும்.",
+    "Unsupported source": "ஆதரிக்கப்படாத மூலம்",
     Untitled: "தலைப்பு இல்லை",
     "Untitled folder": "பெயரிடப்படாத கோப்புறை",
     "Update installed. Please restart OttPlay FOSS.":

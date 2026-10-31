@@ -177,6 +177,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Roghnaigh fillteán i bhfuinneog an bhrabhsálaí",
     "Choose a profile": "Roghnaigh próifíl",
+    "Choose a source": "Roghnaigh foinse",
     "Choose files in the browser window":
         "Roghnaigh comhaid i bhfuinneog an bhrabhsálaí",
     "Choose from": "Roghnaigh as",
@@ -1149,6 +1150,7 @@ var keyStrings = {
     Unavailable: "Níl ar fáil",
     "Unlock the player's settings before changing its playlist.":
         "Díghlasáil socruithe an tseinnteora sula n-athraíonn tú a sheinmliosta.",
+    "Unsupported source": "Foinse gan tacaíocht",
     Untitled: "Gan teideal",
     "Untitled folder": "Fillteán gan teideal",
     "Update installed. Please restart OttPlay FOSS.":

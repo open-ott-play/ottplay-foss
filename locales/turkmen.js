@@ -171,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Brauzer penjiresinde bukja saýlaň",
     "Choose a profile": "Profili saýlaň",
+    "Choose a source": "Çeşme saýlaň",
     "Choose files in the browser window":
         "Brauzer penjiresinde faýllary saýlaň",
     "Choose from": "Şundan saýla",
@@ -1124,6 +1125,7 @@ var keyStrings = {
     Unavailable: "Elýeterli däl",
     "Unlock the player's settings before changing its playlist.":
         "Oýnatma sanawyny üýtgetmezden öň pleýeriň sazlamalarynyň gulpuny açyň.",
+    "Unsupported source": "Goldanylmaýan çeşme",
     Untitled: "Atsyz",
     "Untitled folder": "Atsyz bukja",
     "Update installed. Please restart OttPlay FOSS.":

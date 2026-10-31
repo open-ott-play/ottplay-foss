@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Kies ’n vouer in die blaaiervenster",
     "Choose a profile": "Kies 'n profiel",
+    "Choose a source": "Kies 'n bron",
     "Choose files in the browser window": "Kies lêers in die blaaiervenster",
     "Choose from": "Kies uit",
     "Choose language": "Kies taal",
@@ -1134,6 +1135,7 @@ var keyStrings = {
     Unavailable: "Nie beskikbaar nie",
     "Unlock the player's settings before changing its playlist.":
         "Ontsluit die speler se instellings voordat jy die afspeellys verander.",
+    "Unsupported source": "Bron word nie ondersteun nie",
     Untitled: "Naamloos",
     "Untitled folder": "Naamlose vouer",
     "Update installed. Please restart OttPlay FOSS.":

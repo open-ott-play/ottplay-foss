@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 let {
     TORRENT_DISCOVERY_ALLOWANCE,
+    TORRENT_STREAMS_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
@@ -68,7 +69,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
-const discoveryCaps = {
+const streamsCaps = {
     BASE_TOTAL_BUDGET,
     BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -98,6 +99,43 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+const streamsDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "catalog"]
+              : ["entry", "catalog", "companion", "settings"];
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) => sum + TORRENT_STREAMS_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+const discoveryCaps = Object.fromEntries(
+    Object.entries(streamsCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.fromEntries(
+                  Object.entries(budget).map(([key, value]) => [
+                      key,
+                      key === "media-companion"
+                          ? subtract(value, TORRENT_STREAMS_ALLOWANCE.companion)
+                          : key === "remote-settings-lifecycle"
+                            ? subtract(
+                                  value,
+                                  TORRENT_STREAMS_ALLOWANCE.settings
+                              )
+                            : value,
+                  ])
+              )
+            : subtract(budget, streamsDelta(name)),
+    ])
+);
 const discoveryDelta = (name) => {
     const kinds =
         name === "BUDGET"
@@ -159,6 +197,105 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const streamsEvidence = require("../docs/evidence/torrent-streams-size-20261030.json");
+    assert.deepEqual(streamsEvidence.allowance, TORRENT_STREAMS_ALLOWANCE);
+    assert.deepEqual(streamsEvidence.beforeCaps, discoveryCaps);
+    assert.deepEqual(streamsEvidence.afterCaps, streamsCaps);
+    assert.deepEqual(streamsEvidence.toolchain, {
+        gzipLevel: 9,
+        node: "26.8.2",
+        zlib: "1.2.12",
+    });
+    assert.match(streamsEvidence.baseline.revision, /^[a-f0-9]{40}$/);
+    assert.match(streamsEvidence.baseline.archiveSha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(streamsEvidence.protectedCaps, {
+        optional: OPTIONAL_BUDGET,
+        provider: PROVIDER_BUDGET,
+    });
+    const streamsKinds = {
+        "media-companion.js": "companion",
+        "player.js": "entry",
+        "provider-torrent.js": "catalog",
+        "remote-settings-lifecycle.js": "settings",
+    };
+    const streamNames = [
+        "player.js",
+        ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+            (name) => `provider-${name}.js`
+        ),
+        ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map((name) => `${name}.js`),
+    ];
+    assert.deepEqual(
+        streamsEvidence.components.map((row) => row.name).sort(),
+        Object.keys(streamsKinds).sort()
+    );
+    const streamComponents = [
+        ...streamsEvidence.components,
+        ...streamsEvidence.unchangedComponents,
+    ];
+    assert.deepEqual(
+        streamComponents.map((row) => row.name).sort(),
+        streamNames.sort()
+    );
+    for (const component of streamComponents) {
+        assert.deepEqual(Object.keys(component.variants).sort(), [
+            "mobile",
+            "native",
+            "web",
+        ]);
+        for (const variant of Object.values(component.variants)) {
+            for (const state of ["before", "after"])
+                assert.match(variant[state].sha256, /^[a-f0-9]{64}$/);
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    variant.delta[metric],
+                    variant.after[metric] - variant.before[metric]
+                );
+            if (!streamsKinds[component.name])
+                assert.deepEqual(variant.before, variant.after);
+        }
+        if (streamsKinds[component.name])
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    TORRENT_STREAMS_ALLOWANCE[streamsKinds[component.name]][
+                        metric
+                    ],
+                    Math.max(
+                        ...Object.values(component.variants).map(
+                            (variant) => variant.delta[metric]
+                        )
+                    )
+                );
+    }
+    for (const [variant, totals] of Object.entries(streamsEvidence.totals))
+        for (const state of ["before", "after"])
+            for (const metric of ["bytes", "gzipBytes"]) {
+                assert.equal(
+                    totals[state].complete[metric],
+                    streamComponents.reduce(
+                        (sum, row) =>
+                            sum + row.variants[variant][state][metric],
+                        0
+                    )
+                );
+                assert.equal(
+                    totals[state].legacy[metric],
+                    streamComponents
+                        .filter(
+                            (row) =>
+                                row.name === "player.js" ||
+                                row.name.startsWith("provider-")
+                        )
+                        .reduce(
+                            (sum, row) =>
+                                sum + row.variants[variant][state][metric],
+                            0
+                        )
+                );
+            }
+    assert(Object.isFrozen(TORRENT_STREAMS_ALLOWANCE));
+    for (const value of Object.values(TORRENT_STREAMS_ALLOWANCE))
+        assert(Object.isFrozen(value));
     const discoveryEvidence = require("../docs/evidence/torrent-discovery-size-20261030.json");
     assert.deepEqual(discoveryEvidence.allowance, TORRENT_DISCOVERY_ALLOWANCE);
     assert.deepEqual(discoveryEvidence.beforeCaps, currentCaps);
@@ -2803,7 +2940,7 @@ try {
         LEGACY_TOTAL_BUDGET,
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
-    } = discoveryCaps);
+    } = streamsCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -2991,6 +3128,8 @@ try {
                         : name === "torrent"
                           ? dense(
                                 TORRENT_PROVIDER_ALLOWANCE.catalog.gzipBytes +
+                                    TORRENT_STREAMS_ALLOWANCE.catalog
+                                        .gzipBytes +
                                     TORRENT_DISCOVERY_ALLOWANCE.catalog
                                         .gzipBytes
                             )

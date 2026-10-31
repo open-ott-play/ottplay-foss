@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "检查Plex服务器连接...",
     "Choose a folder in the browser window": "在浏览器窗口中选择文件夹",
     "Choose a profile": "选择配置文件",
+    "Choose a source": "选择来源",
     "Choose files in the browser window": "在浏览器窗口中选择文件",
     "Choose from": "选择",
     "Choose language": "选择语言",
@@ -1069,6 +1070,7 @@ var keyStrings = {
     Unavailable: "不可用",
     "Unlock the player's settings before changing its playlist.":
         "更改播放列表前，请先解锁播放器设置。",
+    "Unsupported source": "不支持的来源",
     Untitled: "无标题",
     "Untitled folder": "无标题文件夹",
     "Update installed. Please restart OttPlay FOSS.":

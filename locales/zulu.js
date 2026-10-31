@@ -179,6 +179,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Khetha ifolda efasiteleni lesiphequluli",
     "Choose a profile": "Khetha iphrofayela",
+    "Choose a source": "Khetha umthombo",
     "Choose files in the browser window":
         "Khetha amafayela efasiteleni lesiphequluli",
     "Choose from": "Khetha kokulandelayo",
@@ -1159,6 +1160,7 @@ var keyStrings = {
     Unavailable: "Akutholakali",
     "Unlock the player's settings before changing its playlist.":
         "Vula ukukhiya kwezilungiselelo zesidlali ngaphambi kokushintsha uhlu lwaso lokudlala.",
+    "Unsupported source": "Umthombo awusekelwa",
     Untitled: "Akunasihloko",
     "Untitled folder": "Ifolda engenasihloko",
     "Update installed. Please restart OttPlay FOSS.":

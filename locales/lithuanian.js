@@ -173,6 +173,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Naršyklės lange pasirinkite aplanką",
     "Choose a profile": "Pasirinkti profilį",
+    "Choose a source": "Pasirinkite šaltinį",
     "Choose files in the browser window": "Naršyklės lange pasirinkite failus",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
@@ -1130,6 +1131,7 @@ var keyStrings = {
     Unavailable: "Nepasiekiama",
     "Unlock the player's settings before changing its playlist.":
         "Prieš keisdami grojaraštį atrakinkite leistuvo nustatymus.",
+    "Unsupported source": "Nepalaikomas šaltinis",
     Untitled: "Be pavadinimo",
     "Untitled folder": "Aplankas be pavadinimo",
     "Update installed. Please restart OttPlay FOSS.":

@@ -179,6 +179,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Επιλέξτε έναν φάκελο στο παράθυρο του προγράμματος περιήγησης",
     "Choose a profile": "Επιλογή προφίλ",
+    "Choose a source": "Επιλέξτε πηγή",
     "Choose files in the browser window":
         "Επιλέξτε αρχεία στο παράθυρο του προγράμματος περιήγησης",
     "Choose from": "Επιλογή από",
@@ -1166,6 +1167,7 @@ var keyStrings = {
     Unavailable: "Μη διαθέσιμο",
     "Unlock the player's settings before changing its playlist.":
         "Ξεκλειδώστε τις ρυθμίσεις της συσκευής αναπαραγωγής πριν αλλάξετε τη λίστα.",
+    "Unsupported source": "Μη υποστηριζόμενη πηγή",
     Untitled: "Χωρίς τίτλο",
     "Untitled folder": "Φάκελος χωρίς όνομα",
     "Update installed. Please restart OttPlay FOSS.":

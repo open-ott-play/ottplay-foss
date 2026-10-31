@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Tarayıcı penceresinde bir klasör seçin",
     "Choose a profile": "Profil seç",
+    "Choose a source": "Kaynak seçin",
     "Choose files in the browser window":
         "Tarayıcı penceresinde dosyaları seçin",
     "Choose from": "Şuradan seç",
@@ -1129,6 +1130,7 @@ var keyStrings = {
     Unavailable: "Kullanılamıyor",
     "Unlock the player's settings before changing its playlist.":
         "Oynatma listesini değiştirmeden önce oynatıcı ayarlarının kilidini açın.",
+    "Unsupported source": "Desteklenmeyen kaynak",
     Untitled: "Başlıksız",
     "Untitled folder": "Adsız klasör",
     "Update installed. Please restart OttPlay FOSS.":

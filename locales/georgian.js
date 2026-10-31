@@ -171,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "აირჩიეთ საქაღალდე ბრაუზერის ფანჯარაში",
     "Choose a profile": "აირჩიეთ პროფილი",
+    "Choose a source": "აირჩიეთ წყარო",
     "Choose files in the browser window": "აირჩიეთ ფაილები ბრაუზერის ფანჯარაში",
     "Choose from": "აირჩიეთ",
     "Choose language": "აირჩიეთ ენა",
@@ -1133,6 +1134,7 @@ var keyStrings = {
     Unavailable: "მიუწვდომელია",
     "Unlock the player's settings before changing its playlist.":
         "დასაკრავი სიის შეცვლამდე განბლოკეთ პლეერის პარამეტრები.",
+    "Unsupported source": "წყარო არ არის მხარდაჭერილი",
     Untitled: "უსათაურო",
     "Untitled folder": "უსათაურო საქაღალდე",
     "Update installed. Please restart OttPlay FOSS.":

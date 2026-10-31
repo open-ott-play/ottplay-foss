@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Pilih folder dalam tetingkap pelayar",
     "Choose a profile": "Pilih profil",
+    "Choose a source": "Pilih sumber",
     "Choose files in the browser window": "Pilih fail dalam tetingkap pelayar",
     "Choose from": "Pilih daripada",
     "Choose language": "Pilih bahasa",
@@ -1129,6 +1130,7 @@ var keyStrings = {
     Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci tetapan pemain media sebelum menukar senarai mainnya.",
+    "Unsupported source": "Sumber tidak disokong",
     Untitled: "Tanpa tajuk",
     "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":

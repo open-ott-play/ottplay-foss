@@ -179,6 +179,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Pumili ng folder sa window ng browser",
     "Choose a profile": "Pumili ng profile",
+    "Choose a source": "Pumili ng pinagmulan",
     "Choose files in the browser window":
         "Pumili ng mga file sa window ng browser",
     "Choose from": "Pumili mula sa",
@@ -1160,6 +1161,7 @@ var keyStrings = {
     Unavailable: "Hindi available",
     "Unlock the player's settings before changing its playlist.":
         "I-unlock ang mga setting ng player bago palitan ang playlist nito.",
+    "Unsupported source": "Hindi suportadong pinagmulan",
     Untitled: "Walang pamagat",
     "Untitled folder": "Folder na walang pangalan",
     "Update installed. Please restart OttPlay FOSS.":

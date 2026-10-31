@@ -174,6 +174,7 @@ var keyStrings = {
         "Kontrollerer Plex-servertilkoblingen...",
     "Choose a folder in the browser window": "Velg en mappe i nettleservinduet",
     "Choose a profile": "Velg profil",
+    "Choose a source": "Velg en kilde",
     "Choose files in the browser window": "Velg filer i nettleservinduet",
     "Choose from": "Velg mellom",
     "Choose language": "Velg språk",
@@ -1129,6 +1130,7 @@ var keyStrings = {
     Unavailable: "Utilgjengelig",
     "Unlock the player's settings before changing its playlist.":
         "Lås opp spillerens innstillinger før du endrer spillelisten.",
+    "Unsupported source": "Kilden støttes ikke",
     Untitled: "Uten tittel",
     "Untitled folder": "Mappe uten navn",
     "Update installed. Please restart OttPlay FOSS.":

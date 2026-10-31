@@ -176,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Aukeratu karpeta bat arakatzailearen leihoan",
     "Choose a profile": "Aukeratu profila",
+    "Choose a source": "Hautatu iturri bat",
     "Choose files in the browser window":
         "Aukeratu fitxategiak arakatzailearen leihoan",
     "Choose from": "Aukeratu hauen artean",
@@ -1145,6 +1146,7 @@ var keyStrings = {
     Unavailable: "Ez dago erabilgarri",
     "Unlock the player's settings before changing its playlist.":
         "Desblokeatu erreproduzitzailearen ezarpenak erreprodukzio-zerrenda aldatu aurretik.",
+    "Unsupported source": "Onartu gabeko iturria",
     Untitled: "Izenbururik gabe",
     "Untitled folder": "Izenik gabeko karpeta",
     "Update installed. Please restart OttPlay FOSS.":

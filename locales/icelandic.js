@@ -168,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Athuga tengingu við Plex-þjón…",
     "Choose a folder in the browser window": "Veldu möppu í vafraglugganum",
     "Choose a profile": "Velja snið",
+    "Choose a source": "Veldu uppsprettu",
     "Choose files in the browser window": "Veldu skrár í vafraglugganum",
     "Choose from": "Velja úr",
     "Choose language": "Velja tungumál",
@@ -1119,6 +1120,7 @@ var keyStrings = {
     Unavailable: "Ekki tiltækt",
     "Unlock the player's settings before changing its playlist.":
         "Aflæstu stillingum spilarans áður en þú breytir spilunarlista hans.",
+    "Unsupported source": "Óstudd uppspretta",
     Untitled: "Án titils",
     "Untitled folder": "Mappa án heitis",
     "Update installed. Please restart OttPlay FOSS.":

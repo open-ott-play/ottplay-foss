@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Hitamo ububiko mu idirishya rya mushakisha",
     "Choose a profile": "Hitamo umwirondoro",
+    "Choose a source": "Hitamo inkomoko",
     "Choose files in the browser window":
         "Hitamo dosiye mu idirishya rya mushakisha",
     "Choose from": "Hitamo muri",
@@ -1160,6 +1161,7 @@ var keyStrings = {
     Unavailable: "Ntiboneka",
     "Unlock the player's settings before changing its playlist.":
         "Fungura igenamiterere rya porogaramu ryafunzwe mbere yo guhindura urutonde rwayo rwo gukina.",
+    "Unsupported source": "Inkomoko idashyigikiwe",
     Untitled: "Nta mutwe",
     "Untitled folder": "Ububiko bwa dosiye butagira izina",
     "Update installed. Please restart OttPlay FOSS.":

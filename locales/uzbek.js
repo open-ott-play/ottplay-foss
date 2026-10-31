@@ -176,6 +176,7 @@ var keyStrings = {
         "Plex server ulanishi tekshirilmoqda…",
     "Choose a folder in the browser window": "Brauzer oynasida papkani tanlang",
     "Choose a profile": "Profilni tanlash",
+    "Choose a source": "Manbani tanlang",
     "Choose files in the browser window": "Brauzer oynasida fayllarni tanlang",
     "Choose from": "Quyidagidan tanlash",
     "Choose language": "Tilni tanlash",
@@ -1144,6 +1145,7 @@ var keyStrings = {
     Unavailable: "Mavjud emas",
     "Unlock the player's settings before changing its playlist.":
         "Pleylistni o‘zgartirishdan oldin pleyer sozlamalarining qulfini oching.",
+    "Unsupported source": "Qo‘llab-quvvatlanmaydigan manba",
     Untitled: "Nomsiz",
     "Untitled folder": "Nomsiz jild",
     "Update installed. Please restart OttPlay FOSS.":

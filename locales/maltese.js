@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Agħżel fowlder fit-tieqa tal-brawżer",
     "Choose a profile": "Agħżel profil",
+    "Choose a source": "Agħżel sors",
     "Choose files in the browser window": "Agħżel fajls fit-tieqa tal-brawżer",
     "Choose from": "Agħżel minn",
     "Choose language": "Agħżel il-lingwa",
@@ -1151,6 +1152,7 @@ var keyStrings = {
     Unavailable: "Mhux disponibbli",
     "Unlock the player's settings before changing its playlist.":
         "Neħħi l-imblukkar tal-issettjar tal-plejer qabel tibdel il-lista tad-daqq tiegħu.",
+    "Unsupported source": "Sors mhux appoġġjat",
     Untitled: "Bla titlu",
     "Untitled folder": "Fowlder bla titlu",
     "Update installed. Please restart OttPlay FOSS.":

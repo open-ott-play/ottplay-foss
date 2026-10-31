@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex സെർവർ കണക്ഷൻ പരിശോധിക്കുന്നു...",
     "Choose a folder in the browser window": "ബ്രൗസർ വിൻഡോയിൽ ഫോൾഡർ തിരഞ്ഞെടുക്കുക",
     "Choose a profile": "പ്രൊഫൈൽ തിരഞ്ഞെടുക്കുക",
+    "Choose a source": "ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Choose files in the browser window": "ബ്രൗസർ വിൻഡോയിൽ ഫയലുകൾ തിരഞ്ഞെടുക്കുക",
     "Choose from": "ഇതിൽ നിന്ന് തിരഞ്ഞെടുക്കുക",
     "Choose language": "ഭാഷ തിരഞ്ഞെടുക്കുക",
@@ -1111,6 +1112,7 @@ var keyStrings = {
     Unavailable: "ലഭ്യമല്ല",
     "Unlock the player's settings before changing its playlist.":
         "പ്ലേലിസ്റ്റ് മാറ്റുന്നതിന് മുമ്പ് പ്ലേയറിന്റെ ക്രമീകരണങ്ങളുടെ ലോക്ക് തുറക്കുക.",
+    "Unsupported source": "പിന്തുണയ്ക്കാത്ത ഉറവിടം",
     Untitled: "ശീർഷകമില്ല",
     "Untitled folder": "പേരില്ലാത്ത ഫോൾഡർ",
     "Update installed. Please restart OttPlay FOSS.":

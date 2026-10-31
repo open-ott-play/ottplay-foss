@@ -173,6 +173,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Memeriksa koneksi server Plex…",
     "Choose a folder in the browser window": "Pilih folder di jendela browser",
     "Choose a profile": "Pilih profil",
+    "Choose a source": "Pilih sumber",
     "Choose files in the browser window": "Pilih file di jendela browser",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
@@ -1132,6 +1133,7 @@ var keyStrings = {
     Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci pengaturan pemutar sebelum mengubah daftar putarnya.",
+    "Unsupported source": "Sumber tidak didukung",
     Untitled: "Tanpa judul",
     "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":

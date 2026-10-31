@@ -163,6 +163,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex ସର୍ଭର୍ ସଂଯୋଗ ଯାଞ୍ଚ ହେଉଛି…",
     "Choose a folder in the browser window": "ବ୍ରାଉଜର ୱିଣ୍ଡୋରେ ଏକ ଫୋଲ୍ଡର ବାଛନ୍ତୁ",
     "Choose a profile": "ପ୍ରୋଫାଇଲ୍ ବାଛନ୍ତୁ",
+    "Choose a source": "ଏକ ଉତ୍ସ ବାଛନ୍ତୁ",
     "Choose files in the browser window": "ବ୍ରାଉଜର ୱିଣ୍ଡୋରେ ଫାଇଲ୍ ବାଛନ୍ତୁ",
     "Choose from": "ଏଠାରୁ ବାଛନ୍ତୁ",
     "Choose language": "ଭାଷା ବାଛନ୍ତୁ",
@@ -1080,6 +1081,7 @@ var keyStrings = {
     Unavailable: "ଉପଲବ୍ଧ ନାହିଁ",
     "Unlock the player's settings before changing its playlist.":
         "ପ୍ଲେଲିଷ୍ଟ ବଦଳାଇବା ପୂର୍ବରୁ ପ୍ଲେୟାର ସେଟିଂସ୍‌ର ଲକ୍ ଖୋଲନ୍ତୁ।",
+    "Unsupported source": "ଅସମର୍ଥିତ ଉତ୍ସ",
     Untitled: "ଶୀର୍ଷକହୀନ",
     "Untitled folder": "ନାମହୀନ ଫୋଲ୍ଡର୍",
     "Update installed. Please restart OttPlay FOSS.":

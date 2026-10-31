@@ -173,6 +173,7 @@ var keyStrings = {
         "Tarkistetaan Plex palvelinyhteyttä…",
     "Choose a folder in the browser window": "Valitse kansio selainikkunassa",
     "Choose a profile": "Valitse profiili",
+    "Choose a source": "Valitse lähde",
     "Choose files in the browser window": "Valitse tiedostot selainikkunassa",
     "Choose from": "Valitse",
     "Choose language": "Valitse kieli",
@@ -1129,6 +1130,7 @@ var keyStrings = {
     Unavailable: "Ei käytettävissä",
     "Unlock the player's settings before changing its playlist.":
         "Avaa soittimen asetusten lukitus ennen toistolistan muuttamista.",
+    "Unsupported source": "Lähdettä ei tueta",
     Untitled: "Nimetön",
     "Untitled folder": "Nimetön kansio",
     "Update installed. Please restart OttPlay FOSS.":

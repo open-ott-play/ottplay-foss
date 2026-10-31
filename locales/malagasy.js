@@ -183,6 +183,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Misafidiana lahatahiry ao amin’ny varavarankelin’ny mpitety",
     "Choose a profile": "Safidio ny mombamomba",
+    "Choose a source": "Misafidiana loharano",
     "Choose files in the browser window":
         "Misafidiana rakitra ao amin’ny varavarankelin’ny mpitety",
     "Choose from": "Misafidiana amin'ny",
@@ -1181,6 +1182,7 @@ var keyStrings = {
     Unavailable: "Tsy misy",
     "Unlock the player's settings before changing its playlist.":
         "Vohay ny hidin’ny fikirakiran’ny mpilalao haino aman-jery alohan’ny hanovana ny lisitra fandefasany.",
+    "Unsupported source": "Loharano tsy tohanana",
     Untitled: "Tsy misy lohateny",
     "Untitled folder": "Lahatahiry tsy misy anarana",
     "Update installed. Please restart OttPlay FOSS.":

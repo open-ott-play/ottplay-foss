@@ -10,7 +10,10 @@ function setup(initial = {}) {
     let cleanup,
         listActive = true;
     const requests = [],
-        details = [];
+        details = [],
+        streamRequests = [],
+        streamOptions = [],
+        playCalls = [];
     Object.assign(h, {
         __ottChannels: { index: () => 0 },
         __ottMediaCompanion: {
@@ -38,7 +41,11 @@ function setup(initial = {}) {
             f.favoritesOpened = true;
         },
         renderButtonHint: () => "",
-        settings: { torrentCatalogEndpoint: "", torrentCatalogLanguage: "" },
+        settings: {
+            torrentCatalogEndpoint: "",
+            torrentCatalogLanguage: "",
+            torrentStreamAddons: "[]",
+        },
         showProgramInfo: (title) => {
             f.information = title;
         },
@@ -139,6 +146,48 @@ function setup(initial = {}) {
             };
         },
     };
+    h.__ottTorrentStreamData = {
+        create(options) {
+            streamOptions.push(options);
+            const own = [];
+            return {
+                cancel() {
+                    own.forEach((request) => {
+                        request.cancelled = true;
+                    });
+                },
+                dispose() {
+                    own.forEach((request) => {
+                        request.cancelled = true;
+                    });
+                },
+                lookup(movie, done) {
+                    const request = { done, movie };
+                    streamRequests.push(request);
+                    own.push(request);
+                    return () => {
+                        request.cancelled = true;
+                    };
+                },
+            };
+        },
+    };
+    h.__ottMedia = {
+        playItem(payload, guard, dispatched, failed) {
+            const call = {
+                cancelled: false,
+                dispatched,
+                failed,
+                guard,
+                payload,
+            };
+            playCalls.push(call);
+            return () => {
+                call.cancelled = true;
+                f.driver.mediaClient().cancel();
+            };
+        },
+    };
     f.driver = f.mount("torrent");
     f.driver.load((catalog, error) => {
         f.catalog = catalog;
@@ -153,6 +202,9 @@ function setup(initial = {}) {
     };
     f.requests = requests;
     f.details = details;
+    f.streamRequests = streamRequests;
+    f.streamOptions = streamOptions;
+    f.playCalls = playCalls;
     return f;
 }
 function movie(
@@ -189,7 +241,7 @@ test("empty Torrent configuration shows a standard metadata catalog without play
     for (const key of ["FAVORITES", "RANDOM", "PIP", "STOP"])
         assert.equal(f.key(key), true);
     assert.equal(f.requests.length, 1);
-    f.key("ENTER");
+    f.key("INFO");
     f.requests.at(-1).done({ item: movie(1, "Complete detail"), ok: true });
     assert.equal(f.information, "Movie 1");
     assert.match(f.detail.__ottMediaItem.description, /Complete detail/);
@@ -352,7 +404,7 @@ test("page, information and genre responses wait for the overlay to close", () =
     f.foreground = true;
     f.view.detail();
     assert.deepEqual(Array.from(f.view.rows), ["tmdb:movie:1"]);
-    f.key("ENTER");
+    f.key("INFO");
     const informationView = f.view;
     f.foreground = false;
     f.requests.at(-1).done({ item: movie(1, "Full detail"), ok: true });
@@ -392,4 +444,335 @@ test("staged overlay responses cannot survive configuration changes or closing t
     f.view.detail();
     assert.equal(f.view, closedView);
     assert.equal(f.view.rows.length, 0);
+});
+
+function stream(changes = {}) {
+    return {
+        addon: { id: "sample", name: "Sample addon" },
+        description: "Direct media source",
+        id: "stremio:" + "a".repeat(64),
+        kind: "url",
+        source: "https://media.example/movie.mp4?token=temporary",
+        title: "1080p · English",
+        ...changes,
+    };
+}
+function openMovieSources(f, item = { ...movie(1), imdbId: "tt1234567" }) {
+    f.open();
+    f.requests[0].done(page([item]));
+    f.key("ENTER");
+}
+function streamPage(items, extra = {}) {
+    return { failedAddons: 0, items, ok: true, unsupportedCount: 0, ...extra };
+}
+
+test("Enter chooses sources while Info stays metadata-only, and only explicit source choice is admitted", () => {
+    const f = setup();
+    f.host.settings.torrentStreamAddons =
+        '["https://addon.example/manifest.json"]';
+    openMovieSources(f, movie(1));
+    assert.equal(f.view.id, "torrent:sources");
+    assert.equal(f.streamRequests.length, 0);
+    assert.equal(f.requests.at(-1).kind, "details");
+    f.requests
+        .at(-1)
+        .done({ item: { ...movie(1), imdbId: "tt1234567" }, ok: true });
+    assert.equal(f.streamRequests[0].movie.imdbId, "tt1234567");
+    f.streamRequests[0].done(streamPage([stream()]));
+    assert.equal(f.playCalls.length, 0);
+    assert.equal(
+        f.view.channel(stream().id).__ottMediaItem.stream_url,
+        undefined
+    );
+    assert.match(
+        f.view.channel(stream().id).__ottMediaItem.description,
+        /Sample addon/
+    );
+    f.key("INFO");
+    assert.equal(f.information, "1080p · English");
+    assert.equal(f.playCalls.length, 0);
+    f.key("ENTER");
+    assert.equal(f.playCalls.length, 1);
+    const play = f.playCalls[0];
+    assert.equal(play.guard(), true);
+    assert.equal(play.payload.request.kind, "torrent-discovery");
+    assert.equal(play.payload.request.sourceId, stream().id);
+    assert.equal(JSON.stringify(play.payload).includes("temporary"), false);
+    let resolved;
+    f.driver.mediaClient().resolve(play.payload, (value) => {
+        resolved = value;
+    });
+    assert.equal(resolved.stream_url, stream().source);
+    const saved = f.driver.mediaClient().persist(resolved);
+    assert.equal(saved.stream_url, undefined);
+    assert.equal(JSON.stringify(saved).includes("media.example"), false);
+    assert.equal(saved.request.imdbId, "tt1234567");
+    play.dispatched();
+    assert.equal(f.closed, true);
+    assert.equal(play.cancelled, false);
+    assert.equal(play.guard(), true);
+    f.lifetime.activate("other");
+    assert.equal(play.guard(), false);
+    assert.equal(f.saved.has("torrentcfg"), false);
+});
+
+test("source list has distinct unconfigured, empty, unsupported and failed states", () => {
+    for (const [response, label] of [
+        [{ error: "no_addons", ok: false }, "Not configured"],
+        [streamPage([]), "Nothing to play"],
+        [streamPage([], { unsupportedCount: 1 }), "Unsupported source"],
+        [{ error: "unavailable", ok: false }, "Failed to load!"],
+    ]) {
+        const f = setup();
+        openMovieSources(f);
+        f.streamRequests[0].done(response);
+        assert.equal(f.host.listDetail.textContent, label);
+        assert.equal(f.playCalls.length, 0);
+        f.key("RETURN");
+        assert.equal(f.view.id, "torrent:discovery");
+        assert.deepEqual(Array.from(f.view.rows), ["tmdb:movie:1"]);
+    }
+});
+
+test("torrent selections use explicit index or largest through the owned companion URI", () => {
+    for (const selection of [{ fileIndex: 4 }, { fileSelection: "largest" }]) {
+        const f = setup();
+        f.host.__TAURI__ = {};
+        openMovieSources(f);
+        const item = stream({
+            ...selection,
+            kind: "torrent",
+            source: "magnet:?xt=urn:btih:" + "b".repeat(40),
+        });
+        f.streamRequests[0].done(streamPage([item]));
+        f.key("ENTER");
+        let result;
+        f.driver.mediaClient().resolve(f.playCalls[0].payload, (value) => {
+            result = value;
+        });
+        const url = new URL(result.stream_url);
+        assert.equal(url.protocol, "ottplay-torrent:");
+        assert.equal(url.searchParams.get("source"), item.source);
+        assert.equal(url.searchParams.get("native"), "1");
+        assert.equal(
+            url.searchParams.get("selection"),
+            selection.fileSelection || null
+        );
+        assert.equal(
+            url.searchParams.get("index"),
+            selection.fileIndex === undefined ? null : "4"
+        );
+    }
+});
+
+test("source replies stage behind overlays and Back, policy or addon changes revoke launch", () => {
+    const f = setup();
+    openMovieSources(f);
+    const pending = f.streamRequests[0],
+        view = f.view;
+    f.foreground = false;
+    pending.done(streamPage([stream()]));
+    assert.equal(f.view, view);
+    f.foreground = true;
+    f.view.detail();
+    assert.equal(f.view.rows[0], stream().id);
+    f.key("ENTER");
+    const play = f.playCalls[0];
+    f.key("RETURN");
+    assert.equal(play.guard(), false);
+    pending.done(streamPage([stream()]));
+    assert.equal(f.view.id, "torrent:discovery");
+    f.key("ENTER");
+    const old = f.streamRequests.at(-1);
+    f.host.settings.torrentStreamAddons =
+        '["https://another.example/manifest.json"]';
+    f.driver.catalogBrowser.sourcesChanged();
+    old.done(streamPage([stream()]));
+    assert.equal(f.view.rows.length, 0);
+    f.streamRequests.at(-1).done(streamPage([stream()]));
+    f.host.__ottKiosk = { enabled: () => true };
+    f.key("ENTER");
+    assert.equal(f.playCalls.length, 1);
+});
+
+test("resuming a source resolves its exact stable reference and never substitutes another source", () => {
+    const f = setup();
+    const payload = {
+        request: {
+            imdbId: "tt1234567",
+            kind: "torrent-discovery",
+            movieId: "tmdb:movie:1",
+            sourceId: stream().id,
+        },
+        title: "Movie 1",
+    };
+    let result = "waiting";
+    f.driver.mediaClient().resolve(payload, (value) => {
+        result = value;
+    });
+    f.streamRequests
+        .at(-1)
+        .done(streamPage([stream({ id: "stremio:" + "b".repeat(64) })]));
+    assert.equal(result, null);
+    f.driver.mediaClient().resolve(payload, (value) => {
+        result = value;
+    });
+    f.streamRequests.at(-1).done(streamPage([stream()]));
+    assert.equal(result.stream_url, stream().source);
+    result = "waiting";
+    f.driver.mediaClient().resolve(payload, (value) => {
+        result = value;
+    });
+    const pending = f.streamRequests.at(-1);
+    f.driver.mediaClient().cancel();
+    pending.done(streamPage([stream()]));
+    assert.equal(result, "waiting");
+});
+
+test("generic catalogs use their manifest names, category IDs and supported search", () => {
+    const f = setup();
+    f.host.settings.torrentCatalogEndpoint = "https://catalog.example";
+    f.open();
+    f.requests[0].done({
+        ...page([movie(1)]),
+        catalog: {
+            id: "catalog:films",
+            searchSupported: false,
+            title: "Sample films",
+        },
+        mode: "stremio",
+    });
+    assert.equal(f.view.categoryName, "Sample films");
+    assert.equal(f.view.search, false);
+    f.key("BLUE");
+    assert.equal(f.requests.at(-1).kind, "categories");
+    assert.equal(
+        f.host.listDetail.querySelectorAll(".ott-spinner .blob").length,
+        4
+    );
+    f.requests.at(-1).done({
+        categories: [
+            {
+                id: "catalog:films",
+                searchSupported: false,
+                title: "Sample films",
+            },
+            {
+                id: "catalog:recent",
+                searchSupported: true,
+                title: "Recently added",
+            },
+        ],
+        mode: "stremio",
+        ok: true,
+    });
+    assert.deepEqual(Array.from(f.view.labels), [
+        "Sample films",
+        "Recently added",
+        "My sources",
+        "Favorites",
+    ]);
+    f.select(1);
+    assert.deepEqual(f.requests.at(-1).args, ["catalog:recent", null]);
+    assert.equal(f.view.search, true);
+});
+
+test("IMDb and custom catalog identities survive source admission and persistence", () => {
+    for (const id of [
+        "imdb:movie:tt1234567",
+        "stremio:movie:sample%3Aitem%2F1",
+    ]) {
+        const f = setup();
+        openMovieSources(f, { ...movie(1), id });
+        assert.equal(f.requests.length, 1);
+        assert.equal(f.streamRequests[0].movie.id, id);
+        f.streamRequests[0].done(streamPage([stream()]));
+        f.key("ENTER");
+        assert.equal(f.playCalls.length, 1);
+        const payload = f.driver.mediaClient().persist(f.playCalls[0].payload);
+        assert.equal(payload.request.movieId, id);
+        assert.equal(payload.request.sourceId, stream().id);
+        assert.equal(payload.stream_url, undefined);
+    }
+});
+
+test("resolved selection cache is single-use and Back aborts the underlying pending resolver", () => {
+    const f = setup();
+    openMovieSources(f);
+    f.streamRequests[0].done(streamPage([stream()]));
+    f.key("ENTER");
+    const play = f.playCalls[0];
+    let first;
+    f.driver.mediaClient().resolve(play.payload, (value) => {
+        first = value;
+    });
+    assert.equal(first.stream_url, stream().source);
+    assert.equal(f.streamRequests.length, 1);
+    let second = "pending";
+    f.driver.mediaClient().resolve(play.payload, (value) => {
+        second = value;
+    });
+    assert.equal(f.streamRequests.length, 2);
+    const pending = f.streamRequests[1];
+    f.key("RETURN");
+    assert.equal(play.cancelled, true);
+    assert.equal(pending.cancelled, true);
+    pending.done(streamPage([stream()]));
+    assert.equal(second, "pending");
+});
+
+test("cancelled or rejected admission discards unconsumed source selections", () => {
+    for (const cancellation of ["client", "back", "rejected", "guard"]) {
+        const f = setup();
+        openMovieSources(f);
+        f.streamRequests[0].done(streamPage([stream()]));
+        f.key("ENTER");
+        const play = f.playCalls[0];
+        if (cancellation === "client") f.driver.mediaClient().cancel();
+        else if (cancellation === "back") f.key("RETURN");
+        else if (cancellation === "rejected") play.failed();
+        else {
+            const obsolete = () => {};
+            obsolete.isCurrent = () => false;
+            f.driver.mediaClient().resolve(play.payload, obsolete);
+        }
+        let result = "pending";
+        f.driver.mediaClient().resolve(play.payload, (value) => {
+            result = value;
+        });
+        assert.equal(f.streamRequests.length, 2, cancellation);
+        assert.equal(result, "pending", cancellation);
+        f.streamRequests[1].done(
+            streamPage([
+                stream({ source: "https://media.example/refreshed.mp4" }),
+            ])
+        );
+        assert.equal(
+            result.stream_url,
+            "https://media.example/refreshed.mp4",
+            cancellation
+        );
+    }
+});
+
+test("new source admission retains its own immediate selection after cancelling the old attempt", () => {
+    const f = setup();
+    openMovieSources(f);
+    const next = stream({
+        id: "stremio:" + "b".repeat(64),
+        source: "https://media.example/next.mp4",
+    });
+    f.streamRequests[0].done(streamPage([stream(), next]));
+    f.key("ENTER");
+    const old = f.playCalls[0];
+    f.select(1);
+    const current = f.playCalls[1];
+    assert.equal(old.cancelled, true);
+    old.failed();
+    let result;
+    f.driver.mediaClient().resolve(current.payload, (value) => {
+        result = value;
+    });
+    assert.equal(f.streamRequests.length, 1);
+    assert.equal(result.stream_url, next.source);
 });

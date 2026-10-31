@@ -3,6 +3,30 @@ function normalizeTorrentConfiguration(value: any): any {
     return (window as any).__ottTorrentCodec.normalize(value);
 }
 
+function createTorrentStreamAdapter(
+    host: any,
+    ports: ProviderDriverPorts,
+    changed: () => void
+): any {
+    return host.__ottTorrentStreamData?.create({
+        addons: function () {
+            return host.settings?.torrentStreamAddons || "[]";
+        },
+        onContextChanged: changed,
+        request: function (url: string, done: any) {
+            return ports.request(
+                { dataType: "text", timeout: 15000, url: url },
+                function (value) {
+                    done(null, value);
+                },
+                function () {
+                    done("unavailable");
+                }
+            );
+        },
+    });
+}
+
 function createTorrentProviderDriver(
     ports: ProviderDriverPorts,
     owner: DriverLifetime,
@@ -10,7 +34,164 @@ function createTorrentProviderDriver(
 ): any {
     var disposed = false,
         catalog = helpers.emptyCatalog(),
-        ready = false;
+        ready = false,
+        discoverySerial = 0,
+        discoveryCancel: (() => void) | null = null,
+        discoverySelection: any = null;
+    function cancelDiscovery(keepSelection = false): void {
+        discoverySerial++;
+        if (!keepSelection) discoverySelection = null;
+        var cancel = discoveryCancel;
+        discoveryCancel = null;
+        if (cancel) cancel();
+    }
+    function discoveryRequest(payload: any): any {
+        var request = payload?.request;
+        var movieId = request?.movieId;
+        var validMovie =
+            typeof movieId === "string" &&
+            movieId.length <= 1024 &&
+            (/^tmdb:movie:[1-9][0-9]{0,14}$/.test(movieId) ||
+                /^imdb:movie:tt[0-9]{5,12}$/.test(movieId));
+        if (
+            !validMovie &&
+            typeof movieId === "string" &&
+            movieId.indexOf("stremio:movie:") === 0 &&
+            movieId.length <= 1024
+        ) {
+            try {
+                var rawId = decodeURIComponent(movieId.slice(14));
+                validMovie =
+                    !!rawId &&
+                    !/[\u0000-\u001f\u007f]/.test(rawId) &&
+                    encodeURIComponent(rawId) === movieId.slice(14);
+            } catch (_) {}
+        }
+        if (
+            !active() ||
+            !ready ||
+            request?.kind !== "torrent-discovery" ||
+            !validMovie ||
+            !/^stremio:[a-f0-9]{64}$/.test(request.sourceId) ||
+            (request.imdbId && !/^tt[0-9]{5,12}$/.test(request.imdbId)) ||
+            (payload.__ottMediaRef &&
+                payload.__ottMediaRef.sourceId !== ports.sourceIdentity!())
+        )
+            return null;
+        var result: any = {
+            kind: "torrent-discovery",
+            movieId: request.movieId,
+            sourceId: request.sourceId,
+        };
+        if (request.imdbId) result.imdbId = request.imdbId;
+        return result;
+    }
+    function discoveryRecord(payload: any, request: any): any {
+        var id =
+            "torrent-discovery:" +
+            request.movieId +
+            ":" +
+            request.sourceId.slice(8);
+        return {
+            __ottMediaRef: { itemId: id, sourceId: ports.sourceIdentity!() },
+            description: String(payload.description || "").slice(0, 8192),
+            itemId: id,
+            logo_30x30: String(payload.logo_30x30 || "").slice(0, 2048),
+            request: request,
+            title: String(payload.title || request.movieId).slice(0, 1024),
+        };
+    }
+    function discoveryUrl(stream: any): string {
+        if (stream?.kind === "url" && /^https?:\/\//i.test(stream.source))
+            return stream.source;
+        if (stream?.kind !== "torrent" || !/^magnet:\?/i.test(stream.source))
+            return "";
+        if (stream.fileSelection === "largest")
+            return (
+                "ottplay-torrent:?source=" +
+                encodeURIComponent(stream.source) +
+                "&selection=largest" +
+                ((window as any).__TAURI__ ? "&native=1" : "")
+            );
+        if (
+            typeof stream.fileIndex !== "number" ||
+            stream.fileIndex < 0 ||
+            Math.floor(stream.fileIndex) !== stream.fileIndex
+        )
+            return "";
+        return source({ source: stream.source }, stream.fileIndex);
+    }
+    function resolveDiscovery(payload: any, done: any): void {
+        cancelDiscovery(true);
+        var selection = discoverySelection;
+        discoverySelection = null;
+        var request = discoveryRequest(payload);
+        if (!request || (done.isCurrent && !done.isCurrent())) {
+            done(null);
+            return;
+        }
+        var serial = discoverySerial;
+        var host = window as any;
+        var settings = host.settings?.torrentStreamAddons || "[]";
+        function accept(stream: any): void {
+            if (
+                serial !== discoverySerial ||
+                !active() ||
+                (done.isCurrent && !done.isCurrent())
+            )
+                return;
+            var url = discoveryUrl(stream);
+            if (!url) {
+                done(null);
+                return;
+            }
+            var record = discoveryRecord(payload, request);
+            record.stream_url = url;
+            done(record);
+        }
+        if (
+            selection &&
+            selection.request.sourceId === request.sourceId &&
+            selection.request.movieId === request.movieId &&
+            selection.settings === settings
+        ) {
+            accept(selection.stream);
+            return;
+        }
+        var data = createTorrentStreamAdapter(host, ports, function () {
+            if (serial === discoverySerial) {
+                cancelDiscovery();
+                if (active() && (!done.isCurrent || done.isCurrent()))
+                    done(null);
+            }
+        });
+        if (!data) {
+            done(null);
+            return;
+        }
+        discoveryCancel = function () {
+            data.dispose();
+        };
+        data.lookup(
+            { id: request.movieId, imdbId: request.imdbId },
+            function (result: any) {
+                if (
+                    serial !== discoverySerial ||
+                    !active() ||
+                    (done.isCurrent && !done.isCurrent())
+                )
+                    return;
+                var found =
+                    result?.ok &&
+                    result.items.filter(function (stream: any) {
+                        return stream.id === request.sourceId;
+                    });
+                data.dispose();
+                discoveryCancel = null;
+                accept(found && found.length === 1 ? found[0] : null);
+            }
+        );
+    }
     function active(): boolean {
         return !disposed && owner.active();
     }
@@ -96,7 +277,7 @@ function createTorrentProviderDriver(
         return null;
     }
     var client = {
-        cancel: function () {},
+        cancel: cancelDiscovery,
         load: function (_target: any, done: any) {
             if (!active() || !ready || (done.isCurrent && !done.isCurrent()))
                 return;
@@ -108,6 +289,10 @@ function createTorrentProviderDriver(
             done();
         },
         persist: function (payload: any) {
+            if (payload?.request?.kind === "torrent-discovery") {
+                var request = discoveryRequest(payload);
+                return request ? discoveryRecord(payload, request) : {};
+            }
             var found = lookup(payload);
             if (!found)
                 return {
@@ -119,6 +304,11 @@ function createTorrentProviderDriver(
             return result;
         },
         resolve: function (payload: any, done: any) {
+            if (payload?.request?.kind === "torrent-discovery") {
+                resolveDiscovery(payload, done);
+                return;
+            }
+            cancelDiscovery();
             var found = lookup(payload);
             if (!found || (done.isCurrent && !done.isCurrent())) {
                 done(null);
@@ -151,8 +341,31 @@ function createTorrentProviderDriver(
                 username: "",
             };
         },
+        discoveryPayload: function (movie: any, stream: any) {
+            discoverySelection = null;
+            var payload: any = {
+                description: movie.description,
+                logo_30x30: movie.poster,
+                request: {
+                    imdbId: movie.imdbId,
+                    kind: "torrent-discovery",
+                    movieId: movie.id,
+                    sourceId: stream.id,
+                },
+                title: movie.title,
+            };
+            var request = discoveryRequest(payload);
+            if (!request || !discoveryUrl(stream)) return null;
+            discoverySelection = {
+                request: request,
+                settings: (window as any).settings?.torrentStreamAddons || "[]",
+                stream: stream,
+            };
+            return discoveryRecord(payload, request);
+        },
         discoveryPorts: ports,
         dispose: function () {
+            cancelDiscovery();
             disposed = true;
             ready = false;
             catalog = helpers.emptyCatalog();
@@ -280,12 +493,16 @@ function createTorrentDiscoveryView(
             );
         },
     });
+    var streamData = createTorrentStreamAdapter(host, ports, function () {
+        sourcesChanged();
+    });
     var generation = 0,
         rendering = false,
         rows: string[] = [],
         items: any[] = [],
         category = "popular",
         categoryName = host._("Popular"),
+        searchSupported = true,
         query: string | null = null,
         next: number | null = null,
         busy = false,
@@ -294,6 +511,11 @@ function createTorrentDiscoveryView(
         signature = "",
         displayRows: any[] | null = null,
         display = "channels",
+        streamSignature = "",
+        selectedMovie: any = null,
+        streams: any[] = [],
+        pendingPlayback: { cancel?: () => void; cancelled: boolean } | null =
+            null,
         staged: { [lane: string]: (() => void) | undefined } = {},
         flushing = false;
     function foreground(): boolean {
@@ -311,7 +533,7 @@ function createTorrentDiscoveryView(
     }
     function resume(): boolean {
         if (flushing || !foreground()) return false;
-        if (settingsChanged()) return true;
+        if (settingsChanged() || sourcesChanged()) return true;
         var pending = staged,
             lanes = Object.keys(pending);
         if (!lanes.length) return false;
@@ -347,6 +569,19 @@ function createTorrentDiscoveryView(
         else fetchPage(null, false);
         return true;
     }
+    function sourcesChanged(): boolean {
+        if (
+            display !== "streams" ||
+            !selectedMovie ||
+            streamSignature === (host.settings?.torrentStreamAddons || "[]")
+        )
+            return false;
+        var visible = foreground();
+        close();
+        if (!visible) return false;
+        openSources(selectedMovie);
+        return true;
+    }
     function allowed(): boolean {
         return (
             owner.active() &&
@@ -369,6 +604,17 @@ function createTorrentDiscoveryView(
         busy = false;
         staged = {};
         data.cancel();
+        streamData?.cancel();
+        cancelPlayback();
+    }
+    function cancelPlayback(): void {
+        var pending = pendingPlayback;
+        pendingPlayback = null;
+        if (pending) {
+            pending.cancelled = true;
+            driver.mediaClient().cancel();
+            if (pending.cancel) pending.cancel();
+        }
     }
     function row(item: any): any {
         return {
@@ -388,13 +634,25 @@ function createTorrentDiscoveryView(
     }
     function detail(): void {
         if (resume()) return;
-        var item = items[host.selIndex];
-        if (item) host.__ottChannelListView.detail(row(item));
-        else if (host.listDetail) {
-            host.listDetail.textContent =
+        var item =
+            display === "streams"
+                ? streams[host.selIndex]
+                : items[host.selIndex];
+        if (item)
+            host.__ottChannelListView.detail(
+                display === "streams" ? streamRow(item) : row(item)
+            );
+        else
+            statusDetail(
                 failure ||
-                host._(busy ? "Loading. Please wait..." : "Not found");
-            if (busy && host.document) {
+                    host._(busy ? "Loading. Please wait..." : "Not found"),
+                busy
+            );
+    }
+    function statusDetail(message: string, loading: boolean): void {
+        if (host.listDetail) {
+            host.listDetail.textContent = message;
+            if (loading && host.document) {
                 var spinner = host.document.createElement("div");
                 spinner.className = "ott-spinner";
                 spinner.setAttribute("aria-hidden", "true");
@@ -444,6 +702,187 @@ function createTorrentDiscoveryView(
             });
         });
     }
+    function streamRow(stream: any): any {
+        return row({
+            description: [stream.addon?.name, stream.description]
+                .filter(Boolean)
+                .join("\n\n"),
+            id: stream.id,
+            poster: selectedMovie?.poster || "",
+            title:
+                stream.title ||
+                stream.addon?.name ||
+                selectedMovie?.title ||
+                "",
+        });
+    }
+    function showSources(): void {
+        if (!allowed()) return;
+        rows = streams.map(function (stream) {
+            return stream.id;
+        });
+        displayRows = rows;
+        display = "streams";
+        var projected: any = Object.create(null);
+        streams.forEach(function (stream) {
+            projected[stream.id] = streamRow(stream);
+        });
+        rendering = true;
+        try {
+            host.__ottChannelListView.show({
+                categoryName:
+                    host._("Choose a source") +
+                    ": " +
+                    (selectedMovie?.title || "Torrent"),
+                channel: function (id: string) {
+                    return projected[id];
+                },
+                detail: detail,
+                id: "torrent:sources",
+                key: key,
+                locked: function () {
+                    return false;
+                },
+                picon: function (id: string) {
+                    return projected[id]?.logo || "";
+                },
+                playing: function () {
+                    return false;
+                },
+                rows: rows,
+                selected: 0,
+            });
+            handler = host.listKeyHandlerFn;
+            if (!streams.length) detail();
+            host.__ottClassicScreenPort?.onDispose(function () {
+                if (!rendering) close();
+            });
+        } finally {
+            rendering = false;
+        }
+    }
+    function backToMovies(): void {
+        var selected = selectedMovie?.id;
+        close();
+        selectedMovie = null;
+        streams = [];
+        failure = "";
+        show(selected);
+    }
+    function openSources(movie: any): void {
+        if (!allowed() || !movie) return;
+        close();
+        selectedMovie = movie;
+        streams = [];
+        streamSignature = host.settings?.torrentStreamAddons || "[]";
+        var request = generation;
+        busy = true;
+        failure = "";
+        showSources();
+        function currentSource(): boolean {
+            return (
+                request === generation &&
+                current() &&
+                display === "streams" &&
+                selectedMovie === movie
+            );
+        }
+        function lookup(): void {
+            if (!currentSource()) return;
+            if (!streamData) {
+                busy = false;
+                failure = host._("Unavailable");
+                showSources();
+                return;
+            }
+            streamData.lookup(movie, function (result: any) {
+                if (!currentSource()) return;
+                present("streams", function () {
+                    if (!currentSource()) return;
+                    busy = false;
+                    streams = result?.ok ? result.items : [];
+                    failure = host._(
+                        !result?.ok
+                            ? result?.error === "no_addons"
+                                ? "Not configured"
+                                : "Failed to load!"
+                            : result.unsupportedCount && !streams.length
+                              ? "Unsupported source"
+                              : "Nothing to play"
+                    );
+                    showSources();
+                });
+            });
+        }
+        if (
+            !movie.imdbId &&
+            /^tmdb:movie:/.test(movie.id) &&
+            streamSignature !== "[]"
+        ) {
+            data.details(movie.id, function (result: any) {
+                if (!currentSource()) return;
+                if (result?.ok && result.item?.id === movie.id) {
+                    Object.keys(result.item).forEach(function (key) {
+                        movie[key] = result.item[key];
+                    });
+                }
+                lookup();
+            });
+        } else lookup();
+    }
+    function playSource(): void {
+        var stream = streams[host.selIndex],
+            movie = selectedMovie;
+        if (!stream || !movie || !current() || !foreground()) return;
+        cancelPlayback();
+        var payload =
+            typeof host.__ottMedia?.playItem === "function" &&
+            driver.discoveryPayload(movie, stream);
+        if (!payload) {
+            host.showShift?.(host._("Unsupported source"));
+            return;
+        }
+        var ticket: { cancel?: () => void; cancelled: boolean } = {
+            cancelled: false,
+        };
+        pendingPlayback = ticket;
+        var request = generation,
+            committed = false;
+        var context = streamSignature;
+        function admitted(): boolean {
+            return (
+                allowed() &&
+                !ticket.cancelled &&
+                context === (host.settings?.torrentStreamAddons || "[]") &&
+                (committed ||
+                    (request === generation &&
+                        current() &&
+                        foreground() &&
+                        selectedMovie === movie &&
+                        streams[host.selIndex] === stream))
+            );
+        }
+        var cancel = host.__ottMedia.playItem(
+            payload,
+            admitted,
+            function () {
+                if (!admitted()) return;
+                if (pendingPlayback === ticket) pendingPlayback = null;
+                committed = true;
+                host.closeList();
+            },
+            function () {
+                if (pendingPlayback !== ticket) return;
+                var report = admitted();
+                cancelPlayback();
+                if (report) host.showShift?.(host._("Failed to load!"));
+            }
+        );
+        if (typeof cancel === "function") {
+            ticket.cancel = cancel;
+            if (ticket.cancelled) cancel();
+        }
+    }
     function show(selected?: string): void {
         if (!allowed()) return;
         rows = items.map(function (item) {
@@ -479,7 +918,7 @@ function createTorrentDiscoveryView(
                     return false;
                 },
                 rows: rows,
-                search: true,
+                search: searchSupported,
                 selected: Math.max(0, rows.indexOf(selected || "")),
             });
             handler = host.listKeyHandlerFn;
@@ -498,6 +937,8 @@ function createTorrentDiscoveryView(
             append = false;
             cursor = null;
             if (/^genre:/.test(category)) category = "popular";
+            if (/^catalog:/.test(category)) category = "popular";
+            searchSupported = true;
         }
         signature = nextSignature;
         if (category === "popular") categoryName = host._("Popular");
@@ -521,6 +962,11 @@ function createTorrentDiscoveryView(
                     show(selected);
                     if (items.length && host.showShift) host.showShift(failure);
                     return;
+                }
+                if (result.catalog) {
+                    category = result.catalog.id;
+                    categoryName = result.catalog.title;
+                    searchSupported = result.catalog.searchSupported !== false;
                 }
                 var known: any = Object.create(null);
                 items.forEach(function (item) {
@@ -549,6 +995,7 @@ function createTorrentDiscoveryView(
     }
     function search(): boolean {
         if (!allowed()) return false;
+        if (!searchSupported) return true;
         var wasCurrent = current();
         close();
         if (!wasCurrent) {
@@ -580,18 +1027,21 @@ function createTorrentDiscoveryView(
         editor = host.__ottClassicScreenPort?.owner("editor");
         return true;
     }
-    function categories(genres?: any[]): boolean {
+    function categories(genres?: any[], rootEntries = false): boolean {
         if (!allowed()) return false;
         close();
         signature = configuration();
         var request = generation;
-        var choices = genres || [
-            { id: "popular", title: host._("Popular") },
-            { id: "new", title: host._("New releases") },
-            { id: "genres", title: host._("Genre") },
-            { id: "sources", title: host._("My sources") },
-            { id: "favorites", title: host._("Favorites") },
-        ];
+        var external = !genres && !!host.settings?.torrentCatalogEndpoint;
+        var choices = external
+            ? []
+            : genres || [
+                  { id: "popular", title: host._("Popular") },
+                  { id: "new", title: host._("New releases") },
+                  { id: "genres", title: host._("Genre") },
+                  { id: "sources", title: host._("My sources") },
+                  { id: "favorites", title: host._("Favorites") },
+              ];
         var labels = choices.map(function (item) {
             return item.title;
         });
@@ -650,12 +1100,19 @@ function createTorrentDiscoveryView(
             } else if (choice.id === "favorites") {
                 close();
                 host.openGlobalFavorites?.();
-            } else open(choice.id, choice.title);
+            } else {
+                searchSupported = choice.searchSupported !== false;
+                open(choice.id, choice.title);
+            }
         }
         rendering = true;
         try {
             host.__ottCategoryListView.show({
-                detail: resume,
+                detail: function () {
+                    if (resume()) return;
+                    if (external)
+                        statusDetail(host._("Loading. Please wait..."), true);
+                },
                 key: function (code: number): boolean {
                     if (!allowed() || host.listArray !== labels) return true;
                     if (
@@ -665,7 +1122,7 @@ function createTorrentDiscoveryView(
                     )
                         return true;
                     if (code === host.keys.RETURN || code === host.keys.EXIT) {
-                        if (genres) categories();
+                        if (genres && !rootEntries) categories();
                         else {
                             close();
                             host.closeList();
@@ -701,18 +1158,102 @@ function createTorrentDiscoveryView(
         } finally {
             rendering = false;
         }
+        if (external) {
+            data.categories(function (result: any) {
+                if (
+                    request !== generation ||
+                    host.listArray !== labels ||
+                    !allowed()
+                )
+                    return;
+                present("categories", function () {
+                    if (
+                        request !== generation ||
+                        host.listArray !== labels ||
+                        !allowed()
+                    )
+                        return;
+                    if (!result?.ok) {
+                        external = false;
+                        statusDetail(host._("Failed to load!"), false);
+                        return;
+                    }
+                    var catalogs = (result.categories || []).filter(function (
+                        entry: any
+                    ) {
+                        return /^catalog:/.test(entry.id);
+                    });
+                    if (!catalogs.length)
+                        catalogs = (result.categories || []).filter(function (
+                            entry: any
+                        ) {
+                            return (
+                                entry.id === "popular" ||
+                                entry.id === "new" ||
+                                /^genre:/.test(entry.id)
+                            );
+                        });
+                    categories(
+                        catalogs.concat([
+                            { id: "sources", title: host._("My sources") },
+                            { id: "favorites", title: host._("Favorites") },
+                        ]),
+                        true
+                    );
+                });
+            });
+        }
         return true;
     }
     function key(code: number): boolean {
         if (!current()) return true;
         var keys = host.keys;
         if (code === keys.RETURN || code === keys.EXIT) {
+            if (display === "streams" && code === keys.RETURN) {
+                backToMovies();
+                return true;
+            }
             close();
             host.closeList();
             return true;
         }
-        if (settingsChanged()) return true;
+        if (settingsChanged() || sourcesChanged()) return true;
         if (resume()) return true;
+        if (display === "streams") {
+            if (code === keys.BLUE || code === keys.PLAY || code === keys.PAUSE)
+                return categories();
+            if (code === keys.ENTER) {
+                if (!streams.length && !busy) openSources(selectedMovie);
+                else playSource();
+                return true;
+            }
+            if (
+                code === keys.INFO ||
+                code === keys.EPG ||
+                code === keys.RED ||
+                code === keys.N2
+            ) {
+                detail();
+                if (streams[host.selIndex])
+                    host.showProgramInfo(streams[host.selIndex].title);
+                return true;
+            }
+            if (
+                [
+                    keys.YELLOW,
+                    keys.TOOLS,
+                    keys.N0,
+                    keys.GREEN,
+                    keys.N3,
+                    keys.PIP,
+                    keys.STOP,
+                    keys.RANDOM,
+                    keys.FAVORITES,
+                ].indexOf(code) >= 0
+            )
+                return true;
+            return false;
+        }
         if (
             code === keys.BLUE ||
             code === keys.PLAY ||
@@ -727,7 +1268,6 @@ function createTorrentDiscoveryView(
             return true;
         }
         if (
-            code === keys.ENTER ||
             code === keys.INFO ||
             code === keys.N2 ||
             code === keys.RED ||
@@ -735,6 +1275,11 @@ function createTorrentDiscoveryView(
         ) {
             if (!items.length && !busy) fetchPage(null, false);
             else information();
+            return true;
+        }
+        if (code === keys.ENTER) {
+            if (!items.length && !busy) fetchPage(null, false);
+            else if (items[host.selIndex]) openSources(items[host.selIndex]);
             return true;
         }
         // No playable source exists yet: never dispatch PiP, shuffle or Favorites.
@@ -752,6 +1297,7 @@ function createTorrentDiscoveryView(
     owner.own(function () {
         close();
         data.dispose();
+        streamData?.dispose();
     });
     return {
         categories: categories,
@@ -759,6 +1305,7 @@ function createTorrentDiscoveryView(
         open: open,
         search: search,
         settingsChanged: settingsChanged,
+        sourcesChanged: sourcesChanged,
     };
 }
 

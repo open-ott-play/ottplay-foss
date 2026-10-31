@@ -164,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex సర్వర్ కనెక్షన్‌ని తనిఖీ చేస్తోంది…",
     "Choose a folder in the browser window": "బ్రౌజర్ విండోలో ఒక ఫోల్డర్‌ను ఎంచుకోండి",
     "Choose a profile": "ప్రొఫైల్‌ను ఎంచుకోండి",
+    "Choose a source": "మూలాన్ని ఎంచుకోండి",
     "Choose files in the browser window": "బ్రౌజర్ విండోలో ఫైల్‌లను ఎంచుకోండి",
     "Choose from": "నుండి ఎంచుకోండి",
     "Choose language": "భాషను ఎంచుకోండి",
@@ -1091,6 +1092,7 @@ var keyStrings = {
     Unavailable: "అందుబాటులో లేదు",
     "Unlock the player's settings before changing its playlist.":
         "ప్లేజాబితాను మార్చే ముందు ప్లేయర్ సెట్టింగ్‌ల లాక్‌ను తీసివేయండి.",
+    "Unsupported source": "మద్దతు లేని మూలం",
     Untitled: "శీర్షిక లేదు",
     "Untitled folder": "శీర్షికలేని ఫోల్డర్",
     "Update installed. Please restart OttPlay FOSS.":

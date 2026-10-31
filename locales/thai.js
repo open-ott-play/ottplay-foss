@@ -168,6 +168,7 @@ var keyStrings = {
         "กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์ Plex...",
     "Choose a folder in the browser window": "เลือกโฟลเดอร์ในหน้าต่างเบราว์เซอร์",
     "Choose a profile": "เลือกโปรไฟล์",
+    "Choose a source": "เลือกแหล่งที่มา",
     "Choose files in the browser window": "เลือกไฟล์ในหน้าต่างเบราว์เซอร์",
     "Choose from": "เลือกจาก",
     "Choose language": "เลือกภาษา",
@@ -1095,6 +1096,7 @@ var keyStrings = {
     Unavailable: "ไม่พร้อมใช้งาน",
     "Unlock the player's settings before changing its playlist.":
         "ปลดล็อกการตั้งค่าโปรแกรมเล่นก่อนเปลี่ยนเพลย์ลิสต์",
+    "Unsupported source": "ไม่รองรับแหล่งที่มานี้",
     Untitled: "ไม่มีชื่อ",
     "Untitled folder": "โฟลเดอร์ไม่มีชื่อ",
     "Update installed. Please restart OttPlay FOSS.":

@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Válasszon mappát a böngészőablakban",
     "Choose a profile": "Profil kiválasztása",
+    "Choose a source": "Forrás kiválasztása",
     "Choose files in the browser window":
         "Válasszon fájlokat a böngészőablakban",
     "Choose from": "Választás innen",
@@ -1148,6 +1149,7 @@ var keyStrings = {
     Unavailable: "Nem érhető el",
     "Unlock the player's settings before changing its playlist.":
         "A lejátszási lista módosítása előtt oldja fel a lejátszó beállításainak zárolását.",
+    "Unsupported source": "Nem támogatott forrás",
     Untitled: "Névtelen",
     "Untitled folder": "Névtelen mappa",
     "Update installed. Please restart OttPlay FOSS.":

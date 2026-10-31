@@ -176,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Изберете папка во прозорецот на прелистувачот",
     "Choose a profile": "Избери профил",
+    "Choose a source": "Изберете извор",
     "Choose files in the browser window":
         "Изберете датотеки во прозорецот на прелистувачот",
     "Choose from": "Избери од",
@@ -1146,6 +1147,7 @@ var keyStrings = {
     Unavailable: "Недостапно",
     "Unlock the player's settings before changing its playlist.":
         "Отклучете ги поставките на плеерот пред да ја промените листата за репродукција.",
+    "Unsupported source": "Неподдржан извор",
     Untitled: "Без наслов",
     "Untitled folder": "Папка без наслов",
     "Update installed. Please restart OttPlay FOSS.":

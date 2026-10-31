@@ -166,6 +166,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex ছাৰ্ভাৰৰ সংযোগ পৰীক্ষা হৈ আছে…",
     "Choose a folder in the browser window": "ব্ৰাউজাৰৰ উইণ্ড’ত এটা ফোল্ডাৰ বাছক",
     "Choose a profile": "প্ৰফাইল বাছক",
+    "Choose a source": "এটা উৎস বাছক",
     "Choose files in the browser window": "ব্ৰাউজাৰৰ উইণ্ড’ত ফাইলসমূহ বাছক",
     "Choose from": "ইয়াৰ পৰা বাছক",
     "Choose language": "ভাষা বাছক",
@@ -1100,6 +1101,7 @@ var keyStrings = {
     Unavailable: "উপলব্ধ নহয়",
     "Unlock the player's settings before changing its playlist.":
         "প্লেলিষ্ট সলনি কৰাৰ আগতে প্লেয়াৰৰ ছেটিংছৰ লক খুলক।",
+    "Unsupported source": "অসমৰ্থিত উৎস",
     Untitled: "শিৰোনামহীন",
     "Untitled folder": "নামহীন ফ’ল্ডাৰ",
     "Update installed. Please restart OttPlay FOSS.":

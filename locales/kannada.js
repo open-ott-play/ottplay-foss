@@ -166,6 +166,7 @@ var keyStrings = {
         "Plex ಸರ್ವರ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
     "Choose a folder in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ",
     "Choose a profile": "ಪ್ರೊಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Choose a source": "ಮೂಲವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Choose files in the browser window": "ಬ್ರೌಸರ್ ವಿಂಡೋದಲ್ಲಿ ಫೈಲ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "Choose from": "ಆಯ್ಕೆ ಮಾಡಿ",
     "Choose language": "ಭಾಷೆಯನ್ನು ಆರಿಸಿ",
@@ -1102,6 +1103,7 @@ var keyStrings = {
     Unavailable: "ಲಭ್ಯವಿಲ್ಲ",
     "Unlock the player's settings before changing its playlist.":
         "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ಬದಲಾಯಿಸುವ ಮೊದಲು ಪ್ಲೇಯರ್‌ನ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ.",
+    "Unsupported source": "ಬೆಂಬಲಿಸದ ಮೂಲ",
     Untitled: "ಶೀರ್ಷಿಕೆಯಿಲ್ಲ",
     "Untitled folder": "ಶೀರ್ಷಿಕೆರಹಿತ ಫೋಲ್ಡರ್",
     "Update installed. Please restart OttPlay FOSS.":

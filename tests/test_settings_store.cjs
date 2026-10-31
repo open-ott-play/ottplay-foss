@@ -642,6 +642,7 @@ check(
         w.URL = URL;
         w.installSettingsFacade(w);
         const calls = [];
+        const sourceCalls = [];
         const forbidden = () =>
             assert.fail(
                 "Setting a catalog preference must not open a provider or start playback"
@@ -661,6 +662,14 @@ check(
                     assert.equal(
                         data.get("sTorrentCatalogEndpoint"),
                         typed.torrentCatalogEndpoint
+                    );
+                },
+                sourcesChanged() {
+                    sourceCalls.push(typed.torrentStreamAddons);
+                    assert.equal(
+                        data.get("sTorrentStreamAddons"),
+                        typed.torrentStreamAddons,
+                        "addon changes are published only after durable storage"
                     );
                 },
             },
@@ -736,6 +745,17 @@ check(
             ["_fra", "https://catalog.invalid"],
             ["_fra", "https://replacement.invalid"],
         ]);
+        const addons = '["https://streams.invalid/PRIVATE/manifest.json"]';
+        assert.equal(w.saveSettings({ torrentStreamAddons: addons }), true);
+        assert.deepEqual(sourceCalls, [addons]);
+        assert.equal(set("torrentStreamAddons", "[]").status, "ok");
+        assert.deepEqual(sourceCalls, [addons, "[]"]);
+        assert.equal(
+            calls.length,
+            3,
+            "stream changes do not restart movie browsing"
+        );
+        assert.equal(set("torrentStreamAddons", "invalid").status, "rejected");
         assert.equal(
             set("torrentCatalogLanguage", "invalid").status,
             "rejected"
@@ -744,6 +764,12 @@ check(
         assert.equal(calls.length, 3);
         const originalSet = w.storage.set;
         w.storage.set = () => {};
+        assert.equal(w.saveSettings({ torrentStreamAddons: addons }), false);
+        assert.equal(
+            sourceCalls.length,
+            2,
+            "failed writes do not notify stream UI"
+        );
         assert.equal(
             w.saveSettings({
                 torrentCatalogEndpoint: "https://rejected.invalid",
@@ -758,6 +784,12 @@ check(
         w.storage.set = originalSet;
         delete driver.catalogBrowser;
         assert.equal(w.saveSettings({ torrentCatalogEndpoint: "" }), true);
+        assert.equal(w.saveSettings({ torrentStreamAddons: addons }), true);
+        assert.equal(
+            sourceCalls.length,
+            2,
+            "provisioning does not create a stream UI"
+        );
         assert.equal(
             calls.length,
             3,

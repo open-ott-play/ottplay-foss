@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Di pencereya gerokê de peldankekê hilbijêre",
     "Choose a profile": "Profîl hilbijêre",
+    "Choose a source": "Çavkaniyekê hilbijêre",
     "Choose files in the browser window":
         "Di pencereya gerokê de pelan hilbijêre",
     "Choose from": "Hilbijêre",
@@ -1140,6 +1141,7 @@ var keyStrings = {
     Unavailable: "Ne berdest e",
     "Unlock the player's settings before changing its playlist.":
         "Berî guherandina lîsteya lêdanê kilîda mîhengên lêkerê veke.",
+    "Unsupported source": "Çavkanî nayê piştgirîkirin",
     Untitled: "Bênav",
     "Untitled folder": "Peldanka bênav",
     "Update installed. Please restart OttPlay FOSS.":

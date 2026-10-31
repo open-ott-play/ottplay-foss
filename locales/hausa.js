@@ -173,6 +173,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Zaɓi babban fayil a tagar burauza",
     "Choose a profile": "Zaɓi bayanin martaba",
+    "Choose a source": "Zaɓi majiya",
     "Choose files in the browser window": "Zaɓi fayiloli a tagar burauza",
     "Choose from": "Zaɓa daga",
     "Choose language": "Zaɓi harshe",
@@ -1130,6 +1131,7 @@ var keyStrings = {
     Unavailable: "Ba a samu ba",
     "Unlock the player's settings before changing its playlist.":
         "Buɗe makullin saitunan manhajar kunnawa kafin sauya jerin kunnawarta.",
+    "Unsupported source": "Ba a tallafa wa wannan majiya",
     Untitled: "Ba a ba da suna ba",
     "Untitled folder": "Babban fayil ba tare da suna ba",
     "Update installed. Please restart OttPlay FOSS.":

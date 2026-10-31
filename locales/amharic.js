@@ -163,6 +163,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "የPlex አገልጋይ ግንኙነትን በማረጋገጥ ላይ…",
     "Choose a folder in the browser window": "በአሳሽ መስኮት ውስጥ አቃፊ ይምረጡ",
     "Choose a profile": "መገለጫ ምረጥ",
+    "Choose a source": "ምንጭ ይምረጡ",
     "Choose files in the browser window": "በአሳሽ መስኮት ውስጥ ፋይሎችን ይምረጡ",
     "Choose from": "ከዚህ ምረጥ",
     "Choose language": "ቋንቋ ምረጥ",
@@ -1081,6 +1082,7 @@ var keyStrings = {
     Unavailable: "አይገኝም",
     "Unlock the player's settings before changing its playlist.":
         "የማጫወቻ ዝርዝሩን ከመቀየርዎ በፊት የአጫዋቹን ቅንብሮች ቁልፍ ይክፈቱ።",
+    "Unsupported source": "የማይደገፍ ምንጭ",
     Untitled: "ያለ ርዕስ",
     "Untitled folder": "ስም የሌለው አቃፊ",
     "Update installed. Please restart OttPlay FOSS.":

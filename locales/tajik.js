@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Дар равзанаи браузер ҷузвдонеро интихоб кунед",
     "Choose a profile": "Профилро интихоб кунед",
+    "Choose a source": "Манбаъро интихоб кунед",
     "Choose files in the browser window":
         "Дар равзанаи браузер файлҳоро интихоб кунед",
     "Choose from": "Интихоб аз",
@@ -1138,6 +1139,7 @@ var keyStrings = {
     Unavailable: "Дастрас нест",
     "Unlock the player's settings before changing its playlist.":
         "Пеш аз тағйир додани рӯйхати пахш қулфи танзимоти плеерро кушоед.",
+    "Unsupported source": "Манбаъ дастгирӣ намешавад",
     Untitled: "Беном",
     "Untitled folder": "Ҷузвдони беном",
     "Update installed. Please restart OttPlay FOSS.":

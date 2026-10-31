@@ -171,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Браузер терезесінде қалтаны таңдаңыз",
     "Choose a profile": "Профильді таңдаңыз",
+    "Choose a source": "Дереккөзді таңдаңыз",
     "Choose files in the browser window":
         "Браузер терезесінде файлдарды таңдаңыз",
     "Choose from": "Мынадан таңдау",
@@ -1131,6 +1132,7 @@ var keyStrings = {
     Unavailable: "Қолжетімсіз",
     "Unlock the player's settings before changing its playlist.":
         "Ойнату тізімін өзгертпес бұрын ойнатқыш баптауларының құлпын ашыңыз.",
+    "Unsupported source": "Қолдау көрсетілмейтін дереккөз",
     Untitled: "Атаусыз",
     "Untitled folder": "Атаусыз қалта",
     "Update installed. Please restart OttPlay FOSS.":

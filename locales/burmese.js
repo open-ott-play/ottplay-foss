@@ -167,6 +167,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex ဆာဗာချိတ်ဆက်မှုကို စစ်ဆေးနေသည်...",
     "Choose a folder in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်တွဲတစ်ခု ရွေးပါ",
     "Choose a profile": "ပရိုဖိုင်ကို ရွေးပါ။",
+    "Choose a source": "ရင်းမြစ်တစ်ခု ရွေးပါ",
     "Choose files in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်များ ရွေးပါ",
     "Choose from": "ရွေးချယ်ပါ။",
     "Choose language": "ဘာသာစကားကို ရွေးပါ။",
@@ -1104,6 +1105,7 @@ var keyStrings = {
     Unavailable: "မရရှိနိုင်ပါ",
     "Unlock the player's settings before changing its playlist.":
         "ဖွင့်စာရင်းကို မပြောင်းမီ ပလေယာဆက်တင်များ၏ လော့ခ်ကို ဖွင့်ပါ။",
+    "Unsupported source": "မပံ့ပိုးသော ရင်းမြစ်",
     Untitled: "ခေါင်းစဉ်မဲ့",
     "Untitled folder": "ခေါင်းစဉ်မဲ့ ဖိုင်တွဲ",
     "Update installed. Please restart OttPlay FOSS.":

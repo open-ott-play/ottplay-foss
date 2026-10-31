@@ -898,3 +898,51 @@ test("cold remote provider requests reject expiration and source changes and hon
         assert.deepEqual(f.calls, ["companion_capabilities"]);
     }
 });
+
+test("omitted Stremio file index selects the largest playable file after metadata", async () => {
+    const f = fixture({
+        handle(path, method) {
+            if (/^sessions\/s\d+$/.test(path) && method === "GET")
+                return {
+                    files: [
+                        { index: 0, length: 100, name: "sample.mp4" },
+                        { index: 1, length: 999999, name: "extras.bin" },
+                        { index: 5, length: 10000, name: "film.mkv" },
+                        { index: 6, length: 1000, name: "trailer.mp4" },
+                    ],
+                    id: path.split("/")[1],
+                    state: "select",
+                };
+        },
+    });
+    f.resolve(
+        "ottplay-torrent:?source=" +
+            encodeURIComponent(source) +
+            "&selection=largest"
+    );
+    await flush();
+    await f.tick(750);
+    assert.deepEqual(
+        f.calls.find((c) => c.path === "sessions" && c.method === "POST").body,
+        { source }
+    );
+    assert.deepEqual(f.calls.find((c) => c.path.endsWith("/select")).body, {
+        fileIndex: 5,
+    });
+    assert.equal(f.outcomes.length, 1);
+});
+
+test("Stremio largest-file choice cannot conflict with explicit index", async () => {
+    const f = fixture();
+    f.resolve(
+        "ottplay-torrent:?source=" +
+            encodeURIComponent(source) +
+            "&selection=largest&index=0"
+    );
+    await flush();
+    assert.deepEqual(f.outcomes, [null]);
+    assert.equal(
+        f.calls.some((c) => c.path === "sessions"),
+        false
+    );
+});

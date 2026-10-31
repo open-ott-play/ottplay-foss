@@ -171,6 +171,7 @@ var keyStrings = {
         "Plex serveriühenduse kontrollimine…",
     "Choose a folder in the browser window": "Valige brauseriaknas kaust",
     "Choose a profile": "Valige profiil",
+    "Choose a source": "Vali allikas",
     "Choose files in the browser window": "Valige brauseriaknas failid",
     "Choose from": "Valige",
     "Choose language": "Valige keel",
@@ -1127,6 +1128,7 @@ var keyStrings = {
     Unavailable: "Pole saadaval",
     "Unlock the player's settings before changing its playlist.":
         "Enne esitusloendi muutmist avage mängija seadete lukustus.",
+    "Unsupported source": "Toetamata allikas",
     Untitled: "Pealkirjata",
     "Untitled folder": "Nimetu kaust",
     "Update installed. Please restart OttPlay FOSS.":

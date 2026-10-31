@@ -175,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Хөтчийн цонхноос хавтас сонгоно уу",
     "Choose a profile": "Профайл сонгох",
+    "Choose a source": "Эх сурвалж сонгох",
     "Choose files in the browser window": "Хөтчийн цонхноос файл сонгоно уу",
     "Choose from": "Эндээс сонгох",
     "Choose language": "Хэл сонгох",
@@ -1140,6 +1141,7 @@ var keyStrings = {
     Unavailable: "Ашиглах боломжгүй",
     "Unlock the player's settings before changing its playlist.":
         "Тоглуулах жагсаалтыг өөрчлөхөөс өмнө тоглуулагчийн тохиргооны түгжээг тайлна уу.",
+    "Unsupported source": "Дэмжигдээгүй эх сурвалж",
     Untitled: "Нэргүй",
     "Untitled folder": "Нэргүй хавтас",
     "Update installed. Please restart OttPlay FOSS.":

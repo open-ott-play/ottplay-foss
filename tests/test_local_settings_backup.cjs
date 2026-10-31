@@ -76,6 +76,11 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             ["companionEndpoint", ownCompanion],
             ["sTorrentCatalogEndpoint", "https://own.invalid/private-token"],
             ["torrentCatalogEndpoint", "https://own.invalid/private-token"],
+            [
+                "sTorrentStreamAddons",
+                '["https://own.invalid/PRIVATE/manifest.json"]',
+            ],
+            ["torrentStreamAddons", "legacy-invalid-value"],
             ["torrent:sTorrentCatalogLanguage", "_rus"],
             ["m3u:m3uArr", providerPayload],
             ["plexcfg", plexPayload],
@@ -148,6 +153,8 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         assert.equal(c.stbGetAllItems().companionEndpoint, undefined);
         assert.equal(c.stbGetAllItems().torrentCatalogEndpoint, undefined);
         assert.equal(c.stbGetAllItems().sTorrentCatalogEndpoint, undefined);
+        assert.equal(c.stbGetAllItems().torrentStreamAddons, undefined);
+        assert.equal(c.stbGetAllItems().sTorrentStreamAddons, undefined);
         assert.equal(
             c.stbGetAllItems()["torrent:sTorrentCatalogLanguage"],
             "_rus"
@@ -236,11 +243,15 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
                 sLocalHttpEnabled: "1",
                 sNotificationsEnabled: "1",
                 sTorrentCatalogEndpoint: "https://copied.invalid/private-token",
+                sTorrentStreamAddons:
+                    '["https://copied.invalid/PRIVATE/manifest.json"]',
                 stb_settings_backup: JSON.stringify({
                     commandServerToken: copiedToken,
                 }),
                 "torrent:sTorrentCatalogLanguage": "_fra",
                 torrentCatalogEndpoint: "https://copied.invalid/private-token",
+                torrentStreamAddons:
+                    '["https://copied.invalid/PRIVATE/manifest.json"]',
             })
         );
         c[names[1]]();
@@ -276,6 +287,11 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
             "https://own.invalid/private-token"
         );
         assert.equal(stored.get("torrent:sTorrentCatalogLanguage"), "_fra");
+        assert.equal(
+            stored.get("sTorrentStreamAddons"),
+            '["https://own.invalid/PRIVATE/manifest.json"]'
+        );
+        assert.equal(stored.get("torrentStreamAddons"), "legacy-invalid-value");
         assert.equal(stored.get("stb_settings_backup"), undefined);
         assert.equal(stored.get("m3u:m3uArr"), providerPayload);
         assert.equal(stored.get("plexcfg"), plexPayload);
@@ -305,6 +321,16 @@ for (const [profile, folderSelection] of ["typescript", "static-core"].flatMap(
         });
         assert.equal(stored.has("torrentCatalogEndpoint"), false);
         assert.equal(stored.has("sTorrentCatalogEndpoint"), false);
+        stored.delete("torrentStreamAddons");
+        stored.delete("sTorrentStreamAddons");
+        c.restoreLocalSettingsSnapshot({
+            sTorrentStreamAddons:
+                '["https://copied.invalid/PRIVATE/manifest.json"]',
+            torrentStreamAddons:
+                '["https://copied.invalid/PRIVATE/manifest.json"]',
+        });
+        assert.equal(stored.has("torrentStreamAddons"), false);
+        assert.equal(stored.has("sTorrentStreamAddons"), false);
         if (profile === "static-core") {
             stored.set("stb_settings_backup", "{}");
             const before = JSON.stringify([...stored]);

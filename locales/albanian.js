@@ -174,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Zgjidhni një dosje në dritaren e shfletuesit",
     "Choose a profile": "Zgjidhni një profil",
+    "Choose a source": "Zgjidh një burim",
     "Choose files in the browser window":
         "Zgjidhni skedarët në dritaren e shfletuesit",
     "Choose from": "Zgjidhni nga",
@@ -1151,6 +1152,7 @@ var keyStrings = {
     Unavailable: "I padisponueshëm",
     "Unlock the player's settings before changing its playlist.":
         "Zhbllokoni cilësimet e luajtësit përpara se të ndryshoni listën e tij të luajtjes.",
+    "Unsupported source": "Burim i pambështetur",
     Untitled: "Pa titull",
     "Untitled folder": "Dosje pa titull",
     "Update installed. Please restart OttPlay FOSS.":

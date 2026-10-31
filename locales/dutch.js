@@ -177,6 +177,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Kies een map in het browservenster",
     "Choose a profile": "Profiel kiezen",
+    "Choose a source": "Kies een bron",
     "Choose files in the browser window":
         "Kies bestanden in het browservenster",
     "Choose from": "Kiezen uit",
@@ -1147,6 +1148,7 @@ var keyStrings = {
     Unavailable: "Niet beschikbaar",
     "Unlock the player's settings before changing its playlist.":
         "Ontgrendel de instellingen van de speler voordat u de afspeellijst wijzigt.",
+    "Unsupported source": "Niet-ondersteunde bron",
     Untitled: "Zonder titel",
     "Untitled folder": "Naamloze map",
     "Update installed. Please restart OttPlay FOSS.":

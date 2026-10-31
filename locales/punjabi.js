@@ -166,6 +166,7 @@ var keyStrings = {
         "Plex ਸਰਵਰ ਕਨੈਕਸ਼ਨ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
     "Choose a folder in the browser window": "ਬ੍ਰਾਊਜ਼ਰ ਵਿੰਡੋ ਵਿੱਚ ਇੱਕ ਫੋਲਡਰ ਚੁਣੋ",
     "Choose a profile": "ਪ੍ਰੋਫਾਈਲ ਚੁਣੋ",
+    "Choose a source": "ਸਰੋਤ ਚੁਣੋ",
     "Choose files in the browser window": "ਬ੍ਰਾਊਜ਼ਰ ਵਿੰਡੋ ਵਿੱਚ ਫਾਈਲਾਂ ਚੁਣੋ",
     "Choose from": "ਵਿੱਚੋਂ ਚੁਣੋ",
     "Choose language": "ਭਾਸ਼ਾ ਚੁਣੋ",
@@ -1099,6 +1100,7 @@ var keyStrings = {
     Unavailable: "ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
     "Unlock the player's settings before changing its playlist.":
         "ਪਲੇਲਿਸਟ ਬਦਲਣ ਤੋਂ ਪਹਿਲਾਂ ਪਲੇਅਰ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਦਾ ਲੌਕ ਖੋਲ੍ਹੋ।",
+    "Unsupported source": "ਅਸਮਰਥਿਤ ਸਰੋਤ",
     Untitled: "ਸਿਰਲੇਖ ਰਹਿਤ",
     "Untitled folder": "ਬਿਨਾਂ ਸਿਰਲੇਖ ਵਾਲਾ ਫੋਲਡਰ",
     "Update installed. Please restart OttPlay FOSS.":

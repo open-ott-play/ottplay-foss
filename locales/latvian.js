@@ -172,6 +172,7 @@ var keyStrings = {
         "Notiek Plex servera savienojuma pārbaude…",
     "Choose a folder in the browser window": "Pārlūka logā izvēlieties mapi",
     "Choose a profile": "Izvēlēties profilu",
+    "Choose a source": "Izvēlieties avotu",
     "Choose files in the browser window": "Pārlūka logā izvēlieties failus",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
@@ -1136,6 +1137,7 @@ var keyStrings = {
     Unavailable: "Nav pieejams",
     "Unlock the player's settings before changing its playlist.":
         "Pirms atskaņošanas saraksta maiņas atbloķējiet atskaņotāja iestatījumus.",
+    "Unsupported source": "Neatbalstīts avots",
     Untitled: "Bez nosaukuma",
     "Untitled folder": "Mape bez nosaukuma",
     "Update installed. Please restart OttPlay FOSS.":

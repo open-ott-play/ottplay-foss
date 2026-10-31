@@ -171,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Họrọ folda na windo ihe nchọgharị",
     "Choose a profile": "Họrọ profaịlụ",
+    "Choose a source": "Họrọ isi iyi",
     "Choose files in the browser window": "Họrọ faịlụ na windo ihe nchọgharị",
     "Choose from": "Họrọ n'ime",
     "Choose language": "Họrọ asụsụ",
@@ -1118,6 +1119,7 @@ var keyStrings = {
     Unavailable: "Adịghị",
     "Unlock the player's settings before changing its playlist.":
         "Mepee mkpọchi ntọala ihe ọkpụkpọ tupu ịgbanwe ndepụta ọkpụkpọ ya.",
+    "Unsupported source": "Enweghị nkwado maka isi iyi a",
     Untitled: "Enweghị aha",
     "Untitled folder": "Folda na-enweghị aha",
     "Update installed. Please restart OttPlay FOSS.":

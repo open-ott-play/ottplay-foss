@@ -1753,3 +1753,47 @@ console.log(
         "folder footer skips unrelated file even with Repeat One saved"
     );
 }
+
+// A discovery choice is admitted without inserting metadata into live channels.
+for (const mode of ["play", "cancel", "guard", "kiosk", "missing"]) {
+    const { c, pending, resolve } = setup("torrent");
+    let active = true,
+        started = 0,
+        failed = 0;
+    c.__ottKiosk = {
+        allowedMedia: () => mode !== "kiosk",
+        enabled: () => mode === "kiosk",
+    };
+    const before = JSON.stringify(c.channels);
+    const cancel = c.__ottMedia.playItem(
+        {
+            id: "discovery-film",
+            request: {
+                kind: "torrent-discovery",
+                movieId: "imdb:movie:tt1254207",
+                sourceId: "selected",
+            },
+            title: "Film",
+        },
+        () => active,
+        () => started++,
+        () => failed++
+    );
+    if (mode === "kiosk") {
+        assert.equal(pending.length, 0);
+        assert.equal(failed, 1);
+        continue;
+    }
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].item.__ottVPortalQueue, undefined);
+    if (mode === "cancel") cancel();
+    if (mode === "guard") active = false;
+    if (mode === "missing") pending[0].done(null);
+    else resolve();
+    assert.equal(started, mode === "play" ? 1 : 0, mode);
+    assert.equal(failed, mode === "missing" ? 1 : 0, mode);
+    assert.equal(JSON.stringify(c.channels), before);
+}
+console.log(
+    "PASS single discovery item admission, cancellation, guards and unavailable source"
+);

@@ -169,6 +169,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "브라우저 창에서 폴더를 선택하세요",
     "Choose a profile": "프로필 선택",
+    "Choose a source": "소스 선택",
     "Choose files in the browser window": "브라우저 창에서 파일을 선택하세요",
     "Choose from": "선택하세요",
     "Choose language": "언어를 선택하세요",
@@ -1119,6 +1120,7 @@ var keyStrings = {
     Unavailable: "사용할 수 없습니다",
     "Unlock the player's settings before changing its playlist.":
         "재생목록을 변경하기 전에 플레이어 설정의 잠금을 해제하세요.",
+    "Unsupported source": "지원하지 않는 소스",
     Untitled: "제목없음",
     "Untitled folder": "제목없는 폴더",
     "Update installed. Please restart OttPlay FOSS.":

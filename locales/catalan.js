@@ -179,6 +179,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Trieu una carpeta a la finestra del navegador",
     "Choose a profile": "Tria un perfil",
+    "Choose a source": "Tria una font",
     "Choose files in the browser window":
         "Trieu fitxers a la finestra del navegador",
     "Choose from": "Tria entre",
@@ -1165,6 +1166,7 @@ var keyStrings = {
     Unavailable: "No disponible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquegeu la configuració del reproductor abans de canviar-ne la llista.",
+    "Unsupported source": "Font no compatible",
     Untitled: "Sense títol",
     "Untitled folder": "Carpeta sense títol",
     "Update installed. Please restart OttPlay FOSS.":

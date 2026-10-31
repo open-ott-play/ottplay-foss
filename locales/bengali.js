@@ -168,6 +168,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "ব্রাউজারের উইন্ডোতে একটি ফোল্ডার বেছে নিন",
     "Choose a profile": "প্রোফাইল বেছে নিন",
+    "Choose a source": "একটি উৎস বেছে নিন",
     "Choose files in the browser window": "ব্রাউজারের উইন্ডোতে ফাইলগুলি বেছে নিন",
     "Choose from": "থেকে বেছে নিন",
     "Choose language": "ভাষা চয়ন করুন",
@@ -1098,6 +1099,7 @@ var keyStrings = {
     Unavailable: "উপলব্ধ নেই",
     "Unlock the player's settings before changing its playlist.":
         "প্লেলিস্ট বদলানোর আগে প্লেয়ারের সেটিংসের লক খুলুন।",
+    "Unsupported source": "অসমর্থিত উৎস",
     Untitled: "শিরোনামহীন",
     "Untitled folder": "শিরোনামহীন ফোল্ডার",
     "Update installed. Please restart OttPlay FOSS.":

@@ -178,6 +178,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Alegeți un dosar în fereastra browserului",
     "Choose a profile": "Alege un profil",
+    "Choose a source": "Alege o sursă",
     "Choose files in the browser window":
         "Alegeți fișiere în fereastra browserului",
     "Choose from": "Alege din",
@@ -1155,6 +1156,7 @@ var keyStrings = {
     Unavailable: "Indisponibil",
     "Unlock the player's settings before changing its playlist.":
         "Deblocați setările playerului înainte de a-i modifica lista de redare.",
+    "Unsupported source": "Sursă neacceptată",
     Untitled: "Fără titlu",
     "Untitled folder": "Folder fără nume",
     "Update installed. Please restart OttPlay FOSS.":
