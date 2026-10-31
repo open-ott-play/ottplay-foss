@@ -308,6 +308,9 @@ test("adding a source saves cached metadata then uses the normal channel reload"
         },
     });
     f.host.__ottEditProvider();
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Add new list"
+    );
     f.host.listKeyHandler(f.host.keys.ENTER);
     f.host.editvar = source;
     f.host.setEdit();

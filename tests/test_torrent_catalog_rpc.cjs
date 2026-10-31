@@ -1374,6 +1374,7 @@ function hostFixture(options = {}) {
                   })
                 : Promise.resolve(client);
         },
+        indexerAvailable: () => f.c.native,
         nativePending: () => false,
         providerAvailable: () => f.c.native,
     };
@@ -1592,4 +1593,155 @@ test("Torrent Favorites resolves large saved catalogs with the same strict docum
         companionEndpoint: "http://private.example/secret",
     });
     assert.equal(api.globalFavoriteBuiltinConfiguration(w, row, null), null);
+});
+
+test("indexer control keeps private config out of responses and never changes providers", async () => {
+    const f = hostFixture();
+    const calls = [];
+    f.w.__ottMediaCompanion.ensure = async (native) => ({
+        torznab: async (op, params) => {
+            assert.equal(native, true);
+            calls.push({ op, params });
+            return {
+                schema: 1,
+                source: { id: params.sourceId, label: params.label },
+            };
+        },
+    });
+    const route = f.loader.load(
+        "src/commands/remote-torrent-catalog.ts"
+    ).executeRemoteTorrentIndexer;
+    const result = await new Promise((done) =>
+        route(
+            f.w,
+            {
+                params: {
+                    apiKey: "private-test-key",
+                    endpoint: "http://127.0.0.1:9696/1/api",
+                    label: "Home",
+                    op: "configure",
+                    runtime: f.c.runtime,
+                    sourceId: "home",
+                    version: 1,
+                },
+            },
+            done
+        )
+    );
+    assert.equal(result.status, "ok");
+    assert.equal(calls.length, 1);
+    assert.equal(JSON.stringify(result).includes("private-test-key"), false);
+    assert.equal(JSON.stringify(result).includes("127.0.0.1"), false);
+    assert.equal(f.effects.select + f.effects.reload, 0);
+    assert.equal(f.w.__ottTorznabRevision, 1);
+});
+test("indexer control rejects stale runtime and restricted mutations before native access", async () => {
+    const f = hostFixture();
+    let called = 0;
+    f.w.__ottMediaCompanion.ensure = async () => {
+        called++;
+        throw new Error("must not start");
+    };
+    const route = f.loader.load(
+        "src/commands/remote-torrent-catalog.ts"
+    ).executeRemoteTorrentIndexer;
+    const run = (params) => new Promise((done) => route(f.w, { params }, done));
+    let result = await run({ op: "list", runtime: "old", version: 1 });
+    assert.equal(result.data.reason, "runtime_changed");
+    f.w.__ottKiosk = { enabled: () => true };
+    result = await run({
+        op: "prepare",
+        resultRef: "a".repeat(32),
+        runtime: f.c.runtime,
+        sourceId: "home",
+        version: 1,
+    });
+    assert.equal(result.data.reason, "policy_restricted");
+    assert.equal(called, 0);
+});
+test("indexer transport cancellation suppresses a late response", async () => {
+    const f = hostFixture();
+    let release,
+        called = 0;
+    f.w.__ottMediaCompanion.ensure = async () => ({
+        torznab: () => new Promise((resolve) => (release = resolve)),
+    });
+    const route = f.loader.load(
+        "src/commands/remote-torrent-catalog.ts"
+    ).executeRemoteTorrentIndexer;
+    const cancel = route(
+        f.w,
+        { params: { op: "list", runtime: f.c.runtime, version: 1 } },
+        () => called++
+    );
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    cancel();
+    release({ schema: 1, sources: [] });
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    assert.equal(called, 0);
+});
+
+test("indexer mutation checks policy again after native startup", async () => {
+    const f = hostFixture();
+    let release,
+        called = 0;
+    f.w.__ottMediaCompanion.ensure = () =>
+        new Promise((resolve) => (release = resolve));
+    const route = f.loader.load(
+        "src/commands/remote-torrent-catalog.ts"
+    ).executeRemoteTorrentIndexer;
+    const result = new Promise((done) =>
+        route(
+            f.w,
+            {
+                params: {
+                    op: "remove",
+                    runtime: f.c.runtime,
+                    sourceId: "home",
+                    version: 1,
+                },
+            },
+            done
+        )
+    );
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    f.w.__ottStandby = { blocked: () => true };
+    release({
+        torznab: () => {
+            called++;
+            return Promise.resolve({ removed: true, schema: 1 });
+        },
+    });
+    assert.equal((await result).data.reason, "policy_restricted");
+    assert.equal(called, 0);
+});
+
+test("cancelled config receipt still invalidates the native catalog cache", async () => {
+    const f = hostFixture();
+    let release,
+        called = 0;
+    f.w.__ottMediaCompanion.ensure = async () => ({
+        torznab: () => new Promise((resolve) => (release = resolve)),
+    });
+    const route = f.loader.load(
+        "src/commands/remote-torrent-catalog.ts"
+    ).executeRemoteTorrentIndexer;
+    const cancel = route(
+        f.w,
+        {
+            params: {
+                op: "remove",
+                runtime: f.c.runtime,
+                sourceId: "home",
+                version: 1,
+            },
+        },
+        () => called++
+    );
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    cancel();
+    release({ removed: true, schema: 1 });
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    assert.equal(called, 0);
+    assert.equal(f.w.__ottTorznabRevision, 1);
 });

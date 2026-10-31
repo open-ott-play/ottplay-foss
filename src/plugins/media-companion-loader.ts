@@ -6,6 +6,7 @@ export function installMediaCompanion(w: any): void {
     var pending: Promise<any> | null = null;
     var pendingNative: Promise<any> | null = null;
     var nativeAvailable: boolean | null = w.__TAURI__ ? null : false;
+    var nativeIndexer = false;
     var capabilityRequest: Promise<any> | null = null;
     function capabilities(): Promise<any> {
         if (!w.__TAURI__) return Promise.resolve(null);
@@ -23,6 +24,8 @@ export function installMediaCompanion(w: any): void {
                             value.available === true &&
                             value.torrent === true
                         );
+                        nativeIndexer =
+                            nativeAvailable && value.localTorznab === true;
                         return nativeAvailable ? value : null;
                     },
                     function () {
@@ -45,7 +48,9 @@ export function installMediaCompanion(w: any): void {
     function source(value: any): boolean {
         return (
             typeof value === "string" &&
-            (/^(magnet:|ottplay-plugin:|ottplay-torrent:)/i.test(value) ||
+            (/^(magnet:|ottplay-plugin:|ottplay-torrent:|ottplay-local-torrent:)/i.test(
+                value
+            ) ||
                 /^https?:\/\/[^?#]*\.torrent(?:[?#]|$)/i.test(value))
         );
     }
@@ -100,6 +105,9 @@ export function installMediaCompanion(w: any): void {
         available: available,
         capabilities: capabilities,
         ensure: ensure,
+        indexerAvailable: function () {
+            return typeof w.fetch === "function" && nativeIndexer;
+        },
         isSource: source,
         nativePending: function () {
             return !!w.__TAURI__ && nativeAvailable === null;

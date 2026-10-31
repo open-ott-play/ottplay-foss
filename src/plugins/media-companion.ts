@@ -15,7 +15,7 @@ function createMediaCompanion(
     }
     function backendError(value: any, fallback: string): string {
         return typeof value === "string" &&
-            /^(?:busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
+            /^(?:torznab_(?:invalid_(?:source|link|query|category|xml|page)|local_only|search_unavailable|source_(?:missing|changed|limit)|reference_missing|busy|cancelled|timeout|network_error|http_error|response_limit|xml_limit|api_error|store_(?:unavailable|busy|limit))|busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
                 value
             )
             ? value
@@ -60,19 +60,35 @@ function createMediaCompanion(
         path: string,
         method = "GET",
         body?: any,
-        late?: (value: any) => void
+        late?: (value: any) => void,
+        timeoutMs = requestTimeout,
+        signal?: AbortSignal
     ): Promise<any> {
+        if (signal?.aborted) return Promise.reject(fail("torznab_cancelled"));
         if (!supportsTransport())
             return Promise.reject(fail("companion_transport_unavailable"));
         return new Promise(function (resolve, reject) {
             var finished = false;
             var controller = w.AbortController ? new w.AbortController() : null;
             var grace: any;
+            function detach(): void {
+                signal?.removeEventListener("abort", cancelRequest);
+            }
+            function cancelRequest(): void {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timer);
+                clearTimeout(grace);
+                detach();
+                if (controller) controller.abort();
+                reject(fail("torznab_cancelled"));
+            }
             var timer = setTimeout(function () {
                 finished = true;
+                detach();
                 if (controller && !late) controller.abort();
                 reject(fail("companion_timeout"));
-            }, requestTimeout);
+            }, timeoutMs);
             // A late create receipt can still release its lease, but an unresponsive
             // create cannot retain an outstanding fetch indefinitely. Unknown leases
             // are reclaimed by the service's idle timeout after this final grace.
@@ -80,8 +96,14 @@ function createMediaCompanion(
                 grace = setTimeout(function () {
                     if (controller) controller.abort();
                 }, 30000);
+            signal?.addEventListener("abort", cancelRequest);
+            if (signal?.aborted) {
+                cancelRequest();
+                return;
+            }
             Promise.resolve()
                 .then(function () {
+                    if (finished) throw fail("torznab_cancelled");
                     return w.fetch(base + "/" + path, {
                         body:
                             body === undefined
@@ -96,7 +118,7 @@ function createMediaCompanion(
                         keepalive: method === "DELETE",
                         method: method,
                         redirect: "error",
-                        signal: controller ? controller.signal : undefined,
+                        signal: controller ? controller.signal : signal,
                     });
                 })
                 .then(function (response: any) {
@@ -123,6 +145,7 @@ function createMediaCompanion(
                 })
                 .then(
                     function (value: any) {
+                        detach();
                         clearTimeout(grace);
                         if (finished) {
                             if (late) late(value);
@@ -133,6 +156,7 @@ function createMediaCompanion(
                         resolve(value);
                     },
                     function (error: any) {
+                        detach();
                         clearTimeout(grace);
                         if (finished) return;
                         finished = true;
@@ -154,7 +178,9 @@ function createMediaCompanion(
     function isSource(value: any): boolean {
         return (
             typeof value === "string" &&
-            (/^(magnet:|ottplay-plugin:|ottplay-torrent:)/i.test(value) ||
+            (/^(magnet:|ottplay-plugin:|ottplay-torrent:|ottplay-local-torrent:)/i.test(
+                value
+            ) ||
                 /^https?:\/\/[^?#]*\.torrent(?:[?#]|$)/i.test(value))
         );
     }
@@ -191,7 +217,9 @@ function createMediaCompanion(
             var chosen = wrapped.searchParams.get("index");
             var largest = wrapped.searchParams.get("selection") === "largest";
             if (
-                !/^(?:https?:\/\/|magnet:|ottplay-plugin:)/i.test(original) ||
+                !/^(?:https?:\/\/|magnet:|ottplay-plugin:|ottplay-local-torrent:)/i.test(
+                    original
+                ) ||
                 (largest
                     ? chosen !== null
                     : chosen === null || !/^\d{1,9}$/.test(chosen))
@@ -433,6 +461,19 @@ function createMediaCompanion(
                 selection.fileIndex = wrappedFileIndex;
             if (options && options.metadataOnly) delete selection.fileIndex;
             delete selection.largest;
+            if (/^ottplay-local-torrent:/.test(selection.source)) {
+                var ref =
+                    /^ottplay-local-torrent:([a-z][a-z0-9-]{0,63})\/([0-9a-f]{32})$/.exec(
+                        selection.source
+                    );
+                if (!ref) {
+                    finish(fail("companion_source_invalid"));
+                    return;
+                }
+                delete selection.source;
+                selection.sourceId = ref[1];
+                selection.sourceRef = ref[2];
+            }
             lease.selectionSubmitted = selection.fileIndex !== undefined;
             request(
                 lease.base,
@@ -627,6 +668,51 @@ function createMediaCompanion(
                 : null;
         },
         supportsTransport: supportsTransport,
+        torznab: function (
+            op: string,
+            params: any,
+            signal?: AbortSignal
+        ): Promise<any> {
+            if (signal?.aborted)
+                return Promise.reject(fail("torznab_cancelled"));
+            var path = "torrent/",
+                method = "GET",
+                body: any;
+            if (op === "list") path += "sources";
+            else if (op === "configure") {
+                path += "sources";
+                method = "POST";
+                body = {
+                    apiKey: params.apiKey,
+                    endpoint: params.endpoint,
+                    id: params.sourceId,
+                    label: params.label,
+                };
+            } else if (op === "remove" || op === "caps") {
+                if (!/^[a-z][a-z0-9-]{0,63}$/.test(params.sourceId))
+                    return Promise.reject(fail("invalid_request"));
+                path +=
+                    "sources/" +
+                    params.sourceId +
+                    (op === "caps" ? "/caps" : "");
+                if (op === "remove") method = "DELETE";
+            } else if (op === "search" || op === "prepare") {
+                path += op;
+                method = "POST";
+                body = params;
+            } else return Promise.reject(fail("invalid_request"));
+            return endpoint().then(function (base) {
+                return request(
+                    base,
+                    path,
+                    method,
+                    body,
+                    undefined,
+                    20000,
+                    signal
+                );
+            });
+        },
     };
 }
 (window as any).__ottMediaCompanionFactory = createMediaCompanion;

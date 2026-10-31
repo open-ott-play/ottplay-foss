@@ -236,6 +236,9 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (id === "companionEndpoint")
             result.description =
                 "Installation-only companion endpoint, configured through authenticated remote settings and excluded from portable backups. Used for the next external companion stream; the native Torrent provider uses its owned service.";
+        if (id === "torrentDiscoveryMode")
+            result.description =
+                "Local indexers use the owned native Torznab service. Catalog mode enables optional Stremio or TMDB metadata discovery.";
         if (id === "torrentCatalogEndpoint")
             result.description =
                 "Installation-only metadata addon base URL, excluded from portable backups. HTTPS is required except HTTP on literal localhost, 127.0.0.1 or [::1]. Empty uses the existing TMDB transport. Used by subsequent Torrent discovery requests; it does not enable native playback support.";

@@ -111,7 +111,86 @@ That URL expires with its viewer. The original reference obtains a new session
 on the next playback. A file choice is carried as a zero-based `so` index in a
 magnet reference, or `index` in an `ottplay-torrent:` reference.
 
-## Movie discovery and language
+## Local Torznab discovery
+
+The Torrent provider now defaults to **Search: Torznab** in its provider settings.
+It asks a locally configured Prowlarr or Jackett indexer for actual releases,
+then prepares the selected torrent in the app's owned companion. It does not
+send torrent traffic through here.now, the public OTT server, or the command
+server. The native app must advertise `localTorznab`; updating web assets alone
+cannot add this engine API to an older installed binary.
+
+```mermaid
+flowchart LR
+    UI["Torrent: category / search"] --> C["Owned local companion"]
+    C --> I["Private Prowlarr / Jackett"]
+    I --> S["Chosen indexer: metadata"]
+    C --> E["Local torrent engine"]
+    E --> V["Player video engine"]
+```
+
+Configure an indexer through the authenticated OTT CLI. Put only its API key in
+a private local text file; do not place it in a playlist, command argument,
+profile export, issue, or screenshot. For a Prowlarr service forwarded to this
+Mac, an example is:
+
+```sh
+ott t1 torrent indexer configure archive --label 'Internet Archive' \
+  --endpoint http://127.0.0.1:9696/1/api \
+  --api-key-file ~/.config/ott/prowlarr.key
+ott t1 torrent indexer list
+ott t1 torrent indexer caps archive
+ott t1 torrent indexer search archive 'Big Buck Bunny' --category 2000 --limit 50
+```
+
+Replace `1` with the configured indexer's ID. Prowlarr's manager API and a blank
+Prowlarr installation are not Torznab feeds. Add the desired indexer in Prowlarr
+first; then use its individual feed endpoint. Jackett individual feeds work by
+the same Torznab contract. The native companion accepts only explicitly
+configured loopback/private-address origins. Indexer credentials stay in its
+private data directory, separate from player settings and the video piece cache.
+
+In the player, **Category selection** shows the configured indexers and the
+categories they advertise. The normal channel list shows release names.
+**Search** uses the selected indexer/category; **Next/Fast-forward** requests the
+next page when available. Pages are requested explicitly instead of crawling a
+large indexer in the background. The indexer's raw offset advances independently
+of deduplication or language ranking. Providers that do not return a total cannot
+supply a reliable full-catalog count.
+
+The preferred catalog language ranks releases with matching advertised language
+above unknown or other languages. Unknown languages stay visible. This does not
+invent an audio-language filter when the indexer does not support one, translate
+release names, or select an audio track.
+
+Selecting a release prepares its metadata and offers its playable source.
+Playback uses the largest video file; manually added sources retain their
+explicit file choices. A selection saved to history/Favorites contains a stable
+opaque `ottplay-local-torrent:SOURCEID/REFERENCE`, not the upstream download URL,
+API key, tracker passkey, or a temporary playback lease. Original torrent metadata
+is retained intact, including trackers and the private flag. This does not add
+ratio targets or other private-tracker seeding policies to the engine.
+
+These references survive restarts **on the same companion installation**. They
+are not portable content files: importing Favorites on another player also
+requires that source to be prepared on its companion. Changing/removing an
+indexer's endpoint or key invalidates its existing references; a label change
+does not. Transient search results expire after 15 minutes. Durable prepared
+metadata has an explicit capacity limit and is never silently evicted from
+Favorites.
+
+An unavailable source, expired search result, or full metadata store produces a
+bounded error instead of an endless load. Closing a search cancels its request;
+late responses cannot replace the next screen. Refresh the search after its
+result expires. No configured sources means **Not configured**, not a fallback
+to an unrelated public catalog.
+
+See the [operator API and local acceptance fixture](../src-rs/core/src/companion/torznab-api.md)
+for limits, safe error codes, and a synthetic video test that requires no public
+tracker. The private k3s Prowlarr deployment is managed separately from player
+binaries; its credentials and indexer definitions are not included in releases.
+
+## Optional Stremio discovery and language
 
 Movie categories, search and metadata details belong to the native **Torrent**
 provider. As in the Nuvio/Stremio flow, metadata and playable sources come from
@@ -122,8 +201,9 @@ available, compatible sources. The manually maintained source catalog and its
 file playback remain separate and available when discovery services fail or
 are offline.
 
-On a supported native installation, choose **Torrent** in the provider settings.
-An empty source catalog opens the movie list. With the default TMDB catalog,
+On a supported native installation, choose **Search: Stremio** in Torrent provider settings
+to use this optional path. An empty source catalog opens the movie list. With an
+empty Stremio catalog endpoint, the existing TMDB metadata path remains available;
 **Category selection** offers **Popular**, **New releases** and **Genre**.
 A generic Stremio addon instead supplies its catalog names from its manifest.
 **My sources** and **Favorites** remain available; **My sources** returns to your

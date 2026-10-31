@@ -210,6 +210,7 @@ export interface PlayerSettings {
     timezone: number;
     torrentCatalogEndpoint: string;
     torrentCatalogLanguage: string;
+    torrentDiscoveryMode: string;
     torrentStreamAddons: string;
     uiFontScale: number;
     useGraphicalIndicators: number;
@@ -324,6 +325,7 @@ export function defaultSettings(): PlayerSettings {
         timezone: 0,
         torrentCatalogEndpoint: "",
         torrentCatalogLanguage: "",
+        torrentDiscoveryMode: "local",
         torrentStreamAddons: "[]",
         uiFontScale: 100,
         useGraphicalIndicators: 0,
@@ -490,6 +492,16 @@ export function normalizeTorrentStreamAddons(value: any): string | null {
     }
 }
 export const settingsSchema: SettingDefinition[] = [
+    {
+        defaultValue: "local",
+        effects: ["__ottTorrentCatalogChanged"],
+        id: "torrentDiscoveryMode",
+        key: "sTorrentDiscoveryMode",
+        scope: "application",
+        validate: function (value) {
+            return value === "local" || value === "catalog";
+        },
+    },
     {
         // Manifest paths may embed private addon credentials or configuration.
         decode: function (value) {

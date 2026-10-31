@@ -3,7 +3,7 @@ const test = require("node:test");
 const { JSDOM } = require("jsdom");
 const { fixture } = require("./helpers/provider-driver-fixture.cjs");
 
-function setup(initial = {}, realStreams = false) {
+function setup(initial = {}, realStreams = false, local = false) {
     const f = fixture(initial),
         h = f.host;
     const dom = new JSDOM("<div id='detail'></div>");
@@ -57,6 +57,7 @@ function setup(initial = {}, realStreams = false) {
         settings: {
             torrentCatalogEndpoint: "",
             torrentCatalogLanguage: "",
+            torrentDiscoveryMode: "catalog",
             torrentStreamAddons: "[]",
         },
         showProgramInfo: (title) => {
@@ -210,6 +211,53 @@ function setup(initial = {}, realStreams = false) {
             h,
             "src/provider/torrent-stream-data.ts"
         );
+    if (local) {
+        require("./helpers/private-runtime.cjs")(
+            h,
+            "src/provider/torznab-data.ts"
+        );
+        h.settings.torrentDiscoveryMode = "local";
+        f.indexerRequests = [];
+        h.__ottMediaCompanion.ensure = async () => ({
+            torznab: async (op, params) => {
+                f.indexerRequests.push({ op, params });
+                if (op === "list")
+                    return {
+                        schema: 1,
+                        sources: [{ id: "home", label: "Home" }],
+                    };
+                if (op === "caps")
+                    return {
+                        categories: [],
+                        maxLimit: 100,
+                        schema: 1,
+                        searchAvailable: true,
+                        sourceId: "home",
+                    };
+                if (op === "search")
+                    return {
+                        items: [
+                            {
+                                languages: [],
+                                resultRef: "a".repeat(32),
+                                title: "Open movie",
+                            },
+                        ],
+                        nextOffset: 50,
+                        schema: 1,
+                        sourceId: "home",
+                        total: null,
+                    };
+                if (op === "prepare")
+                    return {
+                        schema: 1,
+                        sourceId: "home",
+                        sourceRef: "b".repeat(32),
+                    };
+                throw new Error("unexpected " + op);
+            },
+        });
+    }
     f.driver = f.mount("torrent");
     f.driver.load((catalog, error) => {
         f.catalog = catalog;
@@ -1295,4 +1343,42 @@ test("catalog restore retains browse position after list close and refreshes cha
     f.host.__ottKiosk = undefined;
     f.host.__ottMedia.sourceId = () => "offline:separate-library";
     assert.equal(f.driver.catalogBrowser.restore(), false);
+});
+
+test("local indexers use native channel rows, manual pages and durable playback references", async () => {
+    const f = setup({}, false, true);
+    const flush = async () => {
+        for (let i = 0; i < 100; i++) await Promise.resolve();
+    };
+    f.open();
+    await flush();
+    assert.equal(f.view.rows.length, 1);
+    assert.equal(
+        f.timers.size,
+        0,
+        "local indexers are not crawled in the background"
+    );
+    assert.equal(f.indexerRequests.at(-1).op, "search");
+    f.key("ENTER");
+    await flush();
+    assert.equal(f.indexerRequests.at(-1).op, "prepare");
+    assert.equal(f.view.rows.length, 1);
+    f.key("ENTER");
+    assert.equal(f.playCalls.length, 1);
+    const payload = f.playCalls[0].payload;
+    assert.equal(payload.request.kind, "torznab");
+    assert.equal(payload.request.sourceRef, "b".repeat(32));
+    let result;
+    f.driver.mediaClient().resolve(payload, (value) => (result = value));
+    assert.ok(result.stream_url.includes("selection=largest"));
+    assert.equal(
+        new URL(result.stream_url).searchParams.get("source"),
+        "ottplay-local-torrent:home/" + "b".repeat(32)
+    );
+    assert.equal(
+        JSON.stringify(f.driver.mediaClient().persist(payload)).includes(
+            "sessions"
+        ),
+        false
+    );
 });

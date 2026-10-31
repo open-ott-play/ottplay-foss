@@ -161,6 +161,31 @@ function createTorrentProviderDriver(
         if (request.imdbId) result.imdbId = request.imdbId;
         return result;
     }
+    function localRecord(payload: any): any {
+        var request = payload?.request;
+        if (
+            !active() ||
+            !ready ||
+            request?.kind !== "torznab" ||
+            !/^[a-z][a-z0-9-]{0,63}$/.test(request.sourceId) ||
+            !/^[0-9a-f]{32}$/.test(request.sourceRef) ||
+            (payload.__ottMediaRef &&
+                payload.__ottMediaRef.sourceId !== ports.sourceIdentity!())
+        )
+            return null;
+        var id = "torznab:" + request.sourceId + ":" + request.sourceRef;
+        return {
+            __ottMediaRef: { itemId: id, sourceId: ports.sourceIdentity!() },
+            description: String(payload.description || "").slice(0, 8192),
+            itemId: id,
+            request: {
+                kind: "torznab",
+                sourceId: request.sourceId,
+                sourceRef: request.sourceRef,
+            },
+            title: String(payload.title || "Torrent").slice(0, 1024),
+        };
+    }
     function discoveryRecord(payload: any, request: any): any {
         var id =
             "torrent-discovery:" +
@@ -364,6 +389,8 @@ function createTorrentProviderDriver(
             done();
         },
         persist: function (payload: any) {
+            if (payload?.request?.kind === "torznab")
+                return localRecord(payload) || {};
             if (payload?.request?.kind === "torrent-discovery") {
                 var request = discoveryRequest(payload);
                 return request ? discoveryRecord(payload, request) : {};
@@ -379,6 +406,22 @@ function createTorrentProviderDriver(
             return result;
         },
         resolve: function (payload: any, done: any) {
+            if (payload?.request?.kind === "torznab") {
+                cancelDiscovery();
+                var local = localRecord(payload);
+                if (local)
+                    local.stream_url =
+                        "ottplay-torrent:?source=" +
+                        encodeURIComponent(
+                            "ottplay-local-torrent:" +
+                                local.request.sourceId +
+                                "/" +
+                                local.request.sourceRef
+                        ) +
+                        "&selection=largest&native=1";
+                if (!done.isCurrent || done.isCurrent()) done(local);
+                return;
+            }
             if (payload?.request?.kind === "torrent-discovery") {
                 resolveDiscovery(payload, done);
                 return;
@@ -417,6 +460,16 @@ function createTorrentProviderDriver(
             };
         },
         discoveryPayload: function (movie: any, stream: any) {
+            if (stream?.kind === "local-torrent")
+                return localRecord({
+                    description: movie.description,
+                    request: {
+                        kind: "torznab",
+                        sourceId: stream.sourceId,
+                        sourceRef: stream.sourceRef,
+                    },
+                    title: movie.title,
+                });
             discoverySelection = null;
             var payload: any = {
                 description: movie.description,
@@ -571,6 +624,39 @@ function createTorrentDiscoveryView(
     var streamData = createTorrentStreamAdapter(host, ports, function () {
         sourcesChanged();
     });
+    var localData = host.__ottTorznabData?.create({
+        controller: function () {
+            return host.AbortController ? new host.AbortController() : null;
+        },
+        language: function () {
+            return host.__ottTorrentCatalogLanguage?.() || "en";
+        },
+        request: function (op: string, params: any, signal?: AbortSignal) {
+            if (host.__ottMediaCompanion.indexerAvailable?.() === false)
+                return Promise.reject(new Error("unavailable"));
+            return host.__ottMediaCompanion.ensure(true).then(function (
+                client: any
+            ) {
+                return client.torznab(op, params, signal);
+            });
+        },
+    });
+    function useLocal(): boolean {
+        return host.settings?.torrentDiscoveryMode !== "catalog";
+    }
+    function getData(): any {
+        return useLocal() ? localData : data;
+    }
+    function getStreams(): any {
+        return useLocal() ? localData : streamData;
+    }
+    function sourceContext(): string {
+        return (
+            configuration() +
+            "\n" +
+            (host.settings?.torrentStreamAddons || "[]")
+        );
+    }
     var generation = 0,
         disposed = false,
         rendering = false,
@@ -585,7 +671,7 @@ function createTorrentDiscoveryView(
         next: number | null = null,
         busy = false,
         pageTimer: any = null,
-        autoPages = true,
+        autoPages = !useLocal(),
         detailsPending: object | null = null,
         failure = "",
         handler: any = null,
@@ -640,12 +726,17 @@ function createTorrentDiscoveryView(
                   ? ports.language()
                   : "en") +
             "\n" +
-            (host.settings?.torrentCatalogEndpoint || "")
+            (host.settings?.torrentCatalogEndpoint || "") +
+            "\n" +
+            (host.settings?.torrentDiscoveryMode || "local") +
+            "\n" +
+            (host.__ottTorznabRevision || 0)
         );
     }
     function settingsChanged(): boolean {
         if (!signature || signature === configuration()) return false;
         streamData?.resetDiagnostics?.();
+        localData?.reset();
         var visible = foreground();
         close();
         if (!visible) return false;
@@ -657,7 +748,7 @@ function createTorrentDiscoveryView(
         if (
             display !== "streams" ||
             !selectedMovie ||
-            streamSignature === (host.settings?.torrentStreamAddons || "[]")
+            streamSignature === sourceContext()
         )
             return false;
         var visible = foreground();
@@ -691,8 +782,8 @@ function createTorrentDiscoveryView(
         detailsPending = null;
         busy = false;
         staged = {};
-        data.cancel();
-        streamData?.cancel();
+        getData()?.cancel();
+        getStreams()?.cancel();
         cancelPlayback();
     }
     function clearPageTimer(): void {
@@ -797,7 +888,7 @@ function createTorrentDiscoveryView(
         clearPageTimer();
         var ticket = {};
         detailsPending = ticket;
-        data.details(item.id, function (result: any) {
+        getData()?.details(item.id, function (result: any) {
             if (detailsPending !== ticket) return;
             detailsPending = null;
             if (
@@ -903,7 +994,7 @@ function createTorrentDiscoveryView(
         close();
         selectedMovie = movie;
         streams = [];
-        streamSignature = host.settings?.torrentStreamAddons || "[]";
+        streamSignature = sourceContext();
         var request = generation;
         busy = true;
         failure = "";
@@ -918,13 +1009,13 @@ function createTorrentDiscoveryView(
         }
         function lookup(): void {
             if (!currentSource()) return;
-            if (!streamData) {
+            if (!getStreams()) {
                 busy = false;
                 failure = host._("Unavailable");
                 showSources();
                 return;
             }
-            streamData.lookup(movie, function (result: any) {
+            getStreams().lookup(movie, function (result: any) {
                 if (!currentSource()) return;
                 present("streams", function () {
                     if (!currentSource()) return;
@@ -952,9 +1043,10 @@ function createTorrentDiscoveryView(
         if (
             !movie.imdbId &&
             /^tmdb:movie:/.test(movie.id) &&
-            streamSignature !== "[]"
+            !useLocal() &&
+            (host.settings?.torrentStreamAddons || "[]") !== "[]"
         ) {
-            data.details(movie.id, function (result: any) {
+            getData()?.details(movie.id, function (result: any) {
                 if (!currentSource()) return;
                 if (result?.ok && result.item?.id === movie.id) {
                     Object.keys(result.item).forEach(function (key) {
@@ -988,7 +1080,7 @@ function createTorrentDiscoveryView(
             return (
                 allowed() &&
                 !ticket.cancelled &&
-                context === (host.settings?.torrentStreamAddons || "[]") &&
+                context === sourceContext() &&
                 (committed ||
                     (request === generation &&
                         current() &&
@@ -1067,6 +1159,7 @@ function createTorrentDiscoveryView(
         var nextSignature = configuration();
         if (signature && signature !== nextSignature) {
             streamData?.resetDiagnostics?.();
+            localData?.reset();
             append = false;
             cursor = null;
             if (/^genre:/.test(category)) category = "popular";
@@ -1074,15 +1167,16 @@ function createTorrentDiscoveryView(
             searchSupported = true;
         }
         signature = nextSignature;
-        if (category === "popular") categoryName = host._("Popular");
+        if (category === "popular")
+            categoryName = useLocal() ? "Torznab" : host._("Popular");
         else if (category === "new") categoryName = host._("New releases");
         var request = ++generation;
         detailsPending = null;
-        data.cancel();
+        getData()?.cancel();
         var selected = rows[host.selIndex];
         if (!append) {
             resetMovies();
-            autoPages = true;
+            autoPages = !useLocal();
             next = null;
         }
         failure = "";
@@ -1105,7 +1199,11 @@ function createTorrentDiscoveryView(
                     failure = torrentAddonFailureMessage(
                         host,
                         result,
-                        host._("Failed to load!")
+                        host._(
+                            result?.error === "not_configured"
+                                ? "Not configured"
+                                : "Failed to load!"
+                        )
                     );
                     if (append) next = cursor;
                     show(selected);
@@ -1136,9 +1234,9 @@ function createTorrentDiscoveryView(
                 show(selected);
             });
         }
-        if (query === null) data.load(category, cursor, done);
+        if (query === null) getData()?.load(category, cursor, done);
         else
-            data.search(
+            getData()?.search(
                 query,
                 cursor,
                 done,
@@ -1175,7 +1273,7 @@ function createTorrentDiscoveryView(
         streams = [];
         selectedMovieId = "";
         category = id || "popular";
-        categoryName = title || host._("Popular");
+        categoryName = title || (useLocal() ? "Torznab" : host._("Popular"));
         query = null;
         fetchPage(null, false);
         return true;
@@ -1221,7 +1319,8 @@ function createTorrentDiscoveryView(
             streamData?.resetDiagnostics?.();
         signature = configuration();
         var request = generation;
-        var external = !genres && !!host.settings?.torrentCatalogEndpoint;
+        var external =
+            !genres && (useLocal() || !!host.settings?.torrentCatalogEndpoint);
         var choices = external
             ? []
             : genres || [
@@ -1246,7 +1345,7 @@ function createTorrentDiscoveryView(
             var choice = choices[index];
             if (!choice) return;
             if (choice.id === "genres") {
-                data.categories(function (result: any) {
+                getData()?.categories(function (result: any) {
                     if (
                         request !== generation ||
                         host.listArray !== labels ||
@@ -1359,7 +1458,7 @@ function createTorrentDiscoveryView(
             rendering = false;
         }
         if (external) {
-            data.categories(function (result: any) {
+            getData()?.categories(function (result: any) {
                 if (
                     request !== generation ||
                     host.listArray !== labels ||
@@ -1465,7 +1564,7 @@ function createTorrentDiscoveryView(
             return search();
         if (code === keys.NEXT || code === keys.FF) {
             if (next !== null && !busy) {
-                autoPages = true;
+                autoPages = !useLocal();
                 fetchPage(next, true);
             }
             return true;
@@ -1502,6 +1601,7 @@ function createTorrentDiscoveryView(
         disposed = true;
         close();
         data.dispose();
+        localData?.dispose();
         streamData?.dispose();
         resetMovies();
         next = null;
@@ -2179,6 +2279,14 @@ function mountTorrentProvider(
                 },
             ]);
         }
+        function selectMode(mode: string): void {
+            if (!current()) return;
+            if (!host.saveSettings?.({ torrentDiscoveryMode: mode })) {
+                render(host._("Settings could not be saved"));
+                return;
+            }
+            edit();
+        }
         function language(): void {
             var names =
                 host.__ottAppearanceHost?.languages ||
@@ -2220,6 +2328,31 @@ function mountTorrentProvider(
                 rows =
                     actions ||
                     [
+                        {
+                            action: function () {
+                                render("", [
+                                    {
+                                        action: function () {
+                                            selectMode("local");
+                                        },
+                                        name: "Torznab",
+                                    },
+                                    {
+                                        action: function () {
+                                            selectMode("catalog");
+                                        },
+                                        name: "Stremio",
+                                    },
+                                ]);
+                            },
+                            name:
+                                host._("Search") +
+                                ": " +
+                                (host.settings?.torrentDiscoveryMode ===
+                                "catalog"
+                                    ? "Stremio"
+                                    : "Torznab"),
+                        },
                         { action: add, name: host._("Add new list") },
                         {
                             action: addAddon,

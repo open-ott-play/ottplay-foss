@@ -955,6 +955,9 @@ export function executeRemoteControl(
             torrent_catalog: w.__ottMediaCompanion?.providerAvailable()
                 ? { version: 1 }
                 : undefined,
+            torrent_indexer: w.__ottMediaCompanion?.indexerAvailable?.()
+                ? { version: 1 }
+                : undefined,
             version: 1,
             vportal_settings: w.__ottPlayerSettingsHost
                 ? { version: 1 }

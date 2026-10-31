@@ -40,7 +40,10 @@ import {
 } from "./remote-restart";
 import { executeRemoteScreenshot } from "./remote-screenshot";
 import { executeRemoteSettings } from "./remote-settings";
-import { executeRemoteTorrentCatalog } from "./remote-torrent-catalog";
+import {
+    executeRemoteTorrentCatalog,
+    executeRemoteTorrentIndexer,
+} from "./remote-torrent-catalog";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -431,6 +434,8 @@ export function executeRemoteRequest(
             if (cancelProviderRequest) cancelProviderRequest();
         };
     }
+    if (request.action === "torrent_indexer")
+        return executeRemoteTorrentIndexer(w, request, done);
     if (request.action === "torrent_catalog")
         return executeRemoteTorrentCatalog(w, request, done);
     if (request.action === "favorites_transfer")
