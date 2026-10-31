@@ -2394,10 +2394,10 @@ body.interface-modern.modern-player-ready #permanentTime {
 }
 #modernPlayer .modern-player-title {
     display: -webkit-box;
+    -webkit-box-orient: vertical;
     margin: 0.16em 0 0.12em;
     overflow: hidden;
     text-overflow: ellipsis;
-    -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     font-size: clamp(24px, 3.2vw, 54px);
