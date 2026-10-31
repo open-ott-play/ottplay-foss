@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Lägg till kanal i kategori",
     "Add channel to favorites": "Lägg till kanal i favoriter",
     "Add new list": "Lägg till ny lista",
+    "Add Stremio addon…": "Lägg till Stremio-tillägg…",
     "Add to favorites": "Lägg till i favoriter",
     Age: "Ålder",
     All: "Alla",
@@ -379,6 +380,8 @@ var keyStrings = {
         "Ange en spelliste-URL för att använda tjänsten.",
     "Enter a playlist URL. The player will restart after saving.":
         "Ange en spellistas URL. Spelaren startas om efter att du har sparat.",
+    "Enter a Stremio addon manifest URL.":
+        "Ange manifest-URL:en för ett Stremio-tillägg.",
     "Enter a server address without spaces or a fragment.":
         "Ange en serveradress utan blanksteg eller fragment efter #.",
     "Enter a username (8 characters).": "Ange ett användarnamn (8 tecken).",

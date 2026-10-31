@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Føj kanal til kategori",
     "Add channel to favorites": "Føj kanal til favoritter",
     "Add new list": "Tilføj ny liste",
+    "Add Stremio addon…": "Tilføj Stremio-tilføjelse…",
     "Add to favorites": "Tilføj til favoritter",
     Age: "Alder",
     All: "Alle",
@@ -382,6 +383,8 @@ var keyStrings = {
         "Indtast en afspilningsliste URL for at få adgang til denne tjeneste.",
     "Enter a playlist URL. The player will restart after saving.":
         "Indtast en afspilningsliste URL. Medieafspilleren genstarter efter lagring.",
+    "Enter a Stremio addon manifest URL.":
+        "Indtast manifest-URL for en Stremio-tilføjelse.",
     "Enter a server address without spaces or a fragment.":
         "Indtast en serveradresse uden mellemrum eller et fragment.",
     "Enter a username (8 characters).": "Indtast et brugernavn (8 tegn).",

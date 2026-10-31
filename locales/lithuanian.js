@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Pridėti kanalą prie kategorijos",
     "Add channel to favorites": "Pridėti kanalą prie mėgstamiausių",
     "Add new list": "Pridėti naują sąrašą",
+    "Add Stremio addon…": "Pridėti Stremio priedą…",
     "Add to favorites": "Pridėti prie mėgstamiausių",
     Age: "Amžius",
     All: "Visi",
@@ -381,6 +382,8 @@ var keyStrings = {
         "Norėdami naudotis šia paslauga, įveskite grojaraščio URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Įveskite grojaraščio URL. Išsaugojus leistuvas bus paleistas iš naujo.",
+    "Enter a Stremio addon manifest URL.":
+        "Įveskite Stremio priedo manifesto URL.",
     "Enter a server address without spaces or a fragment.":
         "Įveskite serverio adresą be tarpų ir dalies po #.",
     "Enter a username (8 characters).":

@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "श्रेणीमध्ये चॅनेल जोडा",
     "Add channel to favorites": "आवडींमध्ये चॅनेल जोडा",
     "Add new list": "नवीन सूची जोडा",
+    "Add Stremio addon…": "Stremio ॲड-ऑन जोडा…",
     "Add to favorites": "आवडींमध्ये जोडा",
     Age: "वय",
     All: "सर्व",
@@ -370,6 +371,8 @@ var keyStrings = {
         "या सेवेत प्रवेश करण्यासाठी प्लेलिस्ट URL प्रविष्ट करा.",
     "Enter a playlist URL. The player will restart after saving.":
         "प्लेलिस्ट URL प्रविष्ट करा. सेव्ह केल्यानंतर प्लेअर रीस्टार्ट होईल.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio ॲड-ऑनच्या मॅनिफेस्टचा URL प्रविष्ट करा.",
     "Enter a server address without spaces or a fragment.":
         "रिक्त स्थान किंवा तुकड्याशिवाय सर्व्हर पत्ता प्रविष्ट करा.",
     "Enter a username (8 characters).": "वापरकर्तानाव प्रविष्ट करा (8 वर्ण).",

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Tambahkan saluran ke kategori",
     "Add channel to favorites": "Tambahkan saluran ke favorit",
     "Add new list": "Tambah daftar baru",
+    "Add Stremio addon…": "Tambahkan add-on Stremio…",
     "Add to favorites": "Tambahkan ke favorit",
     Age: "Usia",
     All: "Semua",
@@ -383,6 +384,8 @@ var keyStrings = {
         "Masukkan URL daftar putar untuk mengakses layanan ini.",
     "Enter a playlist URL. The player will restart after saving.":
         "Masukkan URL daftar putar. Pemutar akan dimulai ulang setelah disimpan.",
+    "Enter a Stremio addon manifest URL.":
+        "Masukkan URL manifes add-on Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Masukkan alamat server tanpa spasi atau fragmen.",
     "Enter a username (8 characters).": "Masukkan nama pengguna (8 karakter).",

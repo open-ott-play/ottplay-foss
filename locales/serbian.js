@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Додајте канал у категорију",
     "Add channel to favorites": "Додајте канал у фаворите",
     "Add new list": "Додај нову листу",
+    "Add Stremio addon…": "Додај Stremio додатак…",
     "Add to favorites": "Додај у фаворите",
     Age: "Старост",
     All: "Све",
@@ -383,6 +384,8 @@ var keyStrings = {
         "Унесите плејлисту URL да бисте приступили овој услузи.",
     "Enter a playlist URL. The player will restart after saving.":
         "Унесите плејлисту URL. Медијски плејер ће се поново покренути након чувања.",
+    "Enter a Stremio addon manifest URL.":
+        "Унесите URL манифеста Stremio додатка.",
     "Enter a server address without spaces or a fragment.":
         "Унесите адресу сервера без размака или фрагмента.",
     "Enter a username (8 characters).": "Унесите корисничко име (8 знакова).",

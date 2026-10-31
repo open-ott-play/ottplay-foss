@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "ವರ್ಗಕ್ಕೆ ಚಾನಲ್ ಸೇರಿಸಿ",
     "Add channel to favorites": "ಮೆಚ್ಚಿನವುಗಳಿಗೆ ಚಾನಲ್ ಸೇರಿಸಿ",
     "Add new list": "ಹೊಸ ಪಟ್ಟಿಯನ್ನು ಸೇರಿಸಿ",
+    "Add Stremio addon…": "Stremio ಆ್ಯಡ್-ಆನ್ ಸೇರಿಸಿ…",
     "Add to favorites": "ಮೆಚ್ಚಿನವುಗಳಿಗೆ ಸೇರಿಸಿ",
     Age: "ವಯಸ್ಸು",
     All: "ಎಲ್ಲಾ",
@@ -369,6 +370,7 @@ var keyStrings = {
         "ಈ ಸೇವೆಯನ್ನು ಪ್ರವೇಶಿಸಲು URL ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ನಮೂದಿಸಿ.",
     "Enter a playlist URL. The player will restart after saving.":
         "ಪ್ಲೇಪಟ್ಟಿಯನ್ನು ನಮೂದಿಸಿ URL. ಉಳಿಸಿದ ನಂತರ ಪ್ಲೇಯರ್ನು ಮರುಪ್ರಾರಂಭಿಸುತ್ತಾನೆ.",
+    "Enter a Stremio addon manifest URL.": "Stremio ಆ್ಯಡ್-ಆನ್‌ನ ಮ್ಯಾನಿಫೆಸ್ಟ್ URL ನಮೂದಿಸಿ.",
     "Enter a server address without spaces or a fragment.":
         "ಸ್ಥಳಾವಕಾಶಗಳು ಅಥವಾ ತುಣುಕುಗಳಿಲ್ಲದ ಸರ್ವರ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ.",
     "Enter a username (8 characters).": "ಬಳಕೆದಾರ ಹೆಸರನ್ನು ನಮೂದಿಸಿ (8 ಅಕ್ಷರಗಳು).",

@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "បន្ថែមឆានែលទៅប្រភេទ",
     "Add channel to favorites": "បន្ថែមឆានែលទៅចំណូលចិត្ត",
     "Add new list": "បន្ថែមបញ្ជីថ្មី។",
+    "Add Stremio addon…": "បន្ថែមកម្មវិធីបន្ថែម Stremio…",
     "Add to favorites": "បន្ថែមទៅចំណូលចិត្ត",
     Age: "អាយុ",
     All: "ទាំងអស់។",
@@ -371,6 +372,8 @@ var keyStrings = {
         "បញ្ចូលបញ្ជីចាក់ URL ដើម្បីចូលប្រើសេវាកម្មនេះ។",
     "Enter a playlist URL. The player will restart after saving.":
         "បញ្ចូលបញ្ជីចាក់ URL ។ កម្មវិធីចាក់នឹងចាប់ផ្តើមឡើងវិញបន្ទាប់ពីការរក្សាទុក។",
+    "Enter a Stremio addon manifest URL.":
+        "បញ្ចូល URL ម៉ានីហ្វេស្តរបស់កម្មវិធីបន្ថែម Stremio។",
     "Enter a server address without spaces or a fragment.":
         "បញ្ចូលអាសយដ្ឋានម៉ាស៊ីនមេដោយគ្មានចន្លោះ ឬបំណែក។",
     "Enter a username (8 characters).": "បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់ (8 តួអក្សរ)។",

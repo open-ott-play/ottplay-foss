@@ -1,5 +1,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
 const { fixture } = require("./helpers/provider-driver-fixture.cjs");
 const runtime = require("./helpers/private-runtime.cjs");
 const { actualModule } = require("./helpers/global-favorites-main-ports.cjs");
@@ -73,6 +76,96 @@ function load(f) {
     });
     return catalog;
 }
+
+function addonSettings(f, initial = {}) {
+    const source = fs.readFileSync("src/settings/index.ts", "utf8");
+    const ast = ts.createSourceFile(
+        "settings.ts",
+        source,
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const normalize = ast.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name?.text === "normalizeTorrentStreamAddons"
+    );
+    const schema = ast.statements
+        .filter(ts.isVariableStatement)
+        .flatMap((node) => [...node.declarationList.declarations])
+        .find(
+            (node) => node.name.getText(ast) === "settingsSchema"
+        ).initializer;
+    const definitions = schema.elements.filter((node) =>
+        node.properties?.some(
+            (property) =>
+                property.name?.getText(ast) === "id" &&
+                ["torrentStreamAddons", "torrentCatalogEndpoint"].includes(
+                    property.initializer?.text
+                )
+        )
+    );
+    vm.runInContext(
+        ts.transpileModule(
+            normalize.getText(ast).replace(/^export /, "") +
+                "\nvar addonSchema = [" +
+                definitions.map((node) => node.getText(ast)).join(",") +
+                "];",
+            { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+        ).outputText,
+        f.host
+    );
+    for (const [key, value] of Object.entries(initial)) f.saved.set(key, value);
+    f.settingEffects = [];
+    const store = f.host.createSettingsStore(f.host.addonSchema, {
+        context: () => "torrent",
+        effect: (name) =>
+            f.settingEffects.push([name, Object.fromEntries(f.saved)]),
+        storage: (entry) => ({
+            read: () => f.saved.get(entry.key) ?? null,
+            remove: () => f.saved.delete(entry.key),
+            write: (value) => {
+                if (f.rejectSettingKey !== entry.key)
+                    f.saved.set(entry.key, value);
+            },
+        }),
+    });
+    store.reload();
+    f.host.__ottPlayerSettingsHost = { schema: f.host.addonSchema, store };
+    f.host.settings = {};
+    for (const entry of f.host.addonSchema)
+        Object.defineProperty(f.host.settings, entry.id, {
+            get: () => store.get(entry.id),
+        });
+    f.addonTimers = new Map();
+    let sequence = 0;
+    f.host.setTimeout = (callback) => {
+        const id = ++sequence;
+        f.addonTimers.set(id, callback);
+        return id;
+    };
+    f.host.clearTimeout = (id) => f.addonTimers.delete(id);
+    return store;
+}
+function addManifest(f, url) {
+    f.host.__ottEditProvider();
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Add Stremio addon…"
+    );
+    assert(f.host.selIndex >= 0);
+    f.host.listKeyHandler(f.host.keys.ENTER);
+    assert.equal(f.host.editCaption, "Enter a Stremio addon manifest URL.");
+    f.host.editvar = url;
+    f.host.setEdit();
+    return f.requests.at(-1);
+}
+const addonManifest = {
+    catalogs: [{ id: "movies", name: "Movies", type: "movie" }],
+    id: "test.addon",
+    name: "Test addon",
+    resources: ["catalog", "stream"],
+    types: ["movie"],
+};
 
 test("saved Torrent catalog loads stable categories and file identities without a service", () => {
     const f = setup(),
@@ -272,6 +365,144 @@ test("source editor cannot overwrite a catalog changed while metadata was loadin
     assert.equal(f.reloads, 0);
 });
 
+test("adding a Stremio manifest atomically installs streams and its catalog without touching manual sources", () => {
+    const f = setup();
+    addonSettings(f);
+    const before = f.saved.get("torrentcfg"),
+        base =
+            "http://127.0.0.1:8794/%7b%22token%22%3a%22PRIVATE%20value%22%7d";
+    const pending = addManifest(f, base + "/manifest.json/");
+    assert.equal(pending.settings.url, base + "/manifest.json");
+    assert.equal(f.saved.has("sTorrentStreamAddons"), false);
+    pending.resolve(JSON.stringify(addonManifest));
+    assert.equal(f.saved.get("sTorrentCatalogEndpoint"), base);
+    assert.equal(
+        f.saved.get("sTorrentStreamAddons"),
+        JSON.stringify([base + "/manifest.json"])
+    );
+    assert.equal(f.saved.get("torrentcfg"), before);
+    assert.equal(f.reloads, 0);
+    assert.equal(f.addonTimers.size, 0);
+    assert.equal(f.settingEffects.length, 2);
+    for (const [, snapshot] of f.settingEffects)
+        assert.equal(snapshot.sTorrentCatalogEndpoint, base);
+    assert(!JSON.stringify(f.host.listArray).includes("PRIVATE"));
+    assert.equal(f.host.editvar, "");
+});
+test("Stremio stream-only and catalog-only manifests update only supported capabilities", () => {
+    for (const kind of ["stream", "catalog"]) {
+        const f = setup();
+        const existing = '["https://existing.test/manifest.json"]';
+        addonSettings(f, {
+            sTorrentCatalogEndpoint: "https://catalog.test",
+            sTorrentStreamAddons: existing,
+        });
+        const manifest = copy(addonManifest);
+        manifest.resources = [kind];
+        if (kind === "stream") manifest.catalogs = [];
+        const pending = addManifest(f, "http://localhost:8794/manifest.json");
+        pending.resolve(manifest);
+        assert.equal(
+            f.saved.get("sTorrentCatalogEndpoint"),
+            kind === "stream" ? "https://catalog.test" : "http://localhost:8794"
+        );
+        assert.equal(
+            f.saved.get("sTorrentStreamAddons"),
+            kind === "catalog"
+                ? existing
+                : '["https://existing.test/manifest.json","http://localhost:8794/manifest.json"]'
+        );
+        addManifest(f, "http://localhost:8794/manifest.json").resolve(manifest);
+        assert.equal(
+            JSON.parse(f.saved.get("sTorrentStreamAddons")).length,
+            kind === "catalog" ? 1 : 2
+        );
+    }
+});
+test("copied stremio links preserve opaque configuration bytes and become HTTPS", () => {
+    const f = setup();
+    addonSettings(f);
+    const path =
+        "addon.test/%7b%22key%22%3a%22PRIVATE%20value%22%7d/manifest.json";
+    const pending = addManifest(f, "stremio://" + path);
+    assert.equal(pending.settings.url, "https://" + path);
+    pending.resolve(addonManifest);
+    assert.equal(
+        f.saved.get("sTorrentStreamAddons"),
+        JSON.stringify(["https://" + path])
+    );
+});
+test("Stremio dialog cancels requests and never publishes late, invalid or oversized manifests", () => {
+    for (const mode of [
+        "back",
+        "dispose",
+        "timeout",
+        "invalid",
+        "oversize",
+        "unsupported",
+    ]) {
+        const f = setup();
+        addonSettings(f);
+        const before = JSON.stringify([...f.saved]);
+        const pending = addManifest(f, "http://localhost:8794/manifest.json");
+        if (mode === "back") f.host.listKeyHandler(f.host.keys.RETURN);
+        if (mode === "dispose") f.driver.dispose();
+        if (mode === "timeout")
+            for (const callback of [...f.addonTimers.values()]) callback();
+        pending.resolve(
+            mode === "invalid"
+                ? "not-json"
+                : mode === "oversize"
+                  ? JSON.stringify({
+                        ...addonManifest,
+                        name: "x".repeat(65536),
+                    })
+                  : mode === "unsupported"
+                    ? { ...addonManifest, catalogs: [], resources: [] }
+                    : addonManifest
+        );
+        assert.equal(JSON.stringify([...f.saved]), before, mode);
+        assert.equal(f.settingEffects.length, 0, mode);
+        if (["back", "dispose", "timeout"].includes(mode))
+            assert.equal(pending.aborts, 1, mode);
+    }
+});
+test("Stremio install rejects concurrent settings changes, capacity overflow and partial persistence", () => {
+    for (const mode of ["concurrent", "limit", "storage"]) {
+        const f = setup();
+        const initial =
+            mode === "limit"
+                ? JSON.stringify(
+                      Array.from(
+                          { length: 8 },
+                          (_, i) => "https://addon" + i + ".test/manifest.json"
+                      )
+                  )
+                : "[]";
+        const store = addonSettings(f, {
+            sTorrentCatalogEndpoint: "https://before.test",
+            sTorrentStreamAddons: initial,
+        });
+        const pending = addManifest(f, "http://localhost:8794/manifest.json");
+        if (mode === "concurrent") {
+            const draft = store.begin();
+            draft.set("torrentCatalogEndpoint", "https://newer.test");
+            assert(draft.commit());
+            f.settingEffects = [];
+        }
+        if (mode === "storage") f.rejectSettingKey = "sTorrentCatalogEndpoint";
+        pending.resolve(addonManifest);
+        assert.equal(f.saved.get("sTorrentStreamAddons"), initial, mode);
+        assert.equal(
+            f.saved.get("sTorrentCatalogEndpoint"),
+            mode === "concurrent"
+                ? "https://newer.test"
+                : "https://before.test",
+            mode
+        );
+        assert.equal(f.settingEffects.length, 0, mode);
+    }
+});
 test("global Favorites reuse the stable channel locator and catalog identity", () => {
     const f = setup(),
         catalog = load(f),

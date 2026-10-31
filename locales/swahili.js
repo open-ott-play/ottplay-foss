@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Ongeza kituo kwa kategoria",
     "Add channel to favorites": "Ongeza kituo kwa vipendwa",
     "Add new list": "Ongeza orodha mpya",
+    "Add Stremio addon…": "Ongeza programu-jalizi ya Stremio…",
     "Add to favorites": "Ongeza kwa vipendwa",
     Age: "Umri",
     All: "Wote",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Weka orodha ya kucheza URL ili kufikia huduma hii.",
     "Enter a playlist URL. The player will restart after saving.":
         "Weka orodha ya kucheza URL. Kicheza media kitaanza tena baada ya kuhifadhi.",
+    "Enter a Stremio addon manifest URL.":
+        "Weka URL ya manifest ya programu-jalizi ya Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Ingiza anwani ya seva bila nafasi au kipande.",
     "Enter a username (8 characters).": "Weka jina la mtumiaji (herufi 8).",

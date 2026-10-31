@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Каналро ба гурӯҳ илова кунед",
     "Add channel to favorites": "Каналро ба мунтахабҳо илова кунед",
     "Add new list": "Рӯйхати нав илова кунед",
+    "Add Stremio addon…": "Илова кардани иловаи Stremio…",
     "Add to favorites": "Ба мунтахабҳо илова кунед",
     Age: "Синну сол",
     All: "Ҳама",
@@ -386,6 +387,8 @@ var keyStrings = {
         "Барои дастрасӣ ба ин хидмат URL-и рӯйхати пахшро ворид кунед.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL-и рӯйхати пахшро ворид кунед. Пас аз захиракунӣ плеер аз нав оғоз мешавад.",
+    "Enter a Stremio addon manifest URL.":
+        "URL-и манифести иловаи Stremio-ро ворид кунед.",
     "Enter a server address without spaces or a fragment.":
         "Суроғаи серверро бе фосила ва қисми пас аз # ворид кунед.",
     "Enter a username (8 characters).": "Номи корбарро ворид кунед (8 аломат).",

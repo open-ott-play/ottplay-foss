@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Pievienot kanālu kategorijai",
     "Add channel to favorites": "Pievienot kanālu izlasei",
     "Add new list": "Pievienot jaunu sarakstu",
+    "Add Stremio addon…": "Pievienot Stremio papildinājumu…",
     "Add to favorites": "Pievienot izlasei",
     Age: "Vecums",
     All: "Visi",
@@ -380,6 +381,8 @@ var keyStrings = {
         "Lai piekļūtu šim pakalpojumam, ievadiet atskaņošanas saraksta URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Ievadiet atskaņošanas saraksta URL. Pēc saglabāšanas atskaņotājs tiks restartēts.",
+    "Enter a Stremio addon manifest URL.":
+        "Ievadiet Stremio papildinājuma manifesta URL.",
     "Enter a server address without spaces or a fragment.":
         "Ievadiet servera adresi bez atstarpēm un fragmenta aiz #.",
     "Enter a username (8 characters).":

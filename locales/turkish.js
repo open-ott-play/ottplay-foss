@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanala kategori ekle",
     "Add channel to favorites": "Kanala favorilere ekle",
     "Add new list": "Yeni liste ekle",
+    "Add Stremio addon…": "Stremio eklentisi ekle…",
     "Add to favorites": "Favorilere ekle",
     Age: "Yaş",
     All: "Tümü",
@@ -384,6 +385,8 @@ var keyStrings = {
         "Bu hizmete erişmek için oynatma listesi URL'sini girin.",
     "Enter a playlist URL. The player will restart after saving.":
         "Bir oynatma listesi URL’si girin. Kaydettikten sonra oynatıcı yeniden başlatılacak.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio eklentisinin manifest URL’sini girin.",
     "Enter a server address without spaces or a fragment.":
         "Sunucu adresini boşluk veya # sonrası parça olmadan girin.",
     "Enter a username (8 characters).": "Kullanıcı adını girin (8 karakter).",

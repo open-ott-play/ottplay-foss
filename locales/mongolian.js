@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Сувгийг ангилалд нэмэх",
     "Add channel to favorites": "Сувгийг дуртайд нэмэх",
     "Add new list": "Шинэ жагсаалт нэмэх",
+    "Add Stremio addon…": "Stremio нэмэлт оруулах…",
     "Add to favorites": "Дуртайд нэмэх",
     Age: "Нас",
     All: "Бүгд",
@@ -383,6 +384,8 @@ var keyStrings = {
         "Энэ үйлчилгээнд хандахын тулд тоглуулах жагсаалтын URL-г оруулна уу.",
     "Enter a playlist URL. The player will restart after saving.":
         "Тоглуулах жагсаалтын URL-г оруулна уу. Хадгалсны дараа тоглуулагч дахин эхэлнэ.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio нэмэлтийн манифестийн URL оруулна уу.",
     "Enter a server address without spaces or a fragment.":
         "Серверийн хаягийг хоосон зай болон фрагментгүй оруулна уу.",
     "Enter a username (8 characters).":

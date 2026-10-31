@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "শ্ৰেণীত চেনেল যোগ কৰক",
     "Add channel to favorites": "প্ৰিয়ত চেনেল যোগ কৰক",
     "Add new list": "নতুন তালিকা যোগ কৰক",
+    "Add Stremio addon…": "Stremio এড-অন যোগ কৰক…",
     "Add to favorites": "প্ৰিয়ত যোগ কৰক",
     Age: "বয়স",
     All: "সকলো",
@@ -370,6 +371,7 @@ var keyStrings = {
         "এই সেৱাত প্ৰৱেশ কৰিবলৈ এটা প্লেলিষ্ট URL লিখক।",
     "Enter a playlist URL. The player will restart after saving.":
         "এটা প্লেলিষ্ট URL লিখক। সংৰক্ষণ কৰাৰ পিছত প্লেয়াৰ পুনৰ আৰম্ভ হ’ব।",
+    "Enter a Stremio addon manifest URL.": "Stremio এড-অনৰ মেনিফেষ্ট URL দিয়ক।",
     "Enter a server address without spaces or a fragment.":
         "খালী ঠাই বা ফ্ৰেগমেণ্ট নথকা ছাৰ্ভাৰৰ ঠিকনা লিখক।",
     "Enter a username (8 characters).": "এটা ব্যৱহাৰকাৰীৰ নাম লিখক (8টা আখৰ)।",

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanaalka ku dar qaybta",
     "Add channel to favorites": "Kanaalka ku dar kuwa la jecel yahay",
     "Add new list": "Ku dar liis cusub",
+    "Add Stremio addon…": "Ku dar kaabista Stremio…",
     "Add to favorites": "Ku dar kuwa la jecel yahay",
     Age: "Da'da",
     All: "Dhammaan",
@@ -386,6 +387,8 @@ var keyStrings = {
         "Geli URL-ka liiska daarista si aad u gasho adeeggan.",
     "Enter a playlist URL. The player will restart after saving.":
         "Geli URL-ka liiska daarista. Daaruhu dib ayuu u bilaabmi doonaa kaydinta ka dib.",
+    "Enter a Stremio addon manifest URL.":
+        "Geli URL-ka manifest-ka kaabista Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Geli cinwaan seerfar oo aan lahayn meelo bannaan ama qaybta ka dambaysa #.",
     "Enter a username (8 characters).": "Geli magaca isticmaalaha (8 xaraf).",

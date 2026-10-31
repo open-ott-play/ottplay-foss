@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Zender aan categorie toevoegen",
     "Add channel to favorites": "Zender aan favorieten toevoegen",
     "Add new list": "Nieuwe lijst toevoegen",
+    "Add Stremio addon…": "Stremio-add-on toevoegen…",
     "Add to favorites": "Aan favorieten toevoegen",
     Age: "Leeftijd",
     All: "Alles",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Voer een afspeellijst-URL in om deze dienst te gebruiken.",
     "Enter a playlist URL. The player will restart after saving.":
         "Voer een afspeellijst-URL in. De speler wordt na het opslaan opnieuw gestart.",
+    "Enter a Stremio addon manifest URL.":
+        "Voer de manifest-URL van een Stremio-add-on in.",
     "Enter a server address without spaces or a fragment.":
         "Voer een serveradres zonder spaties of fragment in.",
     "Enter a username (8 characters).":

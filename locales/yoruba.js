@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Fi ìkànnì kún ẹ̀ka",
     "Add channel to favorites": "Fi ìkànnì kún àwọn àyànfẹ́",
     "Add new list": "Fi àkójọ tuntun kún un",
+    "Add Stremio addon…": "Fi àfikún Stremio kún un…",
     "Add to favorites": "Fi kún àwọn àyànfẹ́",
     Age: "Ọjọ́ orí",
     All: "Gbogbo",
@@ -375,6 +376,8 @@ var keyStrings = {
         "Tẹ URL àkójọ ìṣeré láti wọ iṣẹ́ yìí.",
     "Enter a playlist URL. The player will restart after saving.":
         "Tẹ URL àkójọ ìṣeré. Ẹ̀rọ ìṣeré yóò tún bẹ̀rẹ̀ lẹ́yìn fífi pamọ́.",
+    "Enter a Stremio addon manifest URL.":
+        "Tẹ URL manifest ti àfikún Stremio sílẹ̀.",
     "Enter a server address without spaces or a fragment.":
         "Tẹ àdírẹ́sì sáfà láìsí ààyè tàbí apá fragment.",
     "Enter a username (8 characters).": "Tẹ orúkọ olùlò (àmì 8).",

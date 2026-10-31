@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "వర్గానికి ఛానెల్‌ని జోడించండి",
     "Add channel to favorites": "ఛానెల్‌ని ఇష్టమైన వాటికి జోడించండి",
     "Add new list": "కొత్త జాబితాను జోడించండి",
+    "Add Stremio addon…": "Stremio యాడ్-ఆన్‌ను జోడించండి…",
     "Add to favorites": "ఇష్టమైన వాటికి జోడించండి",
     Age: "వయస్సు",
     All: "అన్నీ",
@@ -368,6 +369,8 @@ var keyStrings = {
         "ఈ సేవను యాక్సెస్ చేయడానికి ప్లేజాబితా URLని నమోదు చేయండి.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL ప్లేజాబితాని నమోదు చేయండి. సేవ్ చేసిన తర్వాత ప్లేయర్ రీస్టార్ట్ అవుతుంది.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio యాడ్-ఆన్ మానిఫెస్ట్ URLను నమోదు చేయండి.",
     "Enter a server address without spaces or a fragment.":
         "ఖాళీలు లేదా భాగం లేకుండా సర్వర్ చిరునామాను నమోదు చేయండి.",
     "Enter a username (8 characters).": "వినియోగదారు పేరు (8 అక్షరాలు) నమోదు చేయండి.",

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Voeg kanaal by kategorie",
     "Add channel to favorites": "Voeg kanaal by gunstelinge",
     "Add new list": "Voeg nuwe lys by",
+    "Add Stremio addon…": "Voeg Stremio-byvoeging by…",
     "Add to favorites": "Voeg by gunstelinge",
     Age: "Ouderdom",
     All: "Alles",
@@ -382,6 +383,8 @@ var keyStrings = {
         "Voer 'n snitlys-URL in om toegang tot hierdie diens te kry.",
     "Enter a playlist URL. The player will restart after saving.":
         "Voer 'n snitlys-URL in. Die speler herbegin nadat jy gestoor het.",
+    "Enter a Stremio addon manifest URL.":
+        "Voer die manifes-URL van ’n Stremio-byvoeging in.",
     "Enter a server address without spaces or a fragment.":
         "Voer 'n bedieneradres sonder spasies of 'n fragment in.",
     "Enter a username (8 characters).":

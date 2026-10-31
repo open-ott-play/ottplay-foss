@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Magdagdag ng channel sa kategorya",
     "Add channel to favorites": "Magdagdag ng channel sa mga paborito",
     "Add new list": "Magdagdag ng bagong listahan",
+    "Add Stremio addon…": "Magdagdag ng Stremio add-on…",
     "Add to favorites": "Idagdag sa mga paborito",
     Age: "Edad",
     All: "Lahat",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Maglagay ng playlist URL para ma-access ang serbisyong ito.",
     "Enter a playlist URL. The player will restart after saving.":
         "Maglagay ng playlist URL. Ang media player ay magre-restart pagkatapos i-save.",
+    "Enter a Stremio addon manifest URL.":
+        "Ilagay ang URL ng manifest ng Stremio add-on.",
     "Enter a server address without spaces or a fragment.":
         "Maglagay ng address ng server na walang mga puwang o fragment.",
     "Enter a username (8 characters).": "Maglagay ng username (8 character).",

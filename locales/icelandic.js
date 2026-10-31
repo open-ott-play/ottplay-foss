@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Bæta rás í flokk",
     "Add channel to favorites": "Bæta rás við eftirlæti",
     "Add new list": "Bæta við nýjum lista",
+    "Add Stremio addon…": "Bæta við Stremio-viðbót…",
     "Add to favorites": "Bæta við eftirlæti",
     Age: "Aldur",
     All: "Allt",
@@ -374,6 +375,8 @@ var keyStrings = {
         "Sláðu inn vefslóð spilunarlista til að nota þessa þjónustu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sláðu inn vefslóð spilunarlista. Spilarinn endurræsist eftir vistun.",
+    "Enter a Stremio addon manifest URL.":
+        "Sláðu inn slóð lýsingarskrár Stremio-viðbótar.",
     "Enter a server address without spaces or a fragment.":
         "Sláðu inn vistfang þjóns án bila eða slóðarbrots.",
     "Enter a username (8 characters).": "Sláðu inn notandanafn (8 stafir).",

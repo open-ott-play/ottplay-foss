@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Προσθήκη καναλιού σε κατηγορία",
     "Add channel to favorites": "Προσθήκη καναλιού στα αγαπημένα",
     "Add new list": "Προσθήκη νέας λίστας",
+    "Add Stremio addon…": "Προσθήκη πρόσθετου Stremio…",
     "Add to favorites": "Προσθήκη στα αγαπημένα",
     Age: "Ηλικία",
     All: "Όλα",
@@ -393,6 +394,8 @@ var keyStrings = {
         "Εισαγάγετε URL λίστας αναπαραγωγής για πρόσβαση σε αυτή την υπηρεσία.",
     "Enter a playlist URL. The player will restart after saving.":
         "Εισαγάγετε το URL μιας λίστας αναπαραγωγής. Η εφαρμογή θα επανεκκινηθεί μετά την αποθήκευση.",
+    "Enter a Stremio addon manifest URL.":
+        "Εισαγάγετε το URL του manifest ενός πρόσθετου Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Εισαγάγετε διεύθυνση διακομιστή χωρίς κενά ή τμήμα μετά το #.",
     "Enter a username (8 characters).":

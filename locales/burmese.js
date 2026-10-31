@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "အမျိုးအစားသို့ ချန်နယ်ကို ထည့်ပါ။",
     "Add channel to favorites": "ချန်နယ်ကို စိတ်ကြိုက်များထည့်ပါ။",
     "Add new list": "စာရင်းအသစ်ထည့်ပါ။",
+    "Add Stremio addon…": "Stremio အပိုပရိုဂရမ် ထည့်ရန်…",
     "Add to favorites": "စိတ်ကြိုက်များထဲသို့ ထည့်ပါ။",
     Age: "အသက်",
     All: "အားလုံး",
@@ -371,6 +372,8 @@ var keyStrings = {
         "ဤဝန်ဆောင်မှုကိုရယူရန် URL အစီအစဉ်ကို ထည့်သွင်းပါ။",
     "Enter a playlist URL. The player will restart after saving.":
         "သီချင်းစာရင်း URL ထည့်ပါ။ သိမ်းဆည်းပြီးနောက် ပလေယာသည် ပြန်လည်စတင်ပါမည်။",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio အပိုပရိုဂရမ်၏ မန်နီဖက်စ် URL ကို ထည့်ပါ။",
     "Enter a server address without spaces or a fragment.":
         "နေရာလွတ်များ သို့မဟုတ် အပိုင်းအစများမပါဘဲ ဆာဗာလိပ်စာကို ထည့်ပါ။",
     "Enter a username (8 characters).": "အသုံးပြုသူအမည် (စာလုံး 8 လုံး) ထည့်ပါ။",

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Engadir a canle á categoría",
     "Add channel to favorites": "Engadir a canle a favoritos",
     "Add new list": "Engadir unha lista nova",
+    "Add Stremio addon…": "Engadir un complemento Stremio…",
     "Add to favorites": "Engadir a favoritos",
     Age: "Idade",
     All: "Todos",
@@ -393,6 +394,8 @@ var keyStrings = {
         "Introduce o URL dunha lista para acceder a este servizo.",
     "Enter a playlist URL. The player will restart after saving.":
         "Introduce o URL dunha lista. O reprodutor reiniciarase despois de gardala.",
+    "Enter a Stremio addon manifest URL.":
+        "Introduce o URL do manifesto dun complemento Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Introduce un enderezo de servidor sen espazos nin fragmento.",
     "Enter a username (8 characters).":

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Csatorna hozzáadása kategóriához",
     "Add channel to favorites": "Csatorna hozzáadása kedvencekhez",
     "Add new list": "Új lista hozzáadása",
+    "Add Stremio addon…": "Stremio-kiegészítő hozzáadása…",
     "Add to favorites": "Hozzáadás a kedvencekhez",
     Age: "Korhatár",
     All: "Mind",
@@ -384,6 +385,8 @@ var keyStrings = {
         "A szolgáltatás eléréséhez adja meg a lejátszási lista URL-címét.",
     "Enter a playlist URL. The player will restart after saving.":
         "Adja meg a lejátszási lista URL-jét. A lejátszó mentés után újraindul.",
+    "Enter a Stremio addon manifest URL.":
+        "Adja meg a Stremio-kiegészítő manifestjének URL-jét.",
     "Enter a server address without spaces or a fragment.":
         "Adjon meg kiszolgálócímet szóközök és # utáni töredék nélkül.",
     "Enter a username (8 characters).":

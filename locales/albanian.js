@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Shto kanal në kategori",
     "Add channel to favorites": "Shto kanalin te të preferuarat",
     "Add new list": "Shto listë të re",
+    "Add Stremio addon…": "Shto shtesë Stremio…",
     "Add to favorites": "Shto në të preferuarat",
     Age: "Mosha",
     All: "Të gjitha",
@@ -388,6 +389,8 @@ var keyStrings = {
         "Shkruani URL-në e listës së riprodhimit për të hyrë në këtë shërbim.",
     "Enter a playlist URL. The player will restart after saving.":
         "Shkruani URL-në e listës së riprodhimit. Luajtësi do të riniset pas ruajtjes.",
+    "Enter a Stremio addon manifest URL.":
+        "Shkruaj URL-në e manifestit të shtesës Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Shkruani një adresë serveri pa hapësira ose një fragment.",
     "Enter a username (8 characters).":

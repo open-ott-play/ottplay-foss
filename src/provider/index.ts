@@ -2179,6 +2179,10 @@ function _channelsList(catIdx: number, channelIdx: number, view?: any): void {
     )
         return;
     if (!view && catsArray[catIdx] === undefined) {
+        if (
+            (window as any).__ottActiveProviderDriver?.catalogBrowser?.restore()
+        )
+            return;
         infoBox(
             _(
                 "ERROR: Category #%1 does not exist!<br>Please select another category.",

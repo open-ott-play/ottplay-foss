@@ -357,9 +357,9 @@ check("catalog base remains private and validates operator input", () => {
         "https://catalog.invalid?",
         "https://catalog.invalid#",
         "https://catalog.invalid/manifest.json",
-        "https://catalog.invalid/%7B%22language%22%3A%22ru%22%7D",
         "https://catalog.invalid/%xx",
-        "https://catalog.invalid/private%20path",
+        "https://catalog.invalid/private%00path",
+        "https://catalog.invalid/private%5cpath",
         "https://catalog.invalid/%6danifest.json/",
         "https://catalog.invalid/\n",
         "https:\\catalog.invalid",
@@ -376,6 +376,8 @@ check("catalog base remains private and validates operator input", () => {
         "https://catalog.invalid",
         "https://catalog.invalid/service/",
         "HTTPS://catalog.invalid/private-path",
+        "https://catalog.invalid/%7B%22language%22%3A%22ru%22%7D",
+        "https://catalog.invalid/private%20path",
         "",
     ]) {
         assert.equal(

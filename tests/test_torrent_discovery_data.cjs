@@ -458,14 +458,24 @@ test("addon search has no fake pagination when upstream ignores skip", () => {
     assert.equal(f.requests.length, 1);
 });
 
-test("addon base validation matches settings and rejects configured manifests", () => {
+test("addon base validation rejects manifest resources and malformed paths", () => {
     const f = fixture();
     for (const endpoint of [
         "https://addon.example/manifest.json",
         "https://addon.example/manifest%2ejson",
-        "https://addon.example/%7B%22language%22%3A%22en%22%7D",
-        "https://addon.example/a%20b",
         "https://addon.example/%zz",
+        "https://addon.example/%00",
+        "https://addon.example/%09",
+        "https://addon.example/%0a",
+        "https://addon.example/%7f",
+        "https://addon.example/%5c",
+        "https://addon.example/raw path",
+        "https://addon.example/raw\tpath",
+        " https://addon.example/config",
+        "https://addon.example/config\n",
+        "https://user:pass@addon.example/config",
+        "https://addon.example/config?key=value",
+        "https://addon.example/config#fragment",
     ]) {
         f.setEndpoint(endpoint);
         let result;
@@ -477,6 +487,26 @@ test("addon base validation matches settings and rejects configured manifests", 
     f.setEndpoint("HTTPS://addon.example");
     f.instance.load("popular", null, () => {});
     assert.equal(f.requests.length, 1);
+});
+
+test("encoded addon configuration remains opaque in manifest and catalog requests", () => {
+    for (const origin of ["https://addon.example", "http://localhost:7000"]) {
+        const f = fixture(undefined, true);
+        const base =
+            origin +
+            "/%7b%22name%22%3a%22A%20B%22%2c%22token%22%3a%22a%2fb%3fc%23d%22%7d";
+        f.setEndpoint(base);
+        let result;
+        f.instance.load("popular", null, (value) => (result = copy(value)));
+        assert.equal(f.requests[0]?.url, base + "/manifest.json");
+        f.requests[0].done(null, genericManifest);
+        assert.equal(
+            f.requests[1].url,
+            base + "/catalog/movie/open%20movies/skip=0.json"
+        );
+        f.requests[1].done(null, { metas: [bunny] });
+        assert.equal(result.items[0].id, "imdb:movie:tt1254207");
+    }
 });
 
 test("a changed interface locale notifies once across pending lanes without stale metadata", () => {

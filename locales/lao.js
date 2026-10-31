@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "ເພີ່ມຊ່ອງເຂົ້າໝວດໝູ່",
     "Add channel to favorites": "ເພີ່ມຊ່ອງເຂົ້າລາຍການທີ່ມັກ",
     "Add new list": "ເພີ່ມລາຍການໃໝ່",
+    "Add Stremio addon…": "ເພີ່ມສ່ວນເສີມ Stremio…",
     "Add to favorites": "ເພີ່ມເຂົ້າລາຍການທີ່ມັກ",
     Age: "ອາຍຸ",
     All: "ທັງໝົດ",
@@ -362,6 +363,8 @@ var keyStrings = {
         "ປ້ອນ URL ລາຍການຫຼິ້ນເພື່ອເຂົ້າໃຊ້ບໍລິການນີ້.",
     "Enter a playlist URL. The player will restart after saving.":
         "ປ້ອນ URL ລາຍການຫຼິ້ນ. ເຄື່ອງຫຼິ້ນຈະເລີ່ມຄືນຫຼັງບັນທຶກ.",
+    "Enter a Stremio addon manifest URL.":
+        "ປ້ອນ URL ຂອງ manifest ສ່ວນເສີມ Stremio.",
     "Enter a server address without spaces or a fragment.":
         "ປ້ອນທີ່ຢູ່ເຊີບເວີໂດຍບໍ່ມີຊ່ອງວ່າງ ຫຼື ສ່ວນ fragment.",
     "Enter a username (8 characters).": "ປ້ອນຊື່ຜູ້ໃຊ້ (8 ຕົວອັກສອນ).",

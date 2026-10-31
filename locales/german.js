@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "Sender zur Kategorie hinzufügen",
     "Add channel to favorites": "Sender zu Favoriten hinzufügen",
     "Add new list": "Neue Liste hinzufügen",
+    "Add Stremio addon…": "Stremio-Addon hinzufügen…",
     "Add to favorites": "Zu Favoriten hinzufügen",
     Age: "Alter",
     All: "Alle",
@@ -390,6 +391,8 @@ var keyStrings = {
         "Geben Sie eine Wiedergabelisten-URL ein, um auf diesen Dienst zuzugreifen.",
     "Enter a playlist URL. The player will restart after saving.":
         "Geben Sie eine Wiedergabelisten-URL ein. Der Player wird nach dem Speichern neu gestartet.",
+    "Enter a Stremio addon manifest URL.":
+        "Gib die Manifest-URL eines Stremio-Addons ein.",
     "Enter a server address without spaces or a fragment.":
         "Geben Sie eine Serveradresse ohne Leerzeichen oder Fragment ein.",
     "Enter a username (8 characters).":

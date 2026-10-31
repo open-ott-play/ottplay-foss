@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "カテゴリにチャンネルを追加",
     "Add channel to favorites": "チャンネルをお気に入りに追加する",
     "Add new list": "新しいリストを追加",
+    "Add Stremio addon…": "Stremio アドオンを追加…",
     "Add to favorites": "お気に入りに追加する",
     Age: "年齢",
     All: "すべて",
@@ -380,6 +381,8 @@ var keyStrings = {
         "このサービスにアクセスするには、プレイリストURLを入力してください。",
     "Enter a playlist URL. The player will restart after saving.":
         "プレイリストURLを入力します。保存後にプレーヤーが再起動されます。",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio アドオンのマニフェスト URL を入力してください。",
     "Enter a server address without spaces or a fragment.":
         "サーバーアドレスをスペースやフラグメントなしで入力します。",
     "Enter a username (8 characters).": "ユーザー名(8文字)を入力します。",

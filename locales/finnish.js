@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Lisää kanava luokkaan",
     "Add channel to favorites": "Lisää kanava suosikkeihin",
     "Add new list": "Lisää uusi lista",
+    "Add Stremio addon…": "Lisää Stremio-lisäosa…",
     "Add to favorites": "Lisää suosikkeihin",
     Age: "Ikä",
     All: "Kaikki",
@@ -381,6 +382,8 @@ var keyStrings = {
         "Käytä tätä palvelua kirjoittamalla soittolista URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Kirjoita soittolista URL. Mediasoitin käynnistyy uudelleen tallennuksen jälkeen.",
+    "Enter a Stremio addon manifest URL.":
+        "Anna Stremio-lisäosan manifestin URL.",
     "Enter a server address without spaces or a fragment.":
         "Anna palvelimen osoite ilman välilyöntejä tai fragmentteja.",
     "Enter a username (8 characters).": "Anna käyttäjänimi (8 merkkiä).",

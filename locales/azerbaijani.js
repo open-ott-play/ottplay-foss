@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanalı kateqoriyaya əlavə et",
     "Add channel to favorites": "Kanalı sevimlilərə əlavə et",
     "Add new list": "Yeni siyahı əlavə et",
+    "Add Stremio addon…": "Stremio əlavəsi əlavə edin…",
     "Add to favorites": "Sevimlilərə əlavə et",
     Age: "Yaş",
     All: "Hamısı",
@@ -381,6 +382,8 @@ var keyStrings = {
         "Bu xidmətə daxil olmaq üçün pleylist URL-i daxil edin.",
     "Enter a playlist URL. The player will restart after saving.":
         "Pleylist URL-ni daxil edin. Yadda saxladıqdan sonra pleyer yenidən başladılacaq.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio əlavəsinin manifest URL-ni daxil edin.",
     "Enter a server address without spaces or a fragment.":
         "Boşluq və # işarəsindən sonrakı fraqment olmadan server ünvanı daxil edin.",
     "Enter a username (8 characters).": "İstifadəçi adı daxil edin (8 simvol).",

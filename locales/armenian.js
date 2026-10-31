@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ավելացնել ալիքը կատեգորիային",
     "Add channel to favorites": "Ավելացնել ալիքը ընտրյալներին",
     "Add new list": "Ավելացնել նոր ցուցակ",
+    "Add Stremio addon…": "Ավելացնել Stremio հավելում…",
     "Add to favorites": "Ավելացնել ընտրյալներին",
     Age: "Տարիք",
     All: "Բոլորը",
@@ -380,6 +381,8 @@ var keyStrings = {
         "Այս ծառայությունից օգտվելու համար մուտքագրեք նվագարկման ցուցակի URL-ը։",
     "Enter a playlist URL. The player will restart after saving.":
         "Մուտքագրեք երգացանկի URL-ը։ Պահպանելուց հետո նվագարկիչը կվերագործարկվի։",
+    "Enter a Stremio addon manifest URL.":
+        "Մուտքագրեք Stremio հավելման մանիֆեստի URL-ը։",
     "Enter a server address without spaces or a fragment.":
         "Մուտքագրեք սերվերի հասցեն՝ առանց բացատների և URL հատվածի։",
     "Enter a username (8 characters).": "Մուտքագրեք օգտանունը (8 նիշ)։",

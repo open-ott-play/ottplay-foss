@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Engeza isiteshi esigabeni",
     "Add channel to favorites": "Engeza isiteshi ezintandokazini",
     "Add new list": "Engeza uhlu olusha",
+    "Add Stremio addon…": "Engeza isengezo se-Stremio…",
     "Add to favorites": "Engeza ezintandokazini",
     Age: "Ubudala",
     All: "Konke",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Faka i-URL yohlu lokudlala ukuze ufinyelele kule sevisi.",
     "Enter a playlist URL. The player will restart after saving.":
         "Faka i-URL yohlu lokudlala. Isidlali sizoqala kabusha ngemva kokugcina.",
+    "Enter a Stremio addon manifest URL.":
+        "Faka i-URL ye-manifest yesengezo se-Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Faka ikheli leseva elingenazo izikhala noma ingxenye yangemva kwe-#.",
     "Enter a username (8 characters).":

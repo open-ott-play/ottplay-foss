@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Lisa kanal kategooriasse",
     "Add channel to favorites": "Lisage kanal lemmikute hulka",
     "Add new list": "Lisa uus loend",
+    "Add Stremio addon…": "Lisa Stremio lisandmoodul…",
     "Add to favorites": "Lisa lemmikute hulka",
     Age: "Vanus",
     All: "Kõik",
@@ -378,6 +379,8 @@ var keyStrings = {
         "Sellele teenusele juurdepääsuks sisestage esitusloend URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sisestage esitusloend URL. Meediumipleier taaskäivitub pärast salvestamist.",
+    "Enter a Stremio addon manifest URL.":
+        "Sisesta Stremio lisandmooduli manifesti URL.",
     "Enter a server address without spaces or a fragment.":
         "Sisestage serveri aadress ilma tühikute või fragmendita.",
     "Enter a username (8 characters).": "Sisestage kasutajanimi (8 tähemärki).",

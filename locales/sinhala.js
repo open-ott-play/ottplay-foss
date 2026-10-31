@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "කාණ්ඩයට නාලිකාව එක් කරන්න",
     "Add channel to favorites": "ප්‍රියතමයන් වෙත නාලිකාව එක් කරන්න",
     "Add new list": "නව ලැයිස්තුවක් එක් කරන්න",
+    "Add Stremio addon…": "Stremio ඇඩෝනයක් එක් කරන්න…",
     "Add to favorites": "ප්‍රියතමයන් වෙත එක් කරන්න",
     Age: "වයස",
     All: "සියල්ල",
@@ -371,6 +372,8 @@ var keyStrings = {
         "මෙම සේවාව වෙත ප්‍රවේශ වීමට URL ධාවන ලැයිස්තුවක් ඇතුළත් කරන්න.",
     "Enter a playlist URL. The player will restart after saving.":
         "ධාවන ලැයිස්තුවක් ඇතුළත් කරන්න URL. සුරැකීමෙන් පසු වාදකය නැවත ආරම්භ වේ.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio ඇඩෝනයේ මැනිෆෙස්ට් URL ඇතුළත් කරන්න.",
     "Enter a server address without spaces or a fragment.":
         "හිස්තැන් හෝ ඛණ්ඩනයකින් තොරව සේවාදායක ලිපිනයක් ඇතුළත් කරන්න.",
     "Enter a username (8 characters).": "පරිශීලක නාමයක් ඇතුළත් කරන්න (අක්ෂර 8).",

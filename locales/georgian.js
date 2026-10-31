@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "დაამატეთ არხი კატეგორიაში",
     "Add channel to favorites": "დაამატეთ არხი რჩეულებში",
     "Add new list": "ახალი სიის დამატება",
+    "Add Stremio addon…": "Stremio დანამატის დამატება…",
     "Add to favorites": "რჩეულებში დამატება",
     Age: "ასაკი",
     All: "ყველა",
@@ -380,6 +381,8 @@ var keyStrings = {
         "ამ სერვისზე წვდომისთვის შეიყვანეთ დასაკრავი სიის URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "შეიყვანეთ დასაკრავი სიის URL. შენახვის შემდეგ პლეერი თავიდან გაეშვება.",
+    "Enter a Stremio addon manifest URL.":
+        "შეიყვანეთ Stremio დანამატის მანიფესტის URL.",
     "Enter a server address without spaces or a fragment.":
         "აკრიფეთ სერვერის მისამართი ინტერვალის ან ფრაგმენტის გარეშე.",
     "Enter a username (8 characters).":

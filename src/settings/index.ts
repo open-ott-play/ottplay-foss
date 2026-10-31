@@ -519,7 +519,7 @@ export const settingsSchema: SettingDefinition[] = [
                 value.length > 4096 ||
                 !/^https?:\/\//i.test(value) ||
                 /^https?:\/\/[^/?#]*@/i.test(value) ||
-                /[\x00-\x20\x7f\\?#<>"']/.test(value)
+                /[\s\x00-\x1f\x7f\\?#<>"']/.test(value)
             )
                 return false;
             try {
@@ -537,7 +537,7 @@ export const settingsSchema: SettingDefinition[] = [
                     !url.search &&
                     !url.hash &&
                     !/\/manifest\.json\/*$/i.test(path) &&
-                    !/[\s\\{}]/.test(path)
+                    !/[\x00-\x1f\x7f\\]/.test(path)
                 );
             } catch (_) {
                 return false;

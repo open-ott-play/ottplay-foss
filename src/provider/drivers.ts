@@ -114,6 +114,7 @@ interface ProviderDriver {
     /** Optional metadata browsing; saved playable channel catalogs stay separate. */
     catalogBrowser?: {
         open(): boolean;
+        restore(): boolean;
         categories(): boolean;
         search(): boolean;
         close(): void;

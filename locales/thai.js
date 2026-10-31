@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "เพิ่มช่องลงในหมวดหมู่",
     "Add channel to favorites": "เพิ่มช่องในรายการโปรด",
     "Add new list": "เพิ่มรายการใหม่",
+    "Add Stremio addon…": "เพิ่มส่วนเสริม Stremio…",
     "Add to favorites": "เพิ่มในรายการโปรด",
     Age: "อายุ",
     All: "ทั้งหมด",
@@ -370,6 +371,8 @@ var keyStrings = {
         "ป้อนเพลย์ลิสต์ URL เพื่อเข้าถึงบริการนี้",
     "Enter a playlist URL. The player will restart after saving.":
         "เข้าสู่เพลย์ลิสต์ URL เครื่องเล่นจะรีสตาร์ทหลังจากบันทึก",
+    "Enter a Stremio addon manifest URL.":
+        "ป้อน URL ของไฟล์ manifest ส่วนเสริม Stremio",
     "Enter a server address without spaces or a fragment.":
         "ป้อนที่อยู่เซิร์ฟเวอร์โดยไม่มีช่องว่างหรือส่วนย่อย",
     "Enter a username (8 characters).": "กรอกชื่อผู้ใช้ (8 ตัวอักษร)",

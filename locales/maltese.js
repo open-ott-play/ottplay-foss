@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Żid kanal mal-kategorija",
     "Add channel to favorites": "Żid kanal mal-favoriti",
     "Add new list": "Żid lista ġdida",
+    "Add Stremio addon…": "Żid estensjoni Stremio…",
     "Add to favorites": "Żid mal-favoriti",
     Age: "Età",
     All: "Kollha",
@@ -387,6 +388,8 @@ var keyStrings = {
         "Daħħal URL ta’ lista tad-daqq biex taċċessa dan is-servizz.",
     "Enter a playlist URL. The player will restart after saving.":
         "Daħħal URL ta’ lista tad-daqq. Il-plejer jerġa’ jibda wara s-sejvjar.",
+    "Enter a Stremio addon manifest URL.":
+        "Daħħal il-URL tal-manifest ta’ estensjoni Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Daħħal indirizz ta’ server mingħajr spazji jew framment.",
     "Enter a username (8 characters).": "Daħħal isem tal-utent (8 karattri).",

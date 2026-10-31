@@ -309,6 +309,7 @@ test("manual lists coexist unchanged with genres and the global Favorites route"
     f.driver.catalogBrowser.categories();
     f.select(3);
     assert.equal(f.manualOpened, true);
+    assert.equal(f.driver.catalogBrowser.restore(), false);
     f.driver.catalogBrowser.categories();
     f.select(4);
     assert.equal(f.favoritesOpened, true);
@@ -775,4 +776,127 @@ test("new source admission retains its own immediate selection after cancelling 
     });
     assert.equal(f.streamRequests.length, 1);
     assert.equal(result.stream_url, next.source);
+});
+
+function installNavigationFunctions(host) {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const ts = require("typescript");
+    const vm = require("node:vm");
+    for (const [file, names] of [
+        ["src/key-handler/index.ts", ["handleMainKey"]],
+        ["src/ui/index.ts", ["popMedia", "mediaList"]],
+        ["src/provider/index.ts", ["_channelsList"]],
+    ]) {
+        const source = ts.createSourceFile(
+            file,
+            fs.readFileSync(path.join(__dirname, "..", file), "utf8"),
+            ts.ScriptTarget.Latest,
+            true
+        );
+        const code = source.statements
+            .filter(
+                (node) =>
+                    ts.isFunctionDeclaration(node) &&
+                    names.includes(node.name?.text)
+            )
+            .map((node) => node.getText(source).replace(/^export /, ""))
+            .join("\n");
+        vm.runInContext(
+            ts.transpileModule(code, {
+                compilerOptions: {
+                    module: ts.ModuleKind.None,
+                    target: ts.ScriptTarget.ES5,
+                },
+            }).outputText,
+            host
+        );
+    }
+    host.globalNumber = null;
+    host.toggleMainPlayback = () => {
+        throw Error("Torrent Enter must return to browsing");
+    };
+    host.__ottClassicScreenPort.normalize = (code) => ({
+        code,
+        id: { 1: "accept", 2: "back", 3: "channels" }[code],
+    });
+    host.__ottChannels.group = () => undefined;
+    host.__ottChannels.restoreBrowsing = () => {
+        throw Error("Empty manual catalog must not receive navigation");
+    };
+    host.__ottMedia.open = () => {
+        throw Error("Legacy media list must not replace movie discovery");
+    };
+    host.__ottMedia.useSource = () => {};
+    host.$i1 = { is: () => false };
+    host.infoBox = () => {
+        throw Error("No Category #0 error should appear");
+    };
+}
+
+test("full-screen keys and menu return restore the movie list after selected playback without scanning or restarting", () => {
+    for (const route of [
+        "accept",
+        "back",
+        "channels",
+        "menu",
+        "media",
+        "empty-category",
+    ]) {
+        const f = setup();
+        f.open();
+        f.requests[0].done(
+            page([
+                { ...movie(1), imdbId: "tt1234567" },
+                { ...movie(2), imdbId: "tt1234568" },
+            ])
+        );
+        f.select(1);
+        f.streamRequests[0].done(streamPage([stream()]));
+        f.key("ENTER");
+        f.playCalls[0].dispatched();
+        assert.equal(f.closed, true);
+        const requestCount = f.requests.length;
+        installNavigationFunctions(f.host);
+        f.host.playType = -1e11;
+        f.host.forcePlay = false;
+        f.host.listArray = ["closed-settings-editor"];
+        f.host.listKeyHandlerFn = () => false;
+        if (route === "menu") f.host.popMedia();
+        else if (route === "media") f.host.mediaList(null);
+        else if (route === "empty-category") f.host._channelsList(0, 0);
+        else
+            f.host.handleMainKey({ accept: 1, back: 2, channels: 3 }[route], {
+                preventDefault() {},
+                stopPropagation() {},
+            });
+        assert.equal(f.view.id, "torrent:discovery", route);
+        assert.equal(f.host.listArray[f.host.selIndex], "tmdb:movie:2", route);
+        assert.equal(f.requests.length, requestCount, route);
+        assert.equal(f.streamRequests.length, 1, route);
+        assert.equal(f.playCalls.length, 1, route);
+    }
+});
+
+test("catalog restore retains browse position after list close and refreshes changed settings", () => {
+    const f = setup();
+    f.open();
+    f.requests[0].done(page([movie(1), movie(2)]));
+    f.host.selIndex = 1;
+    f.key("RETURN");
+    assert.equal(f.driver.catalogBrowser.restore(), true);
+    assert.equal(f.host.listArray[f.host.selIndex], "tmdb:movie:2");
+    assert.equal(f.requests.length, 1);
+    f.key("RETURN");
+    f.host.settings.torrentCatalogLanguage = "ru";
+    assert.equal(f.driver.catalogBrowser.restore(), true);
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.view.rows.length, 0);
+    f.requests[1].done(page([movie(3)]));
+    assert.deepEqual(Array.from(f.view.rows), ["tmdb:movie:3"]);
+    f.host.__ottKiosk = { enabled: () => true };
+    assert.equal(f.driver.catalogBrowser.restore(), false);
+    f.host.__ottKiosk = undefined;
+    f.host.__ottMedia.sourceId = () => "offline:separate-library";
+    assert.equal(f.driver.catalogBrowser.restore(), false);
 });

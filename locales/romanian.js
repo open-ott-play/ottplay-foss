@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Adaugă canalul la categorie",
     "Add channel to favorites": "Adaugă canalul la favorite",
     "Add new list": "Adaugă o listă nouă",
+    "Add Stremio addon…": "Adaugă extensie Stremio…",
     "Add to favorites": "Adaugă la favorite",
     Age: "Vârstă",
     All: "Toate",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Introduceți URL-ul listei de redare pentru a accesa acest serviciu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Introduceți URL-ul unei liste de redare. Playerul va reporni după salvare.",
+    "Enter a Stremio addon manifest URL.":
+        "Introduceți URL-ul manifestului unei extensii Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Introduceți adresa serverului fără spații sau fragment după #.",
     "Enter a username (8 characters).":

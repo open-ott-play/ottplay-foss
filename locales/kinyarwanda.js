@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Ongera shene mu cyiciro",
     "Add channel to favorites": "Ongera shene mu bikunzwe",
     "Add new list": "Ongeraho urutonde rushya",
+    "Add Stremio addon…": "Ongeramo inyongera ya Stremio…",
     "Add to favorites": "Ongera mu bikunzwe",
     Age: "Imyaka",
     All: "Byose",
@@ -389,6 +390,8 @@ var keyStrings = {
         "Injiza URL y'urutonde rwo gukina kugira ngo ukoreshe iyi serivisi.",
     "Enter a playlist URL. The player will restart after saving.":
         "Injiza URL y'urutonde rwo gukina. Porogaramu yo gukina izongera gutangira nyuma yo kubika.",
+    "Enter a Stremio addon manifest URL.":
+        "Andika URL ya manifest y’inyongera ya Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Injiza aderesi ya seriveri idafite imyanya cyangwa igice cya URL gitangizwa na #.",
     "Enter a username (8 characters).":

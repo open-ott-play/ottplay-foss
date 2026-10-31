@@ -143,7 +143,7 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                     ? parts[part].charAt(0).toUpperCase() +
                       parts[part].slice(1).toLowerCase()
                     : parts[part].toUpperCase());
-        base = base.trim().replace(/\/+$/, "");
+        base = base.replace(/\/+$/, "");
         var signature = language + "\n" + base;
         if (signature !== configuration) {
             cancel();
@@ -156,8 +156,8 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             if (
                 base &&
                 (!catalogBaseUrl(base) ||
-                    /[?#]/.test(base) ||
-                    /[\s\\{}]/.test(decodedBase) ||
+                    /[\s?#]/.test(base) ||
+                    /[\u0000-\u001f\u007f\\]/.test(decodedBase) ||
                     /\/manifest\.json\/*$/i.test(decodedBase))
             )
                 return null;

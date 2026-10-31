@@ -148,15 +148,15 @@ player reads its manifest for movie catalogs, search support and metadata
 resources; the supported Stremio TMDB catalog layout also remains available.
 A public addon can be used for local validation without provisioning a private
 TMDB key. Its production default is empty; no public service is selected
-automatically. Operators configure it through the existing authenticated
-settings API, with no endpoint editor in the UI:
+automatically. Operators can configure it through the existing authenticated
+settings API, or install a validated manifest with **Add Stremio addon…** below:
 
 ```sh
 ott TARGET setting torrentCatalogEndpoint --value-file /absolute/private/catalog-base-url.txt
 ```
 
-The file must contain an addon **base URL**, not a `/manifest.json` URL or a
-preconfigured JSON path. External addons require HTTPS. HTTP is accepted only
+The file must contain an addon **base URL**, not a `/manifest.json` URL.
+Percent-encoded configuration segments are preserved. External addons require HTTPS. HTTP is accepted only
 for the exact loopback hosts `localhost`, `127.0.0.1` and `[::1]`, with an optional
 port. Other `127.*` addresses, alternative numeric forms, `*.localhost` and names
 that merely resolve to loopback are not accepted. User information, query
@@ -187,7 +187,22 @@ percent-encoded JSON configuration.
 The `/manifest.json` suffix is required; credentials in the URL authority,
 query strings and fragments are rejected. External URLs require HTTPS; HTTP
 uses the same exact loopback exception as the catalog endpoint. There is no
-addon endpoint editor in the player UI and no default public stream service.
+default public stream service.
+
+In **Torrent → Manage lists**, choose **Add Stremio addon…** and enter the addon
+manifest URL in the standard editor. Copied `stremio://` installation links are
+converted to HTTPS before validation; encoded configuration paths are retained.
+The player requests only the JSON manifest. A movie stream resource adds the
+manifest to this installation's stream addons, while a usable movie catalog
+activates that addon's catalog base. An addon with both capabilities saves both
+settings atomically; a stream-only addon keeps the current movie catalog.
+The manually maintained magnet/torrent catalog is unchanged. **Add new list**
+continues to accept magnet links and torrent file URLs separately.
+
+The settings screen reports completion or a bounded error without displaying
+the private URL. Back cancels a pending request; late replies and conflicting
+settings changes cannot complete an abandoned installation. Adding an addon
+does not start a torrent engine or playback.
 
 Manifest paths can contain private credentials, so remote reads are masked.
 Both `torrentStreamAddons` and its storage alias `sTorrentStreamAddons` are

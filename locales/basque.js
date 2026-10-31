@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Gehitu kanala kategoriara",
     "Add channel to favorites": "Gehitu kanala gogokoetara",
     "Add new list": "Gehitu zerrenda berria",
+    "Add Stremio addon…": "Gehitu Stremio gehigarria…",
     "Add to favorites": "Gehitu gogokoetara",
     Age: "Adina",
     All: "Guztiak",
@@ -387,6 +388,8 @@ var keyStrings = {
         "Sartu erreprodukzio-zerrenda baten URLa zerbitzu honetara sartzeko.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sartu erreprodukzio-zerrenda baten URLa. Gorde ondoren erreproduzitzailea berrabiaraziko da.",
+    "Enter a Stremio addon manifest URL.":
+        "Sartu Stremio gehigarriaren manifestuaren URLa.",
     "Enter a server address without spaces or a fragment.":
         "Sartu zerbitzariaren helbidea zuriunerik edo zatirik gabe.",
     "Enter a username (8 characters).":

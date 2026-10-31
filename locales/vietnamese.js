@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Thêm kênh vào danh mục",
     "Add channel to favorites": "Thêm kênh vào yêu thích",
     "Add new list": "Thêm danh sách mới",
+    "Add Stremio addon…": "Thêm tiện ích Stremio…",
     "Add to favorites": "Thêm vào yêu thích",
     Age: "Độ tuổi",
     All: "Tất cả",
@@ -378,6 +379,8 @@ var keyStrings = {
         "Nhập URL danh sách phát để truy cập dịch vụ này.",
     "Enter a playlist URL. The player will restart after saving.":
         "Nhập URL danh sách phát. Trình phát sẽ khởi động lại sau khi lưu.",
+    "Enter a Stremio addon manifest URL.":
+        "Nhập URL manifest của tiện ích Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Nhập địa chỉ máy chủ không có khoảng trắng hoặc phần neo.",
     "Enter a username (8 characters).": "Nhập tên người dùng (8 ký tự).",

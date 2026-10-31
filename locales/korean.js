@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "카테고리에 채널 추가",
     "Add channel to favorites": "즐겨찾기에 채널 추가",
     "Add new list": "새 목록 추가",
+    "Add Stremio addon…": "Stremio 애드온 추가…",
     "Add to favorites": "즐겨찾기에 추가",
     Age: "나이",
     All: "전체",
@@ -374,6 +375,8 @@ var keyStrings = {
         "이 서비스에 액세스하려면 재생 목록 URL를 입력하세요.",
     "Enter a playlist URL. The player will restart after saving.":
         "재생목록 URL를 입력하세요. 저장 후 플레이어가 다시 시작됩니다.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio 애드온의 매니페스트 URL을 입력하세요.",
     "Enter a server address without spaces or a fragment.":
         "공백이나 단편 없이 서버 주소를 입력하세요.",
     "Enter a username (8 characters).": "사용자 이름(8자)을 입력하세요.",

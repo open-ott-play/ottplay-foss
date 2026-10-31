@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Дадаць канал у катэгорыю",
     "Add channel to favorites": "Дадаць канал у выбраныя",
     "Add new list": "Дадаць спіс",
+    "Add Stremio addon…": "Дадаць дапаўненне Stremio…",
     "Add to favorites": "Дадаць у абранае",
     Age: "Узрост",
     All: "Усе",
@@ -377,6 +378,8 @@ var keyStrings = {
         "Увядзіце адрас плэйліста для доступу да сэрвісу.",
     "Enter a playlist URL. The player will restart after saving.":
         "Увядзіце URL плэйліста. Пасля захавання плэер перазапусціцца.",
+    "Enter a Stremio addon manifest URL.":
+        "Увядзіце URL маніфеста дапаўнення Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Увядзіце адрас сервера без прабелаў і фрагмента пасля #.",
     "Enter a username (8 characters).":

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ampio fantsona amin'ny sokajy",
     "Add channel to favorites": "Ampio fantsona amin'ny ankafizina",
     "Add new list": "Ampio lisitra vaovao",
+    "Add Stremio addon…": "Ampio fanitarana Stremio…",
     "Add to favorites": "Ampio amin'ny ankafizina",
     Age: "Taona",
     All: "Rehetra",
@@ -397,6 +398,8 @@ var keyStrings = {
         "Ampidiro ny URL lisitra fandefasana mba hidirana amin'ity serivisy ity.",
     "Enter a playlist URL. The player will restart after saving.":
         "Ampidiro ny URL lisitra fandefasana. Hanomboka indray ny mpamaky rehefa voatahiry.",
+    "Enter a Stremio addon manifest URL.":
+        "Ampidiro ny URL manifest an’ny fanitarana Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Ampidiro ny adiresin'ny lohamilina tsy misy elanelana na sombiny fragment.",
     "Enter a username (8 characters).":

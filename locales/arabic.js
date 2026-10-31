@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "إضافة قناة إلى الفئة",
     "Add channel to favorites": "إضافة القناة إلى المفضلة",
     "Add new list": "إضافة قائمة جديدة",
+    "Add Stremio addon…": "إضافة ملحق Stremio…",
     "Add to favorites": "أضف إلى المفضلة",
     Age: "العمر",
     All: "الكل",
@@ -370,6 +371,7 @@ var keyStrings = {
         "أدخل قائمة التشغيل URL للوصول إلى هذه الخدمة.",
     "Enter a playlist URL. The player will restart after saving.":
         "أدخل قائمة التشغيل URL. سيتم إعادة تشغيل المشغل بعد الحفظ.",
+    "Enter a Stremio addon manifest URL.": "أدخل رابط بيان ملحق Stremio.",
     "Enter a server address without spaces or a fragment.":
         "أدخل عنوان الخادم بدون مسافات أو جزء.",
     "Enter a username (8 characters).": "أدخل اسم المستخدم (8 أحرف).",

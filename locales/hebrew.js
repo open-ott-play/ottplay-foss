@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "הוסף ערוץ לקטגוריה",
     "Add channel to favorites": "הוסף ערוץ למועדפים",
     "Add new list": "הוסף רשימה חדשה",
+    "Add Stremio addon…": "הוספת תוסף Stremio…",
     "Add to favorites": "הוסף למועדפים",
     Age: "גיל",
     All: "הכל",
@@ -365,6 +366,8 @@ var keyStrings = {
         "הזן כתובת פלייליסט כדי לגשת לשירות זה.",
     "Enter a playlist URL. The player will restart after saving.":
         "יש להזין כתובת URL של רשימת השמעה. הנגן יופעל מחדש לאחר השמירה.",
+    "Enter a Stremio addon manifest URL.":
+        "הזינו את כתובת ה־URL של מניפסט תוסף Stremio.",
     "Enter a server address without spaces or a fragment.":
         "הזן כתובת שרת ללא רווחים או מקטע אחרי #.",
     "Enter a username (8 characters).": "הזן שם משתמש (8 תווים).",

@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "வகைக்கு சேனலைச் சேர்க்கவும்",
     "Add channel to favorites": "பிடித்தவைகளில் சேனலைச் சேர்க்கவும்",
     "Add new list": "புதிய பட்டியலைச் சேர்க்கவும்",
+    "Add Stremio addon…": "Stremio துணை நிரலைச் சேர்க்கவும்…",
     "Add to favorites": "பிடித்தவைகளில் சேர்க்கவும்",
     Age: "வயது",
     All: "அனைத்தும்",
@@ -378,6 +379,8 @@ var keyStrings = {
         "இந்த சேவையை அணுக URL பிளேலிஸ்ட்டை உள்ளிடவும்.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL பிளேலிஸ்ட்டை உள்ளிடவும். சேமித்த பிறகு பிளேயர் மீண்டும் தொடங்கும்.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio துணை நிரலின் மேனிஃபெஸ்ட் URL-ஐ உள்ளிடவும்.",
     "Enter a server address without spaces or a fragment.":
         "இடைவெளிகள் அல்லது துண்டுகள் இல்லாமல் சேவையக முகவரியை உள்ளிடவும்.",
     "Enter a username (8 characters).": "ஒரு பயனர் பெயரை உள்ளிடவும் (8 எழுத்துகள்).",

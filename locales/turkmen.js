@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanaly kategoriýa goş",
     "Add channel to favorites": "Kanaly halanýanlara goş",
     "Add new list": "Täze sanaw goş",
+    "Add Stremio addon…": "Stremio goşmaçasyny goşuň…",
     "Add to favorites": "Halanýanlara goş",
     Age: "Ýaş",
     All: "Ählisi",
@@ -380,6 +381,8 @@ var keyStrings = {
         "Bu hyzmatdan peýdalanmak üçin oýnatma sanawynyň URL salgysyny giriziň.",
     "Enter a playlist URL. The player will restart after saving.":
         "Oýnatma sanawynyň URL salgysyny giriziň. Saklanandan soň pleýer täzeden işlär.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio goşmaçasynyň manifest URL salgysyny giriziň.",
     "Enter a server address without spaces or a fragment.":
         "Serweriň salgysyny boşluksyz we fragmentsiz giriziň.",
     "Enter a username (8 characters).": "Ulanyjy adyny giriziň (8 nyşan).",

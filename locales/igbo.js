@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Tinye ọwa n'otu",
     "Add channel to favorites": "Tinye ọwa na ọkacha mmasị",
     "Add new list": "Tinye ndepụta ọhụrụ",
+    "Add Stremio addon…": "Tinye mgbakwunye Stremio…",
     "Add to favorites": "Tinye na ọkacha mmasị",
     Age: "Afọ",
     All: "Ihe niile",
@@ -375,6 +376,8 @@ var keyStrings = {
         "Tinye URL ndepụta ọkpụkpọ ka ị nweta ọrụ a.",
     "Enter a playlist URL. The player will restart after saving.":
         "Tinye URL ndepụta ọkpụkpọ. Ihe ọkpụkpọ ga-amalitegharị mgbe echekwara.",
+    "Enter a Stremio addon manifest URL.":
+        "Tinye URL manifest nke mgbakwunye Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Tinye adreesị sava na-enweghị oghere ma ọ bụ akụkụ fragment.",
     "Enter a username (8 characters).":

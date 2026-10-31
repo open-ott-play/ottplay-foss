@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Cuir cainéal leis an gcatagóir",
     "Add channel to favorites": "Cuir cainéal le ceanáin",
     "Add new list": "Cuir liosta nua leis",
+    "Add Stremio addon…": "Cuir breiseán Stremio leis…",
     "Add to favorites": "Cuir le ceanáin",
     Age: "Aois",
     All: "Gach ceann",
@@ -388,6 +389,8 @@ var keyStrings = {
         "Cuir isteach URL seinmliosta chun an tseirbhís seo a úsáid.",
     "Enter a playlist URL. The player will restart after saving.":
         "Cuir isteach URL seinmliosta. Atosóidh an seinnteoir tar éis sábhála.",
+    "Enter a Stremio addon manifest URL.":
+        "Cuir isteach URL manifest breiseáin Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Cuir isteach seoladh freastalaí gan spásanna ná blúire.",
     "Enter a username (8 characters).":

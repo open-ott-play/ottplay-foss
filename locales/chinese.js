@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "将频道添加到类别",
     "Add channel to favorites": "添加频道至收藏夹",
     "Add new list": "添加新列表",
+    "Add Stremio addon…": "添加 Stremio 插件…",
     "Add to favorites": "添加到收藏夹",
     Age: "年龄",
     All: "全部",
@@ -361,6 +362,7 @@ var keyStrings = {
         "输入播放列表URL 以访问此服务。",
     "Enter a playlist URL. The player will restart after saving.":
         "输入播放列表URL。保存后播放器将重新启动。",
+    "Enter a Stremio addon manifest URL.": "请输入 Stremio 插件的清单 URL。",
     "Enter a server address without spaces or a fragment.":
         "输入不带空格或片段的服务器地址。",
     "Enter a username (8 characters).": "输入用户名（8 个字符）。",

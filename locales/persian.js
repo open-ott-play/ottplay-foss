@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "کانال را به دسته اضافه کنید",
     "Add channel to favorites": "کانال را به موارد دلخواه اضافه کنید",
     "Add new list": "افزودن لیست جدید",
+    "Add Stremio addon…": "افزودن افزونهٔ Stremio…",
     "Add to favorites": "به علاقه مندی ها اضافه کنید",
     Age: "سن",
     All: "همه",
@@ -377,6 +378,8 @@ var keyStrings = {
         "یک لیست پخش URL برای دسترسی به این سرویس وارد کنید.",
     "Enter a playlist URL. The player will restart after saving.":
         "یک لیست پخش URL را وارد کنید. پخش کننده پس از ذخیره مجدد راه اندازی می شود.",
+    "Enter a Stremio addon manifest URL.":
+        "نشانی URL مانیفست افزونهٔ Stremio را وارد کنید.",
     "Enter a server address without spaces or a fragment.":
         "آدرس سرور را بدون فاصله یا قطعه وارد کنید.",
     "Enter a username (8 characters).": "یک نام کاربری (8 کاراکتر) وارد کنید.",

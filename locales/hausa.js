@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ƙara tasha zuwa rukuni",
     "Add channel to favorites": "Ƙara tasha zuwa abubuwan da aka fi so",
     "Add new list": "Ƙara sabon jeri",
+    "Add Stremio addon…": "Ƙara ƙarin Stremio…",
     "Add to favorites": "Ƙara zuwa abubuwan da aka fi so",
     Age: "Shekaru",
     All: "Duka",
@@ -380,6 +381,8 @@ var keyStrings = {
         "Shigar da URL na jerin kunnawa don shiga wannan sabis.",
     "Enter a playlist URL. The player will restart after saving.":
         "Shigar da URL na jerin kunnawa. Manhajar kunnawa za ta sake farawa bayan ajiyewa.",
+    "Enter a Stremio addon manifest URL.":
+        "Shigar da URL na manifest na ƙarin Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Shigar da adireshin sabar ba tare da sarari ko ɓangaren fragment ba.",
     "Enter a username (8 characters).":

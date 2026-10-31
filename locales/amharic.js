@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "ቻናል ወደ ምድብ ያክሉ",
     "Add channel to favorites": "ቻናል ወደ ተወዳጆች ያክሉ",
     "Add new list": "አዲስ ዝርዝር ያክሉ",
+    "Add Stremio addon…": "የStremio ተጨማሪ ያክሉ…",
     "Add to favorites": "ወደ ተወዳጆች ያክሉ",
     Age: "ዕድሜ",
     All: "ሁሉም",
@@ -364,6 +365,7 @@ var keyStrings = {
         "ይህን አገልግሎት ለመጠቀም የአጫዋች ዝርዝር URL ያስገቡ።",
     "Enter a playlist URL. The player will restart after saving.":
         "የአጫዋች ዝርዝር URL ያስገቡ። ከተቀመጠ በኋላ ማጫወቻው እንደገና ይጀምራል።",
+    "Enter a Stremio addon manifest URL.": "የStremio ተጨማሪ ማኒፌስት URL ያስገቡ።",
     "Enter a server address without spaces or a fragment.":
         "ያለ ክፍተት ወይም ፍራግመንት የአገልጋይ አድራሻ ያስገቡ።",
     "Enter a username (8 characters).": "የተጠቃሚ ስም ያስገቡ (8 ቁምፊዎች)።",

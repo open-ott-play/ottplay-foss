@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "Přidat kanál do kategorie",
     "Add channel to favorites": "Přidat kanál do oblíbených",
     "Add new list": "Přidat nový seznam",
+    "Add Stremio addon…": "Přidat doplněk Stremio…",
     "Add to favorites": "Přidat do oblíbených",
     Age: "Věk",
     All: "Vše",
@@ -375,6 +376,8 @@ var keyStrings = {
         "Pro přístup ke službě zadejte URL playlistu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Zadejte URL seznamu skladeb. Přehrávač se po uložení restartuje.",
+    "Enter a Stremio addon manifest URL.":
+        "Zadejte URL manifestu doplňku Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Zadejte adresu serveru bez mezer a části za #.",
     "Enter a username (8 characters).": "Zadejte uživatelské jméno (8 znaků).",

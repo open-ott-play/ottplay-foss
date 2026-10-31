@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Dodajte kanal v kategorijo",
     "Add channel to favorites": "Dodajte kanal med priljubljene",
     "Add new list": "Dodajte nov seznam",
+    "Add Stremio addon…": "Dodaj dodatek Stremio…",
     "Add to favorites": "Dodaj med priljubljene",
     Age: "starost",
     All: "Vse",
@@ -384,6 +385,8 @@ var keyStrings = {
         "Za dostop do te storitve vnesite seznam predvajanja URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Vnesite seznam predvajanja URL. Predvajalnik se bo po shranjevanju znova zagnal.",
+    "Enter a Stremio addon manifest URL.":
+        "Vnesite URL manifesta dodatka Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Vnesite naslov strežnika brez presledkov ali drobcev.",
     "Enter a username (8 characters).": "Vnesite uporabniško ime (8 znakov).",

@@ -685,7 +685,7 @@ test("Torrent provider is hidden for external endpoints until native capability 
     expect(commands).toEqual(["companion_capabilities"]);
 });
 
-for (const kind of ["url", "torrent", "empty", "loopback"]) {
+for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
     test(`Stremio movie selection reaches sources and playback: ${kind}`, async ({
         page,
         context,
@@ -696,11 +696,17 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
             kind === "loopback"
                 ? "http://localhost:" + new URL(origin).port
                 : "https://addon.test";
+        const addonPath =
+            kind === "settings"
+                ? "/%7B%22name%22%3A%22Open%20movies%22%7D"
+                : "";
+        const addonBase = addonOrigin + addonPath;
         const companion = "/companion/" + "a".repeat(32) + "/v1";
         const clip = movieFixture();
         const apiCalls = [],
             errors = [];
         let engineCalls = 0,
+            engineStarts = 0,
             selected = false;
         const movie = {
             description: "Full description for the selected movie.",
@@ -735,14 +741,16 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                 url = new URL(request.url());
             const headers = { "access-control-allow-origin": "*" };
             if (url.origin === addonOrigin) {
-                apiCalls.push(url.pathname);
-                if (url.pathname === "/manifest.json")
+                expect(url.pathname.startsWith(addonPath + "/")).toBe(true);
+                const resource = url.pathname.slice(addonPath.length);
+                apiCalls.push(resource);
+                if (resource === "/manifest.json")
                     return route.fulfill({ headers, json: manifest });
-                if (url.pathname.startsWith("/catalog/movie/open.movies"))
+                if (resource.startsWith("/catalog/movie/open.movies"))
                     return route.fulfill({ headers, json: { metas: [movie] } });
-                if (url.pathname === "/meta/movie/tt1254207.json")
+                if (resource === "/meta/movie/tt1254207.json")
                     return route.fulfill({ headers, json: { meta: movie } });
-                if (url.pathname === "/stream/movie/tt1254207.json")
+                if (resource === "/stream/movie/tt1254207.json")
                     return route.fulfill({
                         headers,
                         json: {
@@ -771,6 +779,11 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                     headers,
                 });
             if (url.origin !== origin) return route.abort();
+            if (kind === "settings" && url.pathname.startsWith("/tmdb/"))
+                return route.fulfill({
+                    json: { error: "unavailable" },
+                    status: 503,
+                });
             if (url.pathname.startsWith(companion + "/")) {
                 engineCalls++;
                 const resource = url.pathname.slice(companion.length);
@@ -778,7 +791,8 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                     return route.fulfill({
                         json: { plugins: true, schema: 1, torrent: true },
                     });
-                if (resource === "/sessions" && request.method() === "POST")
+                if (resource === "/sessions" && request.method() === "POST") {
+                    engineStarts++;
                     return route.fulfill({
                         json: {
                             files: [],
@@ -786,6 +800,7 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                             state: "metadata",
                         },
                     });
+                }
                 if (resource === "/sessions/selected-movie/select") {
                     expect(request.postDataJSON()).toEqual({ fileIndex: 5 });
                     selected = true;
@@ -821,13 +836,20 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
             return route.continue();
         });
         await context.addInitScript(
-            ({ origin, companion, addonOrigin }) => {
+            ({ origin, companion, addonBase, kind }) => {
                 localStorage.setItem("ottplaylang", "_eng");
                 localStorage.setItem("ottplayprov", "demo");
-                localStorage.setItem("sTorrentCatalogEndpoint", addonOrigin);
+                localStorage.setItem(
+                    "sTorrentCatalogEndpoint",
+                    kind === "settings" ? "" : addonBase
+                );
                 localStorage.setItem(
                     "sTorrentStreamAddons",
-                    JSON.stringify([addonOrigin + "/manifest.json"])
+                    JSON.stringify(
+                        kind === "settings"
+                            ? []
+                            : [addonBase + "/manifest.json"]
+                    )
                 );
                 localStorage.setItem("sCompanionEndpoint", origin + companion);
                 const play = HTMLMediaElement.prototype.play;
@@ -836,7 +858,7 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                     return play.call(this);
                 };
             },
-            { addonOrigin, companion, origin }
+            { addonBase, companion, kind, origin }
         );
         await page.goto("/f/pc/");
         await page.waitForFunction(() => window.commandChannelsReady === true);
@@ -845,6 +867,49 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
             window.stbSetItem("ottplayprov", "torrent");
             window.loadProv();
         });
+        if (kind === "settings") {
+            await page.waitForFunction(
+                () => window.__ottActiveProviderDriver?.id === "torrent"
+            );
+            expect(await page.evaluate(() => window.__ottEditProvider())).toBe(
+                true
+            );
+            await expect(page.locator("#list")).toContainText(
+                "Add Stremio addon…"
+            );
+            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("Enter");
+            await expect(page.locator("#listEdit")).toContainText(
+                "Enter a Stremio addon manifest URL."
+            );
+            await page.locator("#editvar").fill(addonBase + "/manifest.json");
+            await page
+                .locator("#listEdit [data-ott-key]")
+                .filter({ hasText: "Set" })
+                .click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+            await expect(page.locator("#listDetail")).toContainText(
+                "Settings saved"
+            );
+            expect(
+                await page.evaluate(() => ({
+                    catalog: localStorage.getItem("sTorrentCatalogEndpoint"),
+                    streams: JSON.parse(
+                        localStorage.getItem("sTorrentStreamAddons")
+                    ),
+                }))
+            ).toEqual({
+                catalog: addonBase,
+                streams: [addonBase + "/manifest.json"],
+            });
+            expect(engineCalls).toBe(0);
+            expect(
+                apiCalls.some((resource) => resource.startsWith("/stream/"))
+            ).toBe(false);
+            await page.keyboard.press("Escape");
+            await page.keyboard.press("Escape");
+            await page.keyboard.press("Enter");
+        }
         await page.waitForFunction(
             () => window.listArray?.[0] === "imdb:movie:tt1254207"
         );
@@ -899,6 +964,33 @@ for (const kind of ["url", "torrent", "empty", "loopback"]) {
                     () => window.__ottClassicPlayback.snapshot().target?.kind
                 )
             ).toBe("vod");
+            const resolutions = apiCalls.filter((path) =>
+                path.startsWith("/stream/")
+            ).length;
+            const starts = engineStarts;
+            const generation = await page.evaluate(
+                () => window.__ottClassicPlayback.snapshot().generation
+            );
+            await page.keyboard.press("Enter");
+            await page.waitForFunction(
+                () => window.listArray?.[0] === "imdb:movie:tt1254207"
+            );
+            await expect(page.locator("#list")).toBeVisible();
+            await expect(page.locator("#list")).toContainText(
+                "Open movie fixture"
+            );
+            await expect(page.locator("body")).not.toContainText(
+                /Category.*#?0.*does not exist/i
+            );
+            expect(
+                apiCalls.filter((path) => path.startsWith("/stream/")).length
+            ).toBe(resolutions);
+            expect(engineStarts).toBe(starts);
+            expect(
+                await page.evaluate(
+                    () => window.__ottClassicPlayback.snapshot().generation
+                )
+            ).toBe(generation);
         }
         expect(
             await page.evaluate(() => localStorage.getItem("torrentcfg"))

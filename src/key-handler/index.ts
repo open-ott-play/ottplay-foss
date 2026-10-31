@@ -835,6 +835,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 call("openGlobalFavorites");
                 return;
             }
+            if (w.__ottActiveProviderDriver?.catalogBrowser?.restore()) return;
             if (w.playType && w.forcePlay === false) toggleMainPlayback();
             else if (w.playType === -1e11) call("mediaList", null);
             else if (w.playType > 0 && !settings.okFun) guide();
@@ -851,6 +852,11 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 call("infoBarHide");
                 return;
             }
+            if (
+                !w.__ottGlobalFavorites?.navigation?.active?.() &&
+                w.__ottActiveProviderDriver?.catalogBrowser?.restore()
+            )
+                return;
             var exits = ["", "exitPortal", "joyMenu", "popupList", "prevProg"];
             if (exits[settings.eFun]) call(exits[settings.eFun]);
         },
@@ -865,6 +871,7 @@ function handleMainKey(keyCode: number, event: KeyboardEvent): void {
                 call("openGlobalFavorites");
                 return;
             }
+            if (w.__ottActiveProviderDriver?.catalogBrowser?.restore()) return;
             if (w.__ottChannels?.restoreBrowsing?.()) return;
             call("channelsList", w.catIndex, w.primaryIndex);
         },

@@ -513,6 +513,8 @@ function createTorrentDiscoveryView(
         display = "channels",
         streamSignature = "",
         selectedMovie: any = null,
+        selectedMovieId = "",
+        manualBrowsing = true,
         streams: any[] = [],
         pendingPlayback: { cancel?: () => void; cancelled: boolean } | null =
             null,
@@ -600,6 +602,8 @@ function createTorrentDiscoveryView(
         );
     }
     function close(): void {
+        if (display === "channels" && host.listArray === rows)
+            selectedMovieId = items[host.selIndex]?.id || selectedMovieId;
         generation++;
         busy = false;
         staged = {};
@@ -885,6 +889,7 @@ function createTorrentDiscoveryView(
     }
     function show(selected?: string): void {
         if (!allowed()) return;
+        manualBrowsing = false;
         rows = items.map(function (item) {
             return item.id;
         });
@@ -985,8 +990,35 @@ function createTorrentDiscoveryView(
         if (query === null) data.load(category, cursor, done);
         else data.search(query, cursor, done);
     }
+    function restore(): boolean {
+        if (
+            !allowed() ||
+            (typeof host.__ottMedia?.sourceId === "function" &&
+                ports.sourceIdentity &&
+                host.__ottMedia.sourceId() !== ports.sourceIdentity()) ||
+            (manualBrowsing &&
+                driver.configuration()?.entries.some(function (entry: any) {
+                    return entry.files.length > 0;
+                }))
+        )
+            return false;
+        var selected = selectedMovie?.id || selectedMovieId;
+        close();
+        selectedMovie = null;
+        streams = [];
+        failure = "";
+        manualBrowsing = false;
+        if (!items.length || signature !== configuration())
+            fetchPage(null, false);
+        else show(selected || selectedMovieId);
+        return true;
+    }
     function open(id?: string, title?: string): boolean {
         if (!allowed()) return false;
+        manualBrowsing = false;
+        selectedMovie = null;
+        streams = [];
+        selectedMovieId = "";
         category = id || "popular";
         categoryName = title || host._("Popular");
         query = null;
@@ -1094,9 +1126,10 @@ function createTorrentDiscoveryView(
                     saved.entries.some(function (entry: any) {
                         return entry.files.length > 0;
                     })
-                )
+                ) {
+                    manualBrowsing = true;
                     host.channelsList(sourceIndex, 0);
-                else host.__ottEditProvider();
+                } else host.__ottEditProvider();
             } else if (choice.id === "favorites") {
                 close();
                 host.openGlobalFavorites?.();
@@ -1303,6 +1336,7 @@ function createTorrentDiscoveryView(
         categories: categories,
         close: close,
         open: open,
+        restore: restore,
         search: search,
         settingsChanged: settingsChanged,
         sourcesChanged: sourcesChanged,
@@ -1321,10 +1355,13 @@ function mountTorrentProvider(
         driver.discoveryPorts
     );
     var revision = 0,
+        editorDisposed = false,
         cancelMetadata: (() => void) | null = null,
+        cancelAddon: (() => void) | null = null,
         attached: any = null;
     function locked(): boolean {
         return (
+            editorDisposed ||
             !!host.__ottKiosk?.enabled() ||
             !!host.__ottParental?.needs("providers") ||
             !!host.__ottParental?.needs("settings")
@@ -1334,6 +1371,8 @@ function mountTorrentProvider(
         revision++;
         if (cancelMetadata) cancelMetadata();
         cancelMetadata = null;
+        if (cancelAddon) cancelAddon();
+        cancelAddon = null;
     }
     function identifier(): string {
         if (host.crypto && typeof host.crypto.randomUUID === "function")
@@ -1513,6 +1552,199 @@ function mountTorrentProvider(
                 }
             );
         }
+        function addAddon(): void {
+            input(
+                host._("Enter a Stremio addon manifest URL."),
+                "",
+                inspectAddon
+            );
+        }
+        function inspectAddon(value: string): void {
+            host.editvar = "";
+            if (!value) {
+                render();
+                return;
+            }
+            value = value.replace(/^stremio:\/\//i, "https://");
+            var settings = host.__ottPlayerSettingsHost,
+                store = settings?.store;
+            var definition = settings?.schema?.filter(function (entry: any) {
+                return entry.id === "torrentStreamAddons";
+            })[0];
+            var encoded = JSON.stringify([value]);
+            if (!store || !definition || !definition.validate(encoded)) {
+                render(host._("Enter a Stremio addon manifest URL."));
+                return;
+            }
+            var manifest = JSON.parse(definition.prepare(encoded))[0];
+            var draft: any;
+            try {
+                draft = store.begin(false, [
+                    store.capture("torrentStreamAddons"),
+                    store.capture("torrentCatalogEndpoint"),
+                ]);
+            } catch (_) {
+                render(host._("Settings could not be saved"));
+                return;
+            }
+            requestAddon(manifest, draft);
+        }
+        function requestAddon(manifest: string, draft: any): void {
+            busy = true;
+            render(host._("Loading..."));
+            var pending = true,
+                cancelled = false,
+                abort: any;
+            function complete(error: boolean, response?: any): void {
+                if (!pending) return;
+                pending = false;
+                host.clearTimeout(timer);
+                cancelAddon = null;
+                busy = false;
+                if (!current()) {
+                    draft.cancel();
+                    return;
+                }
+                if (error) {
+                    draft.cancel();
+                    render(host._("Failed to load!"));
+                    return;
+                }
+                applyAddon(manifest, response, draft);
+            }
+            var timer = host.setTimeout(function () {
+                complete(true);
+                if (abort) abort();
+            }, 15000);
+            cancelAddon = function () {
+                if (!pending) return;
+                pending = false;
+                cancelled = true;
+                host.clearTimeout(timer);
+                draft.cancel();
+                if (abort) abort();
+            };
+            try {
+                abort = driver.discoveryPorts.request(
+                    { dataType: "text", timeout: 15000, url: manifest },
+                    function (response: any) {
+                        complete(false, response);
+                    },
+                    function () {
+                        complete(true);
+                    }
+                );
+                if (cancelled && abort) abort();
+            } catch (_) {
+                complete(true);
+            }
+        }
+        function applyAddon(manifest: string, response: any, draft: any): void {
+            function fail(message: string): void {
+                draft.cancel();
+                render(message);
+            }
+            function text(value: any, limit: number): boolean {
+                return (
+                    typeof value === "string" &&
+                    !!value.trim() &&
+                    value.length <= limit &&
+                    !/[\x00-\x1f\x7f]/.test(value)
+                );
+            }
+            function strings(value: any): boolean {
+                return (
+                    Array.isArray(value) &&
+                    value.length <= 32 &&
+                    value.every(function (item: any) {
+                        return text(item, 128);
+                    })
+                );
+            }
+            var data: any;
+            try {
+                var raw =
+                    typeof response === "string"
+                        ? response
+                        : JSON.stringify(response);
+                if (
+                    typeof raw !== "string" ||
+                    raw.length > 65536 ||
+                    encodeURIComponent(raw).replace(/%[0-9A-F]{2}/g, "x")
+                        .length > 65536
+                )
+                    throw new Error("manifest");
+                data = JSON.parse(raw);
+                if (
+                    !data ||
+                    Array.isArray(data) ||
+                    !text(data.id, 256) ||
+                    !text(data.name, 256) ||
+                    !strings(data.types) ||
+                    !Array.isArray(data.resources) ||
+                    data.resources.length > 32 ||
+                    !Array.isArray(data.catalogs) ||
+                    data.catalogs.length > 100
+                )
+                    throw new Error("manifest");
+            } catch (_) {
+                fail(host._("The discovery response is invalid."));
+                return;
+            }
+            var stream = data.resources.some(function (resource: any) {
+                var types =
+                    resource === "stream"
+                        ? data.types
+                        : resource?.name === "stream"
+                          ? resource.types
+                          : null;
+                return strings(types) && types.indexOf("movie") >= 0;
+            });
+            var catalog = data.catalogs.some(function (entry: any) {
+                if (
+                    !entry ||
+                    entry.type !== "movie" ||
+                    !text(entry.id, 256) ||
+                    entry.id !== entry.id.trim()
+                )
+                    return false;
+                if (entry.extra === undefined) return true;
+                return (
+                    Array.isArray(entry.extra) &&
+                    entry.extra.length <= 32 &&
+                    entry.extra.every(function (extra: any) {
+                        return (
+                            extra &&
+                            (!extra.isRequired || extra.name === "skip")
+                        );
+                    })
+                );
+            });
+            if (!stream && !catalog) {
+                fail(host._("Unsupported source"));
+                return;
+            }
+            if (stream) {
+                var addons = JSON.parse(draft.get("torrentStreamAddons"));
+                if (addons.indexOf(manifest) < 0) addons.push(manifest);
+                if (!draft.set("torrentStreamAddons", JSON.stringify(addons))) {
+                    fail(host._("Torrent source limit reached."));
+                    return;
+                }
+            }
+            if (
+                catalog &&
+                !draft.set("torrentCatalogEndpoint", manifest.slice(0, -14))
+            ) {
+                fail(host._("Invalid setting"));
+                return;
+            }
+            if (!draft.commit([], current)) {
+                fail(host._("Settings could not be saved"));
+                return;
+            }
+            if (current()) render(host._("Settings saved"));
+        }
         function sourceActions(entryId: string): void {
             var value = config(),
                 entry = value.entries.filter(function (row: any) {
@@ -1606,6 +1838,7 @@ function mountTorrentProvider(
                 actions ||
                 [
                     { action: add, name: host._("Add new list") },
+                    { action: addAddon, name: host._("Add Stremio addon…") },
                     {
                         action: language,
                         name:
@@ -1673,6 +1906,12 @@ function mountTorrentProvider(
         host.popupActions.splice(index, 1, edit);
         host.popupArray.splice(index, 1, edit.menuTitle());
         host.popupDetail.splice(index, 1, edit.menuDetail());
+    };
+    var disposeDriver = driver.dispose;
+    driver.dispose = function (): void {
+        editorDisposed = true;
+        stop();
+        if (disposeDriver) disposeDriver.call(driver);
     };
     driver.settingsChanged = stop;
     driver.publishLibrary = function () {

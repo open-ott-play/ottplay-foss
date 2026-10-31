@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanal li kategoriyê zêde bikin",
     "Add channel to favorites": "Kanal li bijartan zêde bike",
     "Add new list": "Lîsteya nû lê zêde bike",
+    "Add Stremio addon…": "Pêveka Stremio lê zêde bike…",
     "Add to favorites": "Têxe nav bijartan",
     Age: "Temen",
     All: "Hemû",
@@ -383,6 +384,8 @@ var keyStrings = {
         "Ji bo gihîştina vê xizmetê URL-ya lîsteya lêdanê binivîsin.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL-ya lîsteya lêdanê binivîsin. Piştî tomarkirinê lêdêr dê ji nû ve dest pê bike.",
+    "Enter a Stremio addon manifest URL.":
+        "URL-ya manifestê ya pêveka Stremio binivîse.",
     "Enter a server address without spaces or a fragment.":
         "Navnîşanek pêşkêşkarê bêyî valahî an perçeyek binivîse.",
     "Enter a username (8 characters).": "Navekî bikarhêner (8 tîp) binivîse.",
