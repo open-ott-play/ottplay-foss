@@ -14,6 +14,14 @@ function setup(initial = {}) {
         streamRequests = [],
         streamOptions = [],
         playCalls = [];
+    const timers = new Map();
+    let timerId = 0;
+    f.nextPage = () => {
+        const callbacks = Array.from(timers.values());
+        timers.clear();
+        callbacks.forEach((callback) => callback());
+    };
+    f.timers = timers;
     Object.assign(h, {
         __ottChannels: { index: () => 0 },
         __ottMediaCompanion: {
@@ -28,6 +36,7 @@ function setup(initial = {}) {
         channelsList: () => {
             f.manualOpened = true;
         },
+        clearTimeout: (id) => timers.delete(id),
         closeList() {
             f.closed = true;
             listActive = false;
@@ -41,6 +50,10 @@ function setup(initial = {}) {
             f.favoritesOpened = true;
         },
         renderButtonHint: () => "",
+        setTimeout(callback) {
+            timers.set(++timerId, callback);
+            return timerId;
+        },
         settings: {
             torrentCatalogEndpoint: "",
             torrentCatalogLanguage: "",
@@ -222,6 +235,148 @@ function movie(
 }
 const page = (items, next = null) => ({ items, next, ok: true });
 
+test("first page stays usable while later pages load automatically and retain live selection", () => {
+    const f = setup();
+    f.open();
+    f.requests[0].done(page([movie(1), movie(2)], 2));
+    const firstView = f.view;
+    const firstRow = firstView.channel("tmdb:movie:1");
+    assert.equal(firstView.rows.length, 2);
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.timers.size, 1);
+    f.nextPage();
+    assert.deepEqual(f.requests[1].args, ["popular", 2]);
+    assert.equal(
+        f.view,
+        firstView,
+        "starting a background request must not redraw the list"
+    );
+    f.host.selIndex = 1;
+    f.nextPage();
+    assert.equal(f.requests.length, 2, "only one page may be in flight");
+    f.requests[1].done(page([movie(2), movie(3)], 3));
+    assert.equal(f.view.selected, 1);
+    assert.deepEqual(Array.from(f.view.rows), [
+        "tmdb:movie:1",
+        "tmdb:movie:2",
+        "tmdb:movie:3",
+    ]);
+    assert.equal(
+        f.view.channel("tmdb:movie:1"),
+        firstRow,
+        "existing rows are reused"
+    );
+    f.nextPage();
+    f.requests[2].done(page([]));
+    assert.equal(f.timers.size, 0);
+    assert.equal(f.view.more, false);
+    assert.equal(f.playCalls.length, 0);
+});
+
+test("background loading admits twenty thousand movies without a 500-item cutoff", () => {
+    const f = setup();
+    f.open();
+    for (let offset = 0; offset < 20000; offset += 100) {
+        f.requests.at(-1).done(
+            page(
+                Array.from({ length: 100 }, (_, i) => movie(offset + i + 1)),
+                offset < 19900 ? offset + 100 : null
+            )
+        );
+        assert.equal(f.view.rows.length, offset + 100);
+        if (offset === 0) f.host.selIndex = 73;
+        else assert.equal(f.view.selected, 73);
+        f.nextPage();
+    }
+    assert.equal(f.requests.length, 200);
+    assert.equal(f.view.rows.at(-1), "tmdb:movie:20000");
+    assert.equal(f.timers.size, 0);
+    assert.equal(f.saved.size, 0);
+});
+
+test("repeated pages and non-advancing cursors stop automatic requests", () => {
+    for (const result of [page([movie(1)], 3), page([movie(2)], 2)]) {
+        const f = setup();
+        f.open();
+        f.requests[0].done(page([movie(1)], 2));
+        f.nextPage();
+        f.requests[1].done(result);
+        f.nextPage();
+        assert.equal(f.requests.length, 2);
+        assert.equal(f.view.more, false);
+    }
+});
+
+test("page failures retain visible movies and pause automatic retries", () => {
+    const f = setup();
+    f.open();
+    f.requests[0].done(page([movie(1)], 2));
+    f.nextPage();
+    f.requests[1].done({ error: "timeout", ok: false });
+    f.nextPage();
+    assert.equal(f.requests.length, 2);
+    assert.deepEqual(Array.from(f.view.rows), ["tmdb:movie:1"]);
+    assert.equal(f.view.more, true);
+    f.key("NEXT");
+    assert.deepEqual(f.requests[2].args, ["popular", 2]);
+    f.requests[2].done(page([movie(2)], 3));
+    f.nextPage();
+    assert.deepEqual(f.requests[3].args, ["popular", 3]);
+});
+
+test("automatic pages pause for overlays and information then cancel when closing or playing", () => {
+    const f = setup();
+    f.open();
+    f.requests[0].done(page([movie(1)], 2));
+    f.foreground = false;
+    f.nextPage();
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.timers.size, 1);
+    f.foreground = true;
+    f.key("INFO");
+    assert.equal(f.timers.size, 0);
+    f.nextPage();
+    assert.equal(f.requests.at(-1).kind, "details");
+    f.requests
+        .at(-1)
+        .done({ item: movie(1, "Complete description"), ok: true });
+    assert.equal(f.timers.size, 1);
+    f.key("ENTER");
+    assert.equal(f.timers.size, 0);
+    assert.equal(f.streamRequests.length, 1);
+    f.nextPage();
+    assert.equal(f.requests.length, 2);
+    f.key("RETURN");
+    assert.equal(f.timers.size, 1);
+    const staleTimer = Array.from(f.timers.values())[0];
+    f.host.closeList();
+    assert.equal(f.timers.size, 0);
+    staleTimer();
+    assert.equal(f.requests.length, 2);
+});
+
+test("new categories and settings cannot receive scheduled pages from an old catalog", () => {
+    const f = setup();
+    f.open();
+    f.requests[0].done(page([movie(1)], 2));
+    const staleTimer = Array.from(f.timers.values())[0];
+    f.driver.catalogBrowser.open("new", "New releases");
+    staleTimer();
+    assert.equal(f.requests.length, 2);
+    f.requests[1].done(page([movie(2)], 2));
+    const timer = Array.from(f.timers.keys())[0];
+    staleTimer();
+    assert.equal(
+        f.timers.has(timer),
+        true,
+        "stale callbacks cannot consume a new timer"
+    );
+    f.host.settings.torrentCatalogLanguage = "ru";
+    f.nextPage();
+    assert.deepEqual(f.requests.at(-1).args, ["new", null]);
+    assert.equal(f.view.rows.length, 0);
+});
+
 test("empty Torrent configuration shows a standard metadata catalog without playback or persistence", () => {
     const f = setup();
     assert.equal(f.open(), false);
@@ -248,7 +403,7 @@ test("empty Torrent configuration shows a standard metadata catalog without play
     assert.equal(f.saved.size, 0);
 });
 
-test("categories and search cancel stale pages, paginate only on demand, and retain retry cursors", () => {
+test("categories and search cancel stale pages and retain manual retry cursors", () => {
     const f = setup();
     f.open();
     const initial = f.requests[0];

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "feature": "Torrent stream discovery: configured Stremio sources, explicit playback admission and generic movie catalogs",
+  "feature": "Torrent stream discovery: configured Stremio sources, explicit playback admission and progressively loaded movie catalogs",
   "baseline": {
     "revision": "dd3e2462300c110cd619d47210568043f3fb5afb",
     "version": "1.1.62",
@@ -12,8 +12,8 @@
     "workingTree": true,
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
-    "diagnosticAttempt": "a30ba5dc-f64d-4d90-a4c2-f54e805194d2",
-    "diagnosticCollectedAt": "2026-10-31T02:24:10.111Z",
+    "diagnosticAttempt": "d5a698aa-208f-4d93-bb41-96b833f0232d",
+    "diagnosticCollectedAt": "2026-10-31T02:37:48.517Z",
     "verifiedReport": "build/reports/classic-size-diagnostics.json"
   },
   "toolchain": {
@@ -34,8 +34,8 @@
       "gzipBytes": 758
     },
     "catalog": {
-      "bytes": 22596,
-      "gzipBytes": 6455
+      "bytes": 23011,
+      "gzipBytes": 6647
     },
     "companion": {
       "bytes": 207,
@@ -110,13 +110,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70188,
-            "gzipBytes": 22457,
-            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
+            "bytes": 70603,
+            "gzipBytes": 22649,
+            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
           },
           "delta": {
-            "bytes": 22596,
-            "gzipBytes": 6455
+            "bytes": 23011,
+            "gzipBytes": 6647
           }
         },
         "native": {
@@ -126,13 +126,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70188,
-            "gzipBytes": 22457,
-            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
+            "bytes": 70603,
+            "gzipBytes": 22649,
+            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
           },
           "delta": {
-            "bytes": 22596,
-            "gzipBytes": 6455
+            "bytes": 23011,
+            "gzipBytes": 6647
           }
         },
         "mobile": {
@@ -142,13 +142,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70188,
-            "gzipBytes": 22457,
-            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
+            "bytes": 70603,
+            "gzipBytes": 22649,
+            "sha256": "2d43eab9cb2ca7d53053610ae12c88e683c5ef8362c57a6781c8b05f6fd1bf4c"
           },
           "delta": {
-            "bytes": 22596,
-            "gzipBytes": 6455
+            "bytes": 23011,
+            "gzipBytes": 6647
           }
         }
       }
@@ -1390,12 +1390,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391807,
-          "gzipBytes": 433419
+          "bytes": 1392222,
+          "gzipBytes": 433611
         },
         "complete": {
-          "bytes": 1778306,
-          "gzipBytes": 547548
+          "bytes": 1778721,
+          "gzipBytes": 547740
         }
       }
     },
@@ -1413,12 +1413,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391765,
-          "gzipBytes": 433474
+          "bytes": 1392180,
+          "gzipBytes": 433666
         },
         "complete": {
-          "bytes": 1778264,
-          "gzipBytes": 547603
+          "bytes": 1778679,
+          "gzipBytes": 547795
         }
       }
     },
@@ -1436,12 +1436,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391765,
-          "gzipBytes": 433474
+          "bytes": 1392180,
+          "gzipBytes": 433666
         },
         "complete": {
-          "bytes": 1778264,
-          "gzipBytes": 547603
+          "bytes": 1778679,
+          "gzipBytes": 547795
         }
       }
     }
@@ -1538,16 +1538,16 @@
   },
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1774096,
-      "gzipBytes": 547398
+      "bytes": 1774511,
+      "gzipBytes": 547590
     },
     "BUDGET": {
       "bytes": 1169169,
       "gzipBytes": 357294
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1392193,
-      "gzipBytes": 435096
+      "bytes": 1392608,
+      "gzipBytes": 435288
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1612,8 +1612,8 @@
       }
     },
     "TOTAL_BUDGET": {
-      "bytes": 1778576,
-      "gzipBytes": 549702
+      "bytes": 1778991,
+      "gzipBytes": 549894
     }
   }
 }

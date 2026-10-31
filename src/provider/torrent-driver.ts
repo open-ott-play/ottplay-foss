@@ -500,12 +500,17 @@ function createTorrentDiscoveryView(
         rendering = false,
         rows: string[] = [],
         items: any[] = [],
+        movieIds: string[] = [],
+        movieRows: any = Object.create(null),
         category = "popular",
         categoryName = host._("Popular"),
         searchSupported = true,
         query: string | null = null,
         next: number | null = null,
         busy = false,
+        pageTimer: any = null,
+        autoPages = true,
+        detailsPending: object | null = null,
         failure = "",
         handler: any = null,
         signature = "",
@@ -605,11 +610,45 @@ function createTorrentDiscoveryView(
         if (display === "channels" && host.listArray === rows)
             selectedMovieId = items[host.selIndex]?.id || selectedMovieId;
         generation++;
+        clearPageTimer();
+        detailsPending = null;
         busy = false;
         staged = {};
         data.cancel();
         streamData?.cancel();
         cancelPlayback();
+    }
+    function clearPageTimer(): void {
+        if (pageTimer !== null) host.clearTimeout(pageTimer);
+        pageTimer = null;
+    }
+    function schedulePage(): void {
+        if (
+            pageTimer !== null ||
+            !autoPages ||
+            busy ||
+            detailsPending ||
+            next === null ||
+            display !== "channels" ||
+            !current() ||
+            !host.setTimeout
+        )
+            return;
+        var request = generation;
+        var timer = host.setTimeout(function () {
+            if (pageTimer !== timer) return;
+            pageTimer = null;
+            if (request !== generation || !current() || settingsChanged())
+                return;
+            if (foreground()) fetchPage(next, true);
+            else schedulePage();
+        }, 350);
+        pageTimer = timer;
+    }
+    function resetMovies(): void {
+        items = [];
+        movieIds = [];
+        movieRows = Object.create(null);
     }
     function cancelPlayback(): void {
         var pending = pendingPlayback;
@@ -638,6 +677,7 @@ function createTorrentDiscoveryView(
     }
     function detail(): void {
         if (resume()) return;
+        schedulePage();
         var item =
             display === "streams"
                 ? streams[host.selIndex]
@@ -677,13 +717,20 @@ function createTorrentDiscoveryView(
         var item = items[host.selIndex];
         if (!item || !current()) return;
         var request = generation;
+        clearPageTimer();
+        var ticket = {};
+        detailsPending = ticket;
         data.details(item.id, function (result: any) {
+            if (detailsPending !== ticket) return;
+            detailsPending = null;
             if (
                 request !== generation ||
                 !current() ||
                 items[host.selIndex] !== item
-            )
+            ) {
+                schedulePage();
                 return;
+            }
             present("details", function () {
                 if (
                     request !== generation ||
@@ -699,6 +746,7 @@ function createTorrentDiscoveryView(
                 ) {
                     items[host.selIndex] = result.item;
                     item = result.item;
+                    movieRows[item.id] = row(item);
                 }
                 show(item.id);
                 detail();
@@ -890,15 +938,9 @@ function createTorrentDiscoveryView(
     function show(selected?: string): void {
         if (!allowed()) return;
         manualBrowsing = false;
-        rows = items.map(function (item) {
-            return item.id;
-        });
+        rows = movieIds;
         displayRows = rows;
         display = "channels";
-        var projected: any = Object.create(null);
-        items.forEach(function (item) {
-            projected[item.id] = row(item);
-        });
         rendering = true;
         try {
             host.__ottChannelListView.show({
@@ -907,7 +949,7 @@ function createTorrentDiscoveryView(
                         ? categoryName
                         : host._("Search") + ": " + query,
                 channel: function (id: string) {
-                    return projected[id];
+                    return movieRows[id];
                 },
                 detail: detail,
                 id: "torrent:discovery",
@@ -917,7 +959,7 @@ function createTorrentDiscoveryView(
                 },
                 more: next !== null && !busy,
                 picon: function (id: string) {
-                    return projected[id]?.logo || "";
+                    return movieRows[id]?.logo || "";
                 },
                 playing: function () {
                     return false;
@@ -934,9 +976,11 @@ function createTorrentDiscoveryView(
         } finally {
             rendering = false;
         }
+        schedulePage();
     }
     function fetchPage(cursor: number | null, append: boolean): void {
         if (!allowed() || (append && (busy || next === null))) return;
+        clearPageTimer();
         var nextSignature = configuration();
         if (signature && signature !== nextSignature) {
             append = false;
@@ -949,19 +993,25 @@ function createTorrentDiscoveryView(
         if (category === "popular") categoryName = host._("Popular");
         else if (category === "new") categoryName = host._("New releases");
         var request = ++generation;
+        detailsPending = null;
         data.cancel();
         var selected = rows[host.selIndex];
-        if (!append) items = [];
+        if (!append) {
+            resetMovies();
+            autoPages = true;
+        }
         next = null;
         failure = "";
         busy = true;
-        show(selected);
+        if (!append) show(selected);
         function done(result: any): void {
             if (request !== generation || !current()) return;
             present("list", function () {
                 if (request !== generation || !current()) return;
+                selected = rows[host.selIndex] || selected;
                 busy = false;
                 if (!result || !result.ok) {
+                    autoPages = false;
                     failure = host._("Failed to load!");
                     if (append) next = cursor;
                     show(selected);
@@ -973,17 +1023,22 @@ function createTorrentDiscoveryView(
                     categoryName = result.catalog.title;
                     searchSupported = result.catalog.searchSupported !== false;
                 }
-                var known: any = Object.create(null);
-                items.forEach(function (item) {
-                    known[item.id] = true;
-                });
+                var previousLength = items.length;
                 (result.items || []).forEach(function (item: any) {
-                    if (!known[item.id] && items.length < 500) {
-                        known[item.id] = true;
+                    if (!movieRows[item.id]) {
                         items.push(item);
+                        movieIds.push(item.id);
+                        movieRows[item.id] = row(item);
                     }
                 });
-                next = items.length < 500 ? result.next : null;
+                next =
+                    items.length > previousLength &&
+                    typeof result.next === "number" &&
+                    isFinite(result.next) &&
+                    Math.floor(result.next) === result.next &&
+                    result.next > (cursor || 0)
+                        ? result.next
+                        : null;
                 show(selected);
             });
         }
@@ -1031,7 +1086,7 @@ function createTorrentDiscoveryView(
         var wasCurrent = current();
         close();
         if (!wasCurrent) {
-            items = [];
+            resetMovies();
             next = null;
             failure = "";
             show();
@@ -1297,7 +1352,10 @@ function createTorrentDiscoveryView(
         if (code === keys.YELLOW || code === keys.TOOLS || code === keys.N0)
             return search();
         if (code === keys.NEXT || code === keys.FF) {
-            if (next !== null && !busy) fetchPage(next, true);
+            if (next !== null && !busy) {
+                autoPages = true;
+                fetchPage(next, true);
+            }
             return true;
         }
         if (

@@ -129,8 +129,16 @@ A generic Stremio addon instead supplies its catalog names from its manifest.
 **My sources** and **Favorites** remain available; **My sources** returns to your
 existing playable sources. Use the normal Search action when the catalog
 supports search. Press **Enter/OK** on a film to open its source chooser, or
-**INFO/EPG** to read its full information. **Next page** fetches another page only
-when requested and supported by that catalog. Merely opening a list,
+**INFO/EPG** to read its full information. The first page is displayed immediately;
+subsequent pages load sequentially in the background while the movie list is
+open. Existing rows and the current selection stay in place as results arrive.
+The previous 500-movie display limit no longer applies. The adapter retains its
+bounded request and pagination limits (up to offset 50,000 for generic Stremio
+catalogs); the actual catalog may end sooner. Closing the list, choosing a movie,
+changing categories or entering standby cancels pending loading. Temporary
+overlays pause it until the list is visible again. An error pauses automatic
+loading without removing existing results; **Next page** retries that page.
+Empty, fully duplicated or non-advancing pages end loading. Merely opening a list,
 highlighting a film or reading its description does not start a torrent
 download. Choose **Catalog language** in the Torrent provider settings to
 override the interface language for movie metadata.

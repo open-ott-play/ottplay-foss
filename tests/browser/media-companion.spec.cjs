@@ -134,11 +134,12 @@ for (const preview of [0, 1, 2]) {
         await expect(page.locator("#listDetail")).toContainText(
             "Вторая фраза тоже сохранена."
         );
-        expect(await page.evaluate(() => window.listArray.length)).toBe(20);
+        expect(
+            await page.evaluate(() => window.listArray.length)
+        ).toBeGreaterThanOrEqual(20);
         expect(
             await page.evaluate(() => localStorage.getItem("torrentcfg"))
         ).toBeNull();
-        await page.evaluate(() => window.listKeyHandlerFn(window.keys.NEXT));
         await page.waitForFunction(() => window.listArray.length === 21);
         await page.evaluate(() =>
             window.__ottActiveProviderDriver.catalogBrowser.categories()
@@ -683,6 +684,97 @@ test("Torrent provider is hidden for external endpoints until native capability 
         return calls;
     });
     expect(commands).toEqual(["companion_capabilities"]);
+});
+
+test("Torrent background pages grow beyond 500 while preserving the selected movie", async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    const origin = new URL(baseURL).origin;
+    const offsets = [],
+        errors = [];
+    let engineCalls = 0;
+    page.on("pageerror", (error) => errors.push(error.message));
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await context.route("**/*", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.includes("/companion/")) {
+            engineCalls++;
+            return route.abort();
+        }
+        if (url.origin === "https://paged-catalog.test") {
+            const headers = { "access-control-allow-origin": "*" };
+            if (url.pathname === "/manifest.json")
+                return route.fulfill({
+                    headers,
+                    json: {
+                        catalogs: [
+                            {
+                                extra: [{ name: "skip" }],
+                                id: "movies",
+                                name: "Movies",
+                                type: "movie",
+                            },
+                        ],
+                        id: "org.ottplay.paged-fixture",
+                        name: "Paged movies",
+                        resources: ["catalog"],
+                        types: ["movie"],
+                    },
+                });
+            const match = /\/catalog\/movie\/movies\/skip=(\d+)\.json$/.exec(
+                url.pathname
+            );
+            expect(match).not.toBeNull();
+            const offset = Number(match[1]);
+            offsets.push(offset);
+            return route.fulfill({
+                headers,
+                json: {
+                    metas:
+                        offset < 600
+                            ? Array.from({ length: 100 }, (_, i) => ({
+                                  id: "tt" + (1000000 + offset + i),
+                                  name: "Movie " + (offset + i),
+                                  type: "movie",
+                              }))
+                            : [],
+                },
+            });
+        }
+        if (url.origin !== origin) return route.abort();
+        return route.continue();
+    });
+    await context.addInitScript(() => {
+        localStorage.setItem("ottplaylang", "_eng");
+        localStorage.setItem("ottplayprov", "demo");
+        localStorage.setItem(
+            "sTorrentCatalogEndpoint",
+            "https://paged-catalog.test"
+        );
+    });
+    await page.goto("/f/pc/");
+    await page.waitForFunction(() => window.commandChannelsReady === true);
+    await page.evaluate(() => {
+        window.__ottMediaCompanion.providerAvailable = () => true;
+        window.stbSetItem("ottplayprov", "torrent");
+        window.loadProv();
+    });
+    await page.waitForFunction(() => window.listArray?.length >= 100);
+    for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowDown");
+    const selected = await page.evaluate(
+        () => window.listArray[window.selIndex]
+    );
+    await page.waitForFunction(() => window.listArray?.length === 600);
+    await expect.poll(() => offsets.length).toBe(7);
+    expect(await page.evaluate(() => window.listArray[window.selIndex])).toBe(
+        selected
+    );
+    expect(offsets).toEqual([0, 100, 200, 300, 400, 500, 600]);
+    expect(await page.evaluate(() => new Set(window.listArray).size)).toBe(600);
+    expect(engineCalls).toBe(0);
+    expect(errors).toEqual([]);
 });
 
 for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
