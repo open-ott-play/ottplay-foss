@@ -151,6 +151,7 @@ function createTorrentProviderDriver(
                 username: "",
             };
         },
+        discoveryPorts: ports,
         dispose: function () {
             disposed = true;
             ready = false;
@@ -238,11 +239,540 @@ function createTorrentProviderDriver(
     return driver;
 }
 
+/** Read-only movie discovery shares the normal channel and category renderers. */
+function createTorrentDiscoveryView(
+    host: any,
+    driver: any,
+    owner: DriverLifetime,
+    ports: ProviderDriverPorts
+): any {
+    var factory = host.__ottTorrentDiscoveryData;
+    if (!factory || !host.__ottChannelListView || !host.__ottCategoryListView)
+        return null;
+    var data = factory.create({
+        addonBaseUrl: function () {
+            return host.settings?.torrentCatalogEndpoint || "";
+        },
+        apiPath: function (tail: string) {
+            return host.TMDb?.apiPath
+                ? host.TMDb.apiPath(tail)
+                : "/tmdb/s/" + tail;
+        },
+        language: function () {
+            return host.__ottTorrentCatalogLanguage
+                ? host.__ottTorrentCatalogLanguage()
+                : ports.language
+                  ? ports.language()
+                  : "en";
+        },
+        onContextChanged: function () {
+            settingsChanged();
+        },
+        request: function (url: string, done: any) {
+            return ports.request(
+                { dataType: "text", timeout: 15000, url: url },
+                function (value) {
+                    done(null, value);
+                },
+                function () {
+                    done("unavailable");
+                }
+            );
+        },
+    });
+    var generation = 0,
+        rendering = false,
+        rows: string[] = [],
+        items: any[] = [],
+        category = "popular",
+        categoryName = host._("Popular"),
+        query: string | null = null,
+        next: number | null = null,
+        busy = false,
+        failure = "",
+        handler: any = null,
+        signature = "",
+        displayRows: any[] | null = null,
+        display = "channels",
+        staged: { [lane: string]: (() => void) | undefined } = {},
+        flushing = false;
+    function foreground(): boolean {
+        var screen = host.__ottClassicScreenPort?.listOwner();
+        return (
+            allowed() &&
+            displayRows === host.listArray &&
+            (!screen ||
+                (screen.foreground ? screen.foreground() : screen.active()))
+        );
+    }
+    function present(lane: string, action: () => void): void {
+        if (foreground()) action();
+        else staged[lane] = action;
+    }
+    function resume(): boolean {
+        if (flushing || !foreground()) return false;
+        if (settingsChanged()) return true;
+        var pending = staged,
+            lanes = Object.keys(pending);
+        if (!lanes.length) return false;
+        staged = {};
+        flushing = true;
+        try {
+            lanes.forEach(function (lane) {
+                var action = pending[lane];
+                if (action) present(lane, action);
+            });
+        } finally {
+            flushing = false;
+        }
+        return true;
+    }
+    function configuration(): string {
+        return (
+            (host.__ottTorrentCatalogLanguage
+                ? host.__ottTorrentCatalogLanguage()
+                : ports.language
+                  ? ports.language()
+                  : "en") +
+            "\n" +
+            (host.settings?.torrentCatalogEndpoint || "")
+        );
+    }
+    function settingsChanged(): boolean {
+        if (!signature || signature === configuration()) return false;
+        var visible = foreground();
+        close();
+        if (!visible) return false;
+        if (display === "categories") categories();
+        else fetchPage(null, false);
+        return true;
+    }
+    function allowed(): boolean {
+        return (
+            owner.active() &&
+            !host.__ottKiosk?.enabled() &&
+            !host.__ottStandby?.blocked() &&
+            !host.__ottParental?.needs("providers")
+        );
+    }
+    function current(): boolean {
+        return (
+            allowed() &&
+            host.listArray === rows &&
+            (!handler || host.listKeyHandlerFn === handler) &&
+            (!host.__ottClassicScreenPort?.listOwner() ||
+                host.__ottClassicScreenPort.listOwner().active())
+        );
+    }
+    function close(): void {
+        generation++;
+        busy = false;
+        staged = {};
+        data.cancel();
+    }
+    function row(item: any): any {
+        return {
+            __ottMediaItem: {
+                description:
+                    (item.year ? item.year + "\n\n" : "") +
+                    (item.description || ""),
+                itemId: item.id,
+                logo_30x30: item.poster || "",
+                title: item.title,
+            },
+            channel_name: item.title,
+            logo: item.poster || "",
+            modernMeta: item.year || "",
+            modernTitle: item.title,
+        };
+    }
+    function detail(): void {
+        if (resume()) return;
+        var item = items[host.selIndex];
+        if (item) host.__ottChannelListView.detail(row(item));
+        else if (host.listDetail) {
+            host.listDetail.textContent =
+                failure ||
+                host._(busy ? "Loading. Please wait..." : "Not found");
+            if (busy && host.document) {
+                var spinner = host.document.createElement("div");
+                spinner.className = "ott-spinner";
+                spinner.setAttribute("aria-hidden", "true");
+                for (var i = 0; i < 4; i++) {
+                    var dot = host.document.createElement("span");
+                    dot.className = "blob";
+                    spinner.appendChild(dot);
+                }
+                host.listDetail.insertBefore(
+                    spinner,
+                    host.listDetail.firstChild
+                );
+            }
+        }
+    }
+    function information(): void {
+        if (settingsChanged()) return;
+        var item = items[host.selIndex];
+        if (!item || !current()) return;
+        var request = generation;
+        data.details(item.id, function (result: any) {
+            if (
+                request !== generation ||
+                !current() ||
+                items[host.selIndex] !== item
+            )
+                return;
+            present("details", function () {
+                if (
+                    request !== generation ||
+                    !current() ||
+                    items[host.selIndex] !== item
+                )
+                    return;
+                if (
+                    result &&
+                    result.ok &&
+                    result.item &&
+                    result.item.id === item.id
+                ) {
+                    items[host.selIndex] = result.item;
+                    item = result.item;
+                }
+                show(item.id);
+                detail();
+                host.showProgramInfo(item.title);
+            });
+        });
+    }
+    function show(selected?: string): void {
+        if (!allowed()) return;
+        rows = items.map(function (item) {
+            return item.id;
+        });
+        displayRows = rows;
+        display = "channels";
+        var projected: any = Object.create(null);
+        items.forEach(function (item) {
+            projected[item.id] = row(item);
+        });
+        rendering = true;
+        try {
+            host.__ottChannelListView.show({
+                categoryName:
+                    query === null
+                        ? categoryName
+                        : host._("Search") + ": " + query,
+                channel: function (id: string) {
+                    return projected[id];
+                },
+                detail: detail,
+                id: "torrent:discovery",
+                key: key,
+                locked: function () {
+                    return false;
+                },
+                more: next !== null && !busy,
+                picon: function (id: string) {
+                    return projected[id]?.logo || "";
+                },
+                playing: function () {
+                    return false;
+                },
+                rows: rows,
+                search: true,
+                selected: Math.max(0, rows.indexOf(selected || "")),
+            });
+            handler = host.listKeyHandlerFn;
+            if (!items.length) detail();
+            host.__ottClassicScreenPort?.onDispose(function () {
+                if (!rendering) close();
+            });
+        } finally {
+            rendering = false;
+        }
+    }
+    function fetchPage(cursor: number | null, append: boolean): void {
+        if (!allowed() || (append && (busy || next === null))) return;
+        var nextSignature = configuration();
+        if (signature && signature !== nextSignature) {
+            append = false;
+            cursor = null;
+            if (/^genre:/.test(category)) category = "popular";
+        }
+        signature = nextSignature;
+        if (category === "popular") categoryName = host._("Popular");
+        else if (category === "new") categoryName = host._("New releases");
+        var request = ++generation;
+        data.cancel();
+        var selected = rows[host.selIndex];
+        if (!append) items = [];
+        next = null;
+        failure = "";
+        busy = true;
+        show(selected);
+        function done(result: any): void {
+            if (request !== generation || !current()) return;
+            present("list", function () {
+                if (request !== generation || !current()) return;
+                busy = false;
+                if (!result || !result.ok) {
+                    failure = host._("Failed to load!");
+                    if (append) next = cursor;
+                    show(selected);
+                    if (items.length && host.showShift) host.showShift(failure);
+                    return;
+                }
+                var known: any = Object.create(null);
+                items.forEach(function (item) {
+                    known[item.id] = true;
+                });
+                (result.items || []).forEach(function (item: any) {
+                    if (!known[item.id] && items.length < 500) {
+                        known[item.id] = true;
+                        items.push(item);
+                    }
+                });
+                next = items.length < 500 ? result.next : null;
+                show(selected);
+            });
+        }
+        if (query === null) data.load(category, cursor, done);
+        else data.search(query, cursor, done);
+    }
+    function open(id?: string, title?: string): boolean {
+        if (!allowed()) return false;
+        category = id || "popular";
+        categoryName = title || host._("Popular");
+        query = null;
+        fetchPage(null, false);
+        return true;
+    }
+    function search(): boolean {
+        if (!allowed()) return false;
+        var wasCurrent = current();
+        close();
+        if (!wasCurrent) {
+            items = [];
+            next = null;
+            failure = "";
+            show();
+        }
+        var request = generation;
+        var parent = host.__ottClassicScreenPort?.listOwner(),
+            editor: any = null;
+        host.editCaption = host._("Search");
+        host.editvar = query || "";
+        host.setEdit = function () {
+            if (
+                !allowed() ||
+                request !== generation ||
+                (parent && !parent.active()) ||
+                (editor &&
+                    !host.__ottClassicScreenPort.acceptsEditorSave(editor))
+            )
+                return;
+            var text = String(host.editvar || "").trim();
+            if (!text || text.length > 256) return;
+            query = text;
+            fetchPage(null, false);
+        };
+        host.showEditKey(host.keys.ENTER);
+        editor = host.__ottClassicScreenPort?.owner("editor");
+        return true;
+    }
+    function categories(genres?: any[]): boolean {
+        if (!allowed()) return false;
+        close();
+        signature = configuration();
+        var request = generation;
+        var choices = genres || [
+            { id: "popular", title: host._("Popular") },
+            { id: "new", title: host._("New releases") },
+            { id: "genres", title: host._("Genre") },
+            { id: "sources", title: host._("My sources") },
+            { id: "favorites", title: host._("Favorites") },
+        ];
+        var labels = choices.map(function (item) {
+            return item.title;
+        });
+        displayRows = labels;
+        display = "categories";
+        function select(index: number): void {
+            if (
+                !allowed() ||
+                request !== generation ||
+                host.listArray !== labels
+            )
+                return;
+            var choice = choices[index];
+            if (!choice) return;
+            if (choice.id === "genres") {
+                data.categories(function (result: any) {
+                    if (
+                        request !== generation ||
+                        host.listArray !== labels ||
+                        !allowed()
+                    )
+                        return;
+                    present("categories", function () {
+                        if (
+                            request !== generation ||
+                            host.listArray !== labels ||
+                            !allowed()
+                        )
+                            return;
+                        if (!result || !result.ok) {
+                            host.showShift?.(host._("Failed to load!"));
+                            return;
+                        }
+                        categories(
+                            (result.categories || []).filter(function (
+                                entry: any
+                            ) {
+                                return /^genre:/.test(entry.id);
+                            })
+                        );
+                    });
+                });
+            } else if (choice.id === "sources") {
+                close();
+                var sourceIndex = host.__ottChannels?.index("system:all");
+                var saved = driver.configuration();
+                if (
+                    sourceIndex >= 0 &&
+                    saved &&
+                    saved.entries.some(function (entry: any) {
+                        return entry.files.length > 0;
+                    })
+                )
+                    host.channelsList(sourceIndex, 0);
+                else host.__ottEditProvider();
+            } else if (choice.id === "favorites") {
+                close();
+                host.openGlobalFavorites?.();
+            } else open(choice.id, choice.title);
+        }
+        rendering = true;
+        try {
+            host.__ottCategoryListView.show({
+                detail: resume,
+                key: function (code: number): boolean {
+                    if (!allowed() || host.listArray !== labels) return true;
+                    if (
+                        code !== host.keys.RETURN &&
+                        code !== host.keys.EXIT &&
+                        settingsChanged()
+                    )
+                        return true;
+                    if (code === host.keys.RETURN || code === host.keys.EXIT) {
+                        if (genres) categories();
+                        else {
+                            close();
+                            host.closeList();
+                        }
+                        return true;
+                    }
+                    if (request !== generation) return true;
+                    if (resume()) return true;
+                    if (code === host.keys.ENTER) {
+                        select(host.selIndex);
+                        return true;
+                    }
+                    for (var number = 1; number <= 9; number++)
+                        if (code === host.keys["N" + number]) {
+                            select(number - 1);
+                            return true;
+                        }
+                    return false;
+                },
+                labels: labels,
+                selected: Math.max(
+                    0,
+                    choices
+                        .map(function (item) {
+                            return item.id;
+                        })
+                        .indexOf(category)
+                ),
+            });
+            host.__ottClassicScreenPort?.onDispose(function () {
+                if (!rendering) close();
+            });
+        } finally {
+            rendering = false;
+        }
+        return true;
+    }
+    function key(code: number): boolean {
+        if (!current()) return true;
+        var keys = host.keys;
+        if (code === keys.RETURN || code === keys.EXIT) {
+            close();
+            host.closeList();
+            return true;
+        }
+        if (settingsChanged()) return true;
+        if (resume()) return true;
+        if (
+            code === keys.BLUE ||
+            code === keys.PLAY ||
+            code === keys.PAUSE ||
+            (code === keys.LEFT && host.sArrowFun === 2)
+        )
+            return categories();
+        if (code === keys.YELLOW || code === keys.TOOLS || code === keys.N0)
+            return search();
+        if (code === keys.NEXT || code === keys.FF) {
+            if (next !== null && !busy) fetchPage(next, true);
+            return true;
+        }
+        if (
+            code === keys.ENTER ||
+            code === keys.INFO ||
+            code === keys.N2 ||
+            code === keys.RED ||
+            code === keys.EPG
+        ) {
+            if (!items.length && !busy) fetchPage(null, false);
+            else information();
+            return true;
+        }
+        // No playable source exists yet: never dispatch PiP, shuffle or Favorites.
+        if (
+            code === keys.GREEN ||
+            code === keys.N3 ||
+            code === keys.PIP ||
+            code === keys.STOP ||
+            code === keys.RANDOM ||
+            code === keys.FAVORITES
+        )
+            return true;
+        return false;
+    }
+    owner.own(function () {
+        close();
+        data.dispose();
+    });
+    return {
+        categories: categories,
+        close: close,
+        open: open,
+        search: search,
+        settingsChanged: settingsChanged,
+    };
+}
+
 function mountTorrentProvider(
     host: any,
     driver: any,
     owner: DriverLifetime
 ): void {
+    driver.catalogBrowser = createTorrentDiscoveryView(
+        host,
+        driver,
+        owner,
+        driver.discoveryPorts
+    );
     var revision = 0,
         cancelMetadata: (() => void) | null = null,
         attached: any = null;
@@ -489,6 +1019,32 @@ function mountTorrentProvider(
                 },
             ]);
         }
+        function language(): void {
+            var names =
+                host.__ottAppearanceHost?.languages ||
+                host.__ottRemoteLifecyclePorts?.languageNames ||
+                {};
+            render(
+                "",
+                [""].concat(Object.keys(names)).map(function (code: string) {
+                    return {
+                        action: function () {
+                            if (!current()) return;
+                            if (
+                                !host.saveSettings?.({
+                                    torrentCatalogLanguage: code,
+                                })
+                            ) {
+                                render(host._("Settings could not be saved"));
+                                return;
+                            }
+                            edit();
+                        },
+                        name: code ? names[code] : host._("Player default"),
+                    };
+                })
+            );
+        }
         function close(): void {
             stop();
             host.popupList(
@@ -501,7 +1057,20 @@ function mountTorrentProvider(
             if (!owner.active() || session !== revision || locked()) return;
             rows =
                 actions ||
-                [{ action: add, name: host._("Add new list") }].concat(
+                [
+                    { action: add, name: host._("Add new list") },
+                    {
+                        action: language,
+                        name:
+                            host._("Catalog language") +
+                            ": " +
+                            (host.settings?.torrentCatalogLanguage
+                                ? host.__ottAppearanceHost?.languages?.[
+                                      host.settings.torrentCatalogLanguage
+                                  ] || host.settings.torrentCatalogLanguage
+                                : host._("Player default")),
+                    },
+                ].concat(
                     config().entries.map(function (entry: any) {
                         return {
                             action: function () {
@@ -581,7 +1150,9 @@ function reportTorrentProviderLoad(
 ): boolean {
     driver.publishLibrary();
     if (error === "torrent-empty") {
-        if (!host.__ottKiosk?.enabled()) host.__ottEditProvider();
+        if (!host.__ottKiosk?.enabled()) {
+            if (!driver.catalogBrowser?.open()) host.__ottEditProvider();
+        }
         return false;
     }
     return true;

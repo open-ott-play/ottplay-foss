@@ -111,6 +111,56 @@ That URL expires with its viewer. The original reference obtains a new session
 on the next playback. A file choice is carried as a zero-based `so` index in a
 magnet reference, or `index` in an `ottplay-torrent:` reference.
 
+## Movie discovery and language
+
+The first discovery stage adds movie categories, search and metadata details to
+the native **Torrent** provider. A metadata result is not a playable torrent:
+this stage does not discover streams or promise playback for every film. The
+manually maintained source catalog and its file playback remain separate and
+available when metadata requests fail or the catalog service is offline.
+
+On a supported native installation, choose **Torrent** in the provider settings.
+An empty source catalog opens the movie list. **Category selection** offers
+**Popular**, **New releases**, **Genre**, **My sources** and **Favorites**.
+Use the normal Search action to find a movie; select a result to read its full
+information. **Next page** fetches another page only when requested. Merely
+opening a list, highlighting a film or reading its description does not start
+a torrent download. **My sources** returns to your existing playable sources.
+Choose **Catalog language** in the Torrent provider settings to override the
+interface language for movie metadata.
+
+`torrentCatalogLanguage` is a portable preference for the current provider. Its
+default empty value follows the effective interface language. An explicit value
+uses one of the existing language identifiers, such as `_rus` or `_fra`, and
+applies to subsequent categories, searches and details. It does not change the
+interface, audio tracks or subtitles. Metadata services may still return their
+own fallback text when a translation is unavailable.
+
+By default discovery uses the existing TMDB transport. The installation-only
+`torrentCatalogEndpoint` can select a compatible public Stremio TMDB addon for
+local validation without a private TMDB key. Its production default is empty;
+no public service is selected automatically. Operators configure it through
+the existing authenticated settings API, with no endpoint editor in the UI:
+
+```sh
+ott TARGET setting torrentCatalogEndpoint --value-file /absolute/private/catalog-base-url.txt
+```
+
+The file must contain an HTTPS addon **base URL**, not a `/manifest.json` URL or
+a preconfigured JSON path. User information, query strings and fragments are
+rejected. Paths can contain private configuration, so reads are masked and both
+`torrentCatalogEndpoint` and `sTorrentCatalogEndpoint` are excluded from JSON,
+raw and cloud backups. Restoring a backup preserves this installation's current
+endpoint. A configured public service receives metadata requests and search
+terms; setting it does not enable Torrent on unsupported web-only clients.
+Operating a private TMDB-backed service with an operator's own API key remains
+a future deployment option; this setting neither stores nor provisions a TMDB
+API key.
+
+Movie metadata and images are supplied by [TMDB](https://www.themoviedb.org).
+The built-in credits include its official logo and attribution notice.
+The logo is retained unchanged from the [official asset](https://www.themoviedb.org/assets/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg).
+
 ## Remote catalog control
 
 Authenticated remote control exposes `torrent_catalog: {version: 1}` only when

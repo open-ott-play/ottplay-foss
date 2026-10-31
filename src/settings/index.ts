@@ -2,7 +2,7 @@ import {
     readLegacySettingsFields,
     writeLegacySettingsFields,
 } from "../compatibility/legacy-names";
-import { languageNames } from "../localization/assets";
+import { languageLocaleTag, languageNames } from "../localization/assets";
 /**
  * Player preferences and their persistent compatibility keys.
  *
@@ -208,6 +208,8 @@ export interface PlayerSettings {
     swopBaseUrl: string;
     thumbnail: number;
     timezone: number;
+    torrentCatalogEndpoint: string;
+    torrentCatalogLanguage: string;
     uiFontScale: number;
     useGraphicalIndicators: number;
     volumeStep: number;
@@ -319,6 +321,8 @@ export function defaultSettings(): PlayerSettings {
         swopBaseUrl: "",
         thumbnail: 1,
         timezone: 0,
+        torrentCatalogEndpoint: "",
+        torrentCatalogLanguage: "",
         uiFontScale: 100,
         useGraphicalIndicators: 0,
         volumeStep: 5,
@@ -437,6 +441,47 @@ function defineSetting(
     };
 }
 export const settingsSchema: SettingDefinition[] = [
+    {
+        // Addon paths may contain credentials; keep this installation-only.
+        defaultValue: "",
+        effects: ["__ottTorrentCatalogChanged"],
+        id: "torrentCatalogEndpoint",
+        key: "sTorrentCatalogEndpoint",
+        scope: "application",
+        validate: function (value) {
+            if (value === "") return true;
+            if (
+                typeof value !== "string" ||
+                value.length > 4096 ||
+                !/^https:\/\//i.test(value) ||
+                /[\x00-\x20\x7f\\?#<>"']/.test(value)
+            )
+                return false;
+            try {
+                var url = new URL(value);
+                var path = decodeURIComponent(url.pathname);
+                return (
+                    url.protocol === "https:" &&
+                    !!url.hostname &&
+                    !url.username &&
+                    !url.password &&
+                    !url.search &&
+                    !url.hash &&
+                    !/\/manifest\.json\/*$/i.test(path) &&
+                    !/[\s\\{}]/.test(path)
+                );
+            } catch (_) {
+                return false;
+            }
+        },
+    },
+    defineSetting(
+        "torrentCatalogLanguage",
+        "sTorrentCatalogLanguage",
+        { language: "catalog" },
+        ["__ottTorrentCatalogChanged"],
+        "provider"
+    ),
     {
         // Installation-only access: configured through authenticated remote settings.
         defaultValue: "",
@@ -942,6 +987,19 @@ bindSettingsFacade(settings, false);
 export function installSettingsFacade(target: Record<string, any>): void {
     bindSettingsFacade(target, true);
     target.settings = settings;
+    target.__ottTorrentCatalogLanguage = function (): string {
+        return languageLocaleTag(
+            settings.torrentCatalogLanguage ||
+                target.__ottInterfaceLanguage ||
+                settings.ottplaylang ||
+                "_eng"
+        );
+    };
+    target.__ottTorrentCatalogChanged = function (): void {
+        var browser = target.__ottActiveProviderDriver?.catalogBrowser;
+        if (browser && typeof browser.settingsChanged === "function")
+            browser.settingsChanged();
+    };
     target.__ottPlayerSettingsHost = {
         commit: commitSettingsWrites,
         languages: Object.keys(languageNames),
@@ -1108,6 +1166,8 @@ export function exportSettings(): string {
     var portable = w.OttPlayCore.classicPortableSnapshot(settings, false);
     delete portable.companionEndpoint;
     delete portable.sCompanionEndpoint;
+    delete portable.torrentCatalogEndpoint;
+    delete portable.sTorrentCatalogEndpoint;
     return JSON.stringify(
         {
             offline_profiles: w.__ottOfflineProfiles
@@ -1223,6 +1283,7 @@ export function importSettings(
             if (
                 // Restoring a backup must leave this installation's endpoint alone.
                 entry.id !== "companionEndpoint" &&
+                entry.id !== "torrentCatalogEndpoint" &&
                 Object.prototype.hasOwnProperty.call(input, entry.id) &&
                 !request.set(entry.id, input[entry.id])
             )

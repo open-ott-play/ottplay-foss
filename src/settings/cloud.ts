@@ -267,7 +267,9 @@ var cloudSettingsTransfer = (function () {
                         key !== "offlineProfileBindings" &&
                         key !== "__ottStandbyV1" &&
                         key !== "companionEndpoint" &&
-                        key !== "sCompanionEndpoint"
+                        key !== "sCompanionEndpoint" &&
+                        key !== "torrentCatalogEndpoint" &&
+                        key !== "sTorrentCatalogEndpoint"
                     );
                 })
                 .map(function (key) {

@@ -158,7 +158,7 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
             rules = entry.rules || {},
             fallback = entry.defaultValue;
         var sensitive =
-            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl|companionEndpoint)$/.test(
+            /^(parentPin|commandServerToken|localHttpDeviceCode|deviceUuid|localCmdUrl|commandServerAddress|swopBaseUrl|companionEndpoint|torrentCatalogEndpoint)$/.test(
                 id
             );
         var unavailable = entry.scope === "provider" && !providerReady();
@@ -236,6 +236,12 @@ function createRemotePlayerSettings(w: any, readRuntime: () => string): any {
         if (id === "companionEndpoint")
             result.description =
                 "Installation-only companion endpoint, configured through authenticated remote settings and excluded from portable backups. Used for the next external companion stream; the native Torrent provider uses its owned service.";
+        if (id === "torrentCatalogEndpoint")
+            result.description =
+                "Installation-only HTTPS metadata addon base URL, excluded from portable backups. Empty uses the existing TMDB transport. Used by subsequent Torrent discovery requests; it does not enable native playback support.";
+        if (id === "torrentCatalogLanguage")
+            result.description =
+                "Metadata language for this provider. Empty follows the interface language. Used by subsequent catalog and search requests; it does not change audio or subtitles.";
         if (result.apply === "after_ack")
             result.description =
                 "Saved atomically with its companion fields, then applied after acknowledgement. Failed connection changes roll back; use the group transition to confirm the outcome.";

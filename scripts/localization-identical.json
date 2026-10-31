@@ -763,6 +763,12 @@
         "turkish"
       ],
       "reason": "The established word for the modern interface mode is spelled Modern in these languages."
+    },
+    {
+      "key": "Popular",
+      "value": "Popular",
+      "locales": ["malay"],
+      "reason": "Popular is the established Malay adjective for widely liked or sought-after content, not an English prose fallback."
     }
   ]
 }

@@ -122,6 +122,8 @@ group(
             "sLocalHttpDeviceCode",
             "companionEndpoint",
             "sCompanionEndpoint",
+            "torrentCatalogEndpoint",
+            "sTorrentCatalogEndpoint",
             "stb_settings_backup",
         ];
         const input = { ordinary: "value" };

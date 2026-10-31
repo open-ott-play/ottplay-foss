@@ -230,7 +230,10 @@ test("closing the source editor cancels metadata and ignores a late result", asy
         },
     });
     f.host.__ottEditProvider();
-    f.host.selIndex = 1;
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Public sample (2)"
+    );
+    assert.ok(f.host.selIndex >= 0);
     f.host.listKeyHandler(f.host.keys.ENTER);
     f.host.listKeyHandler(f.host.keys.ENTER);
     await flush();
@@ -252,7 +255,10 @@ test("source editor cannot overwrite a catalog changed while metadata was loadin
         },
     });
     f.host.__ottEditProvider();
-    f.host.selIndex = 1;
+    f.host.selIndex = f.host.listArray.findIndex(
+        (row) => row.name === "Public sample (2)"
+    );
+    assert.ok(f.host.selIndex >= 0);
     f.host.listKeyHandler(f.host.keys.ENTER);
     f.host.listKeyHandler(f.host.keys.ENTER);
     await flush();

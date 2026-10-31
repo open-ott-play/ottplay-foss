@@ -2805,6 +2805,8 @@ export function bucketsList(
     view?: any
 ): void {
     var w = window as any;
+    if (!view && w.__ottActiveProviderDriver?.catalogBrowser?.categories())
+        return;
     if (!view && w.__ottChannels) w.__ottChannels.refresh();
     var catsList = view ? view.labels : catsArray || [];
 
@@ -2827,7 +2829,7 @@ export function bucketsList(
     var detailEl = document.getElementById("listDetail");
     if (detailEl) detailEl.innerHTML = "";
 
-    w.detailListActionFn = function () {};
+    w.detailListActionFn = view && view.detail ? view.detail : function () {};
     w.listKeyHandlerFn = view ? view.key : bucketsKeyHandler;
 
     var captionEl = document.getElementById("listCaption");

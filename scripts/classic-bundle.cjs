@@ -100,6 +100,7 @@ const CLASSIC_MODULES = [
     "build/provider/torrent-catalog-codec.js",
     "build/provider/torrent-catalog.js",
     "build/plugins/torrent-catalog-runtime.js",
+    "build/provider/torrent-discovery-data.js",
     "build/provider/torrent-driver.js",
     "build/provider/xtream-media.js",
     "build/provider/drivers.js",
@@ -239,6 +240,7 @@ const CLASSIC_PROVIDER_BUNDLES = Object.freeze({
         "build/provider/torrent-catalog-codec.js",
         "build/provider/torrent-catalog.js",
         "build/plugins/torrent-catalog-runtime.js",
+        "build/provider/torrent-discovery-data.js",
         "build/provider/torrent-driver.js",
     ],
     vportal: ["build/provider/vportal-driver.js"],
@@ -475,6 +477,9 @@ const CLASSIC_PRIVATE_MODULES = Object.freeze({
     ]),
     "build/provider/stalker-driver.js": Object.freeze([
         "window.__ottStalkerDriver",
+    ]),
+    "build/provider/torrent-discovery-data.js": Object.freeze([
+        "window.__ottTorrentDiscoveryData",
     ]),
     "build/provider/torrent-driver.js": Object.freeze([
         "window.__ottTorrentDriver",

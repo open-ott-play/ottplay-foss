@@ -175,6 +175,137 @@ check(
         assert.equal(f.w.settings.companionEndpoint, own);
     }
 );
+check("catalog endpoint stays local while catalog language is portable", () => {
+    const copied = "https://copied.invalid/private-token";
+    for (const own of [
+        undefined,
+        "",
+        "https://own.invalid/private-token",
+        "legacy-invalid-value",
+    ]) {
+        const f = fixture();
+        if (own !== undefined) f.data.set("sTorrentCatalogEndpoint", own);
+        f.w.loadSettings();
+        f.mount();
+        assert.equal(
+            f.w.saveSettings({ torrentCatalogLanguage: "_rus" }),
+            true
+        );
+        assert.equal(f.data.get("p:sTorrentCatalogLanguage"), "_rus");
+        const exported = f.export();
+        assert.equal(exported.settings.torrentCatalogLanguage, "_rus");
+        assert.equal(exported.settings.torrentCatalogEndpoint, undefined);
+        assert.equal(exported.settings.sTorrentCatalogEndpoint, undefined);
+        assert(!JSON.stringify(exported).includes("private-token"));
+        exported.settings.torrentCatalogEndpoint = copied;
+        exported.settings.sTorrentCatalogEndpoint = copied;
+        exported.settings.torrentCatalogLanguage = "_fra";
+        f.import(exported);
+        assert.equal(f.accept(), true);
+        assert.equal(f.data.get("sTorrentCatalogEndpoint"), own);
+        assert.equal(f.data.has("torrentCatalogEndpoint"), false);
+        assert.equal(f.data.get("p:sTorrentCatalogLanguage"), "_fra");
+        exported.settings.torrentCatalogLanguage = "not-a-language";
+        f.import(exported);
+        assert.equal(f.result(), false);
+        assert.equal(f.data.get("p:sTorrentCatalogLanguage"), "_fra");
+    }
+});
+check(
+    "catalog language validates all shipped languages and reloads per provider",
+    () => {
+        const f = fixture();
+        const driver = (id) => ({ id, storageKey: (key) => id + ":" + key });
+        f.w.__ottActiveProviderDriver = driver("torrent");
+        f.w.loadSettings();
+        assert.equal(f.w.settings.torrentCatalogLanguage, "");
+        for (const language of Object.keys(f.w.languageNames)) {
+            assert.equal(
+                f.w.saveSettings({ torrentCatalogLanguage: language }),
+                true
+            );
+            assert.equal(
+                f.data.get("torrent:sTorrentCatalogLanguage"),
+                language
+            );
+        }
+        for (const invalid of [
+            "off",
+            "ru-RU",
+            "constructor",
+            "_rus\n",
+            1,
+            null,
+        ])
+            assert.equal(
+                f.w.saveSettings({ torrentCatalogLanguage: invalid }),
+                false
+            );
+        assert.equal(
+            f.w.saveSettings({ torrentCatalogLanguage: "_rus" }),
+            true
+        );
+        f.w.__ottActiveProviderDriver = driver("plex");
+        f.w.loadProviderSettings(0);
+        assert.equal(f.w.settings.torrentCatalogLanguage, "");
+        assert.equal(
+            f.w.saveSettings({ torrentCatalogLanguage: "_ger" }),
+            true
+        );
+        f.w.__ottActiveProviderDriver = driver("torrent");
+        f.w.loadProviderSettings(0);
+        assert.equal(f.w.settings.torrentCatalogLanguage, "_rus");
+        assert.equal(f.w.saveSettings({ torrentCatalogLanguage: "" }), true);
+        assert.equal(f.data.get("torrent:sTorrentCatalogLanguage"), "");
+        assert.equal(f.data.get("plex:sTorrentCatalogLanguage"), "_ger");
+        f.w.installSettingsFacade(f.w);
+        f.w.__ottInterfaceLanguage = "_rus";
+        assert.equal(
+            f.w.__ottTorrentCatalogLanguage(),
+            f.w.languageLocaleTag("_rus")
+        );
+        f.w.__ottInterfaceLanguage = "_chi";
+        assert.equal(
+            f.w.__ottTorrentCatalogLanguage(),
+            f.w.languageLocaleTag("_chi")
+        );
+        assert.equal(
+            f.w.saveSettings({ torrentCatalogLanguage: "_fra" }),
+            true
+        );
+        assert.equal(
+            f.w.__ottTorrentCatalogLanguage(),
+            f.w.languageLocaleTag("_fra")
+        );
+        delete f.w.__ottInterfaceLanguage;
+        assert.equal(
+            f.w.saveSettings({
+                ottplaylang: "_ger",
+                torrentCatalogLanguage: "",
+            }),
+            true
+        );
+        assert.equal(
+            f.w.__ottTorrentCatalogLanguage(),
+            f.w.languageLocaleTag("_ger")
+        );
+    }
+);
+check(
+    "pending backup restore preserves newly configured catalog endpoint",
+    () => {
+        const f = fixture();
+        f.mount();
+        const exported = f.export();
+        exported.settings.fontSize = 3;
+        f.import(exported);
+        const own = "https://catalog.invalid/new-private-token";
+        assert.equal(f.w.saveSettings({ torrentCatalogEndpoint: own }), true);
+        assert.equal(f.accept(), true);
+        assert.equal(f.data.get("sTorrentCatalogEndpoint"), own);
+        assert.equal(f.w.settings.torrentCatalogEndpoint, own);
+    }
+);
 check(
     "v2 round-trips full owner documents and preserves invisible references",
     () => {

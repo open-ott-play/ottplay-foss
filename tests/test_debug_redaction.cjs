@@ -49,6 +49,8 @@ async function testSource() {
             user: "DUMMY_SECRET",
         },
         status: 403,
+        torrentCatalogEndpoint:
+            "https://catalog.invalid/DUMMY_SECRET?token=DUMMY_SECRET",
         url: "https://user:DUMMY_SECRET@provider.invalid/live/name/DUMMY_SECRET/1?token=DUMMY_SECRET",
     };
     context.ottDebugPush(
