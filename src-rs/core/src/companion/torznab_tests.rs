@@ -133,6 +133,100 @@ fn private_store_does_not_replace_unowned_or_symlinked_data() {
     }
 }
 #[test]
+fn private_store_recovers_first_initialization_after_owner_sync() {
+    use std::io::Write;
+
+    let dir = Temp::new();
+    std::fs::create_dir_all(&dir.0).unwrap();
+    let marker = b"ottplay-torznab-private-v1\n";
+    // Reproduce the durable checkpoint before the first state save starts.
+    let mut owner = std::fs::File::create(dir.0.join(".owner")).unwrap();
+    owner.write_all(marker).unwrap();
+    owner.sync_all().unwrap();
+    drop(owner);
+    assert!(!dir.0.join("state.json").exists());
+
+    let mut store = Store::load(dir.0.clone()).expect("recover owner-only initialization");
+    assert!(store.sources().is_empty());
+    let initial: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(dir.0.join("state.json")).unwrap()).unwrap();
+    assert_eq!(
+        initial,
+        json!({"schema": 1, "sources": [], "references": []})
+    );
+    assert_eq!(Store::load(dir.0.clone()).err(), Some("torznab_store_busy"));
+    let source = config();
+    store.configure(source.clone()).unwrap();
+    let id = store
+        .prepare(&source, Payload::Torrent(META.to_vec()))
+        .unwrap();
+    drop(store);
+
+    let store = Store::load(dir.0.clone()).unwrap();
+    assert_eq!(store.sources().len(), 1);
+    let Payload::Torrent(bytes) = store.payload("local", &id).unwrap() else {
+        panic!()
+    };
+    assert_eq!(bytes, META);
+    drop(store);
+    assert_eq!(std::fs::read(dir.0.join(".owner")).unwrap(), marker);
+}
+#[test]
+fn private_store_missing_state_refuses_invalid_owner_and_orphan_files() {
+    for marker in [
+        b"".as_slice(),
+        b"foreign owner",
+        b"ottplay-torznab-private-v1",
+    ] {
+        let dir = Temp::new();
+        std::fs::create_dir_all(&dir.0).unwrap();
+        std::fs::write(dir.0.join(".owner"), marker).unwrap();
+        assert_eq!(
+            Store::load(dir.0.clone()).err(),
+            Some("torznab_store_unavailable")
+        );
+        assert_eq!(std::fs::read(dir.0.join(".owner")).unwrap(), marker);
+        assert!(!dir.0.join("state.json").exists());
+    }
+    for name in [
+        "state.pending",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bin",
+        "unrelated",
+    ] {
+        let dir = Temp::new();
+        std::fs::create_dir_all(&dir.0).unwrap();
+        std::fs::write(dir.0.join(".owner"), b"ottplay-torznab-private-v1\n").unwrap();
+        std::fs::write(dir.0.join(name), b"retain orphaned data").unwrap();
+        assert_eq!(
+            Store::load(dir.0.clone()).err(),
+            Some("torznab_store_unavailable")
+        );
+        assert_eq!(
+            std::fs::read(dir.0.join(name)).unwrap(),
+            b"retain orphaned data"
+        );
+        assert!(!dir.0.join("state.json").exists());
+    }
+}
+#[test]
+fn private_store_does_not_reset_corrupt_state() {
+    for state in [
+        b"".as_slice(),
+        b"{",
+        br#"{"schema":2,"sources":[],"references":[]}"#,
+    ] {
+        let dir = Temp::new();
+        std::fs::create_dir_all(&dir.0).unwrap();
+        std::fs::write(dir.0.join(".owner"), b"ottplay-torznab-private-v1\n").unwrap();
+        std::fs::write(dir.0.join("state.json"), state).unwrap();
+        assert_eq!(
+            Store::load(dir.0.clone()).err(),
+            Some("torznab_store_unavailable")
+        );
+        assert_eq!(std::fs::read(dir.0.join("state.json")).unwrap(), state);
+    }
+}
+#[test]
 fn local_source_contract_does_not_broaden_public_metadata_fetch() {
     for endpoint in [
         "https://8.8.8.8/api",

@@ -177,7 +177,15 @@ impl Store {
                 return Err("torznab_store_unavailable");
             }
         }
-        let state = if created {
+        // A first initialization can stop after the marker is durable but
+        // before state.json exists. Recover only that owner-only directory;
+        // the scan below rejects every other file when state is missing.
+        let initialize = match std::fs::symlink_metadata(root.join("state.json")) {
+            Ok(_) => false,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => true,
+            Err(_) => return Err("torznab_store_unavailable"),
+        };
+        let state = if initialize {
             State {
                 schema: 1,
                 sources: vec![],
@@ -239,7 +247,13 @@ impl Store {
                 .into_string()
                 .map_err(|_| "torznab_store_unavailable")?;
             regular(&entry.path())?;
-            if name == ".owner" || name == "state.json" {
+            if name == ".owner" {
+                continue;
+            }
+            if initialize {
+                return Err("torznab_store_unavailable");
+            }
+            if name == "state.json" {
                 continue;
             }
             if name == "state.pending" || name.strip_suffix(".bin").is_some_and(reference) {
@@ -261,7 +275,7 @@ impl Store {
         for path in leftovers {
             std::fs::remove_file(path).map_err(|_| "torznab_store_unavailable")?;
         }
-        if created {
+        if initialize {
             store.save(&store.state)?;
         }
         Ok(store)
