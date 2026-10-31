@@ -8,6 +8,36 @@ function createTorrentStreamAdapter(
     ports: ProviderDriverPorts,
     changed: () => void
 ): any {
+    function transportMetadata(value: any, textStatus?: any): any {
+        var httpStatus: number | null = null,
+            responseBytes: number | null = null;
+        try {
+            var code =
+                value && typeof value === "object" ? value.status : value;
+            if (typeof code === "string" && /^[1-5][0-9]{2}$/.test(code))
+                code = Number(code);
+            if (
+                typeof code === "number" &&
+                code >= 100 &&
+                code <= 599 &&
+                Math.floor(code) === code
+            )
+                httpStatus = code;
+            var body = value && value.responseText;
+            if (typeof body === "string" && body.length <= 262144)
+                responseBytes = unescape(encodeURIComponent(body)).length;
+        } catch (_) {}
+        return {
+            httpStatus: httpStatus,
+            outcome:
+                textStatus === "timeout" || value === "timeout"
+                    ? "timeout"
+                    : textStatus === "abort" || value === "abort"
+                      ? "cancelled"
+                      : undefined,
+            responseBytes: responseBytes,
+        };
+    }
     return host.__ottTorrentStreamData?.create({
         addons: function () {
             return host.settings?.torrentStreamAddons || "[]";
@@ -16,11 +46,19 @@ function createTorrentStreamAdapter(
         request: function (url: string, done: any) {
             return ports.request(
                 { dataType: "text", timeout: 15000, url: url },
-                function (value) {
-                    done(null, value);
+                function (value, textStatus?: any, xhr?: any) {
+                    done(
+                        null,
+                        value,
+                        transportMetadata(xhr === undefined ? textStatus : xhr)
+                    );
                 },
-                function () {
-                    done("unavailable");
+                function (xhr, textStatus) {
+                    done(
+                        "unavailable",
+                        undefined,
+                        transportMetadata(xhr, textStatus)
+                    );
                 }
             );
         },
@@ -497,6 +535,7 @@ function createTorrentDiscoveryView(
         sourcesChanged();
     });
     var generation = 0,
+        disposed = false,
         rendering = false,
         rows: string[] = [],
         items: any[] = [],
@@ -569,6 +608,7 @@ function createTorrentDiscoveryView(
     }
     function settingsChanged(): boolean {
         if (!signature || signature === configuration()) return false;
+        streamData?.resetDiagnostics?.();
         var visible = foreground();
         close();
         if (!visible) return false;
@@ -985,6 +1025,7 @@ function createTorrentDiscoveryView(
         clearPageTimer();
         var nextSignature = configuration();
         if (signature && signature !== nextSignature) {
+            streamData?.resetDiagnostics?.();
             append = false;
             cursor = null;
             if (/^genre:/.test(category)) category = "popular";
@@ -1119,6 +1160,8 @@ function createTorrentDiscoveryView(
     function categories(genres?: any[], rootEntries = false): boolean {
         if (!allowed()) return false;
         close();
+        if (signature && signature !== configuration())
+            streamData?.resetDiagnostics?.();
         signature = configuration();
         var request = generation;
         var external = !genres && !!host.settings?.torrentCatalogEndpoint;
@@ -1387,14 +1430,49 @@ function createTorrentDiscoveryView(
             return true;
         return false;
     }
-    owner.own(function () {
+    function dispose(): void {
+        if (disposed) return;
+        disposed = true;
         close();
         data.dispose();
         streamData?.dispose();
-    });
+        resetMovies();
+        next = null;
+    }
+    function diagnostics(): any {
+        var live = !disposed && owner.active() && signature === configuration();
+        if (!live) streamData?.resetDiagnostics?.();
+        var snapshot = (live && streamData?.diagnostics?.()) || {
+            lookup: null,
+            requests: [],
+            requestsDropped: 0,
+        };
+        var selected = host.selIndex;
+        snapshot.catalog = {
+            autoPages: live && autoPages,
+            busy: live && busy,
+            loadedCount: live ? items.length : 0,
+            nextCursor: live ? next : null,
+            selectedIndex:
+                live &&
+                displayRows === host.listArray &&
+                typeof selected === "number" &&
+                isFinite(selected) &&
+                Math.floor(selected) === selected &&
+                selected >= 0 &&
+                selected < (displayRows?.length || 0)
+                    ? selected
+                    : null,
+            view: display,
+        };
+        return snapshot;
+    }
+    owner.own(dispose);
     return {
         categories: categories,
         close: close,
+        diagnostics: diagnostics,
+        dispose: dispose,
         open: open,
         restore: restore,
         search: search,
@@ -2006,6 +2084,7 @@ function mountTorrentProvider(
     driver.dispose = function (): void {
         editorDisposed = true;
         stop();
+        driver.catalogBrowser?.dispose();
         if (disposeDriver) disposeDriver.call(driver);
     };
     driver.settingsChanged = stop;

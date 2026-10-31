@@ -639,9 +639,9 @@ const TORRENT_DISCOVERY_ALLOWANCE = Object.freeze({
 // immutable first-stage archive. Add only paired Node 26 gzip-9 deltas; no reserve.
 // Evidence: docs/evidence/torrent-streams-size-20261030.json.
 const TORRENT_STREAMS_ALLOWANCE = Object.freeze({
-    catalog: Object.freeze({ bytes: 23150, gzipBytes: 6694 }),
+    catalog: Object.freeze({ bytes: 27229, gzipBytes: 8030 }),
     companion: Object.freeze({ bytes: 207, gzipBytes: 79 }),
-    entry: Object.freeze({ bytes: 3636, gzipBytes: 758 }),
+    entry: Object.freeze({ bytes: 6550, gzipBytes: 1741 }),
     settings: Object.freeze({ bytes: 490, gzipBytes: 155 }),
 });
 const BUDGET = Object.freeze({

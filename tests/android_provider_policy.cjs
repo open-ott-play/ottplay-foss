@@ -14,6 +14,10 @@ const { JSDOM } = require("jsdom");
 const {
     prepareDistributionModules,
 } = require("../scripts/android-distribution.cjs");
+const {
+    languageAssets,
+    readDictionary,
+} = require("../scripts/localization-catalog.cjs");
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(
     path.join(root, "src/provider/index.ts"),
@@ -249,6 +253,7 @@ function fixture(
     const timers = [];
     const about = [];
     const aboutCallbacks = [];
+    const detailText = [];
     const scriptCallbacks = [];
     const images = [];
     const appendedImages = [];
@@ -341,6 +346,8 @@ function fixture(
         if (image) images.push(image);
         const chain = {
             append(item) {
+                if (selector === "#listDetail" && typeof item === "string")
+                    detailText.push(item);
                 if (item && item.image)
                     appendedImages.push({
                         image: item.image,
@@ -399,6 +406,7 @@ function fixture(
         about,
         aboutCallbacks,
         appendedImages,
+        detailText,
         errors,
         images,
         get pinRequests() {
@@ -954,6 +962,36 @@ test("Built-in descriptions use renamed assets independently of legacy dealer UR
                     (language === "_rus" ? "-ru" : "") +
                     ".html?fixture"
             );
+        }
+    }
+});
+
+test("Stalker descriptions follow every interface language without loading static copy", () => {
+    const translations = Object.entries(languageAssets).map(
+        ([language, file]) => [language, readDictionary(path.join(root, file))]
+    );
+    for (const flavor of ["full", "play"]) {
+        const f = fixture(flavor);
+        f.w.selectProvaider();
+        for (const id of ["stalker", "bestlist/stalker"]) {
+            const index = f.w.arrayProvaiders.indexOf(id);
+            if (id === "bestlist/stalker" && flavor === "play") continue;
+            assert.notEqual(index, -1, flavor + "/" + id);
+            f.w.selIndex = index;
+            for (const [language, dictionary] of translations) {
+                const expected = dictionary["Stalker Portal Provider"];
+                assert.ok(expected, language);
+                f.stored.set("ottplaylang", language);
+                f.w._ = (key) => dictionary[key] || key;
+                const requestsBefore = f.about.length;
+                f.w.detailListAction();
+                assert.equal(f.detailText.at(-1), expected, language);
+                assert.equal(f.about.length, requestsBefore);
+                assert.equal(
+                    f.appendedImages.at(-1).image.attrs.src,
+                    "https://player.invalid/providers/" + id + "/logo.png"
+                );
+            }
         }
     }
 });

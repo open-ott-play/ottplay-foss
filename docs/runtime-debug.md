@@ -91,6 +91,31 @@ missing record cannot prove that playback finished without retry or fallback.
 Neither observation exports source URLs, arbitrary strings or credentials.
 Versions 1 and 2 neither read these producers nor add these fields.
 
+## Provider source diagnostics
+
+Use `ott PLAYER doctor --provider` (also `debug --provider`) for the current
+provider's catalog and source lookup, together with UI, media and native
+observations. Updated report bundles include this snapshot when advertised.
+This read does not load a catalog, retry a failed addon or start playback.
+
+The additive `provider_diagnostics: {version: 1}` capability advertises
+`status.diagnostics.provider`; existing inspect and debug schemas are unchanged.
+The snapshot carries the runtime and capture time. The initial producer supports
+Torrent movie discovery; other providers report `available: false` rather than
+inventing observations. An available snapshot includes loaded movie count,
+pagination cursor, view/selection, current or most recent lookup outcome, and up
+to 16 request observations with addon index, stage, elapsed time, available HTTP
+status and response size. Missing HTTP status is `null`, not an assumed success.
+Request IDs correlate with the lookup ID. New lookups replace earlier requests;
+configuration changes and provider disposal clear the old observations.
+
+The projection excludes URLs, tokens, movie titles/identifiers, response bodies
+and arbitrary error strings. A CLI report validates the bounded snapshot and
+correlates its runtime with capabilities; raw status data is not exported.
+For example, a failed stream request with HTTP 400 and no active playback engine
+locates the failure before decoding. It does not establish whether the addon's
+configuration, catalog coverage or service is responsible for that response.
+
 ## Native applications
 
 The on-demand `RuntimeDiagnostics.snapshot()` Capacitor plugin and Tauri's

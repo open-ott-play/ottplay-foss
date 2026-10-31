@@ -3,7 +3,7 @@ const test = require("node:test");
 const { JSDOM } = require("jsdom");
 const { fixture } = require("./helpers/provider-driver-fixture.cjs");
 
-function setup(initial = {}) {
+function setup(initial = {}, realStreams = false) {
     const f = fixture(initial),
         h = f.host;
     const dom = new JSDOM("<div id='detail'></div>");
@@ -201,6 +201,11 @@ function setup(initial = {}) {
             };
         },
     };
+    if (realStreams)
+        require("./helpers/private-runtime.cjs")(
+            h,
+            "src/provider/torrent-stream-data.ts"
+        );
     f.driver = f.mount("torrent");
     f.driver.load((catalog, error) => {
         f.catalog = catalog;
@@ -213,6 +218,7 @@ function setup(initial = {}) {
         h.selIndex = index;
         f.key("ENTER");
     };
+    f.transportRequests = f.requests;
     f.requests = requests;
     f.details = details;
     f.streamRequests = streamRequests;
@@ -234,6 +240,100 @@ function movie(
     };
 }
 const page = (items, next = null) => ({ items, next, ok: true });
+
+test("catalog diagnostics are read-only, bounded and reset on configuration or disposal", () => {
+    const f = setup();
+    assert.equal(f.driver.catalogBrowser.diagnostics().catalog.loadedCount, 0);
+    assert.equal(f.requests.length, 0);
+    f.open();
+    f.requests[0].done(page([movie(1), movie(2)], 2));
+    f.host.selIndex = 1;
+    const timers = f.timers.size;
+    const snapshot = f.driver.catalogBrowser.diagnostics();
+    assert.deepEqual(JSON.parse(JSON.stringify(snapshot)), {
+        catalog: {
+            autoPages: true,
+            busy: false,
+            loadedCount: 2,
+            nextCursor: 2,
+            selectedIndex: 1,
+            view: "channels",
+        },
+        lookup: null,
+        requests: [],
+        requestsDropped: 0,
+    });
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.timers.size, timers);
+    snapshot.catalog.loadedCount = 500;
+    snapshot.requests.push({});
+    assert.equal(f.driver.catalogBrowser.diagnostics().catalog.loadedCount, 2);
+    assert.equal(f.driver.catalogBrowser.diagnostics().requests.length, 0);
+    for (const value of [NaN, Infinity, -1, 2.5, 1e20]) {
+        f.host.selIndex = value;
+        assert.equal(
+            f.driver.catalogBrowser.diagnostics().catalog.selectedIndex,
+            null
+        );
+    }
+    f.host.selIndex = 1;
+    f.nextPage();
+    assert.equal(f.driver.catalogBrowser.diagnostics().catalog.busy, true);
+    f.key("ENTER");
+    assert.equal(f.driver.catalogBrowser.diagnostics().catalog.view, "streams");
+    f.driver.catalogBrowser.categories();
+    assert.equal(
+        f.driver.catalogBrowser.diagnostics().catalog.view,
+        "categories"
+    );
+    f.host.settings.torrentCatalogLanguage = "ru";
+    assert.equal(f.driver.catalogBrowser.diagnostics().catalog.loadedCount, 0);
+    f.driver.dispose();
+    const disposed = f.driver.catalogBrowser.diagnostics();
+    assert.equal(disposed.lookup, null);
+    assert.equal(disposed.catalog.loadedCount, 0);
+    assert.equal(disposed.catalog.nextCursor, null);
+    assert.equal(disposed.catalog.busy, false);
+});
+
+test("catalog diagnostics expose actual stream transport failures and clear the last lookup", () => {
+    const f = setup({}, true);
+    f.host.settings.torrentStreamAddons =
+        '["https://private.example/secret/manifest.json"]';
+    openMovieSources(f);
+    f.transportRequests[0].resolve({
+        id: "private-addon",
+        idPrefixes: ["tt"],
+        name: "Private title",
+        resources: ["stream"],
+        types: ["movie"],
+    });
+    f.transportRequests[1].reject(
+        { responseText: '{"streams":[]}', status: "400" },
+        "error",
+        "private error"
+    );
+    const snapshot = f.driver.catalogBrowser.diagnostics();
+    assert.equal(snapshot.catalog.view, "streams");
+    assert.equal(snapshot.lookup.state, "failed");
+    assert.equal(snapshot.lookup.failedAddons, 1);
+    assert.equal(snapshot.requests[1].httpStatus, 400);
+    assert.equal(snapshot.requests[1].outcome, "http_error");
+    assert.equal(snapshot.requests[1].responseBytes, 14);
+    assert.equal(f.host.listDetail.textContent, "Failed to load!");
+    assert.doesNotMatch(
+        JSON.stringify(snapshot),
+        /private|Private|secret|tt1234567/
+    );
+    snapshot.lookup.state = "corrupted";
+    assert.equal(f.driver.catalogBrowser.diagnostics().lookup.state, "failed");
+    f.key("RETURN");
+    f.host.settings.torrentCatalogLanguage = "ru";
+    f.driver.catalogBrowser.categories();
+    assert.equal(f.driver.catalogBrowser.diagnostics().lookup, null);
+    f.driver.dispose();
+    assert.equal(f.driver.catalogBrowser.diagnostics().requests.length, 0);
+});
 
 test("first page stays usable while later pages load automatically and retain live selection", () => {
     const f = setup();

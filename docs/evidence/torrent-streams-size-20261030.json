@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "feature": "Torrent stream discovery: configured Stremio sources, explicit playback admission and progressively loaded movie catalogs",
+  "feature": "Torrent stream discovery: configured Stremio sources, explicit playback admission, progressively loaded movie catalogs and bounded provider diagnostics",
   "baseline": {
     "revision": "dd3e2462300c110cd619d47210568043f3fb5afb",
     "version": "1.1.62",
@@ -13,7 +13,7 @@
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
     "verifiedReport": "build/reports/classic-bundle.json",
-    "measuredAt": "2026-10-31T02:47:24.620Z"
+    "measuredAt": "2026-10-31T03:05:17.129Z"
   },
   "toolchain": {
     "node": "26.8.2",
@@ -25,16 +25,16 @@
     "transformSha256": "0d2adac364da1fe44d3025868cda8f448094074019c4a2cd9105416fa58bd21a",
     "candidateTransformVerifiedArtifactsPerVariant": 25
   },
-  "allocation": "Maximum paired measured delta across web/native/mobile for each changed component, with no new reserve. Preserve existing headroom and all unrelated caps. Stream/catalog parsing remains in the lazy Torrent bundle; playback admission and setting registration are entry hooks; companion selection and remote validation remain separately bounded.",
+  "allocation": "Maximum paired measured delta across web/native/mobile for each changed component, with no new reserve. Preserve existing headroom and all unrelated caps. Stream/catalog parsing remains in the lazy Torrent bundle; playback admission and setting registration are entry hooks; companion selection and remote validation remain separately bounded. Provider diagnostics retain only bounded counters and request outcomes; the entry projection and localized provider description are included in the measured entry delta.",
   "scope": "The unchanged classic size gate covers player.js, every CLASSIC_PROVIDER_BUNDLES member, and every CLASSIC_OPTIONAL_BUNDLES member. Locales, styles, icons and offline-worker remain outside that pre-existing scope.",
   "allowance": {
     "entry": {
-      "bytes": 3636,
-      "gzipBytes": 758
+      "bytes": 6550,
+      "gzipBytes": 1741
     },
     "catalog": {
-      "bytes": 23150,
-      "gzipBytes": 6694
+      "bytes": 27229,
+      "gzipBytes": 8030
     },
     "companion": {
       "bytes": 207,
@@ -56,13 +56,13 @@
             "sha256": "f978f0d153418214f1631ff8d9a770bad8494addb8b163931fe27e31b8f6f5de"
           },
           "after": {
-            "bytes": 1168966,
-            "gzipBytes": 355635,
-            "sha256": "90f85875eec82e1a1b3f907f12db5c4c0eb770cb63d0c476872462a9a383b73f"
+            "bytes": 1171880,
+            "gzipBytes": 356618,
+            "sha256": "150ac64f54c09052b81d796ef1825663736eea304a7f28119ad4402bd3e144a3"
           },
           "delta": {
-            "bytes": 3636,
-            "gzipBytes": 758
+            "bytes": 6550,
+            "gzipBytes": 1741
           }
         },
         "native": {
@@ -72,13 +72,13 @@
             "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
           },
           "after": {
-            "bytes": 1168924,
-            "gzipBytes": 355690,
-            "sha256": "44a095a7408ccff37ac5f45ce13d38f51afde1391371b8c6c5041924d600f3c4"
+            "bytes": 1171838,
+            "gzipBytes": 356674,
+            "sha256": "431b42e99d6b1e6e03b47aadaf0a69880565db0dd0cc6a34f594425ecd65af45"
           },
           "delta": {
-            "bytes": 3636,
-            "gzipBytes": 756
+            "bytes": 6550,
+            "gzipBytes": 1740
           }
         },
         "mobile": {
@@ -88,13 +88,13 @@
             "sha256": "7497de212656b3912f6372c3e3b976357c1d05bbd1f8573ad0c99f1c575f4267"
           },
           "after": {
-            "bytes": 1168924,
-            "gzipBytes": 355690,
-            "sha256": "44a095a7408ccff37ac5f45ce13d38f51afde1391371b8c6c5041924d600f3c4"
+            "bytes": 1171838,
+            "gzipBytes": 356674,
+            "sha256": "431b42e99d6b1e6e03b47aadaf0a69880565db0dd0cc6a34f594425ecd65af45"
           },
           "delta": {
-            "bytes": 3636,
-            "gzipBytes": 756
+            "bytes": 6550,
+            "gzipBytes": 1740
           }
         }
       }
@@ -109,13 +109,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70742,
-            "gzipBytes": 22696,
-            "sha256": "1f8a8f08441ca0f1a823a8d51c42db29d853a8eaa420c7bd0794456be2c50c32"
+            "bytes": 74821,
+            "gzipBytes": 24032,
+            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
           },
           "delta": {
-            "bytes": 23150,
-            "gzipBytes": 6694
+            "bytes": 27229,
+            "gzipBytes": 8030
           }
         },
         "native": {
@@ -125,13 +125,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70742,
-            "gzipBytes": 22696,
-            "sha256": "1f8a8f08441ca0f1a823a8d51c42db29d853a8eaa420c7bd0794456be2c50c32"
+            "bytes": 74821,
+            "gzipBytes": 24032,
+            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
           },
           "delta": {
-            "bytes": 23150,
-            "gzipBytes": 6694
+            "bytes": 27229,
+            "gzipBytes": 8030
           }
         },
         "mobile": {
@@ -141,13 +141,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 70742,
-            "gzipBytes": 22696,
-            "sha256": "1f8a8f08441ca0f1a823a8d51c42db29d853a8eaa420c7bd0794456be2c50c32"
+            "bytes": 74821,
+            "gzipBytes": 24032,
+            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
           },
           "delta": {
-            "bytes": 23150,
-            "gzipBytes": 6694
+            "bytes": 27229,
+            "gzipBytes": 8030
           }
         }
       }
@@ -1389,12 +1389,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1392361,
-          "gzipBytes": 433658
+          "bytes": 1399354,
+          "gzipBytes": 435977
         },
         "complete": {
-          "bytes": 1778860,
-          "gzipBytes": 547787
+          "bytes": 1785853,
+          "gzipBytes": 550106
         }
       }
     },
@@ -1412,12 +1412,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1392319,
-          "gzipBytes": 433713
+          "bytes": 1399312,
+          "gzipBytes": 436033
         },
         "complete": {
-          "bytes": 1778818,
-          "gzipBytes": 547842
+          "bytes": 1785811,
+          "gzipBytes": 550162
         }
       }
     },
@@ -1435,12 +1435,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1392319,
-          "gzipBytes": 433713
+          "bytes": 1399312,
+          "gzipBytes": 436033
         },
         "complete": {
-          "bytes": 1778818,
-          "gzipBytes": 547842
+          "bytes": 1785811,
+          "gzipBytes": 550162
         }
       }
     }
@@ -1537,16 +1537,16 @@
   },
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1774650,
-      "gzipBytes": 547637
+      "bytes": 1781643,
+      "gzipBytes": 549956
     },
     "BUDGET": {
-      "bytes": 1169169,
-      "gzipBytes": 357294
+      "bytes": 1172083,
+      "gzipBytes": 358277
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1392747,
-      "gzipBytes": 435335
+      "bytes": 1399740,
+      "gzipBytes": 437654
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1611,8 +1611,8 @@
       }
     },
     "TOTAL_BUDGET": {
-      "bytes": 1779130,
-      "gzipBytes": 549941
+      "bytes": 1786123,
+      "gzipBytes": 552260
     }
   }
 }

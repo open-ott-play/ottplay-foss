@@ -130,7 +130,8 @@ const ctx = {
                 name === "./remote-favorites-global-recovery" ||
                 name === "./remote-favorites-transfer" ||
                 name === "./remote-favorites-contract" ||
-                name === "./random-channel"
+                name === "./random-channel" ||
+                name === "./remote-provider-diagnostics"
               ? loadRemoteHelper(name.slice(2))
               : name === "../provider"
                 ? {
@@ -904,6 +905,17 @@ async function checkStatusDiagnostics() {
             diagnostics: {
                 epg: { available: false },
                 input: { available: false },
+                provider: {
+                    available: false,
+                    capturedAt: data.diagnostics.provider.capturedAt,
+                    catalog: null,
+                    lookup: null,
+                    provider: null,
+                    requests: [],
+                    requestsDropped: 0,
+                    runtime: data.player.runtime,
+                    version: 1,
+                },
                 version: 1,
             },
             playback: {
@@ -1427,6 +1439,10 @@ function checkRemoteEpgCatalog() {
         },
     });
     const currentCaps = (await call("capabilities")).data;
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(currentCaps.provider_diagnostics)),
+        { version: 1 }
+    );
     const aspectRuntime = currentCaps.player.runtime;
     const notificationCaps = currentCaps.notifications;
     assert.deepEqual(

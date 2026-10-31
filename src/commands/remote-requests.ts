@@ -32,6 +32,7 @@ import { executeRemoteLocalMedia } from "./remote-local-media";
 import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
+import { providerDiagnosticsSnapshot } from "./remote-provider-diagnostics";
 import {
     executeRemoteControl,
     executeRemoteRestart,
@@ -1198,6 +1199,7 @@ export function executeRemoteRequest(
                     w.__ottHostedEpg && w.__ottHostedEpg.remoteSnapshot
                 ),
                 input: remoteSnapshot(w.__ottDebugInputSnapshot),
+                provider: providerDiagnosticsSnapshot(w, player.runtime),
                 version: 1,
             },
             provider: activeProvider(),

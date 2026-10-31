@@ -169,6 +169,7 @@ const CLASSIC_MODULES = [
     "build/commands/remote-archive.js",
     "build/commands/remote-notifications.js",
     "build/commands/player-state.js",
+    "build/commands/remote-provider-diagnostics.js",
     "build/commands/remote-requests.js",
     "build/app/init.js",
     "build/app/device.js",

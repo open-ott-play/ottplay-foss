@@ -54,7 +54,7 @@ function fixture(options = {}) {
         clearTimeout(id) {
             timers.delete(id);
         },
-        now: () => time,
+        now: options.now || (() => time),
         onContextChanged: () => changes++,
         request(url, done) {
             const r = { aborted: 0, done, url };
@@ -88,6 +88,7 @@ function fixture(options = {}) {
             for (const [id, timer] of [...timers])
                 if (timer.at <= time && timers.delete(id)) timer.callback();
         },
+        timerCount: () => timers.size,
     };
 }
 function finish(f, streams = [direct], data = manifest()) {
@@ -95,6 +96,288 @@ function finish(f, streams = [direct], data = manifest()) {
     f.requests[1].done(null, { streams });
     return f.results[0];
 }
+test("diagnostics distinguish HTTP failure and skipped manifests without retaining private data", () => {
+    const f = fixture({ urls: [first, second] });
+    assert.deepEqual(copy(f.api.diagnostics()), {
+        lookup: null,
+        requests: [],
+        requestsDropped: 0,
+    });
+    f.lookup({ id: "imdb:movie:tt1254207" });
+    const timerCount = f.timerCount();
+    const pending = copy(f.api.diagnostics());
+    assert.equal(pending.lookup.state, "pending");
+    assert.equal(pending.lookup.movieIdKind, "imdb");
+    assert.equal(pending.lookup.addonCount, 2);
+    assert.deepEqual(
+        pending.requests.map((r) => r.id),
+        [1, 2]
+    );
+    assert(
+        pending.requests.every(
+            (r) =>
+                r.lookupId === pending.lookup.id &&
+                r.outcome === "pending" &&
+                r.httpStatus === null
+        )
+    );
+    assert.equal(f.timerCount(), timerCount);
+    f.tick(25);
+    f.requests[0].done(null, manifest({ types: ["series"] }), {
+        httpStatus: 200,
+    });
+    f.requests[1].done(null, manifest(), { httpStatus: "200" });
+    f.tick(15);
+    f.requests[2].done(
+        "private error",
+        { streams: [] },
+        { httpStatus: "400", responseBytes: 14 }
+    );
+    const result = copy(f.api.diagnostics());
+    assert.equal(result.lookup.state, "failed");
+    assert.equal(result.lookup.failedAddons, 1);
+    assert.equal(result.lookup.skippedAddons, 1);
+    assert.equal(result.lookup.unsupportedCount, 0);
+    assert.equal(result.lookup.ageMs, 40);
+    assert.deepEqual(result.requests[2], {
+        addonIndex: 1,
+        ageMs: 15,
+        durationMs: 15,
+        httpStatus: 400,
+        id: 3,
+        lookupId: result.lookup.id,
+        outcome: "http_error",
+        responseBytes: 14,
+        stage: "stream",
+    });
+    assert.doesNotMatch(
+        JSON.stringify(result),
+        /https|addon\.example|tt1254207|BBB|private/
+    );
+    result.lookup.state = "changed";
+    result.requests[0].httpStatus = 599;
+    result.requests.push({});
+    assert.equal(f.api.diagnostics().lookup.state, "failed");
+    assert.equal(f.api.diagnostics().requests.length, 3);
+    assert.equal(f.api.diagnostics().requests[0].httpStatus, 200);
+});
+test("diagnostics retain truthful completion, empty and unsupported states", () => {
+    for (const [streams, state, unsupported, playable] of [
+        [[], "empty", 0, 0],
+        [[{ externalUrl: direct.url }], "unsupported", 1, 0],
+        [[direct], "ready", 0, 1],
+    ]) {
+        const f = fixture();
+        f.lookup();
+        finish(f, streams);
+        f.api.cancel();
+        const snapshot = f.api.diagnostics();
+        assert.equal(snapshot.lookup.state, state);
+        assert.equal(snapshot.lookup.unsupportedCount, unsupported);
+        assert.equal(snapshot.lookup.playableCount, playable);
+        assert(
+            snapshot.requests.every(
+                (r) =>
+                    r.outcome === "ok" &&
+                    r.httpStatus === null &&
+                    r.responseBytes > 0
+            )
+        );
+    }
+    const skipped = fixture();
+    skipped.lookup();
+    skipped.requests[0].done(null, manifest({ types: ["series"] }));
+    assert.equal(skipped.api.diagnostics().lookup.state, "unsupported");
+    assert.equal(skipped.api.diagnostics().lookup.skippedAddons, 1);
+});
+test("diagnostics fence cancellation, replacement, settings and disposal", () => {
+    const f = fixture();
+    const cancel = f.lookup();
+    const old = f.requests[0];
+    f.tick(7);
+    cancel();
+    assert.equal(f.api.diagnostics().lookup.state, "cancelled");
+    assert.equal(f.api.diagnostics().requests[0].outcome, "cancelled");
+    assert.equal(f.api.diagnostics().requests[0].durationMs, 7);
+    const oldId = f.api.diagnostics().lookup.id;
+    f.lookup({ id: "stremio:movie:custom%3Aid" });
+    old.done(null, manifest(), { httpStatus: 200 });
+    assert(f.api.diagnostics().lookup.id > oldId);
+    assert.equal(f.api.diagnostics().lookup.movieIdKind, "custom");
+    assert.equal(f.api.diagnostics().requests.length, 1);
+    assert.equal(f.api.diagnostics().requests[0].outcome, "pending");
+    f.setUrls([second]);
+    assert.deepEqual(copy(f.api.diagnostics()), {
+        lookup: null,
+        requests: [],
+        requestsDropped: 0,
+    });
+    f.requests[1].done(true, null, { httpStatus: 503 });
+    assert.equal(f.api.diagnostics().lookup, null);
+    f.lookup();
+    f.api.dispose();
+    assert.deepEqual(copy(f.api.diagnostics()), {
+        lookup: null,
+        requests: [],
+        requestsDropped: 0,
+    });
+});
+test("diagnostics report timeout, invalid responses and sanitized transport status", () => {
+    for (const mode of [
+        "timeout",
+        "transport",
+        "json",
+        "manifest",
+        "streams",
+        "http",
+    ]) {
+        const f = fixture();
+        f.lookup();
+        if (mode === "timeout") f.tick(15000);
+        else if (mode === "transport")
+            f.requests[0].done(true, null, { httpStatus: Infinity });
+        else if (mode === "json") f.requests[0].done(null, "{");
+        else if (mode === "manifest")
+            f.requests[0].done(null, { arbitrary: "private" });
+        else if (mode === "http")
+            f.requests[0].done(null, manifest(), { httpStatus: 503 });
+        else {
+            f.requests[0].done(null, manifest());
+            f.requests[1].done(null, { streams: null });
+        }
+        const snapshot = f.api.diagnostics();
+        const request = snapshot.requests.at(-1);
+        assert.equal(snapshot.lookup.state, "failed", mode);
+        assert.equal(
+            request.outcome,
+            mode === "timeout"
+                ? "timeout"
+                : mode === "transport"
+                  ? "transport_error"
+                  : mode === "http"
+                    ? "http_error"
+                    : "invalid_response",
+            mode
+        );
+        assert.equal(request.httpStatus, mode === "http" ? 503 : null, mode);
+    }
+});
+test("diagnostics stay bounded with eight addons and nonfinite clocks", () => {
+    for (const now of [() => NaN, () => Infinity, () => 1e20, () => -1]) {
+        const f = fixture({
+            now,
+            urls: Array.from(
+                { length: 8 },
+                (_, i) => `https://addon${i}.example/manifest.json`
+            ),
+        });
+        f.lookup();
+        for (let i = 0; i < 8; i++) f.requests[i].done(null, manifest());
+        for (let i = 8; i < 16; i++) f.requests[i].done(null, { streams: [] });
+        const snapshot = copy(f.api.diagnostics());
+        assert.equal(snapshot.requests.length, 16);
+        assert.equal(snapshot.requestsDropped, 0);
+        assert.deepEqual(
+            snapshot.requests.map((r) => r.id),
+            Array.from({ length: 16 }, (_, i) => i + 1)
+        );
+        assert(
+            snapshot.requests.every(
+                (r) =>
+                    r.lookupId === snapshot.lookup.id &&
+                    r.addonIndex >= 0 &&
+                    r.addonIndex < 8
+            )
+        );
+        for (const record of [snapshot.lookup, ...snapshot.requests])
+            for (const value of Object.values(record))
+                if (typeof value === "number")
+                    assert(Number.isSafeInteger(value) && value >= 0);
+    }
+});
+test("driver transport preserves only sanitized HTTP metadata and does not invent success status", () => {
+    const file = path.join(__dirname, "../src/provider/torrent-driver.ts");
+    const ast = ts.createSourceFile(
+        file,
+        fs.readFileSync(file, "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const declaration = ast.statements.find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name?.text === "createTorrentStreamAdapter"
+    );
+    const context = {};
+    vm.runInNewContext(
+        ts.transpileModule(declaration.getText(ast), {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText,
+        context
+    );
+    for (const mode of [
+        "http",
+        "success",
+        "missing",
+        "invalid",
+        "throwing",
+        "timeout",
+        "cancelled",
+    ]) {
+        let succeeded, failed, result;
+        const options = context.createTorrentStreamAdapter(
+            {
+                __ottTorrentStreamData: { create: (value) => value },
+            },
+            {
+                request: (_options, done, fail) => {
+                    succeeded = done;
+                    failed = fail;
+                    return () => {};
+                },
+            },
+            () => {}
+        );
+        options.request(
+            "https://private.example/secret",
+            (...args) => (result = args)
+        );
+        if (mode === "http")
+            failed(
+                { responseText: '{"streams":[]}', status: "400" },
+                "error",
+                "private"
+            );
+        else if (mode === "success")
+            succeeded("body", "success", { status: "206" });
+        else if (mode === "missing") succeeded("body");
+        else if (mode === "invalid") failed({ status: "400 secret" });
+        else if (mode === "throwing")
+            failed({
+                get status() {
+                    throw Error("private");
+                },
+            });
+        else failed({ status: 0 }, mode === "timeout" ? "timeout" : "abort");
+        const metadata = copy(result[2]);
+        assert.equal(
+            metadata.httpStatus,
+            mode === "http" ? 400 : mode === "success" ? 206 : null,
+            mode
+        );
+        assert.equal(metadata.responseBytes, mode === "http" ? 14 : null, mode);
+        assert.equal(
+            metadata.outcome,
+            mode === "timeout"
+                ? "timeout"
+                : mode === "cancelled"
+                  ? "cancelled"
+                  : undefined,
+            mode
+        );
+        assert.doesNotMatch(JSON.stringify(result), /private|secret/);
+    }
+});
 test("ES5 isolated factory; no addons makes no network or engine call", () => {
     acorn.parse(compiled, { ecmaVersion: 5 });
     assert.doesNotMatch(source, /^export\s/m);

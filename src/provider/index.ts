@@ -1818,6 +1818,30 @@ export function showProviderSelection(): void {
     detailListAction = function () {
         var id = providerIds[selIndex];
         if (id && isProviderAllowed(id)) {
+            var stalkerDescription = id === "stalker";
+            // OTTPLAY_FULL_ONLY_BEGIN
+            stalkerDescription =
+                stalkerDescription || id === "bestlist/stalker";
+            // OTTPLAY_FULL_ONLY_END
+            if (stalkerDescription) {
+                $("#listDetail")
+                    .html("")
+                    .append(
+                        $("<img>")
+                            .attr(
+                                "src",
+                                host + "/providers/" + id + "/logo.png"
+                            )
+                            .attr(
+                                "style",
+                                "float: left; margin-right: 5px; margin-bottom: 5px; border: 0;"
+                            )
+                    )
+                    .append(
+                        document.createTextNode(_("Stalker Portal Provider"))
+                    );
+                return;
+            }
             var builtIn = (window as any).__ottProviderDrivers.registry.has(id);
             var aboutUrl =
                 host + (builtIn ? "/providers/" : "/prov/") + id + "/about";

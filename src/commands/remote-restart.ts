@@ -950,6 +950,7 @@ export function executeRemoteControl(
             plex_library: plexQueue.libraryCapability,
             plex_library_truncation: { version: 1 },
             plex_queue: plexQueue.capability,
+            provider_diagnostics: { version: 1 },
             screenshot: remoteScreenshotSnapshot(w),
             torrent_catalog: w.__ottMediaCompanion?.providerAvailable()
                 ? { version: 1 }
