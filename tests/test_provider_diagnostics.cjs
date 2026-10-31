@@ -262,6 +262,7 @@ test("invalid companion data cannot leak or hide valid catalogue evidence", () =
         { active: "true" },
     ]) {
         const { host } = fixture();
+        const expected = snapshot(host);
         host.__ottMediaCompanion = {
             diagnostics: () => ({
                 active: false,
@@ -275,7 +276,7 @@ test("invalid companion data cannot leak or hide valid catalogue evidence", () =
         const result = snapshot(host);
         assert.equal(result.available, true);
         assert.equal(result.companion, null);
-        assert.equal(JSON.stringify(result).includes(secret), false);
+        assert.deepEqual(result, expected);
     }
     const { host } = fixture();
     host.__ottMediaCompanion = {
