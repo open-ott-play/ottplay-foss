@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ampio fantsona amin'ny sokajy",
     "Add channel to favorites": "Ampio fantsona amin'ny ankafizina",
     "Add new list": "Ampio lisitra vaovao",
+    "Add Stremio addon…": "Ampio fanitarana Stremio…",
     "Add to favorites": "Ampio amin'ny ankafizina",
     Age: "Taona",
     All: "Rehetra",
@@ -183,6 +184,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Misafidiana lahatahiry ao amin’ny varavarankelin’ny mpitety",
     "Choose a profile": "Safidio ny mombamomba",
+    "Choose a source": "Misafidiana loharano",
     "Choose files in the browser window":
         "Misafidiana rakitra ao amin’ny varavarankelin’ny mpitety",
     "Choose from": "Misafidiana amin'ny",
@@ -272,6 +274,8 @@ var keyStrings = {
         "Amboary ny TV DOSUG ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     "Configure TVClub in Settings -> Provider Settings":
         "Amboary ny TVClub ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Amboary aloha ity fanampiny ity, avy eo ampio ny adiresin'ny rakitra manifest efa voarindra.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Amboary ny ULTIFL1X ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -396,6 +400,8 @@ var keyStrings = {
         "Ampidiro ny URL lisitra fandefasana mba hidirana amin'ity serivisy ity.",
     "Enter a playlist URL. The player will restart after saving.":
         "Ampidiro ny URL lisitra fandefasana. Hanomboka indray ny mpamaky rehefa voatahiry.",
+    "Enter a Stremio addon manifest URL.":
+        "Ampidiro ny URL manifest an’ny fanitarana Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Ampidiro ny adiresin'ny lohamilina tsy misy elanelana na sombiny fragment.",
     "Enter a username (8 characters).":
@@ -893,6 +899,7 @@ var keyStrings = {
     "Repeat: All": "Avereno: Rehetra",
     "Repeat: Off": "Avereno: Maty",
     "Repeat: One": "Avereno: Iray",
+    Replace: "Soloy",
     "Request sended!": "Nalefa ny fangatahana!",
     "Requesting approval for %1": "Mangataka fankatoavana ho an'ny %1",
     "Reset order": 'Alaharo ny fantsona: "Araka ny misy azy"',
@@ -1076,6 +1083,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Tapitra ny fotoana niandrasana ny fandefasana. Safidio ny fantsona hanandrana indray.",
     "Stream type: %1": "Karazana fikorianana: %1",
+    "Stremio addons": "Fanampiny Stremio",
     "String for search": "Teny fikarohana",
     "Su Mo Tu We Th Fr Sa": "Alah Alats Tal Alar Alak Zom Asab",
     "Subscription information": "Mombamomba ny famandrihana",
@@ -1181,6 +1189,7 @@ var keyStrings = {
     Unavailable: "Tsy misy",
     "Unlock the player's settings before changing its playlist.":
         "Vohay ny hidin’ny fikirakiran’ny mpilalao haino aman-jery alohan’ny hanovana ny lisitra fandefasany.",
+    "Unsupported source": "Loharano tsy tohanana",
     Untitled: "Tsy misy lohateny",
     "Untitled folder": "Lahatahiry tsy misy anarana",
     "Update installed. Please restart OttPlay FOSS.":

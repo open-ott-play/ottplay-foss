@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Shto kanal në kategori",
     "Add channel to favorites": "Shto kanalin te të preferuarat",
     "Add new list": "Shto listë të re",
+    "Add Stremio addon…": "Shto shtesë Stremio…",
     "Add to favorites": "Shto në të preferuarat",
     Age: "Mosha",
     All: "Të gjitha",
@@ -174,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Zgjidhni një dosje në dritaren e shfletuesit",
     "Choose a profile": "Zgjidhni një profil",
+    "Choose a source": "Zgjidh një burim",
     "Choose files in the browser window":
         "Zgjidhni skedarët në dritaren e shfletuesit",
     "Choose from": "Zgjidhni nga",
@@ -263,6 +265,8 @@ var keyStrings = {
         "Konfiguro TV DOSUG te Cilësimet -> Cilësimet e ofruesit",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfiguro TVClub te Cilësimet -> Cilësimet e ofruesit",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfiguroni fillimisht shtesën, pastaj shtoni adresën e manifestit të konfiguruar.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfiguro ULTIFL1X te Cilësimet -> Cilësimet e ofruesit",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -387,6 +391,8 @@ var keyStrings = {
         "Shkruani URL-në e listës së riprodhimit për të hyrë në këtë shërbim.",
     "Enter a playlist URL. The player will restart after saving.":
         "Shkruani URL-në e listës së riprodhimit. Luajtësi do të riniset pas ruajtjes.",
+    "Enter a Stremio addon manifest URL.":
+        "Shkruaj URL-në e manifestit të shtesës Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Shkruani një adresë serveri pa hapësira ose një fragment.",
     "Enter a username (8 characters).":
@@ -876,6 +882,7 @@ var keyStrings = {
     "Repeat: All": "Përsëriteni: Të gjitha",
     "Repeat: Off": "Përsëriteni: Joaktiv",
     "Repeat: One": "Përsëriteni: Një",
+    Replace: "Zëvendëso",
     "Request sended!": "Kërkesa u dërgua!",
     "Requesting approval for %1": "Kërkimi i miratimit për %1",
     "Reset order": 'Rendit kanalet: "Siç është"',
@@ -1051,6 +1058,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Koha e pritjes së transmetimit mbaroi. Zgjidhni kanalin për të provuar përsëri.",
     "Stream type: %1": "Lloji i rrjedhës: %1",
+    "Stremio addons": "Shtesat Stremio",
     "String for search": "Pyetja e kërkimit",
     "Su Mo Tu We Th Fr Sa": "Die Hën Mar Mër Enj Pre Sht",
     "Subscription information": "Informacioni i abonimit",
@@ -1151,6 +1159,7 @@ var keyStrings = {
     Unavailable: "I padisponueshëm",
     "Unlock the player's settings before changing its playlist.":
         "Zhbllokoni cilësimet e luajtësit përpara se të ndryshoni listën e tij të luajtjes.",
+    "Unsupported source": "Burim i pambështetur",
     Untitled: "Pa titull",
     "Untitled folder": "Dosje pa titull",
     "Update installed. Please restart OttPlay FOSS.":

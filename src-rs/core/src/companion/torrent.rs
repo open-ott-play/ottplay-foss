@@ -20,6 +20,10 @@ use tokio_util::sync::CancellationToken;
 
 pub const MAX_SESSIONS: usize = 2;
 pub const CACHE_LIMIT: u64 = 2 * 1024 * 1024 * 1024;
+enum Source {
+    Url(String),
+    Metainfo(Vec<u8>),
+}
 const MAX_FILES: usize = 4096;
 const METADATA_LIMIT: usize = 1024 * 1024;
 const IDLE: Duration = Duration::from_secs(120);
@@ -182,6 +186,21 @@ impl TorrentManager {
         selected: Option<usize>,
     ) -> Result<View, &'static str> {
         super::source::validate(&source)?;
+        self.create_source(Source::Url(source), selected)
+    }
+    pub fn create_metainfo(
+        self: &Arc<Self>,
+        bytes: Vec<u8>,
+        selected: Option<usize>,
+    ) -> Result<View, &'static str> {
+        super::source::validate_metainfo(&bytes)?;
+        self.create_source(Source::Metainfo(bytes), selected)
+    }
+    fn create_source(
+        self: &Arc<Self>,
+        source: Source,
+        selected: Option<usize>,
+    ) -> Result<View, &'static str> {
         if self.cancel.is_cancelled() {
             return Err("service_stopped");
         }
@@ -258,7 +277,7 @@ impl TorrentManager {
         // storage workers need to retain the exclusive disk ownership now.
         lock(&self.owner).take();
     }
-    async fn run(self: Arc<Self>, lease: Arc<Lease>, source: String) {
+    async fn run(self: Arc<Self>, lease: Arc<Lease>, source: Source) {
         let token = lease.cancel.clone();
         let options = SessionOptions {
             cancellation_token: Some(token.clone()),
@@ -302,15 +321,19 @@ impl TorrentManager {
         &self,
         lease: &Arc<Lease>,
         engine: &Arc<Session>,
-        source: String,
+        source: Source,
     ) -> Result<(), &'static str> {
         let list = async {
-            let add = if source.starts_with("magnet:") {
-                AddTorrent::from_url(source)
-            } else {
-                let bytes = super::source::fetch(&source).await?;
-                super::source::validate_metainfo(&bytes)?;
-                AddTorrent::from_bytes(bytes)
+            let add = match source {
+                Source::Metainfo(bytes) => AddTorrent::from_bytes(bytes),
+                Source::Url(source) if source.starts_with("magnet:") => {
+                    AddTorrent::from_url(source)
+                }
+                Source::Url(source) => {
+                    let bytes = super::source::fetch(&source).await?;
+                    super::source::validate_metainfo(&bytes)?;
+                    AddTorrent::from_bytes(bytes)
+                }
             };
             #[allow(unused_mut)]
             let mut options = AddTorrentOptions {

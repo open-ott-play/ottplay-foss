@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Lisää kanava luokkaan",
     "Add channel to favorites": "Lisää kanava suosikkeihin",
     "Add new list": "Lisää uusi lista",
+    "Add Stremio addon…": "Lisää Stremio-lisäosa…",
     "Add to favorites": "Lisää suosikkeihin",
     Age: "Ikä",
     All: "Kaikki",
@@ -173,6 +174,7 @@ var keyStrings = {
         "Tarkistetaan Plex palvelinyhteyttä…",
     "Choose a folder in the browser window": "Valitse kansio selainikkunassa",
     "Choose a profile": "Valitse profiili",
+    "Choose a source": "Valitse lähde",
     "Choose files in the browser window": "Valitse tiedostot selainikkunassa",
     "Choose from": "Valitse",
     "Choose language": "Valitse kieli",
@@ -261,6 +263,8 @@ var keyStrings = {
         "Määritä TV DOSUG kohdassa Asetukset -> Palveluntarjoajan asetukset",
     "Configure TVClub in Settings -> Provider Settings":
         "Määritä TVClub kohdassa Asetukset -> Palveluntarjoajan asetukset",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Määritä ensin tämä lisäosa ja lisää sitten määritetyn manifestin osoite.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Määritä ULTIFL1X kohdassa Asetukset -> Palveluntarjoajan asetukset",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -380,6 +384,8 @@ var keyStrings = {
         "Käytä tätä palvelua kirjoittamalla soittolista URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Kirjoita soittolista URL. Mediasoitin käynnistyy uudelleen tallennuksen jälkeen.",
+    "Enter a Stremio addon manifest URL.":
+        "Anna Stremio-lisäosan manifestin URL.",
     "Enter a server address without spaces or a fragment.":
         "Anna palvelimen osoite ilman välilyöntejä tai fragmentteja.",
     "Enter a username (8 characters).": "Anna käyttäjänimi (8 merkkiä).",
@@ -859,6 +865,7 @@ var keyStrings = {
     "Repeat: All": "Toista uudelleen: Kaikki",
     "Repeat: Off": "Toista uudelleen: Pois",
     "Repeat: One": "Toista uudelleen: Yksi",
+    Replace: "Korvaa",
     "Request sended!": "Pyyntö lähetetty!",
     "Requesting approval for %1": "Pyydetään hyväksyntää kohteelle %1",
     "Reset order": 'Lajittele kanavat: "niin kuin on"',
@@ -1031,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Suoratoiston aikakatkaisu. Yritä uudelleen valitsemalla kanava.",
     "Stream type: %1": "Striimin tyyppi: %1",
+    "Stremio addons": "Stremio-lisäosat",
     "String for search": "Hakukysely",
     "Su Mo Tu We Th Fr Sa": "su ma ti ke to pe la",
     "Subscription information": "Tilaustiedot",
@@ -1129,6 +1137,7 @@ var keyStrings = {
     Unavailable: "Ei käytettävissä",
     "Unlock the player's settings before changing its playlist.":
         "Avaa soittimen asetusten lukitus ennen toistolistan muuttamista.",
+    "Unsupported source": "Lähdettä ei tueta",
     Untitled: "Nimetön",
     "Untitled folder": "Nimetön kansio",
     "Update installed. Please restart OttPlay FOSS.":

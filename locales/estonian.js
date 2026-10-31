@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Lisa kanal kategooriasse",
     "Add channel to favorites": "Lisage kanal lemmikute hulka",
     "Add new list": "Lisa uus loend",
+    "Add Stremio addon…": "Lisa Stremio lisandmoodul…",
     "Add to favorites": "Lisa lemmikute hulka",
     Age: "Vanus",
     All: "Kõik",
@@ -171,6 +172,7 @@ var keyStrings = {
         "Plex serveriühenduse kontrollimine…",
     "Choose a folder in the browser window": "Valige brauseriaknas kaust",
     "Choose a profile": "Valige profiil",
+    "Choose a source": "Vali allikas",
     "Choose files in the browser window": "Valige brauseriaknas failid",
     "Choose from": "Valige",
     "Choose language": "Valige keel",
@@ -257,6 +259,8 @@ var keyStrings = {
         "Konfigureerige TV DOSUG jaotises Seaded -> Pakkuja sätted",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigureerige TVClub jaotises Seaded -> Pakkuja sätted",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Seadista esmalt see lisand ja seejärel lisa seadistatud manifesti aadress.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigureerige ULTIFL1X jaotises Seaded -> Pakkuja sätted",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -377,6 +381,8 @@ var keyStrings = {
         "Sellele teenusele juurdepääsuks sisestage esitusloend URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sisestage esitusloend URL. Meediumipleier taaskäivitub pärast salvestamist.",
+    "Enter a Stremio addon manifest URL.":
+        "Sisesta Stremio lisandmooduli manifesti URL.",
     "Enter a server address without spaces or a fragment.":
         "Sisestage serveri aadress ilma tühikute või fragmendita.",
     "Enter a username (8 characters).": "Sisestage kasutajanimi (8 tähemärki).",
@@ -857,6 +863,7 @@ var keyStrings = {
     "Repeat: All": "Korda: Kõik",
     "Repeat: Off": "Korda: Väljas",
     "Repeat: One": "Korda: Üks",
+    Replace: "Asenda",
     "Request sended!": "Taotlus saadetud!",
     "Requesting approval for %1": "Kinnituse taotlemine %1 jaoks",
     "Reset order": 'Sorteeri kanaleid: "Nagu on"',
@@ -1029,6 +1036,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Voo ooteaeg sai läbi. Uuesti proovimiseks valige kanal.",
     "Stream type: %1": "Voo tüüp: %1",
+    "Stremio addons": "Stremio lisandid",
     "String for search": "Otsingupäring",
     "Su Mo Tu We Th Fr Sa": "P E T K N R L",
     "Subscription information": "Tellimuse teave",
@@ -1127,6 +1135,7 @@ var keyStrings = {
     Unavailable: "Pole saadaval",
     "Unlock the player's settings before changing its playlist.":
         "Enne esitusloendi muutmist avage mängija seadete lukustus.",
+    "Unsupported source": "Toetamata allikas",
     Untitled: "Pealkirjata",
     "Untitled folder": "Nimetu kaust",
     "Update installed. Please restart OttPlay FOSS.":

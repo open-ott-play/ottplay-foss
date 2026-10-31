@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Pridėti kanalą prie kategorijos",
     "Add channel to favorites": "Pridėti kanalą prie mėgstamiausių",
     "Add new list": "Pridėti naują sąrašą",
+    "Add Stremio addon…": "Pridėti Stremio priedą…",
     "Add to favorites": "Pridėti prie mėgstamiausių",
     Age: "Amžius",
     All: "Visi",
@@ -173,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Naršyklės lange pasirinkite aplanką",
     "Choose a profile": "Pasirinkti profilį",
+    "Choose a source": "Pasirinkite šaltinį",
     "Choose files in the browser window": "Naršyklės lange pasirinkite failus",
     "Choose from": "Pasirinkti iš",
     "Choose language": "Pasirinkti kalbą",
@@ -260,6 +262,8 @@ var keyStrings = {
         "Nustatykite TV DOSUG skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure TVClub in Settings -> Provider Settings":
         "Nustatykite TVClub skiltyje Nustatymai -> Teikėjo nustatymai",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Pirmiausia sukonfigūruokite šį priedą, tada pridėkite sukonfigūruoto manifesto adresą.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Nustatykite ULTIFL1X skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -380,6 +384,8 @@ var keyStrings = {
         "Norėdami naudotis šia paslauga, įveskite grojaraščio URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Įveskite grojaraščio URL. Išsaugojus leistuvas bus paleistas iš naujo.",
+    "Enter a Stremio addon manifest URL.":
+        "Įveskite Stremio priedo manifesto URL.",
     "Enter a server address without spaces or a fragment.":
         "Įveskite serverio adresą be tarpų ir dalies po #.",
     "Enter a username (8 characters).":
@@ -859,6 +865,7 @@ var keyStrings = {
     "Repeat: All": "Kartojimas: visi",
     "Repeat: Off": "Kartojimas: išjungtas",
     "Repeat: One": "Kartojimas: vienas",
+    Replace: "Pakeisti",
     "Request sended!": "Užklausa išsiųsta!",
     "Requesting approval for %1": "Prašoma patvirtinimo: %1",
     "Reset order": "Rikiuoti kanalus: „Kaip yra“",
@@ -1031,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Srauto laukimo laikas baigėsi. Pasirinkite kanalą ir bandykite dar kartą.",
     "Stream type: %1": "Srauto tipas: %1",
+    "Stremio addons": "Stremio priedai",
     "String for search": "Paieškos užklausa",
     "Su Mo Tu We Th Fr Sa": "Sk Pr An Tr Kt Pn Št",
     "Subscription information": "Prenumeratos informacija",
@@ -1130,6 +1138,7 @@ var keyStrings = {
     Unavailable: "Nepasiekiama",
     "Unlock the player's settings before changing its playlist.":
         "Prieš keisdami grojaraštį atrakinkite leistuvo nustatymus.",
+    "Unsupported source": "Nepalaikomas šaltinis",
     Untitled: "Be pavadinimo",
     "Untitled folder": "Aplankas be pavadinimo",
     "Update installed. Please restart OttPlay FOSS.":

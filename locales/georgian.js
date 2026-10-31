@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "დაამატეთ არხი კატეგორიაში",
     "Add channel to favorites": "დაამატეთ არხი რჩეულებში",
     "Add new list": "ახალი სიის დამატება",
+    "Add Stremio addon…": "Stremio დანამატის დამატება…",
     "Add to favorites": "რჩეულებში დამატება",
     Age: "ასაკი",
     All: "ყველა",
@@ -171,6 +172,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "აირჩიეთ საქაღალდე ბრაუზერის ფანჯარაში",
     "Choose a profile": "აირჩიეთ პროფილი",
+    "Choose a source": "აირჩიეთ წყარო",
     "Choose files in the browser window": "აირჩიეთ ფაილები ბრაუზერის ფანჯარაში",
     "Choose from": "აირჩიეთ",
     "Choose language": "აირჩიეთ ენა",
@@ -259,6 +261,8 @@ var keyStrings = {
         "დააკონფიგურირეთ TV DOSUG პარამეტრებში -> პროვაიდერის პარამეტრები",
     "Configure TVClub in Settings -> Provider Settings":
         "დააკონფიგურირეთ TVClub პარამეტრებში -> პროვაიდერის პარამეტრები",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ჯერ გამართეთ ეს დამატება, შემდეგ დაამატეთ გამართული მანიფესტის მისამართი.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "დააკონფიგურირეთ ULTIFL1X პარამეტრებში -> პროვაიდერის პარამეტრები",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "ამ სერვისზე წვდომისთვის შეიყვანეთ დასაკრავი სიის URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "შეიყვანეთ დასაკრავი სიის URL. შენახვის შემდეგ პლეერი თავიდან გაეშვება.",
+    "Enter a Stremio addon manifest URL.":
+        "შეიყვანეთ Stremio დანამატის მანიფესტის URL.",
     "Enter a server address without spaces or a fragment.":
         "აკრიფეთ სერვერის მისამართი ინტერვალის ან ფრაგმენტის გარეშე.",
     "Enter a username (8 characters).":
@@ -863,6 +869,7 @@ var keyStrings = {
     "Repeat: All": "გამეორება: ყველა",
     "Repeat: Off": "გამეორება: გამორთულია",
     "Repeat: One": "გაიმეორეთ: ერთი",
+    Replace: "ჩანაცვლება",
     "Request sended!": "მოთხოვნა გაიგზავნა!",
     "Requesting approval for %1": "დამტკიცების მოთხოვნა %1-სთვის",
     "Reset order": 'არხების დახარისხება: "როგორც არის"',
@@ -1034,6 +1041,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ნაკადის ლოდინის დრო ამოიწურა. ხელახლა საცდელად აირჩიეთ არხი.",
     "Stream type: %1": "ნაკადის ტიპი: %1",
+    "Stremio addons": "Stremio-ს დამატებები",
     "String for search": "საძიებო მოთხოვნა",
     "Su Mo Tu We Th Fr Sa": "კვი ორშ სამ ოთხ ხუთ პარ შაბ",
     "Subscription information": "გამოწერის ინფორმაცია",
@@ -1133,6 +1141,7 @@ var keyStrings = {
     Unavailable: "მიუწვდომელია",
     "Unlock the player's settings before changing its playlist.":
         "დასაკრავი სიის შეცვლამდე განბლოკეთ პლეერის პარამეტრები.",
+    "Unsupported source": "წყარო არ არის მხარდაჭერილი",
     Untitled: "უსათაურო",
     "Untitled folder": "უსათაურო საქაღალდე",
     "Update installed. Please restart OttPlay FOSS.":

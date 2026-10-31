@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "Přidat kanál do kategorie",
     "Add channel to favorites": "Přidat kanál do oblíbených",
     "Add new list": "Přidat nový seznam",
+    "Add Stremio addon…": "Přidat doplněk Stremio…",
     "Add to favorites": "Přidat do oblíbených",
     Age: "Věk",
     All: "Vše",
@@ -168,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Kontrola připojení serveru Plex…",
     "Choose a folder in the browser window": "Vyberte složku v okně prohlížeče",
     "Choose a profile": "Vyberte profil",
+    "Choose a source": "Vyberte zdroj",
     "Choose files in the browser window": "Vyberte soubory v okně prohlížeče",
     "Choose from": "Vybrat z",
     "Choose language": "Vyberte jazyk",
@@ -256,6 +258,8 @@ var keyStrings = {
         "Nastavte TV DOSUG v Nastavení -> Nastavení poskytovatele",
     "Configure TVClub in Settings -> Provider Settings":
         "Nastavte TVClub v Nastavení -> Nastavení poskytovatele",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Nejprve nastavte doplněk a poté přidejte adresu nastaveného manifestu.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Nastavte ULTIFL1X v Nastavení -> Nastavení poskytovatele",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -374,6 +378,8 @@ var keyStrings = {
         "Pro přístup ke službě zadejte URL playlistu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Zadejte URL seznamu skladeb. Přehrávač se po uložení restartuje.",
+    "Enter a Stremio addon manifest URL.":
+        "Zadejte URL manifestu doplňku Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Zadejte adresu serveru bez mezer a části za #.",
     "Enter a username (8 characters).": "Zadejte uživatelské jméno (8 znaků).",
@@ -851,6 +857,7 @@ var keyStrings = {
     "Repeat: All": "Opakování: vše",
     "Repeat: Off": "Opakování: vypnuto",
     "Repeat: One": "Opakování: jeden",
+    Replace: "Nahradit",
     "Request sended!": "Požadavek odeslán!",
     "Requesting approval for %1": "Žádost o schválení pro %1",
     "Reset order": "Řadit kanály: „Beze změn“",
@@ -1023,6 +1030,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Vypršel časový limit streamu. Vyberte kanál a zkuste to znovu.",
     "Stream type: %1": "Typ streamu: %1",
+    "Stremio addons": "Doplňky Stremio",
     "String for search": "Hledaný text",
     "Su Mo Tu We Th Fr Sa": "Ne Po Út St Čt Pá So",
     "Subscription information": "Informace o předplatném",
@@ -1123,6 +1131,7 @@ var keyStrings = {
     Unavailable: "Nedostupné",
     "Unlock the player's settings before changing its playlist.":
         "Před změnou seznamu odemkněte nastavení přehrávače.",
+    "Unsupported source": "Nepodporovaný zdroj",
     Untitled: "Bez názvu",
     "Untitled folder": "Složka bez názvu",
     "Update installed. Please restart OttPlay FOSS.":

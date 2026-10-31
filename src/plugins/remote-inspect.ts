@@ -18,6 +18,8 @@ export function installRemoteInspection(w: any): any {
         "profile_save",
         "profile_import",
         "local_media",
+        "torrent_catalog",
+        "torrent_indexer",
         "provider_settings",
         "player_settings",
         "player_settings_patch",
@@ -201,6 +203,14 @@ export function installRemoteInspection(w: any): any {
             /^[a-f0-9]{32}$/.test(item.id || "") &&
             actions.indexOf(item.action) >= 0 &&
             item.action !== "vportal_search" &&
+            !(
+                item.action === "torrent_indexer" &&
+                /^(list|caps|search)$/.test(params.op)
+            ) &&
+            !(
+                item.action === "torrent_catalog" &&
+                /^(read|read_chunk|status)$/.test(params.op)
+            ) &&
             !(item.action === "categories" && params.op !== "select") &&
             !(item.action === "plex_library" && params.op !== "play") &&
             !(item.action === "favorites" && params.op !== "play") &&
@@ -248,6 +258,8 @@ export function installRemoteInspection(w: any): any {
                 item.action === "plex_folders" ||
                 item.action === "local_media" ||
                 item.action === "favorites_transfer" ||
+                item.action === "torrent_catalog" ||
+                item.action === "torrent_indexer" ||
                 ((item.action === "provider_settings" ||
                     item.action === "settings_compare") &&
                     item.params &&

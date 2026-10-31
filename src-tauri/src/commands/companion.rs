@@ -51,6 +51,8 @@ pub struct Capabilities {
     available: bool,
     torrent: bool,
     plugins: bool,
+    #[serde(rename = "localTorznab")]
+    local_torznab: bool,
 }
 
 fn installed_capabilities(window_label: &str) -> Result<Capabilities, String> {
@@ -63,6 +65,7 @@ fn installed_capabilities(window_label: &str) -> Result<Capabilities, String> {
         available: true,
         torrent: true,
         plugins: true,
+        local_torznab: true,
     })
 }
 
@@ -171,7 +174,8 @@ mod tests {
         assert_eq!(
             serde_json::to_value(capabilities).unwrap(),
             serde_json::json!({
-                "schema": 1, "local": true, "available": true, "torrent": true, "plugins": true
+                "schema": 1, "local": true, "available": true, "torrent": true,
+                "plugins": true, "localTorznab": true
             })
         );
         assert!(state.0.lock().await.is_none());

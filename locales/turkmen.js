@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanaly kategoriýa goş",
     "Add channel to favorites": "Kanaly halanýanlara goş",
     "Add new list": "Täze sanaw goş",
+    "Add Stremio addon…": "Stremio goşmaçasyny goşuň…",
     "Add to favorites": "Halanýanlara goş",
     Age: "Ýaş",
     All: "Ählisi",
@@ -171,6 +172,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Brauzer penjiresinde bukja saýlaň",
     "Choose a profile": "Profili saýlaň",
+    "Choose a source": "Çeşme saýlaň",
     "Choose files in the browser window":
         "Brauzer penjiresinde faýllary saýlaň",
     "Choose from": "Şundan saýla",
@@ -260,6 +262,8 @@ var keyStrings = {
         "TV DOSUG hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ilki bu goşmaçany sazlaň, soňra sazlanan manifestiň salgysyny goşuň.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "Bu hyzmatdan peýdalanmak üçin oýnatma sanawynyň URL salgysyny giriziň.",
     "Enter a playlist URL. The player will restart after saving.":
         "Oýnatma sanawynyň URL salgysyny giriziň. Saklanandan soň pleýer täzeden işlär.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio goşmaçasynyň manifest URL salgysyny giriziň.",
     "Enter a server address without spaces or a fragment.":
         "Serweriň salgysyny boşluksyz we fragmentsiz giriziň.",
     "Enter a username (8 characters).": "Ulanyjy adyny giriziň (8 nyşan).",
@@ -854,6 +860,7 @@ var keyStrings = {
     "Repeat: All": "Gaýtala: ählisi",
     "Repeat: Off": "Gaýtala: öçürilen",
     "Repeat: One": "Gaýtala: biri",
+    Replace: "Çalyş",
     "Request sended!": "Haýyş iberildi!",
     "Requesting approval for %1": "%1 üçin rugsat soralýar",
     "Reset order": 'Kanallary tertiple: "Bolşy ýaly"',
@@ -1024,6 +1031,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Akymyň garaşmak wagty gutardy. Gaýtadan synanyşmak üçin kanaly saýlaň.",
     "Stream type: %1": "Ýaýlymyň görnüşi: %1",
+    "Stremio addons": "Stremio goşmaçalary",
     "String for search": "Gözleg soragy",
     "Su Mo Tu We Th Fr Sa": "Ýek Duş Siş Çar Pen Ann Şen",
     "Subscription information": "Abuna ýazylma maglumaty",
@@ -1124,6 +1132,7 @@ var keyStrings = {
     Unavailable: "Elýeterli däl",
     "Unlock the player's settings before changing its playlist.":
         "Oýnatma sanawyny üýtgetmezden öň pleýeriň sazlamalarynyň gulpuny açyň.",
+    "Unsupported source": "Goldanylmaýan çeşme",
     Untitled: "Atsyz",
     "Untitled folder": "Atsyz bukja",
     "Update installed. Please restart OttPlay FOSS.":

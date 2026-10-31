@@ -19,12 +19,20 @@ mod storage;
 #[cfg(test)]
 mod tests;
 mod torrent;
+mod torznab;
+#[cfg(test)]
+mod torznab_fixture;
+mod torznab_store;
+#[cfg(test)]
+mod torznab_tests;
+mod torznab_xml;
 
 #[derive(Clone)]
 pub struct Companion(Arc<Inner>);
 struct Inner {
     token: String,
     torrent: Arc<torrent::TorrentManager>,
+    torznab: torznab::Torznab,
     plugins: plugins::PluginService,
     cancel: CancellationToken,
 }
@@ -46,9 +54,13 @@ impl Companion {
             .map_err(|error| anyhow::anyhow!(error.code()))?;
         let torrent =
             torrent::TorrentManager::new(root.join("torrent-cache"), cancel.clone()).await?;
+        let torznab = torznab::Torznab::new(root.join("torznab-private"), cancel.clone())
+            .await
+            .map_err(anyhow::Error::msg)?;
         Ok(Self(Arc::new(Inner {
             token,
             torrent,
+            torznab,
             plugins,
             cancel,
         })))
@@ -79,6 +91,28 @@ impl Companion {
                 get(stream).head(stream).options(preflight),
             )
             .route(
+                "/companion/:token/v1/torrent/sources",
+                get(torznab_sources)
+                    .post(torznab_configure)
+                    .options(preflight),
+            )
+            .route(
+                "/companion/:token/v1/torrent/sources/:id",
+                axum::routing::delete(torznab_remove).options(preflight),
+            )
+            .route(
+                "/companion/:token/v1/torrent/sources/:id/caps",
+                get(torznab_caps).options(preflight),
+            )
+            .route(
+                "/companion/:token/v1/torrent/search",
+                post(torznab_search).options(preflight),
+            )
+            .route(
+                "/companion/:token/v1/torrent/prepare",
+                post(torznab_prepare).options(preflight),
+            )
+            .route(
                 "/companion/:token/v1/plugins",
                 get(plugin_list).options(preflight),
             )
@@ -92,6 +126,7 @@ impl Companion {
     }
     pub async fn shutdown(&self) {
         self.0.cancel.cancel();
+        self.0.torznab.shutdown();
         self.0.torrent.shutdown().await;
     }
 }
@@ -158,14 +193,29 @@ async fn authenticate(State(c): State<Companion>, request: Request<Body>, next: 
 fn failure(code: &'static str) -> Response {
     let status = match code {
         "unauthorized" => StatusCode::UNAUTHORIZED,
-        "session_missing" | "plugin_not_found" => StatusCode::NOT_FOUND,
+        "session_missing"
+        | "plugin_not_found"
+        | "torznab_source_missing"
+        | "torznab_reference_missing" => StatusCode::NOT_FOUND,
         "service_stopped" | "session_stopped" | "plugin_cancelled" => {
             StatusCode::SERVICE_UNAVAILABLE
         }
-        "session_busy" | "session_limit" | "stream_limit" | "cache_limit" | "busy"
-        | "cleanup_pending" | "plugin_busy" => StatusCode::CONFLICT,
-        "stream_timeout" | "plugin_timed_out" => StatusCode::GATEWAY_TIMEOUT,
-        "plugin_execution_failed" | "plugin_network_failed" => StatusCode::BAD_GATEWAY,
+        "session_busy"
+        | "session_limit"
+        | "stream_limit"
+        | "cache_limit"
+        | "busy"
+        | "cleanup_pending"
+        | "plugin_busy"
+        | "torznab_busy"
+        | "torznab_store_limit"
+        | "torznab_source_limit" => StatusCode::CONFLICT,
+        "stream_timeout" | "plugin_timed_out" | "torznab_timeout" => StatusCode::GATEWAY_TIMEOUT,
+        "plugin_execution_failed"
+        | "plugin_network_failed"
+        | "torznab_http_error"
+        | "torznab_network_error"
+        | "torznab_api_error" => StatusCode::BAD_GATEWAY,
         _ => StatusCode::BAD_REQUEST,
     };
     (status, Json(json!({"schema":1,"error":code}))).into_response()
@@ -175,23 +225,82 @@ async fn preflight() -> StatusCode {
 }
 async fn capabilities() -> Json<Value> {
     Json(
-        json!({"schema":1,"torrent":true,"plugins":true,"torrentSources":["magnet","http","https"],"fileSelection":true,"maxSessions":torrent::MAX_SESSIONS,"cacheBytes":torrent::CACHE_LIMIT,"inboundPeerListener":false,"pluginNetwork":true,"pluginNetworkDefault":false}),
+        json!({"schema":1,"torrent":true,"plugins":true,"localTorznab":true,"torrentSources":["magnet","http","https","local-reference"],"fileSelection":true,"maxSessions":torrent::MAX_SESSIONS,"cacheBytes":torrent::CACHE_LIMIT,"inboundPeerListener":false,"pluginNetwork":true,"pluginNetworkDefault":false}),
     )
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Create {
-    source: String,
+    source: Option<String>,
+    source_id: Option<String>,
+    source_ref: Option<String>,
     file_index: Option<usize>,
 }
 async fn create(State(c): State<Companion>, body: Result<Json<Create>, JsonRejection>) -> Response {
     let Ok(Json(body)) = body else {
         return failure("invalid_request");
     };
-    match c.0.torrent.create(body.source, body.file_index) {
+    let result = match (body.source, body.source_id, body.source_ref) {
+        (Some(source), None, None) => c.0.torrent.create(source, body.file_index),
+        (None, Some(source_id), Some(reference)) => {
+            c.0.torznab
+                .create_session(source_id, reference, c.0.torrent.clone(), body.file_index)
+                .await
+        }
+        _ => Err("invalid_request"),
+    };
+    match result {
         Ok(view) => (StatusCode::ACCEPTED, Json(view)).into_response(),
         Err(code) => failure(code),
     }
+}
+async fn torznab_sources(State(c): State<Companion>) -> Json<Value> {
+    Json(c.0.torznab.sources())
+}
+fn torznab_response(result: Result<Value, &'static str>) -> Response {
+    match result {
+        Ok(value) => Json(value).into_response(),
+        Err(code) => failure(code),
+    }
+}
+async fn torznab_configure(
+    State(c): State<Companion>,
+    body: Result<Json<torznab::Configure>, JsonRejection>,
+) -> Response {
+    let Ok(Json(body)) = body else {
+        return failure("invalid_request");
+    };
+    torznab_response(c.0.torznab.configure(body).await)
+}
+async fn torznab_remove(
+    State(c): State<Companion>,
+    Path((_, id)): Path<(String, String)>,
+) -> Response {
+    torznab_response(c.0.torznab.remove(id).await)
+}
+async fn torznab_caps(
+    State(c): State<Companion>,
+    Path((_, id)): Path<(String, String)>,
+) -> Response {
+    torznab_response(c.0.torznab.caps(&id).await)
+}
+async fn torznab_search(
+    State(c): State<Companion>,
+    body: Result<Json<torznab::Search>, JsonRejection>,
+) -> Response {
+    let Ok(Json(body)) = body else {
+        return failure("invalid_request");
+    };
+    torznab_response(c.0.torznab.search(body).await)
+}
+async fn torznab_prepare(
+    State(c): State<Companion>,
+    body: Result<Json<torznab::Prepare>, JsonRejection>,
+) -> Response {
+    let Ok(Json(body)) = body else {
+        return failure("invalid_request");
+    };
+    torznab_response(c.0.torznab.prepare(body).await)
 }
 async fn status(State(c): State<Companion>, Path((_, id)): Path<(String, String)>) -> Response {
     match c.0.torrent.get(&id) {

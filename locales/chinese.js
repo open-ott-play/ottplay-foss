@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "将频道添加到类别",
     "Add channel to favorites": "添加频道至收藏夹",
     "Add new list": "添加新列表",
+    "Add Stremio addon…": "添加 Stremio 插件…",
     "Add to favorites": "添加到收藏夹",
     Age: "年龄",
     All: "全部",
@@ -164,6 +165,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "检查Plex服务器连接...",
     "Choose a folder in the browser window": "在浏览器窗口中选择文件夹",
     "Choose a profile": "选择配置文件",
+    "Choose a source": "选择来源",
     "Choose files in the browser window": "在浏览器窗口中选择文件",
     "Choose from": "选择",
     "Choose language": "选择语言",
@@ -249,6 +251,8 @@ var keyStrings = {
         "在“设置”->“提供商设置”中配置 TV DOSUG",
     "Configure TVClub in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 TVClub",
+    "Configure this addon first, then add its configured manifest URL.":
+        "请先配置此插件，再添加配置后的清单网址。",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 ULTIFL1X",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -360,6 +364,7 @@ var keyStrings = {
         "输入播放列表URL 以访问此服务。",
     "Enter a playlist URL. The player will restart after saving.":
         "输入播放列表URL。保存后播放器将重新启动。",
+    "Enter a Stremio addon manifest URL.": "请输入 Stremio 插件的清单 URL。",
     "Enter a server address without spaces or a fragment.":
         "输入不带空格或片段的服务器地址。",
     "Enter a username (8 characters).": "输入用户名（8 个字符）。",
@@ -816,6 +821,7 @@ var keyStrings = {
     "Repeat: All": "重复：全部",
     "Repeat: Off": "重复：关闭",
     "Repeat: One": "重复：一",
+    Replace: "替换",
     "Request sended!": "请求已发送！",
     "Requesting approval for %1": "请求批准%1",
     "Reset order": "频道排序: “原样”",
@@ -979,6 +985,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "流媒体连接超时。请选择频道重试。",
     "Stream type: %1": "流类型：%1",
+    "Stremio addons": "Stremio 插件",
     "String for search": "搜索查询",
     "Su Mo Tu We Th Fr Sa": "日 一 二 三 四 五 六",
     "Subscription information": "订阅信息",
@@ -1069,6 +1076,7 @@ var keyStrings = {
     Unavailable: "不可用",
     "Unlock the player's settings before changing its playlist.":
         "更改播放列表前，请先解锁播放器设置。",
+    "Unsupported source": "不支持的来源",
     Untitled: "无标题",
     "Untitled folder": "无标题文件夹",
     "Update installed. Please restart OttPlay FOSS.":

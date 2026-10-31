@@ -124,6 +124,8 @@ group(
             "sCompanionEndpoint",
             "torrentCatalogEndpoint",
             "sTorrentCatalogEndpoint",
+            "torrentStreamAddons",
+            "sTorrentStreamAddons",
             "stb_settings_backup",
         ];
         const input = { ordinary: "value" };

@@ -127,6 +127,10 @@ function fixture(initial = {}) {
         "src/provider/torrent-discovery-data.ts",
         host
     );
+    require("./global-favorites-main-ports.cjs").actualModule(
+        "src/provider/torrent-stream-data.ts",
+        host
+    );
     privateRuntime(host, "src/provider/torrent-driver.ts");
     privateRuntime(host, "src/provider/drivers.ts");
     privateRuntime(host, "src/provider/xtream-media.ts");

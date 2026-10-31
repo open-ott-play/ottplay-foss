@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanalı kateqoriyaya əlavə et",
     "Add channel to favorites": "Kanalı sevimlilərə əlavə et",
     "Add new list": "Yeni siyahı əlavə et",
+    "Add Stremio addon…": "Stremio əlavəsi əlavə edin…",
     "Add to favorites": "Sevimlilərə əlavə et",
     Age: "Yaş",
     All: "Hamısı",
@@ -173,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Brauzer pəncərəsində qovluq seçin",
     "Choose a profile": "Profil seçin",
+    "Choose a source": "Mənbə seçin",
     "Choose files in the browser window": "Brauzer pəncərəsində fayllar seçin",
     "Choose from": "Buradan seçin",
     "Choose language": "Dil seçin",
@@ -261,6 +263,8 @@ var keyStrings = {
         "TV DOSUG xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Əvvəlcə bu əlavəni sazlayın, sonra sazlanmış manifestin ünvanını əlavə edin.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -380,6 +384,8 @@ var keyStrings = {
         "Bu xidmətə daxil olmaq üçün pleylist URL-i daxil edin.",
     "Enter a playlist URL. The player will restart after saving.":
         "Pleylist URL-ni daxil edin. Yadda saxladıqdan sonra pleyer yenidən başladılacaq.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio əlavəsinin manifest URL-ni daxil edin.",
     "Enter a server address without spaces or a fragment.":
         "Boşluq və # işarəsindən sonrakı fraqment olmadan server ünvanı daxil edin.",
     "Enter a username (8 characters).": "İstifadəçi adı daxil edin (8 simvol).",
@@ -858,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Təkrar: hamısı",
     "Repeat: Off": "Təkrar: söndürülüb",
     "Repeat: One": "Təkrar: biri",
+    Replace: "Əvəz et",
     "Request sended!": "Sorğu göndərildi!",
     "Requesting approval for %1": "%1 üçün təsdiq tələb olunur",
     "Reset order": "Kanalları sırala: “Olduğu kimi”",
@@ -1033,6 +1040,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Yayım üçün gözləmə vaxtı bitdi. Yenidən cəhd etmək üçün kanalı seçin.",
     "Stream type: %1": "Yayım növü: %1",
+    "Stremio addons": "Stremio əlavələri",
     "String for search": "Axtarış mətni",
     "Su Mo Tu We Th Fr Sa": "B B.e. Ç.a. Ç C.a. C Ş",
     "Subscription information": "Abunəlik məlumatları",
@@ -1133,6 +1141,7 @@ var keyStrings = {
     Unavailable: "Əlçatan deyil",
     "Unlock the player's settings before changing its playlist.":
         "Oynatma siyahısını dəyişməzdən əvvəl pleyerin ayarlarının kilidini açın.",
+    "Unsupported source": "Dəstəklənməyən mənbə",
     Untitled: "Adsız",
     "Untitled folder": "Adsız qovluq",
     "Update installed. Please restart OttPlay FOSS.":

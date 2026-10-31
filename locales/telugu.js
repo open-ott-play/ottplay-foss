@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "వర్గానికి ఛానెల్‌ని జోడించండి",
     "Add channel to favorites": "ఛానెల్‌ని ఇష్టమైన వాటికి జోడించండి",
     "Add new list": "కొత్త జాబితాను జోడించండి",
+    "Add Stremio addon…": "Stremio యాడ్-ఆన్‌ను జోడించండి…",
     "Add to favorites": "ఇష్టమైన వాటికి జోడించండి",
     Age: "వయస్సు",
     All: "అన్నీ",
@@ -164,6 +165,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex సర్వర్ కనెక్షన్‌ని తనిఖీ చేస్తోంది…",
     "Choose a folder in the browser window": "బ్రౌజర్ విండోలో ఒక ఫోల్డర్‌ను ఎంచుకోండి",
     "Choose a profile": "ప్రొఫైల్‌ను ఎంచుకోండి",
+    "Choose a source": "మూలాన్ని ఎంచుకోండి",
     "Choose files in the browser window": "బ్రౌజర్ విండోలో ఫైల్‌లను ఎంచుకోండి",
     "Choose from": "నుండి ఎంచుకోండి",
     "Choose language": "భాషను ఎంచుకోండి",
@@ -250,6 +252,8 @@ var keyStrings = {
         "సెట్టింగులు -> ప్రొవైడర్ సెట్టింగ్‌లలో TV DOSUGని కాన్ఫిగర్ చేయండి",
     "Configure TVClub in Settings -> Provider Settings":
         "సెట్టింగులు -> ప్రొవైడర్ సెట్టింగ్‌లలో TVClubని కాన్ఫిగర్ చేయండి",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ముందుగా ఈ యాడ్-ఆన్‌ను కాన్ఫిగర్ చేసి, తర్వాత కాన్ఫిగర్ చేసిన మానిఫెస్ట్ చిరునామాను జోడించండి.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "సెట్టింగ్‌లు -> ప్రొవైడర్ సెట్టింగ్‌లలో ULTIFL1Xని కాన్ఫిగర్ చేయండి",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -367,6 +371,8 @@ var keyStrings = {
         "ఈ సేవను యాక్సెస్ చేయడానికి ప్లేజాబితా URLని నమోదు చేయండి.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL ప్లేజాబితాని నమోదు చేయండి. సేవ్ చేసిన తర్వాత ప్లేయర్ రీస్టార్ట్ అవుతుంది.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio యాడ్-ఆన్ మానిఫెస్ట్ URLను నమోదు చేయండి.",
     "Enter a server address without spaces or a fragment.":
         "ఖాళీలు లేదా భాగం లేకుండా సర్వర్ చిరునామాను నమోదు చేయండి.",
     "Enter a username (8 characters).": "వినియోగదారు పేరు (8 అక్షరాలు) నమోదు చేయండి.",
@@ -832,6 +838,7 @@ var keyStrings = {
     "Repeat: All": "పునరావృతం: అన్నీ",
     "Repeat: Off": "పునరావృతం: ఆఫ్",
     "Repeat: One": "పునరావృతం: ఒకటి",
+    Replace: "భర్తీ చేయండి",
     "Request sended!": "అభ్యర్థన పంపబడింది!",
     "Requesting approval for %1": "%1 కోసం ఆమోదాన్ని అభ్యర్థిస్తోంది",
     "Reset order": 'ఛానెల్‌లను క్రమబద్ధీకరించండి: "అలాగే"',
@@ -998,6 +1005,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "స్ట్రీమ్ కోసం వేచి ఉండే సమయం ముగిసింది. మళ్లీ ప్రయత్నించడానికి ఛానెల్‌ను ఎంచుకోండి.",
     "Stream type: %1": "స్ట్రీమ్ రకం: %1",
+    "Stremio addons": "Stremio యాడ్-ఆన్‌లు",
     "String for search": "శోధన ప్రశ్న",
     "Su Mo Tu We Th Fr Sa": "ఆది సోమ మంగళ బుధ గురు శుక్ర శని",
     "Subscription information": "సబ్‌స్క్రిప్షన్ సమాచారం",
@@ -1091,6 +1099,7 @@ var keyStrings = {
     Unavailable: "అందుబాటులో లేదు",
     "Unlock the player's settings before changing its playlist.":
         "ప్లేజాబితాను మార్చే ముందు ప్లేయర్ సెట్టింగ్‌ల లాక్‌ను తీసివేయండి.",
+    "Unsupported source": "మద్దతు లేని మూలం",
     Untitled: "శీర్షిక లేదు",
     "Untitled folder": "శీర్షికలేని ఫోల్డర్",
     "Update installed. Please restart OttPlay FOSS.":

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Żid kanal mal-kategorija",
     "Add channel to favorites": "Żid kanal mal-favoriti",
     "Add new list": "Żid lista ġdida",
+    "Add Stremio addon…": "Żid estensjoni Stremio…",
     "Add to favorites": "Żid mal-favoriti",
     Age: "Età",
     All: "Kollha",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Agħżel fowlder fit-tieqa tal-brawżer",
     "Choose a profile": "Agħżel profil",
+    "Choose a source": "Agħżel sors",
     "Choose files in the browser window": "Agħżel fajls fit-tieqa tal-brawżer",
     "Choose from": "Agħżel minn",
     "Choose language": "Agħżel il-lingwa",
@@ -264,6 +266,8 @@ var keyStrings = {
         "Ikkonfigura TV DOSUG f’Issettjar → Issettjar tal-fornitur",
     "Configure TVClub in Settings -> Provider Settings":
         "Ikkonfigura TVClub f’Issettjar → Issettjar tal-fornitur",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ikkonfigura l-ewwel din l-estensjoni, imbagħad żid l-URL tal-manifest ikkonfigurat.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ikkonfigura ULTIFL1X f’Issettjar → Issettjar tal-fornitur",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -386,6 +390,8 @@ var keyStrings = {
         "Daħħal URL ta’ lista tad-daqq biex taċċessa dan is-servizz.",
     "Enter a playlist URL. The player will restart after saving.":
         "Daħħal URL ta’ lista tad-daqq. Il-plejer jerġa’ jibda wara s-sejvjar.",
+    "Enter a Stremio addon manifest URL.":
+        "Daħħal il-URL tal-manifest ta’ estensjoni Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Daħħal indirizz ta’ server mingħajr spazji jew framment.",
     "Enter a username (8 characters).": "Daħħal isem tal-utent (8 karattri).",
@@ -875,6 +881,7 @@ var keyStrings = {
     "Repeat: All": "Ripetizzjoni: Kollox",
     "Repeat: Off": "Ripetizzjoni: Mitfija",
     "Repeat: One": "Ripetizzjoni: Wieħed",
+    Replace: "Ibdel",
     "Request sended!": "It-talba ntbagħtet!",
     "Requesting approval for %1": "Qed tintalab approvazzjoni għal %1",
     "Reset order": 'Issortja l-kanali: "Kif inhu"',
@@ -1049,6 +1056,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Skada l-ħin ta' stennija tal-istrim. Agħżel il-kanal biex terġa' tipprova.",
     "Stream type: %1": "Tip ta’ strim: %1",
+    "Stremio addons": "Estensjonijiet Stremio",
     "String for search": "Kliem tat-tfittxija",
     "Su Mo Tu We Th Fr Sa": "Ħad Tne Tli Erb Ħam Ġim Sib",
     "Subscription information": "Informazzjoni tal-abbonament",
@@ -1151,6 +1159,7 @@ var keyStrings = {
     Unavailable: "Mhux disponibbli",
     "Unlock the player's settings before changing its playlist.":
         "Neħħi l-imblukkar tal-issettjar tal-plejer qabel tibdel il-lista tad-daqq tiegħu.",
+    "Unsupported source": "Sors mhux appoġġjat",
     Untitled: "Bla titlu",
     "Untitled folder": "Fowlder bla titlu",
     "Update installed. Please restart OttPlay FOSS.":

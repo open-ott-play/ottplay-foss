@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "ቻናል ወደ ምድብ ያክሉ",
     "Add channel to favorites": "ቻናል ወደ ተወዳጆች ያክሉ",
     "Add new list": "አዲስ ዝርዝር ያክሉ",
+    "Add Stremio addon…": "የStremio ተጨማሪ ያክሉ…",
     "Add to favorites": "ወደ ተወዳጆች ያክሉ",
     Age: "ዕድሜ",
     All: "ሁሉም",
@@ -163,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "የPlex አገልጋይ ግንኙነትን በማረጋገጥ ላይ…",
     "Choose a folder in the browser window": "በአሳሽ መስኮት ውስጥ አቃፊ ይምረጡ",
     "Choose a profile": "መገለጫ ምረጥ",
+    "Choose a source": "ምንጭ ይምረጡ",
     "Choose files in the browser window": "በአሳሽ መስኮት ውስጥ ፋይሎችን ይምረጡ",
     "Choose from": "ከዚህ ምረጥ",
     "Choose language": "ቋንቋ ምረጥ",
@@ -248,6 +250,8 @@ var keyStrings = {
         "TV DOSUGን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClubን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "መጀመሪያ ይህን ተጨማሪ ያዋቅሩ፣ ከዚያ የተዋቀረውን ማኒፌስት አድራሻ ያክሉ።",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1Xን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -363,6 +367,7 @@ var keyStrings = {
         "ይህን አገልግሎት ለመጠቀም የአጫዋች ዝርዝር URL ያስገቡ።",
     "Enter a playlist URL. The player will restart after saving.":
         "የአጫዋች ዝርዝር URL ያስገቡ። ከተቀመጠ በኋላ ማጫወቻው እንደገና ይጀምራል።",
+    "Enter a Stremio addon manifest URL.": "የStremio ተጨማሪ ማኒፌስት URL ያስገቡ።",
     "Enter a server address without spaces or a fragment.":
         "ያለ ክፍተት ወይም ፍራግመንት የአገልጋይ አድራሻ ያስገቡ።",
     "Enter a username (8 characters).": "የተጠቃሚ ስም ያስገቡ (8 ቁምፊዎች)።",
@@ -824,6 +829,7 @@ var keyStrings = {
     "Repeat: All": "ድገም፦ ሁሉንም",
     "Repeat: Off": "ድገም፦ ጠፍቷል",
     "Repeat: One": "ድገም፦ አንድ",
+    Replace: "ተካ",
     "Request sended!": "ጥያቄ ተልኳል!",
     "Requesting approval for %1": "ለ%1 ፈቃድ በመጠየቅ ላይ",
     "Reset order": 'ሰርጦችን ደርድር: "እንደሆነ"',
@@ -989,6 +995,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "የስርጭቱ የጥበቃ ጊዜ አልቋል። እንደገና ለመሞከር ቻናሉን ይምረጡ።",
     "Stream type: %1": "የዥረት ዓይነት፦ %1",
+    "Stremio addons": "የStremio ተጨማሪዎች",
     "String for search": "የፍለጋ ጥያቄ",
     "Su Mo Tu We Th Fr Sa": "እሑድ ሰኞ ማክሰ ረቡዕ ሐሙስ ዓርብ ቅዳሜ",
     "Subscription information": "የደንበኝነት መረጃ",
@@ -1081,6 +1088,7 @@ var keyStrings = {
     Unavailable: "አይገኝም",
     "Unlock the player's settings before changing its playlist.":
         "የማጫወቻ ዝርዝሩን ከመቀየርዎ በፊት የአጫዋቹን ቅንብሮች ቁልፍ ይክፈቱ።",
+    "Unsupported source": "የማይደገፍ ምንጭ",
     Untitled: "ያለ ርዕስ",
     "Untitled folder": "ስም የሌለው አቃፊ",
     "Update installed. Please restart OttPlay FOSS.":

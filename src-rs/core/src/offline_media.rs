@@ -858,9 +858,7 @@ impl Library {
                     Ok(_) => (),
                     Err(error)
                         if tolerate_read_errors || error.kind() == std::io::ErrorKind::NotFound =>
-                    {
-                        ()
-                    }
+                    {}
                     Err(error) => return Err(storage_error(error)),
                 }
             }
@@ -2199,14 +2197,12 @@ impl Library {
                         if let Ok(actual) = self.record(&indexed.id).await {
                             if actual.source_id == indexed.source_id
                                 && actual.linked_path == indexed.linked_path
-                            {
-                                if self
+                                && self
                                     .publish_source_record(&source, generation, actual, false, work)
                                     .await
                                     .is_err()
-                                {
-                                    break;
-                                }
+                            {
+                                break;
                             }
                         }
                     }
@@ -2598,7 +2594,7 @@ impl Library {
                     if kind.is_dir() {
                         match self.scan_directory(&path, &root, work).await {
                             Ok(directory) => directories.push(directory),
-                            Err(error) if path == root => return Err(error.into()),
+                            Err(error) if path == root => return Err(error),
                             Err(_) => incomplete = true,
                         }
                         continue;
@@ -2801,7 +2797,7 @@ impl Library {
             }
             // Unmounted, moved or denied sources remain visible for reconnection.
             if self
-                .link_paths_inner(vec![source.path.clone()], true, work, Some(&source))
+                .link_paths_inner(vec![source.path.clone()], true, work, Some(source))
                 .await
                 .is_err()
             {

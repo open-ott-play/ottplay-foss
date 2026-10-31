@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Tinye ọwa n'otu",
     "Add channel to favorites": "Tinye ọwa na ọkacha mmasị",
     "Add new list": "Tinye ndepụta ọhụrụ",
+    "Add Stremio addon…": "Tinye mgbakwunye Stremio…",
     "Add to favorites": "Tinye na ọkacha mmasị",
     Age: "Afọ",
     All: "Ihe niile",
@@ -171,6 +172,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Họrọ folda na windo ihe nchọgharị",
     "Choose a profile": "Họrọ profaịlụ",
+    "Choose a source": "Họrọ isi iyi",
     "Choose files in the browser window": "Họrọ faịlụ na windo ihe nchọgharị",
     "Choose from": "Họrọ n'ime",
     "Choose language": "Họrọ asụsụ",
@@ -256,6 +258,8 @@ var keyStrings = {
         "Hazie TV DOSUG na Ntọala -> Ntọala onye na-eweta ọrụ",
     "Configure TVClub in Settings -> Provider Settings":
         "Hazie TVClub na Ntọala -> Ntọala onye na-eweta ọrụ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Buru ụzọ hazie mgbakwunye a, wee tinye adreesị faịlụ manifest ahaziri.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Hazie ULTIFL1X na Ntọala -> Ntọala onye na-eweta ọrụ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -374,6 +378,8 @@ var keyStrings = {
         "Tinye URL ndepụta ọkpụkpọ ka ị nweta ọrụ a.",
     "Enter a playlist URL. The player will restart after saving.":
         "Tinye URL ndepụta ọkpụkpọ. Ihe ọkpụkpọ ga-amalitegharị mgbe echekwara.",
+    "Enter a Stremio addon manifest URL.":
+        "Tinye URL manifest nke mgbakwunye Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Tinye adreesị sava na-enweghị oghere ma ọ bụ akụkụ fragment.",
     "Enter a username (8 characters).":
@@ -850,6 +856,7 @@ var keyStrings = {
     "Repeat: All": "Tinyegharịa: Ihe niile",
     "Repeat: Off": "Tinyegharịa: Gbanyụrụ",
     "Repeat: One": "Tinyegharịa: Otu",
+    Replace: "Dochie",
     "Request sended!": "Ezipụla arịrịọ!",
     "Requesting approval for %1": "Ana arịọ nkwenye maka %1",
     "Reset order": 'Hazie ọwa: "Dị ka ọ dị"',
@@ -1020,6 +1027,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Oge ichere mgbasa ozi agwụla. Họrọ ọwa ahụ iji nwaa ọzọ.",
     "Stream type: %1": "Ụdị iyi: %1",
+    "Stremio addons": "Mgbakwunye Stremio",
     "String for search": "Ajụjụ ọchụchọ",
     "Su Mo Tu We Th Fr Sa": "Sọn Mọn Tiu Wen Tọọ Fraị Sat",
     "Subscription information": "Ozi ndenye aha",
@@ -1118,6 +1126,7 @@ var keyStrings = {
     Unavailable: "Adịghị",
     "Unlock the player's settings before changing its playlist.":
         "Mepee mkpọchi ntọala ihe ọkpụkpọ tupu ịgbanwe ndepụta ọkpụkpọ ya.",
+    "Unsupported source": "Enweghị nkwado maka isi iyi a",
     Untitled: "Enweghị aha",
     "Untitled folder": "Folda na-enweghị aha",
     "Update installed. Please restart OttPlay FOSS.":

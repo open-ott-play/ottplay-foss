@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "အမျိုးအစားသို့ ချန်နယ်ကို ထည့်ပါ။",
     "Add channel to favorites": "ချန်နယ်ကို စိတ်ကြိုက်များထည့်ပါ။",
     "Add new list": "စာရင်းအသစ်ထည့်ပါ။",
+    "Add Stremio addon…": "Stremio အပိုပရိုဂရမ် ထည့်ရန်…",
     "Add to favorites": "စိတ်ကြိုက်များထဲသို့ ထည့်ပါ။",
     Age: "အသက်",
     All: "အားလုံး",
@@ -167,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex ဆာဗာချိတ်ဆက်မှုကို စစ်ဆေးနေသည်...",
     "Choose a folder in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်တွဲတစ်ခု ရွေးပါ",
     "Choose a profile": "ပရိုဖိုင်ကို ရွေးပါ။",
+    "Choose a source": "ရင်းမြစ်တစ်ခု ရွေးပါ",
     "Choose files in the browser window": "ဘရောက်ဇာဝင်းဒိုးတွင် ဖိုင်များ ရွေးပါ",
     "Choose from": "ရွေးချယ်ပါ။",
     "Choose language": "ဘာသာစကားကို ရွေးပါ။",
@@ -255,6 +257,8 @@ var keyStrings = {
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် TV DOSUG ကို စီစဉ်သတ်မှတ်ပါ။",
     "Configure TVClub in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် TVClub ကို စီစဉ်သတ်မှတ်ပါ။",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ဦးစွာ ဤအပိုပရိုဂရမ်ကို ပြင်ဆင်သတ်မှတ်ပြီးနောက် သတ်မှတ်ထားသော မန်နီဖက်စ်လိပ်စာကို ထည့်ပါ။",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် ULTIFL1X ကို စီစဉ်သတ်မှတ်ပါ။",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -370,6 +374,8 @@ var keyStrings = {
         "ဤဝန်ဆောင်မှုကိုရယူရန် URL အစီအစဉ်ကို ထည့်သွင်းပါ။",
     "Enter a playlist URL. The player will restart after saving.":
         "သီချင်းစာရင်း URL ထည့်ပါ။ သိမ်းဆည်းပြီးနောက် ပလေယာသည် ပြန်လည်စတင်ပါမည်။",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio အပိုပရိုဂရမ်၏ မန်နီဖက်စ် URL ကို ထည့်ပါ။",
     "Enter a server address without spaces or a fragment.":
         "နေရာလွတ်များ သို့မဟုတ် အပိုင်းအစများမပါဘဲ ဆာဗာလိပ်စာကို ထည့်ပါ။",
     "Enter a username (8 characters).": "အသုံးပြုသူအမည် (စာလုံး 8 လုံး) ထည့်ပါ။",
@@ -839,6 +845,7 @@ var keyStrings = {
     "Repeat: All": "ပြန်လုပ်ပါ- အားလုံး",
     "Repeat: Off": "ပြန်လုပ်သည်- ပိတ်သည်။",
     "Repeat: One": "ထပ်ခါဖွင့်ရန်: တစ်ခု",
+    Replace: "အစားထိုးရန်",
     "Request sended!": "တောင်းဆိုချက် ပေးပို့ခဲ့သည်။",
     "Requesting approval for %1": "%1 အတွက် အတည်ပြုချက်တောင်းနေသည်။",
     "Reset order": 'ချန်နယ်များကို စီပါ။: "ဒီလိုပါပဲ"',
@@ -1011,6 +1018,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ထုတ်လွှင့်မှု စောင့်ဆိုင်းချိန် ကုန်ဆုံးသွားသည်။ ထပ်မံကြိုးစားရန် ချန်နယ်ကို ရွေးပါ။",
     "Stream type: %1": "တိုက်ရိုက်ထုတ်လွှင့်မှု အမျိုးအစား- %1",
+    "Stremio addons": "Stremio အပိုပရိုဂရမ်များ",
     "String for search": "ရှာဖွေမှု",
     "Su Mo Tu We Th Fr Sa": "တနင်္ဂနွေ တနင်္လာ အင်္ဂါ ဗုဒ္ဓဟူး ကြာသပတေး သောကြာ စနေ",
     "Subscription information": "စာရင်းသွင်းမှုအချက်အလက်",
@@ -1104,6 +1112,7 @@ var keyStrings = {
     Unavailable: "မရရှိနိုင်ပါ",
     "Unlock the player's settings before changing its playlist.":
         "ဖွင့်စာရင်းကို မပြောင်းမီ ပလေယာဆက်တင်များ၏ လော့ခ်ကို ဖွင့်ပါ။",
+    "Unsupported source": "မပံ့ပိုးသော ရင်းမြစ်",
     Untitled: "ခေါင်းစဉ်မဲ့",
     "Untitled folder": "ခေါင်းစဉ်မဲ့ ဖိုင်တွဲ",
     "Update installed. Please restart OttPlay FOSS.":

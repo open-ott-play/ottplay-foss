@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Tambahkan saluran ke kategori",
     "Add channel to favorites": "Tambahkan saluran ke favorit",
     "Add new list": "Tambah daftar baru",
+    "Add Stremio addon…": "Tambahkan add-on Stremio…",
     "Add to favorites": "Tambahkan ke favorit",
     Age: "Usia",
     All: "Semua",
@@ -173,6 +174,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Memeriksa koneksi server Plex…",
     "Choose a folder in the browser window": "Pilih folder di jendela browser",
     "Choose a profile": "Pilih profil",
+    "Choose a source": "Pilih sumber",
     "Choose files in the browser window": "Pilih file di jendela browser",
     "Choose from": "Pilih dari",
     "Choose language": "Pilih bahasa",
@@ -261,6 +263,8 @@ var keyStrings = {
         "Konfigurasikan TV DOSUG di Pengaturan -> Pengaturan penyedia",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurasikan TVClub di Pengaturan -> Pengaturan penyedia",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfigurasikan pengaya ini terlebih dahulu, lalu tambahkan URL manifes yang telah dikonfigurasi.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurasikan ULTIFL1X di Pengaturan -> Pengaturan penyedia",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -382,6 +386,8 @@ var keyStrings = {
         "Masukkan URL daftar putar untuk mengakses layanan ini.",
     "Enter a playlist URL. The player will restart after saving.":
         "Masukkan URL daftar putar. Pemutar akan dimulai ulang setelah disimpan.",
+    "Enter a Stremio addon manifest URL.":
+        "Masukkan URL manifes add-on Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Masukkan alamat server tanpa spasi atau fragmen.",
     "Enter a username (8 characters).": "Masukkan nama pengguna (8 karakter).",
@@ -858,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Ulangi: semua",
     "Repeat: Off": "Ulangi: nonaktif",
     "Repeat: One": "Ulangi: satu",
+    Replace: "Ganti",
     "Request sended!": "Permintaan terkirim!",
     "Requesting approval for %1": "Meminta persetujuan untuk %1",
     "Reset order": 'Urutkan saluran: "Apa adanya"',
@@ -1031,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Waktu tunggu siaran habis. Pilih saluran untuk mencoba lagi.",
     "Stream type: %1": "Jenis aliran: %1",
+    "Stremio addons": "Pengaya Stremio",
     "String for search": "Kata pencarian",
     "Su Mo Tu We Th Fr Sa": "Min Sen Sel Rab Kam Jum Sab",
     "Subscription information": "Informasi langganan",
@@ -1132,6 +1140,7 @@ var keyStrings = {
     Unavailable: "Tidak tersedia",
     "Unlock the player's settings before changing its playlist.":
         "Buka kunci pengaturan pemutar sebelum mengubah daftar putarnya.",
+    "Unsupported source": "Sumber tidak didukung",
     Untitled: "Tanpa judul",
     "Untitled folder": "Folder tanpa nama",
     "Update installed. Please restart OttPlay FOSS.":

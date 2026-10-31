@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Добави канал към категория",
     "Add channel to favorites": "Добави канал към любими",
     "Add new list": "Добавяне на списък",
+    "Add Stremio addon…": "Добавяне на Stremio добавка…",
     "Add to favorites": "Добавяне в любими",
     Age: "Възраст",
     All: "Всички",
@@ -174,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Изберете папка в прозореца на браузъра",
     "Choose a profile": "Изберете профил",
+    "Choose a source": "Изберете източник",
     "Choose files in the browser window":
         "Изберете файлове в прозореца на браузъра",
     "Choose from": "Избор от",
@@ -263,6 +265,8 @@ var keyStrings = {
         "Настройте TV DOSUG в Настройки -> Настройки на доставчика",
     "Configure TVClub in Settings -> Provider Settings":
         "Настройте TVClub в Настройки -> Настройки на доставчика",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Първо настройте добавката, след това добавете адреса на настроения манифест.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Настройте ULTIFL1X в Настройки -> Настройки на доставчика",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -384,6 +388,8 @@ var keyStrings = {
         "Въведете URL на плейлиста за достъп до услугата.",
     "Enter a playlist URL. The player will restart after saving.":
         "Въведете URL на плейлиста. Плейърът ще се рестартира след запазване.",
+    "Enter a Stremio addon manifest URL.":
+        "Въведете URL адреса на манифеста на Stremio добавката.",
     "Enter a server address without spaces or a fragment.":
         "Въведете адрес на сървър без интервали и фрагмент след #.",
     "Enter a username (8 characters).": "Въведете потребителско име (8 знака).",
@@ -866,6 +872,7 @@ var keyStrings = {
     "Repeat: All": "Повторение: всички",
     "Repeat: Off": "Повторение: изключено",
     "Repeat: One": "Повторение: един",
+    Replace: "Замяна",
     "Request sended!": "Заявката е изпратена!",
     "Requesting approval for %1": "Заявка за одобрение за %1",
     "Reset order": "Сортиране на канали: „Без промяна“",
@@ -1044,6 +1051,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Времето за изчакване на потока изтече. Изберете канала за повторен опит.",
     "Stream type: %1": "Тип поток: %1",
+    "Stremio addons": "Добавки за Stremio",
     "String for search": "Текст за търсене",
     "Su Mo Tu We Th Fr Sa": "Нд Пн Вт Ср Чт Пт Сб",
     "Subscription information": "Информация за абонамента",
@@ -1148,6 +1156,7 @@ var keyStrings = {
     Unavailable: "Недостъпно",
     "Unlock the player's settings before changing its playlist.":
         "Отключете настройките на плейъра, преди да промените плейлиста.",
+    "Unsupported source": "Неподдържан източник",
     Untitled: "Без заглавие",
     "Untitled folder": "Папка без име",
     "Update installed. Please restart OttPlay FOSS.":

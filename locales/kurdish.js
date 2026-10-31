@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanal li kategoriyê zêde bikin",
     "Add channel to favorites": "Kanal li bijartan zêde bike",
     "Add new list": "Lîsteya nû lê zêde bike",
+    "Add Stremio addon…": "Pêveka Stremio lê zêde bike…",
     "Add to favorites": "Têxe nav bijartan",
     Age: "Temen",
     All: "Hemû",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Di pencereya gerokê de peldankekê hilbijêre",
     "Choose a profile": "Profîl hilbijêre",
+    "Choose a source": "Çavkaniyekê hilbijêre",
     "Choose files in the browser window":
         "Di pencereya gerokê de pelan hilbijêre",
     "Choose from": "Hilbijêre",
@@ -264,6 +266,8 @@ var keyStrings = {
         "TV DOSUG di Mîheng -> Mîhengên dabînkerê de saz bikin",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub di Mîheng -> Mîhengên dabînkerê de saz bikin",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Pêşî vê pêvekê saz bike, paşê navnîşana manifesta sazkirî lê zêde bike.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X di Mîheng -> Mîhengên dabînkerê de saz bikin",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -382,6 +386,8 @@ var keyStrings = {
         "Ji bo gihîştina vê xizmetê URL-ya lîsteya lêdanê binivîsin.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL-ya lîsteya lêdanê binivîsin. Piştî tomarkirinê lêdêr dê ji nû ve dest pê bike.",
+    "Enter a Stremio addon manifest URL.":
+        "URL-ya manifestê ya pêveka Stremio binivîse.",
     "Enter a server address without spaces or a fragment.":
         "Navnîşanek pêşkêşkarê bêyî valahî an perçeyek binivîse.",
     "Enter a username (8 characters).": "Navekî bikarhêner (8 tîp) binivîse.",
@@ -861,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Dubare: Hemû",
     "Repeat: Off": "Dubare: Girtî",
     "Repeat: One": "Dubare: Yek",
+    Replace: "Biguherîne",
     "Request sended!": "Daxwaz şandin!",
     "Requesting approval for %1": "Daxwaza pejirandinê ji bo %1",
     "Reset order": 'Kanalan rêz bike: "Wekî ye"',
@@ -1039,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Dema li benda weşanê qediya. Ji bo dîsa ceribandinê kanalê hilbijêre.",
     "Stream type: %1": "Cureyê weşanê: %1",
+    "Stremio addons": "Pêvekên Stremio",
     "String for search": "Gotina lêgerînê",
     "Su Mo Tu We Th Fr Sa": "Yekşem Duşem Sêşem Çarşem Pêncşem În Şemî",
     "Subscription information": "Agahiyên abonetiyê",
@@ -1140,6 +1148,7 @@ var keyStrings = {
     Unavailable: "Ne berdest e",
     "Unlock the player's settings before changing its playlist.":
         "Berî guherandina lîsteya lêdanê kilîda mîhengên lêkerê veke.",
+    "Unsupported source": "Çavkanî nayê piştgirîkirin",
     Untitled: "Bênav",
     "Untitled folder": "Peldanka bênav",
     "Update installed. Please restart OttPlay FOSS.":

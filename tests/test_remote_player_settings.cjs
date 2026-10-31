@@ -36,7 +36,20 @@ function productionSetting(id) {
         )
     );
     assert(definition, "Use the production setting validator: " + id);
-    return vm.runInNewContext("(" + definition.getText(ast) + ")", { URL });
+    const helpers = ast.statements
+        .filter(
+            (node) =>
+                ts.isFunctionDeclaration(node) &&
+                node.name?.text === "normalizeTorrentStreamAddons"
+        )
+        .map((node) => node.getText(ast).replace(/^export /, ""))
+        .join("\n");
+    return vm.runInNewContext(
+        ts.transpileModule(helpers + "\n(" + definition.getText(ast) + ")", {
+            compilerOptions: { target: ts.ScriptTarget.ES5 },
+        }).outputText,
+        { URL }
+    );
 }
 const domain = { exports: {} };
 vm.runInNewContext(source("src/settings/store.ts"), domain);
@@ -344,9 +357,9 @@ check("catalog base remains private and validates operator input", () => {
         "https://catalog.invalid?",
         "https://catalog.invalid#",
         "https://catalog.invalid/manifest.json",
-        "https://catalog.invalid/%7B%22language%22%3A%22ru%22%7D",
         "https://catalog.invalid/%xx",
-        "https://catalog.invalid/private%20path",
+        "https://catalog.invalid/private%00path",
+        "https://catalog.invalid/private%5cpath",
         "https://catalog.invalid/%6danifest.json/",
         "https://catalog.invalid/\n",
         "https:\\catalog.invalid",
@@ -363,6 +376,8 @@ check("catalog base remains private and validates operator input", () => {
         "https://catalog.invalid",
         "https://catalog.invalid/service/",
         "HTTPS://catalog.invalid/private-path",
+        "https://catalog.invalid/%7B%22language%22%3A%22ru%22%7D",
+        "https://catalog.invalid/private%20path",
         "",
     ]) {
         assert.equal(
@@ -372,6 +387,172 @@ check("catalog base remains private and validates operator input", () => {
         assert.equal(f.data.get("sTorrentCatalogEndpoint"), valid);
     }
 });
+check(
+    "stream addon manifests are bounded, normalized and never disclosed",
+    () => {
+        const f = fixture([productionSetting("torrentStreamAddons")]);
+        const id = "torrentStreamAddons";
+        const configured =
+            "https://streams.invalid/%7B%22token%22%3A%22PRIVATE%20KEY%22%7D/manifest.json";
+        const get = f.get(id);
+        assert.equal(get.data.descriptor.scope, "application");
+        assert.equal(get.data.descriptor.sensitive, true);
+        assert.equal(get.data.descriptor.access.read, false);
+        assert.equal(get.data.descriptor.access.write, true);
+        assert.deepEqual(clone(get.data.descriptor.constraints), {
+            max_utf8_bytes: 4096,
+        });
+        const input = JSON.stringify([
+            "  " + configured + "///  ",
+            configured,
+            "HTTPS://other.invalid/manifest.json",
+        ]);
+        const saved = f.set(get, input);
+        assert.equal(saved.status, "ok");
+        const canonical = JSON.stringify([
+            configured,
+            "HTTPS://other.invalid/manifest.json",
+        ]);
+        assert.equal(f.data.get("sTorrentStreamAddons"), canonical);
+        assert(!JSON.stringify(saved).includes("PRIVATE"));
+        const masked = f.get(id);
+        assert.equal(masked.data.setting.redacted, true);
+        assert.equal(masked.data.setting.value, undefined);
+        assert.equal(masked.data.setting.persisted_value, undefined);
+        assert.equal(masked.data.descriptor.default_value, undefined);
+        assert(!JSON.stringify(masked).includes("PRIVATE"));
+        assert(
+            !JSON.stringify(
+                f.request({ op: "schema", runtime: f.runtime })
+            ).includes("PRIVATE")
+        );
+        for (const invalid of [
+            "",
+            "{}",
+            "[",
+            "null",
+            null,
+            [],
+            JSON.stringify([null]),
+            JSON.stringify(Array(9).fill(configured)),
+            ...[
+                "http://streams.invalid/manifest.json",
+                "https://user:PRIVATE@streams.invalid/manifest.json",
+                "https://@streams.invalid/manifest.json",
+                "https://streams.invalid/manifest.json?",
+                "https://streams.invalid/manifest.json#",
+                "https://streams.invalid/private path/manifest.json",
+                "https://streams.invalid/private\u00a0path/manifest.json",
+                "https://streams.invalid/%xx/manifest.json",
+                "https://streams.invalid/%00/manifest.json",
+                "https://streams.invalid/%0a/manifest.json",
+                "https://streams.invalid/%5c/manifest.json",
+                "https://streams.invalid/private\\path/manifest.json",
+                "https://streams.invalid/Manifest.json",
+                "https://streams.invalid/manifest.json/extra",
+                "https://streams.invalid/%6danifest.json",
+                "https://streams.invalid/" +
+                    "a".repeat(4096) +
+                    "/manifest.json",
+                "https://streams.invalid/" +
+                    "ж".repeat(2048) +
+                    "/manifest.json",
+            ].map((url) => JSON.stringify([url])),
+        ]) {
+            const rejected = f.set(f.get(id), invalid);
+            assert.equal(rejected.status, "rejected", String(invalid));
+            assert(!JSON.stringify(rejected).includes("PRIVATE"));
+            assert.equal(f.data.get("sTorrentStreamAddons"), canonical);
+        }
+        const url = (index, length) => {
+            const prefix = "https://streams.invalid/" + index + "/";
+            const suffix = "/manifest.json";
+            return (
+                prefix +
+                "a".repeat(length - prefix.length - suffix.length) +
+                suffix
+            );
+        };
+        const largest = JSON.stringify(
+            Array.from({ length: 8 }, (_, i) => url(i, i === 7 ? 571 : 500))
+        );
+        assert.equal(Buffer.byteLength(largest), 4096);
+        assert.equal(
+            f.set(f.get(id), largest).status,
+            "ok",
+            "the full documented wire budget is accepted"
+        );
+        assert.equal(f.data.get("sTorrentStreamAddons"), largest);
+        assert.equal(f.set(f.get(id), largest + " ").status, "rejected");
+        assert.equal(f.data.get("sTorrentStreamAddons"), largest);
+        assert.equal(f.set(f.get(id), "[]").status, "ok");
+        assert.equal(f.data.get("sTorrentStreamAddons"), "[]");
+    }
+);
+check(
+    "addon HTTP exceptions use exact loopback authorities without DNS",
+    () => {
+        for (const id of ["torrentCatalogEndpoint", "torrentStreamAddons"]) {
+            const f = fixture([productionSetting(id)]);
+            const value = (base) =>
+                id === "torrentStreamAddons"
+                    ? JSON.stringify([base + "/manifest.json"])
+                    : base;
+            const key =
+                id === "torrentStreamAddons"
+                    ? "sTorrentStreamAddons"
+                    : "sTorrentCatalogEndpoint";
+            for (const base of [
+                "http://localhost",
+                "http://localhost:8794/private",
+                "HTTP://LOCALHOST:8794/private",
+                "http://127.0.0.1:8794",
+                "http://[::1]:8794/private",
+                "https://external.invalid/private",
+            ]) {
+                assert.equal(
+                    f.set(f.get(id), value(base)).status,
+                    "ok",
+                    id + ": " + base
+                );
+                assert.equal(f.data.get(key), value(base));
+                assert.equal(f.get(id).data.setting.value, undefined);
+            }
+            const before = f.data.get(key);
+            for (const base of [
+                "http://external.invalid",
+                "http://192.168.1.2",
+                "http://127.0.0.2",
+                "http://127.1",
+                "http://127.000.000.001",
+                "http://2130706433",
+                "http://0x7f000001",
+                "http://0177.0.0.1",
+                "http://[::ffff:127.0.0.1]",
+                "http://[0:0:0:0:0:0:0:1]",
+                "http://localhost.",
+                "http://a.localhost",
+                "http://localhost.external.invalid",
+                "http://%6cocalhost",
+                "http://@localhost",
+                "http://user@localhost",
+                "https://@localhost",
+                "http://localhost@external.invalid",
+                "http://localhost:65536",
+                "http://localhost?private",
+                "http://localhost#private",
+                "ftp://localhost",
+            ]) {
+                assert.equal(
+                    f.set(f.get(id), value(base)).status,
+                    "rejected",
+                    id + ": " + base
+                );
+                assert.equal(f.data.get(key), before);
+            }
+        }
+    }
+);
 check(
     "runtime, provider, profile and saved-byte changes invalidate receipts",
     () => {

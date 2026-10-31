@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Kanaalka ku dar qaybta",
     "Add channel to favorites": "Kanaalka ku dar kuwa la jecel yahay",
     "Add new list": "Ku dar liis cusub",
+    "Add Stremio addon…": "Ku dar kaabista Stremio…",
     "Add to favorites": "Ku dar kuwa la jecel yahay",
     Age: "Da'da",
     All: "Dhammaan",
@@ -176,6 +177,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Ka dooro gal daaqadda biraawsarka",
     "Choose a profile": "Dooro astaanta isticmaalaha",
+    "Choose a source": "Dooro il",
     "Choose files in the browser window":
         "Ka dooro faylal daaqadda biraawsarka",
     "Choose from": "Ka dooro",
@@ -265,6 +267,8 @@ var keyStrings = {
         "Ku deji TV DOSUG gudaha Dejinta -> Dejinta bixiyaha",
     "Configure TVClub in Settings -> Provider Settings":
         "Ku deji TVClub gudaha Dejinta -> Dejinta bixiyaha",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Marka hore habee ku-darkan, dabadeed ku dar cinwaanka faylka manifest-ka la habeeyey.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ku deji ULTIFL1X gudaha Dejinta -> Dejinta bixiyaha",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -385,6 +389,8 @@ var keyStrings = {
         "Geli URL-ka liiska daarista si aad u gasho adeeggan.",
     "Enter a playlist URL. The player will restart after saving.":
         "Geli URL-ka liiska daarista. Daaruhu dib ayuu u bilaabmi doonaa kaydinta ka dib.",
+    "Enter a Stremio addon manifest URL.":
+        "Geli URL-ka manifest-ka kaabista Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Geli cinwaan seerfar oo aan lahayn meelo bannaan ama qaybta ka dambaysa #.",
     "Enter a username (8 characters).": "Geli magaca isticmaalaha (8 xaraf).",
@@ -877,6 +883,7 @@ var keyStrings = {
     "Repeat: All": "Ku celi: dhammaan",
     "Repeat: Off": "Ku celi: dansan",
     "Repeat: One": "Ku celi: hal",
+    Replace: "Beddel",
     "Request sended!": "Codsiga waa la diray!",
     "Requesting approval for %1": "Waxaa loo codsanayaa oggolaansho %1",
     "Reset order": 'Kala hormari kanaallada: "Sida uu yahay"',
@@ -1050,6 +1057,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Waqtigii sugitaanka baahinta wuu dhammaaday. Dooro kanaalka si aad mar kale isugu daydo.",
     "Stream type: %1": "Nooca baahinta: %1",
+    "Stremio addons": "Ku-darrada Stremio",
     "String for search": "Ereyga raadinta",
     "Su Mo Tu We Th Fr Sa": "Axa Isn Tal Arb Kha Jim Sab",
     "Subscription information": "Macluumaadka isdiiwaangelinta",
@@ -1153,6 +1161,7 @@ var keyStrings = {
     Unavailable: "Lama heli karo",
     "Unlock the player's settings before changing its playlist.":
         "Fur qufulka dejinta daaraha ka hor intaadan beddelin liiskiisa daarista.",
+    "Unsupported source": "Isha lama taageero",
     Untitled: "Aan magac lahayn",
     "Untitled folder": "Gal aan magac lahayn",
     "Update installed. Please restart OttPlay FOSS.":

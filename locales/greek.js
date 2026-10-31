@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Προσθήκη καναλιού σε κατηγορία",
     "Add channel to favorites": "Προσθήκη καναλιού στα αγαπημένα",
     "Add new list": "Προσθήκη νέας λίστας",
+    "Add Stremio addon…": "Προσθήκη πρόσθετου Stremio…",
     "Add to favorites": "Προσθήκη στα αγαπημένα",
     Age: "Ηλικία",
     All: "Όλα",
@@ -179,6 +180,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Επιλέξτε έναν φάκελο στο παράθυρο του προγράμματος περιήγησης",
     "Choose a profile": "Επιλογή προφίλ",
+    "Choose a source": "Επιλέξτε πηγή",
     "Choose files in the browser window":
         "Επιλέξτε αρχεία στο παράθυρο του προγράμματος περιήγησης",
     "Choose from": "Επιλογή από",
@@ -268,6 +270,8 @@ var keyStrings = {
         "Ρυθμίστε το TV DOSUG από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure TVClub in Settings -> Provider Settings":
         "Ρυθμίστε το TVClub από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ρυθμίστε πρώτα αυτό το πρόσθετο και μετά προσθέστε τη διεύθυνση του ρυθμισμένου αρχείου manifest.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ρυθμίστε το ULTIFL1X από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -392,6 +396,8 @@ var keyStrings = {
         "Εισαγάγετε URL λίστας αναπαραγωγής για πρόσβαση σε αυτή την υπηρεσία.",
     "Enter a playlist URL. The player will restart after saving.":
         "Εισαγάγετε το URL μιας λίστας αναπαραγωγής. Η εφαρμογή θα επανεκκινηθεί μετά την αποθήκευση.",
+    "Enter a Stremio addon manifest URL.":
+        "Εισαγάγετε το URL του manifest ενός πρόσθετου Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Εισαγάγετε διεύθυνση διακομιστή χωρίς κενά ή τμήμα μετά το #.",
     "Enter a username (8 characters).":
@@ -886,6 +892,7 @@ var keyStrings = {
     "Repeat: All": "Επανάληψη: όλα",
     "Repeat: Off": "Επανάληψη: ανενεργή",
     "Repeat: One": "Επανάληψη: ένα",
+    Replace: "Αντικατάσταση",
     "Request sended!": "Το αίτημα στάλθηκε!",
     "Requesting approval for %1": "Αίτημα έγκρισης για %1",
     "Reset order": "Ταξινόμηση καναλιών: «Ως έχει»",
@@ -1063,6 +1070,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Έληξε το χρονικό όριο της ροής. Επιλέξτε το κανάλι για νέα προσπάθεια.",
     "Stream type: %1": "Τύπος ροής: %1",
+    "Stremio addons": "Πρόσθετα Stremio",
     "String for search": "Όρος αναζήτησης",
     "Su Mo Tu We Th Fr Sa": "Κυ Δε Τρ Τε Πε Πα Σα",
     "Subscription information": "Πληροφορίες συνδρομής",
@@ -1166,6 +1174,7 @@ var keyStrings = {
     Unavailable: "Μη διαθέσιμο",
     "Unlock the player's settings before changing its playlist.":
         "Ξεκλειδώστε τις ρυθμίσεις της συσκευής αναπαραγωγής πριν αλλάξετε τη λίστα.",
+    "Unsupported source": "Μη υποστηριζόμενη πηγή",
     Untitled: "Χωρίς τίτλο",
     "Untitled folder": "Φάκελος χωρίς όνομα",
     "Update installed. Please restart OttPlay FOSS.":

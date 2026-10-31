@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Сувгийг ангилалд нэмэх",
     "Add channel to favorites": "Сувгийг дуртайд нэмэх",
     "Add new list": "Шинэ жагсаалт нэмэх",
+    "Add Stremio addon…": "Stremio нэмэлт оруулах…",
     "Add to favorites": "Дуртайд нэмэх",
     Age: "Нас",
     All: "Бүгд",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Хөтчийн цонхноос хавтас сонгоно уу",
     "Choose a profile": "Профайл сонгох",
+    "Choose a source": "Эх сурвалж сонгох",
     "Choose files in the browser window": "Хөтчийн цонхноос файл сонгоно уу",
     "Choose from": "Эндээс сонгох",
     "Choose language": "Хэл сонгох",
@@ -262,6 +264,8 @@ var keyStrings = {
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт TV DOSUG-ийг тохируулна уу",
     "Configure TVClub in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт TVClub-ийг тохируулна уу",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Эхлээд энэ нэмэлтийг тохируулаад, дараа нь тохируулсан манифестын хаягийг нэмнэ үү.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт ULTIFL1X-ийг тохируулна уу",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -382,6 +386,8 @@ var keyStrings = {
         "Энэ үйлчилгээнд хандахын тулд тоглуулах жагсаалтын URL-г оруулна уу.",
     "Enter a playlist URL. The player will restart after saving.":
         "Тоглуулах жагсаалтын URL-г оруулна уу. Хадгалсны дараа тоглуулагч дахин эхэлнэ.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio нэмэлтийн манифестийн URL оруулна уу.",
     "Enter a server address without spaces or a fragment.":
         "Серверийн хаягийг хоосон зай болон фрагментгүй оруулна уу.",
     "Enter a username (8 characters).":
@@ -866,6 +872,7 @@ var keyStrings = {
     "Repeat: All": "Давтах: бүгд",
     "Repeat: Off": "Давтах: унтраалттай",
     "Repeat: One": "Давтах: нэг",
+    Replace: "Солих",
     "Request sended!": "Хүсэлт илгээгдлээ!",
     "Requesting approval for %1": "%1-д зөвшөөрөл хүсэж байна",
     "Reset order": 'Сувгуудыг эрэмбэлэх: "Байгаагаар нь"',
@@ -1039,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Дамжуулалтыг хүлээх хугацаа дууслаа. Дахин оролдохын тулд сувгийг сонгоно уу.",
     "Stream type: %1": "Урсгалын төрөл: %1",
+    "Stremio addons": "Stremio нэмэлтүүд",
     "String for search": "Хайлтын хүсэлт",
     "Su Mo Tu We Th Fr Sa": "Ня Да Мя Лх Пү Ба Бя",
     "Subscription information": "Захиалгын мэдээлэл",
@@ -1140,6 +1148,7 @@ var keyStrings = {
     Unavailable: "Ашиглах боломжгүй",
     "Unlock the player's settings before changing its playlist.":
         "Тоглуулах жагсаалтыг өөрчлөхөөс өмнө тоглуулагчийн тохиргооны түгжээг тайлна уу.",
+    "Unsupported source": "Дэмжигдээгүй эх сурвалж",
     Untitled: "Нэргүй",
     "Untitled folder": "Нэргүй хавтас",
     "Update installed. Please restart OttPlay FOSS.":

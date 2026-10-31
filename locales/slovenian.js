@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Dodajte kanal v kategorijo",
     "Add channel to favorites": "Dodajte kanal med priljubljene",
     "Add new list": "Dodajte nov seznam",
+    "Add Stremio addon…": "Dodaj dodatek Stremio…",
     "Add to favorites": "Dodaj med priljubljene",
     Age: "starost",
     All: "Vse",
@@ -172,6 +173,7 @@ var keyStrings = {
         "Preverjanje povezave s strežnikom Plex ...",
     "Choose a folder in the browser window": "Izberite mapo v oknu brskalnika",
     "Choose a profile": "Izberite profil",
+    "Choose a source": "Izberite vir",
     "Choose files in the browser window": "Izberite datoteke v oknu brskalnika",
     "Choose from": "Izbiraj med",
     "Choose language": "Izberite jezik",
@@ -260,6 +262,8 @@ var keyStrings = {
         "Konfigurirajte TV DOSUG v Nastavitve -> Nastavitve ponudnika",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurirajte TVClub v Nastavitve -> Nastavitve ponudnika",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Najprej nastavite ta dodatek, nato dodajte naslov nastavljenega manifesta.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurirajte ULTIFL1X v Nastavitve -> Nastavitve ponudnika",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -383,6 +387,8 @@ var keyStrings = {
         "Za dostop do te storitve vnesite seznam predvajanja URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Vnesite seznam predvajanja URL. Predvajalnik se bo po shranjevanju znova zagnal.",
+    "Enter a Stremio addon manifest URL.":
+        "Vnesite URL manifesta dodatka Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Vnesite naslov strežnika brez presledkov ali drobcev.",
     "Enter a username (8 characters).": "Vnesite uporabniško ime (8 znakov).",
@@ -868,6 +874,7 @@ var keyStrings = {
     "Repeat: All": "Ponavljanje: Vse",
     "Repeat: Off": "Ponavljanje: Izklopljeno",
     "Repeat: One": "Ponavljanje: Eno",
+    Replace: "Zamenjaj",
     "Request sended!": "Zahteva poslana!",
     "Requesting approval for %1": "Zahtevam odobritev za %1",
     "Reset order": 'Razvrsti kanale: "Kot je"',
@@ -1042,6 +1049,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Čas čakanja na tok je potekel. Izberite kanal za ponovni poskus.",
     "Stream type: %1": "Vrsta toka: %1",
+    "Stremio addons": "Dodatki Stremio",
     "String for search": "Iskalna poizvedba",
     "Su Mo Tu We Th Fr Sa": "Ne Po To Sr Če Pe So",
     "Subscription information": "Informacije o naročnini",
@@ -1142,6 +1150,7 @@ var keyStrings = {
     Unavailable: "Ni na voljo",
     "Unlock the player's settings before changing its playlist.":
         "Pred spremembo seznama predvajanja odklenite nastavitve predvajalnika.",
+    "Unsupported source": "Nepodprt vir",
     Untitled: "Brez naslova",
     "Untitled folder": "Mapa brez imena",
     "Update installed. Please restart OttPlay FOSS.":

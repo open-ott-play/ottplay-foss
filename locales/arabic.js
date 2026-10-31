@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "إضافة قناة إلى الفئة",
     "Add channel to favorites": "إضافة القناة إلى المفضلة",
     "Add new list": "إضافة قائمة جديدة",
+    "Add Stremio addon…": "إضافة ملحق Stremio…",
     "Add to favorites": "أضف إلى المفضلة",
     Age: "العمر",
     All: "الكل",
@@ -168,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "جارٍ التحقق من اتصال خادم Plex...",
     "Choose a folder in the browser window": "اختر مجلدًا في نافذة المتصفح",
     "Choose a profile": "اختر ملفًا شخصيًا",
+    "Choose a source": "اختر مصدرًا",
     "Choose files in the browser window": "اختر ملفات في نافذة المتصفح",
     "Choose from": "اختر من بينها",
     "Choose language": "اختر اللغة",
@@ -253,6 +255,8 @@ var keyStrings = {
         "قم بتكوين TV DOSUG في الإعدادات -> إعدادات الموفر",
     "Configure TVClub in Settings -> Provider Settings":
         "قم بتكوين TVClub في الإعدادات -> إعدادات الموفر",
+    "Configure this addon first, then add its configured manifest URL.":
+        "اضبط هذه الإضافة أولاً، ثم أضف رابط ملف البيان بعد ضبطها.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "قم بتكوين ULTIFL1X في الإعدادات -> إعدادات الموفر",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -369,6 +373,7 @@ var keyStrings = {
         "أدخل قائمة التشغيل URL للوصول إلى هذه الخدمة.",
     "Enter a playlist URL. The player will restart after saving.":
         "أدخل قائمة التشغيل URL. سيتم إعادة تشغيل المشغل بعد الحفظ.",
+    "Enter a Stremio addon manifest URL.": "أدخل رابط بيان ملحق Stremio.",
     "Enter a server address without spaces or a fragment.":
         "أدخل عنوان الخادم بدون مسافات أو جزء.",
     "Enter a username (8 characters).": "أدخل اسم المستخدم (8 أحرف).",
@@ -838,6 +843,7 @@ var keyStrings = {
     "Repeat: All": "كرر: الكل",
     "Repeat: Off": "كرر: إيقاف",
     "Repeat: One": "كرر: واحد",
+    Replace: "استبدال",
     "Request sended!": "تم إرسال الطلب!",
     "Requesting approval for %1": "طلب الموافقة على %1",
     "Reset order": 'فرز القنوات: "كما هو"',
@@ -1009,6 +1015,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "انتهت مهلة البث. اختر القناة لإعادة المحاولة.",
     "Stream type: %1": "نوع الدفق: %1",
+    "Stremio addons": "إضافات Stremio",
     "String for search": "استعلام البحث",
     "Su Mo Tu We Th Fr Sa": "أحد اثن ثلاث أربع خميس جمعة سبت",
     "Subscription information": "معلومات الاشتراك",
@@ -1105,6 +1112,7 @@ var keyStrings = {
     Unavailable: "غير متاح",
     "Unlock the player's settings before changing its playlist.":
         "افتح قفل إعدادات المشغل قبل تغيير قائمة التشغيل.",
+    "Unsupported source": "مصدر غير مدعوم",
     Untitled: "بدون عنوان",
     "Untitled folder": "مجلد بدون عنوان",
     "Update installed. Please restart OttPlay FOSS.":

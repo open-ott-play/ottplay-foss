@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Magdagdag ng channel sa kategorya",
     "Add channel to favorites": "Magdagdag ng channel sa mga paborito",
     "Add new list": "Magdagdag ng bagong listahan",
+    "Add Stremio addon…": "Magdagdag ng Stremio add-on…",
     "Add to favorites": "Idagdag sa mga paborito",
     Age: "Edad",
     All: "Lahat",
@@ -179,6 +180,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Pumili ng folder sa window ng browser",
     "Choose a profile": "Pumili ng profile",
+    "Choose a source": "Pumili ng pinagmulan",
     "Choose files in the browser window":
         "Pumili ng mga file sa window ng browser",
     "Choose from": "Pumili mula sa",
@@ -268,6 +270,8 @@ var keyStrings = {
         "I-configure ang TV DOSUG sa Mga Setting -> Mga Setting ng Provider",
     "Configure TVClub in Settings -> Provider Settings":
         "I-configure ang TVClub sa Mga Setting -> Mga Setting ng Provider",
+    "Configure this addon first, then add its configured manifest URL.":
+        "I-configure muna ang add-on na ito, saka idagdag ang URL ng na-configure na manifest.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "I-configure ang ULTIFL1X sa Mga Setting -> Mga Setting ng Provider",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Maglagay ng playlist URL para ma-access ang serbisyong ito.",
     "Enter a playlist URL. The player will restart after saving.":
         "Maglagay ng playlist URL. Ang media player ay magre-restart pagkatapos i-save.",
+    "Enter a Stremio addon manifest URL.":
+        "Ilagay ang URL ng manifest ng Stremio add-on.",
     "Enter a server address without spaces or a fragment.":
         "Maglagay ng address ng server na walang mga puwang o fragment.",
     "Enter a username (8 characters).": "Maglagay ng username (8 character).",
@@ -877,6 +883,7 @@ var keyStrings = {
     "Repeat: All": "Ulitin: Lahat",
     "Repeat: Off": "Ulitin: Naka-off",
     "Repeat: One": "Ulitin: Isa",
+    Replace: "Palitan",
     "Request sended!": "Ipinadala ang kahilingan!",
     "Requesting approval for %1": "Humihiling ng pag-apruba para sa %1",
     "Reset order": 'Pagbukud-bukurin ang mga channel: "Gaya ng"',
@@ -1059,6 +1066,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Naubos ang oras ng paghihintay sa stream. Piliin ang channel upang subukang muli.",
     "Stream type: %1": "Uri ng stream: %1",
+    "Stremio addons": "Mga add-on ng Stremio",
     "String for search": "Query sa paghahanap",
     "Su Mo Tu We Th Fr Sa": "Lin Lun Mar Miy Huw Biy Sab",
     "Subscription information": "Impormasyon sa subscription",
@@ -1160,6 +1168,7 @@ var keyStrings = {
     Unavailable: "Hindi available",
     "Unlock the player's settings before changing its playlist.":
         "I-unlock ang mga setting ng player bago palitan ang playlist nito.",
+    "Unsupported source": "Hindi suportadong pinagmulan",
     Untitled: "Walang pamagat",
     "Untitled folder": "Folder na walang pangalan",
     "Update installed. Please restart OttPlay FOSS.":

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Thêm kênh vào danh mục",
     "Add channel to favorites": "Thêm kênh vào yêu thích",
     "Add new list": "Thêm danh sách mới",
+    "Add Stremio addon…": "Thêm tiện ích Stremio…",
     "Add to favorites": "Thêm vào yêu thích",
     Age: "Độ tuổi",
     All: "Tất cả",
@@ -174,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Chọn một thư mục trong cửa sổ trình duyệt",
     "Choose a profile": "Chọn hồ sơ",
+    "Choose a source": "Chọn nguồn",
     "Choose files in the browser window":
         "Chọn các tệp trong cửa sổ trình duyệt",
     "Choose from": "Chọn từ",
@@ -261,6 +263,8 @@ var keyStrings = {
         "Cấu hình TV DOSUG trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure TVClub in Settings -> Provider Settings":
         "Cấu hình TVClub trong Cài đặt -> Cài đặt nhà cung cấp",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Hãy cấu hình tiện ích này trước, rồi thêm URL của tệp manifest đã cấu hình.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Cấu hình ULTIFL1X trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -377,6 +381,8 @@ var keyStrings = {
         "Nhập URL danh sách phát để truy cập dịch vụ này.",
     "Enter a playlist URL. The player will restart after saving.":
         "Nhập URL danh sách phát. Trình phát sẽ khởi động lại sau khi lưu.",
+    "Enter a Stremio addon manifest URL.":
+        "Nhập URL manifest của tiện ích Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Nhập địa chỉ máy chủ không có khoảng trắng hoặc phần neo.",
     "Enter a username (8 characters).": "Nhập tên người dùng (8 ký tự).",
@@ -852,6 +858,7 @@ var keyStrings = {
     "Repeat: All": "Lặp lại: tất cả",
     "Repeat: Off": "Lặp lại: tắt",
     "Repeat: One": "Lặp lại: một",
+    Replace: "Thay thế",
     "Request sended!": "Đã gửi yêu cầu!",
     "Requesting approval for %1": "Đang yêu cầu phê duyệt cho %1",
     "Reset order": 'Sắp xếp kênh: "Nguyên bản"',
@@ -1022,6 +1029,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Đã hết thời gian chờ luồng phát. Chọn kênh để thử lại.",
     "Stream type: %1": "Loại luồng: %1",
+    "Stremio addons": "Tiện ích Stremio",
     "String for search": "Nội dung tìm kiếm",
     "Su Mo Tu We Th Fr Sa": "CN T2 T3 T4 T5 T6 T7",
     "Subscription information": "Thông tin đăng ký",
@@ -1119,6 +1127,7 @@ var keyStrings = {
     Unavailable: "Không khả dụng",
     "Unlock the player's settings before changing its playlist.":
         "Mở khóa cài đặt của trình phát trước khi thay đổi danh sách phát.",
+    "Unsupported source": "Nguồn không được hỗ trợ",
     Untitled: "Không có tiêu đề",
     "Untitled folder": "Thư mục chưa đặt tên",
     "Update installed. Please restart OttPlay FOSS.":

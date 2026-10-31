@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ƙara tasha zuwa rukuni",
     "Add channel to favorites": "Ƙara tasha zuwa abubuwan da aka fi so",
     "Add new list": "Ƙara sabon jeri",
+    "Add Stremio addon…": "Ƙara ƙarin Stremio…",
     "Add to favorites": "Ƙara zuwa abubuwan da aka fi so",
     Age: "Shekaru",
     All: "Duka",
@@ -173,6 +174,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Zaɓi babban fayil a tagar burauza",
     "Choose a profile": "Zaɓi bayanin martaba",
+    "Choose a source": "Zaɓi majiya",
     "Choose files in the browser window": "Zaɓi fayiloli a tagar burauza",
     "Choose from": "Zaɓa daga",
     "Choose language": "Zaɓi harshe",
@@ -260,6 +262,8 @@ var keyStrings = {
         "Saita TV DOSUG a Saituna -> Saitunan mai bada sabis",
     "Configure TVClub in Settings -> Provider Settings":
         "Saita TVClub a Saituna -> Saitunan mai bada sabis",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Da farko saita wannan ƙarin, sannan ƙara adireshin fayil ɗin manifest da aka saita.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Saita ULTIFL1X a Saituna -> Saitunan mai bada sabis",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "Shigar da URL na jerin kunnawa don shiga wannan sabis.",
     "Enter a playlist URL. The player will restart after saving.":
         "Shigar da URL na jerin kunnawa. Manhajar kunnawa za ta sake farawa bayan ajiyewa.",
+    "Enter a Stremio addon manifest URL.":
+        "Shigar da URL na manifest na ƙarin Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Shigar da adireshin sabar ba tare da sarari ko ɓangaren fragment ba.",
     "Enter a username (8 characters).":
@@ -861,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Maimaita: Duka",
     "Repeat: Off": "Maimaita: A kashe",
     "Repeat: One": "Maimaita: Ɗaya",
+    Replace: "Sauya",
     "Request sended!": "An aika buƙata!",
     "Requesting approval for %1": "Ana neman amincewa ga %1",
     "Reset order": 'Tsara tashoshi: "Kamar yadda yake"',
@@ -1031,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Lokacin jiran watsa shirye-shirye ya ƙare. Zaɓi tashar don sake gwadawa.",
     "Stream type: %1": "Nau'in rafi: %1",
+    "Stremio addons": "Ƙarin Stremio",
     "String for search": "Rubutun nema",
     "Su Mo Tu We Th Fr Sa": "Lah Lit Tal Lar Alh Jum Asa",
     "Subscription information": "Bayanan biyan kuɗin sabis",
@@ -1130,6 +1138,7 @@ var keyStrings = {
     Unavailable: "Ba a samu ba",
     "Unlock the player's settings before changing its playlist.":
         "Buɗe makullin saitunan manhajar kunnawa kafin sauya jerin kunnawarta.",
+    "Unsupported source": "Ba a tallafa wa wannan majiya",
     Untitled: "Ba a ba da suna ba",
     "Untitled folder": "Babban fayil ba tare da suna ba",
     "Update installed. Please restart OttPlay FOSS.":

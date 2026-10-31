@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "வகைக்கு சேனலைச் சேர்க்கவும்",
     "Add channel to favorites": "பிடித்தவைகளில் சேனலைச் சேர்க்கவும்",
     "Add new list": "புதிய பட்டியலைச் சேர்க்கவும்",
+    "Add Stremio addon…": "Stremio துணை நிரலைச் சேர்க்கவும்…",
     "Add to favorites": "பிடித்தவைகளில் சேர்க்கவும்",
     Age: "வயது",
     All: "அனைத்தும்",
@@ -170,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "உலாவி சாளரத்தில் ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்",
     "Choose a profile": "சுயவிவரத்தைத் தேர்வு செய்யவும்",
+    "Choose a source": "மூலத்தைத் தேர்ந்தெடுக்கவும்",
     "Choose files in the browser window":
         "உலாவி சாளரத்தில் கோப்புகளைத் தேர்ந்தெடுக்கவும்",
     "Choose from": "இதிலிருந்து தேர்வு செய்யவும்",
@@ -259,6 +261,8 @@ var keyStrings = {
         "அமைப்புகள் -> வழங்குநர் அமைப்புகளில் TV DOSUG ஐ உள்ளமைக்கவும்",
     "Configure TVClub in Settings -> Provider Settings":
         "அமைப்புகள் -> வழங்குநர் அமைப்புகளில் TVClub ஐ உள்ளமைக்கவும்",
+    "Configure this addon first, then add its configured manifest URL.":
+        "முதலில் இந்தக் கூடுதலை உள்ளமைத்து, பின்னர் உள்ளமைக்கப்பட்ட மேனிஃபெஸ்டின் முகவரியைச் சேர்க்கவும்.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "அமைப்புகள் -> வழங்குநர் அமைப்புகளில் ULTIFL1X ஐ உள்ளமைக்கவும்",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -377,6 +381,8 @@ var keyStrings = {
         "இந்த சேவையை அணுக URL பிளேலிஸ்ட்டை உள்ளிடவும்.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL பிளேலிஸ்ட்டை உள்ளிடவும். சேமித்த பிறகு பிளேயர் மீண்டும் தொடங்கும்.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio துணை நிரலின் மேனிஃபெஸ்ட் URL-ஐ உள்ளிடவும்.",
     "Enter a server address without spaces or a fragment.":
         "இடைவெளிகள் அல்லது துண்டுகள் இல்லாமல் சேவையக முகவரியை உள்ளிடவும்.",
     "Enter a username (8 characters).": "ஒரு பயனர் பெயரை உள்ளிடவும் (8 எழுத்துகள்).",
@@ -852,6 +858,7 @@ var keyStrings = {
     "Repeat: All": "மீண்டும் செய்யவும்: அனைத்தும்",
     "Repeat: Off": "மீண்டும் செய்யவும்: ஆஃப்",
     "Repeat: One": "மீண்டும் செய்யவும்: ஒன்று",
+    Replace: "மாற்று",
     "Request sended!": "கோரிக்கை அனுப்பப்பட்டது!",
     "Requesting approval for %1": "%1 க்கு அனுமதி கோருகிறது",
     "Reset order": 'சேனல்களை வரிசைப்படுத்தவும்: "அப்படியே"',
@@ -1024,6 +1031,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ஒளிபரப்புக்கான காத்திருப்பு நேரம் முடிந்தது. மீண்டும் முயற்சிக்க சேனலைத் தேர்ந்தெடுக்கவும்.",
     "Stream type: %1": "ஸ்ட்ரீம் வகை: %1",
+    "Stremio addons": "Stremio கூடுதல்கள்",
     "String for search": "தேடல் வினவல்",
     "Su Mo Tu We Th Fr Sa": "ஞாயி திங் செவ் புதன் வியா வெள் சனி",
     "Subscription information": "சந்தா தகவல்",
@@ -1120,6 +1128,7 @@ var keyStrings = {
     Unavailable: "கிடைக்கவில்லை",
     "Unlock the player's settings before changing its playlist.":
         "இயக்கப்பட்டியலை மாற்றும் முன் இயக்கியின் அமைப்புகளின் பூட்டை நீக்கவும்.",
+    "Unsupported source": "ஆதரிக்கப்படாத மூலம்",
     Untitled: "தலைப்பு இல்லை",
     "Untitled folder": "பெயரிடப்படாத கோப்புறை",
     "Update installed. Please restart OttPlay FOSS.":

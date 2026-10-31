@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "เพิ่มช่องลงในหมวดหมู่",
     "Add channel to favorites": "เพิ่มช่องในรายการโปรด",
     "Add new list": "เพิ่มรายการใหม่",
+    "Add Stremio addon…": "เพิ่มส่วนเสริม Stremio…",
     "Add to favorites": "เพิ่มในรายการโปรด",
     Age: "อายุ",
     All: "ทั้งหมด",
@@ -168,6 +169,7 @@ var keyStrings = {
         "กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์ Plex...",
     "Choose a folder in the browser window": "เลือกโฟลเดอร์ในหน้าต่างเบราว์เซอร์",
     "Choose a profile": "เลือกโปรไฟล์",
+    "Choose a source": "เลือกแหล่งที่มา",
     "Choose files in the browser window": "เลือกไฟล์ในหน้าต่างเบราว์เซอร์",
     "Choose from": "เลือกจาก",
     "Choose language": "เลือกภาษา",
@@ -254,6 +256,8 @@ var keyStrings = {
         "กำหนดค่า TV DOSUG ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     "Configure TVClub in Settings -> Provider Settings":
         "กำหนดค่า TVClub ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ตั้งค่าส่วนเสริมนี้ก่อน แล้วเพิ่ม URL ของไฟล์แมนิเฟสต์ที่ตั้งค่าแล้ว",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "กำหนดค่า ULTIFL1X ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -369,6 +373,8 @@ var keyStrings = {
         "ป้อนเพลย์ลิสต์ URL เพื่อเข้าถึงบริการนี้",
     "Enter a playlist URL. The player will restart after saving.":
         "เข้าสู่เพลย์ลิสต์ URL เครื่องเล่นจะรีสตาร์ทหลังจากบันทึก",
+    "Enter a Stremio addon manifest URL.":
+        "ป้อน URL ของไฟล์ manifest ส่วนเสริม Stremio",
     "Enter a server address without spaces or a fragment.":
         "ป้อนที่อยู่เซิร์ฟเวอร์โดยไม่มีช่องว่างหรือส่วนย่อย",
     "Enter a username (8 characters).": "กรอกชื่อผู้ใช้ (8 ตัวอักษร)",
@@ -833,6 +839,7 @@ var keyStrings = {
     "Repeat: All": "ทำซ้ำ: ทั้งหมด",
     "Repeat: Off": "ทำซ้ำ: ปิด",
     "Repeat: One": "ทำซ้ำ: หนึ่ง",
+    Replace: "แทนที่",
     "Request sended!": "ส่งคำขอแล้ว!",
     "Requesting approval for %1": "กำลังขออนุมัติ %1",
     "Reset order": 'จัดเรียงช่อง: "ตามสภาพ"',
@@ -1000,6 +1007,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "หมดเวลารอสตรีม เลือกช่องเพื่อลองอีกครั้ง",
     "Stream type: %1": "ประเภทสตรีม: %1",
+    "Stremio addons": "ส่วนเสริม Stremio",
     "String for search": "คำค้นหา",
     "Su Mo Tu We Th Fr Sa": "อา. จ. อ. พ. พฤ. ศ. ส.",
     "Subscription information": "ข้อมูลการสมัครสมาชิก",
@@ -1095,6 +1103,7 @@ var keyStrings = {
     Unavailable: "ไม่พร้อมใช้งาน",
     "Unlock the player's settings before changing its playlist.":
         "ปลดล็อกการตั้งค่าโปรแกรมเล่นก่อนเปลี่ยนเพลย์ลิสต์",
+    "Unsupported source": "ไม่รองรับแหล่งที่มานี้",
     Untitled: "ไม่มีชื่อ",
     "Untitled folder": "โฟลเดอร์ไม่มีชื่อ",
     "Update installed. Please restart OttPlay FOSS.":

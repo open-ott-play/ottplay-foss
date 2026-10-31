@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "បន្ថែមឆានែលទៅប្រភេទ",
     "Add channel to favorites": "បន្ថែមឆានែលទៅចំណូលចិត្ត",
     "Add new list": "បន្ថែមបញ្ជីថ្មី។",
+    "Add Stremio addon…": "បន្ថែមកម្មវិធីបន្ថែម Stremio…",
     "Add to favorites": "បន្ថែមទៅចំណូលចិត្ត",
     Age: "អាយុ",
     All: "ទាំងអស់។",
@@ -167,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "កំពុងពិនិត្យមើលការភ្ជាប់ម៉ាស៊ីនមេ Plex…",
     "Choose a folder in the browser window": "ជ្រើសរើសថតនៅក្នុងបង្អួចកម្មវិធីរុករក",
     "Choose a profile": "ជ្រើសរើសប្រវត្តិរូប",
+    "Choose a source": "ជ្រើសរើសប្រភព",
     "Choose files in the browser window": "ជ្រើសរើសឯកសារនៅក្នុងបង្អួចកម្មវិធីរុករក",
     "Choose from": "ជ្រើសរើសពី",
     "Choose language": "ជ្រើសរើសភាសា",
@@ -253,6 +255,8 @@ var keyStrings = {
         "កំណត់រចនាសម្ព័ន្ធ TV DOSUG នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     "Configure TVClub in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ TVClub នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
+    "Configure this addon first, then add its configured manifest URL.":
+        "កំណត់រចនាសម្ព័ន្ធកម្មវិធីបន្ថែមនេះជាមុន រួចបន្ថែមអាសយដ្ឋានឯកសារ manifest ដែលបានកំណត់។",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ ULTIFL1X នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -370,6 +374,8 @@ var keyStrings = {
         "បញ្ចូលបញ្ជីចាក់ URL ដើម្បីចូលប្រើសេវាកម្មនេះ។",
     "Enter a playlist URL. The player will restart after saving.":
         "បញ្ចូលបញ្ជីចាក់ URL ។ កម្មវិធីចាក់នឹងចាប់ផ្តើមឡើងវិញបន្ទាប់ពីការរក្សាទុក។",
+    "Enter a Stremio addon manifest URL.":
+        "បញ្ចូល URL ម៉ានីហ្វេស្តរបស់កម្មវិធីបន្ថែម Stremio។",
     "Enter a server address without spaces or a fragment.":
         "បញ្ចូលអាសយដ្ឋានម៉ាស៊ីនមេដោយគ្មានចន្លោះ ឬបំណែក។",
     "Enter a username (8 characters).": "បញ្ចូលឈ្មោះអ្នកប្រើប្រាស់ (8 តួអក្សរ)។",
@@ -842,6 +848,7 @@ var keyStrings = {
     "Repeat: All": "ធ្វើម្តងទៀត៖ ទាំងអស់។",
     "Repeat: Off": "ធ្វើម្តងទៀត៖ បិទ",
     "Repeat: One": "ធ្វើម្តងទៀត៖ មួយ។",
+    Replace: "ជំនួស",
     "Request sended!": "បានផ្ញើសំណើ!",
     "Requesting approval for %1": "ស្នើសុំការយល់ព្រមសម្រាប់ %1",
     "Reset order": 'តម្រៀបឆានែល: "ដូច"',
@@ -1012,6 +1019,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "អស់ពេលរង់ចាំការផ្សាយ។ ជ្រើសរើសប៉ុស្តិ៍ដើម្បីព្យាយាមម្តងទៀត។",
     "Stream type: %1": "ប្រភេទស្ទ្រីម៖ %1",
+    "Stremio addons": "កម្មវិធីបន្ថែម Stremio",
     "String for search": "សំណួរស្វែងរក",
     "Su Mo Tu We Th Fr Sa": "អាទិត្យ ចន្ទ អង្គារ ពុធ ព្រហស្បតិ៍ សុក្រ សៅរ៍",
     "Subscription information": "ព័ត៌មាននៃការជាវ",
@@ -1108,6 +1116,7 @@ var keyStrings = {
     Unavailable: "មិនអាចប្រើបាន",
     "Unlock the player's settings before changing its playlist.":
         "សូមដោះសោការកំណត់កម្មវិធីចាក់ មុនពេលប្តូរបញ្ជីចាក់។",
+    "Unsupported source": "ប្រភពមិនត្រូវបានគាំទ្រ",
     Untitled: "គ្មានចំណងជើង",
     "Untitled folder": "ថតគ្មានចំណងជើង",
     "Update installed. Please restart OttPlay FOSS.":

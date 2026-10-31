@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Añadir canal a categoría",
     "Add channel to favorites": "Añadir canal a favoritos",
     "Add new list": "Añadir nueva lista",
+    "Add Stremio addon…": "Añadir complemento Stremio…",
     "Add to favorites": "Añadir a favoritos",
     Age: "Edad",
     All: "Todos",
@@ -179,6 +180,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Elige una carpeta en la ventana del navegador",
     "Choose a profile": "Elegir perfil",
+    "Choose a source": "Elige una fuente",
     "Choose files in the browser window":
         "Elige archivos en la ventana del navegador",
     "Choose from": "Elegir entre",
@@ -268,6 +270,8 @@ var keyStrings = {
         "Configura TV DOSUG en Ajustes -> Ajustes del proveedor",
     "Configure TVClub in Settings -> Provider Settings":
         "Configura TVClub en Ajustes -> Ajustes del proveedor",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Configura primero este complemento y después añade la URL del manifiesto configurado.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Configura ULTIFL1X en Ajustes -> Ajustes del proveedor",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Introduce una URL de lista de reproducción para acceder a este servicio.",
     "Enter a playlist URL. The player will restart after saving.":
         "Introduce la URL de una lista de reproducción. El reproductor se reiniciará después de guardar.",
+    "Enter a Stremio addon manifest URL.":
+        "Introduce la URL del manifiesto de un complemento Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Introduce una dirección de servidor sin espacios ni fragmentos.",
     "Enter a username (8 characters).":
@@ -873,6 +879,7 @@ var keyStrings = {
     "Repeat: All": "Repetición: todos",
     "Repeat: Off": "Repetición: desactivada",
     "Repeat: One": "Repetición: uno",
+    Replace: "Reemplazar",
     "Request sended!": "¡Solicitud enviada!",
     "Requesting approval for %1": "Solicitando aprobación para %1",
     "Reset order": 'Ordenar canales: "Tal cual"',
@@ -1051,6 +1058,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Se agotó el tiempo de espera de la transmisión. Selecciona el canal para reintentar.",
     "Stream type: %1": "Tipo de flujo: %1",
+    "Stremio addons": "Complementos de Stremio",
     "String for search": "Texto de búsqueda",
     "Su Mo Tu We Th Fr Sa": "Do Lu Ma Mi Ju Vi Sá",
     "Subscription information": "Información de la suscripción",
@@ -1152,6 +1160,7 @@ var keyStrings = {
     Unavailable: "No disponible",
     "Unlock the player's settings before changing its playlist.":
         "Desbloquea los ajustes del reproductor antes de cambiar su lista de reproducción.",
+    "Unsupported source": "Fuente no compatible",
     Untitled: "Sin título",
     "Untitled folder": "Carpeta sin nombre",
     "Update installed. Please restart OttPlay FOSS.":

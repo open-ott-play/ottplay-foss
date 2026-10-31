@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "カテゴリにチャンネルを追加",
     "Add channel to favorites": "チャンネルをお気に入りに追加する",
     "Add new list": "新しいリストを追加",
+    "Add Stremio addon…": "Stremio アドオンを追加…",
     "Add to favorites": "お気に入りに追加する",
     Age: "年齢",
     All: "すべて",
@@ -172,6 +173,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "ブラウザーのウィンドウでフォルダーを選択してください",
     "Choose a profile": "プロフィールを選択してください",
+    "Choose a source": "ソースを選択",
     "Choose files in the browser window":
         "ブラウザーのウィンドウでファイルを選択してください",
     "Choose from": "からお選びください",
@@ -261,6 +263,8 @@ var keyStrings = {
         "[設定] -> [プロバイダー設定] で TV DOSUG を設定します。",
     "Configure TVClub in Settings -> Provider Settings":
         "[設定] -> [プロバイダー設定] で TVClub を設定します。",
+    "Configure this addon first, then add its configured manifest URL.":
+        "先にこのアドオンを設定してから、設定済みマニフェストのURLを追加してください。",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "設定 -> プロバイダー設定で ULTIFL1X を設定します。",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "このサービスにアクセスするには、プレイリストURLを入力してください。",
     "Enter a playlist URL. The player will restart after saving.":
         "プレイリストURLを入力します。保存後にプレーヤーが再起動されます。",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio アドオンのマニフェスト URL を入力してください。",
     "Enter a server address without spaces or a fragment.":
         "サーバーアドレスをスペースやフラグメントなしで入力します。",
     "Enter a username (8 characters).": "ユーザー名(8文字)を入力します。",
@@ -860,6 +866,7 @@ var keyStrings = {
     "Repeat: All": "リピート：すべて",
     "Repeat: Off": "リピート：オフ",
     "Repeat: One": "リピート：1回",
+    Replace: "置き換え",
     "Request sended!": "リクエスト送信しました！",
     "Requesting approval for %1": "%1の承認を求める",
     "Reset order": "チャンネルを並べ替える: 「ありのまま」",
@@ -1034,6 +1041,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ストリームがタイムアウトしました。チャンネルを選択して再試行してください。",
     "Stream type: %1": "ストリームタイプ：%1",
+    "Stremio addons": "Stremio アドオン",
     "String for search": "検索クエリ",
     "Su Mo Tu We Th Fr Sa": "日 月 火 水 木 金 土",
     "Subscription information": "定期購読のご案内",
@@ -1132,6 +1140,7 @@ var keyStrings = {
     Unavailable: "利用できません",
     "Unlock the player's settings before changing its playlist.":
         "プレイリストを変更する前に、プレーヤーの設定のロックを解除してください。",
+    "Unsupported source": "未対応のソース",
     Untitled: "無題",
     "Untitled folder": "無題のフォルダ",
     "Update installed. Please restart OttPlay FOSS.":

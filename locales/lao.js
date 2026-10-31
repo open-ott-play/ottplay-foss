@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "ເພີ່ມຊ່ອງເຂົ້າໝວດໝູ່",
     "Add channel to favorites": "ເພີ່ມຊ່ອງເຂົ້າລາຍການທີ່ມັກ",
     "Add new list": "ເພີ່ມລາຍການໃໝ່",
+    "Add Stremio addon…": "ເພີ່ມສ່ວນເສີມ Stremio…",
     "Add to favorites": "ເພີ່ມເຂົ້າລາຍການທີ່ມັກ",
     Age: "ອາຍຸ",
     All: "ທັງໝົດ",
@@ -162,6 +163,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "ກຳລັງກວດສອບການເຊື່ອມຕໍ່ເຊີບເວີ Plex…",
     "Choose a folder in the browser window": "ເລືອກໂຟນເດີໃນໜ້າຕ່າງບຣາວເຊີ",
     "Choose a profile": "ເລືອກໂປຣໄຟລ໌",
+    "Choose a source": "ເລືອກແຫຼ່ງຂໍ້ມູນ",
     "Choose files in the browser window": "ເລືອກໄຟລ໌ໃນໜ້າຕ່າງບຣາວເຊີ",
     "Choose from": "ເລືອກຈາກ",
     "Choose language": "ເລືອກພາສາ",
@@ -247,6 +249,8 @@ var keyStrings = {
         "ຕັ້ງຄ່າ TV DOSUG ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
     "Configure TVClub in Settings -> Provider Settings":
         "ຕັ້ງຄ່າ TVClub ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ຕັ້ງຄ່າສ່ວນເສີມນີ້ກ່ອນ ແລ້ວເພີ່ມທີ່ຢູ່ໄຟລ໌ manifest ທີ່ຕັ້ງຄ່າແລ້ວ.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ຕັ້ງຄ່າ ULTIFL1X ໃນ ການຕັ້ງຄ່າ -> ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -361,6 +365,8 @@ var keyStrings = {
         "ປ້ອນ URL ລາຍການຫຼິ້ນເພື່ອເຂົ້າໃຊ້ບໍລິການນີ້.",
     "Enter a playlist URL. The player will restart after saving.":
         "ປ້ອນ URL ລາຍການຫຼິ້ນ. ເຄື່ອງຫຼິ້ນຈະເລີ່ມຄືນຫຼັງບັນທຶກ.",
+    "Enter a Stremio addon manifest URL.":
+        "ປ້ອນ URL ຂອງ manifest ສ່ວນເສີມ Stremio.",
     "Enter a server address without spaces or a fragment.":
         "ປ້ອນທີ່ຢູ່ເຊີບເວີໂດຍບໍ່ມີຊ່ອງວ່າງ ຫຼື ສ່ວນ fragment.",
     "Enter a username (8 characters).": "ປ້ອນຊື່ຜູ້ໃຊ້ (8 ຕົວອັກສອນ).",
@@ -819,6 +825,7 @@ var keyStrings = {
     "Repeat: All": "ຫຼິ້ນຊ້ຳ: ທັງໝົດ",
     "Repeat: Off": "ຫຼິ້ນຊ້ຳ: ປິດ",
     "Repeat: One": "ຫຼິ້ນຊ້ຳ: ໜຶ່ງ",
+    Replace: "ແທນທີ່",
     "Request sended!": "ສົ່ງຄຳຂໍແລ້ວ!",
     "Requesting approval for %1": "ກຳລັງຂໍອະນຸມັດສຳລັບ %1",
     "Reset order": 'ຈັດລຽງຊ່ອງ: "ຕາມເດີມ"',
@@ -984,6 +991,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ໝົດເວລາລໍຖ້າການຖ່າຍທອດ. ເລືອກຊ່ອງເພື່ອລອງໃໝ່.",
     "Stream type: %1": "ປະເພດສະຕຣີມ: %1",
+    "Stremio addons": "ສ່ວນເສີມ Stremio",
     "String for search": "ຄຳຄົ້ນຫາ",
     "Su Mo Tu We Th Fr Sa": "ອາ ຈ ອ ພ ພຫ ສຸ ສ",
     "Subscription information": "ຂໍ້ມູນການສະໝັກ",
@@ -1075,6 +1083,7 @@ var keyStrings = {
     Unavailable: "ບໍ່ພ້ອມໃຊ້ງານ",
     "Unlock the player's settings before changing its playlist.":
         "ປົດລັອກການຕັ້ງຄ່າໂປຣແກຣມຫຼິ້ນກ່ອນປ່ຽນລາຍການຫຼິ້ນ.",
+    "Unsupported source": "ແຫຼ່ງຂໍ້ມູນທີ່ບໍ່ຮອງຮັບ",
     Untitled: "ບໍ່ມີຊື່",
     "Untitled folder": "ໂຟນເດີບໍ່ມີຊື່",
     "Update installed. Please restart OttPlay FOSS.":

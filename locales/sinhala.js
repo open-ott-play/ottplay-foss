@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "කාණ්ඩයට නාලිකාව එක් කරන්න",
     "Add channel to favorites": "ප්‍රියතමයන් වෙත නාලිකාව එක් කරන්න",
     "Add new list": "නව ලැයිස්තුවක් එක් කරන්න",
+    "Add Stremio addon…": "Stremio ඇඩෝනයක් එක් කරන්න…",
     "Add to favorites": "ප්‍රියතමයන් වෙත එක් කරන්න",
     Age: "වයස",
     All: "සියල්ල",
@@ -168,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex සේවාදායක සම්බන්ධතාව පරීක්ෂා කරමින්...",
     "Choose a folder in the browser window": "බ්‍රවුසර කවුළුව තුළ ෆෝල්ඩරයක් තෝරන්න",
     "Choose a profile": "පැතිකඩක් තෝරන්න",
+    "Choose a source": "මූලාශ්‍රයක් තෝරන්න",
     "Choose files in the browser window": "බ්‍රවුසර කවුළුව තුළ ගොනු තෝරන්න",
     "Choose from": "තෝරන්න",
     "Choose language": "භාෂාව තෝරන්න",
@@ -254,6 +256,8 @@ var keyStrings = {
         "TV DOSUG සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
+    "Configure this addon first, then add its configured manifest URL.":
+        "පළමුව මෙම ඇඩෝනය වින්‍යාස කර, පසුව වින්‍යාස කළ මැනිෆෙස්ට් ලිපිනය එක් කරන්න.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X සැකසීම් -> සැපයුම්කරු සැකසීම් තුළ වින්‍යාස කරන්න",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -370,6 +374,8 @@ var keyStrings = {
         "මෙම සේවාව වෙත ප්‍රවේශ වීමට URL ධාවන ලැයිස්තුවක් ඇතුළත් කරන්න.",
     "Enter a playlist URL. The player will restart after saving.":
         "ධාවන ලැයිස්තුවක් ඇතුළත් කරන්න URL. සුරැකීමෙන් පසු වාදකය නැවත ආරම්භ වේ.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio ඇඩෝනයේ මැනිෆෙස්ට් URL ඇතුළත් කරන්න.",
     "Enter a server address without spaces or a fragment.":
         "හිස්තැන් හෝ ඛණ්ඩනයකින් තොරව සේවාදායක ලිපිනයක් ඇතුළත් කරන්න.",
     "Enter a username (8 characters).": "පරිශීලක නාමයක් ඇතුළත් කරන්න (අක්ෂර 8).",
@@ -839,6 +845,7 @@ var keyStrings = {
     "Repeat: All": "නැවත කරන්න: සියල්ල",
     "Repeat: Off": "නැවත කරන්න: අක්‍රියයි",
     "Repeat: One": "නැවත කරන්න: එකක්",
+    Replace: "ප්‍රතිස්ථාපනය කරන්න",
     "Request sended!": "ඉල්ලීම යවා ඇත!",
     "Requesting approval for %1": "%1 සඳහා අනුමැතිය ඉල්ලා සිටීම",
     "Reset order": 'නාලිකා වර්ග කරන්න: "පවතින පරිදි"',
@@ -1008,6 +1015,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ප්‍රවාහය සඳහා රැඳී සිටීමේ කාලය ඉක්මවා ඇත. නැවත උත්සාහ කිරීමට නාලිකාව තෝරන්න.",
     "Stream type: %1": "ප්‍රවාහ වර්ගය: %1",
+    "Stremio addons": "Stremio ඇඩෝන",
     "String for search": "සෙවුම් විමසුම",
     "Su Mo Tu We Th Fr Sa": "ඉරි සඳු අඟ බදා බ්‍රහ සිකු සෙන",
     "Subscription information": "දායකත්ව තොරතුරු",
@@ -1103,6 +1111,7 @@ var keyStrings = {
     Unavailable: "ලබා ගත නොහැක",
     "Unlock the player's settings before changing its playlist.":
         "ධාවන ලැයිස්තුව වෙනස් කිරීමට පෙර වාදකයේ සැකසුම් අගුල අරින්න.",
+    "Unsupported source": "සහාය නොදක්වන මූලාශ්‍රය",
     Untitled: "මාතෘකා නැත",
     "Untitled folder": "නම් නොකළ ෆෝල්ඩරය",
     "Update installed. Please restart OttPlay FOSS.":

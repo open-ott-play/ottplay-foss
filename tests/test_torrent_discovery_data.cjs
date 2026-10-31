@@ -17,7 +17,50 @@ const compiled = ts.transpileModule(source, {
     },
 }).outputText;
 const copy = (value) => JSON.parse(JSON.stringify(value));
-function fixture(onContextChanged) {
+
+test("standalone catalog extras validation is shared without requiring an active provider", () => {
+    const context = { exports: {} };
+    vm.runInNewContext(compiled, context);
+    const extras = context.torrentCatalogExtras;
+    assert.equal(typeof extras, "function");
+    const legacy = {
+        extraRequired: ["search"],
+        extraSupported: ["search", "skip"],
+    };
+    const before = JSON.stringify(legacy);
+    assert.deepEqual(copy(extras(legacy)), [
+        { isRequired: true, name: "search" },
+        { isRequired: false, name: "skip" },
+    ]);
+    assert.equal(JSON.stringify(legacy), before);
+    const modern = [];
+    assert.equal(
+        extras({
+            extra: modern,
+            extraRequired: ["unknown"],
+            extraSupported: null,
+        }),
+        modern
+    );
+    for (const invalid of [
+        null,
+        undefined,
+        false,
+        "catalog",
+        [],
+        { extra: null },
+        { extra: Array(33).fill({ name: "skip" }) },
+        { extraRequired: ["search"], extraSupported: ["skip"] },
+        { extraSupported: [" search"] },
+        { extraSupported: ["bad\u0000name"] },
+        { extraSupported: ["a".repeat(129)] },
+        { extraSupported: null },
+        { extraRequired: ["search"] },
+    ])
+        assert.equal(extras(invalid), null);
+    assert.deepEqual(copy(extras({})), []);
+});
+function fixture(onContextChanged, generic = false) {
     let time = 0,
         nextTimer = 0,
         language = "ru-RU",
@@ -43,6 +86,20 @@ function fixture(onContextChanged) {
         now: () => time,
         onContextChanged,
         request(url, done) {
+            if (
+                !generic &&
+                endpoint &&
+                url === endpoint.replace(/\/+$/, "") + "/manifest.json"
+            ) {
+                done(null, {
+                    catalogs: ["tmdb.top", "tmdb.latest", "tmdb.search"].map(
+                        (id) => ({ id, type: "movie" })
+                    ),
+                    resources: ["catalog", "meta"],
+                    types: ["movie"],
+                });
+                return () => {};
+            }
             const request = { aborted: 0, done, url };
             requests.push(request);
             return () => request.aborted++;
@@ -126,7 +183,10 @@ test("direct lists, search and details carry locale and stable movie identity", 
         "Матрица & Neo"
     );
     f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
-    assert.match(f.requests[3].url, /movie\/603\?language=ru-RU$/);
+    assert.match(
+        f.requests[3].url,
+        /movie\/603\?language=ru-RU&append_to_response=external_ids$/
+    );
     f.requests[3].done(null, movie());
     assert.equal(result.item.id, "tmdb:movie:603");
     assert.equal(Object.hasOwn(result.item, "stream_url"), false);
@@ -210,14 +270,14 @@ test("missing translation uses original title and leaves missing description emp
     assert.equal(f.requests.length, 1);
     assert.equal(result.item.id, "tmdb:movie:603");
 });
-test("explicit addon base uses selected locale, translated genres and metadata only", () => {
+test("known unconfigured legacy addon uses selected locale, translated genres and metadata only", () => {
     const f = fixture();
-    f.setEndpoint("https://addon.example/prefix/");
+    f.setEndpoint("https://tmdb.elfhosted.com/");
     let result;
     f.instance.search("Матрица", null, (v) => (result = copy(v)));
     const url = new URL(f.requests[0].url);
     assert.deepEqual(
-        JSON.parse(decodeURIComponent(url.pathname.split("/")[2])),
+        JSON.parse(decodeURIComponent(url.pathname.split("/")[1])),
         { language: "ru-RU" }
     );
     assert.match(url.pathname, /catalog\/movie\/tmdb.search/);
@@ -239,6 +299,7 @@ test("explicit addon base uses selected locale, translated genres and metadata o
     assert.equal(result.next, null);
     assert.equal(Object.hasOwn(result.items[0], "streams"), false);
     f.instance.categories((v) => (result = copy(v)));
+    f.tick();
     f.requests[1].done(null, {
         catalogs: [
             {
@@ -249,12 +310,14 @@ test("explicit addon base uses selected locale, translated genres and metadata o
         ],
     });
     f.instance.load(result.categories[2].id, 2, () => {});
+    f.tick();
     assert.match(f.requests[2].url, /skip=20&genre=/);
     assert.equal(
         decodeURIComponent(f.requests[2].url.split("genre=")[1]),
         "Боевик.json"
     );
     f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    f.tick();
     assert.match(f.requests[3].url, /meta\/movie\/tmdb:603.json$/);
     f.requests[3].done(null, {
         meta: { id: "tmdb:603", name: "Матрица", type: "movie" },
@@ -323,7 +386,7 @@ test("invalid inputs send nothing; unsafe artwork never becomes an image URL", (
     assert.equal(results.length, 12);
     assert.ok(results.every((v) => !v.ok && v.error === "invalid_request"));
     assert.equal(f.requests.length, 0);
-    f.setEndpoint("https://addon.example");
+    f.setEndpoint("https://tmdb.elfhosted.com");
     let result;
     f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
     f.requests[0].done(null, {
@@ -421,7 +484,7 @@ test("all shipped interface locale tags survive without an English fallback", ()
 
 test("addon search has no fake pagination when upstream ignores skip", () => {
     const f = fixture();
-    f.setEndpoint("https://addon.example");
+    f.setEndpoint("https://tmdb.elfhosted.com");
     let result;
     f.instance.search("Matrix", null, (v) => (result = copy(v)));
     f.requests[0].done(null, {
@@ -433,18 +496,29 @@ test("addon search has no fake pagination when upstream ignores skip", () => {
     assert.equal(result.next, null);
     f.instance.search("Matrix", 2, (v) => (result = copy(v)));
     f.tick();
+    f.tick();
     assert.deepEqual(result, { error: "invalid_request", ok: false });
     assert.equal(f.requests.length, 1);
 });
 
-test("addon base validation matches settings and rejects configured manifests", () => {
+test("addon base validation rejects manifest resources and malformed paths", () => {
     const f = fixture();
     for (const endpoint of [
         "https://addon.example/manifest.json",
         "https://addon.example/manifest%2ejson",
-        "https://addon.example/%7B%22language%22%3A%22en%22%7D",
-        "https://addon.example/a%20b",
         "https://addon.example/%zz",
+        "https://addon.example/%00",
+        "https://addon.example/%09",
+        "https://addon.example/%0a",
+        "https://addon.example/%7f",
+        "https://addon.example/%5c",
+        "https://addon.example/raw path",
+        "https://addon.example/raw\tpath",
+        " https://addon.example/config",
+        "https://addon.example/config\n",
+        "https://user:pass@addon.example/config",
+        "https://addon.example/config?key=value",
+        "https://addon.example/config#fragment",
     ]) {
         f.setEndpoint(endpoint);
         let result;
@@ -456,6 +530,26 @@ test("addon base validation matches settings and rejects configured manifests", 
     f.setEndpoint("HTTPS://addon.example");
     f.instance.load("popular", null, () => {});
     assert.equal(f.requests.length, 1);
+});
+
+test("encoded addon configuration remains opaque in manifest and catalog requests", () => {
+    for (const origin of ["https://addon.example", "http://localhost:7000"]) {
+        const f = fixture(undefined, true);
+        const base =
+            origin +
+            "/%7b%22name%22%3a%22A%20B%22%2c%22token%22%3a%22a%2fb%3fc%23d%22%7d";
+        f.setEndpoint(base);
+        let result;
+        f.instance.load("popular", null, (value) => (result = copy(value)));
+        assert.equal(f.requests[0]?.url, base + "/manifest.json");
+        f.requests[0].done(null, genericManifest);
+        assert.equal(
+            f.requests[1].url,
+            base + "/catalog/movie/open%20movies/skip=0.json"
+        );
+        f.requests[1].done(null, { metas: [bunny] });
+        assert.equal(result.items[0].id, "imdb:movie:tt1254207");
+    }
 });
 
 test("a changed interface locale notifies once across pending lanes without stale metadata", () => {
@@ -555,4 +649,474 @@ test("invalid changed settings settle through the observer without sending to th
     assert.deepEqual(result, { error: "invalid_request", ok: false });
     assert.equal(changes, 1);
     assert.equal(f.requests.length, 1);
+});
+
+test("details preserve validated IMDb identity without changing catalog IDs", () => {
+    const f = fixture();
+    let result;
+    f.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    f.requests[0].done(
+        null,
+        movie(603, { external_ids: { imdb_id: "tt0133093" } })
+    );
+    assert.equal(result.item.id, "tmdb:movie:603");
+    assert.equal(result.item.imdbId, "tt0133093");
+    const addon = fixture();
+    addon.setEndpoint("https://tmdb.elfhosted.com");
+    addon.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    addon.requests[0].done(null, {
+        meta: { id: "tmdb:603", imdb_id: "tt0133093", name: "Matrix" },
+    });
+    assert.equal(result.item.imdbId, "tt0133093");
+    const invalid = fixture();
+    invalid.instance.details("tmdb:movie:603", (v) => (result = copy(v)));
+    invalid.requests[0].done(null, movie(603, { imdb_id: "tt0133093\n" }));
+    assert.equal(Object.hasOwn(result.item, "imdbId"), false);
+});
+
+const genericManifest = {
+    catalogs: [
+        {
+            extra: [{ name: "skip" }],
+            id: "open movies",
+            name: "Открытые фильмы",
+            type: "movie",
+        },
+        {
+            extra: [{ isRequired: true, name: "search" }],
+            id: "find",
+            name: "Поиск",
+            type: "movie",
+        },
+        { id: "not-movies", type: "series" },
+        {
+            extra: [{ isRequired: true, name: "token" }],
+            id: "needs-login",
+            type: "movie",
+        },
+    ],
+    idPrefixes: ["tt", "custom:"],
+    resources: ["catalog", "meta"],
+    types: ["movie"],
+};
+function genericFixture() {
+    const f = fixture(undefined, true);
+    f.setEndpoint("https://movies.example/addon");
+    return f;
+}
+const bunny = {
+    description: "Blender open movie",
+    id: "tt1254207",
+    name: "Big Buck Bunny",
+    releaseInfo: "2008",
+    type: "movie",
+};
+test("generic manifests expose actual movie catalogs and advertised search", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.categories((v) => (result = copy(v)));
+    assert.equal(
+        f.requests[0].url,
+        "https://movies.example/addon/manifest.json"
+    );
+    f.requests[0].done(null, genericManifest);
+    assert.deepEqual(result, {
+        categories: [
+            {
+                id: "catalog:open%20movies",
+                searchSupported: false,
+                title: "Открытые фильмы",
+            },
+            {
+                id: "catalog:find",
+                searchOnly: true,
+                searchSupported: true,
+                title: "Поиск",
+            },
+        ],
+        mode: "stremio",
+        ok: true,
+        searchSupported: true,
+    });
+    assert.equal(f.requests.length, 1);
+});
+test("generic pages carry real catalog identity, IMDb IDs and exact offset pagination", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.load("popular", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    assert.equal(
+        f.requests[1].url,
+        "https://movies.example/addon/catalog/movie/open%20movies/skip=0.json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.items[0].id, "imdb:movie:tt1254207");
+    assert.equal(result.items[0].imdbId, "tt1254207");
+    assert.equal(result.next, 1);
+    assert.equal(result.mode, "stremio");
+    assert.equal(result.catalog.id, "catalog:open%20movies");
+    f.instance.load(result.catalog.id, result.next, (v) => (result = copy(v)));
+    f.tick();
+    assert.equal(
+        f.requests[2].url,
+        "https://movies.example/addon/catalog/movie/open%20movies/skip=1.json"
+    );
+    f.requests[2].done(null, { metas: [] });
+    assert.equal(result.next, null);
+});
+test("generic search uses only advertised catalog and does not invent locale config", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.search("Кролик & друзья", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    assert.equal(
+        f.requests[1].url,
+        "https://movies.example/addon/catalog/movie/find/search=" +
+            encodeURIComponent("Кролик & друзья") +
+            ".json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.next, null);
+    const none = genericFixture();
+    none.instance.search("Bunny", null, (v) => (result = copy(v)));
+    none.requests[0].done(null, {
+        ...genericManifest,
+        catalogs: [genericManifest.catalogs[0]],
+    });
+    none.tick();
+    assert.equal(result.ok, false);
+    assert.equal(none.requests.length, 1);
+});
+test("Search from a known feed uses the advertised search catalog without falling back for unknown IDs", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.load("popular", null, (value) => (result = copy(value)));
+    f.requests[0].done(null, {
+        ...genericManifest,
+        catalogs: [
+            ...genericManifest.catalogs,
+            { extra: [{ name: "search" }], id: "own-search", type: "movie" },
+        ],
+    });
+    f.requests[1].done(null, { metas: [bunny] });
+    const feedId = result.catalog.id;
+    assert.equal(result.catalog.searchSupported, true);
+    f.instance.search("Bunny", null, (value) => (result = copy(value)), feedId);
+    f.tick();
+    assert.equal(
+        f.requests[2].url,
+        "https://movies.example/addon/catalog/movie/find/search=Bunny.json"
+    );
+    f.requests[2].done(null, { metas: [bunny] });
+    assert.equal(result.catalog.id, "catalog:find");
+    f.instance.search(
+        "Bunny",
+        null,
+        (value) => (result = copy(value)),
+        "catalog:own-search"
+    );
+    f.tick();
+    assert.equal(
+        f.requests[3].url,
+        "https://movies.example/addon/catalog/movie/own-search/search=Bunny.json"
+    );
+    f.requests[3].done(null, { metas: [] });
+    f.instance.search(
+        "Bunny",
+        null,
+        (value) => (result = copy(value)),
+        "catalog:unknown"
+    );
+    f.tick();
+    f.tick();
+    assert.equal(result.error, "invalid_request");
+    assert.equal(f.requests.length, 4);
+});
+test("generic custom IDs round-trip through metadata resource and reject wrong identity", () => {
+    const f = genericFixture();
+    let result;
+    const custom = { ...bunny, id: "custom:some/ид" };
+    f.instance.load("popular", null, (v) => (result = copy(v)));
+    f.requests[0].done(null, genericManifest);
+    f.requests[1].done(null, { metas: [custom] });
+    const id = result.items[0].id;
+    assert.equal(id, "stremio:movie:" + encodeURIComponent(custom.id));
+    f.instance.details(id, (v) => (result = copy(v)));
+    f.tick();
+    assert.equal(
+        f.requests[2].url,
+        "https://movies.example/addon/meta/movie/" +
+            encodeURIComponent(custom.id) +
+            ".json"
+    );
+    f.requests[2].done(null, { meta: custom });
+    assert.equal(result.item.id, id);
+    f.instance.details("imdb:movie:tt1254207", (v) => (result = copy(v)));
+    f.tick();
+    f.requests[3].done(null, { meta: custom });
+    assert.equal(result.error, "invalid_response");
+});
+test("generic unadvertised meta, malformed manifests and cancelled discovery stop before resource", () => {
+    const no = genericFixture();
+    let result;
+    no.instance.details("imdb:movie:tt1254207", (v) => (result = copy(v)));
+    no.requests[0].done(null, { ...genericManifest, resources: ["catalog"] });
+    no.tick();
+    assert.equal(result.ok, false);
+    assert.equal(no.requests.length, 1);
+    const bad = genericFixture();
+    bad.instance.categories((v) => (result = copy(v)));
+    bad.requests[0].done(null, { catalogs: [], resources: null });
+    assert.equal(result.error, "invalid_response");
+    const cancelled = genericFixture();
+    const stop = cancelled.instance.load("popular", null, () =>
+        assert.fail("stale")
+    );
+    stop();
+    cancelled.requests[0].done(null, genericManifest);
+    assert.equal(cancelled.requests.length, 1);
+});
+test("HTTP metadata bases allow exact literal loopback without DNS normalization", () => {
+    for (const authority of [
+        "localhost",
+        "LOCALHOST:7000",
+        "127.0.0.1:7000",
+        "[::1]:7000",
+    ]) {
+        const f = fixture(undefined, true);
+        const base = "http://" + authority + "/config";
+        f.setEndpoint(base);
+        f.instance.categories(() => {});
+        assert.equal(f.requests[0].url, base + "/manifest.json");
+    }
+    for (const authority of [
+        "localhost.evil",
+        "a.localhost",
+        "localhost.",
+        "127.0.0.2",
+        "127.1",
+        "2130706433",
+        "0x7f000001",
+        "127.000.0.1",
+        "[0:0:0:0:0:0:0:1]",
+        "u:p@localhost",
+        "localhost:99999",
+    ]) {
+        const f = fixture(undefined, true);
+        f.setEndpoint("http://" + authority);
+        let result;
+        f.instance.categories((v) => (result = v));
+        f.tick();
+        assert.equal(f.requests.length, 0, authority);
+        assert.equal(result.error, "invalid_request", authority);
+    }
+});
+test("loopback metadata base retains the exact 4096-byte setting boundary", () => {
+    const prefix = "http://localhost/";
+    for (const length of [4096, 4097]) {
+        const f = fixture(undefined, true);
+        f.setEndpoint(prefix + "p".repeat(length - prefix.length));
+        let result;
+        f.instance.categories((v) => (result = v));
+        f.tick();
+        if (length === 4096) assert.equal(f.requests.length, 1);
+        else {
+            assert.equal(f.requests.length, 0);
+            assert.equal(result.error, "invalid_request");
+        }
+    }
+});
+
+test("generic tmdb-named catalogs preserve configured paths and IMDb identities", () => {
+    for (const base of [
+        "https://custom.example/%7B%22key%22%3A%22opaque%22%7D",
+        "https://tmdb.elfhosted.com/%7B%22language%22%3A%22en-US%22%7D",
+        "https://tmdb.elfhosted.com.other.example",
+    ]) {
+        const f = fixture(undefined, true);
+        f.setEndpoint(base);
+        let result;
+        f.instance.load("popular", null, (value) => (result = copy(value)));
+        f.requests[0].done(null, {
+            ...genericManifest,
+            catalogs: ["tmdb.top", "tmdb.latest", "tmdb.search"].map((id) => ({
+                id,
+                type: "movie",
+            })),
+        });
+        assert.equal(f.requests[1].url, base + "/catalog/movie/tmdb.top.json");
+        f.requests[1].done(null, { metas: [bunny] });
+        assert.equal(result.items[0].id, "imdb:movie:tt1254207");
+        f.instance.details(
+            result.items[0].id,
+            (value) => (result = copy(value))
+        );
+        f.tick();
+        assert.equal(f.requests[2].url, base + "/meta/movie/tt1254207.json");
+        f.requests[2].done(null, { meta: bunny });
+        assert.equal(result.item.id, "imdb:movie:tt1254207");
+    }
+});
+
+test("known legacy origin still requires its expected manifest layout", () => {
+    const f = fixture(undefined, true);
+    f.setEndpoint("https://tmdb.elfhosted.com");
+    let result;
+    f.instance.load("popular", null, (value) => (result = copy(value)));
+    f.requests[0].done(null, genericManifest);
+    assert.equal(
+        f.requests[1].url,
+        "https://tmdb.elfhosted.com/catalog/movie/open%20movies/skip=0.json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.mode, "stremio");
+});
+
+test("legacy extras expose search-only catalogs and preserve selected search routing", () => {
+    const f = genericFixture();
+    let result;
+    const manifest = {
+        ...genericManifest,
+        catalogs: ["first", "second"].map((id) => ({
+            extraRequired: ["search"],
+            extraSupported: ["search", "skip"],
+            id,
+            name: id,
+            type: "movie",
+        })),
+    };
+    f.instance.categories((value) => (result = copy(value)));
+    f.requests[0].done(null, manifest);
+    assert.deepEqual(
+        result.categories.map((entry) => [entry.id, entry.searchOnly]),
+        [
+            ["catalog:first", true],
+            ["catalog:second", true],
+        ]
+    );
+    f.instance.load("popular", null, (value) => (result = copy(value)));
+    f.tick();
+    assert.deepEqual(result, { error: "search_required", ok: false });
+    assert.equal(f.requests.length, 1);
+    f.instance.search(
+        "Bunny & friends",
+        null,
+        (value) => (result = copy(value)),
+        "catalog:second"
+    );
+    f.tick();
+    assert.equal(
+        f.requests[1].url,
+        "https://movies.example/addon/catalog/movie/second/search=Bunny%20%26%20friends&skip=0.json"
+    );
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.catalog.id, "catalog:second");
+    assert.equal(result.next, 1);
+    f.instance.search(
+        "Bunny",
+        null,
+        (value) => (result = copy(value)),
+        "catalog:missing"
+    );
+    f.tick();
+    f.tick();
+    assert.equal(result.error, "invalid_request");
+    assert.equal(f.requests.length, 2);
+});
+
+test("modern extras take precedence and malformed legacy requirements are not requested", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.categories((value) => (result = copy(value)));
+    f.requests[0].done(null, {
+        ...genericManifest,
+        catalogs: [
+            {
+                extra: [],
+                extraRequired: ["search"],
+                extraSupported: ["search"],
+                id: "modern",
+                type: "movie",
+            },
+            {
+                extraRequired: ["search"],
+                extraSupported: ["skip"],
+                id: "missing",
+                type: "movie",
+            },
+            { extraSupported: "search", id: "bad", type: "movie" },
+            { extraSupported: null, id: "null", type: "movie" },
+            {
+                extraSupported: Array(33).fill("search"),
+                id: "oversized",
+                type: "movie",
+            },
+            {
+                extraRequired: ["token"],
+                extraSupported: ["token"],
+                id: "unknown",
+                type: "movie",
+            },
+        ],
+    });
+    assert.deepEqual(
+        result.categories.map((entry) => entry.id),
+        ["catalog:modern"]
+    );
+    assert.equal(result.searchSupported, false);
+});
+
+test("legacy feed pagination uses declared skip and cancelling suppresses a late large page", () => {
+    const f = genericFixture();
+    let result;
+    f.instance.load("popular", null, (value) => (result = copy(value)));
+    f.requests[0].done(null, {
+        ...genericManifest,
+        catalogs: [{ extraSupported: ["skip"], id: "feed", type: "movie" }],
+    });
+    assert.match(f.requests[1].url, /\/catalog\/movie\/feed\/skip=0.json$/);
+    f.requests[1].done(null, { metas: [bunny] });
+    assert.equal(result.next, 1);
+    const previous = result;
+    const cancel = f.instance.load(
+        "catalog:feed",
+        1,
+        (value) => (result = copy(value))
+    );
+    f.tick();
+    assert.match(f.requests[2].url, /\/skip=1.json$/);
+    cancel();
+    f.requests[2].done(null, {
+        metas: Array.from({ length: 1000 }, (_, id) => ({
+            ...bunny,
+            id: "custom:" + id,
+        })),
+    });
+    assert.equal(result, previous);
+    assert.equal(f.requests[2].aborted, 1);
+});
+
+test("generic catalog pages accept 1000 bounded entries and reject larger or oversized responses", () => {
+    for (const count of [101, 1000, 1001]) {
+        const f = genericFixture();
+        let result;
+        f.instance.load("popular", null, (value) => (result = copy(value)));
+        f.requests[0].done(null, genericManifest);
+        f.requests[1].done(null, {
+            metas: Array.from({ length: count }, (_, index) => ({
+                ...bunny,
+                id: "custom:" + index,
+            })),
+        });
+        if (count <= 1000) {
+            assert.equal(result.items.length, count);
+            assert.equal(result.next, count);
+        } else assert.equal(result.error, "invalid_response");
+    }
+    const f = genericFixture();
+    let result;
+    f.instance.load("popular", null, (value) => (result = copy(value)));
+    f.requests[0].done(null, genericManifest);
+    f.requests[1].done(null, { ignored: "x".repeat(524288), metas: [bunny] });
+    assert.equal(result.error, "invalid_response");
 });

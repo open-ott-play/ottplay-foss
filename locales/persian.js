@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "کانال را به دسته اضافه کنید",
     "Add channel to favorites": "کانال را به موارد دلخواه اضافه کنید",
     "Add new list": "افزودن لیست جدید",
+    "Add Stremio addon…": "افزودن افزونهٔ Stremio…",
     "Add to favorites": "به علاقه مندی ها اضافه کنید",
     Age: "سن",
     All: "همه",
@@ -171,6 +172,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "یک پوشه در پنجره مرورگر انتخاب کنید",
     "Choose a profile": "پروفایل را انتخاب کنید",
+    "Choose a source": "یک منبع انتخاب کنید",
     "Choose files in the browser window":
         "فایل‌ها را در پنجره مرورگر انتخاب کنید",
     "Choose from": "را انتخاب کنید",
@@ -258,6 +260,8 @@ var keyStrings = {
         "پیکربندی TV DOSUG در تنظیمات -> تنظیمات ارائه دهنده",
     "Configure TVClub in Settings -> Provider Settings":
         "پیکربندی TVClub در تنظیمات -> تنظیمات ارائه دهنده",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ابتدا این افزونه را پیکربندی کنید، سپس نشانی مانیفست پیکربندی‌شده را اضافه کنید.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "پیکربندی ULTIFL1X در تنظیمات -> تنظیمات ارائه دهنده",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -376,6 +380,8 @@ var keyStrings = {
         "یک لیست پخش URL برای دسترسی به این سرویس وارد کنید.",
     "Enter a playlist URL. The player will restart after saving.":
         "یک لیست پخش URL را وارد کنید. پخش کننده پس از ذخیره مجدد راه اندازی می شود.",
+    "Enter a Stremio addon manifest URL.":
+        "نشانی URL مانیفست افزونهٔ Stremio را وارد کنید.",
     "Enter a server address without spaces or a fragment.":
         "آدرس سرور را بدون فاصله یا قطعه وارد کنید.",
     "Enter a username (8 characters).": "یک نام کاربری (8 کاراکتر) وارد کنید.",
@@ -853,6 +859,7 @@ var keyStrings = {
     "Repeat: All": "تکرار: همه",
     "Repeat: Off": "تکرار: خاموش",
     "Repeat: One": "تکرار: یک",
+    Replace: "جایگزینی",
     "Request sended!": "درخواست ارسال شد!",
     "Requesting approval for %1": "درخواست تایید برای %1",
     "Reset order": 'مرتب سازی کانال ها: "همانطور که هست"',
@@ -1029,6 +1036,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "مهلت انتظار پخش پایان یافت. برای تلاش مجدد کانال را انتخاب کنید.",
     "Stream type: %1": "نوع جریان: %1",
+    "Stremio addons": "افزونه‌های Stremio",
     "String for search": "پرس و جو جستجو",
     "Su Mo Tu We Th Fr Sa": "یک دو سه چهار پنج جمعه شنبه",
     "Subscription information": "اطلاعات اشتراک",
@@ -1127,6 +1135,7 @@ var keyStrings = {
     Unavailable: "در دسترس نیست",
     "Unlock the player's settings before changing its playlist.":
         "پیش از تغییر فهرست پخش، قفل تنظیمات پخش‌کننده را باز کنید.",
+    "Unsupported source": "منبع پشتیبانی نمی‌شود",
     Untitled: "بدون عنوان",
     "Untitled folder": "پوشه بدون عنوان",
     "Update installed. Please restart OttPlay FOSS.":

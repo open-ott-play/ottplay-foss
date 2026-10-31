@@ -819,6 +819,7 @@ function moduleOf(file, requireFn, window) {
                           name === "./remote-favorites-global-items" ||
                           name === "./remote-favorites-global-recovery" ||
                           name === "./remote-feature" ||
+                          name === "./remote-provider-diagnostics" ||
                           name === "./remote-favorites" ||
                           name === "./remote-local-media" ||
                           name === "./remote-favorites-contract"

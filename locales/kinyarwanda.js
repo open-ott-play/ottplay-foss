@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Ongera shene mu cyiciro",
     "Add channel to favorites": "Ongera shene mu bikunzwe",
     "Add new list": "Ongeraho urutonde rushya",
+    "Add Stremio addon…": "Ongeramo inyongera ya Stremio…",
     "Add to favorites": "Ongera mu bikunzwe",
     Age: "Imyaka",
     All: "Byose",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Hitamo ububiko mu idirishya rya mushakisha",
     "Choose a profile": "Hitamo umwirondoro",
+    "Choose a source": "Hitamo inkomoko",
     "Choose files in the browser window":
         "Hitamo dosiye mu idirishya rya mushakisha",
     "Choose from": "Hitamo muri",
@@ -265,6 +267,8 @@ var keyStrings = {
         "Gena TV DOSUG mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
     "Configure TVClub in Settings -> Provider Settings":
         "Gena TVClub mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Banza ugenere iyi nyongera igenamiterere, hanyuma wongeremo aderesi ya dosiye ya manifest yamaze kugenwa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Gena ULTIFL1X mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Injiza URL y'urutonde rwo gukina kugira ngo ukoreshe iyi serivisi.",
     "Enter a playlist URL. The player will restart after saving.":
         "Injiza URL y'urutonde rwo gukina. Porogaramu yo gukina izongera gutangira nyuma yo kubika.",
+    "Enter a Stremio addon manifest URL.":
+        "Andika URL ya manifest y’inyongera ya Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Injiza aderesi ya seriveri idafite imyanya cyangwa igice cya URL gitangizwa na #.",
     "Enter a username (8 characters).":
@@ -880,6 +886,7 @@ var keyStrings = {
     "Repeat: All": "Subiramo: byose",
     "Repeat: Off": "Subiramo: bizimye",
     "Repeat: One": "Subiramo: kimwe",
+    Replace: "Simbuza",
     "Request sended!": "Ubusabe bwoherejwe!",
     "Requesting approval for %1": "Turasaba icyemezo cya %1",
     "Reset order": 'Tondeka shene: "Uko biri"',
@@ -1057,6 +1064,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Igihe cyo gutegereza ikiganiro cyarangiye. Hitamo shene wongere ugerageze.",
     "Stream type: %1": "Ubwoko bw'isakaza: %1",
+    "Stremio addons": "Inyongera za Stremio",
     "String for search": "Ibyo ushakisha",
     "Su Mo Tu We Th Fr Sa": "Cyu Mbe Kab Gtu Kan Gnu Gnd",
     "Subscription information": "Amakuru yo kwiyandikisha",
@@ -1160,6 +1168,7 @@ var keyStrings = {
     Unavailable: "Ntiboneka",
     "Unlock the player's settings before changing its playlist.":
         "Fungura igenamiterere rya porogaramu ryafunzwe mbere yo guhindura urutonde rwayo rwo gukina.",
+    "Unsupported source": "Inkomoko idashyigikiwe",
     Untitled: "Nta mutwe",
     "Untitled folder": "Ububiko bwa dosiye butagira izina",
     "Update installed. Please restart OttPlay FOSS.":

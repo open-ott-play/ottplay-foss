@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "चैनल को श्रेणी में जोड़ें",
     "Add channel to favorites": "चैनल को पसंदीदा में जोड़ें",
     "Add new list": "नई सूची जोड़ें",
+    "Add Stremio addon…": "Stremio ऐड-ऑन जोड़ें…",
     "Add to favorites": "पसंदीदा में जोड़ें",
     Age: "आयु",
     All: "सभी",
@@ -165,6 +166,7 @@ var keyStrings = {
         "Plex सर्वर कनेक्शन की जाँच की जा रही है…",
     "Choose a folder in the browser window": "ब्राउज़र विंडो में फ़ोल्डर चुनें",
     "Choose a profile": "प्रोफ़ाइल चुनें",
+    "Choose a source": "स्रोत चुनें",
     "Choose files in the browser window": "ब्राउज़र विंडो में फ़ाइलें चुनें",
     "Choose from": "से चुनें",
     "Choose language": "भाषा चुनें",
@@ -251,6 +253,8 @@ var keyStrings = {
         "सेटिंग्स -> प्रदाता सेटिंग्स में TV DOSUG कॉन्फ़िगर करें",
     "Configure TVClub in Settings -> Provider Settings":
         "सेटिंग्स -> प्रदाता सेटिंग्स में TVClub कॉन्फ़िगर करें",
+    "Configure this addon first, then add its configured manifest URL.":
+        "पहले यह ऐड-ऑन कॉन्फ़िगर करें, फिर कॉन्फ़िगर किए गए मैनिफ़ेस्ट का पता जोड़ें।",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "सेटिंग्स -> प्रदाता सेटिंग्स में ULTIFL1X कॉन्फ़िगर करें",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -369,6 +373,8 @@ var keyStrings = {
         "इस सेवा तक पहुंचने के लिए एक प्लेलिस्ट URL दर्ज करें।",
     "Enter a playlist URL. The player will restart after saving.":
         "एक प्लेलिस्ट URL दर्ज करें। सेव करने के बाद प्लेयर पुनः आरंभ होगा।",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio ऐड-ऑन के मैनिफ़ेस्ट का URL दर्ज करें।",
     "Enter a server address without spaces or a fragment.":
         "बिना रिक्त स्थान या खंड के सर्वर पता दर्ज करें।",
     "Enter a username (8 characters).": "एक उपयोगकर्ता नाम (8 अक्षर) दर्ज करें।",
@@ -839,6 +845,7 @@ var keyStrings = {
     "Repeat: All": "दोहराएँ: सभी",
     "Repeat: Off": "दोहराएँ: बंद",
     "Repeat: One": "दोहराएँ: एक",
+    Replace: "बदलें",
     "Request sended!": "अनुरोध भेजा गया!",
     "Requesting approval for %1": "%1 के लिए अनुमोदन का अनुरोध",
     "Reset order": 'चैनल क्रमित करें: "जैसा है"',
@@ -1005,6 +1012,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "स्ट्रीम की प्रतीक्षा का समय समाप्त हो गया। फिर से प्रयास करने के लिए चैनल चुनें।",
     "Stream type: %1": "स्ट्रीम प्रकार: %1",
+    "Stremio addons": "Stremio ऐड-ऑन",
     "String for search": "खोज क्वेरी",
     "Su Mo Tu We Th Fr Sa": "रवि सोम मंगल बुध गुरु शुक्र शनि",
     "Subscription information": "सदस्यता संबंधी जानकारी",
@@ -1100,6 +1108,7 @@ var keyStrings = {
     Unavailable: "उपलब्ध नहीं है",
     "Unlock the player's settings before changing its playlist.":
         "प्लेलिस्ट बदलने से पहले प्लेयर की सेटिंग्स अनलॉक करें।",
+    "Unsupported source": "असमर्थित स्रोत",
     Untitled: "शीर्षकहीन",
     "Untitled folder": "शीर्षक रहित फ़ोल्डर",
     "Update installed. Please restart OttPlay FOSS.":

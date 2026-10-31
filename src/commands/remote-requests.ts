@@ -32,6 +32,7 @@ import { executeRemoteLocalMedia } from "./remote-local-media";
 import { executeRemotePerformance } from "./remote-perf";
 import { remotePlexQueue } from "./remote-plex";
 import { handleRemoteProfiles } from "./remote-profiles";
+import { providerDiagnosticsSnapshot } from "./remote-provider-diagnostics";
 import {
     executeRemoteControl,
     executeRemoteRestart,
@@ -39,7 +40,10 @@ import {
 } from "./remote-restart";
 import { executeRemoteScreenshot } from "./remote-screenshot";
 import { executeRemoteSettings } from "./remote-settings";
-import { executeRemoteTorrentCatalog } from "./remote-torrent-catalog";
+import {
+    executeRemoteTorrentCatalog,
+    executeRemoteTorrentIndexer,
+} from "./remote-torrent-catalog";
 
 // Keep the source and catalogue fingerprint on the player; only an opaque
 // receipt crosses the control transport. It authorizes no additional access.
@@ -430,6 +434,8 @@ export function executeRemoteRequest(
             if (cancelProviderRequest) cancelProviderRequest();
         };
     }
+    if (request.action === "torrent_indexer")
+        return executeRemoteTorrentIndexer(w, request, done);
     if (request.action === "torrent_catalog")
         return executeRemoteTorrentCatalog(w, request, done);
     if (request.action === "favorites_transfer")
@@ -1198,6 +1204,7 @@ export function executeRemoteRequest(
                     w.__ottHostedEpg && w.__ottHostedEpg.remoteSnapshot
                 ),
                 input: remoteSnapshot(w.__ottDebugInputSnapshot),
+                provider: providerDiagnosticsSnapshot(w, player.runtime),
                 version: 1,
             },
             provider: activeProvider(),

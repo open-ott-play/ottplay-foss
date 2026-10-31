@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Pievienot kanālu kategorijai",
     "Add channel to favorites": "Pievienot kanālu izlasei",
     "Add new list": "Pievienot jaunu sarakstu",
+    "Add Stremio addon…": "Pievienot Stremio papildinājumu…",
     "Add to favorites": "Pievienot izlasei",
     Age: "Vecums",
     All: "Visi",
@@ -172,6 +173,7 @@ var keyStrings = {
         "Notiek Plex servera savienojuma pārbaude…",
     "Choose a folder in the browser window": "Pārlūka logā izvēlieties mapi",
     "Choose a profile": "Izvēlēties profilu",
+    "Choose a source": "Izvēlieties avotu",
     "Choose files in the browser window": "Pārlūka logā izvēlieties failus",
     "Choose from": "Izvēlēties no",
     "Choose language": "Izvēlēties valodu",
@@ -260,6 +262,8 @@ var keyStrings = {
         "Konfigurējiet TV DOSUG sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurējiet TVClub sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Vispirms konfigurējiet šo papildinājumu, pēc tam pievienojiet konfigurētā manifesta adresi.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurējiet ULTIFL1X sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "Lai piekļūtu šim pakalpojumam, ievadiet atskaņošanas saraksta URL.",
     "Enter a playlist URL. The player will restart after saving.":
         "Ievadiet atskaņošanas saraksta URL. Pēc saglabāšanas atskaņotājs tiks restartēts.",
+    "Enter a Stremio addon manifest URL.":
+        "Ievadiet Stremio papildinājuma manifesta URL.",
     "Enter a server address without spaces or a fragment.":
         "Ievadiet servera adresi bez atstarpēm un fragmenta aiz #.",
     "Enter a username (8 characters).":
@@ -865,6 +871,7 @@ var keyStrings = {
     "Repeat: All": "Atkārtošana: visi",
     "Repeat: Off": "Atkārtošana: izslēgta",
     "Repeat: One": "Atkārtošana: viens",
+    Replace: "Aizstāt",
     "Request sended!": "Pieprasījums nosūtīts!",
     "Requesting approval for %1": "Tiek pieprasīts apstiprinājums: %1",
     "Reset order": "Kārtot kanālus: „Kā ir”",
@@ -1038,6 +1045,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Straumes gaidīšanas laiks ir beidzies. Atlasiet kanālu, lai mēģinātu vēlreiz.",
     "Stream type: %1": "Straumes veids: %1",
+    "Stremio addons": "Stremio papildinājumi",
     "String for search": "Meklēšanas vaicājums",
     "Su Mo Tu We Th Fr Sa": "Sv Pr Ot Tr Ce Pk Se",
     "Subscription information": "Abonementa informācija",
@@ -1136,6 +1144,7 @@ var keyStrings = {
     Unavailable: "Nav pieejams",
     "Unlock the player's settings before changing its playlist.":
         "Pirms atskaņošanas saraksta maiņas atbloķējiet atskaņotāja iestatījumus.",
+    "Unsupported source": "Neatbalstīts avots",
     Untitled: "Bez nosaukuma",
     "Untitled folder": "Mape bez nosaukuma",
     "Update installed. Please restart OttPlay FOSS.":

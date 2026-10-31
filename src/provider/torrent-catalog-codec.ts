@@ -59,6 +59,10 @@ export function torrentSource(value: any): boolean {
     if (!torrentCatalogText(value, 8192, 8192) || /\s/.test(value))
         return false;
     if (/^magnet:\?/i.test(value)) return true;
+    if (
+        /^ottplay-local-torrent:[a-z][a-z0-9-]{0,63}\/[0-9a-f]{32}$/.test(value)
+    )
+        return true;
     try {
         var url = new URL(value);
         return (

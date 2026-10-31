@@ -20,6 +20,61 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const flush = async () => {
     for (let n = 0; n < 50; n++) await Promise.resolve();
 };
+test("Torznab external cancellation aborts only its HTTP request and clears timers", async () => {
+    const pending = deferred();
+    const other = deferred();
+    const f = fixture({
+        handle: (path) =>
+            path === "torrent/search"
+                ? pending.promise
+                : path === "torrent/sources"
+                  ? other.promise
+                  : undefined,
+    });
+    const controller = new AbortController();
+    const request = f.client.torznab(
+        "search",
+        { sourceId: "home" },
+        controller.signal
+    );
+    const rejected = assert.rejects(request, /torznab_cancelled/);
+    const independent = f.client.torznab(
+        "list",
+        {},
+        new AbortController().signal
+    );
+    await flush();
+    const signal = f.calls[0].signal;
+    assert.equal(signal.aborted, false);
+    controller.abort();
+    await rejected;
+    assert.equal(signal.aborted, true);
+    assert.equal(f.calls[1].signal.aborted, false);
+    assert.equal(f.timers.size, 1);
+    pending.resolve({ items: [], schema: 1 });
+    other.resolve({ schema: 1, sources: [] });
+    await independent;
+    await flush();
+    assert.equal(f.timers.size, 0);
+});
+test("pre-aborted Torznab work never starts a fetch; completed work ignores later abort", async () => {
+    const f = fixture({
+        handle: (path) =>
+            path === "torrent/sources" ? { schema: 1, sources: [] } : undefined,
+    });
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(
+        f.client.torznab("list", {}, controller.signal),
+        /torznab_cancelled/
+    );
+    assert.equal(f.calls.length, 0);
+    const complete = new AbortController();
+    await f.client.torznab("list", {}, complete.signal);
+    complete.abort();
+    assert.equal(f.calls[0].signal.aborted, false);
+    assert.equal(f.timers.size, 0);
+});
 function deferred() {
     let resolve;
     const promise = new Promise((r) => {
@@ -897,4 +952,82 @@ test("cold remote provider requests reject expiration and source changes and hon
         if (kind !== "cancelled") assert.equal(f.replies[0].status, "rejected");
         assert.deepEqual(f.calls, ["companion_capabilities"]);
     }
+});
+
+test("omitted Stremio file index selects the largest playable file after metadata", async () => {
+    const f = fixture({
+        handle(path, method) {
+            if (/^sessions\/s\d+$/.test(path) && method === "GET")
+                return {
+                    files: [
+                        { index: 0, length: 100, name: "sample.mp4" },
+                        { index: 1, length: 999999, name: "extras.bin" },
+                        { index: 5, length: 10000, name: "film.mkv" },
+                        { index: 6, length: 1000, name: "trailer.mp4" },
+                    ],
+                    id: path.split("/")[1],
+                    state: "select",
+                };
+        },
+    });
+    f.resolve(
+        "ottplay-torrent:?source=" +
+            encodeURIComponent(source) +
+            "&selection=largest"
+    );
+    await flush();
+    await f.tick(750);
+    assert.deepEqual(
+        f.calls.find((c) => c.path === "sessions" && c.method === "POST").body,
+        { source }
+    );
+    assert.deepEqual(f.calls.find((c) => c.path.endsWith("/select")).body, {
+        fileIndex: 5,
+    });
+    assert.equal(f.outcomes.length, 1);
+});
+
+test("Stremio largest-file choice cannot conflict with explicit index", async () => {
+    const f = fixture();
+    f.resolve(
+        "ottplay-torrent:?source=" +
+            encodeURIComponent(source) +
+            "&selection=largest&index=0"
+    );
+    await flush();
+    assert.deepEqual(f.outcomes, [null]);
+    assert.equal(
+        f.calls.some((c) => c.path === "sessions"),
+        false
+    );
+});
+
+test("opaque local torrent references reach native sessions without an upstream URL", async () => {
+    const f = fixture({ native: true });
+    const local = "ottplay-local-torrent:home/" + "a".repeat(32);
+    const uri =
+        "ottplay-torrent:?source=" +
+        encodeURIComponent(local) +
+        "&selection=largest&native=1";
+    f.resolve(uri);
+    await flush();
+    const call = f.calls.find((c) => c.path === "sessions");
+    assert.deepEqual(clone(call.body), {
+        sourceId: "home",
+        sourceRef: "a".repeat(32),
+    });
+    await f.tick(750);
+    assert.equal(f.outcomes.length, 1);
+    assert.equal(f.client.status().source, uri);
+    f.client.cancelAll();
+});
+test("malformed local torrent references never create a session", async () => {
+    const f = fixture({ native: true });
+    f.resolve("ottplay-local-torrent:home/" + "a".repeat(32) + "?key=secret");
+    await flush();
+    assert.equal(
+        f.calls.some((c) => c.path === "sessions"),
+        false
+    );
+    assert.deepEqual(f.outcomes, [null]);
 });

@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Zender aan categorie toevoegen",
     "Add channel to favorites": "Zender aan favorieten toevoegen",
     "Add new list": "Nieuwe lijst toevoegen",
+    "Add Stremio addon…": "Stremio-add-on toevoegen…",
     "Add to favorites": "Aan favorieten toevoegen",
     Age: "Leeftijd",
     All: "Alles",
@@ -177,6 +178,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Kies een map in het browservenster",
     "Choose a profile": "Profiel kiezen",
+    "Choose a source": "Kies een bron",
     "Choose files in the browser window":
         "Kies bestanden in het browservenster",
     "Choose from": "Kiezen uit",
@@ -266,6 +268,8 @@ var keyStrings = {
         "Configureer TV DOSUG via Instellingen -> Providerinstellingen",
     "Configure TVClub in Settings -> Provider Settings":
         "Configureer TVClub via Instellingen -> Providerinstellingen",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Stel eerst deze add-on in en voeg daarna de URL van het ingestelde manifest toe.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Configureer ULTIFL1X via Instellingen -> Providerinstellingen",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Voer een afspeellijst-URL in om deze dienst te gebruiken.",
     "Enter a playlist URL. The player will restart after saving.":
         "Voer een afspeellijst-URL in. De speler wordt na het opslaan opnieuw gestart.",
+    "Enter a Stremio addon manifest URL.":
+        "Voer de manifest-URL van een Stremio-add-on in.",
     "Enter a server address without spaces or a fragment.":
         "Voer een serveradres zonder spaties of fragment in.",
     "Enter a username (8 characters).":
@@ -870,6 +876,7 @@ var keyStrings = {
     "Repeat: All": "Herhalen: alles",
     "Repeat: Off": "Herhalen: uit",
     "Repeat: One": "Herhalen: één",
+    Replace: "Vervangen",
     "Request sended!": "Verzoek verzonden!",
     "Requesting approval for %1": "Goedkeuring aanvragen voor %1",
     "Reset order": 'Zenders sorteren: "Ongewijzigd"',
@@ -1046,6 +1053,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "De wachttijd voor de stream is verstreken. Selecteer het kanaal om het opnieuw te proberen.",
     "Stream type: %1": "Streamtype: %1",
+    "Stremio addons": "Stremio-uitbreidingen",
     "String for search": "Zoektekst",
     "Su Mo Tu We Th Fr Sa": "Zo Ma Di Wo Do Vr Za",
     "Subscription information": "Abonnementsinformatie",
@@ -1147,6 +1155,7 @@ var keyStrings = {
     Unavailable: "Niet beschikbaar",
     "Unlock the player's settings before changing its playlist.":
         "Ontgrendel de instellingen van de speler voordat u de afspeellijst wijzigt.",
+    "Unsupported source": "Niet-ondersteunde bron",
     Untitled: "Zonder titel",
     "Untitled folder": "Naamloze map",
     "Update installed. Please restart OttPlay FOSS.":

@@ -1,6 +1,7 @@
 interface TorrentDiscoveryMovie {
     description: string;
     id: string;
+    imdbId?: string;
     language: string;
     poster: string;
     title: string;
@@ -28,8 +29,53 @@ type TorrentDiscoveryResult =
           items?: TorrentDiscoveryMovie[];
           item?: TorrentDiscoveryMovie;
           next?: number | null;
-          categories?: { id: string; title: string }[];
+          categories?: {
+              id: string;
+              title: string;
+              searchSupported?: boolean;
+              searchOnly?: boolean;
+          }[];
+          mode?: "tmdb" | "stremio";
+          searchSupported?: boolean;
+          manifest?: any;
+          catalog?: { id: string; title: string; searchSupported: boolean };
       };
+
+/** Shared by manifest installation and catalog requests. */
+function torrentCatalogExtras(catalog: any): any[] | null {
+    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog))
+        return null;
+    if (catalog.extra !== undefined)
+        return Array.isArray(catalog.extra) && catalog.extra.length <= 32
+            ? catalog.extra
+            : null;
+    var supported =
+            catalog.extraSupported === undefined ? [] : catalog.extraSupported,
+        required =
+            catalog.extraRequired === undefined ? [] : catalog.extraRequired;
+    if (
+        !Array.isArray(supported) ||
+        !Array.isArray(required) ||
+        supported.length > 32 ||
+        required.length > 32 ||
+        !supported.every(function (name: any) {
+            return (
+                typeof name === "string" &&
+                name.length <= 128 &&
+                !!name &&
+                name === name.trim() &&
+                !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(name)
+            );
+        }) ||
+        !required.every(function (name: any) {
+            return supported.indexOf(name) >= 0;
+        })
+    )
+        return null;
+    return supported.map(function (name: string) {
+        return { isRequired: required.indexOf(name) >= 0, name: name };
+    });
+}
 
 /** Movie metadata only. This adapter never resolves or starts a media source. */
 function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
@@ -87,6 +133,20 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             : "";
     }
 
+    function catalogBaseUrl(value: string): boolean {
+        if (byteLength(value) > 4096) return false;
+        if (httpsUrl(value, 4096)) return true;
+        var local =
+            /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::([0-9]{1,5}))?(?:\/|$)/i.exec(
+                value
+            );
+        return (
+            !!local &&
+            (!local[2] || Number(local[2]) <= 65535) &&
+            !!httpsUrl(value.replace(/^http:/i, "https:"), 4097)
+        );
+    }
+
     function cancel(): void {
         Object.keys(lanes).forEach(function (key) {
             var job = lanes[key];
@@ -120,7 +180,7 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                     ? parts[part].charAt(0).toUpperCase() +
                       parts[part].slice(1).toLowerCase()
                     : parts[part].toUpperCase());
-        base = base.trim().replace(/\/+$/, "");
+        base = base.replace(/\/+$/, "");
         var signature = language + "\n" + base;
         if (signature !== configuration) {
             cancel();
@@ -132,9 +192,9 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             var decodedBase = decodeURIComponent(base);
             if (
                 base &&
-                (!httpsUrl(base, 4096) ||
-                    /[?#]/.test(base) ||
-                    /[\s\\{}]/.test(decodedBase) ||
+                (!catalogBaseUrl(base) ||
+                    /[\s?#]/.test(base) ||
+                    /[\u0000-\u001f\u007f\\]/.test(decodedBase) ||
                     /\/manifest\.json\/*$/i.test(decodedBase))
             )
                 return null;
@@ -297,7 +357,8 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
     function movie(
         data: any,
         language: string,
-        addon: boolean
+        addon: boolean,
+        generic = false
     ): TorrentDiscoveryMovie {
         if (!data || typeof data !== "object" || Array.isArray(data))
             throw new Error("movie");
@@ -313,7 +374,17 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             throw new Error("type");
         var title = plain(addon ? data.name : data.title, 512);
         if (!title && !addon) title = plain(data.original_title, 512);
-        if (!numericId || !title) throw new Error("identity");
+        var stableId = "tmdb:movie:" + numericId;
+        if (generic) {
+            var rawId = plain(data.id, 256);
+            if (!rawId || rawId !== data.id || /[\r\n]/.test(rawId))
+                throw new Error("identity");
+            stableId = /^tt[0-9]{7,10}$/.test(rawId)
+                ? "imdb:movie:" + rawId
+                : "stremio:movie:" + encodeURIComponent(rawId);
+            if (stableId.length > 1024) throw new Error("identity");
+        }
+        if ((!numericId && !generic) || !title) throw new Error("identity");
         var path = plain(data.poster_path, 1024);
         var poster = addon
             ? httpsUrl(data.poster)
@@ -321,9 +392,9 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
               ? "https://image.tmdb.org/t/p/w342" + path
               : "";
         var date = plain(addon ? data.releaseInfo : data.release_date, 64);
-        return {
+        var result: TorrentDiscoveryMovie = {
             description: plain(addon ? data.description : data.overview, 8192),
-            id: "tmdb:movie:" + numericId,
+            id: stableId,
             language: language,
             poster: poster,
             title: title,
@@ -331,9 +402,221 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                 ? date.slice(0, 4)
                 : "",
         };
+        var imdbId =
+            data.imdb_id ||
+            (data.external_ids && data.external_ids.imdb_id) ||
+            (generic && data.id);
+        if (
+            typeof imdbId === "string" &&
+            /^tt[0-9]{7,10}$/.test(imdbId) &&
+            !/[^t0-9]/.test(imdbId)
+        )
+            result.imdbId = imdbId;
+        return result;
+    }
+
+    function addonRequest(
+        lane: string,
+        ctx: { base: string; language: string },
+        done: (result: TorrentDiscoveryResult) => void,
+        next: (manifest: any, legacy: boolean) => () => void
+    ): () => void {
+        var inner: (() => void) | undefined;
+        var outer = run(
+            lane,
+            ctx.base + "/manifest.json",
+            function (data: any) {
+                if (
+                    !Array.isArray(data.catalogs) ||
+                    data.catalogs.length > 100 ||
+                    !Array.isArray(data.resources) ||
+                    data.resources.length > 32 ||
+                    byteLength(JSON.stringify(data)) > 65536
+                )
+                    throw new Error("manifest");
+                return { manifest: data, ok: true };
+            },
+            function (result) {
+                if (!result.ok) {
+                    done(result);
+                    return;
+                }
+                var manifest = result.manifest;
+                var ids = manifest.catalogs.map(function (entry: any) {
+                    return entry && entry.type === "movie" ? entry.id : "";
+                });
+                inner = next(
+                    manifest,
+                    /^https:\/\/tmdb\.elfhosted\.com$/i.test(ctx.base) &&
+                        ids.indexOf("tmdb.top") >= 0 &&
+                        ids.indexOf("tmdb.latest") >= 0 &&
+                        ids.indexOf("tmdb.search") >= 0
+                );
+            }
+        );
+        return function () {
+            outer();
+            if (inner) inner();
+        };
+    }
+
+    function catalogExtra(
+        catalog: any,
+        name: string,
+        required = false
+    ): boolean {
+        var extras = torrentCatalogExtras(catalog) || [];
+        for (var i = 0; i < extras.length; i++)
+            if (
+                extras[i] &&
+                extras[i].name === name &&
+                (!required || extras[i].isRequired)
+            )
+                return true;
+        return false;
+    }
+
+    function movieCatalogs(
+        manifest: any,
+        search: boolean,
+        includeSearchOnly = false
+    ): any[] {
+        return manifest.catalogs.filter(function (entry: any) {
+            if (
+                !entry ||
+                entry.type !== "movie" ||
+                !plain(entry.id, 256) ||
+                entry.id !== entry.id.trim() ||
+                /[\r\n]/.test(entry.id)
+            )
+                return false;
+            var extras = torrentCatalogExtras(entry);
+            if (!extras) return false;
+            for (var i = 0; i < extras.length; i++)
+                if (
+                    extras[i] &&
+                    extras[i].isRequired &&
+                    extras[i].name !== "skip" &&
+                    !(
+                        (search || includeSearchOnly) &&
+                        extras[i].name === "search"
+                    )
+                )
+                    return false;
+            return !search || catalogExtra(entry, "search");
+        });
     }
 
     function pageRequest(
+        category: string,
+        query: string | null,
+        cursor: number | null,
+        done: (result: TorrentDiscoveryResult) => void
+    ): () => void {
+        var ctx = context();
+        if (!ctx || !ctx.base)
+            return standardPageRequest(category, query, cursor, done);
+        return addonRequest("list", ctx, done, function (manifest, legacy) {
+            if (legacy)
+                return standardPageRequest(category, query, cursor, done);
+            var catalogs = movieCatalogs(manifest, query !== null),
+                selected: any = null;
+            if (
+                query !== null &&
+                movieCatalogs(manifest, false).some(function (entry) {
+                    return (
+                        category ===
+                            "catalog:" + encodeURIComponent(entry.id) &&
+                        !catalogExtra(entry, "search")
+                    );
+                })
+            )
+                category = "search";
+            for (var i = 0; i < catalogs.length; i++) {
+                if (
+                    category === (query !== null ? "search" : "popular") ||
+                    category === "catalog:" + encodeURIComponent(catalogs[i].id)
+                ) {
+                    selected = catalogs[i];
+                    break;
+                }
+            }
+            if (
+                !selected &&
+                query === null &&
+                movieCatalogs(manifest, true).some(function (entry) {
+                    return (
+                        category === "popular" ||
+                        category === "catalog:" + encodeURIComponent(entry.id)
+                    );
+                })
+            ) {
+                done({ error: "search_required", ok: false });
+                return function () {};
+            }
+            var offset = cursor === null || cursor === undefined ? 0 : cursor;
+            if (
+                !selected ||
+                typeof offset !== "number" ||
+                offset < 0 ||
+                offset > 50000 ||
+                Math.floor(offset) !== offset ||
+                (query !== null && !plain(query, 256)) ||
+                (offset > 0 && !catalogExtra(selected, "skip"))
+            )
+                return run("list", "", null, done);
+            var extras: string[] = [];
+            if (query !== null)
+                extras.push("search=" + encodeURIComponent(query.trim()));
+            var paged = catalogExtra(selected, "skip");
+            if (paged) extras.push("skip=" + offset);
+            var url =
+                ctx!.base +
+                "/catalog/movie/" +
+                encodeURIComponent(selected.id) +
+                (extras.length ? "/" + extras.join("&") : "") +
+                ".json";
+            return run(
+                "list",
+                url,
+                function (data: any) {
+                    // Keep larger standard pages within the existing 512 KiB response cap.
+                    if (!Array.isArray(data.metas) || data.metas.length > 1000)
+                        throw new Error("page");
+                    var items: TorrentDiscoveryMovie[] = [],
+                        seen: string[] = [];
+                    data.metas.forEach(function (row: any) {
+                        if (row && row.type && row.type !== "movie") return;
+                        var item = movie(row, ctx!.language, true, true);
+                        if (seen.indexOf(item.id) < 0) {
+                            seen.push(item.id);
+                            items.push(item);
+                        }
+                    });
+                    return {
+                        catalog: {
+                            id: "catalog:" + encodeURIComponent(selected.id),
+                            searchSupported:
+                                movieCatalogs(manifest, true).length > 0,
+                            title: plain(selected.name, 256) || selected.id,
+                        },
+                        items: items,
+                        mode: "stremio",
+                        next:
+                            paged &&
+                            data.metas.length &&
+                            offset + data.metas.length <= 50000
+                                ? offset + data.metas.length
+                                : null,
+                        ok: true,
+                    };
+                },
+                done
+            );
+        });
+    }
+
+    function standardPageRequest(
         category: string,
         query: string | null,
         cursor: number | null,
@@ -405,7 +688,7 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             endpoint(ctx, tail),
             function (data: any) {
                 var rows = addon ? data.metas : data.results;
-                if (!Array.isArray(rows) || rows.length > 100)
+                if (!Array.isArray(rows) || rows.length > (addon ? 1000 : 100))
                     throw new Error("page");
                 if (!addon && data.page !== page)
                     throw new Error("page number");
@@ -440,108 +723,223 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
         );
     }
 
-    return {
-        cancel: cancel,
-        categories: function (done: (result: TorrentDiscoveryResult) => void) {
-            var ctx = context();
-            if (!ctx) return run("categories", "", null, done);
-            var addon = !!ctx.base;
-            return run(
-                "categories",
-                endpoint(
-                    ctx,
-                    addon
-                        ? "manifest.json"
-                        : "genre/movie/list?language=" +
-                              encodeURIComponent(ctx.language)
-                ),
-                function (data: any) {
-                    var categories = [
-                        { id: "popular", title: "Popular" },
-                        { id: "new", title: "New" },
-                    ];
-                    var values: any[] = [];
-                    if (addon) {
+    function categoryRequest(
+        done: (result: TorrentDiscoveryResult) => void
+    ): () => void {
+        var ctx = context();
+        if (!ctx || !ctx.base) return standardCategories(done);
+        return addonRequest(
+            "categories",
+            ctx,
+            done,
+            function (manifest, legacy) {
+                if (legacy) return standardCategories(done);
+                var seen: string[] = [],
+                    categories: {
+                        id: string;
+                        title: string;
+                        searchSupported: boolean;
+                        searchOnly?: boolean;
+                    }[] = [];
+                movieCatalogs(manifest, false, true).forEach(function (entry) {
+                    if (seen.indexOf(entry.id) >= 0) return;
+                    seen.push(entry.id);
+                    var category: (typeof categories)[number] = {
+                        id: "catalog:" + encodeURIComponent(entry.id),
+                        searchSupported: catalogExtra(entry, "search"),
+                        title: plain(entry.name, 256) || entry.id,
+                    };
+                    if (catalogExtra(entry, "search", true))
+                        category.searchOnly = true;
+                    categories.push(category);
+                });
+                done({
+                    categories: categories,
+                    mode: "stremio",
+                    ok: true,
+                    searchSupported: movieCatalogs(manifest, true).length > 0,
+                });
+                return function () {};
+            }
+        );
+    }
+
+    function detailRequest(
+        id: string,
+        done: (result: TorrentDiscoveryResult) => void
+    ): () => void {
+        var ctx = context();
+        if (!ctx || !ctx.base) return standardDetails(id, done);
+        return addonRequest("details", ctx, done, function (manifest, legacy) {
+            if (legacy) return standardDetails(id, done);
+            var rawId = "";
+            try {
+                if (typeof id === "string" && id.length <= 1024) {
+                    if (
+                        /^imdb:movie:tt[0-9]{7,10}$/.test(id) &&
+                        !/[\r\n]/.test(id)
+                    )
+                        rawId = id.slice(11);
+                    else if (id.indexOf("stremio:movie:") === 0) {
+                        rawId = decodeURIComponent(id.slice(14));
                         if (
-                            !Array.isArray(data.catalogs) ||
-                            data.catalogs.length > 100
+                            "stremio:movie:" + encodeURIComponent(rawId) !==
+                                id ||
+                            !plain(rawId, 256) ||
+                            /[\r\n]/.test(rawId)
                         )
-                            throw new Error("catalogs");
-                        data.catalogs.forEach(function (entry: any) {
-                            if (
-                                entry &&
-                                entry.type === "movie" &&
-                                entry.id === "tmdb.top" &&
-                                Array.isArray(entry.extra)
-                            )
-                                entry.extra.forEach(function (extra: any) {
-                                    if (
-                                        extra &&
-                                        extra.name === "genre" &&
-                                        Array.isArray(extra.options)
-                                    )
-                                        values = extra.options;
-                                });
-                        });
-                    } else {
-                        if (!Array.isArray(data.genres))
-                            throw new Error("genres");
-                        values = data.genres;
+                            rawId = "";
                     }
-                    if (values.length > 100) throw new Error("genres size");
-                    var seen: { [key: string]: boolean } = {};
-                    values.forEach(function (value: any) {
-                        var title = plain(
-                            addon ? value : value && value.name,
-                            128
-                        );
-                        var id = addon
-                            ? encodeURIComponent(title)
-                            : numberId(value && value.id);
-                        if (!title || !id) throw new Error("genre");
-                        if (!seen[id]) {
-                            seen[id] = true;
-                            categories.push({
-                                id: "genre:" + id,
-                                title: title,
-                            });
-                        }
-                    });
-                    return { categories: categories, ok: true };
-                },
-                done
-            );
-        },
-        details: function (
-            id: string,
-            done: (result: TorrentDiscoveryResult) => void
-        ) {
-            var ctx = context();
-            var match =
-                typeof id === "string"
-                    ? /^tmdb:movie:([1-9][0-9]{0,14})$/.exec(id)
-                    : null;
-            if (!ctx || !match || match[0] !== id)
-                return run("details", "", null, done);
-            var locale = ctx.language;
-            var addon = !!ctx.base;
-            var tail = addon
-                ? "meta/movie/tmdb:" + match[1] + ".json"
-                : "movie/" +
-                  match[1] +
-                  "?language=" +
-                  encodeURIComponent(locale);
+                }
+            } catch (_error) {
+                rawId = "";
+            }
+            var supported = manifest.resources.some(function (resource: any) {
+                var types =
+                    resource === "meta"
+                        ? manifest.types
+                        : resource && resource.name === "meta"
+                          ? resource.types
+                          : null;
+                var prefixes =
+                    resource === "meta"
+                        ? manifest.idPrefixes
+                        : resource && resource.idPrefixes;
+                return (
+                    Array.isArray(types) &&
+                    types.indexOf("movie") >= 0 &&
+                    (prefixes === undefined ||
+                        (Array.isArray(prefixes) &&
+                            prefixes.some(function (prefix: any) {
+                                return (
+                                    typeof prefix === "string" &&
+                                    rawId.indexOf(prefix) === 0
+                                );
+                            })))
+                );
+            });
+            if (!rawId || !supported) return run("details", "", null, done);
             return run(
                 "details",
-                endpoint(ctx, tail),
+                ctx!.base +
+                    "/meta/movie/" +
+                    encodeURIComponent(rawId) +
+                    ".json",
                 function (data: any) {
-                    var item = movie(addon ? data.meta : data, locale, addon);
+                    var item = movie(data.meta, ctx!.language, true, true);
                     if (item.id !== id) throw new Error("different movie");
                     return { item: item, ok: true };
                 },
                 done
             );
-        },
+        });
+    }
+
+    function standardCategories(
+        done: (result: TorrentDiscoveryResult) => void
+    ) {
+        var ctx = context();
+        if (!ctx) return run("categories", "", null, done);
+        var addon = !!ctx.base;
+        return run(
+            "categories",
+            endpoint(
+                ctx,
+                addon
+                    ? "manifest.json"
+                    : "genre/movie/list?language=" +
+                          encodeURIComponent(ctx.language)
+            ),
+            function (data: any) {
+                var categories = [
+                    { id: "popular", title: "Popular" },
+                    { id: "new", title: "New" },
+                ];
+                var values: any[] = [];
+                if (addon) {
+                    if (
+                        !Array.isArray(data.catalogs) ||
+                        data.catalogs.length > 100
+                    )
+                        throw new Error("catalogs");
+                    data.catalogs.forEach(function (entry: any) {
+                        if (
+                            entry &&
+                            entry.type === "movie" &&
+                            entry.id === "tmdb.top" &&
+                            Array.isArray(entry.extra)
+                        )
+                            entry.extra.forEach(function (extra: any) {
+                                if (
+                                    extra &&
+                                    extra.name === "genre" &&
+                                    Array.isArray(extra.options)
+                                )
+                                    values = extra.options;
+                            });
+                    });
+                } else {
+                    if (!Array.isArray(data.genres)) throw new Error("genres");
+                    values = data.genres;
+                }
+                if (values.length > 100) throw new Error("genres size");
+                var seen: { [key: string]: boolean } = {};
+                values.forEach(function (value: any) {
+                    var title = plain(addon ? value : value && value.name, 128);
+                    var id = addon
+                        ? encodeURIComponent(title)
+                        : numberId(value && value.id);
+                    if (!title || !id) throw new Error("genre");
+                    if (!seen[id]) {
+                        seen[id] = true;
+                        categories.push({
+                            id: "genre:" + id,
+                            title: title,
+                        });
+                    }
+                });
+                return { categories: categories, ok: true };
+            },
+            done
+        );
+    }
+
+    function standardDetails(
+        id: string,
+        done: (result: TorrentDiscoveryResult) => void
+    ) {
+        var ctx = context();
+        var match =
+            typeof id === "string"
+                ? /^tmdb:movie:([1-9][0-9]{0,14})$/.exec(id)
+                : null;
+        if (!ctx || !match || match[0] !== id)
+            return run("details", "", null, done);
+        var locale = ctx.language;
+        var addon = !!ctx.base;
+        var tail = addon
+            ? "meta/movie/tmdb:" + match[1] + ".json"
+            : "movie/" +
+              match[1] +
+              "?language=" +
+              encodeURIComponent(locale) +
+              "&append_to_response=external_ids";
+        return run(
+            "details",
+            endpoint(ctx, tail),
+            function (data: any) {
+                var item = movie(addon ? data.meta : data, locale, addon);
+                if (item.id !== id) throw new Error("different movie");
+                return { item: item, ok: true };
+            },
+            done
+        );
+    }
+
+    return {
+        cancel: cancel,
+        categories: categoryRequest,
+        details: detailRequest,
         dispose: function () {
             cancel();
             disposed = true;
@@ -558,14 +956,16 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
         search: function (
             query: string,
             cursor: number | null,
-            done: (result: TorrentDiscoveryResult) => void
+            done: (result: TorrentDiscoveryResult) => void,
+            category?: string
         ) {
-            return pageRequest("search", query, cursor, done);
+            return pageRequest(category || "search", query, cursor, done);
         },
     };
 }
 
 if (typeof window !== "undefined")
     (window as any).__ottTorrentDiscoveryData = {
+        catalogExtras: torrentCatalogExtras,
         create: createTorrentDiscoveryData,
     };

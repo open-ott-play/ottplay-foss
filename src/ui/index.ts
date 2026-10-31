@@ -2692,6 +2692,7 @@ export function popMedia(): void {
     var host = window as any;
     if (host.__ottMedia && host.__ottMedia.useSource)
         host.__ottMedia.useSource(null);
+    if (host.__ottActiveProviderDriver?.catalogBrowser?.restore()) return;
     if (host.__ottActiveProviderDriver?.capabilities?.mediaPlaylist) {
         if (!host.__ottChannels?.restoreBrowsing?.())
             host.channelsList(host.catIndex, host.primaryIndex);
@@ -4152,6 +4153,11 @@ if (typeof window !== "undefined") {
 
 /** Navigate legacy provider VOD URLs, fXML submenus and local history/favorites. */
 export function mediaList(target: MediaTarget | null): void {
+    if (
+        target == null &&
+        (window as any).__ottActiveProviderDriver?.catalogBrowser?.restore()
+    )
+        return;
     (window as any).__ottMedia.open(target);
 }
 

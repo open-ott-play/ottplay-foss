@@ -1464,6 +1464,24 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
                 contentType: "application/json",
             });
         });
+        const unavailableProvider = (response) => {
+            const capturedAt = response.data.diagnostics.provider.capturedAt;
+            expect(Number.isSafeInteger(capturedAt)).toBe(true);
+            expect(capturedAt).toBeGreaterThan(0);
+            expect(response.data.player.runtime).toEqual(expect.any(String));
+            expect(response.data.player.runtime.length).toBeGreaterThan(0);
+            return {
+                available: false,
+                capturedAt,
+                catalog: null,
+                lookup: null,
+                provider: null,
+                requests: [],
+                requestsDropped: 0,
+                runtime: response.data.player.runtime,
+                version: 1,
+            };
+        };
         const disabledId = "1".repeat(32);
         queued.push(disabledId);
         await page.evaluate(
@@ -1481,6 +1499,7 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
         expect(responses[0].data.diagnostics).toEqual({
             epg: { available: true, enabled: false },
             input: { available: true, enabled: false },
+            provider: unavailableProvider(responses[0]),
             version: 1,
         });
         expect(await page.evaluate(() => window.__ottDebug.enabled)).toBe(
@@ -1529,6 +1548,7 @@ test.describe("LG Magic Remote pointer and button transitions", () => {
                 page: "visible",
                 wheel: expect.any(Number),
             },
+            provider: unavailableProvider(responses[1]),
             version: 1,
         });
         for (const name of ["move", "down", "click", "wheel"])

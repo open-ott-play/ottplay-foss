@@ -271,6 +271,38 @@ check(
         assert.equal(f.stored.get("torrentCatalogEndpoint"), own);
     }
 );
+check(
+    "cloud restore preserves stream addons and never imports authority",
+    (f) => {
+        const own = '["https://own.invalid/PRIVATE/manifest.json"]';
+        const copied = '["https://copied.invalid/PRIVATE/manifest.json"]';
+        const incoming =
+            "<properties><comment>OTT-Play Preferences</comment>" +
+            '<entry key="torrentStreamAddons">' +
+            copied +
+            "</entry>" +
+            '<entry key="sTorrentStreamAddons">' +
+            copied +
+            "</entry></properties>";
+        f.deliver(incoming);
+        assert.equal(f.stored.has("torrentStreamAddons"), false);
+        assert.equal(f.stored.has("sTorrentStreamAddons"), false);
+        f.stored.set("sTorrentStreamAddons", own);
+        f.stored.set("torrentStreamAddons", "legacy-invalid-value");
+        f.deliver(incoming);
+        assert.equal(f.stored.get("sTorrentStreamAddons"), own);
+        assert.equal(
+            f.stored.get("torrentStreamAddons"),
+            "legacy-invalid-value"
+        );
+        f.deliver();
+        assert.equal(f.stored.get("sTorrentStreamAddons"), own);
+        assert.equal(
+            f.stored.get("torrentStreamAddons"),
+            "legacy-invalid-value"
+        );
+    }
+);
 check("cloud restore cannot configure an unconfigured companion", (f) => {
     f.deliver(
         "<properties><comment>OTT-Play Preferences</comment>" +

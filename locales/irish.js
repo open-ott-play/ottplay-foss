@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Cuir cainéal leis an gcatagóir",
     "Add channel to favorites": "Cuir cainéal le ceanáin",
     "Add new list": "Cuir liosta nua leis",
+    "Add Stremio addon…": "Cuir breiseán Stremio leis…",
     "Add to favorites": "Cuir le ceanáin",
     Age: "Aois",
     All: "Gach ceann",
@@ -177,6 +178,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Roghnaigh fillteán i bhfuinneog an bhrabhsálaí",
     "Choose a profile": "Roghnaigh próifíl",
+    "Choose a source": "Roghnaigh foinse",
     "Choose files in the browser window":
         "Roghnaigh comhaid i bhfuinneog an bhrabhsálaí",
     "Choose from": "Roghnaigh as",
@@ -266,6 +268,8 @@ var keyStrings = {
         "Cumraigh TV DOSUG in Socruithe → Socruithe an tsoláthraí",
     "Configure TVClub in Settings -> Provider Settings":
         "Cumraigh TVClub in Socruithe → Socruithe an tsoláthraí",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Cumraigh an breiseán seo ar dtús, ansin cuir URL an chomhaid lastliosta chumraithe leis.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Cumraigh ULTIFL1X in Socruithe → Socruithe an tsoláthraí",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -387,6 +391,8 @@ var keyStrings = {
         "Cuir isteach URL seinmliosta chun an tseirbhís seo a úsáid.",
     "Enter a playlist URL. The player will restart after saving.":
         "Cuir isteach URL seinmliosta. Atosóidh an seinnteoir tar éis sábhála.",
+    "Enter a Stremio addon manifest URL.":
+        "Cuir isteach URL manifest breiseáin Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Cuir isteach seoladh freastalaí gan spásanna ná blúire.",
     "Enter a username (8 characters).":
@@ -869,6 +875,7 @@ var keyStrings = {
     "Repeat: All": "Athsheinm arís: Gach ceann",
     "Repeat: Off": "Athsheinm arís: Múchta",
     "Repeat: One": "Athsheinm arís: Ceann amháin",
+    Replace: "Ionadaigh",
     "Request sended!": "Seoladh an t-iarratas!",
     "Requesting approval for %1": "Cead á iarraidh do %1",
     "Reset order": 'Sórtáil cainéil: "Mar atá"',
@@ -1047,6 +1054,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Tá teorainn ama an tsrutha caite. Roghnaigh an cainéal chun triail eile a bhaint as.",
     "Stream type: %1": "Cineál srutha: %1",
+    "Stremio addons": "Breiseáin Stremio",
     "String for search": "Téarma cuardaigh",
     "Su Mo Tu We Th Fr Sa": "Do Lu Má Cé Dé Ao Sa",
     "Subscription information": "Faisnéis síntiúis",
@@ -1149,6 +1157,7 @@ var keyStrings = {
     Unavailable: "Níl ar fáil",
     "Unlock the player's settings before changing its playlist.":
         "Díghlasáil socruithe an tseinnteora sula n-athraíonn tú a sheinmliosta.",
+    "Unsupported source": "Foinse gan tacaíocht",
     Untitled: "Gan teideal",
     "Untitled folder": "Fillteán gan teideal",
     "Update installed. Please restart OttPlay FOSS.":

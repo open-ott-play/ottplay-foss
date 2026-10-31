@@ -2355,6 +2355,80 @@ function classicMediaRuntime(): any {
             );
             return true;
         },
+        playItem: function (
+            payload: any,
+            guard: () => boolean,
+            dispatched: () => void,
+            failed: () => void
+        ) {
+            var item = describe([payload], {
+                kind: "catalog",
+                target: "",
+                title: "",
+            })[0];
+            if (!item || !playable(item) || !current() || !guard()) {
+                failed();
+                return;
+            }
+            api.cancelAuto();
+            var revision = automaticGeneration;
+            var generation = w.__ottClassicPlayback.reconcile().generation;
+            var finished = false;
+            function valid() {
+                return (
+                    current() &&
+                    guard() &&
+                    automaticGeneration === revision &&
+                    w.__ottClassicPlayback.snapshot().generation === generation
+                );
+            }
+            function rejected() {
+                if (finished) return;
+                finished = true;
+                failed();
+            }
+            function allowed(candidate: any) {
+                return (
+                    valid() &&
+                    (!w.__ottKiosk || w.__ottKiosk.allowedMedia(item.ref)) &&
+                    (Number(candidate.adult) !== 1 ||
+                        !(w.__ottParental
+                            ? w.__ottParental.needs("channels")
+                            : w.sPSchannels &&
+                              w.parentPIN !== "*" &&
+                              !w.parentAccess))
+                );
+            }
+            authorize(
+                item,
+                function () {
+                    if (!valid()) return;
+                    if (!allowed(item.payload)) return rejected();
+                    resolve(
+                        item,
+                        null,
+                        true,
+                        valid,
+                        function () {
+                            if (finished) return;
+                            finished = true;
+                            dispatched();
+                        },
+                        undefined,
+                        function (started) {
+                            if (!started) rejected();
+                        },
+                        allowed
+                    );
+                },
+                rejected
+            );
+            return function () {
+                if (finished) return;
+                finished = true;
+                if (revision === automaticGeneration) api.cancelAuto();
+            };
+        },
         playOrderedQueue: function (
             records: any[],
             index: number,
@@ -3258,6 +3332,19 @@ function classicMediaRuntime(): any {
         done: (ok: boolean) => void
     ) {
         return classicMediaRuntime().playFavorite(ref, guard, done);
+    },
+    playItem: function (
+        payload: any,
+        guard: () => boolean,
+        dispatched: () => void,
+        failed: () => void
+    ) {
+        return classicMediaRuntime().playItem(
+            payload,
+            guard,
+            dispatched,
+            failed
+        );
     },
     playOrderedQueue: function (
         records: any[],

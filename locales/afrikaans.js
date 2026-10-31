@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Voeg kanaal by kategorie",
     "Add channel to favorites": "Voeg kanaal by gunstelinge",
     "Add new list": "Voeg nuwe lys by",
+    "Add Stremio addon…": "Voeg Stremio-byvoeging by…",
     "Add to favorites": "Voeg by gunstelinge",
     Age: "Ouderdom",
     All: "Alles",
@@ -174,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Kies ’n vouer in die blaaiervenster",
     "Choose a profile": "Kies 'n profiel",
+    "Choose a source": "Kies 'n bron",
     "Choose files in the browser window": "Kies lêers in die blaaiervenster",
     "Choose from": "Kies uit",
     "Choose language": "Kies taal",
@@ -262,6 +264,8 @@ var keyStrings = {
         "Stel TV DOSUG op by Instellings -> Verskafferinstellings",
     "Configure TVClub in Settings -> Provider Settings":
         "Stel TVClub op by Instellings -> Verskafferinstellings",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Stel eers hierdie byvoeging op en voeg dan die URL van die opgestelde manifes by.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Stel ULTIFL1X op by Instellings -> Verskafferinstellings",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -381,6 +385,8 @@ var keyStrings = {
         "Voer 'n snitlys-URL in om toegang tot hierdie diens te kry.",
     "Enter a playlist URL. The player will restart after saving.":
         "Voer 'n snitlys-URL in. Die speler herbegin nadat jy gestoor het.",
+    "Enter a Stremio addon manifest URL.":
+        "Voer die manifes-URL van ’n Stremio-byvoeging in.",
     "Enter a server address without spaces or a fragment.":
         "Voer 'n bedieneradres sonder spasies of 'n fragment in.",
     "Enter a username (8 characters).":
@@ -863,6 +869,7 @@ var keyStrings = {
     "Repeat: All": "Herhaal: Alles",
     "Repeat: Off": "Herhaal: Af",
     "Repeat: One": "Herhaal: Een",
+    Replace: "Vervang",
     "Request sended!": "Versoek gestuur!",
     "Requesting approval for %1": "Versoek goedkeuring vir %1",
     "Reset order": 'Sorteer kanale: "Soos dit is"',
@@ -1035,6 +1042,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Die stroom het uitgetel. Kies die kanaal om weer te probeer.",
     "Stream type: %1": "Stroomtipe: %1",
+    "Stremio addons": "Stremio-byvoegings",
     "String for search": "Soeknavraag",
     "Su Mo Tu We Th Fr Sa": "So. Ma. Di. Wo. Do. Vr. Sa.",
     "Subscription information": "Intekeninginligting",
@@ -1134,6 +1142,7 @@ var keyStrings = {
     Unavailable: "Nie beskikbaar nie",
     "Unlock the player's settings before changing its playlist.":
         "Ontsluit die speler se instellings voordat jy die afspeellys verander.",
+    "Unsupported source": "Bron word nie ondersteun nie",
     Untitled: "Naamloos",
     "Untitled folder": "Naamlose vouer",
     "Update installed. Please restart OttPlay FOSS.":

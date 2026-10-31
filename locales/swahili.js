@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Ongeza kituo kwa kategoria",
     "Add channel to favorites": "Ongeza kituo kwa vipendwa",
     "Add new list": "Ongeza orodha mpya",
+    "Add Stremio addon…": "Ongeza programu-jalizi ya Stremio…",
     "Add to favorites": "Ongeza kwa vipendwa",
     Age: "Umri",
     All: "Wote",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Chagua folda katika dirisha la kivinjari",
     "Choose a profile": "Chagua wasifu",
+    "Choose a source": "Chagua chanzo",
     "Choose files in the browser window":
         "Chagua faili katika dirisha la kivinjari",
     "Choose from": "Chagua kutoka",
@@ -264,6 +266,8 @@ var keyStrings = {
         "Sanidi TV DOSUG katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     "Configure TVClub in Settings -> Provider Settings":
         "Sanidi TVClub katika Mipangilio -> Mipangilio ya Mtoa Huduma",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Sanidi kwanza kiongezi hiki, kisha ongeza anwani ya faili ya manifest iliyosanidiwa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Sanidi ULTIFL1X katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Weka orodha ya kucheza URL ili kufikia huduma hii.",
     "Enter a playlist URL. The player will restart after saving.":
         "Weka orodha ya kucheza URL. Kicheza media kitaanza tena baada ya kuhifadhi.",
+    "Enter a Stremio addon manifest URL.":
+        "Weka URL ya manifest ya programu-jalizi ya Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Ingiza anwani ya seva bila nafasi au kipande.",
     "Enter a username (8 characters).": "Weka jina la mtumiaji (herufi 8).",
@@ -871,6 +877,7 @@ var keyStrings = {
     "Repeat: All": "Rudia: Vyote",
     "Repeat: Off": "Rudia: Imezimwa",
     "Repeat: One": "Rudia: Kimoja",
+    Replace: "Badilisha",
     "Request sended!": "Ombi limetumwa!",
     "Requesting approval for %1": "Inaomba idhini ya %1",
     "Reset order": 'Panga vituo: "Kama ilivyo"',
@@ -1045,6 +1052,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Muda wa kusubiri mtiririko umeisha. Chagua chaneli ili kujaribu tena.",
     "Stream type: %1": "Aina ya mtiririko: %1",
+    "Stremio addons": "Viongezi vya Stremio",
     "String for search": "Swali la utafutaji",
     "Su Mo Tu We Th Fr Sa": "Jpil Jtat Jnne Jtan Alh Ijm Jmos",
     "Subscription information": "Maelezo ya usajili",
@@ -1147,6 +1155,7 @@ var keyStrings = {
     Unavailable: "Haipatikani",
     "Unlock the player's settings before changing its playlist.":
         "Fungua kufuli ya mipangilio ya kichezaji kabla ya kubadilisha orodha yake ya kucheza.",
+    "Unsupported source": "Chanzo hakiauniwi",
     Untitled: "Bila kichwa",
     "Untitled folder": "Folda isiyo na jina",
     "Update installed. Please restart OttPlay FOSS.":

@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Legg til kanal i kategori",
     "Add channel to favorites": "Legg til kanal i favoritter",
     "Add new list": "Legg til ny liste",
+    "Add Stremio addon…": "Legg til Stremio-tillegg…",
     "Add to favorites": "Legg til i favoritter",
     Age: "Alder",
     All: "Alle",
@@ -174,6 +175,7 @@ var keyStrings = {
         "Kontrollerer Plex-servertilkoblingen...",
     "Choose a folder in the browser window": "Velg en mappe i nettleservinduet",
     "Choose a profile": "Velg profil",
+    "Choose a source": "Velg en kilde",
     "Choose files in the browser window": "Velg filer i nettleservinduet",
     "Choose from": "Velg mellom",
     "Choose language": "Velg språk",
@@ -261,6 +263,8 @@ var keyStrings = {
         "Konfigurer TV DOSUG i Innstillinger -> Leverandørinnstillinger",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurer TVClub i Innstillinger -> Leverandørinnstillinger",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfigurer først dette tillegget, og legg deretter til URL-en til det konfigurerte manifestet.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurer ULTIFL1X i Innstillinger -> Leverandørinnstillinger",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "Skriv inn en spilleliste URL for å få tilgang til denne tjenesten.",
     "Enter a playlist URL. The player will restart after saving.":
         "Skriv inn en spilleliste URL. Mediespilleren starter på nytt etter lagring.",
+    "Enter a Stremio addon manifest URL.":
+        "Skriv inn manifest-URL-en til et Stremio-tillegg.",
     "Enter a server address without spaces or a fragment.":
         "Skriv inn en serveradresse uten mellomrom eller et fragment.",
     "Enter a username (8 characters).": "Skriv inn et brukernavn (8 tegn).",
@@ -858,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Gjenta: Alle",
     "Repeat: Off": "Gjenta: Av",
     "Repeat: One": "Gjenta: Én",
+    Replace: "Erstatt",
     "Request sended!": "Forespørsel sendt!",
     "Requesting approval for %1": "Ber om godkjenning for %1",
     "Reset order": 'Sorter kanaler: "Som den er"',
@@ -1029,6 +1036,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Tidsavbrudd for strømmen. Velg kanalen for å prøve på nytt.",
     "Stream type: %1": "Strømtype: %1",
+    "Stremio addons": "Stremio-tillegg",
     "String for search": "Søk",
     "Su Mo Tu We Th Fr Sa": "sø ma ti on to fr lø",
     "Subscription information": "Abonnementsinformasjon",
@@ -1129,6 +1137,7 @@ var keyStrings = {
     Unavailable: "Utilgjengelig",
     "Unlock the player's settings before changing its playlist.":
         "Lås opp spillerens innstillinger før du endrer spillelisten.",
+    "Unsupported source": "Kilden støttes ikke",
     Untitled: "Uten tittel",
     "Untitled folder": "Mappe uten navn",
     "Update installed. Please restart OttPlay FOSS.":

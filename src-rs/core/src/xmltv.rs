@@ -217,7 +217,7 @@ fn parse_xmltv_with_records(
     let mut work_events = 0u32;
     loop {
         work_events = work_events.wrapping_add(1);
-        if work_events % 128 == 0 {
+        if work_events.is_multiple_of(128) {
             if let Some(work) = work {
                 work.check().map_err(anyhow::Error::msg)?;
             }

@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Дадаць канал у катэгорыю",
     "Add channel to favorites": "Дадаць канал у выбраныя",
     "Add new list": "Дадаць спіс",
+    "Add Stremio addon…": "Дадаць дапаўненне Stremio…",
     "Add to favorites": "Дадаць у абранае",
     Age: "Узрост",
     All: "Усе",
@@ -170,6 +171,7 @@ var keyStrings = {
         "Праверка злучэння з серверам Plex…",
     "Choose a folder in the browser window": "Выберыце папку ў акне браўзера",
     "Choose a profile": "Выберыце профіль",
+    "Choose a source": "Выберыце крыніцу",
     "Choose files in the browser window": "Выберыце файлы ў акне браўзера",
     "Choose from": "Выбраць з",
     "Choose language": "Выберыце мову",
@@ -257,6 +259,8 @@ var keyStrings = {
         "Наладзьце TV DOSUG у раздзеле Налады -> Налады правайдара",
     "Configure TVClub in Settings -> Provider Settings":
         "Наладзьце TVClub у раздзеле Налады -> Налады правайдара",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Спачатку наладзьце дадатак, затым дадайце адрас наладжанага маніфеста.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Наладзьце ULTIFL1X у раздзеле Налады -> Налады правайдара",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -376,6 +380,8 @@ var keyStrings = {
         "Увядзіце адрас плэйліста для доступу да сэрвісу.",
     "Enter a playlist URL. The player will restart after saving.":
         "Увядзіце URL плэйліста. Пасля захавання плэер перазапусціцца.",
+    "Enter a Stremio addon manifest URL.":
+        "Увядзіце URL маніфеста дапаўнення Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Увядзіце адрас сервера без прабелаў і фрагмента пасля #.",
     "Enter a username (8 characters).":
@@ -853,6 +859,7 @@ var keyStrings = {
     "Repeat: All": "Паўтор: усе",
     "Repeat: Off": "Паўтор: выключаны",
     "Repeat: One": "Паўтор: адзін",
+    Replace: "Замяніць",
     "Request sended!": "Запыт адпраўлены!",
     "Requesting approval for %1": "Запыт пацвярджэння для %1",
     "Reset order": "Сартаваць каналы: «Як ёсць»",
@@ -1023,6 +1030,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Час чакання патоку скончыўся. Выберыце канал, каб паўтарыць спробу.",
     "Stream type: %1": "Тып патоку: %1",
+    "Stremio addons": "Дадаткі Stremio",
     "String for search": "Пошукавы запыт",
     "Su Mo Tu We Th Fr Sa": "Нд Пн Аў Ср Чц Пт Сб",
     "Subscription information": "Інфармацыя пра падпіску",
@@ -1124,6 +1132,7 @@ var keyStrings = {
     Unavailable: "Недаступна",
     "Unlock the player's settings before changing its playlist.":
         "Разблакуйце налады плэера перад зменай плэйліста.",
+    "Unsupported source": "Крыніца не падтрымліваецца",
     Untitled: "Без назвы",
     "Untitled folder": "Папка без назвы",
     "Update installed. Please restart OttPlay FOSS.":

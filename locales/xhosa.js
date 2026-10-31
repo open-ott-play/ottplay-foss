@@ -55,6 +55,7 @@ var keyStrings = {
     "Add channel to category": "Yongeza ijelo kudidi",
     "Add channel to favorites": "Yongeza ijelo kwizithandwayo",
     "Add new list": "Yongeza uluhlu olutsha",
+    "Add Stremio addon…": "Yongeza isongezo seStremio…",
     "Add to favorites": "Yongeza kwizithandwayo",
     Age: "Ubudala",
     All: "Konke",
@@ -177,6 +178,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Khetha ifolda kwifestile yesikhangeli",
     "Choose a profile": "Khetha iprofayile",
+    "Choose a source": "Khetha umthombo",
     "Choose files in the browser window":
         "Khetha iifayile kwifestile yesikhangeli",
     "Choose from": "Khetha phakathi kwe",
@@ -266,6 +268,8 @@ var keyStrings = {
         "Lungiselela i-TV DOSUG ku Iisetingi -> Iisetingi zomboneleli",
     "Configure TVClub in Settings -> Provider Settings":
         "Lungiselela i-TVClub ku Iisetingi -> Iisetingi zomboneleli",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Qala uqwalasele esi songezo, uze wongeze idilesi yefayile ye-manifest eqwalaselweyo.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Lungiselela i-ULTIFL1X ku Iisetingi -> Iisetingi zomboneleli",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Faka i-URL yoluhlu lokudlala ukuze ufikelele kule nkonzo.",
     "Enter a playlist URL. The player will restart after saving.":
         "Faka i-URL yoluhlu lokudlala. Isidlali siya kuqala kwakhona emva kokugcina.",
+    "Enter a Stremio addon manifest URL.":
+        "Faka i-URL ye-manifest yesongezo seStremio.",
     "Enter a server address without spaces or a fragment.":
         "Faka idilesi yeseva engenazithuba okanye icandelo le-fragment.",
     "Enter a username (8 characters).":
@@ -879,6 +885,7 @@ var keyStrings = {
     "Repeat: All": "Phinda: Konke",
     "Repeat: Off": "Phinda: Icinyiwe",
     "Repeat: One": "Phinda: Enye",
+    Replace: "Buyisela",
     "Request sended!": "Isicelo sithunyelwe!",
     "Requesting approval for %1": "Kucelwa imvume ye-%1",
     "Reset order": 'Hlela amajelo ngokulandelelana: "Njengoko injalo"',
@@ -1056,6 +1063,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Ixesha lokulinda umsinga liphelile. Khetha ijelo ukuze uzame kwakhona.",
     "Stream type: %1": "Uhlobo losasazo: %1",
+    "Stremio addons": "Izongezo zeStremio",
     "String for search": "Amagama okukhangela",
     "Su Mo Tu We Th Fr Sa": "Caw Mvu Lwesb Tha Sin Hla Mgq",
     "Subscription information": "Ulwazi lomrhumo",
@@ -1158,6 +1166,7 @@ var keyStrings = {
     Unavailable: "Ayifumaneki",
     "Unlock the player's settings before changing its playlist.":
         "Vula isitshixo seesetingi zomdlali wemidiya ngaphambi kokutshintsha uluhlu lwakhe lokudlala.",
+    "Unsupported source": "Umthombo awuxhaswanga",
     Untitled: "Ayinasihloko",
     "Untitled folder": "Ifolda engenasihloko",
     "Update installed. Please restart OttPlay FOSS.":

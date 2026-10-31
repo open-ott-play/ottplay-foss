@@ -52,6 +52,7 @@ var keyStrings = {
     "Add channel to category": "카테고리에 채널 추가",
     "Add channel to favorites": "즐겨찾기에 채널 추가",
     "Add new list": "새 목록 추가",
+    "Add Stremio addon…": "Stremio 애드온 추가…",
     "Add to favorites": "즐겨찾기에 추가",
     Age: "나이",
     All: "전체",
@@ -169,6 +170,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "브라우저 창에서 폴더를 선택하세요",
     "Choose a profile": "프로필 선택",
+    "Choose a source": "소스 선택",
     "Choose files in the browser window": "브라우저 창에서 파일을 선택하세요",
     "Choose from": "선택하세요",
     "Choose language": "언어를 선택하세요",
@@ -256,6 +258,8 @@ var keyStrings = {
         "설정 -> 공급자 설정에서 TV DOSUG 구성",
     "Configure TVClub in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 TVClub 구성",
+    "Configure this addon first, then add its configured manifest URL.":
+        "먼저 이 애드온을 설정한 다음 설정된 매니페스트 URL을 추가하세요.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 ULTIFL1X 구성",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -373,6 +377,8 @@ var keyStrings = {
         "이 서비스에 액세스하려면 재생 목록 URL를 입력하세요.",
     "Enter a playlist URL. The player will restart after saving.":
         "재생목록 URL를 입력하세요. 저장 후 플레이어가 다시 시작됩니다.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio 애드온의 매니페스트 URL을 입력하세요.",
     "Enter a server address without spaces or a fragment.":
         "공백이나 단편 없이 서버 주소를 입력하세요.",
     "Enter a username (8 characters).": "사용자 이름(8자)을 입력하세요.",
@@ -851,6 +857,7 @@ var keyStrings = {
     "Repeat: All": "반복: 전체",
     "Repeat: Off": "반복: 끄기",
     "Repeat: One": "반복: 1개",
+    Replace: "교체",
     "Request sended!": "요청이 전송되었습니다!",
     "Requesting approval for %1": "%1 승인 요청 중",
     "Reset order": '채널 정렬: "그대로"',
@@ -1021,6 +1028,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "스트림 대기 시간이 초과되었습니다. 채널을 선택하여 다시 시도하세요.",
     "Stream type: %1": "스트림 유형: %1",
+    "Stremio addons": "Stremio 애드온",
     "String for search": "검색어",
     "Su Mo Tu We Th Fr Sa": "일 월 화 수 목 금 토",
     "Subscription information": "구독정보",
@@ -1119,6 +1127,7 @@ var keyStrings = {
     Unavailable: "사용할 수 없습니다",
     "Unlock the player's settings before changing its playlist.":
         "재생목록을 변경하기 전에 플레이어 설정의 잠금을 해제하세요.",
+    "Unsupported source": "지원하지 않는 소스",
     Untitled: "제목없음",
     "Untitled folder": "제목없는 폴더",
     "Update installed. Please restart OttPlay FOSS.":

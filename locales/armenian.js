@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Ավելացնել ալիքը կատեգորիային",
     "Add channel to favorites": "Ավելացնել ալիքը ընտրյալներին",
     "Add new list": "Ավելացնել նոր ցուցակ",
+    "Add Stremio addon…": "Ավելացնել Stremio հավելում…",
     "Add to favorites": "Ավելացնել ընտրյալներին",
     Age: "Տարիք",
     All: "Բոլորը",
@@ -170,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Ընտրեք պանակ զննարկչի պատուհանում",
     "Choose a profile": "Ընտրել պրոֆիլը",
+    "Choose a source": "Ընտրեք աղբյուր",
     "Choose files in the browser window": "Ընտրեք ֆայլեր զննարկչի պատուհանում",
     "Choose from": "Ընտրել աղբյուրից",
     "Choose language": "Ընտրել լեզուն",
@@ -258,6 +260,8 @@ var keyStrings = {
         "Կարգավորեք TV DOSUG-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure TVClub in Settings -> Provider Settings":
         "Կարգավորեք TVClub-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Նախ կարգավորեք այս հավելումը, ապա ավելացրեք կարգավորված մանիֆեստի հասցեն։",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Կարգավորեք ULTIFL1X-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -379,6 +383,8 @@ var keyStrings = {
         "Այս ծառայությունից օգտվելու համար մուտքագրեք նվագարկման ցուցակի URL-ը։",
     "Enter a playlist URL. The player will restart after saving.":
         "Մուտքագրեք երգացանկի URL-ը։ Պահպանելուց հետո նվագարկիչը կվերագործարկվի։",
+    "Enter a Stremio addon manifest URL.":
+        "Մուտքագրեք Stremio հավելման մանիֆեստի URL-ը։",
     "Enter a server address without spaces or a fragment.":
         "Մուտքագրեք սերվերի հասցեն՝ առանց բացատների և URL հատվածի։",
     "Enter a username (8 characters).": "Մուտքագրեք օգտանունը (8 նիշ)։",
@@ -861,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Կրկնություն՝ բոլորը",
     "Repeat: Off": "Կրկնություն՝ անջատված",
     "Repeat: One": "Կրկնություն՝ մեկը",
+    Replace: "Փոխարինել",
     "Request sended!": "Հարցումն ուղարկված է։",
     "Requesting approval for %1": "Հաստատում է պահանջվում %1-ի համար",
     "Reset order": "Դասավորել ալիքները: «Ինչպես կա»",
@@ -1039,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Հոսքի սպասման ժամանակը սպառվել է։ Կրկին փորձելու համար ընտրեք ալիքը։",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
+    "Stremio addons": "Stremio հավելումներ",
     "String for search": "Որոնման հարցում",
     "Su Mo Tu We Th Fr Sa": "Կիր Երկ Երք Չրք Հնգ Ուրբ Շբթ",
     "Subscription information": "Բաժանորդագրության տվյալներ",
@@ -1140,6 +1148,7 @@ var keyStrings = {
     Unavailable: "Հասանելի չէ",
     "Unlock the player's settings before changing its playlist.":
         "Նվագացանկը փոխելուց առաջ ապակողպեք նվագարկչի կարգավորումները։",
+    "Unsupported source": "Չաջակցվող աղբյուր",
     Untitled: "Անվերնագիր",
     "Untitled folder": "Անանուն պանակ",
     "Update installed. Please restart OttPlay FOSS.":

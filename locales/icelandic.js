@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Bæta rás í flokk",
     "Add channel to favorites": "Bæta rás við eftirlæti",
     "Add new list": "Bæta við nýjum lista",
+    "Add Stremio addon…": "Bæta við Stremio-viðbót…",
     "Add to favorites": "Bæta við eftirlæti",
     Age: "Aldur",
     All: "Allt",
@@ -168,6 +169,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Athuga tengingu við Plex-þjón…",
     "Choose a folder in the browser window": "Veldu möppu í vafraglugganum",
     "Choose a profile": "Velja snið",
+    "Choose a source": "Veldu uppsprettu",
     "Choose files in the browser window": "Veldu skrár í vafraglugganum",
     "Choose from": "Velja úr",
     "Choose language": "Velja tungumál",
@@ -254,6 +256,8 @@ var keyStrings = {
         "Stilla TV DOSUG í Stillingar → Stillingar þjónustuaðila",
     "Configure TVClub in Settings -> Provider Settings":
         "Stilla TVClub í Stillingar → Stillingar þjónustuaðila",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Stilltu fyrst þessa viðbót og bættu síðan við slóðinni á stillta lýsingarskrá.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Stilla ULTIFL1X í Stillingar → Stillingar þjónustuaðila",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -373,6 +377,8 @@ var keyStrings = {
         "Sláðu inn vefslóð spilunarlista til að nota þessa þjónustu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sláðu inn vefslóð spilunarlista. Spilarinn endurræsist eftir vistun.",
+    "Enter a Stremio addon manifest URL.":
+        "Sláðu inn slóð lýsingarskrár Stremio-viðbótar.",
     "Enter a server address without spaces or a fragment.":
         "Sláðu inn vistfang þjóns án bila eða slóðarbrots.",
     "Enter a username (8 characters).": "Sláðu inn notandanafn (8 stafir).",
@@ -848,6 +854,7 @@ var keyStrings = {
     "Repeat: All": "Endurtaka: allt",
     "Repeat: Off": "Endurtaka: slökkt",
     "Repeat: One": "Endurtaka: eitt",
+    Replace: "Skipta út",
     "Request sended!": "Beiðni send!",
     "Requesting approval for %1": "Bið um samþykki fyrir %1",
     "Reset order": 'Raða rásum: "Óbreytt"',
@@ -1020,6 +1027,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Biðtími streymis rann út. Veldu rásina til að reyna aftur.",
     "Stream type: %1": "Tegund straums: %1",
+    "Stremio addons": "Stremio-viðbætur",
     "String for search": "Leitartexti",
     "Su Mo Tu We Th Fr Sa": "Sun Mán Þri Mið Fim Fös Lau",
     "Subscription information": "Áskriftarupplýsingar",
@@ -1119,6 +1127,7 @@ var keyStrings = {
     Unavailable: "Ekki tiltækt",
     "Unlock the player's settings before changing its playlist.":
         "Aflæstu stillingum spilarans áður en þú breytir spilunarlista hans.",
+    "Unsupported source": "Óstudd uppspretta",
     Untitled: "Án titils",
     "Untitled folder": "Mappa án heitis",
     "Update installed. Please restart OttPlay FOSS.":

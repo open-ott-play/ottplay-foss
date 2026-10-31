@@ -51,6 +51,8 @@ async function testSource() {
         status: 403,
         torrentCatalogEndpoint:
             "https://catalog.invalid/DUMMY_SECRET?token=DUMMY_SECRET",
+        torrentStreamAddons:
+            '["https://streams.invalid/DUMMY_SECRET/manifest.json"]',
         url: "https://user:DUMMY_SECRET@provider.invalid/live/name/DUMMY_SECRET/1?token=DUMMY_SECRET",
     };
     context.ottDebugPush(

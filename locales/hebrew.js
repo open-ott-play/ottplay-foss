@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "הוסף ערוץ לקטגוריה",
     "Add channel to favorites": "הוסף ערוץ למועדפים",
     "Add new list": "הוסף רשימה חדשה",
+    "Add Stremio addon…": "הוספת תוסף Stremio…",
     "Add to favorites": "הוסף למועדפים",
     Age: "גיל",
     All: "הכל",
@@ -163,6 +164,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "בודק את חיבור השרת Plex...",
     "Choose a folder in the browser window": "בחר תיקייה בחלון הדפדפן",
     "Choose a profile": "בחר פרופיל",
+    "Choose a source": "בחירת מקור",
     "Choose files in the browser window": "בחר קבצים בחלון הדפדפן",
     "Choose from": "בחר מתוך",
     "Choose language": "בחר שפה",
@@ -248,6 +250,8 @@ var keyStrings = {
         "הגדר את TV DOSUG בהגדרות -> הגדרות ספק",
     "Configure TVClub in Settings -> Provider Settings":
         "הגדר את TVClub בהגדרות -> הגדרות ספק",
+    "Configure this addon first, then add its configured manifest URL.":
+        "יש להגדיר תחילה את התוסף, ואז להוסיף את כתובת המניפסט המוגדר.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "הגדר את ULTIFL1X בהגדרות -> הגדרות ספק",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -364,6 +368,8 @@ var keyStrings = {
         "הזן כתובת פלייליסט כדי לגשת לשירות זה.",
     "Enter a playlist URL. The player will restart after saving.":
         "יש להזין כתובת URL של רשימת השמעה. הנגן יופעל מחדש לאחר השמירה.",
+    "Enter a Stremio addon manifest URL.":
+        "הזינו את כתובת ה־URL של מניפסט תוסף Stremio.",
     "Enter a server address without spaces or a fragment.":
         "הזן כתובת שרת ללא רווחים או מקטע אחרי #.",
     "Enter a username (8 characters).": "הזן שם משתמש (8 תווים).",
@@ -830,6 +836,7 @@ var keyStrings = {
     "Repeat: All": "חזרה: הכול",
     "Repeat: Off": "חזרה: כבויה",
     "Repeat: One": "חזרה: אחד",
+    Replace: "החלפה",
     "Request sended!": "הבקשה נשלחה!",
     "Requesting approval for %1": "בקשת אישור עבור %1",
     "Reset order": 'מיין ערוצים: "כמו שהוא"',
@@ -995,6 +1002,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "תם הזמן הקצוב לזרם. יש לבחור בערוץ כדי לנסות שוב.",
     "Stream type: %1": "סוג שידור: %1",
+    "Stremio addons": "תוספי Stremio",
     "String for search": "שאילתת חיפוש",
     "Su Mo Tu We Th Fr Sa": "א ב ג ד ה ו ש",
     "Subscription information": "פרטי מנוי",
@@ -1090,6 +1098,7 @@ var keyStrings = {
     Unavailable: "לא זמין",
     "Unlock the player's settings before changing its playlist.":
         "יש לבטל את נעילת הגדרות הנגן לפני שינוי רשימת ההשמעה.",
+    "Unsupported source": "מקור לא נתמך",
     Untitled: "ללא כותרת",
     "Untitled folder": "תיקייה ללא שם",
     "Update installed. Please restart OttPlay FOSS.":

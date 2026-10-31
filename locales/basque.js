@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Gehitu kanala kategoriara",
     "Add channel to favorites": "Gehitu kanala gogokoetara",
     "Add new list": "Gehitu zerrenda berria",
+    "Add Stremio addon…": "Gehitu Stremio gehigarria…",
     "Add to favorites": "Gehitu gogokoetara",
     Age: "Adina",
     All: "Guztiak",
@@ -176,6 +177,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Aukeratu karpeta bat arakatzailearen leihoan",
     "Choose a profile": "Aukeratu profila",
+    "Choose a source": "Hautatu iturri bat",
     "Choose files in the browser window":
         "Aukeratu fitxategiak arakatzailearen leihoan",
     "Choose from": "Aukeratu hauen artean",
@@ -265,6 +267,8 @@ var keyStrings = {
         "Konfiguratu TV DOSUG hemen: Ezarpenak → Hornitzailearen ezarpenak",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfiguratu TVClub hemen: Ezarpenak → Hornitzailearen ezarpenak",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Lehenik konfiguratu gehigarria, eta ondoren gehitu konfiguratutako manifestuaren URLa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfiguratu ULTIFL1X hemen: Ezarpenak → Hornitzailearen ezarpenak",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -386,6 +390,8 @@ var keyStrings = {
         "Sartu erreprodukzio-zerrenda baten URLa zerbitzu honetara sartzeko.",
     "Enter a playlist URL. The player will restart after saving.":
         "Sartu erreprodukzio-zerrenda baten URLa. Gorde ondoren erreproduzitzailea berrabiaraziko da.",
+    "Enter a Stremio addon manifest URL.":
+        "Sartu Stremio gehigarriaren manifestuaren URLa.",
     "Enter a server address without spaces or a fragment.":
         "Sartu zerbitzariaren helbidea zuriunerik edo zatirik gabe.",
     "Enter a username (8 characters).":
@@ -870,6 +876,7 @@ var keyStrings = {
     "Repeat: All": "Errepikatu: guztiak",
     "Repeat: Off": "Errepikatu: desaktibatuta",
     "Repeat: One": "Errepikatu: bat",
+    Replace: "Ordeztu",
     "Request sended!": "Eskaera bidali da!",
     "Requesting approval for %1": "%1(r)entzako baimena eskatzen",
     "Reset order": 'Ordenatu kanalak: "Bere horretan"',
@@ -1045,6 +1052,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Igorpenaren itxaronaldia agortu da. Hautatu kanala berriro saiatzeko.",
     "Stream type: %1": "Transmisio mota: %1",
+    "Stremio addons": "Stremio gehigarriak",
     "String for search": "Bilaketa-testua",
     "Su Mo Tu We Th Fr Sa": "Ig Al Ar Az Og Or La",
     "Subscription information": "Harpidetzaren informazioa",
@@ -1145,6 +1153,7 @@ var keyStrings = {
     Unavailable: "Ez dago erabilgarri",
     "Unlock the player's settings before changing its playlist.":
         "Desblokeatu erreproduzitzailearen ezarpenak erreprodukzio-zerrenda aldatu aurretik.",
+    "Unsupported source": "Onartu gabeko iturria",
     Untitled: "Izenbururik gabe",
     "Untitled folder": "Izenik gabeko karpeta",
     "Update installed. Please restart OttPlay FOSS.":

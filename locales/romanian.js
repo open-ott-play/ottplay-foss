@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Adaugă canalul la categorie",
     "Add channel to favorites": "Adaugă canalul la favorite",
     "Add new list": "Adaugă o listă nouă",
+    "Add Stremio addon…": "Adaugă extensie Stremio…",
     "Add to favorites": "Adaugă la favorite",
     Age: "Vârstă",
     All: "Toate",
@@ -178,6 +179,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Alegeți un dosar în fereastra browserului",
     "Choose a profile": "Alege un profil",
+    "Choose a source": "Alege o sursă",
     "Choose files in the browser window":
         "Alegeți fișiere în fereastra browserului",
     "Choose from": "Alege din",
@@ -267,6 +269,8 @@ var keyStrings = {
         "Configurați TV DOSUG în Setări -> Setările furnizorului",
     "Configure TVClub in Settings -> Provider Settings":
         "Configurați TVClub în Setări -> Setările furnizorului",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Configurează mai întâi acest supliment, apoi adaugă adresa manifestului configurat.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Configurați ULTIFL1X în Setări -> Setările furnizorului",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -388,6 +392,8 @@ var keyStrings = {
         "Introduceți URL-ul listei de redare pentru a accesa acest serviciu.",
     "Enter a playlist URL. The player will restart after saving.":
         "Introduceți URL-ul unei liste de redare. Playerul va reporni după salvare.",
+    "Enter a Stremio addon manifest URL.":
+        "Introduceți URL-ul manifestului unei extensii Stremio.",
     "Enter a server address without spaces or a fragment.":
         "Introduceți adresa serverului fără spații sau fragment după #.",
     "Enter a username (8 characters).":
@@ -878,6 +884,7 @@ var keyStrings = {
     "Repeat: All": "Repetare: toate",
     "Repeat: Off": "Repetare: oprită",
     "Repeat: One": "Repetare: unul",
+    Replace: "Înlocuiește",
     "Request sended!": "Cerere trimisă!",
     "Requesting approval for %1": "Se solicită aprobarea pentru %1",
     "Reset order": "Sortează canalele: „Ca atare”",
@@ -1054,6 +1061,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "A expirat timpul de așteptare al fluxului. Selectați canalul pentru a încerca din nou.",
     "Stream type: %1": "Tip de flux: %1",
+    "Stremio addons": "Suplimente Stremio",
     "String for search": "Text de căutat",
     "Su Mo Tu We Th Fr Sa": "Du Lu Ma Mi Jo Vi Sâ",
     "Subscription information": "Informații despre abonament",
@@ -1155,6 +1163,7 @@ var keyStrings = {
     Unavailable: "Indisponibil",
     "Unlock the player's settings before changing its playlist.":
         "Deblocați setările playerului înainte de a-i modifica lista de redare.",
+    "Unsupported source": "Sursă neacceptată",
     Untitled: "Fără titlu",
     "Untitled folder": "Folder fără nume",
     "Update installed. Please restart OttPlay FOSS.":

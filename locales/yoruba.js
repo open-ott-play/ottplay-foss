@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "Fi ìkànnì kún ẹ̀ka",
     "Add channel to favorites": "Fi ìkànnì kún àwọn àyànfẹ́",
     "Add new list": "Fi àkójọ tuntun kún un",
+    "Add Stremio addon…": "Fi àfikún Stremio kún un…",
     "Add to favorites": "Fi kún àwọn àyànfẹ́",
     Age: "Ọjọ́ orí",
     All: "Gbogbo",
@@ -169,6 +170,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Yan àpò fáìlì nínú fèrèsé aṣàwákiri",
     "Choose a profile": "Yan prófáìlì",
+    "Choose a source": "Yan orísun",
     "Choose files in the browser window":
         "Yan àwọn fáìlì nínú fèrèsé aṣàwákiri",
     "Choose from": "Yan láti",
@@ -256,6 +258,8 @@ var keyStrings = {
         "Ṣètò TV DOSUG ní Ètò -> Ètò olùpèsè",
     "Configure TVClub in Settings -> Provider Settings":
         "Ṣètò TVClub ní Ètò -> Ètò olùpèsè",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ṣètò àfikún yìí kọ́kọ́, lẹ́yìn náà fi àdírẹ́sì fáìlì manifest tí a ti ṣètò kún un.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ṣètò ULTIFL1X ní Ètò -> Ètò olùpèsè",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -374,6 +378,8 @@ var keyStrings = {
         "Tẹ URL àkójọ ìṣeré láti wọ iṣẹ́ yìí.",
     "Enter a playlist URL. The player will restart after saving.":
         "Tẹ URL àkójọ ìṣeré. Ẹ̀rọ ìṣeré yóò tún bẹ̀rẹ̀ lẹ́yìn fífi pamọ́.",
+    "Enter a Stremio addon manifest URL.":
+        "Tẹ URL manifest ti àfikún Stremio sílẹ̀.",
     "Enter a server address without spaces or a fragment.":
         "Tẹ àdírẹ́sì sáfà láìsí ààyè tàbí apá fragment.",
     "Enter a username (8 characters).": "Tẹ orúkọ olùlò (àmì 8).",
@@ -846,6 +852,7 @@ var keyStrings = {
     "Repeat: All": "Tún ṣeré: Gbogbo",
     "Repeat: Off": "Tún ṣeré: Pípa",
     "Repeat: One": "Tún ṣeré: Ọ̀kan",
+    Replace: "Rọ́pò",
     "Request sended!": "A ti fi ìbéèrè ránṣẹ́!",
     "Requesting approval for %1": "Ń béèrè ìfọwọ́sí fún %1",
     "Reset order": 'To àwọn ìkànnì: "Bí ó ṣe rí"',
@@ -1016,6 +1023,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Àkókò dídúró fún ìṣàn ti parí. Yan ìkànnì láti tún gbìyànjú.",
     "Stream type: %1": "Irú ìṣàn: %1",
+    "Stremio addons": "Àwọn àfikún Stremio",
     "String for search": "Ọ̀rọ̀ ìwádìí",
     "Su Mo Tu We Th Fr Sa": "Àìkú Ajé Ìsẹ́gun Ọjọ́rú Ọjọ́bọ Ẹtì Àbámẹ́ta",
     "Subscription information": "Ìwífún ìforúkọsílẹ̀",
@@ -1115,6 +1123,7 @@ var keyStrings = {
     Unavailable: "Kò sí lárọ̀ọ́wọ́tó",
     "Unlock the player's settings before changing its playlist.":
         "Ṣí títìpa ètò ẹ̀rọ ìṣeré kí o tó yí àkójọ ìṣeré rẹ̀ padà.",
+    "Unsupported source": "Orísun tí a kò ṣe àtìlẹ́yìn fún",
     Untitled: "Kò ní àkọlé",
     "Untitled folder": "Fódà tí kò ní àkọlé",
     "Update installed. Please restart OttPlay FOSS.":

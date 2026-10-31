@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Каналро ба гурӯҳ илова кунед",
     "Add channel to favorites": "Каналро ба мунтахабҳо илова кунед",
     "Add new list": "Рӯйхати нав илова кунед",
+    "Add Stremio addon…": "Илова кардани иловаи Stremio…",
     "Add to favorites": "Ба мунтахабҳо илова кунед",
     Age: "Синну сол",
     All: "Ҳама",
@@ -175,6 +176,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Дар равзанаи браузер ҷузвдонеро интихоб кунед",
     "Choose a profile": "Профилро интихоб кунед",
+    "Choose a source": "Манбаъро интихоб кунед",
     "Choose files in the browser window":
         "Дар равзанаи браузер файлҳоро интихоб кунед",
     "Choose from": "Интихоб аз",
@@ -264,6 +266,8 @@ var keyStrings = {
         "TV DOSUG-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Аввал ин иловаро танзим кунед, сипас суроғаи манифести танзимшударо илова кунед.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -385,6 +389,8 @@ var keyStrings = {
         "Барои дастрасӣ ба ин хидмат URL-и рӯйхати пахшро ворид кунед.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL-и рӯйхати пахшро ворид кунед. Пас аз захиракунӣ плеер аз нав оғоз мешавад.",
+    "Enter a Stremio addon manifest URL.":
+        "URL-и манифести иловаи Stremio-ро ворид кунед.",
     "Enter a server address without spaces or a fragment.":
         "Суроғаи серверро бе фосила ва қисми пас аз # ворид кунед.",
     "Enter a username (8 characters).": "Номи корбарро ворид кунед (8 аломат).",
@@ -864,6 +870,7 @@ var keyStrings = {
     "Repeat: All": "Такрор: Ҳама",
     "Repeat: Off": "Такрор: Хомӯш",
     "Repeat: One": "Такрор: Як",
+    Replace: "Иваз кардан",
     "Request sended!": "Дархост фиристода шуд!",
     "Requesting approval for %1": "Дархости тасдиқ барои %1",
     "Reset order": 'Каналҳоро мураттаб кунед: "Бетағйир"',
@@ -1039,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Вақти интизории ҷараён ба охир расид. Барои кӯшиши дубора каналро интихоб кунед.",
     "Stream type: %1": "Навъи пахш: %1",
+    "Stremio addons": "Иловаҳои Stremio",
     "String for search": "Ибораи ҷустуҷӯ",
     "Su Mo Tu We Th Fr Sa": "Якш Душ Сеш Чор Пан Ҷум Шан",
     "Subscription information": "Маълумоти обуна",
@@ -1138,6 +1146,7 @@ var keyStrings = {
     Unavailable: "Дастрас нест",
     "Unlock the player's settings before changing its playlist.":
         "Пеш аз тағйир додани рӯйхати пахш қулфи танзимоти плеерро кушоед.",
+    "Unsupported source": "Манбаъ дастгирӣ намешавад",
     Untitled: "Беном",
     "Untitled folder": "Ҷузвдони беном",
     "Update installed. Please restart OttPlay FOSS.":

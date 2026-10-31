@@ -54,6 +54,7 @@ var keyStrings = {
     "Add channel to category": "Csatorna hozzáadása kategóriához",
     "Add channel to favorites": "Csatorna hozzáadása kedvencekhez",
     "Add new list": "Új lista hozzáadása",
+    "Add Stremio addon…": "Stremio-kiegészítő hozzáadása…",
     "Add to favorites": "Hozzáadás a kedvencekhez",
     Age: "Korhatár",
     All: "Mind",
@@ -174,6 +175,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "Válasszon mappát a böngészőablakban",
     "Choose a profile": "Profil kiválasztása",
+    "Choose a source": "Forrás kiválasztása",
     "Choose files in the browser window":
         "Válasszon fájlokat a böngészőablakban",
     "Choose from": "Választás innen",
@@ -263,6 +265,8 @@ var keyStrings = {
         "Állítsa be ezt: TV DOSUG, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure TVClub in Settings -> Provider Settings":
         "Állítsa be ezt: TVClub, a Beállítások -> Szolgáltató beállításai menüben",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Előbb állítsa be a kiegészítőt, majd adja hozzá a beállított manifest URL-címét.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Állítsa be ezt: ULTIFL1X, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -383,6 +387,8 @@ var keyStrings = {
         "A szolgáltatás eléréséhez adja meg a lejátszási lista URL-címét.",
     "Enter a playlist URL. The player will restart after saving.":
         "Adja meg a lejátszási lista URL-jét. A lejátszó mentés után újraindul.",
+    "Enter a Stremio addon manifest URL.":
+        "Adja meg a Stremio-kiegészítő manifestjének URL-jét.",
     "Enter a server address without spaces or a fragment.":
         "Adjon meg kiszolgálócímet szóközök és # utáni töredék nélkül.",
     "Enter a username (8 characters).":
@@ -867,6 +873,7 @@ var keyStrings = {
     "Repeat: All": "Ismétlés: összes",
     "Repeat: Off": "Ismétlés: kikapcsolva",
     "Repeat: One": "Ismétlés: egy",
+    Replace: "Csere",
     "Request sended!": "Kérés elküldve!",
     "Requesting approval for %1": "Jóváhagyás kérése ehhez: %1",
     "Reset order": "Csatornák rendezése: „Változatlanul”",
@@ -1046,6 +1053,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "A közvetítés várakozási ideje lejárt. Az újrapróbálkozáshoz válassza ki a csatornát.",
     "Stream type: %1": "Adatfolyam típusa: %1",
+    "Stremio addons": "Stremio-kiegészítők",
     "String for search": "Keresőkifejezés",
     "Su Mo Tu We Th Fr Sa": "V H K Sze Cs P Szo",
     "Subscription information": "Előfizetési adatok",
@@ -1148,6 +1156,7 @@ var keyStrings = {
     Unavailable: "Nem érhető el",
     "Unlock the player's settings before changing its playlist.":
         "A lejátszási lista módosítása előtt oldja fel a lejátszó beállításainak zárolását.",
+    "Unsupported source": "Nem támogatott forrás",
     Untitled: "Névtelen",
     "Untitled folder": "Névtelen mappa",
     "Update installed. Please restart OttPlay FOSS.":

@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "വിഭാഗത്തിലേക്ക് ചാനൽ ചേർക്കുക",
     "Add channel to favorites": "പ്രിയപ്പെട്ടവയിലേക്ക് ചാനൽ ചേർക്കുക",
     "Add new list": "പുതിയ ലിസ്റ്റ് ചേർക്കുക",
+    "Add Stremio addon…": "Stremio ആഡ്-ഓൺ ചേർക്കുക…",
     "Add to favorites": "പ്രിയപ്പെട്ടവയിലേക്ക് ചേർക്കുക",
     Age: "പ്രായം",
     All: "എല്ലാം",
@@ -167,6 +168,7 @@ var keyStrings = {
     "Checking the Plex server connection…": "Plex സെർവർ കണക്ഷൻ പരിശോധിക്കുന്നു...",
     "Choose a folder in the browser window": "ബ്രൗസർ വിൻഡോയിൽ ഫോൾഡർ തിരഞ്ഞെടുക്കുക",
     "Choose a profile": "പ്രൊഫൈൽ തിരഞ്ഞെടുക്കുക",
+    "Choose a source": "ഉറവിടം തിരഞ്ഞെടുക്കുക",
     "Choose files in the browser window": "ബ്രൗസർ വിൻഡോയിൽ ഫയലുകൾ തിരഞ്ഞെടുക്കുക",
     "Choose from": "ഇതിൽ നിന്ന് തിരഞ്ഞെടുക്കുക",
     "Choose language": "ഭാഷ തിരഞ്ഞെടുക്കുക",
@@ -253,6 +255,8 @@ var keyStrings = {
         "ക്രമീകരണങ്ങളിൽ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ TV DOSUG കോൺഫിഗർ ചെയ്യുക",
     "Configure TVClub in Settings -> Provider Settings":
         "ക്രമീകരണങ്ങളിൽ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ TVClub കോൺഫിഗർ ചെയ്യുക",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ആദ്യം ഈ ആഡ്-ഓൺ ക്രമീകരിക്കുക, തുടർന്ന് ക്രമീകരിച്ച മാനിഫെസ്റ്റിന്റെ വിലാസം ചേർക്കുക.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ക്രമീകരണങ്ങളിൽ -> ദാതാവിൻ്റെ ക്രമീകരണങ്ങളിൽ ULTIFL1X കോൺഫിഗർ ചെയ്യുക",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -372,6 +376,8 @@ var keyStrings = {
         "ഈ സേവനം ആക്സസ് ചെയ്യുന്നതിന് URL പ്ലേലിസ്റ്റ് നൽകുക.",
     "Enter a playlist URL. The player will restart after saving.":
         "URL പ്ലേലിസ്റ്റ് നൽകുക. സംരക്ഷിച്ചതിന് ശേഷം പ്ലെയർ പുനരാരംഭിക്കും.",
+    "Enter a Stremio addon manifest URL.":
+        "Stremio ആഡ്-ഓണിന്റെ മാനിഫെസ്റ്റ് URL നൽകുക.",
     "Enter a server address without spaces or a fragment.":
         "സ്‌പെയ്‌സുകളോ ശകലങ്ങളോ ഇല്ലാതെ ഒരു സെർവർ വിലാസം നൽകുക.",
     "Enter a username (8 characters).": "ഒരു ഉപയോക്തൃനാമം നൽകുക (8 പ്രതീകങ്ങൾ).",
@@ -845,6 +851,7 @@ var keyStrings = {
     "Repeat: All": "ആവർത്തിക്കുക: എല്ലാം",
     "Repeat: Off": "ആവർത്തിക്കുക: ഓഫ്",
     "Repeat: One": "ആവർത്തിക്കുക: ഒന്ന്",
+    Replace: "മാറ്റിസ്ഥാപിക്കുക",
     "Request sended!": "അഭ്യർത്ഥന അയച്ചു!",
     "Requesting approval for %1": "%1-ന് അംഗീകാരം അഭ്യർത്ഥിക്കുന്നു",
     "Reset order": 'ചാനലുകൾ അടുക്കുക: "ഉള്ളതുപോലെ"',
@@ -1016,6 +1023,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "സ്ട്രീമിനായി കാത്തിരിക്കാനുള്ള സമയം കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കാൻ ചാനൽ തിരഞ്ഞെടുക്കുക.",
     "Stream type: %1": "സ്ട്രീം തരം: %1",
+    "Stremio addons": "Stremio ആഡ്-ഓണുകൾ",
     "String for search": "തിരയൽ അന്വേഷണം",
     "Su Mo Tu We Th Fr Sa": "ഞാ തി ചൊ ബു വ്യാ വെ ശനി",
     "Subscription information": "സബ്സ്ക്രിപ്ഷൻ വിവരങ്ങൾ",
@@ -1111,6 +1119,7 @@ var keyStrings = {
     Unavailable: "ലഭ്യമല്ല",
     "Unlock the player's settings before changing its playlist.":
         "പ്ലേലിസ്റ്റ് മാറ്റുന്നതിന് മുമ്പ് പ്ലേയറിന്റെ ക്രമീകരണങ്ങളുടെ ലോക്ക് തുറക്കുക.",
+    "Unsupported source": "പിന്തുണയ്ക്കാത്ത ഉറവിടം",
     Untitled: "ശീർഷകമില്ല",
     "Untitled folder": "പേരില്ലാത്ത ഫോൾഡർ",
     "Update installed. Please restart OttPlay FOSS.":

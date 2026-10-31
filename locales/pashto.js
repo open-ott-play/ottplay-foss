@@ -53,6 +53,7 @@ var keyStrings = {
     "Add channel to category": "کټګورۍ ته چینل اضافه کړئ",
     "Add channel to favorites": "په خوښیو کې چینل اضافه کړئ",
     "Add new list": "نوی لیست اضافه کړئ",
+    "Add Stremio addon…": "د Stremio اضافه ورزیاته کړئ…",
     "Add to favorites": "په خوښیو کې اضافه کړئ",
     Age: "عمر",
     All: "ټول",
@@ -170,6 +171,7 @@ var keyStrings = {
     "Choose a folder in the browser window":
         "د براوزر په کړکۍ کې یوه پوښۍ غوره کړئ",
     "Choose a profile": "پروفایل غوره کړئ",
+    "Choose a source": "یوه سرچینه وټاکئ",
     "Choose files in the browser window":
         "د براوزر په کړکۍ کې فایلونه غوره کړئ",
     "Choose from": "له دې څخه غوره کړئ",
@@ -257,6 +259,8 @@ var keyStrings = {
         "TV DOSUG د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "لومړی دا اضافه تنظیم کړئ، بیا د تنظیم شوي مانیفېسټ پته ورزیاته کړئ.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -375,6 +379,8 @@ var keyStrings = {
         "دې خدمت ته د لاسرسي لپاره یو پلې‌لېست URL داخل کړئ.",
     "Enter a playlist URL. The player will restart after saving.":
         "د پلې‌لېست URL دننه کړئ. پلیر به له خوندي کولو وروسته بیا پیل شي.",
+    "Enter a Stremio addon manifest URL.":
+        "د Stremio اضافې د مانیفېسټ URL ولیکئ.",
     "Enter a server address without spaces or a fragment.":
         "د سرور پته دننه کړئ پرته له کوم ځای یا ټوټې.",
     "Enter a username (8 characters).": "یو کارن-نوم دننه کړئ (8 توري).",
@@ -854,6 +860,7 @@ var keyStrings = {
     "Repeat: All": "تکرار: ټول",
     "Repeat: Off": "تکرار: بند",
     "Repeat: One": "تکرار: یو",
+    Replace: "بدلول",
     "Request sended!": "غوښتنه لیږل شوې!",
     "Requesting approval for %1": "د %1 لپاره د تصویب غوښتنه",
     "Reset order": 'چینلونه ترتیب کړئ: "لکه څنګه چې دی"',
@@ -1025,6 +1032,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "د خپرونې د انتظار وخت پای ته ورسېد. د بیا هڅې لپاره چینل وټاکئ.",
     "Stream type: %1": "د خپرونې ډول: %1",
+    "Stremio addons": "د Stremio اضافې",
     "String for search": "د لټون عبارت",
     "Su Mo Tu We Th Fr Sa": "یکشنبه دوشنبه سېشنبه چهارشنبه پنجشنبه جمعه شنبه",
     "Subscription information": "د ګډون معلومات",
@@ -1122,6 +1130,7 @@ var keyStrings = {
     Unavailable: "د لاسرسي وړ نه دی",
     "Unlock the player's settings before changing its playlist.":
         "د پلې لېست بدلولو مخکې د پلیر د امستنو قلف خلاص کړئ.",
+    "Unsupported source": "د سرچینې ملاتړ نه کېږي",
     Untitled: "بې سرلیک",
     "Untitled folder": "بې سرلیکه پوښۍ",
     "Update installed. Please restart OttPlay FOSS.":
