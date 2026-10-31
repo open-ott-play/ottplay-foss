@@ -610,6 +610,7 @@ var keyStrings = {
         "Imininingwane yokufinyelela ye-KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Izilungiselelo ze-KORONA TV",
+    "Label (optional)": "Igama (akuphoqelekile)",
     "List created": "Uhlu ludaliwe",
     "List deleted": "Uhlu lususiwe",
     "List location": "Indawo yohlu",

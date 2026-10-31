@@ -655,8 +655,19 @@ const TORZNAB_DISCOVERY_ALLOWANCE = Object.freeze({
     favorites: Object.freeze({ bytes: 81, gzipBytes: 30 }),
     settings: Object.freeze({ bytes: 165, gzipBytes: 60 }),
 });
+// Global Modern navigation/hero and measured option pages remain a lazy renderer.
+// The shared entry adds only screen/focus lifecycle hooks; Prowlarr configuration
+// stays in the optional Torrent provider. Allocate paired web/native/mobile
+// deltas without adding reserve or altering earlier evidence.
+// Evidence: docs/evidence/modern-provider-experience-size-20261031.json.
+const MODERN_EXPERIENCE_ALLOWANCE = Object.freeze({
+    catalog: Object.freeze({ bytes: 4991, gzipBytes: 1336 }),
+    entry: Object.freeze({ bytes: 2152, gzipBytes: 636 }),
+    renderer: Object.freeze({ bytes: 7161, gzipBytes: 2221 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.bytes +
@@ -682,6 +693,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
         TORRENT_DISCOVERY_ALLOWANCE.entry.gzipBytes +
@@ -886,6 +898,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
+        MODERN_EXPERIENCE_ALLOWANCE.catalog.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.catalog.bytes +
@@ -919,6 +933,8 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
+        MODERN_EXPERIENCE_ALLOWANCE.catalog.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
@@ -1001,7 +1017,14 @@ const OPTIONAL_BUDGETS = Object.freeze({
             MEDIA_COMPANION_OPTIONAL_ALLOWANCE.gzipBytes +
             MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes,
     }),
-    "modern-interface": MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
+    "modern-interface": Object.freeze({
+        bytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.bytes,
+        gzipBytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.gzipBytes,
+    }),
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
     // Existing startup and complete legacy limits do not grow for this feature.
     // Opt-in HLS v2 adds track ranges, PTS, passive live/config measurements and
@@ -1067,6 +1090,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        Object.values(MODERN_EXPERIENCE_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.bytes,
+            0
+        ) +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
         TORRENT_STREAMS_ALLOWANCE.entry.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.catalog.bytes +
@@ -1126,6 +1153,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        Object.values(MODERN_EXPERIENCE_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.gzipBytes,
+            0
+        ) +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
         TORRENT_STREAMS_ALLOWANCE.entry.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.catalog.gzipBytes +
@@ -1376,6 +1407,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
         mixedGlobalFavoritesProviderAllowance:
             MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
+        modernExperienceAllowance: MODERN_EXPERIENCE_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -1706,6 +1738,7 @@ function writeBuildBundleReport(
             mixedGlobalFavoritesProviderAllowance:
                 MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             mode: label(context.mode || "standard"),
+            modernExperienceAllowance: MODERN_EXPERIENCE_ALLOWANCE,
             optimizerBinding: {
                 outputSha256: optimizer.outputSha256,
                 stagedExpectedSha256: expectedSha256,
@@ -1814,6 +1847,7 @@ module.exports = {
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
+    MODERN_EXPERIENCE_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,

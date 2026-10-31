@@ -4434,11 +4434,11 @@ test("Modern and Classic retain the same mixed Favorites view and stable selecti
             window.__favoriteRows = listArray;
             saveSettings({ interfaceMode: 1 });
         });
-        await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
         await expect(page.locator("#listCaption")).toContainText("Favorites");
         await expect(page.locator("#it2")).toContainText("favorite-plex");
         await page.evaluate(() => changeSelect(-1));
-        await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
         await page.evaluate(() => changeSelect(1));
         await page.evaluate(() => _doKey(keys.ENTER));
         await page.evaluate(() => saveSettings({ interfaceMode: 0 }));
@@ -4550,8 +4550,11 @@ for (const width of [1280, 360]) {
             });
             await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
             const geometry = await waitForModernTouchLayout(page);
-            if (width === 360) expect(geometry.columns).toBe(1);
-            else expect(geometry.columns).toBeGreaterThan(1);
+            if (width === 360) {
+                // The full-width mobile shell can fit two readable cards.
+                expect(geometry.columns).toBeGreaterThanOrEqual(1);
+                expect(geometry.columns).toBeLessThanOrEqual(2);
+            } else expect(geometry.columns).toBeGreaterThan(1);
             await page.evaluate((height) => {
                 const metrics = __ottModernUi.touchMetrics;
                 window.__touchMetricsTrace = [];
@@ -4711,7 +4714,7 @@ test("Modern narrow layout keeps long RTL titles inside the viewport", async ({
     }
 });
 
-test("Modern long media details stay within their panel through selection and mode changes", async ({
+test("Modern long media details stay within the hero through selection and mode changes", async ({
     browser,
 }) => {
     const fixture = await fixturePage(browser, "tauri", {
@@ -4735,8 +4738,12 @@ test("Modern long media details stay within their panel through selection and mo
                 channels["movie-0"].descr;
             _channelsList(0, 0);
         });
-        await expect(page.locator("#_name")).toContainText("a journey across");
-        await expect(page.locator("#_descr")).toBeVisible();
+        await expect(
+            page.locator("#modernHero .modern-hero-title")
+        ).toContainText("a journey across");
+        await expect(
+            page.locator("#modernHero .modern-hero-summary")
+        ).toBeVisible();
         await page.evaluate(() => {
             window.__detailModeEffects = [];
             for (const name of [
@@ -4754,19 +4761,25 @@ test("Modern long media details stay within their panel through selection and mo
                 (mode) => saveSettings({ interfaceMode: mode }),
                 mode
             );
-            const bounds = await page.evaluate(() => {
+            const selector = mode
+                ? "#modernHero .modern-hero-summary"
+                : "#_descr";
+            await expect(page.locator(selector)).toBeVisible();
+            const bounds = await page.evaluate((mode) => {
                 const panel = document
-                    .getElementById("listDetail")
+                    .getElementById(mode ? "modernHero" : "listDetail")
                     .getBoundingClientRect();
                 const text = document
-                    .getElementById("_descr")
+                    .querySelector(
+                        mode ? "#modernHero .modern-hero-summary" : "#_descr"
+                    )
                     .getBoundingClientRect();
                 return {
                     panelBottom: panel.bottom,
                     textBottom: text.bottom,
                     textHeight: text.height,
                 };
-            });
+            }, mode);
             expect(bounds.textHeight).toBeGreaterThan(0);
             expect(bounds.textBottom).toBeLessThanOrEqual(
                 bounds.panelBottom + 1
@@ -4774,6 +4787,583 @@ test("Modern long media details stay within their panel through selection and mo
         }
         expect(await page.evaluate(() => __detailModeEffects)).toEqual([]);
         await saveModernScreenshot(page, "tauri", "long-details");
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+async function expectVisibleControlsWithinViewport(page, selector) {
+    const controls = page.locator(selector);
+    expect(
+        await controls.count(),
+        "The surface must expose its controls"
+    ).toBeGreaterThan(0);
+    const rectangles = [];
+    for (const control of await controls.all()) {
+        await expect(control).toBeVisible();
+        const bounds = await control.evaluate((element) => {
+            const rect = element.getBoundingClientRect();
+            const target = document.elementFromPoint(
+                rect.left + rect.width / 2,
+                rect.top + rect.height / 2
+            );
+            return {
+                bottom: rect.bottom,
+                height: rect.height,
+                hit:
+                    !!target &&
+                    (element === target || element.contains(target)),
+                label: element.textContent.trim(),
+                left: rect.left,
+                right: rect.right,
+                top: rect.top,
+                viewportHeight: innerHeight,
+                viewportWidth: innerWidth,
+                width: rect.width,
+            };
+        });
+        expect(bounds.width).toBeGreaterThan(0);
+        expect(bounds.height).toBeGreaterThan(0);
+        expect(bounds.left).toBeGreaterThanOrEqual(-1);
+        expect(bounds.top).toBeGreaterThanOrEqual(-1);
+        expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+        expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewportHeight + 1);
+        expect(
+            bounds.hit,
+            "Visible controls must be reachable, not covered by a shell"
+        ).toBe(true);
+        for (const other of rectangles) {
+            const overlapWidth =
+                Math.min(bounds.right, other.right) -
+                Math.max(bounds.left, other.left);
+            const overlapHeight =
+                Math.min(bounds.bottom, other.bottom) -
+                Math.max(bounds.top, other.top);
+            expect(
+                overlapWidth > 1 && overlapHeight > 1,
+                `Controls must not overlap: ${bounds.label} / ${other.label}`
+            ).toBe(false);
+        }
+        rectangles.push(bounds);
+    }
+}
+
+for (const profile of ["server", "tauri", "capacitor"]) {
+    test(`Modern library uses the complete shell and returns from rail focus (${profile})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile, {
+            interfaceTheme: 2,
+        });
+        const { page } = fixture;
+        try {
+            await seedModernMovies(page, 10000, 0);
+            const rail = page.locator('#modernRail[aria-label="Menu"]');
+            await expect(rail).toBeVisible();
+            await expect(page.locator("#modernHero")).toBeVisible();
+            await expect(
+                page.locator("#modernHero .modern-hero-title")
+            ).toHaveText("Northern Passage");
+            await expect(page.locator("#modernLibraryHeading")).toContainText(
+                "Movies"
+            );
+            await expect(page.locator("#modernLibraryHeading")).toContainText(
+                "10000"
+            );
+            const geometry = await page.evaluate(() => {
+                const list = document
+                    .getElementById("listIn")
+                    .getBoundingClientRect();
+                const hero = document
+                    .getElementById("modernHero")
+                    .getBoundingClientRect();
+                const nav = document
+                    .getElementById("modernRail")
+                    .getBoundingClientRect();
+                return {
+                    cardCount: document.querySelectorAll("#listIn .modern-card")
+                        .length,
+                    heroWidth: hero.width,
+                    left: list.left,
+                    navRight: nav.right,
+                    right: list.right,
+                    width: list.width,
+                };
+            });
+            expect(geometry.cardCount).toBeGreaterThan(0);
+            expect(geometry.cardCount).toBeLessThanOrEqual(64);
+            expect(geometry.width).toBeGreaterThan(1280 * 0.65);
+            expect(geometry.heroWidth).toBeGreaterThan(1280 * 0.5);
+            expect(geometry.left).toBeGreaterThanOrEqual(geometry.navRight - 1);
+            expect(geometry.right).toBeLessThanOrEqual(1281);
+            await page.evaluate(() => {
+                stbBindKeyHandler();
+                window.__modernRailEffects = [];
+                window.stbPlay = () => __modernRailEffects.push("play");
+                window.stbStop = () => __modernRailEffects.push("stop");
+                document.getElementById("it0").focus();
+            });
+            await page.keyboard.press("ArrowLeft");
+            expect(
+                await page.evaluate(
+                    () => !!document.activeElement.closest("#modernRail")
+                )
+            ).toBe(true);
+            await page.keyboard.press("ArrowRight");
+            await expect(page.locator("#it0")).toBeFocused();
+            expect(await page.evaluate(() => listArray[selIndex])).toBe(
+                "movie-0"
+            );
+            await page.screenshot({
+                path: test.info().outputPath("modern-library-shell.png"),
+            });
+            await page.evaluate(() => saveSettings({ interfaceMode: 0 }));
+            await expect(rail).toHaveCount(0);
+            await expect(page.locator("#modernHero")).toHaveCount(0);
+            await expect(page.locator("#it0")).toBeFocused();
+            expect(await page.evaluate(() => listArray[selIndex])).toBe(
+                "movie-0"
+            );
+            expect(await page.evaluate(() => __modernRailEffects)).toEqual([]);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+for (const viewport of [
+    { height: 720, width: 1280 },
+    { height: 851, width: 393 },
+]) {
+    test(`Modern editor and dialog keep reachable exit controls at ${viewport.width}px`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, "tauri", {
+            interfaceTheme: 2,
+            uiFontScale: 140,
+        });
+        const { page } = fixture;
+        try {
+            await page.setViewportSize(viewport);
+            await seedModernMovies(page, 100, 17);
+            await expect(page.locator("#it17.modern-card")).toBeVisible();
+            await page.evaluate(() => {
+                stbBindKeyHandler();
+                window.__modernEditorSaved = [];
+                window.editCaption =
+                    "Search movies, programmes and local library files";
+                window.editvar = "Northern Passage";
+                window.setEdit = () =>
+                    window.__modernEditorSaved.push(window.editvar);
+                document.getElementById("it17").focus();
+                showEditKey1();
+            });
+            const input = page.locator("#editvar");
+            await expect(input).toBeFocused();
+            await input.fill("Uncommitted search");
+            await expectVisibleControlsWithinViewport(
+                page,
+                '#editRemoteInput, #listEdit [data-ott-key="13"], #listEdit [data-ott-key="27"]'
+            );
+            const saveButton = page.locator('#listEdit [data-ott-key="13"]');
+            await saveButton.scrollIntoViewIfNeeded();
+            const visibleSave = await saveButton.evaluate((element) => {
+                const button = element.getBoundingClientRect();
+                const editor = document
+                    .getElementById("listEdit")
+                    .getBoundingClientRect();
+                return {
+                    bottom: button.bottom,
+                    editorBottom: editor.bottom,
+                    editorTop: editor.top,
+                    top: button.top,
+                };
+            });
+            expect(visibleSave.top).toBeGreaterThanOrEqual(
+                visibleSave.editorTop
+            );
+            expect(visibleSave.bottom).toBeLessThanOrEqual(
+                visibleSave.editorBottom
+            );
+            await page.screenshot({
+                path: test.info().outputPath("modern-editor.png"),
+            });
+            await page.locator('#listEdit [data-ott-key="27"]').click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+            expect(await page.evaluate(() => __modernEditorSaved)).toEqual([]);
+            expect(await page.evaluate(() => listArray[selIndex])).toBe(
+                "movie-17"
+            );
+            await expect(page.locator("#it17")).toBeFocused();
+
+            await page.evaluate(() => {
+                window.__modernDialogChoice = [];
+                confirmBox(
+                    "The source is unavailable. Keep the current library and try again later?",
+                    () => __modernDialogChoice.push("yes"),
+                    () => __modernDialogChoice.push("no")
+                );
+            });
+            await expect(page.locator("#dialogbox")).toBeVisible();
+            await expectVisibleControlsWithinViewport(
+                page,
+                "#dialogbox [data-ott-key]"
+            );
+            await page.keyboard.press("Tab");
+            expect(
+                await page.evaluate(() =>
+                    document
+                        .getElementById("dialogbox")
+                        .contains(document.activeElement)
+                )
+            ).toBe(true);
+            await page.screenshot({
+                path: test.info().outputPath("modern-dialog.png"),
+            });
+            await page.keyboard.press("Backspace");
+            await expect(page.locator("#dialogbox")).toBeHidden();
+            expect(await page.evaluate(() => __modernDialogChoice)).toEqual([
+                "no",
+            ]);
+            expect(await page.evaluate(() => listArray[selIndex])).toBe(
+                "movie-17"
+            );
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+for (const mode of [0, 1]) {
+    test(`Editor cancellation restores focus and deferred cleanup preserves a replacement editor (mode ${mode})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, "tauri");
+        const { page } = fixture;
+        try {
+            await seedModernMovies(page, 40, 2);
+            await page.evaluate((mode) => {
+                saveSettings({ interfaceMode: mode });
+                stbBindKeyHandler();
+                document.getElementById("it2").focus();
+                window.editCaption = "Source address";
+                window.editvar = "https://example.invalid/library";
+                window.setEdit = () => {};
+                showEditKey1();
+            }, mode);
+            await expect(page.locator("#editvar")).toBeFocused();
+            await page.locator('#listEdit [data-ott-key="27"]').click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+            await expect(page.locator("#it2")).toBeFocused();
+            await expect(page.locator("#listEdit input")).toHaveCount(0);
+
+            await page.evaluate(() => {
+                window.editCaption = "First value";
+                window.editvar = "first";
+                window.setEdit = () => {
+                    window.editCaption = "Second value";
+                    window.editvar = "replacement survives";
+                    window.setEdit = () => {};
+                    showEditKey1();
+                };
+                showEditKey1();
+            });
+            await page.locator('#listEdit [data-ott-key="13"]').click();
+            await expect(page.locator("#editvar")).toHaveValue(
+                "replacement survives"
+            );
+            // Let the previous owner's deferred teardown run before checking
+            // the replacement's control and current focus again.
+            await page.evaluate(
+                () =>
+                    new Promise((resolve) =>
+                        requestAnimationFrame(() =>
+                            requestAnimationFrame(resolve)
+                        )
+                    )
+            );
+            await expect(page.locator("#editvar")).toHaveValue(
+                "replacement survives"
+            );
+            await expect(page.locator("#editvar")).toBeFocused();
+            await page.locator('#listEdit [data-ott-key="27"]').click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+            await expect(page.locator("#listEdit input")).toHaveCount(0);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+test("Modern navigation keeps library, categories, settings and search in the same shell", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri", {
+        interfaceTheme: 2,
+    });
+    const { page } = fixture;
+    try {
+        await seedModernMovies(page, 80, 5);
+        // The global Favorites store is lazy, but its entrypoint must be
+        // available before a user has opened it in this session.
+        expect(await page.evaluate(() => !!window.__ottGlobalFavorites)).toBe(
+            false
+        );
+        await expect(
+            page.locator('#modernRail [data-modern-action="favorites"]')
+        ).toBeVisible();
+        await page.evaluate(() => {
+            // Provider startup normally installs this real channel renderer;
+            // the isolated fixture deliberately skips the network bootstrap.
+            window.channelsList = window._channelsList;
+            window.providerGetItem = () => null;
+            window.providerSetItem = () => {};
+            window.favoritesArray = [];
+            window.cList = cats.Movies.slice();
+            cList.forEach((id) => {
+                channels[id].category = { name: "Movies" };
+            });
+            window.catIndex = 0;
+            window.primaryIndex = 5;
+            window.curList = cats.Movies;
+            window.__ottChannels.mount(window);
+            const movies = window.__ottChannels.index("provider:Movies");
+            if (movies < 0)
+                throw new Error("Fixture Movies library was not mounted");
+            window.catIndex = movies;
+            window.curList = cats[catsArray[movies]];
+            _channelsList(movies, 5);
+            stbBindKeyHandler();
+        });
+        const action = (name) =>
+            page.locator(`#modernRail [data-modern-action="${name}"]`);
+        await expect(action("library")).toBeVisible();
+        await action("categories").click();
+        await expect(page.locator("#listCaption")).toHaveText(
+            "Category selection"
+        );
+        await expect(page.locator("#list")).toHaveClass(/modern-screen-menu/);
+        await expect(page.locator("#modernRail")).toBeVisible();
+        await page.screenshot({
+            path: test.info().outputPath("modern-categories.png"),
+        });
+        await action("library").click();
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+        expect(await page.evaluate(() => listArray[selIndex])).toBe("movie-5");
+        await action("settings").click();
+        await expect(page.locator("#listCaption")).toHaveText("Settings");
+        await expect(page.locator("#list")).toHaveClass(/modern-screen-menu/);
+        await expect(page.locator("#listIn .item").first()).toBeVisible();
+        await expectVisibleControlsWithinViewport(
+            page,
+            '#modernRail [data-modern-action="library"]'
+        );
+        await page.screenshot({
+            path: test.info().outputPath("modern-settings.png"),
+        });
+        await action("library").click();
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+        expect(await page.evaluate(() => listArray[selIndex])).toBe("movie-5");
+        await action("search").click();
+        await expect(page.locator("#editvar")).toBeVisible();
+        await page.locator("#editvar").fill("Not committed");
+        await page.locator('#listEdit [data-ott-key="27"]').click();
+        await expect(page.locator("#listEdit")).toBeHidden();
+        await expect(page.locator("#listIn")).toHaveClass(/modern-grid/);
+        expect(await page.evaluate(() => listArray[selIndex])).toBe("movie-5");
+        expect(fixture.errors).toEqual([]);
+        expect(fixture.unexpectedRequests).toEqual([]);
+    } finally {
+        await fixture.close();
+    }
+});
+
+for (const mode of [0, 1]) {
+    test(`Editor opened from keyboard without prior row focus returns to its list (mode ${mode})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, "tauri");
+        const { page } = fixture;
+        try {
+            await page.evaluate((mode) => {
+                window.__bodyEditorEntries = 0;
+                __ottChannelListView.show({
+                    categoryName: "Editable library",
+                    channel: () => ({
+                        channel_name: "Edit source",
+                        name: "Edit source",
+                    }),
+                    detail: () => {},
+                    id: "fixture:editable-library",
+                    key: (code) => {
+                        if (code !== keys.ENTER) return false;
+                        __bodyEditorEntries++;
+                        window.editCaption = "Source address";
+                        window.editvar = "https://example.invalid/library";
+                        window.setEdit = () => {};
+                        showEditKey1();
+                        return true;
+                    },
+                    locked: () => false,
+                    picon: () => "",
+                    playing: () => false,
+                    rows: ["source"],
+                    selected: 0,
+                });
+                saveSettings({ interfaceMode: mode });
+                stbBindKeyHandler();
+                document.activeElement.blur();
+            }, mode);
+            expect(
+                await page.evaluate(
+                    () => document.activeElement === document.body
+                )
+            ).toBe(true);
+            await page.keyboard.press("Enter");
+            await expect(page.locator("#editvar")).toBeFocused();
+            await page.locator('#listEdit [data-ott-key="27"]').click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+            await expect(page.locator("#it0")).toBeFocused();
+            await page.keyboard.press("Enter");
+            await expect(page.locator("#editvar")).toBeFocused();
+            expect(await page.evaluate(() => __bodyEditorEntries)).toBe(2);
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+}
+
+test("Modern fullscreen timeline and audio picker preserve the playback owner", async ({
+    browser,
+}) => {
+    const fixture = await fixturePage(browser, "tauri", { interfaceTheme: 2 });
+    const { page } = fixture;
+    try {
+        await page.evaluate(() => {
+            window.__modernMediaEffects = [];
+            window.__modernSeeks = [];
+            window.__modernTrackChoices = [];
+            window.catIndex = 0;
+            window.primaryIndex = 0;
+            window.curList = cats.Fixture;
+            window.__modernPlaybackOwner = {
+                active: () => true,
+                selectTrack: (kind, id) =>
+                    __modernTrackChoices.push([kind, id]),
+                snapshot: () => ({
+                    duration: 1000,
+                    phase: "playing",
+                    position: 250,
+                }),
+                tracks: () => [
+                    { id: 0, language: "eng", name: "English", selected: true },
+                    { id: 1, language: "fra", name: "French", selected: false },
+                    {
+                        id: 2,
+                        language: "spa",
+                        name: "Spanish",
+                        selected: false,
+                    },
+                ],
+            };
+            __ottCoreBackend().current = () => __modernPlaybackOwner;
+            for (const name of ["stbPlay", "stbStop", "stbPause", "stbResume"])
+                window[name] = () => __modernMediaEffects.push(name);
+            window.stbGetLen = () => 1000;
+            window.stbGetPosTime = () => 250;
+            window.stbSetPosTime = (value) => __modernSeeks.push(value);
+            window.__ottClassicPlayback.command({
+                channelId: "one",
+                type: "live",
+            });
+            window.__ottClassicPlayback.command({
+                duration: 1000,
+                type: "finite-channel",
+            });
+            saveSettings({ interfaceMode: 1 });
+            stbBindKeyHandler();
+            closeList();
+            // Supply the read-only programme view without a network decoder.
+            window.__ottClassicPlayback.programme = () => ({
+                collection: "Fixture movies",
+                duration: 1000,
+                nextStartedAt: 1700001000,
+                nextTitle: "Ocean of Silence",
+                position: 250,
+                startedAt: 1700000000,
+                title: "Northern Passage",
+            });
+            window.__ottClassicPlayback.command({ type: "playing" });
+            updateMediaInfo();
+            showChannelInfo(10);
+            $("#info1").finish();
+        });
+        await expect(page.locator("#info1")).toBeVisible();
+        await expect(page.locator("#info1")).toContainText("Northern Passage");
+        const clockBounds = await page.evaluate(() => ({
+            channelRight: document
+                .getElementById("channel")
+                .getBoundingClientRect().right,
+            endRight: document
+                .getElementById("end_time")
+                .getBoundingClientRect().right,
+        }));
+        expect(clockBounds.endRight).toBeLessThanOrEqual(
+            clockBounds.channelRight
+        );
+        await expect(page.locator("#progress_div")).toBeVisible();
+        const progress = await page.locator("#progress_div").boundingBox();
+        expect(progress.width).toBeGreaterThan(100);
+        expect(progress.x).toBeGreaterThanOrEqual(0);
+        expect(progress.y + progress.height).toBeLessThanOrEqual(720);
+        await page.mouse.click(
+            progress.x + progress.width / 4,
+            progress.y - progress.height / 2 + 0.5
+        );
+        await expect
+            .poll(() => page.evaluate(() => __modernSeeks.length))
+            .toBe(1);
+        const position = await page.evaluate(() => __modernSeeks[0]);
+        // Mouse coordinates are rounded to device pixels on some engines.
+        expect(Math.abs(position - 250)).toBeLessThanOrEqual(
+            Math.ceil(1000 / progress.width)
+        );
+        await expect(page.locator("#descr")).toBeHidden();
+        await page.screenshot({
+            path: test.info().outputPath("modern-fullscreen-osd.png"),
+        });
+        await page.evaluate(() => stbToggleAudioTrack());
+        await expect(page.locator("#numprog")).toBeVisible();
+        await expect(page.locator('#numprog [role="button"]')).toHaveCount(3);
+        await expectVisibleControlsWithinViewport(
+            page,
+            '#numprog [role="button"]'
+        );
+        await page.screenshot({
+            path: test.info().outputPath("modern-audio-picker.png"),
+        });
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        await expect(page.locator("#numprog")).toBeHidden();
+        expect(await page.evaluate(() => __modernTrackChoices)).toEqual([
+            ["audio", 1],
+        ]);
+        expect(
+            await page.evaluate(
+                () => __ottCoreBackend().current() === __modernPlaybackOwner
+            )
+        ).toBe(true);
+        expect(await page.evaluate(() => __modernMediaEffects)).toEqual([]);
         expect(fixture.errors).toEqual([]);
         expect(fixture.unexpectedRequests).toEqual([]);
     } finally {

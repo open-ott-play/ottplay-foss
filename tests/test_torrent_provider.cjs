@@ -965,3 +965,320 @@ test("global Favorites reuse the stable channel locator and catalog identity", (
     changed.__ottMediaItem.request.fileIndex = 99;
     assert.equal(exported.globalFavoriteChannelId("torrent", changed), null);
 });
+
+function nativeIndexerSettings(f, initial = []) {
+    let sources = copy(initial);
+    f.indexerCalls = [];
+    f.openedIndexers = [];
+    f.host.AbortController = AbortController;
+    f.host.settings = {};
+    f.host.saveSettings = (settings) => {
+        Object.assign(f.host.settings, settings);
+        return true;
+    };
+    f.driver.catalogBrowser = f.driver.catalogBrowser || {};
+    f.driver.catalogBrowser.open = (id, label) => {
+        f.openedIndexers.push({ id, label });
+        return true;
+    };
+    f.host.__ottMediaCompanion.indexerAvailable = () => true;
+    f.host.__ottMediaCompanion.ensure = async (nativeOnly) => {
+        assert.equal(nativeOnly, true);
+        return {
+            torznab: async (op, params, signal) => {
+                f.indexerCalls.push({ op, params: copy(params), signal });
+                if (f.indexerReply) return f.indexerReply(op, params, signal);
+                if (op === "list") return { schema: 1, sources: copy(sources) };
+                if (op === "configure") {
+                    sources = sources.filter(
+                        (row) => row.id !== params.sourceId
+                    );
+                    const source = { id: params.sourceId, label: params.label };
+                    sources.push(source);
+                    return { schema: 1, source };
+                }
+                if (op === "remove") {
+                    sources = sources.filter(
+                        (row) => row.id !== params.sourceId
+                    );
+                    return { removed: true, schema: 1 };
+                }
+                return {
+                    schema: 1,
+                    searchAvailable: true,
+                    sourceId: params.sourceId,
+                };
+            },
+        };
+    };
+}
+function enterIndexerField(f, name, value) {
+    chooseSetting(f, name);
+    f.host.editvar = value;
+    f.host.setEdit();
+}
+
+test("provider Load is explicit for Stremio and does not start a native service", () => {
+    const f = setup();
+    f.host.__ottEditProvider();
+    assert.equal(
+        f.host.listArray.some((row) => row.name === "Prowlarr / Torznab"),
+        false
+    );
+    chooseSetting(f, "Load");
+    assert.equal(f.reloads, 1);
+});
+
+test("native provider configures and loads a private indexer with an optional label", async () => {
+    const f = setup();
+    nativeIndexerSettings(f);
+    const before = JSON.stringify([...f.saved]);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    assert.equal(f.host.listCaption.textContent, "Prowlarr / Torznab");
+    assert.deepEqual(copy(f.host.listArray.map((row) => row.name)), [
+        "Server address: Not configured",
+        "Access key: ",
+        "Label (optional): ",
+        "Load",
+        "Cancel",
+    ]);
+    enterIndexerField(f, "Server address", "http://127.0.0.1:9696/1/api");
+    enterIndexerField(f, "Access key", "private-test-key");
+    assert.equal(f.edits.at(-1).password, true);
+    assert.equal(f.host.editvar, "");
+    assert.equal(
+        f.host.listArray.some((row) => row.name.includes("private-test-key")),
+        false
+    );
+    assert.equal(f.host.listArray[1].name, "Access key: ••••••••");
+    chooseSetting(f, "Load");
+    await flush();
+    const configured = f.indexerCalls.find((call) => call.op === "configure");
+    assert.deepEqual(configured.params, {
+        apiKey: "private-test-key",
+        endpoint: "http://127.0.0.1:9696/1/api",
+        label: "Prowlarr / Torznab",
+        sourceId: "torznab-generated-id",
+    });
+    assert.deepEqual(f.openedIndexers, [
+        {
+            id: "catalog:torznab:torznab-generated-id:all",
+            label: "Prowlarr / Torznab",
+        },
+    ]);
+    assert.equal(f.host.settings.torrentDiscoveryMode, "local");
+    assert.equal(
+        JSON.stringify([...f.saved]),
+        before,
+        "private config never enters profile storage"
+    );
+});
+
+test("native indexer draft cancellation does not configure or trap the user in an empty form", async () => {
+    const f = setup(null);
+    nativeIndexerSettings(f);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Load");
+    await flush();
+    enterIndexerField(f, "Server address", "http://127.0.0.1:9696/1/api");
+    enterIndexerField(f, "Access key", "discard-me");
+    chooseSetting(f, "Cancel");
+    assert.equal(f.host.listArray[0].name, "Search: Torznab");
+    assert.deepEqual(
+        f.indexerCalls.map((call) => call.op),
+        ["list"]
+    );
+    assert.deepEqual(f.openedIndexers, []);
+});
+
+test("pending indexer lists and loads cannot reopen a closed or replaced screen", async () => {
+    for (const operation of ["list", "configure"]) {
+        const f = setup();
+        nativeIndexerSettings(f);
+        let complete;
+        f.host.__ottEditProvider();
+        if (operation === "configure") {
+            chooseSetting(f, "Prowlarr / Torznab");
+            await flush();
+            enterIndexerField(
+                f,
+                "Server address",
+                "http://127.0.0.1:9696/1/api"
+            );
+        }
+        f.indexerReply = (op) =>
+            op === operation
+                ? new Promise((resolve) => {
+                      complete = resolve;
+                  })
+                : null;
+        chooseSetting(f, operation === "list" ? "Prowlarr / Torznab" : "Load");
+        await flush();
+        const pending = f.indexerCalls.at(-1);
+        chooseSetting(f, "Cancel");
+        assert.equal(pending.signal.aborted, true);
+        const caption = f.host.listCaption.textContent;
+        complete(
+            operation === "list"
+                ? { schema: 1, sources: [] }
+                : {
+                      schema: 1,
+                      source: { id: "torznab-generated-id", label: "Test" },
+                  }
+        );
+        await flush();
+        assert.equal(f.host.listCaption.textContent, caption);
+        assert.equal(f.openedIndexers.length, 0);
+    }
+});
+
+test("saved indexers can be loaded, replaced and removed without exposing credentials", async () => {
+    const f = setup();
+    nativeIndexerSettings(f, [{ id: "archive", label: "Archive" }]);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    chooseSetting(f, "Archive");
+    chooseSetting(f, "Replace");
+    assert.equal(f.host.listArray[0].name, "Server address: Not configured");
+    assert.equal(f.host.listArray[1].name, "Access key: ");
+    assert.equal(f.host.listArray[2].name, "Label (optional): Archive");
+    enterIndexerField(f, "Server address", "http://192.168.1.3:9696/1/api");
+    enterIndexerField(f, "Access key", "replacement-key");
+    chooseSetting(f, "Load");
+    await flush();
+    assert.equal(
+        f.indexerCalls.find((call) => call.op === "configure").params.sourceId,
+        "archive"
+    );
+    assert.deepEqual(f.openedIndexers, [
+        { id: "catalog:torznab:archive:all", label: "Archive" },
+    ]);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    chooseSetting(f, "Archive");
+    chooseSetting(f, "Delete");
+    await flush();
+    assert.equal(
+        f.indexerCalls.filter((call) => call.op === "remove").length,
+        1
+    );
+    assert.equal(f.host.listArray[0].name, "Server address: Not configured");
+    f.host.listKeyHandler(f.host.keys.RETURN);
+    assert.equal(f.host.listArray[0].name, "Search: Torznab");
+});
+
+test("indexer address validation and native failures never leak private data", async () => {
+    const f = setup(null);
+    nativeIndexerSettings(f);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    for (const endpoint of [
+        "",
+        "file:///private/data",
+        "http://user:secret@127.0.0.1/api",
+        "http://127.0.0.1/api?apikey=secret",
+    ]) {
+        enterIndexerField(f, "Server address", endpoint);
+        chooseSetting(f, "Load");
+        assert.equal(
+            f.indexerCalls.some((call) => call.op === "configure"),
+            false
+        );
+    }
+    enterIndexerField(f, "Server address", "http://127.0.0.1:9696/1/api");
+    f.indexerReply = () =>
+        Promise.reject(new Error("private transport detail secret-key"));
+    chooseSetting(f, "Load");
+    await flush();
+    f.host.detailListAction();
+    assert.equal(f.host.listDetail.textContent, "Failed to load!");
+});
+
+test("native indexer operations retain their owned screen and reject disposal or policy changes", async () => {
+    for (const transition of ["none", "close", "replace", "kiosk"]) {
+        const f = setup(null);
+        nativeIndexerSettings(f);
+        const port = ownedAddonScreen(f);
+        let complete;
+        f.indexerReply = () =>
+            new Promise((resolve) => {
+                complete = resolve;
+            });
+        f.host.__ottEditProvider();
+        chooseSetting(f, "Prowlarr / Torznab");
+        await flush();
+        const call = f.indexerCalls[0];
+        assert.equal(call.signal.aborted, false);
+        if (transition === "close") port.closeList();
+        if (transition === "replace") {
+            f.host.listDataArray = [];
+            port.commitList();
+        }
+        if (transition === "kiosk") f.host.__ottKiosk = { enabled: () => true };
+        const count = f.renderCount;
+        complete({ schema: 1, sources: [] });
+        await flush();
+        if (transition === "none") {
+            assert(f.renderCount > count);
+            assert.equal(
+                f.host.listArray[0].name,
+                "Server address: Not configured"
+            );
+        } else {
+            assert.equal(f.renderCount, count);
+            assert.equal(f.indexerCalls.length, 1);
+            if (transition !== "kiosk") assert.equal(call.signal.aborted, true);
+        }
+    }
+});
+
+test("cancelled secret editors clear transient input and stale field callbacks cannot overwrite drafts", async () => {
+    const f = setup(null);
+    nativeIndexerSettings(f);
+    const port = ownedAddonScreen(f);
+    f.host.showEditKey = (key, secret) => {
+        f.edits.push({ key, password: secret });
+        port.openEditor();
+    };
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    chooseSetting(f, "Access key");
+    const cancelledSave = f.host.setEdit;
+    f.host.editvar = "discard-secret";
+    port.close("editor");
+    await flush();
+    assert.equal(f.host.editvar, "");
+    f.host.editvar = "late-secret";
+    cancelledSave();
+    assert.equal(f.host.listArray[1].name, "Access key: ");
+    chooseSetting(f, "Server address");
+    const stale = f.host.setEdit;
+    port.close("editor");
+    chooseSetting(f, "Label (optional)");
+    f.host.editvar = "My label";
+    stale();
+    port.close("editor");
+    assert.equal(f.host.listArray[0].name, "Server address: Not configured");
+});
+
+test("private editor commit reads the key before its owner is retired", async () => {
+    const f = setup(null);
+    nativeIndexerSettings(f);
+    const port = ownedAddonScreen(f);
+    f.host.showEditKey = () => port.openEditor();
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    chooseSetting(f, "Access key");
+    f.host.editvar = "saved-secret";
+    port.finishEditor(true, () => {});
+    await flush();
+    assert.equal(f.host.listArray[1].name, "Access key: ••••••••");
+    assert.equal(f.host.editvar, "");
+});

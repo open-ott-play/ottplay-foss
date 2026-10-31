@@ -602,6 +602,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) кирүү маалыматы",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV жөндөөлөрү",
+    "Label (optional)": "Аталышы (милдеттүү эмес)",
     "List created": "Тизме түзүлдү",
     "List deleted": "Тизме өчүрүлдү",
     "List location": "Тизмедеги орун",

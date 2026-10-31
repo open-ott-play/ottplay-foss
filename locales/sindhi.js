@@ -580,6 +580,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) رسائي جا تفصيل",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV جون سيٽنگون",
+    "Label (optional)": "نالو (اختياري)",
     "List created": "فهرست ٺهي وئي",
     "List deleted": "فهرست ڊهي وئي",
     "List location": "فهرست جي جاءِ",

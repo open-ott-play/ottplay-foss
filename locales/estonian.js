@@ -589,6 +589,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) juurdepääsuandmed",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV seaded",
+    "Label (optional)": "Nimi (valikuline)",
     "List created": "Loend loodud",
     "List deleted": "Nimekiri kustutatud",
     "List location": "Loendi positsioon",

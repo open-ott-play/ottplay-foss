@@ -595,6 +595,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Toegangsbesonderhede vir KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV-instellings",
+    "Label (optional)": "Etiket (opsioneel)",
     "List created": "Lys geskep",
     "List deleted": "Lys verwyder",
     "List location": "Lysposisie",

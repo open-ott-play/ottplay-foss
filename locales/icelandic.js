@@ -582,6 +582,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Aðgangsupplýsingar KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Stillingar fyrir KORONA TV",
+    "Label (optional)": "Heiti (valfrjálst)",
     "List created": "Listi búinn til",
     "List deleted": "Lista eytt",
     "List location": "Staðsetning lista",

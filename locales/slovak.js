@@ -600,6 +600,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Podrobnosti prístupu KBC (Kinoboom).",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV nastavenia",
+    "Label (optional)": "Názov (nepovinné)",
     "List created": "Zoznam vytvorený",
     "List deleted": "Zoznam odstránený",
     "List location": "Pozícia zoznamu",

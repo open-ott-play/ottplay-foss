@@ -593,6 +593,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) giriş məlumatları",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV ayarları",
+    "Label (optional)": "Etiket (istəyə bağlı)",
     "List created": "Siyahı yaradıldı",
     "List deleted": "Siyahı silindi",
     "List location": "Siyahının yeri",

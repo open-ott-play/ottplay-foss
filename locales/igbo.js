@@ -586,6 +586,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Nkọwa nnweta KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Ntọala KORONA TV",
+    "Label (optional)": "Aha (nhọrọ)",
     "List created": "Emepụtara ndepụta",
     "List deleted": "Ehichapụla ndepụta",
     "List location": "Ọnọdụ ndepụta",

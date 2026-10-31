@@ -10,9 +10,11 @@ const dom = new JSDOM(
 const h = dom.window,
     d = h.document,
     timers = [],
+    microtasks = [],
     listeners = new Map();
 h._ = (s) => s;
 h.setTimeout = (f) => timers.push(f);
+h.queueMicrotask = (f) => microtasks.push(f);
 h.$ = (node) => ({
     on(event, callback) {
         let map = listeners.get(node);
@@ -22,7 +24,10 @@ h.$ = (node) => ({
     },
 });
 function flush() {
-    while (timers.length) timers.shift()();
+    while (microtasks.length || timers.length) {
+        while (microtasks.length) microtasks.shift()();
+        if (timers.length) timers.shift()();
+    }
 }
 function show(id) {
     const node = d.getElementById(id);
@@ -112,11 +117,49 @@ assert.equal(
 );
 hide("listEdit");
 list.children[1].focus();
+// Keyboard users can enter an overlay before any row has DOM focus.
+// Returning to body would leave the visible list without a usable focus target.
+h.__ottAccessibility.select(list, 9, false);
+d.activeElement.blur();
+assert.equal(d.activeElement, d.body);
+show("listEdit");
+const keyboardEditor = d.getElementById("listEdit");
+listeners.get(keyboardEditor).hide();
+keyboardEditor.style.display = "none";
+assert.equal(
+    microtasks.length,
+    1,
+    "closed-editor focus returns before the next input task"
+);
+while (microtasks.length) microtasks.shift()();
+assert.equal(
+    d.activeElement,
+    list.children[1],
+    "body-origin editor returns to the selected row"
+);
 // An obsolete zero-delay open must not steal focus after dismissal.
 listeners.get(d.getElementById("listAbout")).show();
 listeners.get(d.getElementById("listAbout")).hide();
 flush();
 assert.equal(d.activeElement.textContent, "Nine");
+// Two editors can close in one dispatch, e.g. chained setup fields.
+// The first close must not restore an obsolete origin after the second close.
+list.children[0].focus();
+show("listEdit");
+listeners.get(keyboardEditor).hide();
+keyboardEditor.style.display = "none";
+list.children[1].focus();
+listeners.get(keyboardEditor).show();
+keyboardEditor.style.display = "block";
+keyboardEditor.querySelector("input").focus();
+listeners.get(keyboardEditor).hide();
+keyboardEditor.style.display = "none";
+flush();
+assert.equal(
+    d.activeElement,
+    list.children[1],
+    "latest closed editor owns focus restoration"
+);
 dom.window.close();
 console.log(
     "Classic accessibility: focus trap, nested return, labels, roving selection and stale-open checks passed"

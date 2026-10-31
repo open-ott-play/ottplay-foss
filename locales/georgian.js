@@ -595,6 +595,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) წვდომის დეტალები",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV პარამეტრები",
+    "Label (optional)": "სახელი (არასავალდებულო)",
     "List created": "შეიქმნა სია",
     "List deleted": "სია წაშლილია",
     "List location": "სიის პოზიცია",

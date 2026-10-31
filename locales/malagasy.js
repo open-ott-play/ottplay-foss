@@ -618,6 +618,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Mombamomba ny fidirana KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Fikirakirana KORONA TV",
+    "Label (optional)": "Anarana (tsy voatery)",
     "List created": "Voaforona ny lisitra",
     "List deleted": "Voafafa ny lisitra",
     "List location": "Toeran'ny lisitra",

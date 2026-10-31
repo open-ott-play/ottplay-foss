@@ -602,6 +602,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) maelezo ya kufikia",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV mipangilio",
+    "Label (optional)": "Jina (hiari)",
     "List created": "Orodha imeundwa",
     "List deleted": "Orodha imefutwa",
     "List location": "Nafasi ya orodha",

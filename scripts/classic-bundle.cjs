@@ -74,6 +74,7 @@ const CLASSIC_MODULES = [
     "build/ui/accessibility.js",
     "build/ui/live-recovery.js",
     "build/ui/interface-mode.js",
+    "build/ui/modern-actions.js",
     "build/ui/modern.js",
     "build/ui/index.js",
     "build/ui/subtitle-appearance.js",

@@ -589,6 +589,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) giriş maglumatlary",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV sazlamalary",
+    "Label (optional)": "At (hökmany däl)",
     "List created": "Sanaw döredildi",
     "List deleted": "Sanaw pozuldy",
     "List location": "Sanawdaky orun",

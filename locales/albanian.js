@@ -606,6 +606,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) detajet e aksesit",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Cilësimet KORONA TV",
+    "Label (optional)": "Etiketa (opsionale)",
     "List created": "Lista e krijuar",
     "List deleted": "Lista e fshirë",
     "List location": "Pozicioni në listë",

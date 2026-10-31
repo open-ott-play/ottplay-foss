@@ -37,23 +37,28 @@ card selection treatment and surface shapes.
 
 ## What changes
 
+- The library fills the window, with persistent navigation to the current
+  library, Favorites, categories, search, providers and settings. Available
+  navigation follows the same provider and access rules as Classic.
+- A selected-item header presents the title, artwork, collection and available
+  description above the catalogue. The old split-screen preview does not take
+  space away from the catalogue; playback continues in the same session.
 - Live channel catalogues use larger rows with a number, channel identity,
   logo when available, programme text and progress. The focused row and the
   playing channel have distinct indicators.
-- Media catalogues use a bounded poster grid. A card shows its title and
+- Media catalogues and mixed Favorites use a bounded poster grid. A card shows its title and
   available collection metadata. Missing or failed artwork leaves a readable
   title and a simple letter placeholder.
-- The shared preview and details remain connected to the same selected item.
-  Media descriptions, existing controls and their callbacks retain their
-  original ownership. Modern changes their presentation without constructing
-  a separate playback session.
-- Settings, categories, context menus, dialogs and the playback OSD receive
-  coordinated surface styling. Their actions and input handling remain shared
-  with Classic.
+- Settings and categories use a spacious single-column list inside the same
+  navigation shell. Search and text entry use a scrollable editor with visible
+  confirmation and cancellation controls. Context menus, dialogs, track
+  selection and the playback OSD use the same surfaces and focus treatment.
+- Media descriptions, existing controls and their callbacks retain their
+  original ownership. Actions and input handling remain shared with Classic.
 
-The initial Modern release keeps the established preview-and-catalogue
-structure. It does not add a new home carousel, recommendation service or a
-second media library.
+This is a new presentation of the existing libraries, not a separate library
+or recommendation service. System file pickers and operating-system permission
+dialogs retain their native appearance.
 
 ## Navigation and shared state
 
@@ -62,6 +67,12 @@ column count. At list boundaries the selection stays within the available
 items. Enter/OK activates the selected item through the same action as Classic.
 Back, category selection, search and context actions retain their existing
 behavior. Channel catalogues retain their linear navigation.
+
+Left from the first grid column enters the navigation rail. Up/Down select a
+navigation action and Right returns to the selected catalogue item. Clicking
+a navigation action uses the same routes as keyboard operation. An open text
+editor or confirmation dialog keeps input ownership until it closes; covered
+navigation cannot change the provider behind it.
 
 The full-screen video shortcuts are unchanged: the presentation mode does not
 remap volume, seeking, previous/next or Favorites. Kiosk restrictions remain in
@@ -81,7 +92,9 @@ for every item in a large local, Plex or VPortal catalogue. Existing background
 catalogue loading and source availability rules still apply.
 
 Column and row capacity adapt to the available catalogue area and interface
-font scale. Modern does not overwrite the saved Classic row count. The
+font scale, with at most 24 cards mounted at once. On narrow windows the rail
+becomes a compact horizontal navigation bar; text editors and dialogs remain
+scrollable. Modern does not overwrite the saved Classic row count. The
 existing font family and **Font size, %** setting continue to apply; subtitle
 styling remains separate. Focus decoration avoids layout-changing animation,
 and the small decoration transitions are disabled when the platform requests

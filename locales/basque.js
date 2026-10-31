@@ -601,6 +601,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) sarbide-datuak",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV ezarpenak",
+    "Label (optional)": "Etiketa (aukerakoa)",
     "List created": "Zerrenda sortuta",
     "List deleted": "Zerrenda ezabatuta",
     "List location": "Zerrendako kokapena",

@@ -600,6 +600,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) kirish maʼlumotlari",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV sozlamalari",
+    "Label (optional)": "Nomi (ixtiyoriy)",
     "List created": "Roʻyxat yaratildi",
     "List deleted": "Roʻyxat oʻchirildi",
     "List location": "Roʻyxat joylashuvi",

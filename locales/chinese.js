@@ -558,6 +558,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) 访问详细信息",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV设定",
+    "Label (optional)": "名称（可选）",
     "List created": "列表已创建",
     "List deleted": "列表已删除",
     "List location": "列表位置",

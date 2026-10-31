@@ -603,6 +603,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Dettalji tal-aċċess KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Issettjar ta’ KORONA TV",
+    "Label (optional)": "Tikketta (mhux obbligatorja)",
     "List created": "Il-lista nħolqot",
     "List deleted": "Il-lista tħassret",
     "List location": "Pożizzjoni fil-lista",

@@ -564,6 +564,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "የKBC (Kinoboom) መዳረሻ መረጃ",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "የKORONA TV ቅንብሮች",
+    "Label (optional)": "መለያ (አማራጭ)",
     "List created": "ዝርዝር ተፈጥሯል",
     "List deleted": "ዝርዝር ተሰርዟል",
     "List location": "የዝርዝር ቦታ",

@@ -586,6 +586,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Thông tin truy cập KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Cài đặt KORONA TV",
+    "Label (optional)": "Nhãn (không bắt buộc)",
     "List created": "Đã tạo danh sách",
     "List deleted": "Đã xóa danh sách",
     "List location": "Vị trí danh sách",

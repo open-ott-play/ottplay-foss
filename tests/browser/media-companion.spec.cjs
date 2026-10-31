@@ -13,6 +13,7 @@ for (const preview of [0, 1, 2]) {
         const requests = [];
         const errors = [];
         let engineCalls = 0;
+        let categoryResponse = null;
         page.on("pageerror", (error) => errors.push(error.message));
         await context.routeWebSocket("**/*", (socket) => socket.close());
         await context.route("**/*", async (route) => {
@@ -44,7 +45,8 @@ for (const preview of [0, 1, 2]) {
                     releaseInfo: "2026",
                     type: "movie",
                 });
-                if (resource === "manifest.json")
+                if (resource === "manifest.json") {
+                    if (categoryResponse) await categoryResponse;
                     return route.fulfill({
                         headers,
                         json: {
@@ -66,6 +68,7 @@ for (const preview of [0, 1, 2]) {
                             types: ["movie"],
                         },
                     });
+                }
                 if (resource.startsWith("meta/movie/"))
                     return route.fulfill({
                         headers,
@@ -141,12 +144,22 @@ for (const preview of [0, 1, 2]) {
             await page.evaluate(() => localStorage.getItem("torrentcfg"))
         ).toBeNull();
         await page.waitForFunction(() => window.listArray.length === 21);
-        await page.evaluate(() =>
-            window.__ottActiveProviderDriver.catalogBrowser.categories()
-        );
-        expect(await page.evaluate(() => window.listArray)).toContain(
-            "Favorites"
-        );
+        let releaseCategories;
+        categoryResponse = new Promise((resolve) => {
+            releaseCategories = resolve;
+        });
+        try {
+            await page.evaluate(() =>
+                window.__ottActiveProviderDriver.catalogBrowser.categories()
+            );
+            expect(await page.evaluate(() => window.listArray)).toEqual([]);
+        } finally {
+            releaseCategories();
+            categoryResponse = null;
+        }
+        await expect
+            .poll(() => page.evaluate(() => window.listArray))
+            .toContain("Favorites");
         await page.evaluate(() => {
             window.__ottActiveProviderDriver.catalogBrowser.search();
             window.editvar = "Матрица";
@@ -1001,8 +1014,14 @@ for (const kind of [
             await expect(page.locator("#list")).toContainText(
                 "Add Stremio addon…"
             );
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
+            const addonRow = await page.evaluate(() =>
+                window.listArray.findIndex(
+                    (row) => row.name === "Add Stremio addon…"
+                )
+            );
+            expect(addonRow).toBeGreaterThanOrEqual(0);
+            for (let row = 0; row < addonRow; row++)
+                await page.keyboard.press("ArrowDown");
             await expect(
                 page.locator("#list .item.ott-selected")
             ).toContainText("Add Stremio addon…");

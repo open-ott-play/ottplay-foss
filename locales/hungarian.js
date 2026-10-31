@@ -598,6 +598,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) hozzáférési adatok",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV beállításai",
+    "Label (optional)": "Címke (nem kötelező)",
     "List created": "Lista létrehozva",
     "List deleted": "Lista törölve",
     "List location": "Lista helye",

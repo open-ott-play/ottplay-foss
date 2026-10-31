@@ -595,6 +595,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) hûrguliyên gihîştinê",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Mîhengên KORONA TV",
+    "Label (optional)": "Nav (ne mecbûrî)",
     "List created": "Lîste hat afirandin",
     "List deleted": "Lîste hat jêbirin",
     "List location": "Cihê lîsteyê",

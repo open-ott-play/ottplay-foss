@@ -1414,28 +1414,345 @@ body {
     touch-action: pan-y;
 }
 
-/* Modern is an opt-in presentation of the shared catalogue and controls.
-   Geometry stays with the paged renderer; themes, font scale and OSD opacity
-   retain their existing owners. No artwork or CSS is imported from another app. */
-body.interface-modern #listCaption,
-body.interface-modern #listPodval {
-    letter-spacing: 0;
-    text-shadow: none;
-    background-image: linear-gradient(
-        110deg,
-        rgba(255, 255, 255, 0.035),
-        transparent
-    );
+/* Modern owns presentation geometry; the shared screen port still owns every
+   selection, action, source and decoder. All overrides leave Classic intact. */
+body.interface-modern {
+    --modern-rail-width: 15vw;
+    --modern-gutter: 2.5vw;
+    --modern-header-height: 11vh;
+    --modern-footer-height: 10vh;
+    --modern-hero-height: 28vh;
+    --modern-surface: #111318;
+    --modern-panel: #1c1f26;
+    --modern-text: #f5f5f7;
+    --modern-muted: #b5b8c3;
+    --modern-accent: #e9ad36;
+}
+body.interface-modern #list {
+    inset: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    color: var(--modern-text) !important;
+    background: var(--modern-surface) !important;
 }
 body.interface-modern #listCaption {
-    border-radius: 14px 14px 0 0;
-}
-body.interface-modern #listPodval {
-    border-radius: 0 0 14px 14px;
+    top: 0 !important;
+    right: 12vw !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    display: block;
+    height: var(--modern-header-height) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.15em !important;
+    font-weight: 600;
+    line-height: var(--modern-header-height) !important;
+    color: var(--modern-text) !important;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+    text-shadow: none;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0;
 }
 body.interface-modern #listTime {
-    font-weight: normal;
+    top: 0 !important;
+    right: var(--modern-gutter) !important;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 10vw !important;
+    height: var(--modern-header-height) !important;
+    padding: 0 !important;
+    font-size: 0.85em !important;
+    font-weight: 400;
+    color: var(--modern-muted) !important;
     text-shadow: none;
+}
+body.interface-modern #listPodval {
+    right: var(--modern-gutter) !important;
+    bottom: 0 !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 1em;
+    align-content: flex-start;
+    align-items: center;
+    height: var(--modern-footer-height) !important;
+    padding: 0.4em 0 !important;
+    overflow: auto;
+    font-size: 0.78em !important;
+    line-height: 1.5 !important;
+    color: var(--modern-muted) !important;
+    text-shadow: none;
+    background: var(--modern-surface) !important;
+    border: 0 !important;
+    border-top: 1px solid #30333d !important;
+    border-radius: 0;
+}
+body.interface-modern #listPodval > span {
+    display: inline-flex;
+    gap: 0.25em;
+    align-items: center;
+    min-height: 2.4em;
+    white-space: nowrap;
+}
+body.interface-modern #modernShell {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+body.interface-modern #modernRail {
+    position: absolute;
+    inset: 0 auto 0 0;
+    box-sizing: border-box;
+    width: var(--modern-rail-width);
+    padding: 2.5vh 0.85vw;
+    overflow: auto;
+    pointer-events: auto;
+    background: #191b21;
+    border-right: 1px solid #2c2f38;
+}
+body.interface-modern .modern-brand {
+    display: flex;
+    align-items: center;
+    min-height: 7vh;
+    padding: 0 0.7em;
+    margin-bottom: 2vh;
+    font-size: 0.95em;
+    font-weight: 700;
+    color: var(--modern-text);
+    letter-spacing: -0.025em;
+}
+body.interface-modern .modern-rail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5vh;
+}
+body.interface-modern .modern-rail-action {
+    box-sizing: border-box;
+    display: flex;
+    gap: 0.65em;
+    align-items: center;
+    width: 100%;
+    min-height: 6.2vh;
+    padding: 0.75em 0.7em;
+    overflow: hidden;
+    font: inherit;
+    font-size: 0.72em;
+    line-height: 1.3;
+    color: var(--modern-muted);
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9px;
+}
+body.interface-modern .modern-rail-icon {
+    flex: 0 0 1.1em;
+    font-size: 1.5em;
+    text-align: center;
+}
+body.interface-modern .modern-rail-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body.interface-modern .modern-rail-action:hover,
+body.interface-modern .modern-rail-action[aria-current="page"] {
+    color: var(--modern-text);
+    background: #30343f;
+}
+body.interface-modern .modern-rail-action:focus,
+body.interface-modern .modern-rail-action.ott-selected {
+    color: #17191f;
+    outline: 0;
+    background: var(--modern-text);
+    border-color: var(--modern-text);
+}
+body.interface-modern .modern-rail-action:disabled {
+    cursor: default;
+    opacity: 0.4;
+}
+body.interface-modern #modernHero {
+    position: absolute;
+    top: var(--modern-header-height);
+    right: var(--modern-gutter);
+    left: calc(var(--modern-rail-width) + var(--modern-gutter));
+    box-sizing: border-box;
+    display: flex;
+    gap: 2vw;
+    height: var(--modern-hero-height);
+    padding: 1.5vh 0 2vh;
+    overflow: hidden;
+}
+body.interface-modern #modernHero[hidden] {
+    display: none;
+}
+body.interface-modern .modern-hero-art {
+    flex: 0 0 auto;
+    width: 15vh;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(145deg, #3b414e, #1c222c);
+    border-radius: 10px;
+}
+body.interface-modern .modern-hero-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+body.interface-modern #modernHero:not(.modern-hero-with-art) .modern-hero-art {
+    display: none;
+}
+body.interface-modern .modern-hero-copy {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+body.interface-modern .modern-eyebrow {
+    display: block;
+    flex: 0 0 auto;
+    margin-bottom: 0.4em;
+    font-size: 0.6em;
+    font-weight: 600;
+    color: var(--modern-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+body.interface-modern .modern-hero-title {
+    display: -webkit-box;
+    flex: 0 1 auto;
+    -webkit-box-orient: vertical;
+    min-height: 1.12em;
+    margin: 0 0 0.25em;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    font-size: 1.35em;
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+}
+body.interface-modern .modern-hero-meta,
+body.interface-modern .modern-hero-summary {
+    margin: 0.45em 0 0;
+    overflow: hidden;
+    font-size: 0.72em;
+    line-height: 1.4;
+    color: var(--modern-muted);
+}
+body.interface-modern .modern-hero-meta {
+    flex: 0 0 auto;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.interface-modern .modern-hero-summary {
+    display: -webkit-box;
+    flex: 1 1 0;
+    -webkit-box-orient: vertical;
+    min-height: 1.4em;
+    -webkit-line-clamp: 3;
+}
+body.interface-modern #modernLibraryHeading {
+    position: absolute;
+    top: calc(var(--modern-header-height) + var(--modern-hero-height));
+    right: var(--modern-gutter);
+    left: calc(var(--modern-rail-width) + var(--modern-gutter));
+    display: flex;
+    gap: 1em;
+    align-items: center;
+    justify-content: space-between;
+    height: 5vh;
+    overflow: hidden;
+    font-size: 0.65em;
+    color: var(--modern-muted);
+}
+body.interface-modern .modern-library-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.interface-modern .modern-library-count {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+body.interface-modern #listIn {
+    top: var(--modern-header-height) !important;
+    right: var(--modern-gutter) !important;
+    bottom: calc(var(--modern-footer-height) + 1vh) !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    box-sizing: border-box;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+}
+body.interface-modern .modern-screen-catalog #listIn {
+    top: calc(
+        var(--modern-header-height) +
+        var(--modern-hero-height) +
+        5vh
+    ) !important;
+}
+body.interface-modern .modern-screen-menu #modernHero,
+body.interface-modern .modern-screen-menu #modernLibraryHeading {
+    display: none;
+}
+body.interface-modern .modern-screen-menu #listIn {
+    right: 29vw !important;
+}
+body.interface-modern #listDetail {
+    top: var(--modern-header-height) !important;
+    right: var(--modern-gutter) !important;
+    bottom: var(--modern-footer-height) !important;
+    left: auto !important;
+    box-sizing: border-box;
+    width: 24vw !important;
+    height: auto !important;
+    padding: 0.8em !important;
+    overflow: auto;
+    font-size: 0.78em !important;
+    color: var(--modern-muted) !important;
+    background: var(--modern-panel);
+    border: 0 !important;
+    border-radius: 12px;
+}
+body.interface-modern .modern-screen-catalog #listDetail {
+    visibility: hidden;
+    pointer-events: none;
+}
+body.interface-modern .modern-screen-catalog.modern-empty #listDetail {
+    top: calc(var(--modern-header-height) + 3vh) !important;
+    right: var(--modern-gutter) !important;
+    bottom: calc(var(--modern-footer-height) + 2vh) !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    visibility: visible;
+    width: auto !important;
+    padding: 1.5em !important;
+    color: var(--modern-text) !important;
+    pointer-events: auto;
+}
+body.interface-modern .modern-has-controls #listDetail {
+    top: auto !important;
+    right: var(--modern-gutter) !important;
+    bottom: var(--modern-footer-height) !important;
+    z-index: 4;
+    padding: 0 !important;
+    overflow: visible;
+    background: transparent;
+}
+body.interface-modern .modern-has-controls #mediaPlaybackControls {
+    visibility: visible;
+    pointer-events: auto;
+    background: var(--modern-panel);
+    border-radius: 8px;
 }
 body.interface-modern #listIn.modern-catalog {
     box-sizing: border-box;
@@ -1674,22 +1991,108 @@ body.interface-modern #listDetail .ott-channel-thumbnail {
 /* Settings, categories, editor, track menus and transient dialogs keep their
    shared focus/input implementation and their measured row geometry. */
 body.interface-modern #listIn:not(.modern-catalog) .item {
+    box-sizing: border-box;
+    padding: 0.35em 0.8em;
+    color: var(--modern-text);
     text-shadow: none;
+    background: rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid var(--modern-surface);
     border-radius: 9px;
     box-shadow: none;
 }
 body.interface-modern #listIn:not(.modern-catalog) .item.ott-selected {
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    color: #15171d !important;
+    background: #f5f5f7 !important;
+    box-shadow: none;
+}
+body.interface-modern #listIn .item.ott-selected .item-value {
+    color: inherit !important;
 }
 body.interface-modern #listAbout,
 body.interface-modern #listEdit {
-    border-radius: 12px;
+    top: var(--modern-header-height) !important;
+    right: var(--modern-gutter) !important;
+    bottom: var(--modern-footer-height) !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    z-index: 9;
+    box-sizing: border-box;
+    width: auto !important;
+    height: auto !important;
+    padding: 1.5em !important;
+    overflow: auto;
+    line-height: 1.45;
+    color: var(--modern-text) !important;
+    background: var(--modern-panel) !important;
+    border: 1px solid #383c48;
+    border-radius: 14px;
+}
+body.interface-modern #listEdit .osk-cap {
+    max-height: none;
+    margin-bottom: 1em;
+    font-size: 1em !important;
+    line-height: 1.35;
+    letter-spacing: 0;
+    text-shadow: none;
+}
+body.interface-modern #listEdit > br + br {
+    display: none;
+}
+body.interface-modern #listEdit input#editvar {
+    width: 100% !important;
+    padding: 0.65em;
+    font-size: 1em !important;
+    line-height: 1.5;
+    background: #0e1015;
+    border-color: #686e7d;
+    border-radius: 9px;
+}
+body.interface-modern #listEdit input#editvar:focus {
+    outline: 2px solid var(--modern-accent);
+    outline-offset: 2px;
+}
+body.interface-modern #listEdit button,
+body.interface-modern #listEdit [role="button"] {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-height: 2.6em;
+    padding: 0.5em 0.9em;
+    margin-top: 0.5em;
+    font: inherit;
+    line-height: 1.4;
+    vertical-align: middle;
+    color: var(--modern-text);
+    white-space: normal;
+    background: #303540;
+    border: 1px solid #555b69;
+    border-radius: 8px;
+}
+body.interface-modern #listEdit button:focus,
+body.interface-modern #listEdit [role="button"]:focus {
+    outline: 2px solid var(--modern-accent);
+    outline-offset: 2px;
 }
 body.interface-modern #listPopUp,
 body.interface-modern #dialogbox {
+    box-sizing: border-box;
+    max-width: 88vw !important;
+    max-height: 80vh !important;
+    padding: 1.2em !important;
+    overflow: auto;
+    line-height: 1.5;
+    color: var(--modern-text) !important;
     text-shadow: none;
+    background: var(--modern-panel) !important;
+    border: 1px solid #555b69 !important;
     border-radius: 16px;
-    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+body.interface-modern #listPopUp {
+    bottom: calc(var(--modern-footer-height) + 1vh) !important;
+    left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+    z-index: 10;
+    margin: 0;
 }
 body.interface-modern .btn,
 body.interface-modern .osk-key {
@@ -1698,17 +2101,199 @@ body.interface-modern .osk-key {
     box-shadow: none;
 }
 body.interface-modern #info1 {
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+    right: 2vw !important;
+    bottom: 2vh !important;
+    left: 2vw !important;
+    box-sizing: border-box;
+    width: auto !important;
+    max-height: 72vh;
+    padding: 1em 1.25em !important;
+    overflow: auto;
+    color: var(--modern-text) !important;
+    background: rgba(17, 19, 24, 0.94) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    box-shadow: 0 12px 38px rgba(0, 0, 0, 0.35);
+}
+body.interface-modern #info1 #channel {
+    box-sizing: border-box;
+    width: calc(100% - 5em) !important;
+    padding-right: 0;
+    padding-left: 1em;
+}
+body.interface-modern #info1 #picon {
+    width: 5em !important;
+    height: 5em !important;
+    border: 0;
+    border-radius: 8px;
+}
+body.interface-modern #channel_name {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+body.interface-modern #begin_time,
+body.interface-modern #nbegin_time {
+    width: 5.25em !important;
+    font-size: inherit !important;
+}
+body.interface-modern #end_time,
+body.interface-modern #nend_time {
+    width: 3.25em !important;
+    font-size: inherit !important;
+}
+body.interface-modern #programm_name,
+body.interface-modern #nprogramm_name {
+    width: calc(100% - 9.5em) !important;
+}
+body.interface-modern #channel_number,
+body.interface-modern #data {
+    color: var(--modern-muted);
 }
 body.interface-modern #progress_div {
+    margin-top: 0.55em;
+    background: rgba(255, 255, 255, 0.16) !important;
     border-radius: 6px;
+}
+body.interface-modern #progress {
+    background: var(--modern-accent) !important;
 }
 body.interface-modern #numprog,
 body.interface-modern #permanentTime,
 body.interface-modern #liveRecoveryStatus {
     text-shadow: none;
     border-radius: 10px;
+}
+body.interface-modern #numprog {
+    box-sizing: border-box;
+    max-width: 90vw;
+    max-height: 70vh;
+    padding: 0.6em;
+    overflow: auto;
+    color: var(--modern-text) !important;
+    background: var(--modern-panel) !important;
+    border: 1px solid #555b69;
+}
+body.interface-modern #numprog [aria-pressed] {
+    padding: 0.5em 0.65em;
+    font-size: 0.9em;
+    line-height: 1.3;
+    color: var(--modern-text) !important;
+    background: transparent !important;
+    border-radius: 6px;
+}
+body.interface-modern #numprog [aria-pressed="true"] {
+    color: var(--modern-surface) !important;
+    background: var(--modern-text) !important;
+}
+@media (max-width: 800px) {
+    body.interface-modern {
+        --modern-rail-width: 70px;
+        --modern-gutter: 18px;
+    }
+    body.interface-modern .modern-brand,
+    body.interface-modern .modern-rail-label {
+        display: none;
+    }
+    body.interface-modern .modern-rail-action {
+        justify-content: center;
+        min-height: 48px;
+    }
+    body.interface-modern .modern-rail-icon {
+        font-size: 22px;
+    }
+    body.interface-modern .modern-screen-menu #listIn {
+        right: var(--modern-gutter) !important;
+        bottom: calc(var(--modern-footer-height) + 24vh) !important;
+    }
+    body.interface-modern .modern-screen-menu #listDetail {
+        top: auto !important;
+        right: var(--modern-gutter) !important;
+        bottom: var(--modern-footer-height) !important;
+        left: calc(var(--modern-rail-width) + var(--modern-gutter)) !important;
+        visibility: visible;
+        width: auto !important;
+        height: 22vh !important;
+        pointer-events: auto;
+    }
+}
+@media (max-width: 600px), (orientation: portrait) {
+    body.interface-modern {
+        --modern-rail-width: 0px;
+        --modern-gutter: 16px;
+        --modern-header-height: 15vh;
+        --modern-footer-height: 13vh;
+        --modern-hero-height: 24vh;
+    }
+    body.interface-modern #modernRail {
+        right: 0;
+        bottom: auto;
+        z-index: 9;
+        width: 100%;
+        height: 7vh;
+        min-height: 44px;
+        padding: 0 8px;
+        overflow: auto hidden;
+        border-right: 0;
+        border-bottom: 1px solid #30343f;
+    }
+    body.interface-modern .modern-rail-actions {
+        flex-direction: row;
+        gap: 3px;
+        justify-content: space-between;
+        height: 100%;
+    }
+    body.interface-modern .modern-rail-action {
+        flex: 0 0 auto;
+        width: 44px;
+        min-height: 40px;
+        padding: 4px;
+    }
+    body.interface-modern .modern-brand,
+    body.interface-modern .modern-rail-label {
+        display: none;
+    }
+    body.interface-modern #listCaption {
+        top: 7vh !important;
+        right: var(--modern-gutter) !important;
+        height: 8vh !important;
+        font-size: 1em !important;
+        line-height: 8vh !important;
+    }
+    body.interface-modern #listTime {
+        display: none;
+    }
+    body.interface-modern .modern-hero-title {
+        font-size: 1.25em;
+    }
+    body.interface-modern .modern-hero-art {
+        width: 10vh;
+    }
+    body.interface-modern .modern-hero-summary {
+        -webkit-line-clamp: 2;
+    }
+    body.interface-modern #listEdit,
+    body.interface-modern #listAbout {
+        padding: 1em !important;
+    }
+    body.interface-modern #listPodval {
+        gap: 0.2em 0.65em;
+        font-size: 0.7em !important;
+    }
+    body.interface-modern #listDetail {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    body.interface-modern #info1 {
+        padding: 0.75em !important;
+        font-size: 0.8em;
+    }
+    body.interface-modern #info1 #channel {
+        width: 100% !important;
+        padding-left: 0;
+    }
+    body.interface-modern #info1 #picon {
+        display: none;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
     body.interface-modern #listIn .modern-card,

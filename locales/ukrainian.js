@@ -590,6 +590,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "Дані доступу KBC (Kinoboom)",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "Налаштування KORONA TV",
+    "Label (optional)": "Назва (необов’язково)",
     "List created": "Список створено",
     "List deleted": "Список видалено",
     "List location": "Розташування списку",

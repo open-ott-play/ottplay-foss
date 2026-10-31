@@ -1670,6 +1670,7 @@ function mountTorrentProvider(
         editorDisposed = false,
         cancelMetadata: (() => void) | null = null,
         cancelAddon: (() => void) | null = null,
+        cancelIndexer: (() => void) | null = null,
         attached: any = null;
     function locked(): boolean {
         return (
@@ -1686,6 +1687,8 @@ function mountTorrentProvider(
         cancelMetadata = null;
         if (cancelAddon) cancelAddon();
         cancelAddon = null;
+        if (cancelIndexer) cancelIndexer();
+        cancelIndexer = null;
     }
     function identifier(): string {
         if (host.crypto && typeof host.crypto.randomUUID === "function")
@@ -1712,6 +1715,7 @@ function mountTorrentProvider(
             busy = false,
             rendering = false,
             screenOwner: any = null,
+            fieldRevision = 0,
             renderItem: any,
             originalRaw = host.stbGetItem("torrentcfg");
         function current(): boolean {
@@ -1762,18 +1766,44 @@ function mountTorrentProvider(
         function input(
             caption: string,
             value: string,
-            accept: (value: string) => void
+            accept: (value: string) => void,
+            secret = false
         ): void {
             if (!current()) return;
+            var field = ++fieldRevision,
+                editor: any = null;
             host.editCaption = caption;
             host.editvar = value;
             var accepted = false;
             host.setEdit = function () {
-                if (accepted || !current()) return;
+                if (
+                    accepted ||
+                    field !== fieldRevision ||
+                    !current() ||
+                    (editor &&
+                        !host.__ottClassicScreenPort.acceptsEditorSave(editor))
+                )
+                    return;
                 accepted = true;
-                accept(String(host.editvar || "").trim());
+                var entered = String(host.editvar || "").trim();
+                if (secret) host.editvar = "";
+                accept(entered);
             };
-            host.showEditKey(host.keys.ENTER);
+            host.showEditKey(host.keys.ENTER, secret);
+            editor = host.__ottClassicScreenPort?.owner("editor");
+            if (secret)
+                editor?.own(function () {
+                    // The editor retires its owner before calling Save. Wait
+                    // for that synchronous commit before clearing a cancelled value.
+                    Promise.resolve().then(function () {
+                        if (
+                            !accepted &&
+                            fieldRevision === field &&
+                            !host.__ottClassicScreenPort?.owner("editor")
+                        )
+                            host.editvar = "";
+                    });
+                });
         }
         function inspect(value: any, entry: any, replace: boolean): void {
             busy = true;
@@ -2286,6 +2316,388 @@ function mountTorrentProvider(
                 },
             ]);
         }
+        function indexerFailure(error: any): string {
+            var code = String(error?.message || "");
+            if (
+                /^(torznab_invalid_source|companion_endpoint_invalid)$/.test(
+                    code
+                )
+            )
+                return host._(
+                    "Enter a server address without spaces or a fragment."
+                );
+            if (/^(torznab_source_limit|torznab_store_limit)$/.test(code))
+                return host._("Torrent source limit reached.");
+            return host._("Failed to load!");
+        }
+        function indexerCall(
+            operation: (client: any, signal: any) => Promise<any>,
+            complete: (result: any) => void,
+            failed: (message: string) => void,
+            cancel: () => void
+        ): void {
+            if (!current() || busy) return;
+            var pending = true,
+                controller = host.AbortController
+                    ? new host.AbortController()
+                    : null;
+            busy = true;
+            cancelIndexer = function () {
+                if (!pending) return;
+                pending = false;
+                busy = false;
+                controller?.abort();
+            };
+            render(
+                host._("Loading..."),
+                [{ action: cancel, cancel: true, name: host._("Cancel") }],
+                cancel
+            );
+            Promise.resolve()
+                .then(function () {
+                    if (!pending || !current()) return null;
+                    return host.__ottMediaCompanion.ensure(true);
+                })
+                .then(function (client: any) {
+                    if (!client || !pending || !current()) return null;
+                    return operation(client, controller?.signal);
+                })
+                .then(
+                    function (result: any) {
+                        if (!pending) return;
+                        pending = false;
+                        busy = false;
+                        cancelIndexer = null;
+                        if (current()) complete(result);
+                    },
+                    function (error: any) {
+                        if (!pending) return;
+                        pending = false;
+                        busy = false;
+                        cancelIndexer = null;
+                        if (current()) failed(indexerFailure(error));
+                    }
+                );
+        }
+        function cancelIndexers(next: () => void): void {
+            if (cancelIndexer) cancelIndexer();
+            cancelIndexer = null;
+            next();
+        }
+        function openIndexer(source: any): void {
+            if (!current()) return;
+            if (!host.saveSettings?.({ torrentDiscoveryMode: "local" })) {
+                render(host._("Settings could not be saved"));
+                return;
+            }
+            stop();
+            if (
+                !driver.catalogBrowser?.open(
+                    "catalog:torznab:" + source.id + ":all",
+                    source.label
+                )
+            )
+                host.loadChannels();
+        }
+        function loadIndexer(source: any): void {
+            indexerCall(
+                function (client, signal) {
+                    return client.torznab(
+                        "caps",
+                        { sourceId: source.id },
+                        signal
+                    );
+                },
+                function () {
+                    openIndexer(source);
+                },
+                function (message) {
+                    indexerActions(source, message);
+                },
+                function () {
+                    cancelIndexers(function () {
+                        indexerActions(source);
+                    });
+                }
+            );
+        }
+        function indexerForm(source?: any): void {
+            // Addresses and keys are never read back from the private native store.
+            // Replacing an existing source requires explicitly entering them again.
+            var draft = { endpoint: "", key: "", label: source?.label || "" },
+                sourceId =
+                    source?.id ||
+                    "torznab-" +
+                        identifier()
+                            .toLowerCase()
+                            .replace(/[^a-z0-9-]/g, "")
+                            .slice(0, 55);
+            function leave(): void {
+                draft.key = "";
+                draft.endpoint = "";
+                cancelIndexers(function () {
+                    if (source) showIndexers();
+                    else render();
+                });
+            }
+            function saveIndexer(): void {
+                if (!current()) return;
+                try {
+                    var url = new URL(draft.endpoint);
+                    if (
+                        !/^https?:$/.test(url.protocol) ||
+                        !url.hostname ||
+                        url.username ||
+                        url.password ||
+                        url.search ||
+                        url.hash ||
+                        /[\s\x00-\x1f\x7f]/.test(draft.endpoint) ||
+                        draft.endpoint.length > 4096
+                    )
+                        throw new Error("address");
+                } catch (_) {
+                    form(
+                        host._(
+                            "Use HTTP or HTTPS without a username or password in the address."
+                        )
+                    );
+                    return;
+                }
+                if (
+                    /[\x00-\x1f\x7f]/.test(draft.key + draft.label) ||
+                    draft.key.length > 2048 ||
+                    draft.label.length > 128
+                ) {
+                    form(host._("Invalid setting"));
+                    return;
+                }
+                var params = {
+                    apiKey: draft.key,
+                    endpoint: draft.endpoint,
+                    label: draft.label || "Prowlarr / Torznab",
+                    sourceId: sourceId,
+                };
+                indexerCall(
+                    function (client, signal) {
+                        return client
+                            .torznab("configure", params, signal)
+                            .then(function (result: any) {
+                                params.apiKey = "";
+                                draft.key = "";
+                                host.__ottTorznabRevision =
+                                    (host.__ottTorznabRevision || 0) + 1;
+                                return result;
+                            });
+                    },
+                    function (result) {
+                        if (!result?.source || result.source.id !== sourceId) {
+                            form(host._("Failed to load!"));
+                            return;
+                        }
+                        loadIndexer(result.source);
+                    },
+                    function (message) {
+                        params.apiKey = "";
+                        form(message);
+                    },
+                    leave
+                );
+            }
+            function form(message?: string): void {
+                render(
+                    message || "",
+                    [
+                        {
+                            action: function () {
+                                input(
+                                    host._("Server address"),
+                                    draft.endpoint,
+                                    function (value) {
+                                        draft.endpoint = value;
+                                        form();
+                                    }
+                                );
+                            },
+                            name:
+                                host._("Server address") +
+                                ": " +
+                                (draft.endpoint || host._("Not configured")),
+                        },
+                        {
+                            action: function () {
+                                input(
+                                    host._("Access key"),
+                                    draft.key,
+                                    function (value) {
+                                        draft.key = value;
+                                        form();
+                                    },
+                                    true
+                                );
+                            },
+                            name:
+                                host._("Access key") +
+                                ": " +
+                                (draft.key ? "••••••••" : ""),
+                        },
+                        {
+                            action: function () {
+                                input(
+                                    host._("Label (optional)"),
+                                    draft.label,
+                                    function (value) {
+                                        draft.label = value;
+                                        form();
+                                    }
+                                );
+                            },
+                            name:
+                                host._("Label (optional)") + ": " + draft.label,
+                        },
+                        { action: saveIndexer, name: host._("Load") },
+                        { action: leave, name: host._("Cancel") },
+                    ],
+                    leave
+                );
+                host.listCaption.textContent = "Prowlarr / Torznab";
+            }
+            form();
+        }
+        function indexerActions(source: any, message?: string): void {
+            render(
+                message,
+                [
+                    {
+                        action: function () {
+                            loadIndexer(source);
+                        },
+                        name: host._("Load"),
+                    },
+                    {
+                        action: function () {
+                            indexerForm(source);
+                        },
+                        name: host._("Replace"),
+                    },
+                    {
+                        action: function () {
+                            indexerCall(
+                                function (client, signal) {
+                                    return client.torznab(
+                                        "remove",
+                                        { sourceId: source.id },
+                                        signal
+                                    );
+                                },
+                                function () {
+                                    host.__ottTorznabRevision =
+                                        (host.__ottTorznabRevision || 0) + 1;
+                                    showIndexers();
+                                },
+                                function (error) {
+                                    indexerActions(source, error);
+                                },
+                                function () {
+                                    cancelIndexers(function () {
+                                        indexerActions(source);
+                                    });
+                                }
+                            );
+                        },
+                        name: host._("Delete"),
+                    },
+                    {
+                        action: function () {
+                            showIndexers();
+                        },
+                        name: host._("Back"),
+                    },
+                ],
+                function () {
+                    showIndexers();
+                }
+            );
+            host.listCaption.textContent = source.label;
+        }
+        function showIndexers(load = false): void {
+            if (host.__ottMediaCompanion?.indexerAvailable?.() !== true) return;
+            indexerCall(
+                function (client, signal) {
+                    return client.torznab("list", {}, signal);
+                },
+                function (result) {
+                    var sources =
+                        result?.schema === 1 && Array.isArray(result.sources)
+                            ? result.sources
+                                  .filter(function (row: any) {
+                                      return (
+                                          /^[a-z][a-z0-9-]{0,63}$/.test(
+                                              row?.id
+                                          ) && typeof row.label === "string"
+                                      );
+                                  })
+                                  .slice(0, 8)
+                            : null;
+                    if (!sources) {
+                        render(host._("Failed to load!"));
+                        return;
+                    }
+                    if (!sources.length) {
+                        indexerForm();
+                        return;
+                    }
+                    if (load && sources.length === 1) {
+                        loadIndexer(sources[0]);
+                        return;
+                    }
+                    render(
+                        "",
+                        sources
+                            .map(function (source: any) {
+                                return {
+                                    action: function () {
+                                        indexerActions(source);
+                                    },
+                                    name: source.label,
+                                };
+                            })
+                            .concat([
+                                {
+                                    action: function () {
+                                        indexerForm();
+                                    },
+                                    name: host._("Add new list"),
+                                },
+                                {
+                                    action: function () {
+                                        render();
+                                    },
+                                    name: host._("Back"),
+                                },
+                            ]),
+                        function () {
+                            render();
+                        }
+                    );
+                    host.listCaption.textContent = "Prowlarr / Torznab";
+                },
+                function (message) {
+                    render(message);
+                },
+                function () {
+                    cancelIndexers(function () {
+                        render();
+                    });
+                }
+            );
+        }
+        function loadProvider(): void {
+            if (useLocalTorrentDiscovery(host)) showIndexers(true);
+            else {
+                stop();
+                host.loadChannels();
+            }
+        }
         function selectMode(mode: string): void {
             if (!current()) return;
             if (
@@ -2333,7 +2745,11 @@ function mountTorrentProvider(
                 ) + 1
             );
         }
-        function render(message?: string, actions?: any[]): void {
+        function render(
+            message?: string,
+            actions?: any[],
+            back?: () => void
+        ): void {
             if (!owner.active() || session !== revision || locked()) return;
             rendering = true;
             try {
@@ -2369,6 +2785,18 @@ function mountTorrentProvider(
                                     ? "Torznab"
                                     : "Stremio"),
                         },
+                        { action: loadProvider, name: host._("Load") },
+                        ...(host.__ottMediaCompanion?.indexerAvailable?.() ===
+                        true
+                            ? [
+                                  {
+                                      action: function () {
+                                          showIndexers();
+                                      },
+                                      name: "Prowlarr / Torznab",
+                                  },
+                              ]
+                            : []),
                         { action: add, name: host._("Add new list") },
                         {
                             action: addAddon,
@@ -2422,11 +2850,14 @@ function mountTorrentProvider(
                 host.listKeyHandler = function (key: number) {
                     if (!current()) return false;
                     if (key === host.keys.RETURN || key === host.keys.EXIT) {
-                        close();
+                        (back || close)();
                         return true;
                     }
                     if (key === host.keys.ENTER) {
-                        if (!busy && rows[host.selIndex])
+                        if (
+                            (!busy || rows[host.selIndex]?.cancel === true) &&
+                            rows[host.selIndex]
+                        )
                             rows[host.selIndex].action();
                         return true;
                     }

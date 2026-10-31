@@ -599,6 +599,7 @@ var keyStrings = {
     "KBC (Kinoboom) access data": "KBC (Kinoboom) хандалтын мэдээлэл",
     "KORONA TV": "KORONA TV",
     "KORONA TV settings": "KORONA TV-ийн тохиргоо",
+    "Label (optional)": "Нэр (заавал биш)",
     "List created": "Жагсаалт үүссэн",
     "List deleted": "Жагсаалт устсан",
     "List location": "Жагсаалтын байрлал",
