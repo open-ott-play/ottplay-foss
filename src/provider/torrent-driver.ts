@@ -1362,6 +1362,7 @@ function mountTorrentProvider(
     function locked(): boolean {
         return (
             editorDisposed ||
+            !!host.__ottStandby?.blocked() ||
             !!host.__ottKiosk?.enabled() ||
             !!host.__ottParental?.needs("providers") ||
             !!host.__ottParental?.needs("settings")
@@ -1397,6 +1398,8 @@ function mountTorrentProvider(
         var session = revision,
             rows: any[] = [],
             busy = false,
+            rendering = false,
+            screenOwner: any = null,
             renderItem: any,
             originalRaw = host.stbGetItem("torrentcfg");
         function current(): boolean {
@@ -1404,6 +1407,10 @@ function mountTorrentProvider(
                 owner.active() &&
                 session === revision &&
                 !locked() &&
+                (!host.__ottClassicScreenPort ||
+                    (screenOwner?.active() &&
+                        host.__ottClassicScreenPort.listOwner() ===
+                            screenOwner)) &&
                 host.getListItem === renderItem
             );
         }
@@ -1594,14 +1601,18 @@ function mountTorrentProvider(
             render(host._("Loading..."));
             var pending = true,
                 cancelled = false,
+                requestOwner = screenOwner,
                 abort: any;
+            function admitted(): boolean {
+                return current() && screenOwner === requestOwner;
+            }
             function complete(error: boolean, response?: any): void {
                 if (!pending) return;
                 pending = false;
                 host.clearTimeout(timer);
                 cancelAddon = null;
                 busy = false;
-                if (!current()) {
+                if (!admitted()) {
                     draft.cancel();
                     return;
                 }
@@ -1610,7 +1621,7 @@ function mountTorrentProvider(
                     render(host._("Failed to load!"));
                     return;
                 }
-                applyAddon(manifest, response, draft);
+                applyAddon(manifest, response, draft, admitted);
             }
             var timer = host.setTimeout(function () {
                 complete(true);
@@ -1639,7 +1650,12 @@ function mountTorrentProvider(
                 complete(true);
             }
         }
-        function applyAddon(manifest: string, response: any, draft: any): void {
+        function applyAddon(
+            manifest: string,
+            response: any,
+            draft: any,
+            admitted: () => boolean
+        ): void {
             function fail(message: string): void {
                 draft.cancel();
                 render(message);
@@ -1739,11 +1755,11 @@ function mountTorrentProvider(
                 fail(host._("Invalid setting"));
                 return;
             }
-            if (!draft.commit([], current)) {
+            if (!draft.commit([], admitted)) {
                 fail(host._("Settings could not be saved"));
                 return;
             }
-            if (current()) render(host._("Settings saved"));
+            if (admitted()) render(host._("Settings saved"));
         }
         function sourceActions(entryId: string): void {
             var value = config(),
@@ -1834,62 +1850,81 @@ function mountTorrentProvider(
         }
         function render(message?: string, actions?: any[]): void {
             if (!owner.active() || session !== revision || locked()) return;
-            rows =
-                actions ||
-                [
-                    { action: add, name: host._("Add new list") },
-                    { action: addAddon, name: host._("Add Stremio addon…") },
-                    {
-                        action: language,
-                        name:
-                            host._("Catalog language") +
-                            ": " +
-                            (host.settings?.torrentCatalogLanguage
-                                ? host.__ottAppearanceHost?.languages?.[
-                                      host.settings.torrentCatalogLanguage
-                                  ] || host.settings.torrentCatalogLanguage
-                                : host._("Player default")),
-                    },
-                ].concat(
-                    config().entries.map(function (entry: any) {
-                        return {
-                            action: function () {
-                                sourceActions(entry.id);
-                            },
-                            name: entry.title + " (" + entry.files.length + ")",
-                        };
-                    })
+            rendering = true;
+            try {
+                rows =
+                    actions ||
+                    [
+                        { action: add, name: host._("Add new list") },
+                        {
+                            action: addAddon,
+                            name: host._("Add Stremio addon…"),
+                        },
+                        {
+                            action: language,
+                            name:
+                                host._("Catalog language") +
+                                ": " +
+                                (host.settings?.torrentCatalogLanguage
+                                    ? host.__ottAppearanceHost?.languages?.[
+                                          host.settings.torrentCatalogLanguage
+                                      ] || host.settings.torrentCatalogLanguage
+                                    : host._("Player default")),
+                        },
+                    ].concat(
+                        config().entries.map(function (entry: any) {
+                            return {
+                                action: function () {
+                                    sourceActions(entry.id);
+                                },
+                                name:
+                                    entry.title +
+                                    " (" +
+                                    entry.files.length +
+                                    ")",
+                            };
+                        })
+                    );
+                host.listArray = rows;
+                host.listDataArray = rows;
+                host.selIndex = 0;
+                renderItem = function (row: any) {
+                    return "&nbsp;&nbsp;" + escaped(row.name);
+                };
+                host.getListItem = renderItem;
+                host.detailListAction = function () {
+                    host.listDetail.textContent = message || "";
+                };
+                host.listKeyHandler = function (key: number) {
+                    if (!current()) return false;
+                    if (key === host.keys.RETURN || key === host.keys.EXIT) {
+                        close();
+                        return true;
+                    }
+                    if (key === host.keys.ENTER) {
+                        if (!busy && rows[host.selIndex])
+                            rows[host.selIndex].action();
+                        return true;
+                    }
+                    return false;
+                };
+                host.listCaption.textContent = "Torrent";
+                host.listFooter.innerHTML = host.renderButtonHint(
+                    host.keys.RETURN,
+                    host.strRETURN,
+                    "Close"
                 );
-            host.listArray = rows;
-            host.listDataArray = rows;
-            host.selIndex = 0;
-            renderItem = function (row: any) {
-                return "&nbsp;&nbsp;" + escaped(row.name);
-            };
-            host.getListItem = renderItem;
-            host.detailListAction = function () {
-                host.listDetail.textContent = message || "";
-            };
-            host.listKeyHandler = function (key: number) {
-                if (!current()) return false;
-                if (key === host.keys.RETURN || key === host.keys.EXIT) {
-                    close();
-                    return true;
+                host.showPage();
+                var screens = host.__ottClassicScreenPort;
+                if (screens) {
+                    screens.onDispose(function () {
+                        if (!rendering && session === revision) stop();
+                    });
+                    screenOwner = screens.listOwner();
                 }
-                if (key === host.keys.ENTER) {
-                    if (!busy && rows[host.selIndex])
-                        rows[host.selIndex].action();
-                    return true;
-                }
-                return false;
-            };
-            host.listCaption.textContent = "Torrent";
-            host.listFooter.innerHTML = host.renderButtonHint(
-                host.keys.RETURN,
-                host.strRETURN,
-                "Close"
-            );
-            host.showPage();
+            } finally {
+                rendering = false;
+            }
         }
         render();
         return true;

@@ -12,8 +12,8 @@
     "workingTree": true,
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
-    "diagnosticAttempt": "0a0c3736-4fb5-4223-93ce-70e651bee154",
-    "diagnosticCollectedAt": "2026-10-31T02:17:36.051Z",
+    "diagnosticAttempt": "a30ba5dc-f64d-4d90-a4c2-f54e805194d2",
+    "diagnosticCollectedAt": "2026-10-31T02:24:10.111Z",
     "verifiedReport": "build/reports/classic-size-diagnostics.json"
   },
   "toolchain": {
@@ -34,8 +34,8 @@
       "gzipBytes": 758
     },
     "catalog": {
-      "bytes": 22265,
-      "gzipBytes": 6360
+      "bytes": 22596,
+      "gzipBytes": 6455
     },
     "companion": {
       "bytes": 207,
@@ -110,13 +110,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 69857,
-            "gzipBytes": 22362,
-            "sha256": "0cb4493ba58219eaa5cdbc3393b63b3ec1aa013fc0ed1372cade508a368e6e81"
+            "bytes": 70188,
+            "gzipBytes": 22457,
+            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
           },
           "delta": {
-            "bytes": 22265,
-            "gzipBytes": 6360
+            "bytes": 22596,
+            "gzipBytes": 6455
           }
         },
         "native": {
@@ -126,13 +126,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 69857,
-            "gzipBytes": 22362,
-            "sha256": "0cb4493ba58219eaa5cdbc3393b63b3ec1aa013fc0ed1372cade508a368e6e81"
+            "bytes": 70188,
+            "gzipBytes": 22457,
+            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
           },
           "delta": {
-            "bytes": 22265,
-            "gzipBytes": 6360
+            "bytes": 22596,
+            "gzipBytes": 6455
           }
         },
         "mobile": {
@@ -142,13 +142,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 69857,
-            "gzipBytes": 22362,
-            "sha256": "0cb4493ba58219eaa5cdbc3393b63b3ec1aa013fc0ed1372cade508a368e6e81"
+            "bytes": 70188,
+            "gzipBytes": 22457,
+            "sha256": "b47a58227fc8390839d5c7d4d468f9469f0cd2c13db8c658b6c83b26c6db7c8c"
           },
           "delta": {
-            "bytes": 22265,
-            "gzipBytes": 6360
+            "bytes": 22596,
+            "gzipBytes": 6455
           }
         }
       }
@@ -1390,12 +1390,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391476,
-          "gzipBytes": 433324
+          "bytes": 1391807,
+          "gzipBytes": 433419
         },
         "complete": {
-          "bytes": 1777975,
-          "gzipBytes": 547453
+          "bytes": 1778306,
+          "gzipBytes": 547548
         }
       }
     },
@@ -1413,12 +1413,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391434,
-          "gzipBytes": 433379
+          "bytes": 1391765,
+          "gzipBytes": 433474
         },
         "complete": {
-          "bytes": 1777933,
-          "gzipBytes": 547508
+          "bytes": 1778264,
+          "gzipBytes": 547603
         }
       }
     },
@@ -1436,12 +1436,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1391434,
-          "gzipBytes": 433379
+          "bytes": 1391765,
+          "gzipBytes": 433474
         },
         "complete": {
-          "bytes": 1777933,
-          "gzipBytes": 547508
+          "bytes": 1778264,
+          "gzipBytes": 547603
         }
       }
     }
@@ -1538,16 +1538,16 @@
   },
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1773765,
-      "gzipBytes": 547303
+      "bytes": 1774096,
+      "gzipBytes": 547398
     },
     "BUDGET": {
       "bytes": 1169169,
       "gzipBytes": 357294
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1391862,
-      "gzipBytes": 435001
+      "bytes": 1392193,
+      "gzipBytes": 435096
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1612,8 +1612,8 @@
       }
     },
     "TOTAL_BUDGET": {
-      "bytes": 1778245,
-      "gzipBytes": 549607
+      "bytes": 1778576,
+      "gzipBytes": 549702
     }
   }
 }

@@ -503,6 +503,105 @@ test("Stremio install rejects concurrent settings changes, capacity overflow and
         assert.equal(f.settingEffects.length, 0, mode);
     }
 });
+function ownedAddonScreen(f) {
+    for (const file of [
+        "screen-controller",
+        "input-router",
+        "classic-screen-port",
+    ])
+        runtime(f.host, "src/ui/" + file + ".ts");
+    const port = f.host.__ottClassicScreenPort;
+    f.renderCount = 0;
+    f.host.showPage = () => {
+        f.renderCount++;
+        port.commitList();
+    };
+    f.host.closeList = () => port.closeList();
+    return port;
+}
+test("owned Stremio loading and completion rerenders retain their request", () => {
+    const f = setup();
+    addonSettings(f);
+    const port = ownedAddonScreen(f);
+    const pending = addManifest(f, "http://localhost:8794/manifest.json");
+    assert.equal(pending.aborts, 0);
+    pending.resolve(addonManifest);
+    assert.equal(
+        f.saved.get("sTorrentCatalogEndpoint"),
+        "http://localhost:8794"
+    );
+    assert.equal(f.settingEffects.length, 2);
+    assert(port.listOwner().active());
+    assert.equal(f.addonTimers.size, 0);
+    const next = addManifest(f, "http://localhost:8795/manifest.json");
+    assert.equal(next.aborts, 0);
+    next.resolve(addonManifest);
+    assert.equal(
+        f.saved.get("sTorrentCatalogEndpoint"),
+        "http://localhost:8795"
+    );
+    assert.equal(f.settingEffects.length, 4);
+    assert(port.listOwner().active());
+});
+test("closing, replacing or putting the list in standby cancels pending Stremio installation", () => {
+    for (const mode of ["close", "replace", "standby"]) {
+        const f = setup();
+        addonSettings(f);
+        const port = ownedAddonScreen(f);
+        const pending = addManifest(f, "http://localhost:8794/manifest.json");
+        const before = JSON.stringify([...f.saved]);
+        const renders = f.renderCount;
+        const previous = port.listOwner();
+        assert(previous.active());
+        if (mode === "standby") {
+            const ast = ts.createSourceFile(
+                "core.ts",
+                fs.readFileSync("src/core/index.ts", "utf8"),
+                ts.ScriptTarget.Latest,
+                true
+            );
+            const standby = ast.statements.find(
+                (node) =>
+                    ts.isFunctionDeclaration(node) &&
+                    node.name?.text === "stbSetStandby"
+            );
+            let blocked = false;
+            Object.assign(f.host, {
+                __ottStandby: {
+                    blocked: () => blocked,
+                    failed: () => assert.fail("Standby cleanup failed"),
+                    set: (value) => {
+                        blocked = value;
+                    },
+                },
+                _standby: false,
+                coreDeviceEffects: {},
+                document: { body: { style: {} }, getElementById: () => null },
+            });
+            vm.runInContext(
+                ts.transpileModule(
+                    standby.getText(ast).replace(/^export /, ""),
+                    { compilerOptions: { target: ts.ScriptTarget.ES5 } }
+                ).outputText,
+                f.host
+            );
+            f.host.stbSetStandby(true);
+            assert(blocked);
+        } else if (mode === "replace") {
+            f.host.listDataArray = [];
+            port.commitList();
+        } else port.closeList();
+        const replacement = port.listOwner();
+        assert.equal(previous.active(), false, mode);
+        assert.equal(pending.aborts, 1, mode);
+        pending.resolve(addonManifest);
+        assert.equal(JSON.stringify([...f.saved]), before, mode);
+        assert.equal(f.settingEffects.length, 0, mode);
+        assert.equal(f.renderCount, renders, mode);
+        assert.equal(port.listOwner(), replacement, mode);
+        assert.equal(f.addonTimers.size, 0, mode);
+    }
+});
 test("global Favorites reuse the stable channel locator and catalog identity", () => {
     const f = setup(),
         catalog = load(f),
