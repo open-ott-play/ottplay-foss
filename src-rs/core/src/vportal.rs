@@ -27,11 +27,11 @@ impl Request {
         }
         if !self.params.is_object()
             || self.params.get("app").and_then(Value::as_str) != Some("ott-play")
-            || !self
+            || self
                 .params
                 .get("key")
                 .and_then(Value::as_str)
-                .is_some_and(|key| !key.trim().is_empty())
+                .is_none_or(|key| key.trim().is_empty())
         {
             return Err("Invalid VPortal request");
         }
