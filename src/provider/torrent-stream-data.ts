@@ -26,6 +26,7 @@ type TorrentStreamResult =
           ok: true;
           items: TorrentStreamItem[];
           failedAddons: number;
+          skippedAddons: number;
           unsupportedCount: number;
       };
 
@@ -493,6 +494,7 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
             items: TorrentStreamItem[];
             unsupported: number;
             error: boolean;
+            skipped: boolean;
         }[] = [];
         var remaining = context.urls.length;
         var manifestUrls = context.urls;
@@ -505,10 +507,12 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                 identities: string[] = [],
                 origins: string[] = [];
             var failed = 0,
+                skipped = 0,
                 unsupported = 0;
             for (var i = 0; i < results.length; i++) {
                 var result = results[i];
                 if (result.error) failed++;
+                if (result.skipped) skipped++;
                 unsupported += result.unsupported;
                 for (var p = 0; p < result.items.length; p++) {
                     var item = result.items[p];
@@ -523,8 +527,11 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                     items.push(item);
                 }
             }
-            if (failed === results.length) {
-                finish({ error: "unavailable", ok: false });
+            if (failed + skipped === results.length) {
+                finish({
+                    error: failed ? "unavailable" : "unsupported",
+                    ok: false,
+                });
                 return;
             }
             if (items.length > 256 || bytes(JSON.stringify(items)) > 524288) {
@@ -538,6 +545,7 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                     failedAddons: failed,
                     items: items,
                     ok: true,
+                    skippedAddons: skipped,
                     unsupportedCount: unsupported,
                 });
                 return;
@@ -567,6 +575,7 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                                     failedAddons: failed,
                                     items: items,
                                     ok: true,
+                                    skippedAddons: skipped,
                                     unsupportedCount: unsupported,
                                 });
                         }
@@ -579,7 +588,12 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
         manifestUrls.forEach(function (url, index) {
             function ready(error: boolean, data?: any): void {
                 if (!valid()) return;
-                results[index] = { error: error, items: [], unsupported: 0 };
+                results[index] = {
+                    error: error,
+                    items: [],
+                    skipped: false,
+                    unsupported: 0,
+                };
                 if (error) {
                     assemble();
                     return;
@@ -593,7 +607,7 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                     return;
                 }
                 if (!id) {
-                    results[index].unsupported++;
+                    results[index].skipped = true;
                     assemble();
                     return;
                 }

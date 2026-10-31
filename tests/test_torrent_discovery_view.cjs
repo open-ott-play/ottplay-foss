@@ -723,7 +723,20 @@ test("source list has distinct unconfigured, empty, unsupported and failed state
     for (const [response, label] of [
         [{ error: "no_addons", ok: false }, "Not configured"],
         [streamPage([]), "Nothing to play"],
+        [
+            streamPage([], { failedAddons: 1, skippedAddons: 1 }),
+            "Nothing to play",
+        ],
         [streamPage([], { unsupportedCount: 1 }), "Unsupported source"],
+        [
+            streamPage([], {
+                failedAddons: 1,
+                skippedAddons: 1,
+                unsupportedCount: 1,
+            }),
+            "Unsupported source",
+        ],
+        [{ error: "unsupported", ok: false }, "Unsupported source"],
         [{ error: "unavailable", ok: false }, "Failed to load!"],
     ]) {
         const f = setup();

@@ -167,7 +167,7 @@ test("exact movie IDs and resource-specific prefix/type override", () => {
     no.lookup({ id: movie.id });
     no.requests[0].done(null, manifest());
     assert.equal(no.requests.length, 1);
-    assert.equal(no.results[0].unsupportedCount, 1);
+    assert.deepEqual(no.results, [{ error: "unsupported", ok: false }]);
 });
 test("IMDb URL and opaque IDs stay stable without caching stream responses", () => {
     const f = fixture();
@@ -267,6 +267,7 @@ test("empty, unavailable and partial-failure outcomes differ", () => {
         failedAddons: 0,
         items: [],
         ok: true,
+        skippedAddons: 0,
         unsupportedCount: 0,
     });
     const f = fixture();
@@ -279,6 +280,77 @@ test("empty, unavailable and partial-failure outcomes differ", () => {
     p.requests[0].done(null, manifest());
     p.requests[2].done(null, { streams: [direct] });
     assert.equal(p.results[0].failedAddons, 1);
+});
+test("incompatible addons do not mask compatible request failures or empty responses", () => {
+    for (const mode of ["failed", "empty", "unsupported", "playable"]) {
+        const f = fixture({ urls: [first, second] });
+        f.lookup();
+        f.requests[0].done(null, manifest({ types: ["series"] }));
+        f.requests[1].done(null, manifest());
+        assert.equal(f.requests.length, 3, mode);
+        if (mode === "failed")
+            f.requests[2].done(new Error("HTTP 400"), { streams: [] });
+        else
+            f.requests[2].done(null, {
+                streams:
+                    mode === "empty"
+                        ? []
+                        : mode === "unsupported"
+                          ? [{ externalUrl: direct.url }]
+                          : [direct],
+            });
+        const result = f.results[0];
+        if (mode === "failed") {
+            assert.deepEqual(result, { error: "unavailable", ok: false });
+        } else {
+            assert.equal(result.ok, true, mode);
+            assert.equal(result.skippedAddons, 1, mode);
+            assert.equal(result.failedAddons, 0, mode);
+            assert.equal(
+                result.unsupportedCount,
+                mode === "unsupported" ? 1 : 0,
+                mode
+            );
+            assert.equal(
+                result.items.length,
+                mode === "playable" ? 1 : 0,
+                mode
+            );
+        }
+    }
+});
+test("a successful empty compatible response remains distinct from skipped and failed addons", () => {
+    const f = fixture({
+        urls: [first, second, "https://third.example/manifest.json"],
+    });
+    f.lookup();
+    f.requests[0].done(null, manifest({ types: ["series"] }));
+    f.requests[1].done(null, manifest());
+    f.requests[2].done(null, manifest());
+    f.requests[3].done(true);
+    f.requests[4].done(null, { streams: [] });
+    assert.deepEqual(f.results, [
+        {
+            failedAddons: 1,
+            items: [],
+            ok: true,
+            skippedAddons: 1,
+            unsupportedCount: 0,
+        },
+    ]);
+});
+test("cancelling mixed addon lookup does not publish a late failure or response", () => {
+    for (const failed of [false, true]) {
+        const f = fixture({ urls: [first, second] });
+        const stop = f.lookup();
+        f.requests[0].done(null, manifest({ types: ["series"] }));
+        f.requests[1].done(null, manifest());
+        stop();
+        assert.equal(f.requests[2].aborted, 1);
+        f.requests[2].done(failed, { streams: [] });
+        f.tick(45000);
+        assert.deepEqual(f.results, []);
+    }
 });
 test("cancel, replacement, settings and disposal fence late callbacks", () => {
     const f = fixture();

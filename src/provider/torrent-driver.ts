@@ -857,7 +857,9 @@ function createTorrentDiscoveryView(
                         !result?.ok
                             ? result?.error === "no_addons"
                                 ? "Not configured"
-                                : "Failed to load!"
+                                : result?.error === "unsupported"
+                                  ? "Unsupported source"
+                                  : "Failed to load!"
                             : result.unsupportedCount && !streams.length
                               ? "Unsupported source"
                               : "Nothing to play"

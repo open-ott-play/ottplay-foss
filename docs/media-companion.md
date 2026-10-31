@@ -136,7 +136,8 @@ The previous 500-movie display limit no longer applies. The adapter retains its
 bounded request and pagination limits (up to offset 50,000 for generic Stremio
 catalogs); the actual catalog may end sooner. Closing the list, choosing a movie,
 changing categories or entering standby cancels pending loading. Temporary
-overlays pause it until the list is visible again. An error pauses automatic
+overlays pause it until the list is visible again. Returning from a movie's
+sources or reopening the list resumes an interrupted page. An error pauses automatic
 loading without removing existing results; **Next page** retries that page.
 Empty, fully duplicated or non-advancing pages end loading. Merely opening a list,
 highlighting a film or reading its description does not start a torrent
@@ -196,6 +197,13 @@ The `/manifest.json` suffix is required; credentials in the URL authority,
 query strings and fragments are rejected. External URLs require HTTPS; HTTP
 uses the same exact loopback exception as the catalog endpoint. There is no
 default public stream service.
+
+An addon must support the movie's media type and identifier, such as an IMDb
+ID. Incompatible addons are skipped. If all compatible requests fail, the
+chooser reports **Failed to load!**; a successful response with no sources
+reports **Nothing to play**. **Unsupported source** means the returned source
+formats are unsupported, or none of the configured addons supports the movie.
+An HTTP error remains a failure even when its body contains an empty stream list.
 
 In **Torrent → Manage lists**, choose **Add Stremio addon…** and enter the addon
 manifest URL in the standard editor. Copied `stremio://` installation links are
