@@ -1002,6 +1002,10 @@ for (const kind of [
                 "Add Stremio addon…"
             );
             await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("ArrowDown");
+            await expect(
+                page.locator("#list .item.ott-selected")
+            ).toContainText("Add Stremio addon…");
             await page.keyboard.press("Enter");
             await expect(page.locator("#listEdit")).toContainText(
                 "Enter a Stremio addon manifest URL."
