@@ -682,6 +682,26 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     ).length;
     const bundle = await run(["bundle", "--lane", "web", "--out", output]);
     assert.equal(bundle.verdict, "observed");
+    if (bundle.provider_observations !== undefined) {
+        assert.equal(bundle.provider_observations.length, 1);
+        const observation = bundle.provider_observations[0];
+        assert.equal(observation.status, "observed");
+        assert.equal(observation.data.version, 1);
+        assert.equal(observation.data.runtime, observation.runtime);
+        assert.equal(typeof observation.runtime, "string");
+        assert(observation.runtime.length > 0);
+        assert.equal(observation.data.available, false);
+        assert.equal(observation.data.provider, null);
+        assert.equal(observation.data.catalog, null);
+        assert.equal(observation.data.lookup, null);
+        assert.deepEqual(observation.data.requests, []);
+        assert.equal(observation.data.requestsDropped, 0);
+        assert.equal(
+            executed.filter((request) => request.action === "status").length,
+            1,
+            "The provider observation uses one read-only status request"
+        );
+    }
     if (process.env.OTT_DEBUG_ENGINE_V2 === "unsupported-controller") {
         // Bundle auto-selects the advertised debug version; an old controller
         // rejects it without a second request for the legacy debug payload.
@@ -730,10 +750,19 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         "Workbench issued a mutation outside explicit pause/resume"
     );
     assert(
-        executed.every((request) =>
-            ["capabilities", "inspect", "playback", "perf_capture"].includes(
-                request.action
-            )
+        executed.every(
+            (request) =>
+                [
+                    "capabilities",
+                    "inspect",
+                    "playback",
+                    "perf_capture",
+                ].includes(request.action) ||
+                (request.action === "status" &&
+                    request.params !== null &&
+                    typeof request.params === "object" &&
+                    !Array.isArray(request.params) &&
+                    Object.keys(request.params).length === 0)
         )
     );
     console.log(
