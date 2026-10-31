@@ -195,7 +195,7 @@ for (const kind of ["click", "mouseup"]) {
     }
 }
 check(
-    "drag admission is cleared before callbacks and click stays independent",
+    "drag admission is cleared before callbacks and trailing click is ignored",
     {},
     ({ calls, send }) => {
         send("mouseup", 110);
@@ -204,7 +204,7 @@ check(
         send("mouseup", 110);
         send("mouseup", 110);
         send("click", 110);
-        assert.equal(calls.filter((c) => c[0] === "seek").length, 2);
+        assert.equal(calls.filter((c) => c[0] === "seek").length, 1);
     }
 );
 check(
