@@ -382,6 +382,10 @@ test("companion observation is independent, passive and null when unavailable", 
         host.__ottMediaCompanion = { diagnostics };
         assert.deepEqual(companionSnapshot(host), empty);
     }
+    for (const value of [null, undefined, false, 0, "", {}, []]) {
+        host.__ottMediaCompanion = { diagnostics: () => value };
+        assert.deepEqual(companionSnapshot(host), empty);
+    }
     host.__ottMediaCompanion = {
         diagnostics() {
             host.__ottMediaCompanion = { diagnostics: () => status };

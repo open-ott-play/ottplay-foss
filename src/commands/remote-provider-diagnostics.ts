@@ -41,28 +41,21 @@ function providerAddonCount(value: any): boolean {
 }
 
 function providerCompanion(value: any): any {
-    if (!value) return null;
-    try {
-        return providerRecord(value, {
-            active: providerBoolean,
-            downloaded: providerNullableInteger,
-            error: function (code: any) {
-                return (
-                    code === "" ||
-                    (typeof code === "string" &&
-                        /^(?:companion_(?:access_denied|endpoint_invalid|transport_unavailable|not_configured|timeout|request_failed|source_invalid|selection_invalid|receipt_invalid|too_many_files|no_playable_files|torrent_unavailable|unavailable)|torznab_(?:invalid_(?:source|link|query|category|xml|page)|local_only|search_unavailable|source_(?:missing|changed|limit)|reference_missing|busy|cancelled|timeout|network_error|http_error|response_limit|xml_limit|api_error|store_(?:unavailable|busy|limit))|busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|webseed_(?:unavailable|timeout|invalid_range|hash_mismatch|network_denied)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
-                            code
-                        ))
-                );
-            },
-            state: providerEnum(
-                "metadata select preparing ready error unknown"
-            ),
-            total: providerNullableInteger,
-        });
-    } catch (_) {
-        return null;
-    }
+    return providerRecord(value, {
+        active: providerBoolean,
+        downloaded: providerNullableInteger,
+        error: function (code: any) {
+            return (
+                code === "" ||
+                (typeof code === "string" &&
+                    /^(?:companion_(?:access_denied|endpoint_invalid|transport_unavailable|not_configured|timeout|request_failed|source_invalid|selection_invalid|receipt_invalid|too_many_files|no_playable_files|torrent_unavailable|unavailable)|torznab_(?:invalid_(?:source|link|query|category|xml|page)|local_only|search_unavailable|source_(?:missing|changed|limit)|reference_missing|busy|cancelled|timeout|network_error|http_error|response_limit|xml_limit|api_error|store_(?:unavailable|busy|limit))|busy|cleanup_pending|cache_(?:limit|unavailable)|service_stopped|session_(?:missing|stopped|busy|limit)|stream_(?:limit|timeout)|webseed_(?:unavailable|timeout|invalid_range|hash_mismatch|network_denied)|invalid_(?:request|source|file|metadata|tracker)|tracker_limit|file_(?:selection_required|limit)|engine_unavailable|metadata_(?:failed|timeout|limit)|no_files|torrent_failed|initialization_timeout|range_failed|plugin_(?:invalid_manifest|invalid_script|not_found|invalid_input|invalid_output|busy|cancelled|timed_out|execution_failed|network_denied|network_failed|network_limit))$/.test(
+                        code
+                    ))
+            );
+        },
+        state: providerEnum("metadata select preparing ready error unknown"),
+        total: providerNullableInteger,
+    });
 }
 
 export function providerDiagnosticsSnapshot(w: any, runtime: string): any {
