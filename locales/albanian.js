@@ -1134,6 +1134,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ndrysho mënyrën e zmadhimit",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Cilësimet e Top-Tv",
+    "Torrent cache limit exceeded.":
+        "U tejkalua kufiri i memories së përkohshme të torrentit.",
     "Torrent source limit reached.": "U arrit kufiri i burimeve torrent.",
     "Touchscreen locked": "Ekrani me prekje u bllokua",
     "Touchscreen unlocked": "Ekrani me prekje u zhbllokua",

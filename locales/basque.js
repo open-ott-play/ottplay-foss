@@ -1128,6 +1128,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Aldatu zoom modua",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv ezarpenak",
+    "Torrent cache limit exceeded.": "Torrentaren cache-muga gainditu da.",
     "Torrent source limit reached.": "Torrent iturrien mugara iritsi zara.",
     "Touchscreen locked": "Ukipen-pantaila blokeatu da",
     "Touchscreen unlocked": "Ukipen-pantaila desblokeatu da",

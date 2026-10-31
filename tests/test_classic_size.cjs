@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 let {
+    COMPANION_DIAGNOSTICS_ALLOWANCE,
     TORRENT_DISCOVERY_ALLOWANCE,
     TORRENT_STREAMS_ALLOWANCE,
     TORZNAB_DISCOVERY_ALLOWANCE,
@@ -71,7 +72,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
-const modernExperienceCaps = {
+const companionDiagnosticsCaps = {
     BASE_TOTAL_BUDGET,
     BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -101,6 +102,42 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+const companionDiagnosticsDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "catalog"]
+              : Object.keys(COMPANION_DIAGNOSTICS_ALLOWANCE);
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) =>
+                    sum + COMPANION_DIAGNOSTICS_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+const modernExperienceCaps = Object.fromEntries(
+    Object.entries(companionDiagnosticsCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.fromEntries(
+                  Object.entries(budget).map(([key, value]) => [
+                      key,
+                      key === "media-companion"
+                          ? subtract(
+                                value,
+                                COMPANION_DIAGNOSTICS_ALLOWANCE.companion
+                            )
+                          : value,
+                  ])
+              )
+            : subtract(budget, companionDiagnosticsDelta(name)),
+    ])
+);
 const modernExperienceDelta = (name) => {
     const kinds =
         name === "BUDGET"
@@ -276,6 +313,85 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const companionDiagnosticsEvidence = require("../docs/evidence/companion-diagnostics-size-20261031.json");
+    assert.deepEqual(
+        companionDiagnosticsEvidence.allowance,
+        COMPANION_DIAGNOSTICS_ALLOWANCE
+    );
+    assert.equal(
+        companionDiagnosticsEvidence.baseline.revision,
+        "127bd3cec155051b83ae1a51c7e3f8e65ddcc1a9"
+    );
+    for (const [name, cap] of Object.entries(modernExperienceCaps))
+        assert.deepEqual(companionDiagnosticsEvidence.beforeCaps[name], cap);
+    for (const [name, cap] of Object.entries(companionDiagnosticsCaps))
+        assert.deepEqual(companionDiagnosticsEvidence.afterCaps[name], cap);
+    assert.deepEqual(
+        companionDiagnosticsEvidence.beforeCaps.PROVIDER_BUDGET,
+        PROVIDER_BUDGET
+    );
+    assert.deepEqual(
+        companionDiagnosticsEvidence.beforeCaps.OPTIONAL_BUDGET,
+        OPTIONAL_BUDGET
+    );
+    const companionKinds = {
+        "media-companion.js": "companion",
+        "player.js": "entry",
+        "provider-torrent.js": "catalog",
+    };
+    assert.deepEqual(
+        companionDiagnosticsEvidence.components.map((row) => row.name).sort(),
+        Object.keys(companionKinds).sort()
+    );
+    assert(Object.isFrozen(COMPANION_DIAGNOSTICS_ALLOWANCE));
+    assert.deepEqual(
+        [
+            ...companionDiagnosticsEvidence.components,
+            ...companionDiagnosticsEvidence.unchangedComponents,
+        ]
+            .map((row) => row.name)
+            .sort(),
+        [
+            "player.js",
+            ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                (name) => `provider-${name}.js`
+            ),
+            ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                (name) => `${name}.js`
+            ),
+        ].sort()
+    );
+    assert.deepEqual(
+        companionDiagnosticsEvidence.supplementalAssets.stylesheet.before,
+        companionDiagnosticsEvidence.supplementalAssets.stylesheet.after
+    );
+    for (const row of companionDiagnosticsEvidence.components) {
+        assert.deepEqual(Object.keys(row.variants).sort(), [
+            "mobile",
+            "native",
+            "web",
+        ]);
+        const cap = COMPANION_DIAGNOSTICS_ALLOWANCE[companionKinds[row.name]];
+        assert(Object.isFrozen(cap));
+        for (const metric of ["bytes", "gzipBytes"]) {
+            for (const variant of Object.values(row.variants)) {
+                assert.equal(
+                    variant.delta[metric],
+                    variant.after[metric] - variant.before[metric]
+                );
+                assert.match(variant.before.sha256, /^[a-f0-9]{64}$/);
+                assert.match(variant.after.sha256, /^[a-f0-9]{64}$/);
+            }
+            assert.equal(
+                cap[metric],
+                Math.max(
+                    ...Object.values(row.variants).map(
+                        (variant) => variant.delta[metric]
+                    )
+                )
+            );
+        }
+    }
     const experienceEvidence = require("../docs/evidence/modern-provider-experience-size-20261031.json");
     assert.deepEqual(experienceEvidence.allowance, MODERN_EXPERIENCE_ALLOWANCE);
     assert.deepEqual(experienceEvidence.beforeCaps, torznabCaps);
@@ -3242,7 +3358,7 @@ try {
         LEGACY_TOTAL_BUDGET,
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
-    } = modernExperienceCaps);
+    } = companionDiagnosticsCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));

@@ -364,6 +364,118 @@ test("backend failures retain only explicit public error codes", async () => {
         assert.equal(f.client.status().error, expected);
     }
 });
+
+test("passive playback diagnostics survive metadata inspection and bound progress", async () => {
+    const f = fixture({
+        handle: (path) =>
+            path.endsWith("/select")
+                ? {
+                      downloaded: 512,
+                      id: path.split("/")[1],
+                      state: "ready",
+                      streamPath: path.replace(/\/select$/, "/stream"),
+                      total: 1000,
+                  }
+                : undefined,
+    });
+    assert.equal(f.client.diagnostics(), null);
+    const cancel = f.resolve();
+    await flush();
+    await f.tick(750);
+    const snapshot = clone(f.client.diagnostics());
+    assert.deepEqual(snapshot, {
+        active: true,
+        downloaded: 512,
+        error: "",
+        state: "ready",
+        total: 1000,
+    });
+    const calls = f.calls.length;
+    assert.deepEqual(clone(f.client.diagnostics()), snapshot);
+    assert.equal(
+        f.calls.length,
+        calls,
+        "reading diagnostics never performs I/O"
+    );
+    f.client.metadata(source + "&dn=private-name", () => {});
+    await flush();
+    await f.tick(750);
+    assert.deepEqual(clone(f.client.diagnostics()), snapshot);
+    cancel();
+    assert.equal(f.client.diagnostics().active, false);
+
+    const malformed = fixture({
+        handle: (path) =>
+            path.endsWith("/select")
+                ? {
+                      downloaded: 1.2,
+                      id: path.split("/")[1],
+                      state: "ready",
+                      streamPath: path.replace(/\/select$/, "/stream"),
+                      total: Infinity,
+                  }
+                : undefined,
+    });
+    malformed.resolve();
+    await flush();
+    await malformed.tick(750);
+    assert.equal(malformed.client.diagnostics().downloaded, null);
+    assert.equal(malformed.client.diagnostics().total, null);
+});
+
+test("terminal post-start companion errors notify once and retain safe evidence", async () => {
+    for (const code of [
+        "stream_timeout",
+        "webseed_hash_mismatch",
+        "cache_limit",
+    ]) {
+        let started = false;
+        const failures = [];
+        const f = fixture({
+            handle: (path, method) => {
+                if (
+                    started &&
+                    /^sessions\/s\d+$/.test(path) &&
+                    method === "GET"
+                )
+                    return {
+                        downloaded: 512,
+                        error: code,
+                        id: path.split("/")[1],
+                        state: "error",
+                        total: 1000,
+                    };
+            },
+        });
+        f.resolve(source, { failed: (reason) => failures.push(reason) });
+        await flush();
+        await f.tick(750);
+        started = true;
+        await f.tick(30000);
+        assert.deepEqual(failures, [code]);
+        assert.equal(f.client.diagnostics().active, false);
+        assert.equal(f.client.diagnostics().state, "error");
+        assert.equal(f.client.diagnostics().error, code);
+        await f.tick(30000);
+        assert.deepEqual(failures, [code]);
+    }
+});
+
+test("arbitrary transport error text cannot enter companion diagnostics", async () => {
+    const f = fixture({
+        response: () => {
+            throw Error("https://private.invalid/token?apikey=secret");
+        },
+    });
+    f.resolve();
+    await flush();
+    assert.equal(f.client.diagnostics().state, "error");
+    assert.equal(f.client.diagnostics().error, "companion_unavailable");
+    assert.equal(
+        JSON.stringify(f.client.diagnostics()).includes("secret"),
+        false
+    );
+});
 test("metadata has a finite deadline and pagehide releases a playing session", async () => {
     const f = fixture();
     f.resolve();
@@ -659,6 +771,68 @@ test("lazy loader cancellation prevents service startup and keeps the completed 
     assert.deepEqual(results, ["ready"]);
     release();
     assert.equal(released, 1);
+});
+
+test("loader diagnostics follow the playback client and guarded notices explain failures", async () => {
+    const requests = [],
+        notices = [];
+    const w = {
+        _: (value) => value,
+        __ottMediaCompanionFactory: (_host, _native, nativeOnly) => ({
+            diagnostics: () => ({
+                active: true,
+                state: nativeOnly ? "preparing" : "ready",
+            }),
+            resolve: (_source, _done, options) => {
+                requests.push(options);
+                return () => {};
+            },
+        }),
+        showShift: (message) => notices.push(message),
+    };
+    const module = { exports: {} };
+    vm.runInNewContext(compile("src/plugins/media-companion-loader.ts"), {
+        exports: module.exports,
+        Promise,
+        require: () => ({}),
+        URL,
+    });
+    module.exports.installMediaCompanion(w);
+    assert.equal(w.__ottMediaCompanion.diagnostics(), null);
+    w.__ottMediaCompanion.resolve(source, () => {});
+    await flush();
+    assert.equal(w.__ottMediaCompanion.diagnostics().state, "ready");
+    const cancel = w.__ottMediaCompanion.resolve(
+        "ottplay-torrent:?native=1&source=" + encodeURIComponent(source),
+        () => {}
+    );
+    assert.equal(w.__ottMediaCompanion.diagnostics(), null);
+    await flush();
+    assert.equal(w.__ottMediaCompanion.diagnostics().state, "preparing");
+    requests[0].failed("cache_limit");
+    assert.deepEqual(
+        notices,
+        [],
+        "old playback failure cannot cover the current source"
+    );
+    for (const [reason, text] of [
+        ["companion_no_playable_files", "Nothing to play"],
+        ["cache_limit", "Torrent cache limit exceeded."],
+        ["stream_timeout", "Stream timed out. Select the channel to retry."],
+    ]) {
+        requests[1].failed(reason);
+        assert.equal(notices.at(-1), text);
+    }
+    const count = notices.length;
+    requests[1].failed("https://private.invalid/token");
+    assert.equal(notices.length, count);
+    w.__ottStandby = { blocked: () => true };
+    requests[1].failed("cache_limit");
+    assert.equal(notices.length, count);
+    delete w.__ottStandby;
+    cancel();
+    requests[1].failed("cache_limit");
+    assert.equal(notices.length, count);
 });
 
 test("native capability discovery never starts the media service", async () => {

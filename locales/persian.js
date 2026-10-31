@@ -1109,6 +1109,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "تغییر حالت زوم",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "تنظیمات Top-Tv",
+    "Torrent cache limit exceeded.": "از محدودیت حافظهٔ نهان تورنت فراتر رفت.",
     "Torrent source limit reached.":
         "تعداد منابع تورنت به حداکثر مجاز رسیده است.",
     "Touchscreen locked": "صفحه لمسی قفل شد",

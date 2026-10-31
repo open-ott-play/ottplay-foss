@@ -1111,6 +1111,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Змінити режим масштабування",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Налаштування Top-Tv",
+    "Torrent cache limit exceeded.": "Перевищено ліміт кешу торента.",
     "Torrent source limit reached.":
         "Досягнуто максимальної кількості торрент-джерел.",
     "Touchscreen locked": "Сенсорний екран заблоковано",

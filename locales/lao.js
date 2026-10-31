@@ -1059,6 +1059,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ປ່ຽນໂໝດຂະຫຍາຍພາບ",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "ການຕັ້ງຄ່າ Top-Tv",
+    "Torrent cache limit exceeded.": "ເກີນຂີດຈຳກັດແຄດຂອງ torrent ແລ້ວ.",
     "Torrent source limit reached.": "ຈຳນວນແຫຼ່ງ torrent ເຖິງຂີດຈຳກັດແລ້ວ.",
     "Touchscreen locked": "ໜ້າຈໍສຳຜັດຖືກລັອກແລ້ວ",
     "Touchscreen unlocked": "ໜ້າຈໍສຳຜັດຖືກປົດລັອກແລ້ວ",

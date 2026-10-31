@@ -1082,6 +1082,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "ज़ूम मोड बदलें",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv सेटिंग्स",
+    "Torrent cache limit exceeded.": "टोरेंट कैश की सीमा पार हो गई है।",
     "Torrent source limit reached.":
         "टोरेंट स्रोतों की संख्या अधिकतम सीमा तक पहुँच गई है।",
     "Touchscreen locked": "टचस्क्रीन लॉक है",

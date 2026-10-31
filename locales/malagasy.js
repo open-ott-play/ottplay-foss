@@ -1163,6 +1163,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ovao ny fomba fanalehibiazana",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Fikirakirana Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Nihoatra ny fetra ny fitahirizana vonjimaika torrent.",
     "Torrent source limit reached.":
         "Tratra ny fetra ambony indrindra amin'ny isan'ny loharano torrent.",
     "Touchscreen locked": "Voahidy ny efijery fikasihana",

@@ -1122,6 +1122,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Moda mezinkirinê biguherîne",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Mîhengên Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Sînorê bîra demkî ya torrentê hat derbaskirin.",
     "Torrent source limit reached.":
         "Hejmara çavkaniyên torrentê gihîştiye sînorê xwe.",
     "Touchscreen locked": "Ekrana destdanê hat kilîtkirin",

@@ -1142,8 +1142,14 @@ test("saved indexers can be loaded, replaced and removed without exposing creden
     await flush();
     chooseSetting(f, "Archive");
     chooseSetting(f, "Replace");
-    assert.equal(f.host.listArray[0].name, "Server address: Not configured");
-    assert.equal(f.host.listArray[1].name, "Access key: ");
+    assert.equal(f.host.listCaption.textContent, "Replace: Archive");
+    f.host.detailListAction();
+    assert.equal(
+        f.host.listDetail.textContent,
+        "Archive · saved on this device"
+    );
+    assert.equal(f.host.listArray[0].name, "Server address: Enter value");
+    assert.equal(f.host.listArray[1].name, "Access key: Enter value");
     assert.equal(f.host.listArray[2].name, "Label (optional): Archive");
     enterIndexerField(f, "Server address", "http://192.168.1.3:9696/1/api");
     enterIndexerField(f, "Access key", "replacement-key");
@@ -1197,6 +1203,34 @@ test("indexer address validation and native failures never leak private data", a
     await flush();
     f.host.detailListAction();
     assert.equal(f.host.listDetail.textContent, "Failed to load!");
+});
+
+test("abandoning a replacement preserves and loads the saved indexer connection", async () => {
+    const f = setup();
+    nativeIndexerSettings(f, [{ id: "archive", label: "Archive" }]);
+    f.host.__ottEditProvider();
+    chooseSetting(f, "Prowlarr / Torznab");
+    await flush();
+    chooseSetting(f, "Archive");
+    chooseSetting(f, "Replace");
+    enterIndexerField(f, "Server address", "http://127.0.0.1:9696/2/api");
+    enterIndexerField(f, "Access key", "discard-replacement");
+    chooseSetting(f, "Cancel");
+    await flush();
+    chooseSetting(f, "Archive");
+    chooseSetting(f, "Load");
+    await flush();
+    assert.equal(
+        f.indexerCalls.some((call) => call.op === "configure"),
+        false
+    );
+    assert.deepEqual(f.openedIndexers, [
+        { id: "catalog:torznab:archive:all", label: "Archive" },
+    ]);
+    assert.equal(
+        JSON.stringify(f.host.listArray).includes("discard-replacement"),
+        false
+    );
 });
 
 test("native indexer operations retain their owned screen and reject disposal or policy changes", async () => {

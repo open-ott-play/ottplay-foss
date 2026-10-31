@@ -1131,6 +1131,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Athraigh an mód súmála",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Socruithe Top-Tv",
+    "Torrent cache limit exceeded.": "Sáraíodh teorainn thaisce an torrent.",
     "Torrent source limit reached.":
         "Tá uaslíon na bhfoinsí torrent bainte amach.",
     "Touchscreen locked": "An scáileán tadhaill glasáilte",

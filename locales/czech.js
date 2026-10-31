@@ -1105,6 +1105,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Změnit režim zvětšení",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Nastavení Top-Tv",
+    "Torrent cache limit exceeded.": "Byl překročen limit mezipaměti torrentu.",
     "Torrent source limit reached.":
         "Byl dosažen maximální počet torrentových zdrojů.",
     "Touchscreen locked": "Dotyková obrazovka je zamknutá",

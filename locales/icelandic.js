@@ -1101,6 +1101,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Breyta aðdráttarham",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Stillingar fyrir Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Hámarki skyndiminnis fyrir torrent var náð.",
     "Torrent source limit reached.":
         "Hámarksfjölda torrent-gjafa hefur verið náð.",
     "Touchscreen locked": "Snertiskjár læstur",

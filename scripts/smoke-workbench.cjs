@@ -680,6 +680,9 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         (request) =>
             request.action === "inspect" && request.params.section === "debug"
     ).length;
+    const statusRequestsBeforeBundle = executed.filter(
+        (request) => request.action === "status"
+    ).length;
     const bundle = await run(["bundle", "--lane", "web", "--out", output]);
     assert.equal(bundle.verdict, "observed");
     if (bundle.provider_observations !== undefined) {
@@ -697,7 +700,8 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         assert.deepEqual(observation.data.requests, []);
         assert.equal(observation.data.requestsDropped, 0);
         assert.equal(
-            executed.filter((request) => request.action === "status").length,
+            executed.filter((request) => request.action === "status").length -
+                statusRequestsBeforeBundle,
             1,
             "The provider observation uses one read-only status request"
         );

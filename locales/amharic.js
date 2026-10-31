@@ -1064,6 +1064,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "የማጉላት ሁነታ ቀይር",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "የTop-Tv ቅንብሮች",
+    "Torrent cache limit exceeded.": "የቶረንት መሸጎጫ ገደብ ታልፏል።",
     "Torrent source limit reached.": "የቶረንት ምንጮች ገደብ ተደርሷል።",
     "Touchscreen locked": "የንክኪ ማያ ገጹ ተቆልፏል",
     "Touchscreen unlocked": "የንክኪ ማያ ገጹ ቁልፍ ተከፍቷል",

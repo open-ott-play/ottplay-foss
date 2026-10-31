@@ -1115,6 +1115,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "შეცვალეთ მასშტაბირების რეჟიმი",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv პარამეტრები",
+    "Torrent cache limit exceeded.": "ტორენტის ქეშის ლიმიტი გადაჭარბებულია.",
     "Torrent source limit reached.":
         "ტორენტის წყაროების რაოდენობის ზღვარი მიღწეულია.",
     "Touchscreen locked": "სენსორული ეკრანი დაბლოკილია",

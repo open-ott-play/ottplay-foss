@@ -1147,6 +1147,8 @@ var keyStrings = {
     "Toggle Zoom Mode": "Αλλαγή λειτουργίας μεγέθυνσης",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Ρυθμίσεις Top-Tv",
+    "Torrent cache limit exceeded.":
+        "Ξεπεράστηκε το όριο της προσωρινής μνήμης torrent.",
     "Torrent source limit reached.":
         "Συμπληρώθηκε ο μέγιστος αριθμός πηγών torrent.",
     "Touchscreen locked": "Η οθόνη αφής κλειδώθηκε",

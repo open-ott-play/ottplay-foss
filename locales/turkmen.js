@@ -1106,6 +1106,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "Ulaltma tertibini üýtget",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "Top-Tv sazlamalary",
+    "Torrent cache limit exceeded.": "Torrent keş çägi aşyldy.",
     "Torrent source limit reached.":
         "Torrent çeşmeleriniň sanynyň çägine ýetildi.",
     "Touchscreen locked": "Duýgur ekran gulplandy",

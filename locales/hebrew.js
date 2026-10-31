@@ -1074,6 +1074,7 @@ var keyStrings = {
     "Toggle Zoom Mode": "שנה מצב זום",
     "Top-Tv": "Top-Tv",
     "Top-Tv settings": "הגדרות Top-Tv",
+    "Torrent cache limit exceeded.": "חריגה ממגבלת המטמון של הטורנט.",
     "Torrent source limit reached.": "הגעת למספר המרבי של מקורות טורנט.",
     "Touchscreen locked": "מסך המגע נעול",
     "Touchscreen unlocked": "נעילת מסך המגע בוטלה",

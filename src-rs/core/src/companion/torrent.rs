@@ -13,7 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncSeekExt},
+    io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt},
     sync::{watch, Semaphore},
 };
 use tokio_util::sync::CancellationToken;
@@ -27,6 +27,8 @@ enum Source {
 const MAX_FILES: usize = 4096;
 const METADATA_LIMIT: usize = 1024 * 1024;
 const IDLE: Duration = Duration::from_secs(120);
+trait SeekReader: AsyncRead + AsyncSeek + Send + Unpin {}
+impl<T: AsyncRead + AsyncSeek + Send + Unpin> SeekReader for T {}
 pub(super) fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
@@ -57,6 +59,7 @@ pub struct View {
 struct LeaseData {
     view: View,
     handle: Option<Arc<ManagedTorrent>>,
+    webseed: Option<Arc<super::webseed::WebSeed>>,
 }
 pub struct Lease {
     data: Mutex<LeaseData>,
@@ -78,11 +81,14 @@ impl Lease {
                 .get(index)
                 .copied()
                 .map(|v| v.min(view.total.unwrap_or(v)));
-            if stats.error.is_some() {
+            if stats.error.is_some() && data.webseed.is_none() {
                 view.state = "error";
                 view.error = Some("torrent_failed");
                 view.stream_path = None;
             }
+        }
+        if let Some(webseed) = &data.webseed {
+            view.downloaded = Some(view.downloaded.unwrap_or(0).max(webseed.downloaded()));
         }
         view
     }
@@ -119,6 +125,15 @@ impl Lease {
         data.view.error = Some(code);
         data.view.stream_path = None;
         data.handle = None;
+    }
+    fn stream_failed(&self, code: &'static str) {
+        if self.cancel.is_cancelled() {
+            return;
+        }
+        let mut data = lock(&self.data);
+        data.view.state = "error";
+        data.view.error = Some(code);
+        data.view.stream_path = None;
     }
     pub async fn stop(&self) -> bool {
         self.cancel.cancel();
@@ -221,6 +236,7 @@ impl TorrentManager {
             data: Mutex::new(LeaseData {
                 view: view.clone(),
                 handle: None,
+                webseed: None,
             }),
             cancel: self.cancel.child_token(),
             select,
@@ -401,6 +417,10 @@ impl TorrentManager {
             .get(index)
             .filter(|f| f.length > 0)
             .ok_or("invalid_file")?;
+        // Optional seed URLs/paths must not make a valid P2P torrent unusable.
+        let webseed = super::webseed::WebSeed::from_metainfo(&list.torrent_bytes, index)
+            .ok()
+            .flatten();
         let piece = u64::from(list.info.lengths().default_piece_length());
         if piece == 0 || piece > 16 * 1024 * 1024 {
             return Err("metadata_limit");
@@ -450,19 +470,35 @@ impl TorrentManager {
                 .unwrap()
                 .extend(lock(&self.initial_peers).iter().copied());
         }
-        let handle = engine
-            .add_torrent(
-                AddTorrent::TorrentFileBytes(list.torrent_bytes),
-                Some(options),
-            )
-            .await
-            .map_err(|_| "torrent_failed")?
-            .into_handle()
-            .ok_or("torrent_failed")?;
-        tokio::time::timeout(Duration::from_secs(30), handle.wait_until_initialized())
-            .await
-            .map_err(|_| "initialization_timeout")?
-            .map_err(|_| "torrent_failed")?;
+        let setup = async {
+            let handle = engine
+                .add_torrent(
+                    AddTorrent::TorrentFileBytes(list.torrent_bytes),
+                    Some(options),
+                )
+                .await
+                .map_err(|_| "torrent_failed")?
+                .into_handle()
+                .ok_or("torrent_failed")?;
+            tokio::time::timeout(Duration::from_secs(30), handle.wait_until_initialized())
+                .await
+                .map_err(|_| "initialization_timeout")?
+                .map_err(|_| "torrent_failed")?;
+            Ok::<_, &'static str>(handle)
+        }
+        .await;
+        let handle = match setup {
+            Ok(handle) => Some(handle),
+            Err(_) if webseed.is_some() => {
+                webseed
+                    .as_ref()
+                    .unwrap()
+                    .active
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                None
+            }
+            Err(code) => return Err(code),
+        };
         if lease.cancel.is_cancelled() {
             return Err("session_stopped");
         }
@@ -470,7 +506,8 @@ impl TorrentManager {
         data.view.state = "ready";
         data.view.stream_path = Some(format!("sessions/{}/stream", data.view.id));
         data.view.downloaded = Some(0);
-        data.handle = Some(handle);
+        data.handle = handle;
+        data.webseed = webseed;
         Ok(())
     }
     pub async fn stream(
@@ -484,37 +521,203 @@ impl TorrentManager {
             .clone()
             .try_acquire_owned()
             .map_err(|_| "stream_limit")?;
-        let (handle, selected) = {
+        let (handle, selected, webseed) = {
             let data = lock(&lease.data);
             (
-                data.handle.clone().ok_or("session_busy")?,
+                data.handle.clone(),
                 data.view.selected.ok_or("session_busy")?,
+                data.webseed.clone(),
             )
         };
-        let mut file = tokio::select! { _ = lease.cancel.cancelled() => return Err("session_stopped"), result = tokio::time::timeout(Duration::from_secs(15), handle.stream(selected)) => result.map_err(|_| "stream_timeout")?.map_err(|_| "torrent_failed")? };
-        file.seek(std::io::SeekFrom::Start(start))
+        let setup = async {
+            let handle = handle.ok_or("torrent_failed")?;
+            let mut file = tokio::time::timeout(
+                Duration::from_secs(if webseed.is_some() { 2 } else { 15 }),
+                handle.stream(selected),
+            )
             .await
-            .map_err(|_| "range_failed")?;
-        let reader: Box<dyn AsyncRead + Send + Unpin> = Box::new(file);
+            .map_err(|_| "stream_timeout")?
+            .map_err(|_| "torrent_failed")?;
+            file.seek(std::io::SeekFrom::Start(start))
+                .await
+                .map_err(|_| "range_failed")?;
+            Ok::<_, &'static str>(file)
+        };
+        let reader: Box<dyn SeekReader> = tokio::select! {
+            _ = lease.cancel.cancelled() => return Err("session_stopped"),
+            result = setup => match result {
+                Ok(file) => Box::new(file),
+                Err(_) if webseed.is_some() => {
+                    webseed.as_ref().unwrap().active.store(true, std::sync::atomic::Ordering::Relaxed);
+                    Box::new(std::io::Cursor::new(Vec::<u8>::new()))
+                }
+                Err(code) => { lease.stream_failed(code); return Err(code); }
+            }
+        };
         let stream = futures_util::stream::unfold(
-            (reader, length, lease, permit),
-            |(mut reader, left, lease, permit)| async move {
+            (reader, start, length, lease, permit, webseed),
+            |(mut reader, position, left, lease, permit, webseed)| async move {
                 if left == 0 || lease.cancel.is_cancelled() {
                     return None;
                 }
-                let mut bytes = vec![0u8; left.min(64 * 1024) as usize];
-                let n = tokio::select! {
-                    _ = lease.cancel.cancelled() => return None,
-                    result = tokio::time::timeout(Duration::from_secs(30), reader.read(&mut bytes)) => match result { Ok(Ok(0)) => return None, Ok(Ok(n)) => n, _ => return Some((Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "Torrent stream unavailable")), (reader, 0, lease, permit))) }
+                let size = left.min(64 * 1024) as usize;
+                let active = webseed
+                    .as_ref()
+                    .is_some_and(|seed| seed.active.load(std::sync::atomic::Ordering::Relaxed));
+                let result = {
+                    // Keep a healthy but slower swarm alive when an optional web
+                    // seed fails. Both routes share one bounded read deadline.
+                    let peer = async {
+                        reader
+                            .seek(std::io::SeekFrom::Start(position))
+                            .await
+                            .map_err(|_| "range_failed")?;
+                        let mut bytes = vec![0u8; size];
+                        let n = reader
+                            .read(&mut bytes)
+                            .await
+                            .map_err(|_| "torrent_failed")?;
+                        if n == 0 {
+                            return Err("stream_timeout");
+                        }
+                        bytes.truncate(n);
+                        Ok(bytes)
+                    };
+                    let mirror = async {
+                        let Some(seed) = &webseed else {
+                            return std::future::pending().await;
+                        };
+                        if !active {
+                            tokio::time::sleep(Duration::from_secs(2)).await;
+                        }
+                        let bytes = seed.read(position, size, &lease.cancel).await?;
+                        seed.active
+                            .store(true, std::sync::atomic::Ordering::Relaxed);
+                        Ok(bytes)
+                    };
+                    let race = first_stream_success(peer, mirror, webseed.is_some());
+                    tokio::select! {
+                        _ = lease.cancel.cancelled() => return None,
+                        result = tokio::time::timeout(Duration::from_secs(30), race) => result.unwrap_or(Err("stream_timeout")),
+                    }
                 };
-                bytes.truncate(n);
+                let bytes = match result {
+                    Ok(bytes) => bytes,
+                    Err(code) => {
+                        if lease.cancel.is_cancelled() {
+                            return None;
+                        }
+                        lease.stream_failed(code);
+                        return Some((
+                            Err(std::io::Error::other(code)),
+                            (reader, position, 0, lease, permit, webseed),
+                        ));
+                    }
+                };
+                let n = bytes.len() as u64;
                 *lock(&lease.touched) = Instant::now();
                 Some((
                     Ok(Bytes::from(bytes)),
-                    (reader, left - n as u64, lease, permit),
+                    (reader, position + n, left - n, lease, permit, webseed),
                 ))
             },
         );
         Ok(axum::body::Body::from_stream(stream))
+    }
+}
+
+async fn first_stream_success<A, B>(
+    peer: A,
+    mirror: B,
+    has_mirror: bool,
+) -> Result<Vec<u8>, &'static str>
+where
+    A: std::future::Future<Output = Result<Vec<u8>, &'static str>>,
+    B: std::future::Future<Output = Result<Vec<u8>, &'static str>>,
+{
+    tokio::pin!(peer, mirror);
+    tokio::select! {
+        result = &mut peer => match result {
+            Ok(bytes) => Ok(bytes),
+            Err(_) if has_mirror => mirror.await,
+            Err(code) => Err(code),
+        },
+        result = &mut mirror => match result {
+            Ok(bytes) => Ok(bytes),
+            Err(code) => peer.await.or(Err(code)),
+        },
+    }
+}
+
+#[cfg(test)]
+mod webseed_fallback_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn an_unavailable_webseed_does_not_poison_a_healthy_slower_swarm() {
+        let peer = async {
+            tokio::task::yield_now().await;
+            Ok(vec![1, 2, 3])
+        };
+        assert_eq!(
+            first_stream_success(peer, async { Err("webseed_hash_mismatch") }, true)
+                .await
+                .unwrap(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            first_stream_success(
+                async { Err("torrent_failed") },
+                async { Ok(vec![4, 5]) },
+                true
+            )
+            .await
+            .unwrap(),
+            vec![4, 5]
+        );
+        assert_eq!(
+            first_stream_success(
+                async { Err("torrent_failed") },
+                async { Err("webseed_hash_mismatch") },
+                true
+            )
+            .await
+            .unwrap_err(),
+            "webseed_hash_mismatch"
+        );
+    }
+
+    #[tokio::test]
+    async fn stream_errors_persist_but_cancelled_leases_do_not_report_spurious_failures() {
+        let (select, _) = watch::channel(None);
+        let (done, _) = watch::channel(false);
+        let lease = Lease {
+            data: Mutex::new(LeaseData {
+                view: View {
+                    id: "fixture".into(),
+                    state: "ready",
+                    files: vec![],
+                    selected: None,
+                    stream_path: Some("stream".into()),
+                    downloaded: Some(0),
+                    total: Some(10),
+                    error: None,
+                },
+                handle: None,
+                webseed: None,
+            }),
+            cancel: CancellationToken::new(),
+            select,
+            touched: Mutex::new(Instant::now()),
+            created: Instant::now(),
+            done,
+        };
+        lease.stream_failed("webseed_hash_mismatch");
+        assert_eq!(lease.view().state, "error");
+        assert_eq!(lease.view().error, Some("webseed_hash_mismatch"));
+        assert!(lease.view().stream_path.is_none());
+        lease.cancel.cancel();
+        lease.stream_failed("stream_timeout");
+        assert_eq!(lease.view().error, Some("webseed_hash_mismatch"));
     }
 }

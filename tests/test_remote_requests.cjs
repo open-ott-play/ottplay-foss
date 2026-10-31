@@ -903,6 +903,12 @@ async function checkStatusDiagnostics() {
         assert.deepEqual(data, {
             channels: 3,
             diagnostics: {
+                companion: {
+                    capturedAt: data.diagnostics.companion.capturedAt,
+                    runtime: data.player.runtime,
+                    session: null,
+                    version: 1,
+                },
                 epg: { available: false },
                 input: { available: false },
                 provider: {
@@ -935,6 +941,69 @@ async function checkStatusDiagnostics() {
             uuid: "dev_test",
             volume: 35,
         });
+        const providerBefore = data.diagnostics.provider;
+        const companionSession = {
+            active: true,
+            downloaded: 1024,
+            error: "",
+            state: "ready",
+            total: 4096,
+        };
+        host.__ottMediaCompanion = {
+            diagnostics: () => ({
+                ...companionSession,
+                endpoint: "https://private.invalid/private-token",
+            }),
+            ensure: forbidden,
+        };
+        data = await snapshot();
+        assert.deepEqual(data.diagnostics.companion, {
+            capturedAt: data.diagnostics.companion.capturedAt,
+            runtime: data.player.runtime,
+            session: companionSession,
+            version: 1,
+        });
+        assert.deepEqual(data.diagnostics.provider, {
+            ...providerBefore,
+            capturedAt: data.diagnostics.provider.capturedAt,
+        });
+        const previousDriver = host.__ottActiveProviderDriver;
+        const providerRecord = {
+            catalog: {
+                autoPages: false,
+                busy: false,
+                loadedCount: 3,
+                nextCursor: null,
+                selectedIndex: 0,
+                view: "channels",
+            },
+            lookup: null,
+            requests: [],
+            requestsDropped: 0,
+        };
+        try {
+            host.__ottActiveProviderDriver = {
+                catalogBrowser: { diagnostics: () => providerRecord },
+                id: "torrent",
+            };
+            host.__ottMediaCompanion.diagnostics = () => {
+                host.__ottActiveProviderDriver = { id: "m3u" };
+                return companionSession;
+            };
+            data = await snapshot();
+            assert.equal(data.diagnostics.provider.available, true);
+            assert.deepEqual(
+                data.diagnostics.provider.catalog,
+                providerRecord.catalog
+            );
+            assert.deepEqual(
+                data.diagnostics.companion.session,
+                companionSession
+            );
+        } finally {
+            host.__ottActiveProviderDriver = previousDriver;
+            delete host.__ottMediaCompanion;
+        }
         host.__ottHostedEpg = {
             diagnostics: forbidden,
             remoteSnapshot: () => ({ ...safe }),
@@ -1001,6 +1070,7 @@ async function checkStatusDiagnostics() {
     } finally {
         for (const key of [
             "__ottHostedEpg",
+            "__ottMediaCompanion",
             "__ottDebugInputSnapshot",
             "__ottDebugInputInit",
             "__ottDebug",
@@ -1441,6 +1511,10 @@ function checkRemoteEpgCatalog() {
     const currentCaps = (await call("capabilities")).data;
     assert.deepEqual(
         JSON.parse(JSON.stringify(currentCaps.provider_diagnostics)),
+        { version: 1 }
+    );
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(currentCaps.companion_diagnostics)),
         { version: 1 }
     );
     const aspectRuntime = currentCaps.player.runtime;
