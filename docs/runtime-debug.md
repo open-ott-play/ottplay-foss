@@ -109,10 +109,16 @@ status and response size. Missing HTTP status is `null`, not an assumed success.
 Request IDs correlate with the lookup ID. New lookups replace earlier requests;
 configuration changes and provider disposal clear the old observations.
 
-The optional `companion` observation reports the last playback lease separately
+The independent `companion_diagnostics: {version: 1}` capability advertises
+`status.diagnostics.companion`. Its envelope has exactly `version`, `runtime`,
+`capturedAt` and `session`; the existing `status.diagnostics.provider` version 1
+schema remains unchanged. `session` reports the last playback lease separately
 from catalog metadata work: `active`, `state`, an allowlisted `error` code, and
 `downloaded`/`total` byte counts. It is `null` before a playback client exists or
 when evidence cannot be validated. Unknown byte counts are `null`, not zero.
+The wire observation is independent of the active provider. Updated CLI
+provider reports include a session only when the provider observation is
+available and its runtime and capability versions match.
 This is the most recently received service observation; reading it does not
 start the companion or refresh its network status. Combine it with media
 progress to distinguish an unfinished download from stalled decoding. A

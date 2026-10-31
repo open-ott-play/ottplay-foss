@@ -111,8 +111,13 @@ An Internet Archive search result is an item description, not a promise that
 its torrent contains a video. Some items contain only subtitles or metadata;
 the player reports **Nothing to play** for those. When video files exist but
 neither peers nor mirrors can provide them, playback reports a bounded error.
-`ott t1 doctor --provider` includes a passive `companion` snapshot with its
-state, error, downloaded bytes and total bytes, without source URLs or secrets.
+Updated `ott t1 doctor --provider` consumers read the independent
+`status.diagnostics.companion` snapshot when the player advertises
+`companion_diagnostics: {version: 1}`. The envelope contains `version`, `runtime`,
+`capturedAt` and an explicit `session` (or `null` when unavailable). The session
+has its active flag, state, error and downloaded/total byte counts, without
+source URLs or secrets. Reading it does not start the service or make a network
+request.
 Downloaded bytes describe received, verified data; they do not establish that
 the video decoder has displayed a frame.
 

@@ -70,7 +70,6 @@ export function providerDiagnosticsSnapshot(w: any, runtime: string): any {
         available: false,
         capturedAt: Date.now(),
         catalog: null,
-        companion: null,
         lookup: null,
         provider: null,
         requests: [],
@@ -90,11 +89,6 @@ export function providerDiagnosticsSnapshot(w: any, runtime: string): any {
             return empty;
         var value = browser.diagnostics();
         if (!value || driver !== w.__ottActiveProviderDriver) return empty;
-        var companion = w.__ottMediaCompanion;
-        var companionStatus = null;
-        try {
-            companionStatus = providerCompanion(companion?.diagnostics?.());
-        } catch (_) {}
         var catalogValue = value.catalog;
         var lookupValue = value.lookup;
         var requestValues = value.requests;
@@ -171,15 +165,13 @@ export function providerDiagnosticsSnapshot(w: any, runtime: string): any {
         }
         if (
             driver !== w.__ottActiveProviderDriver ||
-            browser !== driver.catalogBrowser ||
-            companion !== w.__ottMediaCompanion
+            browser !== driver.catalogBrowser
         )
             return empty;
         return {
             available: true,
             capturedAt: empty.capturedAt,
             catalog: catalog,
-            companion: companionStatus,
             lookup: lookup,
             provider: "torrent",
             requests: requests,
@@ -190,4 +182,22 @@ export function providerDiagnosticsSnapshot(w: any, runtime: string): any {
     } catch (_) {
         return empty;
     }
+}
+
+/** Separate wire schema keeps provider v1 compatible with strict consumers. */
+export function companionDiagnosticsSnapshot(w: any, runtime: string): any {
+    var snapshot: any = {
+        capturedAt: Date.now(),
+        runtime: runtime,
+        session: null,
+        version: 1,
+    };
+    try {
+        var companion = w.__ottMediaCompanion;
+        var read = companion && companion.diagnostics;
+        if (typeof read !== "function") return snapshot;
+        var session = providerCompanion(read.call(companion));
+        if (companion === w.__ottMediaCompanion) snapshot.session = session;
+    } catch (_) {}
+    return snapshot;
 }

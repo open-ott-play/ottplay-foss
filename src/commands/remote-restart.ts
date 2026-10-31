@@ -877,6 +877,7 @@ export function executeRemoteControl(
                 ? { operations: ["status", "prepare", "install"], version: 1 }
                 : null,
             aspect: remoteAspectCapabilities(w),
+            companion_diagnostics: { version: 1 },
             debug: w.__ottRuntimeDebug ? { version: 1 } : undefined,
             debug_attempts: w.__ottRuntimeDebug ? { version: 3 } : undefined,
             debug_versions: w.__ottRuntimeDebug ? [1, 2] : undefined,

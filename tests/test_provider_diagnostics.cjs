@@ -22,6 +22,12 @@ const snapshot = (host) =>
             context.exports.providerDiagnosticsSnapshot(host, "runtime-1")
         )
     );
+const companionSnapshot = (host) =>
+    JSON.parse(
+        JSON.stringify(
+            context.exports.companionDiagnosticsSnapshot(host, "runtime-1")
+        )
+    );
 const secret = "https://private.invalid/config-token/movie-id";
 function fixture() {
     const value = {
@@ -101,7 +107,6 @@ test("unavailable, replaced and throwing producers return explicit unavailable e
         available: false,
         capturedAt: 1000,
         catalog: null,
-        companion: null,
         lookup: null,
         provider: null,
         requests: [],
@@ -244,12 +249,18 @@ test("companion diagnostics expose only passive bounded playback evidence", () =
         ensure: () => assert.fail("must not start companion"),
     };
     host.fetch = () => assert.fail("must not fetch");
-    const result = snapshot(host);
-    assert.deepEqual(result.companion, status);
+    const providerBefore = snapshot(host);
+    const result = companionSnapshot(host);
+    assert.deepEqual(result, {
+        capturedAt: 1000,
+        runtime: "runtime-1",
+        session: status,
+        version: 1,
+    });
     assert.equal(reads, 1);
-    result.companion.downloaded = 0;
+    result.session.downloaded = 0;
     assert.equal(status.downloaded, 1048576);
-    assert.equal(result.catalog.loadedCount, 1500);
+    assert.deepEqual(snapshot(host), providerBefore);
 });
 
 test("invalid companion data cannot leak or hide valid catalogue evidence", () => {
@@ -275,7 +286,7 @@ test("invalid companion data cannot leak or hide valid catalogue evidence", () =
         };
         const result = snapshot(host);
         assert.equal(result.available, true);
-        assert.equal(result.companion, null);
+        assert.equal(companionSnapshot(host).session, null);
         assert.deepEqual(result, expected);
     }
     const { host } = fixture();
@@ -285,7 +296,9 @@ test("invalid companion data cannot leak or hide valid catalogue evidence", () =
             return null;
         },
     };
-    assert.deepEqual(snapshot(host), snapshot({}));
+    const providerBefore = snapshot(host);
+    assert.deepEqual(companionSnapshot(host), companionSnapshot({}));
+    assert.deepEqual(snapshot(host), providerBefore);
 });
 
 test("companion failures retain approved actionable codes without sources", () => {
@@ -309,6 +322,71 @@ test("companion failures retain approved actionable codes without sources", () =
                 total: null,
             }),
         };
-        assert.equal(snapshot(host).companion.error, error);
+        assert.equal(companionSnapshot(host).session.error, error);
     }
+});
+
+test("provider v1 wire shape remains exact without consulting companion state", () => {
+    const { host } = fixture();
+    Object.defineProperty(host, "__ottMediaCompanion", {
+        get: () => assert.fail("provider must not inspect companion"),
+    });
+    const fields = [
+        "available",
+        "capturedAt",
+        "catalog",
+        "lookup",
+        "provider",
+        "requests",
+        "requestsDropped",
+        "runtime",
+        "version",
+    ];
+    for (const value of [snapshot(host), snapshot({})]) {
+        assert.deepEqual(Object.keys(value).sort(), fields.slice().sort());
+        assert.equal(value.version, 1);
+    }
+});
+
+test("companion observation is independent, passive and null when unavailable", () => {
+    const empty = {
+        capturedAt: 1000,
+        runtime: "runtime-1",
+        session: null,
+        version: 1,
+    };
+    assert.deepEqual(companionSnapshot({}), empty);
+    const status = {
+        active: false,
+        downloaded: null,
+        error: "",
+        state: "unknown",
+        total: null,
+    };
+    const host = {
+        __ottMediaCompanion: { diagnostics: () => status },
+        fetch: () => assert.fail("passive read must not fetch"),
+    };
+    Object.defineProperty(host, "__ottActiveProviderDriver", {
+        get: () => assert.fail("companion must not inspect provider"),
+    });
+    assert.deepEqual(companionSnapshot(host), { ...empty, session: status });
+    for (const diagnostics of [
+        undefined,
+        true,
+        () => null,
+        () => {
+            throw Error(secret);
+        },
+    ]) {
+        host.__ottMediaCompanion = { diagnostics };
+        assert.deepEqual(companionSnapshot(host), empty);
+    }
+    host.__ottMediaCompanion = {
+        diagnostics() {
+            host.__ottMediaCompanion = { diagnostics: () => status };
+            return status;
+        },
+    };
+    assert.deepEqual(companionSnapshot(host), empty);
 });
