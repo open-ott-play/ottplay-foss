@@ -5,16 +5,129 @@ import hashlib
 import importlib.util
 import io
 import json
+import ssl
 import tarfile
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
+from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("playback_builder", ROOT / "scripts/build-linux-playback-compat.py")
 BUILDER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILDER)
 CONFIG = json.loads((Path(__file__).parent / "sources.json").read_text())
+
+
+class DownloadTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        self.destination = self.directory / "output"
+        self.destination.write_bytes(b"previous verified bytes")
+        self.item = {"name": "input", "size": 4, "sha256": hashlib.sha256(b"good").hexdigest(),
+                     "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/example"}
+
+    def response(self, data=b"good", url=None):
+        response = io.BytesIO(data)
+        response.url = url or self.item["url"]
+        response.read = unittest.mock.Mock(wraps=response.read)
+        return response
+
+    def test_initial_success_keeps_exact_request_and_read_bound(self):
+        response = self.response()
+        with patch.object(BUILDER.urllib.request, "urlopen", return_value=response) as request, \
+                patch.object(BUILDER.time, "sleep") as sleep:
+            BUILDER.fetch(self.item, self.destination)
+        request.assert_called_once_with(self.item["url"], timeout=60)
+        response.read.assert_called_once_with(5)
+        self.assertTrue(response.closed)
+        sleep.assert_not_called()
+        self.assertEqual(self.destination.read_bytes(), b"good")
+        self.assertEqual(list(self.directory.iterdir()), [self.destination])
+
+    def test_transient_connect_and_server_errors_retry_same_request(self):
+        failures = [TimeoutError("connect"), ConnectionResetError("reset"),
+                    urllib.error.URLError(TimeoutError("wrapped connect"))]
+        failures.extend(urllib.error.HTTPError(self.item["url"], code, "temporary", {}, io.BytesIO())
+                        for code in (500, 502, 503, 504))
+        for failure in failures:
+            with self.subTest(failure=failure), \
+                    patch.object(BUILDER.urllib.request, "urlopen", side_effect=[failure, self.response()]) as request, \
+                    patch.object(BUILDER.time, "sleep") as sleep:
+                BUILDER.fetch(self.item, self.destination)
+                self.assertEqual(request.call_args_list, [call(self.item["url"], timeout=60)] * 2)
+                sleep.assert_called_once_with(1)
+                self.assertEqual(self.destination.read_bytes(), b"good")
+
+    def test_read_timeout_discards_partial_attempt_and_closes_response(self):
+        failed = self.response()
+        failed.read.side_effect = TimeoutError("read")
+        with patch.object(BUILDER.urllib.request, "urlopen", side_effect=[failed, self.response()]) as request, \
+                patch.object(BUILDER.time, "sleep") as sleep:
+            BUILDER.fetch(self.item, self.destination)
+        self.assertTrue(failed.closed)
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(1)
+        self.assertEqual(self.destination.read_bytes(), b"good")
+
+    def test_exhaustion_is_bounded_and_leaves_destination_unchanged(self):
+        failure = urllib.error.URLError(TimeoutError("connect"))
+        with patch.object(BUILDER.urllib.request, "urlopen", side_effect=failure) as request, \
+                patch.object(BUILDER.time, "sleep") as sleep, \
+                self.assertRaises(urllib.error.URLError) as raised:
+            BUILDER.fetch(self.item, self.destination)
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(1), call(2)])
+        self.assertEqual(self.destination.read_bytes(), b"previous verified bytes")
+
+    def test_nontransient_and_tls_failures_are_not_retried(self):
+        failures = [ssl.SSLError("TLS"), urllib.error.URLError(ssl.SSLCertVerificationError("certificate")),
+                    urllib.error.URLError("DNS failure"),
+                    urllib.error.HTTPError("https://example.invalid/redirect", 503, "temporary", {}, io.BytesIO())]
+        failures.extend(urllib.error.HTTPError(self.item["url"], code, "terminal", {}, io.BytesIO())
+                        for code in (401, 404, 429, 501))
+        for failure in failures:
+            with self.subTest(failure=failure), \
+                    patch.object(BUILDER.urllib.request, "urlopen", side_effect=failure) as request, \
+                    patch.object(BUILDER.time, "sleep") as sleep, self.assertRaises(type(failure)):
+                BUILDER.fetch(self.item, self.destination)
+            request.assert_called_once()
+            sleep.assert_not_called()
+            self.assertEqual(self.destination.read_bytes(), b"previous verified bytes")
+
+    def test_integrity_or_redirect_failure_after_retry_is_terminal(self):
+        for response in (self.response(b"bad"), self.response(b"evil"), self.response(b"toolong"),
+                         self.response(url="https://example.invalid/redirect")):
+            with patch.object(BUILDER.urllib.request, "urlopen", side_effect=[TimeoutError(), response]) as request, \
+                    patch.object(BUILDER.time, "sleep") as sleep, self.assertRaises(ValueError):
+                BUILDER.fetch(self.item, self.destination)
+            self.assertEqual(request.call_count, 2)
+            sleep.assert_called_once_with(1)
+            self.assertTrue(response.closed)
+            self.assertEqual(self.destination.read_bytes(), b"previous verified bytes")
+
+    def test_cache_never_opens_network_or_retries(self):
+        with patch.object(BUILDER.urllib.request, "urlopen") as request, patch.object(BUILDER.time, "sleep") as sleep:
+            cached = self.directory / self.item["name"]
+            cached.write_bytes(b"good")
+            BUILDER.fetch(self.item, self.destination, self.directory)
+            cached.write_bytes(b"evil")
+            with self.assertRaises(ValueError):
+                BUILDER.fetch(self.item, self.destination, self.directory)
+        request.assert_not_called()
+        sleep.assert_not_called()
+        self.assertEqual(self.destination.read_bytes(), b"good")
+
+    def test_failed_atomic_publish_preserves_previous_file_and_removes_staging(self):
+        with patch.object(BUILDER.urllib.request, "urlopen", return_value=self.response()), \
+                patch.object(Path, "replace", side_effect=OSError("rename failed")), self.assertRaises(OSError):
+            BUILDER.fetch(self.item, self.destination)
+        self.assertEqual(self.destination.read_bytes(), b"previous verified bytes")
+        self.assertEqual(list(self.directory.iterdir()), [self.destination])
 
 
 class BuilderTests(unittest.TestCase):
