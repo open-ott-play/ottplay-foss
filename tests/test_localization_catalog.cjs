@@ -1481,6 +1481,7 @@ try {
         "Background opacity",
         "Reset to default",
         "Label (optional)",
+        "Torrent cache limit exceeded.",
     ])
         assert(Object.hasOwn(reference, key), `Audited UI key missing: ${key}`);
     if (process.argv.includes("--runtime-only")) {
@@ -1493,7 +1494,7 @@ try {
         });
         assert.deepEqual(result.errors, [], result.errors.join("\n"));
         assert.equal(result.localeCount, 88);
-        assert.equal(result.keyCount, 945);
+        assert.equal(result.keyCount, 946);
         console.log(
             `PASS localization: ${result.keyCount} canonical keys, ${result.sourceKeyCount} source-derived keys, ${result.localeCount} locale assets; missing/duplicate keys, placeholders, HTML, whitespace and selector coverage`
         );
