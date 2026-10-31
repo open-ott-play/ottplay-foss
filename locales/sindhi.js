@@ -256,6 +256,8 @@ var keyStrings = {
         "سيٽنگون -> فراهم ڪندڙ جون سيٽنگون ۾ TV DOSUG ترتيب ڏيو",
     "Configure TVClub in Settings -> Provider Settings":
         "سيٽنگون -> فراهم ڪندڙ جون سيٽنگون ۾ TVClub ترتيب ڏيو",
+    "Configure this addon first, then add its configured manifest URL.":
+        "پهرين هي اضافو ترتيب ڏيو، پوءِ ترتيب ڏنل مينيفيسٽ جو پتو شامل ڪريو.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "سيٽنگون -> فراهم ڪندڙ جون سيٽنگون ۾ ULTIFL1X ترتيب ڏيو",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -852,6 +854,7 @@ var keyStrings = {
     "Repeat: All": "ورجاءُ: سڀ",
     "Repeat: Off": "ورجاءُ: بند",
     "Repeat: One": "ورجاءُ: هڪ",
+    Replace: "مٽايو",
     "Request sended!": "درخواست موڪلي وئي!",
     "Requesting approval for %1": "%1 لاءِ منظوري گهري پئي وڃي",
     "Reset order": 'چينل ترتيب ڏيو: "جيئن آهي"',
@@ -1022,6 +1025,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "اسٽريم جو انتظار ختم ٿي ويو. ٻيهر ڪوشش لاءِ چينل چونڊيو.",
     "Stream type: %1": "اسٽريم جو قسم: %1",
+    "Stremio addons": "Stremio اضافا",
     "String for search": "ڳولا جو متن",
     "Su Mo Tu We Th Fr Sa": "آچر سومر اڱارو اربع خميس جمعو ڇنڇر",
     "Subscription information": "رڪنيت جي ڄاڻ",

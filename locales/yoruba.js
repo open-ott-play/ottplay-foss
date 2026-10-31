@@ -258,6 +258,8 @@ var keyStrings = {
         "Ṣètò TV DOSUG ní Ètò -> Ètò olùpèsè",
     "Configure TVClub in Settings -> Provider Settings":
         "Ṣètò TVClub ní Ètò -> Ètò olùpèsè",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ṣètò àfikún yìí kọ́kọ́, lẹ́yìn náà fi àdírẹ́sì fáìlì manifest tí a ti ṣètò kún un.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ṣètò ULTIFL1X ní Ètò -> Ètò olùpèsè",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -850,6 +852,7 @@ var keyStrings = {
     "Repeat: All": "Tún ṣeré: Gbogbo",
     "Repeat: Off": "Tún ṣeré: Pípa",
     "Repeat: One": "Tún ṣeré: Ọ̀kan",
+    Replace: "Rọ́pò",
     "Request sended!": "A ti fi ìbéèrè ránṣẹ́!",
     "Requesting approval for %1": "Ń béèrè ìfọwọ́sí fún %1",
     "Reset order": 'To àwọn ìkànnì: "Bí ó ṣe rí"',
@@ -1020,6 +1023,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Àkókò dídúró fún ìṣàn ti parí. Yan ìkànnì láti tún gbìyànjú.",
     "Stream type: %1": "Irú ìṣàn: %1",
+    "Stremio addons": "Àwọn àfikún Stremio",
     "String for search": "Ọ̀rọ̀ ìwádìí",
     "Su Mo Tu We Th Fr Sa": "Àìkú Ajé Ìsẹ́gun Ọjọ́rú Ọjọ́bọ Ẹtì Àbámẹ́ta",
     "Subscription information": "Ìwífún ìforúkọsílẹ̀",

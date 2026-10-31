@@ -266,6 +266,8 @@ var keyStrings = {
         "TV DOSUG-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Аввал ин иловаро танзим кунед, сипас суроғаи манифести танзимшударо илова кунед.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X-ро дар Танзимот -> Танзимоти таъминкунанда танзим кунед",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -868,6 +870,7 @@ var keyStrings = {
     "Repeat: All": "Такрор: Ҳама",
     "Repeat: Off": "Такрор: Хомӯш",
     "Repeat: One": "Такрор: Як",
+    Replace: "Иваз кардан",
     "Request sended!": "Дархост фиристода шуд!",
     "Requesting approval for %1": "Дархости тасдиқ барои %1",
     "Reset order": 'Каналҳоро мураттаб кунед: "Бетағйир"',
@@ -1043,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Вақти интизории ҷараён ба охир расид. Барои кӯшиши дубора каналро интихоб кунед.",
     "Stream type: %1": "Навъи пахш: %1",
+    "Stremio addons": "Иловаҳои Stremio",
     "String for search": "Ибораи ҷустуҷӯ",
     "Su Mo Tu We Th Fr Sa": "Якш Душ Сеш Чор Пан Ҷум Шан",
     "Subscription information": "Маълумоти обуна",

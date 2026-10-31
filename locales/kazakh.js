@@ -261,6 +261,8 @@ var keyStrings = {
         "TV DOSUG қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Алдымен осы қосымшаны баптап, содан кейін бапталған манифестің мекенжайын қосыңыз.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X қызметін Баптаулар -> Провайдер баптаулары бөлімінде баптаңыз",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -862,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Қайталау: барлығы",
     "Repeat: Off": "Қайталау: өшірулі",
     "Repeat: One": "Қайталау: біреу",
+    Replace: "Ауыстыру",
     "Request sended!": "Сұрау жіберілді!",
     "Requesting approval for %1": "%1 үшін растау сұралуда",
     "Reset order": "Арналарды сұрыптау: «Өзгеріссіз»",
@@ -1036,6 +1039,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Ағынды күту уақыты аяқталды. Қайталап көру үшін арнаны таңдаңыз.",
     "Stream type: %1": "Ағын түрі: %1",
+    "Stremio addons": "Stremio қосымшалары",
     "String for search": "Іздеу мәтіні",
     "Su Mo Tu We Th Fr Sa": "Жс Дс Сс Ср Бс Жм Сб",
     "Subscription information": "Жазылым туралы ақпарат",

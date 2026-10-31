@@ -272,6 +272,8 @@ var keyStrings = {
         "Configura TV DOSUG en Configuración → Configuración do provedor",
     "Configure TVClub in Settings -> Provider Settings":
         "Configura TVClub en Configuración → Configuración do provedor",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Configura primeiro este complemento e despois engade o URL do manifesto configurado.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Configura ULTIFL1X en Configuración → Configuración do provedor",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -884,6 +886,7 @@ var keyStrings = {
     "Repeat: All": "Repetición: todos",
     "Repeat: Off": "Repetición: desactivada",
     "Repeat: One": "Repetición: un",
+    Replace: "Substituír",
     "Request sended!": "Solicitude enviada!",
     "Requesting approval for %1": "Solicitando aprobación para %1",
     "Reset order": 'Ordenar canles: "Tal como está"',
@@ -1061,6 +1064,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Esgotouse o tempo de espera da emisión. Selecciona a canle para tentalo de novo.",
     "Stream type: %1": "Tipo de transmisión: %1",
+    "Stremio addons": "Complementos de Stremio",
     "String for search": "Texto de busca",
     "Su Mo Tu We Th Fr Sa": "Dom Lun Mar Mér Xov Ven Sáb",
     "Subscription information": "Información da subscrición",

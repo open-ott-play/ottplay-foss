@@ -266,6 +266,8 @@ var keyStrings = {
         "TV DOSUG di Mîheng -> Mîhengên dabînkerê de saz bikin",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub di Mîheng -> Mîhengên dabînkerê de saz bikin",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Pêşî vê pêvekê saz bike, paşê navnîşana manifesta sazkirî lê zêde bike.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X di Mîheng -> Mîhengên dabînkerê de saz bikin",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -865,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Dubare: Hemû",
     "Repeat: Off": "Dubare: Girtî",
     "Repeat: One": "Dubare: Yek",
+    Replace: "Biguherîne",
     "Request sended!": "Daxwaz şandin!",
     "Requesting approval for %1": "Daxwaza pejirandinê ji bo %1",
     "Reset order": 'Kanalan rêz bike: "Wekî ye"',
@@ -1043,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Dema li benda weşanê qediya. Ji bo dîsa ceribandinê kanalê hilbijêre.",
     "Stream type: %1": "Cureyê weşanê: %1",
+    "Stremio addons": "Pêvekên Stremio",
     "String for search": "Gotina lêgerînê",
     "Su Mo Tu We Th Fr Sa": "Yekşem Duşem Sêşem Çarşem Pêncşem În Şemî",
     "Subscription information": "Agahiyên abonetiyê",

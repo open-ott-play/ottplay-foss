@@ -250,6 +250,8 @@ var keyStrings = {
         "TV DOSUGን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClubን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "መጀመሪያ ይህን ተጨማሪ ያዋቅሩ፣ ከዚያ የተዋቀረውን ማኒፌስት አድራሻ ያክሉ።",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1Xን በቅንብሮች -> የአቅራቢ ቅንብሮች ያዋቅሩ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -827,6 +829,7 @@ var keyStrings = {
     "Repeat: All": "ድገም፦ ሁሉንም",
     "Repeat: Off": "ድገም፦ ጠፍቷል",
     "Repeat: One": "ድገም፦ አንድ",
+    Replace: "ተካ",
     "Request sended!": "ጥያቄ ተልኳል!",
     "Requesting approval for %1": "ለ%1 ፈቃድ በመጠየቅ ላይ",
     "Reset order": 'ሰርጦችን ደርድር: "እንደሆነ"',
@@ -992,6 +995,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "የስርጭቱ የጥበቃ ጊዜ አልቋል። እንደገና ለመሞከር ቻናሉን ይምረጡ።",
     "Stream type: %1": "የዥረት ዓይነት፦ %1",
+    "Stremio addons": "የStremio ተጨማሪዎች",
     "String for search": "የፍለጋ ጥያቄ",
     "Su Mo Tu We Th Fr Sa": "እሑድ ሰኞ ማክሰ ረቡዕ ሐሙስ ዓርብ ቅዳሜ",
     "Subscription information": "የደንበኝነት መረጃ",

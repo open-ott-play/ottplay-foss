@@ -258,6 +258,8 @@ var keyStrings = {
         "설정 -> 공급자 설정에서 TV DOSUG 구성",
     "Configure TVClub in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 TVClub 구성",
+    "Configure this addon first, then add its configured manifest URL.":
+        "먼저 이 애드온을 설정한 다음 설정된 매니페스트 URL을 추가하세요.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "설정 -> 공급자 설정에서 ULTIFL1X 구성",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -855,6 +857,7 @@ var keyStrings = {
     "Repeat: All": "반복: 전체",
     "Repeat: Off": "반복: 끄기",
     "Repeat: One": "반복: 1개",
+    Replace: "교체",
     "Request sended!": "요청이 전송되었습니다!",
     "Requesting approval for %1": "%1 승인 요청 중",
     "Reset order": '채널 정렬: "그대로"',
@@ -1025,6 +1028,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "스트림 대기 시간이 초과되었습니다. 채널을 선택하여 다시 시도하세요.",
     "Stream type: %1": "스트림 유형: %1",
+    "Stremio addons": "Stremio 애드온",
     "String for search": "검색어",
     "Su Mo Tu We Th Fr Sa": "일 월 화 수 목 금 토",
     "Subscription information": "구독정보",

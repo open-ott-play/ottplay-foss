@@ -255,6 +255,8 @@ var keyStrings = {
         "កំណត់រចនាសម្ព័ន្ធ TV DOSUG នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     "Configure TVClub in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ TVClub នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
+    "Configure this addon first, then add its configured manifest URL.":
+        "កំណត់រចនាសម្ព័ន្ធកម្មវិធីបន្ថែមនេះជាមុន រួចបន្ថែមអាសយដ្ឋានឯកសារ manifest ដែលបានកំណត់។",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "កំណត់រចនាសម្ព័ន្ធ ULTIFL1X នៅក្នុងការកំណត់ -> ការកំណត់អ្នកផ្តល់សេវា",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -846,6 +848,7 @@ var keyStrings = {
     "Repeat: All": "ធ្វើម្តងទៀត៖ ទាំងអស់។",
     "Repeat: Off": "ធ្វើម្តងទៀត៖ បិទ",
     "Repeat: One": "ធ្វើម្តងទៀត៖ មួយ។",
+    Replace: "ជំនួស",
     "Request sended!": "បានផ្ញើសំណើ!",
     "Requesting approval for %1": "ស្នើសុំការយល់ព្រមសម្រាប់ %1",
     "Reset order": 'តម្រៀបឆានែល: "ដូច"',
@@ -1016,6 +1019,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "អស់ពេលរង់ចាំការផ្សាយ។ ជ្រើសរើសប៉ុស្តិ៍ដើម្បីព្យាយាមម្តងទៀត។",
     "Stream type: %1": "ប្រភេទស្ទ្រីម៖ %1",
+    "Stremio addons": "កម្មវិធីបន្ថែម Stremio",
     "String for search": "សំណួរស្វែងរក",
     "Su Mo Tu We Th Fr Sa": "អាទិត្យ ចន្ទ អង្គារ ពុធ ព្រហស្បតិ៍ សុក្រ សៅរ៍",
     "Subscription information": "ព័ត៌មាននៃការជាវ",

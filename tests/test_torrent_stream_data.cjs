@@ -96,6 +96,114 @@ function finish(f, streams = [direct], data = manifest()) {
     f.requests[1].done(null, { streams });
     return f.results[0];
 }
+test("failure summaries carry bounded HTTP metadata without provider secrets", () => {
+    const f = fixture({ urls: [first, second] });
+    f.lookup();
+    f.requests[0].done(null, manifest({ types: ["series"] }));
+    f.requests[1].done(
+        null,
+        manifest({ name: "https://private.example/TOKEN" })
+    );
+    f.requests[2].done(
+        "TOKEN",
+        { error: "TOKEN", streams: [] },
+        { httpStatus: "400" }
+    );
+    assert.equal(f.results[0].error, "unavailable");
+    assert.deepEqual(f.results[0].failures, [
+        {
+            addonIndex: 1,
+            httpStatus: 400,
+            outcome: "http_error",
+            stage: "stream",
+        },
+    ]);
+    assert.doesNotMatch(
+        JSON.stringify(f.results[0]),
+        /TOKEN|private|https|example/
+    );
+    const before = copy(f.api.diagnostics());
+    f.results[0].failures[0].httpStatus = 599;
+    assert.deepEqual(copy(f.api.diagnostics()), before);
+});
+test("partial and timed-out lookup summaries stay ordered and bounded to eight addons", () => {
+    const f = fixture({
+        urls: Array.from(
+            { length: 8 },
+            (_, i) => `https://addon${i}.example/manifest.json`
+        ),
+    });
+    f.lookup();
+    for (let i = 7; i >= 0; i--) f.requests[i].done(null, manifest());
+    for (let i = 8; i < 15; i++)
+        f.requests[i].done(true, null, { httpStatus: 500 + i });
+    f.tick(15000);
+    assert.equal(f.results[0].failures.length, 8);
+    assert.deepEqual(
+        f.results[0].failures.map((entry) => entry.addonIndex),
+        [0, 1, 2, 3, 4, 5, 6, 7]
+    );
+    assert.equal(f.results[0].failures[0].outcome, "timeout");
+    assert.equal(f.results[0].failures[0].httpStatus, null);
+    const partial = fixture({ urls: [first, second] });
+    partial.lookup();
+    partial.requests[0].done(null, manifest());
+    partial.requests[1].done(true, null, { httpStatus: 503 });
+    partial.requests[2].done(null, { streams: [] });
+    assert.equal(partial.results[0].ok, true);
+    assert.equal(partial.results[0].items.length, 0);
+    assert.deepEqual(partial.results[0].failures, [
+        {
+            addonIndex: 1,
+            httpStatus: 503,
+            outcome: "http_error",
+            stage: "manifest",
+        },
+    ]);
+});
+test("configuration-required manifests block only applicable addons without requesting streams", () => {
+    const f = fixture({ urls: [first, second] });
+    f.lookup();
+    f.requests[0].done(null, manifest({ types: ["series"] }));
+    f.requests[1].done(
+        null,
+        manifest({ behaviorHints: { configurationRequired: true } }),
+        { httpStatus: 200 }
+    );
+    assert.equal(f.requests.length, 2);
+    assert.equal(f.results[0].error, "configuration_required");
+    assert.deepEqual(f.results[0].failures, [
+        {
+            addonIndex: 1,
+            httpStatus: 200,
+            outcome: "configuration_required",
+            stage: "manifest",
+        },
+    ]);
+    assert.equal(f.api.diagnostics().lookup.state, "failed");
+    assert(
+        f.api
+            .diagnostics()
+            .requests.every((request) => request.outcome === "ok")
+    );
+    for (const failure of [false, true]) {
+        const mixed = fixture({ urls: [first, second] });
+        mixed.lookup();
+        mixed.requests[0].done(
+            null,
+            manifest({ behaviorHints: { configurationRequired: true } })
+        );
+        mixed.requests[1].done(null, manifest());
+        mixed.requests[2].done(
+            failure,
+            { streams: [] },
+            { httpStatus: failure ? 400 : 200 }
+        );
+        assert.equal(mixed.results[0].ok, !failure);
+        if (failure) assert.equal(mixed.results[0].error, "unavailable");
+        else assert.equal(mixed.results[0].items.length, 0);
+    }
+});
 test("diagnostics distinguish HTTP failure and skipped manifests without retaining private data", () => {
     const f = fixture({ urls: [first, second] });
     assert.deepEqual(copy(f.api.diagnostics()), {
@@ -556,7 +664,20 @@ test("empty, unavailable and partial-failure outcomes differ", () => {
     const f = fixture();
     f.lookup();
     f.requests[0].done(new Error("private endpoint"));
-    assert.deepEqual(f.results, [{ error: "unavailable", ok: false }]);
+    assert.deepEqual(f.results, [
+        {
+            error: "unavailable",
+            failures: [
+                {
+                    addonIndex: 0,
+                    httpStatus: null,
+                    outcome: "transport_error",
+                    stage: "manifest",
+                },
+            ],
+            ok: false,
+        },
+    ]);
     const p = fixture({ urls: [first, second] });
     p.lookup();
     p.requests[1].done(true);
@@ -584,7 +705,18 @@ test("incompatible addons do not mask compatible request failures or empty respo
             });
         const result = f.results[0];
         if (mode === "failed") {
-            assert.deepEqual(result, { error: "unavailable", ok: false });
+            assert.deepEqual(result, {
+                error: "unavailable",
+                failures: [
+                    {
+                        addonIndex: 1,
+                        httpStatus: null,
+                        outcome: "transport_error",
+                        stage: "stream",
+                    },
+                ],
+                ok: false,
+            });
         } else {
             assert.equal(result.ok, true, mode);
             assert.equal(result.skippedAddons, 1, mode);
@@ -615,6 +747,14 @@ test("a successful empty compatible response remains distinct from skipped and f
     assert.deepEqual(f.results, [
         {
             failedAddons: 1,
+            failures: [
+                {
+                    addonIndex: 1,
+                    httpStatus: null,
+                    outcome: "transport_error",
+                    stage: "stream",
+                },
+            ],
             items: [],
             ok: true,
             skippedAddons: 1,

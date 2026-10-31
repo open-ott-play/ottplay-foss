@@ -144,6 +144,13 @@ highlighting a film or reading its description does not start a torrent
 download. Choose **Catalog language** in the Torrent provider settings to
 override the interface language for movie metadata.
 
+Search-only catalogs open the standard search editor before requesting results.
+Both current `extra` declarations and legacy `extraSupported`/`extraRequired`
+declarations are supported. Each response may contain up to 1,000 movies within
+the existing 512 KiB JSON limit; pagination still follows the addon's `skip`
+capability. Generic addons keep their own resource paths, even if their catalog
+IDs match the older TMDB adapter.
+
 `torrentCatalogLanguage` is a portable preference for the current provider. Its
 default empty value follows the effective interface language. An explicit value
 uses one of the existing language identifiers, such as `_rus` or `_fra`, and
@@ -204,6 +211,12 @@ chooser reports **Failed to load!**; a successful response with no sources
 reports **Nothing to play**. **Unsupported source** means the returned source
 formats are unsupported, or none of the configured addons supports the movie.
 An HTTP error remains a failure even when its body contains an empty stream list.
+When available, the failure includes the addon number and HTTP status, for
+example **Stremio #2 · HTTP 400**, without exposing the configured URL. A public
+manifest loading successfully does not establish that its stream service is
+configured: some addons require a personal manifest obtained from their own
+configuration page. Use that configured manifest; the player cannot supply the
+addon's account or service configuration.
 
 In **Torrent → Manage lists**, choose **Add Stremio addon…** and enter the addon
 manifest URL in the standard editor. Copied `stremio://` installation links are
@@ -214,6 +227,12 @@ activates that addon's catalog base. An addon with both capabilities saves both
 settings atomically; a stream-only addon keeps the current movie catalog.
 The manually maintained magnet/torrent catalog is unchanged. **Add new list**
 continues to accept magnet links and torrent file URLs separately.
+
+**Stremio addons** lists the installed addons by number. **Replace** validates a
+new manifest before changing its settings; **Delete** removes that addon while
+preserving unrelated catalogs and sources. A manifest declaring
+`configurationRequired: true` is not installed until its configuration is
+completed. These actions are also available for catalog-only addons.
 
 The settings screen reports completion or a bounded error without displaying
 the private URL. Back cancels a pending request; late replies and conflicting

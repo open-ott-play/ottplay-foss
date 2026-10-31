@@ -261,6 +261,8 @@ var keyStrings = {
         "დააკონფიგურირეთ TV DOSUG პარამეტრებში -> პროვაიდერის პარამეტრები",
     "Configure TVClub in Settings -> Provider Settings":
         "დააკონფიგურირეთ TVClub პარამეტრებში -> პროვაიდერის პარამეტრები",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ჯერ გამართეთ ეს დამატება, შემდეგ დაამატეთ გამართული მანიფესტის მისამართი.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "დააკონფიგურირეთ ULTIFL1X პარამეტრებში -> პროვაიდერის პარამეტრები",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -867,6 +869,7 @@ var keyStrings = {
     "Repeat: All": "გამეორება: ყველა",
     "Repeat: Off": "გამეორება: გამორთულია",
     "Repeat: One": "გაიმეორეთ: ერთი",
+    Replace: "ჩანაცვლება",
     "Request sended!": "მოთხოვნა გაიგზავნა!",
     "Requesting approval for %1": "დამტკიცების მოთხოვნა %1-სთვის",
     "Reset order": 'არხების დახარისხება: "როგორც არის"',
@@ -1038,6 +1041,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ნაკადის ლოდინის დრო ამოიწურა. ხელახლა საცდელად აირჩიეთ არხი.",
     "Stream type: %1": "ნაკადის ტიპი: %1",
+    "Stremio addons": "Stremio-ს დამატებები",
     "String for search": "საძიებო მოთხოვნა",
     "Su Mo Tu We Th Fr Sa": "კვი ორშ სამ ოთხ ხუთ პარ შაბ",
     "Subscription information": "გამოწერის ინფორმაცია",

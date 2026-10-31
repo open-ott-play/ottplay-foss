@@ -154,8 +154,12 @@ function setup(initial = {}, realStreams = false) {
                     f.disposed = true;
                 },
                 load: (id, cursor, done) => request("load", [id, cursor], done),
-                search: (query, cursor, done) =>
-                    request("search", [query, cursor], done),
+                search: (query, cursor, done, category) =>
+                    request(
+                        "search",
+                        category ? [query, cursor, category] : [query, cursor],
+                        done
+                    ),
             };
         },
     };
@@ -320,7 +324,10 @@ test("catalog diagnostics expose actual stream transport failures and clear the 
     assert.equal(snapshot.requests[1].httpStatus, 400);
     assert.equal(snapshot.requests[1].outcome, "http_error");
     assert.equal(snapshot.requests[1].responseBytes, 14);
-    assert.equal(f.host.listDetail.textContent, "Failed to load!");
+    assert.equal(
+        f.host.listDetail.textContent,
+        "Failed to load! · Stremio #1 · HTTP 400"
+    );
     assert.doesNotMatch(
         JSON.stringify(snapshot),
         /private|Private|secret|tt1234567/
@@ -945,6 +952,80 @@ test("resuming a source resolves its exact stable reference and never substitute
     assert.equal(result, "waiting");
 });
 
+test("source HTTP failures show safe addon indexes without private transport details", () => {
+    const f = setup();
+    openMovieSources(f);
+    f.streamRequests[0].done({
+        error: "unavailable",
+        failures: [
+            {
+                addonIndex: 1,
+                httpStatus: 400,
+                name: "SECRET",
+                url: "https://private.test/token",
+            },
+            { addonIndex: 0, httpStatus: "SECRET" },
+            { addonIndex: "SECRET", httpStatus: 403 },
+            { addonIndex: 50, httpStatus: 502 },
+            { addonIndex: NaN, httpStatus: 503 },
+        ],
+        ok: false,
+    });
+    assert.equal(
+        f.host.listDetail.textContent,
+        "Failed to load! · Stremio #2 · HTTP 400"
+    );
+    assert.equal(f.playCalls.length, 0);
+});
+test("source configuration failures explain the required setup", () => {
+    const f = setup();
+    openMovieSources(f);
+    f.streamRequests[0].done({ error: "configuration_required", ok: false });
+    assert.equal(
+        f.host.listDetail.textContent,
+        "Configure this addon first, then add its configured manifest URL."
+    );
+});
+test("search-only default opens the standard search editor and remains cancellable", () => {
+    const f = setup();
+    f.host.settings.torrentCatalogEndpoint = "https://catalog.test";
+    f.open();
+    f.requests[0].done({ error: "search_required", ok: false });
+    assert.equal(f.host.editCaption, "Search");
+    assert.equal(f.host.editvar, "");
+    f.host.editvar = "Bunny";
+    f.host.setEdit();
+    assert.equal(f.requests.at(-1).kind, "search");
+    assert.deepEqual(f.requests.at(-1).args, ["Bunny", null]);
+    f.key("RETURN");
+    assert.equal(f.closed, true);
+});
+test("search-only category invokes search for that catalog without an invalid feed request", () => {
+    const f = setup();
+    f.host.settings.torrentCatalogEndpoint = "https://catalog.test";
+    f.open();
+    f.requests[0].done(page([movie(1)]));
+    f.key("BLUE");
+    f.requests.at(-1).done({
+        categories: [
+            {
+                id: "catalog:find",
+                searchOnly: true,
+                searchSupported: true,
+                title: "Find movies",
+            },
+        ],
+        ok: true,
+    });
+    const count = f.requests.length;
+    f.select(0);
+    assert.equal(f.requests.length, count);
+    assert.equal(f.host.editCaption, "Search");
+    f.host.editvar = "Bunny";
+    f.host.setEdit();
+    assert.equal(f.requests.at(-1).kind, "search");
+    assert.deepEqual(f.requests.at(-1).args, ["Bunny", null, "catalog:find"]);
+});
 test("generic catalogs use their manifest names, category IDs and supported search", () => {
     const f = setup();
     f.host.settings.torrentCatalogEndpoint = "https://catalog.example";

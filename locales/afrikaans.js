@@ -264,6 +264,8 @@ var keyStrings = {
         "Stel TV DOSUG op by Instellings -> Verskafferinstellings",
     "Configure TVClub in Settings -> Provider Settings":
         "Stel TVClub op by Instellings -> Verskafferinstellings",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Stel eers hierdie byvoeging op en voeg dan die URL van die opgestelde manifes by.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Stel ULTIFL1X op by Instellings -> Verskafferinstellings",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -867,6 +869,7 @@ var keyStrings = {
     "Repeat: All": "Herhaal: Alles",
     "Repeat: Off": "Herhaal: Af",
     "Repeat: One": "Herhaal: Een",
+    Replace: "Vervang",
     "Request sended!": "Versoek gestuur!",
     "Requesting approval for %1": "Versoek goedkeuring vir %1",
     "Reset order": 'Sorteer kanale: "Soos dit is"',
@@ -1039,6 +1042,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Die stroom het uitgetel. Kies die kanaal om weer te probeer.",
     "Stream type: %1": "Stroomtipe: %1",
+    "Stremio addons": "Stremio-byvoegings",
     "String for search": "Soeknavraag",
     "Su Mo Tu We Th Fr Sa": "So. Ma. Di. Wo. Do. Vr. Sa.",
     "Subscription information": "Intekeninginligting",

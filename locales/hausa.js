@@ -262,6 +262,8 @@ var keyStrings = {
         "Saita TV DOSUG a Saituna -> Saitunan mai bada sabis",
     "Configure TVClub in Settings -> Provider Settings":
         "Saita TVClub a Saituna -> Saitunan mai bada sabis",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Da farko saita wannan ƙarin, sannan ƙara adireshin fayil ɗin manifest da aka saita.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Saita ULTIFL1X a Saituna -> Saitunan mai bada sabis",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -865,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Maimaita: Duka",
     "Repeat: Off": "Maimaita: A kashe",
     "Repeat: One": "Maimaita: Ɗaya",
+    Replace: "Sauya",
     "Request sended!": "An aika buƙata!",
     "Requesting approval for %1": "Ana neman amincewa ga %1",
     "Reset order": 'Tsara tashoshi: "Kamar yadda yake"',
@@ -1035,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Lokacin jiran watsa shirye-shirye ya ƙare. Zaɓi tashar don sake gwadawa.",
     "Stream type: %1": "Nau'in rafi: %1",
+    "Stremio addons": "Ƙarin Stremio",
     "String for search": "Rubutun nema",
     "Su Mo Tu We Th Fr Sa": "Lah Lit Tal Lar Alh Jum Asa",
     "Subscription information": "Bayanan biyan kuɗin sabis",

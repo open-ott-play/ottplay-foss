@@ -257,6 +257,8 @@ var keyStrings = {
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် TV DOSUG ကို စီစဉ်သတ်မှတ်ပါ။",
     "Configure TVClub in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် TVClub ကို စီစဉ်သတ်မှတ်ပါ။",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ဦးစွာ ဤအပိုပရိုဂရမ်ကို ပြင်ဆင်သတ်မှတ်ပြီးနောက် သတ်မှတ်ထားသော မန်နီဖက်စ်လိပ်စာကို ထည့်ပါ။",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ဆက်တင်များ -> ဝန်ဆောင်မှုပေးသူ ဆက်တင်များတွင် ULTIFL1X ကို စီစဉ်သတ်မှတ်ပါ။",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -843,6 +845,7 @@ var keyStrings = {
     "Repeat: All": "ပြန်လုပ်ပါ- အားလုံး",
     "Repeat: Off": "ပြန်လုပ်သည်- ပိတ်သည်။",
     "Repeat: One": "ထပ်ခါဖွင့်ရန်: တစ်ခု",
+    Replace: "အစားထိုးရန်",
     "Request sended!": "တောင်းဆိုချက် ပေးပို့ခဲ့သည်။",
     "Requesting approval for %1": "%1 အတွက် အတည်ပြုချက်တောင်းနေသည်။",
     "Reset order": 'ချန်နယ်များကို စီပါ။: "ဒီလိုပါပဲ"',
@@ -1015,6 +1018,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ထုတ်လွှင့်မှု စောင့်ဆိုင်းချိန် ကုန်ဆုံးသွားသည်။ ထပ်မံကြိုးစားရန် ချန်နယ်ကို ရွေးပါ။",
     "Stream type: %1": "တိုက်ရိုက်ထုတ်လွှင့်မှု အမျိုးအစား- %1",
+    "Stremio addons": "Stremio အပိုပရိုဂရမ်များ",
     "String for search": "ရှာဖွေမှု",
     "Su Mo Tu We Th Fr Sa": "တနင်္ဂနွေ တနင်္လာ အင်္ဂါ ဗုဒ္ဓဟူး ကြာသပတေး သောကြာ စနေ",
     "Subscription information": "စာရင်းသွင်းမှုအချက်အလက်",

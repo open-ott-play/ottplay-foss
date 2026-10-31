@@ -267,6 +267,8 @@ var keyStrings = {
         "Gena TV DOSUG mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
     "Configure TVClub in Settings -> Provider Settings":
         "Gena TVClub mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Banza ugenere iyi nyongera igenamiterere, hanyuma wongeremo aderesi ya dosiye ya manifest yamaze kugenwa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Gena ULTIFL1X mu Igenamiterere -> Igenamiterere ry’utanga serivisi",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -884,6 +886,7 @@ var keyStrings = {
     "Repeat: All": "Subiramo: byose",
     "Repeat: Off": "Subiramo: bizimye",
     "Repeat: One": "Subiramo: kimwe",
+    Replace: "Simbuza",
     "Request sended!": "Ubusabe bwoherejwe!",
     "Requesting approval for %1": "Turasaba icyemezo cya %1",
     "Reset order": 'Tondeka shene: "Uko biri"',
@@ -1061,6 +1064,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Igihe cyo gutegereza ikiganiro cyarangiye. Hitamo shene wongere ugerageze.",
     "Stream type: %1": "Ubwoko bw'isakaza: %1",
+    "Stremio addons": "Inyongera za Stremio",
     "String for search": "Ibyo ushakisha",
     "Su Mo Tu We Th Fr Sa": "Cyu Mbe Kab Gtu Kan Gnu Gnd",
     "Subscription information": "Amakuru yo kwiyandikisha",

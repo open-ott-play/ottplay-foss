@@ -258,6 +258,8 @@ var keyStrings = {
         "Nastavte TV DOSUG v Nastavení -> Nastavení poskytovatele",
     "Configure TVClub in Settings -> Provider Settings":
         "Nastavte TVClub v Nastavení -> Nastavení poskytovatele",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Nejprve nastavte doplněk a poté přidejte adresu nastaveného manifestu.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Nastavte ULTIFL1X v Nastavení -> Nastavení poskytovatele",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -855,6 +857,7 @@ var keyStrings = {
     "Repeat: All": "Opakování: vše",
     "Repeat: Off": "Opakování: vypnuto",
     "Repeat: One": "Opakování: jeden",
+    Replace: "Nahradit",
     "Request sended!": "Požadavek odeslán!",
     "Requesting approval for %1": "Žádost o schválení pro %1",
     "Reset order": "Řadit kanály: „Beze změn“",
@@ -1027,6 +1030,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Vypršel časový limit streamu. Vyberte kanál a zkuste to znovu.",
     "Stream type: %1": "Typ streamu: %1",
+    "Stremio addons": "Doplňky Stremio",
     "String for search": "Hledaný text",
     "Su Mo Tu We Th Fr Sa": "Ne Po Út St Čt Pá So",
     "Subscription information": "Informace o předplatném",

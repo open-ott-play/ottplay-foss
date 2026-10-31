@@ -262,6 +262,8 @@ var keyStrings = {
         "Nustatykite TV DOSUG skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure TVClub in Settings -> Provider Settings":
         "Nustatykite TVClub skiltyje Nustatymai -> Teikėjo nustatymai",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Pirmiausia sukonfigūruokite šį priedą, tada pridėkite sukonfigūruoto manifesto adresą.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Nustatykite ULTIFL1X skiltyje Nustatymai -> Teikėjo nustatymai",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -863,6 +865,7 @@ var keyStrings = {
     "Repeat: All": "Kartojimas: visi",
     "Repeat: Off": "Kartojimas: išjungtas",
     "Repeat: One": "Kartojimas: vienas",
+    Replace: "Pakeisti",
     "Request sended!": "Užklausa išsiųsta!",
     "Requesting approval for %1": "Prašoma patvirtinimo: %1",
     "Reset order": "Rikiuoti kanalus: „Kaip yra“",
@@ -1035,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Srauto laukimo laikas baigėsi. Pasirinkite kanalą ir bandykite dar kartą.",
     "Stream type: %1": "Srauto tipas: %1",
+    "Stremio addons": "Stremio priedai",
     "String for search": "Paieškos užklausa",
     "Su Mo Tu We Th Fr Sa": "Sk Pr An Tr Kt Pn Št",
     "Subscription information": "Prenumeratos informacija",

@@ -263,6 +263,8 @@ var keyStrings = {
         "Konfigurirajte TV DOSUG u Postavkama -> Postavke pružatelja usluga",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurirajte TVClub u Postavkama -> Postavke pružatelja usluga",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Prvo podesite ovaj dodatak, zatim dodajte adresu podešenog manifesta.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurirajte ULTIFL1X u Postavkama -> Postavke pružatelja usluga",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -866,6 +868,7 @@ var keyStrings = {
     "Repeat: All": "Ponavljanje: Sve",
     "Repeat: Off": "Ponavljanje: Isključeno",
     "Repeat: One": "Ponavljanje: Jedno",
+    Replace: "Zamijeni",
     "Request sended!": "Zahtjev poslan!",
     "Requesting approval for %1": "Traženje odobrenja za %1",
     "Reset order": 'Poredaj kanale: "Kakav je"',
@@ -1039,6 +1042,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Vrijeme čekanja prijenosa je isteklo. Odaberite kanal za ponovni pokušaj.",
     "Stream type: %1": "Vrsta streama: %1",
+    "Stremio addons": "Stremio dodaci",
     "String for search": "Upit za pretraživanje",
     "Su Mo Tu We Th Fr Sa": "Ned Pon Uto Sri Čet Pet Sub",
     "Subscription information": "Podaci o pretplati",

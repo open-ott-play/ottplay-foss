@@ -263,6 +263,8 @@ var keyStrings = {
         "Konfigurer TV DOSUG i Innstillinger -> Leverandørinnstillinger",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurer TVClub i Innstillinger -> Leverandørinnstillinger",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfigurer først dette tillegget, og legg deretter til URL-en til det konfigurerte manifestet.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurer ULTIFL1X i Innstillinger -> Leverandørinnstillinger",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -862,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Gjenta: Alle",
     "Repeat: Off": "Gjenta: Av",
     "Repeat: One": "Gjenta: Én",
+    Replace: "Erstatt",
     "Request sended!": "Forespørsel sendt!",
     "Requesting approval for %1": "Ber om godkjenning for %1",
     "Reset order": 'Sorter kanaler: "Som den er"',
@@ -1033,6 +1036,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Tidsavbrudd for strømmen. Velg kanalen for å prøve på nytt.",
     "Stream type: %1": "Strømtype: %1",
+    "Stremio addons": "Stremio-tillegg",
     "String for search": "Søk",
     "Su Mo Tu We Th Fr Sa": "sø ma ti on to fr lø",
     "Subscription information": "Abonnementsinformasjon",

@@ -265,6 +265,8 @@ var keyStrings = {
         "Konfiguro TV DOSUG te Cilësimet -> Cilësimet e ofruesit",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfiguro TVClub te Cilësimet -> Cilësimet e ofruesit",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfiguroni fillimisht shtesën, pastaj shtoni adresën e manifestit të konfiguruar.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfiguro ULTIFL1X te Cilësimet -> Cilësimet e ofruesit",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -880,6 +882,7 @@ var keyStrings = {
     "Repeat: All": "Përsëriteni: Të gjitha",
     "Repeat: Off": "Përsëriteni: Joaktiv",
     "Repeat: One": "Përsëriteni: Një",
+    Replace: "Zëvendëso",
     "Request sended!": "Kërkesa u dërgua!",
     "Requesting approval for %1": "Kërkimi i miratimit për %1",
     "Reset order": 'Rendit kanalet: "Siç është"',
@@ -1055,6 +1058,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Koha e pritjes së transmetimit mbaroi. Zgjidhni kanalin për të provuar përsëri.",
     "Stream type: %1": "Lloji i rrjedhës: %1",
+    "Stremio addons": "Shtesat Stremio",
     "String for search": "Pyetja e kërkimit",
     "Su Mo Tu We Th Fr Sa": "Die Hën Mar Mër Enj Pre Sht",
     "Subscription information": "Informacioni i abonimit",

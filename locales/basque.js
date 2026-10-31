@@ -267,6 +267,8 @@ var keyStrings = {
         "Konfiguratu TV DOSUG hemen: Ezarpenak → Hornitzailearen ezarpenak",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfiguratu TVClub hemen: Ezarpenak → Hornitzailearen ezarpenak",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Lehenik konfiguratu gehigarria, eta ondoren gehitu konfiguratutako manifestuaren URLa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfiguratu ULTIFL1X hemen: Ezarpenak → Hornitzailearen ezarpenak",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -874,6 +876,7 @@ var keyStrings = {
     "Repeat: All": "Errepikatu: guztiak",
     "Repeat: Off": "Errepikatu: desaktibatuta",
     "Repeat: One": "Errepikatu: bat",
+    Replace: "Ordeztu",
     "Request sended!": "Eskaera bidali da!",
     "Requesting approval for %1": "%1(r)entzako baimena eskatzen",
     "Reset order": 'Ordenatu kanalak: "Bere horretan"',
@@ -1049,6 +1052,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Igorpenaren itxaronaldia agortu da. Hautatu kanala berriro saiatzeko.",
     "Stream type: %1": "Transmisio mota: %1",
+    "Stremio addons": "Stremio gehigarriak",
     "String for search": "Bilaketa-testua",
     "Su Mo Tu We Th Fr Sa": "Ig Al Ar Az Og Or La",
     "Subscription information": "Harpidetzaren informazioa",

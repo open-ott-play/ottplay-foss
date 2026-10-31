@@ -266,6 +266,8 @@ var keyStrings = {
         "Ikkonfigura TV DOSUG f’Issettjar → Issettjar tal-fornitur",
     "Configure TVClub in Settings -> Provider Settings":
         "Ikkonfigura TVClub f’Issettjar → Issettjar tal-fornitur",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ikkonfigura l-ewwel din l-estensjoni, imbagħad żid l-URL tal-manifest ikkonfigurat.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ikkonfigura ULTIFL1X f’Issettjar → Issettjar tal-fornitur",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -879,6 +881,7 @@ var keyStrings = {
     "Repeat: All": "Ripetizzjoni: Kollox",
     "Repeat: Off": "Ripetizzjoni: Mitfija",
     "Repeat: One": "Ripetizzjoni: Wieħed",
+    Replace: "Ibdel",
     "Request sended!": "It-talba ntbagħtet!",
     "Requesting approval for %1": "Qed tintalab approvazzjoni għal %1",
     "Reset order": 'Issortja l-kanali: "Kif inhu"',
@@ -1053,6 +1056,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Skada l-ħin ta' stennija tal-istrim. Agħżel il-kanal biex terġa' tipprova.",
     "Stream type: %1": "Tip ta’ strim: %1",
+    "Stremio addons": "Estensjonijiet Stremio",
     "String for search": "Kliem tat-tfittxija",
     "Su Mo Tu We Th Fr Sa": "Ħad Tne Tli Erb Ħam Ġim Sib",
     "Subscription information": "Informazzjoni tal-abbonament",

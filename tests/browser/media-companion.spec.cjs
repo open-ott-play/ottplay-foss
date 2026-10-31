@@ -21,7 +21,7 @@ for (const preview of [0, 1, 2]) {
                 engineCalls++;
                 return route.abort();
             }
-            if (url.origin === "https://catalog.test") {
+            if (url.origin === "https://tmdb.elfhosted.com") {
                 const headers = { "access-control-allow-origin": "*" };
                 const parts = url.pathname.split("/").filter(Boolean);
                 const rootManifest = url.pathname === "/manifest.json";
@@ -107,7 +107,7 @@ for (const preview of [0, 1, 2]) {
             localStorage.setItem("ottplayprov", "demo");
             localStorage.setItem(
                 "sTorrentCatalogEndpoint",
-                "https://catalog.test"
+                "https://tmdb.elfhosted.com"
             );
             if (!localStorage.getItem("torrentsTorrentCatalogLanguage"))
                 localStorage.setItem("torrentsTorrentCatalogLanguage", "_rus");
@@ -777,7 +777,16 @@ test("Torrent background pages grow beyond 500 while preserving the selected mov
     expect(errors).toEqual([]);
 });
 
-for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
+for (const kind of [
+    "url",
+    "torrent",
+    "empty",
+    "loopback",
+    "settings",
+    "http400",
+    "search-only",
+    "configure-required",
+]) {
     test(`Stremio movie selection reaches sources and playback: ${kind}`, async ({
         page,
         context,
@@ -789,8 +798,8 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                 ? "http://localhost:" + new URL(origin).port
                 : "https://addon.test";
         const addonPath =
-            kind === "settings"
-                ? "/%7B%22name%22%3A%22Open%20movies%22%7D"
+            kind === "settings" || kind === "http400"
+                ? "/%7B%22name%22%3A%22PRIVATE_TOKEN%22%7D"
                 : "";
         const addonBase = addonOrigin + addonPath;
         const companion = "/companion/" + "a".repeat(32) + "/v1";
@@ -808,10 +817,13 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
             type: "movie",
         };
         const manifest = {
+            ...(kind === "configure-required"
+                ? { behaviorHints: { configurationRequired: true } }
+                : {}),
             catalogs: [
                 {
                     extra: [
-                        { isRequired: false, name: "search" },
+                        { isRequired: kind === "search-only", name: "search" },
                         { isRequired: false, name: "skip" },
                     ],
                     id: "open.movies",
@@ -838,11 +850,20 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                 apiCalls.push(resource);
                 if (resource === "/manifest.json")
                     return route.fulfill({ headers, json: manifest });
-                if (resource.startsWith("/catalog/movie/open.movies"))
+                if (resource.startsWith("/catalog/movie/open.movies")) {
+                    if (kind === "search-only")
+                        expect(resource).toContain("search=Bunny");
                     return route.fulfill({ headers, json: { metas: [movie] } });
+                }
                 if (resource === "/meta/movie/tt1254207.json")
                     return route.fulfill({ headers, json: { meta: movie } });
-                if (resource === "/stream/movie/tt1254207.json")
+                if (resource === "/stream/movie/tt1254207.json") {
+                    if (kind === "http400")
+                        return route.fulfill({
+                            headers,
+                            json: { error: "PRIVATE_BODY " + addonBase },
+                            status: 400,
+                        });
                     return route.fulfill({
                         headers,
                         json: {
@@ -862,6 +883,7 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                                       ],
                         },
                     });
+                }
                 throw new Error("Unexpected addon resource " + url.pathname);
             }
             if (url.origin === "https://media.test")
@@ -871,7 +893,10 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                     headers,
                 });
             if (url.origin !== origin) return route.abort();
-            if (kind === "settings" && url.pathname.startsWith("/tmdb/"))
+            if (
+                (kind === "settings" || kind === "configure-required") &&
+                url.pathname.startsWith("/tmdb/")
+            )
                 return route.fulfill({
                     json: { error: "unavailable" },
                     status: 503,
@@ -933,12 +958,14 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                 localStorage.setItem("ottplayprov", "demo");
                 localStorage.setItem(
                     "sTorrentCatalogEndpoint",
-                    kind === "settings" ? "" : addonBase
+                    kind === "settings" || kind === "configure-required"
+                        ? ""
+                        : addonBase
                 );
                 localStorage.setItem(
                     "sTorrentStreamAddons",
                     JSON.stringify(
-                        kind === "settings"
+                        kind === "settings" || kind === "configure-required"
                             ? []
                             : [addonBase + "/manifest.json"]
                     )
@@ -959,10 +986,15 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
             window.stbSetItem("ottplayprov", "torrent");
             window.loadProv();
         });
-        if (kind === "settings") {
+        if (kind === "settings" || kind === "configure-required") {
             await page.waitForFunction(
                 () => window.__ottActiveProviderDriver?.id === "torrent"
             );
+            const savedBefore = await page.evaluate(() => ({
+                catalog: localStorage.getItem("sTorrentCatalogEndpoint"),
+                manual: localStorage.getItem("torrentcfg"),
+                sources: localStorage.getItem("sTorrentStreamAddons"),
+            }));
             expect(await page.evaluate(() => window.__ottEditProvider())).toBe(
                 true
             );
@@ -980,6 +1012,24 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
                 .filter({ hasText: "Set" })
                 .click();
             await expect(page.locator("#listEdit")).toBeHidden();
+            if (kind === "configure-required") {
+                await expect(page.locator("#listDetail")).toContainText(
+                    "Configure this addon first, then add its configured manifest URL."
+                );
+                expect(
+                    await page.evaluate(() => ({
+                        catalog: localStorage.getItem(
+                            "sTorrentCatalogEndpoint"
+                        ),
+                        manual: localStorage.getItem("torrentcfg"),
+                        sources: localStorage.getItem("sTorrentStreamAddons"),
+                    }))
+                ).toEqual(savedBefore);
+                expect(engineCalls).toBe(0);
+                expect(apiCalls).toEqual(["/manifest.json"]);
+                expect(errors).toEqual([]);
+                return;
+            }
             await expect(page.locator("#listDetail")).toContainText(
                 "Settings saved"
             );
@@ -1002,6 +1052,18 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
             await page.keyboard.press("Escape");
             await page.keyboard.press("Enter");
         }
+        if (kind === "search-only") {
+            await expect(page.locator("#listEdit")).toContainText("Search");
+            expect(
+                apiCalls.some((resource) => resource.startsWith("/catalog/"))
+            ).toBe(false);
+            await page.locator("#editvar").fill("Bunny");
+            await page
+                .locator("#listEdit [data-ott-key]")
+                .filter({ hasText: "Set" })
+                .click();
+            await expect(page.locator("#listEdit")).toBeHidden();
+        }
         await page.waitForFunction(
             () => window.listArray?.[0] === "imdb:movie:tt1254207"
         );
@@ -1018,10 +1080,18 @@ for (const kind of ["url", "torrent", "empty", "loopback", "settings"]) {
             )
             .toBe(1);
         expect(engineCalls).toBe(0);
-        if (kind === "empty") {
+        if (kind === "empty" || kind === "http400") {
             await expect(page.locator("#listDetail")).toContainText(
-                "No videos to play"
+                kind === "http400"
+                    ? "Failed to load! · Stremio #1 · HTTP 400"
+                    : "No videos to play"
             );
+            if (kind === "http400") {
+                await expect(page.locator("#listDetail")).not.toContainText(
+                    /PRIVATE_TOKEN|PRIVATE_BODY|addon\.test/
+                );
+                expect(engineStarts).toBe(0);
+            }
             await page.evaluate(() =>
                 window.listKeyHandlerFn(window.keys.RETURN)
             );

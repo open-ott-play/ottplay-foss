@@ -266,6 +266,8 @@ var keyStrings = {
         "Sanidi TV DOSUG katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     "Configure TVClub in Settings -> Provider Settings":
         "Sanidi TVClub katika Mipangilio -> Mipangilio ya Mtoa Huduma",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Sanidi kwanza kiongezi hiki, kisha ongeza anwani ya faili ya manifest iliyosanidiwa.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Sanidi ULTIFL1X katika Mipangilio -> Mipangilio ya Mtoa Huduma",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -875,6 +877,7 @@ var keyStrings = {
     "Repeat: All": "Rudia: Vyote",
     "Repeat: Off": "Rudia: Imezimwa",
     "Repeat: One": "Rudia: Kimoja",
+    Replace: "Badilisha",
     "Request sended!": "Ombi limetumwa!",
     "Requesting approval for %1": "Inaomba idhini ya %1",
     "Reset order": 'Panga vituo: "Kama ilivyo"',
@@ -1049,6 +1052,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Muda wa kusubiri mtiririko umeisha. Chagua chaneli ili kujaribu tena.",
     "Stream type: %1": "Aina ya mtiririko: %1",
+    "Stremio addons": "Viongezi vya Stremio",
     "String for search": "Swali la utafutaji",
     "Su Mo Tu We Th Fr Sa": "Jpil Jtat Jnne Jtan Alh Ijm Jmos",
     "Subscription information": "Maelezo ya usajili",

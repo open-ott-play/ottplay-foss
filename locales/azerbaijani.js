@@ -263,6 +263,8 @@ var keyStrings = {
         "TV DOSUG xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Əvvəlcə bu əlavəni sazlayın, sonra sazlanmış manifestin ünvanını əlavə edin.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X xidmətini Ayarlar -> Provayder ayarları bölməsində qurun",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -862,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Təkrar: hamısı",
     "Repeat: Off": "Təkrar: söndürülüb",
     "Repeat: One": "Təkrar: biri",
+    Replace: "Əvəz et",
     "Request sended!": "Sorğu göndərildi!",
     "Requesting approval for %1": "%1 üçün təsdiq tələb olunur",
     "Reset order": "Kanalları sırala: “Olduğu kimi”",
@@ -1037,6 +1040,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Yayım üçün gözləmə vaxtı bitdi. Yenidən cəhd etmək üçün kanalı seçin.",
     "Stream type: %1": "Yayım növü: %1",
+    "Stremio addons": "Stremio əlavələri",
     "String for search": "Axtarış mətni",
     "Su Mo Tu We Th Fr Sa": "B B.e. Ç.a. Ç C.a. C Ş",
     "Subscription information": "Abunəlik məlumatları",

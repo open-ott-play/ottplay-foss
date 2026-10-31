@@ -251,6 +251,8 @@ var keyStrings = {
         "在“设置”->“提供商设置”中配置 TV DOSUG",
     "Configure TVClub in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 TVClub",
+    "Configure this addon first, then add its configured manifest URL.":
+        "请先配置此插件，再添加配置后的清单网址。",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "在“设置”->“提供商设置”中配置 ULTIFL1X",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -819,6 +821,7 @@ var keyStrings = {
     "Repeat: All": "重复：全部",
     "Repeat: Off": "重复：关闭",
     "Repeat: One": "重复：一",
+    Replace: "替换",
     "Request sended!": "请求已发送！",
     "Requesting approval for %1": "请求批准%1",
     "Reset order": "频道排序: “原样”",
@@ -982,6 +985,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "流媒体连接超时。请选择频道重试。",
     "Stream type: %1": "流类型：%1",
+    "Stremio addons": "Stremio 插件",
     "String for search": "搜索查询",
     "Su Mo Tu We Th Fr Sa": "日 一 二 三 四 五 六",
     "Subscription information": "订阅信息",

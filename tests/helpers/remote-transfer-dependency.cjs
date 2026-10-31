@@ -19,6 +19,8 @@ const files = {
         "src/commands/remote-favorites-global-recovery.ts",
     "./remote-favorites-transfer": "src/commands/remote-favorites-transfer.ts",
     "./remote-feature": "src/commands/remote-feature.ts",
+    "./remote-provider-diagnostics":
+        "src/commands/remote-provider-diagnostics.ts",
 };
 module.exports = function dependency(name, host, environment = {}) {
     if (name === "./player-state")

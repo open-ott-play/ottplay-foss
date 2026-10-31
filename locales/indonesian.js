@@ -263,6 +263,8 @@ var keyStrings = {
         "Konfigurasikan TV DOSUG di Pengaturan -> Pengaturan penyedia",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurasikan TVClub di Pengaturan -> Pengaturan penyedia",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Konfigurasikan pengaya ini terlebih dahulu, lalu tambahkan URL manifes yang telah dikonfigurasi.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurasikan ULTIFL1X di Pengaturan -> Pengaturan penyedia",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -862,6 +864,7 @@ var keyStrings = {
     "Repeat: All": "Ulangi: semua",
     "Repeat: Off": "Ulangi: nonaktif",
     "Repeat: One": "Ulangi: satu",
+    Replace: "Ganti",
     "Request sended!": "Permintaan terkirim!",
     "Requesting approval for %1": "Meminta persetujuan untuk %1",
     "Reset order": 'Urutkan saluran: "Apa adanya"',
@@ -1035,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Waktu tunggu siaran habis. Pilih saluran untuk mencoba lagi.",
     "Stream type: %1": "Jenis aliran: %1",
+    "Stremio addons": "Pengaya Stremio",
     "String for search": "Kata pencarian",
     "Su Mo Tu We Th Fr Sa": "Min Sen Sel Rab Kam Jum Sab",
     "Subscription information": "Informasi langganan",

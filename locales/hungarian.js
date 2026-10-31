@@ -265,6 +265,8 @@ var keyStrings = {
         "Állítsa be ezt: TV DOSUG, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure TVClub in Settings -> Provider Settings":
         "Állítsa be ezt: TVClub, a Beállítások -> Szolgáltató beállításai menüben",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Előbb állítsa be a kiegészítőt, majd adja hozzá a beállított manifest URL-címét.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Állítsa be ezt: ULTIFL1X, a Beállítások -> Szolgáltató beállításai menüben",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -871,6 +873,7 @@ var keyStrings = {
     "Repeat: All": "Ismétlés: összes",
     "Repeat: Off": "Ismétlés: kikapcsolva",
     "Repeat: One": "Ismétlés: egy",
+    Replace: "Csere",
     "Request sended!": "Kérés elküldve!",
     "Requesting approval for %1": "Jóváhagyás kérése ehhez: %1",
     "Reset order": "Csatornák rendezése: „Változatlanul”",
@@ -1050,6 +1053,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "A közvetítés várakozási ideje lejárt. Az újrapróbálkozáshoz válassza ki a csatornát.",
     "Stream type: %1": "Adatfolyam típusa: %1",
+    "Stremio addons": "Stremio-kiegészítők",
     "String for search": "Keresőkifejezés",
     "Su Mo Tu We Th Fr Sa": "V H K Sze Cs P Szo",
     "Subscription information": "Előfizetési adatok",

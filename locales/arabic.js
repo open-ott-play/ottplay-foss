@@ -255,6 +255,8 @@ var keyStrings = {
         "قم بتكوين TV DOSUG في الإعدادات -> إعدادات الموفر",
     "Configure TVClub in Settings -> Provider Settings":
         "قم بتكوين TVClub في الإعدادات -> إعدادات الموفر",
+    "Configure this addon first, then add its configured manifest URL.":
+        "اضبط هذه الإضافة أولاً، ثم أضف رابط ملف البيان بعد ضبطها.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "قم بتكوين ULTIFL1X في الإعدادات -> إعدادات الموفر",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -841,6 +843,7 @@ var keyStrings = {
     "Repeat: All": "كرر: الكل",
     "Repeat: Off": "كرر: إيقاف",
     "Repeat: One": "كرر: واحد",
+    Replace: "استبدال",
     "Request sended!": "تم إرسال الطلب!",
     "Requesting approval for %1": "طلب الموافقة على %1",
     "Reset order": 'فرز القنوات: "كما هو"',
@@ -1012,6 +1015,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "انتهت مهلة البث. اختر القناة لإعادة المحاولة.",
     "Stream type: %1": "نوع الدفق: %1",
+    "Stremio addons": "إضافات Stremio",
     "String for search": "استعلام البحث",
     "Su Mo Tu We Th Fr Sa": "أحد اثن ثلاث أربع خميس جمعة سبت",
     "Subscription information": "معلومات الاشتراك",

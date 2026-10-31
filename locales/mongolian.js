@@ -264,6 +264,8 @@ var keyStrings = {
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт TV DOSUG-ийг тохируулна уу",
     "Configure TVClub in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт TVClub-ийг тохируулна уу",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Эхлээд энэ нэмэлтийг тохируулаад, дараа нь тохируулсан манифестын хаягийг нэмнэ үү.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Тохиргоо -> Үйлчилгээ үзүүлэгчийн тохиргоо хэсэгт ULTIFL1X-ийг тохируулна уу",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -870,6 +872,7 @@ var keyStrings = {
     "Repeat: All": "Давтах: бүгд",
     "Repeat: Off": "Давтах: унтраалттай",
     "Repeat: One": "Давтах: нэг",
+    Replace: "Солих",
     "Request sended!": "Хүсэлт илгээгдлээ!",
     "Requesting approval for %1": "%1-д зөвшөөрөл хүсэж байна",
     "Reset order": 'Сувгуудыг эрэмбэлэх: "Байгаагаар нь"',
@@ -1043,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Дамжуулалтыг хүлээх хугацаа дууслаа. Дахин оролдохын тулд сувгийг сонгоно уу.",
     "Stream type: %1": "Урсгалын төрөл: %1",
+    "Stremio addons": "Stremio нэмэлтүүд",
     "String for search": "Хайлтын хүсэлт",
     "Su Mo Tu We Th Fr Sa": "Ня Да Мя Лх Пү Ба Бя",
     "Subscription information": "Захиалгын мэдээлэл",

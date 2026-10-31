@@ -263,6 +263,8 @@ var keyStrings = {
         "Cấu hình TV DOSUG trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure TVClub in Settings -> Provider Settings":
         "Cấu hình TVClub trong Cài đặt -> Cài đặt nhà cung cấp",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Hãy cấu hình tiện ích này trước, rồi thêm URL của tệp manifest đã cấu hình.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Cấu hình ULTIFL1X trong Cài đặt -> Cài đặt nhà cung cấp",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -856,6 +858,7 @@ var keyStrings = {
     "Repeat: All": "Lặp lại: tất cả",
     "Repeat: Off": "Lặp lại: tắt",
     "Repeat: One": "Lặp lại: một",
+    Replace: "Thay thế",
     "Request sended!": "Đã gửi yêu cầu!",
     "Requesting approval for %1": "Đang yêu cầu phê duyệt cho %1",
     "Reset order": 'Sắp xếp kênh: "Nguyên bản"',
@@ -1026,6 +1029,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Đã hết thời gian chờ luồng phát. Chọn kênh để thử lại.",
     "Stream type: %1": "Loại luồng: %1",
+    "Stremio addons": "Tiện ích Stremio",
     "String for search": "Nội dung tìm kiếm",
     "Su Mo Tu We Th Fr Sa": "CN T2 T3 T4 T5 T6 T7",
     "Subscription information": "Thông tin đăng ký",

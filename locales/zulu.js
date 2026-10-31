@@ -270,6 +270,8 @@ var keyStrings = {
         "Setha TV DOSUG kokuthi Izilungiselelo -> Izilungiselelo zomhlinzeki",
     "Configure TVClub in Settings -> Provider Settings":
         "Setha TVClub kokuthi Izilungiselelo -> Izilungiselelo zomhlinzeki",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Qala ulungiselele lesi sengezo, bese ufaka ikheli lefayela le-manifest elilungiselelwe.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Setha ULTIFL1X kokuthi Izilungiselelo -> Izilungiselelo zomhlinzeki",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -884,6 +886,7 @@ var keyStrings = {
     "Repeat: All": "Phinda: Konke",
     "Repeat: Off": "Phinda: Kuvaliwe",
     "Repeat: One": "Phinda: Okukodwa",
+    Replace: "Faka esikhundleni",
     "Request sended!": "Isicelo sithunyelwe!",
     "Requesting approval for %1": "Kucelwa imvume ye-%1",
     "Reset order": 'Hlela iziteshi: "Njengoba kunjalo"',
@@ -1060,6 +1063,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Isikhathi sokulinda ukusakaza siphelile. Khetha isiteshi ukuze uzame futhi.",
     "Stream type: %1": "Uhlobo lokusakaza: %1",
+    "Stremio addons": "Izingezo ze-Stremio",
     "String for search": "Umbuzo wokusesha",
     "Su Mo Tu We Th Fr Sa": "Son Mso Bil Tha Sin Hla Mgq",
     "Subscription information": "Ulwazi lokubhaliselwe",

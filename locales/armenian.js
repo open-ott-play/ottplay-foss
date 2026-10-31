@@ -260,6 +260,8 @@ var keyStrings = {
         "Կարգավորեք TV DOSUG-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure TVClub in Settings -> Provider Settings":
         "Կարգավորեք TVClub-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Նախ կարգավորեք այս հավելումը, ապա ավելացրեք կարգավորված մանիֆեստի հասցեն։",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Կարգավորեք ULTIFL1X-ը՝ Կարգավորումներ -> Մատակարարի կարգավորումներ բաժնում",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -865,6 +867,7 @@ var keyStrings = {
     "Repeat: All": "Կրկնություն՝ բոլորը",
     "Repeat: Off": "Կրկնություն՝ անջատված",
     "Repeat: One": "Կրկնություն՝ մեկը",
+    Replace: "Փոխարինել",
     "Request sended!": "Հարցումն ուղարկված է։",
     "Requesting approval for %1": "Հաստատում է պահանջվում %1-ի համար",
     "Reset order": "Դասավորել ալիքները: «Ինչպես կա»",
@@ -1043,6 +1046,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Հոսքի սպասման ժամանակը սպառվել է։ Կրկին փորձելու համար ընտրեք ալիքը։",
     "Stream type: %1": "Հոսքի տեսակ՝ %1",
+    "Stremio addons": "Stremio հավելումներ",
     "String for search": "Որոնման հարցում",
     "Su Mo Tu We Th Fr Sa": "Կիր Երկ Երք Չրք Հնգ Ուրբ Շբթ",
     "Subscription information": "Բաժանորդագրության տվյալներ",

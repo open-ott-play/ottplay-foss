@@ -250,6 +250,8 @@ var keyStrings = {
         "הגדר את TV DOSUG בהגדרות -> הגדרות ספק",
     "Configure TVClub in Settings -> Provider Settings":
         "הגדר את TVClub בהגדרות -> הגדרות ספק",
+    "Configure this addon first, then add its configured manifest URL.":
+        "יש להגדיר תחילה את התוסף, ואז להוסיף את כתובת המניפסט המוגדר.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "הגדר את ULTIFL1X בהגדרות -> הגדרות ספק",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -834,6 +836,7 @@ var keyStrings = {
     "Repeat: All": "חזרה: הכול",
     "Repeat: Off": "חזרה: כבויה",
     "Repeat: One": "חזרה: אחד",
+    Replace: "החלפה",
     "Request sended!": "הבקשה נשלחה!",
     "Requesting approval for %1": "בקשת אישור עבור %1",
     "Reset order": 'מיין ערוצים: "כמו שהוא"',
@@ -999,6 +1002,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "תם הזמן הקצוב לזרם. יש לבחור בערוץ כדי לנסות שוב.",
     "Stream type: %1": "סוג שידור: %1",
+    "Stremio addons": "תוספי Stremio",
     "String for search": "שאילתת חיפוש",
     "Su Mo Tu We Th Fr Sa": "א ב ג ד ה ו ש",
     "Subscription information": "פרטי מנוי",

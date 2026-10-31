@@ -33,12 +33,49 @@ type TorrentDiscoveryResult =
               id: string;
               title: string;
               searchSupported?: boolean;
+              searchOnly?: boolean;
           }[];
           mode?: "tmdb" | "stremio";
           searchSupported?: boolean;
           manifest?: any;
           catalog?: { id: string; title: string; searchSupported: boolean };
       };
+
+/** Shared by manifest installation and catalog requests. */
+function torrentCatalogExtras(catalog: any): any[] | null {
+    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog))
+        return null;
+    if (catalog.extra !== undefined)
+        return Array.isArray(catalog.extra) && catalog.extra.length <= 32
+            ? catalog.extra
+            : null;
+    var supported =
+            catalog.extraSupported === undefined ? [] : catalog.extraSupported,
+        required =
+            catalog.extraRequired === undefined ? [] : catalog.extraRequired;
+    if (
+        !Array.isArray(supported) ||
+        !Array.isArray(required) ||
+        supported.length > 32 ||
+        required.length > 32 ||
+        !supported.every(function (name: any) {
+            return (
+                typeof name === "string" &&
+                name.length <= 128 &&
+                !!name &&
+                name === name.trim() &&
+                !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(name)
+            );
+        }) ||
+        !required.every(function (name: any) {
+            return supported.indexOf(name) >= 0;
+        })
+    )
+        return null;
+    return supported.map(function (name: string) {
+        return { isRequired: required.indexOf(name) >= 0, name: name };
+    });
+}
 
 /** Movie metadata only. This adapter never resolves or starts a media source. */
 function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
@@ -410,7 +447,8 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                 });
                 inner = next(
                     manifest,
-                    ids.indexOf("tmdb.top") >= 0 &&
+                    /^https:\/\/tmdb\.elfhosted\.com$/i.test(ctx.base) &&
+                        ids.indexOf("tmdb.top") >= 0 &&
                         ids.indexOf("tmdb.latest") >= 0 &&
                         ids.indexOf("tmdb.search") >= 0
                 );
@@ -422,14 +460,27 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
         };
     }
 
-    function catalogExtra(catalog: any, name: string): boolean {
-        if (!Array.isArray(catalog.extra)) return false;
-        for (var i = 0; i < catalog.extra.length; i++)
-            if (catalog.extra[i] && catalog.extra[i].name === name) return true;
+    function catalogExtra(
+        catalog: any,
+        name: string,
+        required = false
+    ): boolean {
+        var extras = torrentCatalogExtras(catalog) || [];
+        for (var i = 0; i < extras.length; i++)
+            if (
+                extras[i] &&
+                extras[i].name === name &&
+                (!required || extras[i].isRequired)
+            )
+                return true;
         return false;
     }
 
-    function movieCatalogs(manifest: any, search: boolean): any[] {
+    function movieCatalogs(
+        manifest: any,
+        search: boolean,
+        includeSearchOnly = false
+    ): any[] {
         return manifest.catalogs.filter(function (entry: any) {
             if (
                 !entry ||
@@ -439,18 +490,17 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                 /[\r\n]/.test(entry.id)
             )
                 return false;
-            if (
-                entry.extra !== undefined &&
-                (!Array.isArray(entry.extra) || entry.extra.length > 32)
-            )
-                return false;
-            var extras = entry.extra || [];
+            var extras = torrentCatalogExtras(entry);
+            if (!extras) return false;
             for (var i = 0; i < extras.length; i++)
                 if (
                     extras[i] &&
                     extras[i].isRequired &&
                     extras[i].name !== "skip" &&
-                    !(search && extras[i].name === "search")
+                    !(
+                        (search || includeSearchOnly) &&
+                        extras[i].name === "search"
+                    )
                 )
                     return false;
             return !search || catalogExtra(entry, "search");
@@ -471,15 +521,38 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                 return standardPageRequest(category, query, cursor, done);
             var catalogs = movieCatalogs(manifest, query !== null),
                 selected: any = null;
+            if (
+                query !== null &&
+                movieCatalogs(manifest, false).some(function (entry) {
+                    return (
+                        category ===
+                            "catalog:" + encodeURIComponent(entry.id) &&
+                        !catalogExtra(entry, "search")
+                    );
+                })
+            )
+                category = "search";
             for (var i = 0; i < catalogs.length; i++) {
                 if (
-                    query !== null ||
-                    category === "popular" ||
+                    category === (query !== null ? "search" : "popular") ||
                     category === "catalog:" + encodeURIComponent(catalogs[i].id)
                 ) {
                     selected = catalogs[i];
                     break;
                 }
+            }
+            if (
+                !selected &&
+                query === null &&
+                movieCatalogs(manifest, true).some(function (entry) {
+                    return (
+                        category === "popular" ||
+                        category === "catalog:" + encodeURIComponent(entry.id)
+                    );
+                })
+            ) {
+                done({ error: "search_required", ok: false });
+                return function () {};
             }
             var offset = cursor === null || cursor === undefined ? 0 : cursor;
             if (
@@ -507,7 +580,8 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                 "list",
                 url,
                 function (data: any) {
-                    if (!Array.isArray(data.metas) || data.metas.length > 100)
+                    // Keep larger standard pages within the existing 512 KiB response cap.
+                    if (!Array.isArray(data.metas) || data.metas.length > 1000)
                         throw new Error("page");
                     var items: TorrentDiscoveryMovie[] = [],
                         seen: string[] = [];
@@ -614,7 +688,7 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
             endpoint(ctx, tail),
             function (data: any) {
                 var rows = addon ? data.metas : data.results;
-                if (!Array.isArray(rows) || rows.length > 100)
+                if (!Array.isArray(rows) || rows.length > (addon ? 1000 : 100))
                     throw new Error("page");
                 if (!addon && data.page !== page)
                     throw new Error("page number");
@@ -665,15 +739,19 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
                         id: string;
                         title: string;
                         searchSupported: boolean;
+                        searchOnly?: boolean;
                     }[] = [];
-                movieCatalogs(manifest, false).forEach(function (entry) {
+                movieCatalogs(manifest, false, true).forEach(function (entry) {
                     if (seen.indexOf(entry.id) >= 0) return;
                     seen.push(entry.id);
-                    categories.push({
+                    var category: (typeof categories)[number] = {
                         id: "catalog:" + encodeURIComponent(entry.id),
                         searchSupported: catalogExtra(entry, "search"),
                         title: plain(entry.name, 256) || entry.id,
-                    });
+                    };
+                    if (catalogExtra(entry, "search", true))
+                        category.searchOnly = true;
+                    categories.push(category);
                 });
                 done({
                     categories: categories,
@@ -878,14 +956,16 @@ function createTorrentDiscoveryData(ports: TorrentDiscoveryPorts) {
         search: function (
             query: string,
             cursor: number | null,
-            done: (result: TorrentDiscoveryResult) => void
+            done: (result: TorrentDiscoveryResult) => void,
+            category?: string
         ) {
-            return pageRequest("search", query, cursor, done);
+            return pageRequest(category || "search", query, cursor, done);
         },
     };
 }
 
 if (typeof window !== "undefined")
     (window as any).__ottTorrentDiscoveryData = {
+        catalogExtras: torrentCatalogExtras,
         create: createTorrentDiscoveryData,
     };

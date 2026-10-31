@@ -262,6 +262,8 @@ var keyStrings = {
         "TV DOSUG hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ilki bu goşmaçany sazlaň, soňra sazlanan manifestiň salgysyny goşuň.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X hyzmatyny Sazlamalar -> Üpjün edijiniň sazlamalary bölüminde sazlaň",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -858,6 +860,7 @@ var keyStrings = {
     "Repeat: All": "Gaýtala: ählisi",
     "Repeat: Off": "Gaýtala: öçürilen",
     "Repeat: One": "Gaýtala: biri",
+    Replace: "Çalyş",
     "Request sended!": "Haýyş iberildi!",
     "Requesting approval for %1": "%1 üçin rugsat soralýar",
     "Reset order": 'Kanallary tertiple: "Bolşy ýaly"',
@@ -1028,6 +1031,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Akymyň garaşmak wagty gutardy. Gaýtadan synanyşmak üçin kanaly saýlaň.",
     "Stream type: %1": "Ýaýlymyň görnüşi: %1",
+    "Stremio addons": "Stremio goşmaçalary",
     "String for search": "Gözleg soragy",
     "Su Mo Tu We Th Fr Sa": "Ýek Duş Siş Çar Pen Ann Şen",
     "Subscription information": "Abuna ýazylma maglumaty",

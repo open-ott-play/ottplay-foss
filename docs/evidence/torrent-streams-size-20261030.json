@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "feature": "Torrent stream discovery: configured Stremio sources, explicit playback admission, progressively loaded movie catalogs and bounded provider diagnostics",
+  "feature": "Torrent stream discovery: configured Stremio sources, progressive catalogs, addon management and bounded provider diagnostics",
   "baseline": {
     "revision": "dd3e2462300c110cd619d47210568043f3fb5afb",
     "version": "1.1.62",
@@ -13,7 +13,7 @@
     "sourceRevisionClaimed": false,
     "version": "1.1.62",
     "verifiedReport": "build/reports/classic-bundle.json",
-    "measuredAt": "2026-10-31T03:05:17.129Z"
+    "measuredAt": "2026-10-31T03:32:59.988Z"
   },
   "toolchain": {
     "node": "26.8.2",
@@ -25,7 +25,7 @@
     "transformSha256": "0d2adac364da1fe44d3025868cda8f448094074019c4a2cd9105416fa58bd21a",
     "candidateTransformVerifiedArtifactsPerVariant": 25
   },
-  "allocation": "Maximum paired measured delta across web/native/mobile for each changed component, with no new reserve. Preserve existing headroom and all unrelated caps. Stream/catalog parsing remains in the lazy Torrent bundle; playback admission and setting registration are entry hooks; companion selection and remote validation remain separately bounded. Provider diagnostics retain only bounded counters and request outcomes; the entry projection and localized provider description are included in the measured entry delta.",
+  "allocation": "Maximum paired measured delta across web/native/mobile for each changed component, with no new reserve. Preserve existing headroom and all unrelated caps. Stream/catalog parsing remains in the lazy Torrent bundle; playback admission and setting registration are entry hooks; companion selection and remote validation remain separately bounded. Provider diagnostics retain only bounded counters and request outcomes; the entry projection and localized provider description are included in the measured entry delta. Manifest compatibility, required configuration and addon replacement remain in the lazy Torrent bundle.",
   "scope": "The unchanged classic size gate covers player.js, every CLASSIC_PROVIDER_BUNDLES member, and every CLASSIC_OPTIONAL_BUNDLES member. Locales, styles, icons and offline-worker remain outside that pre-existing scope.",
   "allowance": {
     "entry": {
@@ -33,8 +33,8 @@
       "gzipBytes": 1741
     },
     "catalog": {
-      "bytes": 27229,
-      "gzipBytes": 8030
+      "bytes": 31466,
+      "gzipBytes": 9168
     },
     "companion": {
       "bytes": 207,
@@ -109,13 +109,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 74821,
-            "gzipBytes": 24032,
-            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
+            "bytes": 79058,
+            "gzipBytes": 25170,
+            "sha256": "f864c533ea4fdd30089d359e2e695ca683c49136aff7f9de0a53347eedbc3f67"
           },
           "delta": {
-            "bytes": 27229,
-            "gzipBytes": 8030
+            "bytes": 31466,
+            "gzipBytes": 9168
           }
         },
         "native": {
@@ -125,13 +125,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 74821,
-            "gzipBytes": 24032,
-            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
+            "bytes": 79058,
+            "gzipBytes": 25170,
+            "sha256": "f864c533ea4fdd30089d359e2e695ca683c49136aff7f9de0a53347eedbc3f67"
           },
           "delta": {
-            "bytes": 27229,
-            "gzipBytes": 8030
+            "bytes": 31466,
+            "gzipBytes": 9168
           }
         },
         "mobile": {
@@ -141,13 +141,13 @@
             "sha256": "82b09031e9a39ce0c8979c78fa027d5bdfb78a32f5016a725269327701bf9253"
           },
           "after": {
-            "bytes": 74821,
-            "gzipBytes": 24032,
-            "sha256": "22d4c17906c3e3b1812b43af2ba6779f7b0bbacb66ddd9fb2763af7996db856c"
+            "bytes": 79058,
+            "gzipBytes": 25170,
+            "sha256": "f864c533ea4fdd30089d359e2e695ca683c49136aff7f9de0a53347eedbc3f67"
           },
           "delta": {
-            "bytes": 27229,
-            "gzipBytes": 8030
+            "bytes": 31466,
+            "gzipBytes": 9168
           }
         }
       }
@@ -1389,12 +1389,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1399354,
-          "gzipBytes": 435977
+          "bytes": 1403591,
+          "gzipBytes": 437115
         },
         "complete": {
-          "bytes": 1785853,
-          "gzipBytes": 550106
+          "bytes": 1790090,
+          "gzipBytes": 551244
         }
       }
     },
@@ -1412,12 +1412,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1399312,
-          "gzipBytes": 436033
+          "bytes": 1403549,
+          "gzipBytes": 437171
         },
         "complete": {
-          "bytes": 1785811,
-          "gzipBytes": 550162
+          "bytes": 1790048,
+          "gzipBytes": 551300
         }
       }
     },
@@ -1435,12 +1435,12 @@
       },
       "after": {
         "legacy": {
-          "bytes": 1399312,
-          "gzipBytes": 436033
+          "bytes": 1403549,
+          "gzipBytes": 437171
         },
         "complete": {
-          "bytes": 1785811,
-          "gzipBytes": 550162
+          "bytes": 1790048,
+          "gzipBytes": 551300
         }
       }
     }
@@ -1537,16 +1537,16 @@
   },
   "afterCaps": {
     "BASE_TOTAL_BUDGET": {
-      "bytes": 1781643,
-      "gzipBytes": 549956
+      "bytes": 1785880,
+      "gzipBytes": 551094
     },
     "BUDGET": {
       "bytes": 1172083,
       "gzipBytes": 358277
     },
     "LEGACY_TOTAL_BUDGET": {
-      "bytes": 1399740,
-      "gzipBytes": 437654
+      "bytes": 1403977,
+      "gzipBytes": 438792
     },
     "OPTIONAL_BUDGETS": {
       "control-transport": {
@@ -1611,8 +1611,8 @@
       }
     },
     "TOTAL_BUDGET": {
-      "bytes": 1786123,
-      "gzipBytes": 552260
+      "bytes": 1790360,
+      "gzipBytes": 553398
     }
   }
 }

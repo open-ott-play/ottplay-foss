@@ -256,6 +256,8 @@ var keyStrings = {
         "กำหนดค่า TV DOSUG ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     "Configure TVClub in Settings -> Provider Settings":
         "กำหนดค่า TVClub ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ตั้งค่าส่วนเสริมนี้ก่อน แล้วเพิ่ม URL ของไฟล์แมนิเฟสต์ที่ตั้งค่าแล้ว",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "กำหนดค่า ULTIFL1X ในการตั้งค่า -> การตั้งค่าผู้ให้บริการ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -837,6 +839,7 @@ var keyStrings = {
     "Repeat: All": "ทำซ้ำ: ทั้งหมด",
     "Repeat: Off": "ทำซ้ำ: ปิด",
     "Repeat: One": "ทำซ้ำ: หนึ่ง",
+    Replace: "แทนที่",
     "Request sended!": "ส่งคำขอแล้ว!",
     "Requesting approval for %1": "กำลังขออนุมัติ %1",
     "Reset order": 'จัดเรียงช่อง: "ตามสภาพ"',
@@ -1004,6 +1007,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "หมดเวลารอสตรีม เลือกช่องเพื่อลองอีกครั้ง",
     "Stream type: %1": "ประเภทสตรีม: %1",
+    "Stremio addons": "ส่วนเสริม Stremio",
     "String for search": "คำค้นหา",
     "Su Mo Tu We Th Fr Sa": "อา. จ. อ. พ. พฤ. ศ. ส.",
     "Subscription information": "ข้อมูลการสมัครสมาชิก",

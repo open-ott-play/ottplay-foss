@@ -262,6 +262,8 @@ var keyStrings = {
         "Konfigurējiet TV DOSUG sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigurējiet TVClub sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Vispirms konfigurējiet šo papildinājumu, pēc tam pievienojiet konfigurētā manifesta adresi.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigurējiet ULTIFL1X sadaļā Iestatījumi -> Pakalpojuma sniedzēja iestatījumi",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -869,6 +871,7 @@ var keyStrings = {
     "Repeat: All": "Atkārtošana: visi",
     "Repeat: Off": "Atkārtošana: izslēgta",
     "Repeat: One": "Atkārtošana: viens",
+    Replace: "Aizstāt",
     "Request sended!": "Pieprasījums nosūtīts!",
     "Requesting approval for %1": "Tiek pieprasīts apstiprinājums: %1",
     "Reset order": "Kārtot kanālus: „Kā ir”",
@@ -1042,6 +1045,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Straumes gaidīšanas laiks ir beidzies. Atlasiet kanālu, lai mēģinātu vēlreiz.",
     "Stream type: %1": "Straumes veids: %1",
+    "Stremio addons": "Stremio papildinājumi",
     "String for search": "Meklēšanas vaicājums",
     "Su Mo Tu We Th Fr Sa": "Sv Pr Ot Tr Ce Pk Se",
     "Subscription information": "Abonementa informācija",

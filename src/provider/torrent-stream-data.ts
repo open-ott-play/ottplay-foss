@@ -20,14 +20,21 @@ interface TorrentStreamPorts {
     setTimeout?: (callback: () => void, delay: number) => any;
     sha256?: (text: string, done: (error: any, hash?: string) => void) => void;
 }
+interface TorrentStreamFailure {
+    addonIndex: number;
+    httpStatus: number | null;
+    outcome: string;
+    stage: "manifest" | "stream";
+}
 type TorrentStreamResult =
-    | { ok: false; error: string }
+    | { ok: false; error: string; failures?: TorrentStreamFailure[] }
     | {
           ok: true;
           items: TorrentStreamItem[];
           failedAddons: number;
           skippedAddons: number;
           unsupportedCount: number;
+          failures?: TorrentStreamFailure[];
       };
 
 /** Stremio metadata requests only; a returned source is never opened here. */
@@ -419,6 +426,7 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
         diagnostic = trace;
         var requestSequence = 0,
             deadline = false;
+        var configurationFailures: TorrentStreamFailure[] = [];
         var active = true,
             finished = false;
         var aborts: (() => void)[] = [];
@@ -467,6 +475,27 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                     : "failed";
             if (result.ok) trace.lookup.playableCount = result.items.length;
             stop();
+            var failures: TorrentStreamFailure[] =
+                configurationFailures.slice();
+            trace.requests.forEach(function (record) {
+                if (
+                    /^(http_error|transport_error|timeout|invalid_response|cancelled)$/.test(
+                        record.outcome
+                    )
+                )
+                    failures.push({
+                        addonIndex: record.addonIndex,
+                        httpStatus: record.httpStatus,
+                        outcome: record.outcome,
+                        stage: record.stage,
+                    });
+            });
+            if (failures.length)
+                result.failures = failures
+                    .sort(function (a, b) {
+                        return a.addonIndex - b.addonIndex;
+                    })
+                    .slice(0, 8);
             done(result);
         }
         function delay(callback: () => void, ms: number): void {
@@ -688,7 +717,11 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
             }
             if (failed + skipped === results.length) {
                 finish({
-                    error: failed ? "unavailable" : "unsupported",
+                    error: failed
+                        ? failed === configurationFailures.length
+                            ? "configuration_required"
+                            : "unavailable"
+                        : "unsupported",
                     ok: false,
                 });
                 return;
@@ -768,6 +801,17 @@ function createTorrentStreamData(ports: TorrentStreamPorts) {
                 }
                 if (!id) {
                     results[index].skipped = true;
+                    assemble();
+                    return;
+                }
+                if (data.behaviorHints?.configurationRequired === true) {
+                    results[index].error = true;
+                    configurationFailures.push({
+                        addonIndex: index,
+                        httpStatus: record ? record.httpStatus : null,
+                        outcome: "configuration_required",
+                        stage: "manifest",
+                    });
                     assemble();
                     return;
                 }

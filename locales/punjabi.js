@@ -253,6 +253,8 @@ var keyStrings = {
         "ਸੈਟਿੰਗਾਂ -> ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਵਿੱਚ TV DOSUG ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ",
     "Configure TVClub in Settings -> Provider Settings":
         "ਸੈਟਿੰਗਾਂ -> ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਵਿੱਚ TVClub ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ਪਹਿਲਾਂ ਇਸ ਐਡ-ਆਨ ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ, ਫਿਰ ਕੌਂਫਿਗਰ ਕੀਤੇ ਮੈਨੀਫੈਸਟ ਦਾ ਪਤਾ ਜੋੜੋ।",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ਸੈਟਿੰਗਾਂ -> ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ULTIFL1X ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -843,6 +845,7 @@ var keyStrings = {
     "Repeat: All": "ਦੁਹਰਾਓ: ਸਾਰੇ",
     "Repeat: Off": "ਦੁਹਰਾਓ: ਬੰਦ",
     "Repeat: One": "ਦੁਹਰਾਓ: ਇੱਕ",
+    Replace: "ਬਦਲੋ",
     "Request sended!": "ਬੇਨਤੀ ਭੇਜੀ ਗਈ!",
     "Requesting approval for %1": "%1 ਲਈ ਮਨਜ਼ੂਰੀ ਦੀ ਬੇਨਤੀ",
     "Reset order": 'ਚੈਨਲਾਂ ਨੂੰ ਛਾਂਟੋ: "ਜਿਵੇਂ ਹੈ"',
@@ -1010,6 +1013,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "ਸਟ੍ਰੀਮ ਦੀ ਉਡੀਕ ਦਾ ਸਮਾਂ ਮੁੱਕ ਗਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰਨ ਲਈ ਚੈਨਲ ਚੁਣੋ।",
     "Stream type: %1": "ਸਟ੍ਰੀਮ ਦੀ ਕਿਸਮ: %1",
+    "Stremio addons": "Stremio ਐਡ-ਆਨ",
     "String for search": "ਖੋਜ ਪੁੱਛਗਿੱਛ",
     "Su Mo Tu We Th Fr Sa": "ਐਤ ਸੋਮ ਮੰਗਲ ਬੁੱਧ ਵੀਰ ਸ਼ੁੱਕਰ ਸ਼ਨਿ",
     "Subscription information": "ਗਾਹਕੀ ਜਾਣਕਾਰੀ",

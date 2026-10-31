@@ -258,6 +258,8 @@ var keyStrings = {
         "Hazie TV DOSUG na Ntọala -> Ntọala onye na-eweta ọrụ",
     "Configure TVClub in Settings -> Provider Settings":
         "Hazie TVClub na Ntọala -> Ntọala onye na-eweta ọrụ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Buru ụzọ hazie mgbakwunye a, wee tinye adreesị faịlụ manifest ahaziri.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Hazie ULTIFL1X na Ntọala -> Ntọala onye na-eweta ọrụ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -854,6 +856,7 @@ var keyStrings = {
     "Repeat: All": "Tinyegharịa: Ihe niile",
     "Repeat: Off": "Tinyegharịa: Gbanyụrụ",
     "Repeat: One": "Tinyegharịa: Otu",
+    Replace: "Dochie",
     "Request sended!": "Ezipụla arịrịọ!",
     "Requesting approval for %1": "Ana arịọ nkwenye maka %1",
     "Reset order": 'Hazie ọwa: "Dị ka ọ dị"',
@@ -1024,6 +1027,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Oge ichere mgbasa ozi agwụla. Họrọ ọwa ahụ iji nwaa ọzọ.",
     "Stream type: %1": "Ụdị iyi: %1",
+    "Stremio addons": "Mgbakwunye Stremio",
     "String for search": "Ajụjụ ọchụchọ",
     "Su Mo Tu We Th Fr Sa": "Sọn Mọn Tiu Wen Tọọ Fraị Sat",
     "Subscription information": "Ozi ndenye aha",

@@ -270,6 +270,8 @@ var keyStrings = {
         "Ρυθμίστε το TV DOSUG από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure TVClub in Settings -> Provider Settings":
         "Ρυθμίστε το TVClub από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Ρυθμίστε πρώτα αυτό το πρόσθετο και μετά προσθέστε τη διεύθυνση του ρυθμισμένου αρχείου manifest.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ρυθμίστε το ULTIFL1X από Ρυθμίσεις -> Ρυθμίσεις παρόχου",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -890,6 +892,7 @@ var keyStrings = {
     "Repeat: All": "Επανάληψη: όλα",
     "Repeat: Off": "Επανάληψη: ανενεργή",
     "Repeat: One": "Επανάληψη: ένα",
+    Replace: "Αντικατάσταση",
     "Request sended!": "Το αίτημα στάλθηκε!",
     "Requesting approval for %1": "Αίτημα έγκρισης για %1",
     "Reset order": "Ταξινόμηση καναλιών: «Ως έχει»",
@@ -1067,6 +1070,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Έληξε το χρονικό όριο της ροής. Επιλέξτε το κανάλι για νέα προσπάθεια.",
     "Stream type: %1": "Τύπος ροής: %1",
+    "Stremio addons": "Πρόσθετα Stremio",
     "String for search": "Όρος αναζήτησης",
     "Su Mo Tu We Th Fr Sa": "Κυ Δε Τρ Τε Πε Πα Σα",
     "Subscription information": "Πληροφορίες συνδρομής",

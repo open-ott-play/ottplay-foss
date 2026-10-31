@@ -259,6 +259,8 @@ var keyStrings = {
         "Настройте TV DOSUG в разделе Настройки -> Настройки провайдера",
     "Configure TVClub in Settings -> Provider Settings":
         "Настройте TVClub в разделе Настройки -> Настройки провайдера",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Сначала настройте дополнение, затем добавьте ссылку на его настроенный манифест.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Настройте ULTIFL1X в разделе Настройки -> Настройки провайдера",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -859,6 +861,7 @@ var keyStrings = {
     "Repeat: All": "Повтор: все",
     "Repeat: Off": "Повтор: выключен",
     "Repeat: One": "Повтор: один",
+    Replace: "Заменить",
     "Request sended!": "Запрос отправлен!",
     "Requesting approval for %1": "Запрос подтверждения для %1",
     "Reset order": "Сбросить порядок",
@@ -1031,6 +1034,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Время ожидания потока истекло. Выберите канал, чтобы повторить попытку.",
     "Stream type: %1": "Тип потока: %1",
+    "Stremio addons": "Дополнения Stremio",
     "String for search": "Поисковый запрос",
     "Su Mo Tu We Th Fr Sa": "Вс Пн Вт Ср Чт Пт Сб",
     "Subscription information": "Информация о подписке",

@@ -3,6 +3,43 @@ function normalizeTorrentConfiguration(value: any): any {
     return (window as any).__ottTorrentCodec.normalize(value);
 }
 
+function torrentAddonFailureMessage(
+    host: any,
+    result: any,
+    fallback: string
+): string {
+    var message =
+        result?.error === "configuration_required"
+            ? host._(
+                  "Configure this addon first, then add its configured manifest URL."
+              )
+            : fallback;
+    var failures = Array.isArray(result?.failures)
+        ? result.failures.slice(0, 8)
+        : [];
+    failures.forEach(function (failure: any) {
+        if (
+            !failure ||
+            typeof failure.addonIndex !== "number" ||
+            failure.addonIndex < 0 ||
+            failure.addonIndex > 7 ||
+            Math.floor(failure.addonIndex) !== failure.addonIndex
+        )
+            return;
+        var status = failure.httpStatus;
+        if (
+            typeof status !== "number" ||
+            status < 400 ||
+            status > 599 ||
+            Math.floor(status) !== status
+        )
+            return;
+        message +=
+            " · Stremio #" + (failure.addonIndex + 1) + " · HTTP " + status;
+    });
+    return message;
+}
+
 function createTorrentStreamAdapter(
     host: any,
     ports: ProviderDriverPorts,
@@ -893,16 +930,20 @@ function createTorrentDiscoveryView(
                     if (!currentSource()) return;
                     busy = false;
                     streams = result?.ok ? result.items : [];
-                    failure = host._(
-                        !result?.ok
-                            ? result?.error === "no_addons"
-                                ? "Not configured"
-                                : result?.error === "unsupported"
+                    failure = torrentAddonFailureMessage(
+                        host,
+                        result,
+                        host._(
+                            !result?.ok
+                                ? result?.error === "no_addons"
+                                    ? "Not configured"
+                                    : result?.error === "unsupported"
+                                      ? "Unsupported source"
+                                      : "Failed to load!"
+                                : result.unsupportedCount && !streams.length
                                   ? "Unsupported source"
-                                  : "Failed to load!"
-                            : result.unsupportedCount && !streams.length
-                              ? "Unsupported source"
-                              : "Nothing to play"
+                                  : "Nothing to play"
+                        )
                     );
                     showSources();
                 });
@@ -1055,7 +1096,17 @@ function createTorrentDiscoveryView(
                 busy = false;
                 if (!result || !result.ok) {
                     autoPages = false;
-                    failure = host._("Failed to load!");
+                    if (result?.error === "search_required") {
+                        searchSupported = true;
+                        show(selected);
+                        search();
+                        return;
+                    }
+                    failure = torrentAddonFailureMessage(
+                        host,
+                        result,
+                        host._("Failed to load!")
+                    );
                     if (append) next = cursor;
                     show(selected);
                     if (items.length && host.showShift) host.showShift(failure);
@@ -1086,7 +1137,13 @@ function createTorrentDiscoveryView(
             });
         }
         if (query === null) data.load(category, cursor, done);
-        else data.search(query, cursor, done);
+        else
+            data.search(
+                query,
+                cursor,
+                done,
+                /^catalog:/.test(category) ? category : undefined
+            );
     }
     function restore(): boolean {
         if (
@@ -1233,6 +1290,16 @@ function createTorrentDiscoveryView(
             } else if (choice.id === "favorites") {
                 close();
                 host.openGlobalFavorites?.();
+            } else if (choice.searchOnly) {
+                searchSupported = true;
+                category = choice.id;
+                categoryName = choice.title;
+                query = null;
+                resetMovies();
+                next = null;
+                failure = "";
+                show();
+                search();
             } else {
                 searchSupported = choice.searchSupported !== false;
                 open(choice.id, choice.title);
@@ -1697,6 +1764,121 @@ function mountTorrentProvider(
                 }
             );
         }
+        function addonSnapshot(): string {
+            var store = host.__ottPlayerSettingsHost?.store;
+            return JSON.stringify([
+                store?.get("torrentStreamAddons") || "[]",
+                store?.get("torrentCatalogEndpoint") || "",
+            ]);
+        }
+        function installedAddons(): string[] {
+            var values = JSON.parse(addonSnapshot()),
+                addons: string[] = [];
+            try {
+                addons = JSON.parse(values[0]);
+            } catch (_) {}
+            if (!Array.isArray(addons)) addons = [];
+            if (values[1]) {
+                var catalog = values[1].replace(/\/+$/, "") + "/manifest.json";
+                if (addons.indexOf(catalog) < 0) addons.push(catalog);
+            }
+            return addons;
+        }
+        function addonDraft(): any {
+            var store = host.__ottPlayerSettingsHost?.store;
+            try {
+                return store.begin(false, [
+                    store.capture("torrentStreamAddons"),
+                    store.capture("torrentCatalogEndpoint"),
+                ]);
+            } catch (_) {
+                render(host._("Settings could not be saved"));
+                return null;
+            }
+        }
+        function showAddons(message?: string): void {
+            var snapshot = addonSnapshot();
+            render(
+                message,
+                installedAddons()
+                    .map(function (manifest: string, index: number) {
+                        return {
+                            action: function () {
+                                addonActions(manifest, snapshot);
+                            },
+                            name: "Stremio #" + (index + 1),
+                        };
+                    })
+                    .concat([
+                        {
+                            action: function () {
+                                render();
+                            },
+                            name: host._("Back"),
+                        },
+                    ])
+            );
+            host.listCaption.textContent = host._("Stremio addons");
+        }
+        function addonActions(manifest: string, snapshot: string): void {
+            function unchanged(): boolean {
+                if (!current()) return false;
+                if (addonSnapshot() === snapshot) return true;
+                showAddons(host._("Settings source changed"));
+                return false;
+            }
+            render("", [
+                {
+                    action: function () {
+                        if (!unchanged()) return;
+                        input(
+                            host._("Enter a Stremio addon manifest URL."),
+                            "",
+                            function (value) {
+                                if (unchanged()) inspectAddon(value, manifest);
+                            }
+                        );
+                    },
+                    name: host._("Replace"),
+                },
+                {
+                    action: function () {
+                        if (!unchanged()) return;
+                        var draft = addonDraft();
+                        if (!draft) return;
+                        var addons = JSON.parse(
+                            draft.get("torrentStreamAddons")
+                        );
+                        var filtered = addons.filter(function (url: string) {
+                            return url !== manifest;
+                        });
+                        var catalog = draft.get("torrentCatalogEndpoint");
+                        if (
+                            !draft.set(
+                                "torrentStreamAddons",
+                                JSON.stringify(filtered)
+                            ) ||
+                            (catalog.replace(/\/+$/, "") ===
+                                manifest.slice(0, -14) &&
+                                !draft.set("torrentCatalogEndpoint", "")) ||
+                            !draft.commit([], current)
+                        ) {
+                            draft.cancel();
+                            showAddons(host._("Settings could not be saved"));
+                            return;
+                        }
+                        if (current()) showAddons(host._("Settings saved"));
+                    },
+                    name: host._("Delete"),
+                },
+                {
+                    action: function () {
+                        showAddons();
+                    },
+                    name: host._("Back"),
+                },
+            ]);
+        }
         function addAddon(): void {
             input(
                 host._("Enter a Stremio addon manifest URL."),
@@ -1704,7 +1886,7 @@ function mountTorrentProvider(
                 inspectAddon
             );
         }
-        function inspectAddon(value: string): void {
+        function inspectAddon(value: string, replaced?: string): void {
             host.editvar = "";
             if (!value) {
                 render();
@@ -1722,19 +1904,14 @@ function mountTorrentProvider(
                 return;
             }
             var manifest = JSON.parse(definition.prepare(encoded))[0];
-            var draft: any;
-            try {
-                draft = store.begin(false, [
-                    store.capture("torrentStreamAddons"),
-                    store.capture("torrentCatalogEndpoint"),
-                ]);
-            } catch (_) {
-                render(host._("Settings could not be saved"));
-                return;
-            }
-            requestAddon(manifest, draft);
+            var draft = addonDraft();
+            if (draft) requestAddon(manifest, draft, replaced);
         }
-        function requestAddon(manifest: string, draft: any): void {
+        function requestAddon(
+            manifest: string,
+            draft: any,
+            replaced?: string
+        ): void {
             busy = true;
             render(host._("Loading..."));
             var pending = true,
@@ -1744,7 +1921,11 @@ function mountTorrentProvider(
             function admitted(): boolean {
                 return current() && screenOwner === requestOwner;
             }
-            function complete(error: boolean, response?: any): void {
+            function complete(
+                error: boolean,
+                response?: any,
+                transport?: any
+            ): void {
                 if (!pending) return;
                 pending = false;
                 host.clearTimeout(timer);
@@ -1756,10 +1937,20 @@ function mountTorrentProvider(
                 }
                 if (error) {
                     draft.cancel();
-                    render(host._("Failed to load!"));
+                    var code = transport?.status;
+                    if (typeof code === "string" && /^[45][0-9]{2}$/.test(code))
+                        code = Number(code);
+                    var status =
+                        typeof code === "number" &&
+                        code >= 400 &&
+                        code <= 599 &&
+                        Math.floor(code) === code
+                            ? " · HTTP " + code
+                            : "";
+                    render(host._("Failed to load!") + status);
                     return;
                 }
-                applyAddon(manifest, response, draft, admitted);
+                applyAddon(manifest, response, draft, admitted, replaced);
             }
             var timer = host.setTimeout(function () {
                 complete(true);
@@ -1779,8 +1970,8 @@ function mountTorrentProvider(
                     function (response: any) {
                         complete(false, response);
                     },
-                    function () {
-                        complete(true);
+                    function (transport: any) {
+                        complete(true, undefined, transport);
                     }
                 );
                 if (cancelled && abort) abort();
@@ -1792,7 +1983,8 @@ function mountTorrentProvider(
             manifest: string,
             response: any,
             draft: any,
-            admitted: () => boolean
+            admitted: () => boolean,
+            replaced?: string
         ): void {
             function fail(message: string): void {
                 draft.cancel();
@@ -1845,6 +2037,14 @@ function mountTorrentProvider(
                 fail(host._("The discovery response is invalid."));
                 return;
             }
+            if (data.behaviorHints?.configurationRequired === true) {
+                fail(
+                    host._(
+                        "Configure this addon first, then add its configured manifest URL."
+                    )
+                );
+                return;
+            }
             var stream = data.resources.some(function (resource: any) {
                 var types =
                     resource === "stream"
@@ -1862,14 +2062,16 @@ function mountTorrentProvider(
                     entry.id !== entry.id.trim()
                 )
                     return false;
-                if (entry.extra === undefined) return true;
+                var extras =
+                    host.__ottTorrentDiscoveryData.catalogExtras(entry);
                 return (
-                    Array.isArray(entry.extra) &&
-                    entry.extra.length <= 32 &&
-                    entry.extra.every(function (extra: any) {
+                    !!extras &&
+                    extras.every(function (extra: any) {
                         return (
                             extra &&
-                            (!extra.isRequired || extra.name === "skip")
+                            (!extra.isRequired ||
+                                extra.name === "skip" ||
+                                extra.name === "search")
                         );
                     })
                 );
@@ -1878,17 +2080,39 @@ function mountTorrentProvider(
                 fail(host._("Unsupported source"));
                 return;
             }
+            var addons = JSON.parse(draft.get("torrentStreamAddons"));
+            var replacedIndex = replaced ? addons.indexOf(replaced) : -1;
+            if (replaced)
+                addons = addons.filter(function (url: string) {
+                    return url !== replaced;
+                });
             if (stream) {
-                var addons = JSON.parse(draft.get("torrentStreamAddons"));
-                if (addons.indexOf(manifest) < 0) addons.push(manifest);
+                if (addons.indexOf(manifest) < 0)
+                    addons.splice(
+                        replacedIndex < 0 ? addons.length : replacedIndex,
+                        0,
+                        manifest
+                    );
+            }
+            if (stream || replaced) {
                 if (!draft.set("torrentStreamAddons", JSON.stringify(addons))) {
                     fail(host._("Torrent source limit reached."));
                     return;
                 }
             }
+            var previousCatalog = draft.get("torrentCatalogEndpoint"),
+                replacedCatalog =
+                    replaced &&
+                    previousCatalog.replace(/\/+$/, "") ===
+                        replaced.slice(0, -14);
+            var changeCatalog =
+                !replaced || replacedCatalog || !previousCatalog;
             if (
-                catalog &&
-                !draft.set("torrentCatalogEndpoint", manifest.slice(0, -14))
+                ((catalog && changeCatalog) || replacedCatalog) &&
+                !draft.set(
+                    "torrentCatalogEndpoint",
+                    catalog ? manifest.slice(0, -14) : ""
+                )
             ) {
                 fail(host._("Invalid setting"));
                 return;
@@ -1897,7 +2121,10 @@ function mountTorrentProvider(
                 fail(host._("Settings could not be saved"));
                 return;
             }
-            if (admitted()) render(host._("Settings saved"));
+            if (admitted()) {
+                if (replaced) showAddons(host._("Settings saved"));
+                else render(host._("Settings saved"));
+            }
         }
         function sourceActions(entryId: string): void {
             var value = config(),
@@ -1997,6 +2224,16 @@ function mountTorrentProvider(
                         {
                             action: addAddon,
                             name: host._("Add Stremio addon…"),
+                        },
+                        {
+                            action: function () {
+                                showAddons();
+                            },
+                            name:
+                                host._("Stremio addons") +
+                                " (" +
+                                installedAddons().length +
+                                ")",
                         },
                         {
                             action: language,

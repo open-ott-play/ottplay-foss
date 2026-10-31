@@ -267,6 +267,8 @@ var keyStrings = {
         "Ku deji TV DOSUG gudaha Dejinta -> Dejinta bixiyaha",
     "Configure TVClub in Settings -> Provider Settings":
         "Ku deji TVClub gudaha Dejinta -> Dejinta bixiyaha",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Marka hore habee ku-darkan, dabadeed ku dar cinwaanka faylka manifest-ka la habeeyey.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Ku deji ULTIFL1X gudaha Dejinta -> Dejinta bixiyaha",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -881,6 +883,7 @@ var keyStrings = {
     "Repeat: All": "Ku celi: dhammaan",
     "Repeat: Off": "Ku celi: dansan",
     "Repeat: One": "Ku celi: hal",
+    Replace: "Beddel",
     "Request sended!": "Codsiga waa la diray!",
     "Requesting approval for %1": "Waxaa loo codsanayaa oggolaansho %1",
     "Reset order": 'Kala hormari kanaallada: "Sida uu yahay"',
@@ -1054,6 +1057,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Waqtigii sugitaanka baahinta wuu dhammaaday. Dooro kanaalka si aad mar kale isugu daydo.",
     "Stream type: %1": "Nooca baahinta: %1",
+    "Stremio addons": "Ku-darrada Stremio",
     "String for search": "Ereyga raadinta",
     "Su Mo Tu We Th Fr Sa": "Axa Isn Tal Arb Kha Jim Sab",
     "Subscription information": "Macluumaadka isdiiwaangelinta",

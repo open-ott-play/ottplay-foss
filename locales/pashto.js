@@ -259,6 +259,8 @@ var keyStrings = {
         "TV DOSUG د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     "Configure TVClub in Settings -> Provider Settings":
         "TVClub د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
+    "Configure this addon first, then add its configured manifest URL.":
+        "لومړی دا اضافه تنظیم کړئ، بیا د تنظیم شوي مانیفېسټ پته ورزیاته کړئ.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "ULTIFL1X د امستنو -> د چمتوکوونکي امستنو په برخه کې تنظیم کړئ",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -858,6 +860,7 @@ var keyStrings = {
     "Repeat: All": "تکرار: ټول",
     "Repeat: Off": "تکرار: بند",
     "Repeat: One": "تکرار: یو",
+    Replace: "بدلول",
     "Request sended!": "غوښتنه لیږل شوې!",
     "Requesting approval for %1": "د %1 لپاره د تصویب غوښتنه",
     "Reset order": 'چینلونه ترتیب کړئ: "لکه څنګه چې دی"',
@@ -1029,6 +1032,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "د خپرونې د انتظار وخت پای ته ورسېد. د بیا هڅې لپاره چینل وټاکئ.",
     "Stream type: %1": "د خپرونې ډول: %1",
+    "Stremio addons": "د Stremio اضافې",
     "String for search": "د لټون عبارت",
     "Su Mo Tu We Th Fr Sa": "یکشنبه دوشنبه سېشنبه چهارشنبه پنجشنبه جمعه شنبه",
     "Subscription information": "د ګډون معلومات",

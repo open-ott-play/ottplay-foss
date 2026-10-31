@@ -263,6 +263,8 @@ var keyStrings = {
         "Määritä TV DOSUG kohdassa Asetukset -> Palveluntarjoajan asetukset",
     "Configure TVClub in Settings -> Provider Settings":
         "Määritä TVClub kohdassa Asetukset -> Palveluntarjoajan asetukset",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Määritä ensin tämä lisäosa ja lisää sitten määritetyn manifestin osoite.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Määritä ULTIFL1X kohdassa Asetukset -> Palveluntarjoajan asetukset",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -863,6 +865,7 @@ var keyStrings = {
     "Repeat: All": "Toista uudelleen: Kaikki",
     "Repeat: Off": "Toista uudelleen: Pois",
     "Repeat: One": "Toista uudelleen: Yksi",
+    Replace: "Korvaa",
     "Request sended!": "Pyyntö lähetetty!",
     "Requesting approval for %1": "Pyydetään hyväksyntää kohteelle %1",
     "Reset order": 'Lajittele kanavat: "niin kuin on"',
@@ -1035,6 +1038,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Suoratoiston aikakatkaisu. Yritä uudelleen valitsemalla kanava.",
     "Stream type: %1": "Striimin tyyppi: %1",
+    "Stremio addons": "Stremio-lisäosat",
     "String for search": "Hakukysely",
     "Su Mo Tu We Th Fr Sa": "su ma ti ke to pe la",
     "Subscription information": "Tilaustiedot",

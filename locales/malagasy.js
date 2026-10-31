@@ -274,6 +274,8 @@ var keyStrings = {
         "Amboary ny TV DOSUG ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     "Configure TVClub in Settings -> Provider Settings":
         "Amboary ny TVClub ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Amboary aloha ity fanampiny ity, avy eo ampio ny adiresin'ny rakitra manifest efa voarindra.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Amboary ny ULTIFL1X ao amin’ny Fikirakirana -> Fikirakiran’ny mpamatsy",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -897,6 +899,7 @@ var keyStrings = {
     "Repeat: All": "Avereno: Rehetra",
     "Repeat: Off": "Avereno: Maty",
     "Repeat: One": "Avereno: Iray",
+    Replace: "Soloy",
     "Request sended!": "Nalefa ny fangatahana!",
     "Requesting approval for %1": "Mangataka fankatoavana ho an'ny %1",
     "Reset order": 'Alaharo ny fantsona: "Araka ny misy azy"',
@@ -1080,6 +1083,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Tapitra ny fotoana niandrasana ny fandefasana. Safidio ny fantsona hanandrana indray.",
     "Stream type: %1": "Karazana fikorianana: %1",
+    "Stremio addons": "Fanampiny Stremio",
     "String for search": "Teny fikarohana",
     "Su Mo Tu We Th Fr Sa": "Alah Alats Tal Alar Alak Zom Asab",
     "Subscription information": "Mombamomba ny famandrihana",

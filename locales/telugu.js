@@ -252,6 +252,8 @@ var keyStrings = {
         "సెట్టింగులు -> ప్రొవైడర్ సెట్టింగ్‌లలో TV DOSUGని కాన్ఫిగర్ చేయండి",
     "Configure TVClub in Settings -> Provider Settings":
         "సెట్టింగులు -> ప్రొవైడర్ సెట్టింగ్‌లలో TVClubని కాన్ఫిగర్ చేయండి",
+    "Configure this addon first, then add its configured manifest URL.":
+        "ముందుగా ఈ యాడ్-ఆన్‌ను కాన్ఫిగర్ చేసి, తర్వాత కాన్ఫిగర్ చేసిన మానిఫెస్ట్ చిరునామాను జోడించండి.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "సెట్టింగ్‌లు -> ప్రొవైడర్ సెట్టింగ్‌లలో ULTIFL1Xని కాన్ఫిగర్ చేయండి",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -836,6 +838,7 @@ var keyStrings = {
     "Repeat: All": "పునరావృతం: అన్నీ",
     "Repeat: Off": "పునరావృతం: ఆఫ్",
     "Repeat: One": "పునరావృతం: ఒకటి",
+    Replace: "భర్తీ చేయండి",
     "Request sended!": "అభ్యర్థన పంపబడింది!",
     "Requesting approval for %1": "%1 కోసం ఆమోదాన్ని అభ్యర్థిస్తోంది",
     "Reset order": 'ఛానెల్‌లను క్రమబద్ధీకరించండి: "అలాగే"',
@@ -1002,6 +1005,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "స్ట్రీమ్ కోసం వేచి ఉండే సమయం ముగిసింది. మళ్లీ ప్రయత్నించడానికి ఛానెల్‌ను ఎంచుకోండి.",
     "Stream type: %1": "స్ట్రీమ్ రకం: %1",
+    "Stremio addons": "Stremio యాడ్-ఆన్‌లు",
     "String for search": "శోధన ప్రశ్న",
     "Su Mo Tu We Th Fr Sa": "ఆది సోమ మంగళ బుధ గురు శుక్ర శని",
     "Subscription information": "సబ్‌స్క్రిప్షన్ సమాచారం",

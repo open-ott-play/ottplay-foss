@@ -259,6 +259,8 @@ var keyStrings = {
         "Konfigureerige TV DOSUG jaotises Seaded -> Pakkuja sätted",
     "Configure TVClub in Settings -> Provider Settings":
         "Konfigureerige TVClub jaotises Seaded -> Pakkuja sätted",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Seadista esmalt see lisand ja seejärel lisa seadistatud manifesti aadress.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Konfigureerige ULTIFL1X jaotises Seaded -> Pakkuja sätted",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -861,6 +863,7 @@ var keyStrings = {
     "Repeat: All": "Korda: Kõik",
     "Repeat: Off": "Korda: Väljas",
     "Repeat: One": "Korda: Üks",
+    Replace: "Asenda",
     "Request sended!": "Taotlus saadetud!",
     "Requesting approval for %1": "Kinnituse taotlemine %1 jaoks",
     "Reset order": 'Sorteeri kanaleid: "Nagu on"',
@@ -1033,6 +1036,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Voo ooteaeg sai läbi. Uuesti proovimiseks valige kanal.",
     "Stream type: %1": "Voo tüüp: %1",
+    "Stremio addons": "Stremio lisandid",
     "String for search": "Otsingupäring",
     "Su Mo Tu We Th Fr Sa": "P E T K N R L",
     "Subscription information": "Tellimuse teave",

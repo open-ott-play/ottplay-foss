@@ -256,6 +256,8 @@ var keyStrings = {
         "Stilla TV DOSUG í Stillingar → Stillingar þjónustuaðila",
     "Configure TVClub in Settings -> Provider Settings":
         "Stilla TVClub í Stillingar → Stillingar þjónustuaðila",
+    "Configure this addon first, then add its configured manifest URL.":
+        "Stilltu fyrst þessa viðbót og bættu síðan við slóðinni á stillta lýsingarskrá.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "Stilla ULTIFL1X í Stillingar → Stillingar þjónustuaðila",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -852,6 +854,7 @@ var keyStrings = {
     "Repeat: All": "Endurtaka: allt",
     "Repeat: Off": "Endurtaka: slökkt",
     "Repeat: One": "Endurtaka: eitt",
+    Replace: "Skipta út",
     "Request sended!": "Beiðni send!",
     "Requesting approval for %1": "Bið um samþykki fyrir %1",
     "Reset order": 'Raða rásum: "Óbreytt"',
@@ -1024,6 +1027,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Biðtími streymis rann út. Veldu rásina til að reyna aftur.",
     "Stream type: %1": "Tegund straums: %1",
+    "Stremio addons": "Stremio-viðbætur",
     "String for search": "Leitartexti",
     "Su Mo Tu We Th Fr Sa": "Sun Mán Þri Mið Fim Fös Lau",
     "Subscription information": "Áskriftarupplýsingar",

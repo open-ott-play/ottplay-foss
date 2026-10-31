@@ -270,6 +270,8 @@ var keyStrings = {
         "I-configure ang TV DOSUG sa Mga Setting -> Mga Setting ng Provider",
     "Configure TVClub in Settings -> Provider Settings":
         "I-configure ang TVClub sa Mga Setting -> Mga Setting ng Provider",
+    "Configure this addon first, then add its configured manifest URL.":
+        "I-configure muna ang add-on na ito, saka idagdag ang URL ng na-configure na manifest.",
     "Configure ULTIFL1X in Settings -> Provider Settings":
         "I-configure ang ULTIFL1X sa Mga Setting -> Mga Setting ng Provider",
     "Configure VIP-IP.COM in Settings -> Provider Settings":
@@ -881,6 +883,7 @@ var keyStrings = {
     "Repeat: All": "Ulitin: Lahat",
     "Repeat: Off": "Ulitin: Naka-off",
     "Repeat: One": "Ulitin: Isa",
+    Replace: "Palitan",
     "Request sended!": "Ipinadala ang kahilingan!",
     "Requesting approval for %1": "Humihiling ng pag-apruba para sa %1",
     "Reset order": 'Pagbukud-bukurin ang mga channel: "Gaya ng"',
@@ -1063,6 +1066,7 @@ var keyStrings = {
     "Stream timed out. Select the channel to retry.":
         "Naubos ang oras ng paghihintay sa stream. Piliin ang channel upang subukang muli.",
     "Stream type: %1": "Uri ng stream: %1",
+    "Stremio addons": "Mga add-on ng Stremio",
     "String for search": "Query sa paghahanap",
     "Su Mo Tu We Th Fr Sa": "Lin Lun Mar Miy Huw Biy Sab",
     "Subscription information": "Impormasyon sa subscription",
