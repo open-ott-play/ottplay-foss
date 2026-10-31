@@ -769,6 +769,8 @@ function createModernInterface(w: any) {
     }
     function refresh(): void {
         // Repaint only. Do not close the screen, reload the source or touch the decoder.
+        var player = w.__ottModernPlayer;
+        if (player && typeof player.refresh === "function") player.refresh();
         if (!enabled()) {
             reset(w.document.getElementById("listIn"));
             removeShell();
@@ -800,3 +802,7 @@ function createModernInterface(w: any) {
 }
 (window as any).__ottModernUiFactory = createModernInterface;
 (window as any).__ottModernUi = createModernInterface(window);
+(window as any).__ottModernPlayer =
+    typeof (window as any).__ottModernPlayerFactory === "function"
+        ? (window as any).__ottModernPlayerFactory(window)
+        : null;

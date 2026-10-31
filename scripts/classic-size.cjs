@@ -608,6 +608,14 @@ const MODERN_INTERFACE_OPTIONAL_ALLOWANCE = Object.freeze({
     bytes: 6200,
     gzipBytes: 2650,
 });
+// Optional Modern playback overlay: responsive bottom panel, action rail and
+// shared scrubber presentation. It ships in the same lazy asset as the Modern
+// catalogue; Classic entry, providers and legacy totals are unchanged.
+// Evidence: docs/evidence/modern-player-size-20261031.json.
+const MODERN_PLAYER_OPTIONAL_ALLOWANCE = Object.freeze({
+    bytes: 17600,
+    gzipBytes: 5100,
+});
 const MODERN_INTERFACE_RELATED_ALLOWANCES = Object.freeze({
     "favorites-transfer": Object.freeze({ bytes: 64, gzipBytes: 32 }),
     "remote-settings-lifecycle": Object.freeze({ bytes: 700, gzipBytes: 256 }),
@@ -1037,9 +1045,11 @@ const OPTIONAL_BUDGETS = Object.freeze({
     "modern-interface": Object.freeze({
         bytes:
             MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+            MODERN_PLAYER_OPTIONAL_ALLOWANCE.bytes +
             MODERN_EXPERIENCE_ALLOWANCE.renderer.bytes,
         gzipBytes:
             MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+            MODERN_PLAYER_OPTIONAL_ALLOWANCE.gzipBytes +
             MODERN_EXPERIENCE_ALLOWANCE.renderer.gzipBytes,
     }),
     // Explicit TTL performance capture: sensors, quotas and correlation stay optional.
@@ -1138,6 +1148,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         MEDIA_COMPANION_TRANSPORT_ALLOWANCE.bytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.bytes +
         MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+        MODERN_PLAYER_OPTIONAL_ALLOWANCE.bytes +
         Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
             (sum, cap) => sum + cap.bytes,
             0
@@ -1205,6 +1216,7 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         MEDIA_COMPANION_TRANSPORT_ALLOWANCE.gzipBytes +
         MEDIA_COMPANION_SETTINGS_ALLOWANCE.gzipBytes +
         MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+        MODERN_PLAYER_OPTIONAL_ALLOWANCE.gzipBytes +
         Object.values(MODERN_INTERFACE_RELATED_ALLOWANCES).reduce(
             (sum, cap) => sum + cap.gzipBytes,
             0
@@ -1434,6 +1446,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         mixedGlobalFavoritesProviderAllowance:
             MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         modernExperienceAllowance: MODERN_EXPERIENCE_ALLOWANCE,
+        modernPlayerOptionalAllowance: MODERN_PLAYER_OPTIONAL_ALLOWANCE,
         modules,
         optimizer,
         optionalBudget: OPTIONAL_BUDGET,
@@ -1879,6 +1892,7 @@ module.exports = {
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,
+    MODERN_PLAYER_OPTIONAL_ALLOWANCE,
     measureBundle,
     OPTIONAL_BUDGET,
     OPTIONAL_BUDGETS,

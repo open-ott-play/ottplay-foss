@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "feature": "Optional Modern playback overlay presentation",
+  "scope": "Responsive bottom overlay, shared scrubber relocation, transport action rail and focus handling. It is emitted only into the lazy Modern asset; Classic entry, provider, legacy and startup bundles are unchanged.",
+  "baseline": {
+    "bytes": 13237,
+    "gzipBytes": 4768,
+    "sha256": "4d44dc6f4d45d8162500bf296ed6e53025dac33815d19abd19efeca22e2886d5",
+    "method": "Previous emitted modern-interface.js measured by modern-provider-experience-size-20261031.json."
+  },
+  "candidate": {
+    "bytes": 30618,
+    "gzipBytes": 9733,
+    "sha256": "b2523f3fad0a5f848350a4a7abc27f7959be3c542ebf4aaf8c71cbe72e022e62",
+    "method": "npm run build after the overlay and its focus/dialog safeguards; measure the exact emitted modern-interface.js with Node zlib gzip level 9."
+  },
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "gzipLevel": 9
+  },
+  "delta": {
+    "bytes": 17381,
+    "gzipBytes": 4965
+  },
+  "allowance": {
+    "bytes": 17600,
+    "gzipBytes": 5100
+  },
+  "reason": "The allowance covers the measured overlay delta plus 219 raw and 135 gzip bytes for release identity and compression variation. The previous optional budget remains allocated to the catalogue renderer; no entry, provider or legacy cap grows.",
+  "budgets": {
+    "before": {
+      "modern-interface": {
+        "bytes": 13361,
+        "gzipBytes": 4871
+      }
+    },
+    "after": {
+      "modern-interface": {
+        "bytes": 30961,
+        "gzipBytes": 9971
+      }
+    }
+  }
+}

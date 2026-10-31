@@ -14,6 +14,7 @@ let {
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,
+    MODERN_PLAYER_OPTIONAL_ALLOWANCE,
     MEDIA_COMPANION_ENTRY_ALLOWANCE,
     MEDIA_COMPANION_OPTIONAL_ALLOWANCE,
     MEDIA_COMPANION_SETTINGS_ALLOWANCE,
@@ -102,6 +103,30 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+// The playback overlay arrived after the companion evidence was frozen. Project
+// its optional allowance out before replaying the earlier cap snapshots.
+const modernPlayerCaps = Object.fromEntries(
+    Object.entries(companionDiagnosticsCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.freeze(
+                  Object.fromEntries(
+                      Object.entries(budget).map(([key, value]) => [
+                          key,
+                          key === "modern-interface"
+                              ? subtract(
+                                    value,
+                                    MODERN_PLAYER_OPTIONAL_ALLOWANCE
+                                )
+                              : value,
+                      ])
+                  )
+              )
+            : name === "BASE_TOTAL_BUDGET" || name === "TOTAL_BUDGET"
+              ? subtract(budget, MODERN_PLAYER_OPTIONAL_ALLOWANCE)
+              : budget,
+    ])
+);
 const companionDiagnosticsDelta = (name) => {
     const kinds =
         name === "BUDGET"
@@ -121,7 +146,7 @@ const companionDiagnosticsDelta = (name) => {
     );
 };
 const modernExperienceCaps = Object.fromEntries(
-    Object.entries(companionDiagnosticsCaps).map(([name, budget]) => [
+    Object.entries(modernPlayerCaps).map(([name, budget]) => [
         name,
         name === "OPTIONAL_BUDGETS"
             ? Object.fromEntries(
@@ -324,7 +349,7 @@ try {
     );
     for (const [name, cap] of Object.entries(modernExperienceCaps))
         assert.deepEqual(companionDiagnosticsEvidence.beforeCaps[name], cap);
-    for (const [name, cap] of Object.entries(companionDiagnosticsCaps))
+    for (const [name, cap] of Object.entries(modernPlayerCaps))
         assert.deepEqual(companionDiagnosticsEvidence.afterCaps[name], cap);
     assert.deepEqual(
         companionDiagnosticsEvidence.beforeCaps.PROVIDER_BUDGET,
@@ -3359,6 +3384,39 @@ try {
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
     } = companionDiagnosticsCaps);
+    assert.deepEqual(OPTIONAL_BUDGETS["modern-interface"], {
+        bytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+            MODERN_PLAYER_OPTIONAL_ALLOWANCE.bytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.bytes,
+        gzipBytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+            MODERN_PLAYER_OPTIONAL_ALLOWANCE.gzipBytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.gzipBytes,
+    });
+    const modernPlayerEvidence = require("../docs/evidence/modern-player-size-20261031.json");
+    assert.deepEqual(
+        modernPlayerEvidence.allowance,
+        MODERN_PLAYER_OPTIONAL_ALLOWANCE
+    );
+    assert.deepEqual(modernPlayerEvidence.budgets.before["modern-interface"], {
+        bytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.bytes,
+        gzipBytes:
+            MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
+            MODERN_EXPERIENCE_ALLOWANCE.renderer.gzipBytes,
+    });
+    assert.deepEqual(
+        modernPlayerEvidence.budgets.after["modern-interface"],
+        OPTIONAL_BUDGETS["modern-interface"]
+    );
+    for (const metric of ["bytes", "gzipBytes"])
+        assert.equal(
+            modernPlayerEvidence.delta[metric],
+            modernPlayerEvidence.candidate[metric] -
+                modernPlayerEvidence.baseline[metric]
+        );
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
