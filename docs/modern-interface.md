@@ -84,8 +84,9 @@ a navigation action uses the same routes as keyboard operation. An open text
 editor or confirmation dialog keeps input ownership until it closes; covered
 navigation cannot change the provider behind it.
 
-During full-screen playback, the default **Up** button selects the next channel
-or file and **Down** selects the previous one, in both Classic and Modern. This
+During full-screen playback with playback controls inactive, the default **Up**
+button selects the next channel or file and **Down** selects the previous one,
+in both Classic and Modern. This
 also applies while watching an archive or VOD item. Navigation follows the
 current category, mixed Favorites or temporary media queue, including its
 existing order and wrapping policy. Custom mappings apply when an active queue
@@ -96,9 +97,10 @@ next/previous item in the queue.
 An information banner displayed automatically after a channel or programme
 change is passive. It does not focus the scrubber or take over the playback
 keys: repeated Up/Down presses continue through the list, and ordinary PC
-Left/Right presses keep controlling volume. Opening the controls explicitly
-with Info, Enter/OK or a pointer action activates their keyboard navigation,
-including when the automatic banner is already visible.
+Left/Right presses keep controlling volume. Info or a pointer action opens the
+interactive controls. Enter/OK activates their keyboard navigation when the
+automatic banner is already visible; when the banner is hidden, Enter/OK keeps
+its normal playback or channel/media-list action.
 Programme updates and seek feedback retain the current interaction mode. If
 you open the controls while a new item is loading, its later arrival does not
 take away that focus. A newly accepted channel, Favorite or queue selection
