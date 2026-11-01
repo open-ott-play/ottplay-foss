@@ -35,6 +35,12 @@ version inputs again, reads declared package metadata, and produces a receipt wi
 payload sizes and SHA-256 hashes bound to the plan. Native/source archives include
 the frozen plan and input evidence where their packaging format permits it.
 
+Tauri passes `--locked` through to Cargo. Keep `Cargo.lock` in Cargo's canonical
+format before freezing a release: staging checks its exact bytes, so even a
+whitespace-only rewrite invalidates the prepared input. Correct and commit the
+lockfile before preparing a new release; do not refresh the input receipt after
+compilation to accept an unplanned change.
+
 The receipt proves which source inputs and bytes were packaged; device, installer,
 store, service, and production deployment acceptance remain separate checks.
 

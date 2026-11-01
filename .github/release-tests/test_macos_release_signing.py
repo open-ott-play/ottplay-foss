@@ -80,6 +80,19 @@ class SigningSelection(unittest.TestCase):
         _, configs = self.invoke("Linux", "false", TAURI_SIGNING="true")
         self.assertEqual(configs, [LINUX_CONFIG, {"bundle": {"createUpdaterArtifacts": True}}])
 
+    def test_desktop_build_forwards_locked_to_cargo_for_explicit_and_host_targets(self):
+        for runner in ("macOS", "Linux", "Windows"):
+            for target in (TARGET, ""):
+                with self.subTest(runner=runner, target=target):
+                    invocation, _ = self.invoke(runner, "false", TAURI_TARGET=target)
+                    arguments = invocation["argv"]
+                    self.assertEqual(arguments[-2:], ["--", "--locked"])
+                    self.assertEqual(arguments.count("--"), 1)
+                    if target:
+                        self.assertEqual(arguments[arguments.index("--target") + 1], target)
+                    else:
+                        self.assertNotIn("--target", arguments)
+
     def test_linux_build_rejects_missing_private_config(self):
         with self.assertRaises(subprocess.CalledProcessError) as raised:
             self.invoke("Linux", "false", private_config=False)
