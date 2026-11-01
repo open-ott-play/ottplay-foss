@@ -162,6 +162,8 @@ function fixture() {
 for (const channelId of [101, 202]) {
     const c = fixture();
     include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.sStopPlay = 1;
+    c.__ottClassicPlayback.command({ type: "playing" });
     c.parentalArray = [];
     let resolutions = 0;
     c.getArchiveUrl = (id, start, end) => {
@@ -210,6 +212,8 @@ for (const refusal of [
 ]) {
     const c = fixture();
     include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.sStopPlay = 1;
+    c.__ottClassicPlayback.command({ type: "playing" });
     c.parentalArray = [];
     c.getArchiveUrl = () => "https://archive.example/selected";
     let checks = 0;
@@ -246,7 +250,9 @@ for (const refusal of [
     assert.equal(rejected, "Archive dispatch cancelled.");
     if (allowed) allowed();
     assert.deepEqual(c.opens(), []);
+    assert.equal(c.effects.filter((effect) => effect[0] === "stop").length, 0);
     assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "live");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
 }
 
 // A live now/next subscription survives entering archive. Archive ticks and
@@ -688,6 +694,37 @@ for (const change of [
         "Coordinator-owned backend replacement is not external cancellation"
     );
     assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "archive");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+}
+// A synchronous stop callback may replace the source or selection. Never open
+// the previously admitted archive over that newer choice.
+for (const change of [
+    (c) => {
+        c.p_pref = "source-b";
+    },
+    (c) => {
+        c.primaryIndex = 1;
+    },
+    (c) => c.__ottClassicPlayback.command({ channelId: 101, type: "live" }),
+    (c) =>
+        c.__ottClassicPlayback.command({
+            archiveStart: 998050,
+            channelId: 101,
+            type: "archive",
+        }),
+]) {
+    const c = fixture();
+    c.sStopPlay = 1;
+    const stop = c.stbStop;
+    c.stbStop = () => {
+        stop();
+        change(c);
+    };
+    assert.equal(
+        c.__ottClassicArchive.open(999050, "https://archive.example/selected"),
+        false
+    );
+    assert.deepEqual(c.opens(), []);
 }
 // First display of a missing/terminal programme refreshes independently of renderer changes.
 for (const empty of [false, true]) {
