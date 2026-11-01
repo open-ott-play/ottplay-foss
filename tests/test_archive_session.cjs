@@ -243,7 +243,7 @@ for (const refusal of [
             rejected = message;
         }
     );
-    assert.match(rejected, /cancelled before dispatch/);
+    assert.equal(rejected, "Archive dispatch cancelled.");
     if (allowed) allowed();
     assert.deepEqual(c.opens(), []);
     assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "live");

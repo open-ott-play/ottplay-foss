@@ -305,21 +305,15 @@ function createArchiveController(core: any, ports: ArchivePorts) {
             generation++;
             refill++;
         },
-        open: function (epoch: number): void {
-            if (!isFinite(epoch) || epoch <= 0) return;
-            begin(function (ticket, context) {
-                launch(ticket, context, epoch, false);
-            });
-        },
         // Remote commands already resolved this exact URL. They may only
         // acknowledge a synchronous dispatch, never a pending PIN callback.
-        openResolved: function (epoch: number, url: string): boolean {
-            if (!isFinite(epoch) || epoch <= 0 || !url) return false;
+        open: function (epoch: number, url?: string): boolean {
+            if (!isFinite(epoch) || epoch <= 0 || url === "") return false;
             var opened = false;
             var ticket = begin(function (ticket, context) {
                 opened = launch(ticket, context, epoch, false, undefined, url);
             });
-            if (!opened && generation === ticket) {
+            if (url !== undefined && !opened && generation === ticket) {
                 generation++;
                 refill++;
             }

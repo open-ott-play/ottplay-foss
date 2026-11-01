@@ -16,16 +16,16 @@ export function handleRemoteArchive(
         Math.max(0, Math.floor(Number(row && row.rec) || 0))
     );
     var now = Math.floor(Date.now() / 1000);
+    var archive = host.__ottClassicArchive;
+    var changed = "Source or access changed.";
+    function integer(value: any): boolean {
+        return typeof value === "number" && value % 1 === 0;
+    }
     if (
         !current() ||
-        !isFinite(hours) ||
         !(hours > 0) ||
-        typeof params.start !== "number" ||
-        typeof params.end !== "number" ||
-        !isFinite(params.start) ||
-        !isFinite(params.end) ||
-        Math.floor(params.start) !== params.start ||
-        Math.floor(params.end) !== params.end ||
+        !integer(params.start) ||
+        !integer(params.end) ||
         params.start < now - hours * 3600 ||
         !(params.start > 0) ||
         !(params.start < params.end && params.end <= now) ||
@@ -33,9 +33,7 @@ export function handleRemoteArchive(
         !params.title.trim() ||
         params.title.length > 16384
     ) {
-        reject(
-            "The programme is outside this channel's available archive window."
-        );
+        reject("Programme outside archive window.");
         return;
     }
     if (
@@ -43,7 +41,7 @@ export function handleRemoteArchive(
         typeof host.ifParentalAccessChId !== "function" ||
         !Array.isArray(host.parentalArray)
     ) {
-        reject("Archive playback is unavailable on this player.");
+        reject("Archive unavailable.");
         return;
     }
     // Read-only archive checks must not open a PIN prompt. Unlock on the player
@@ -54,9 +52,7 @@ export function handleRemoteArchive(
         }) &&
         (!host.__ottParental || host.__ottParental.needs("channels"))
     ) {
-        reject(
-            "Unlock this channel on the player before searching its archive."
-        );
+        reject("Unlock the channel first.");
         return;
     }
     var category = -1;
@@ -72,7 +68,7 @@ export function handleRemoteArchive(
         }
     }
     if (category < 0) {
-        reject("Channel is unavailable in the current categories.");
+        reject("Channel unavailable.");
         return;
     }
     var programme = {
@@ -90,11 +86,11 @@ export function handleRemoteArchive(
             programme
         );
     } catch (_) {
-        reject("The provider could not resolve this archive.");
+        reject("Archive resolution failed.");
         return;
     }
     if (!current() || typeof url !== "string" || !/^https?:\/\//i.test(url)) {
-        reject("The provider has no HTTP archive for this programme.");
+        reject("HTTP archive unavailable.");
         return;
     }
     if (request.action === "resolve_archive") {
@@ -104,27 +100,27 @@ export function handleRemoteArchive(
         return;
     }
     if (
-        !host.__ottClassicArchive ||
-        typeof host.__ottClassicArchive.openResolved !== "function" ||
+        !archive ||
+        typeof archive.open !== "function" ||
         typeof host.setCurrent !== "function"
     ) {
-        reject("Update the player to support remote archive playback.");
+        reject("Update player for archives.");
         return;
     }
     if (host.ifParentalAccessChId(channel.id, function () {}) || !current()) {
-        reject("Channel access or the catalogue changed before playback.");
+        reject(changed);
         return;
     }
     host.setCurrent(category, index, true);
     if (!current()) {
-        reject("Channel access or the catalogue changed before playback.");
+        reject(changed);
         return;
     }
     // Supply the selected programme, not the previous channel's guide. The
     // archive controller owns decoder replacement and later guide refills.
     host.epgArray = [programme];
-    if (!host.__ottClassicArchive.openResolved(params.start, url)) {
-        reject("Archive playback was cancelled before dispatch.");
+    if (!archive.open(params.start, url)) {
+        reject("Archive dispatch cancelled.");
         return;
     }
     reply({

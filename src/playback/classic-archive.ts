@@ -53,6 +53,14 @@ function classicArchiveCapture(): ArchiveContext | null {
 function classicArchiveRuntime(): any {
     if (classicArchiveController) return classicArchiveController;
     var w = window as any;
+    var playback = w.__ottClassicPlayback;
+    function info(mode: number): void {
+        if (
+            (mode !== 1 || w.sInfoRew) &&
+            typeof w.showChannelInfo === "function"
+        )
+            w.showChannelInfo(mode);
+    }
     function enter(
         context: ArchiveContext,
         model: ArchiveView,
@@ -61,7 +69,7 @@ function classicArchiveRuntime(): any {
         if (select && typeof w.setCurrent === "function")
             w.setCurrent(context.host.category, context.host.index, true);
         if (
-            w.__ottClassicPlayback.command({
+            playback.command({
                 archiveStart: model.position,
                 channelId: context.channelId,
                 label:
@@ -74,7 +82,7 @@ function classicArchiveRuntime(): any {
             }) === false
         )
             return false;
-        var target = w.__ottClassicPlayback.snapshot().target;
+        var target = playback.snapshot().target;
         return (
             !!target &&
             target.kind === "archive" &&
@@ -95,7 +103,7 @@ function classicArchiveRuntime(): any {
         },
         capture: classicArchiveCapture,
         epoch: function (): number | null {
-            var state = w.__ottClassicPlayback.snapshot();
+            var state = playback.snapshot();
             return state.target &&
                 state.target.kind === "archive" &&
                 state.phase !== "stopped"
@@ -147,8 +155,7 @@ function classicArchiveRuntime(): any {
                           ? w._("Archive - begin")
                           : "Archive - begin"
                 );
-            if (w.sInfoRew && typeof w.showChannelInfo === "function")
-                w.showChannelInfo(1);
+            info(1);
             w.stbPlay(url, offset);
             return classicArchiveCapture();
         },
@@ -157,8 +164,8 @@ function classicArchiveRuntime(): any {
             model: ArchiveView
         ): ArchiveContext | null {
             if (!enter(context, model, false)) return null;
-            w.__ottClassicPlayback.command({ type: "pause" });
-            if (typeof w.showChannelInfo === "function") w.showChannelInfo(2);
+            playback.command({ type: "pause" });
+            info(2);
             if (typeof w.showShift === "function")
                 w.showShift(w._ ? w._("Pause") : "Pause");
             if (typeof w.stbPause === "function") w.stbPause();
@@ -220,8 +227,7 @@ function classicArchiveRuntime(): any {
             offset: number
         ): ArchiveContext | null {
             if (!enter(context, model, false)) return null;
-            if (w.sInfoRew && typeof w.showChannelInfo === "function")
-                w.showChannelInfo(1);
+            info(1);
             w.stbSetPosTime(offset);
             return classicArchiveCapture();
         },
@@ -234,11 +240,8 @@ function classicArchiveRuntime(): any {
         if (!classicArchiveReplacing && classicArchiveController)
             classicArchiveController.cancel();
     },
-    open: function (epoch: number): void {
-        classicArchiveRuntime().open(epoch);
-    },
-    openResolved: function (epoch: number, url: string): boolean {
-        return classicArchiveRuntime().openResolved(epoch, url);
+    open: function (epoch: number, url?: string): boolean {
+        return classicArchiveRuntime().open(epoch, url);
     },
     pauseLive: function (): void {
         classicArchiveRuntime().pauseLive();

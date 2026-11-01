@@ -1090,7 +1090,7 @@ function checkRemoteEpgCatalog() {
             ...host,
             __ottActiveProviderDriver: { id: provider },
             __ottClassicArchive: {
-                openResolved: (start) => {
+                open: (start) => {
                     archives.push(start);
                     return true;
                 },
