@@ -2080,8 +2080,10 @@ function startCorePlayback(
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
                         playbackHls.autoLevelCapping = cap;
+                        if (!currentHls()) return;
                         if (typeof playbackHls.removeLevel === "function") {
                             playbackHls.removeLevel(failed);
+                            if (!currentHls()) return;
                             playbackHls.startLoad(
                                 _corePendingSeek ||
                                     !playbackHls.hasEnoughToStart
@@ -2091,6 +2093,7 @@ function startCorePlayback(
                             return;
                         }
                         playbackHls.currentLevel = cap;
+                        if (!currentHls()) return;
                     }
                     if (recovery.media()) {
                         cancelCoreSeek();

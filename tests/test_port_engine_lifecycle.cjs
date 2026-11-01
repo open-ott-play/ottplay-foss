@@ -2434,6 +2434,41 @@ test("throwing or reentrant diagnostic sinks cannot break HLS ownership", () => 
         w.stbStop();
     }
 });
+test("HLS level callbacks cannot recover or restart a replaced owner", () => {
+    for (const hook of ["autoLevelCapping", "removeLevel", "currentLevel"]) {
+        const { w, players } = fixture();
+        w.playerMode = 1;
+        w.stbPlay("https://source.invalid/live.m3u8");
+        const old = players[0];
+        old.levels = [{}, {}];
+        let removed = 0;
+        let recovered = 0;
+        const replace = () =>
+            w.stbPlay("https://source.invalid/replacement.m3u8");
+        old.removeLevel = () => {
+            removed++;
+            if (hook === "removeLevel") replace();
+        };
+        old.recoverMediaError = () => recovered++;
+        if (hook === "currentLevel") old.removeLevel = undefined;
+        if (hook !== "removeLevel")
+            Object.defineProperty(old, hook, { set: replace });
+        const loads = old.startLoads.length;
+        old.events.error(null, { fatal: true, level: 1, type: "media" });
+        assert.equal(players.length, 2, hook);
+        assert.equal(old.destroyCalls, 1, hook);
+        assert.equal(old.startLoads.length, loads, hook);
+        assert.equal(recovered, 0, hook);
+        assert.equal(removed, hook === "removeLevel" ? 1 : 0, hook);
+        assert.equal(players[1].destroyCalls, 0, hook);
+        assert.equal(
+            w.__ottCoreBackend().current().diagnosticAttempt().fatalErrors,
+            0,
+            hook
+        );
+        w.stbStop();
+    }
+});
 test("attempt diagnostics retain fallback and retry history on the same handle", () => {
     const { w, players } = fixture();
     const timers = new Map();
