@@ -223,7 +223,8 @@ function createMediaBackend(ports: MediaBackendPorts) {
                     previous &&
                     previous.handleId === handle.id &&
                     previous.attachment === attachment &&
-                    previous.reason === "ended"
+                    (previous.reason === "ended" ||
+                        previous.reason === "failed")
                 )
                     return;
                 lastAttempts[lane] = Object.assign(value, {
@@ -250,8 +251,20 @@ function createMediaBackend(ports: MediaBackendPorts) {
                 pendingEvents.push(type || "sample");
                 return;
             }
-            if (type === "error") {
-                if (!handle.active() || awaitingRecovery) return;
+            if (type === "error" || type === "failed") {
+                if (!handle.active()) return;
+                // Capture the last ready clock before an engine unloads its media.
+                if (!awaitingRecovery) observe();
+                if (!handle.active()) return;
+                if (type === "failed") {
+                    retainAttempt("failed");
+                    phase = "stopped";
+                    updateTimer();
+                    command("stop");
+                    handle.dispose();
+                    return;
+                }
+                if (awaitingRecovery) return;
                 // Native and MSE errors may trigger an in-place engine fallback.
                 // Stop reporting play while preserving that lease's recovery.
                 awaitingRecovery = true;

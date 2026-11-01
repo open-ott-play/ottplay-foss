@@ -469,6 +469,143 @@ test("decoder error stops reporting play without blocking valid in-place recover
     );
 });
 
+test("archive failure preserves the last decoder position through destructive teardown", (f) => {
+    f.domain({ generation: 1, kind: "archive", position: 120 });
+    const events = [];
+    f.backend.subscribe((event) => events.push(event.type));
+    const handle = f.backend.open({ position: 100, url: "archive" });
+    f.leases[0].attempt = {
+        engineStarts: 1,
+        fatalErrors: 1,
+        nativeFallbacks: 0,
+        streamRetries: 0,
+    };
+    f.playing(0, 100);
+    f.leases[0].sample.position = 107.5;
+    f.leases[0].event("error");
+    assert.equal(handle.snapshot().position, 127.5);
+    assert.equal(handle.snapshot().phase, "loading");
+    assert.equal(f.leases[0].disposed, 0, "recovery keeps its decoder lease");
+    assert(f.timers.every((timer) => !timer.active));
+
+    // HLS destroy() empties the element without guaranteeing a native error event.
+    Object.assign(f.leases[0].sample, {
+        duration: NaN,
+        paused: true,
+        position: 0,
+        ready: 0,
+    });
+    f.leases[0].event("failed");
+    assert.equal(handle.snapshot().position, 127.5);
+    assert.equal(handle.snapshot().duration, 500);
+    assert.equal(handle.snapshot().phase, "stopped");
+    assert.equal(f.backend.current(), null);
+    assert.equal(f.leases[0].disposed, 1);
+    const stops = f.commands.filter((command) => command.type === "stop");
+    assert.equal(stops.length, 1);
+    assert.equal(stops[0].position, 127.5);
+    assert.equal(f.backend.lastAttempt().reason, "failed");
+    assert.equal(f.backend.lastAttempt().fatalErrors, 1);
+    assert.equal(events.includes("ended"), false);
+    const count = f.commands.length;
+    for (const type of ["failed", "error", "playing", "ended", "timeupdate"])
+        f.leases[0].event(type);
+    assert.equal(
+        f.commands.length,
+        count,
+        "retired callbacks cannot revive playback"
+    );
+});
+
+for (const ready of [0, 2]) {
+    test(
+        "direct terminal failure uses " +
+            (ready ? "current" : "last known") +
+            " VOD position",
+        (f) => {
+            const handle = f.backend.open({ url: "movie" });
+            f.playing(0, 10);
+            Object.assign(f.leases[0].sample, {
+                paused: true,
+                position: ready ? 11.49 : 0,
+                ready,
+            });
+            f.leases[0].event("failed");
+            assert.equal(handle.snapshot().phase, "stopped");
+            assert.equal(handle.snapshot().position, ready ? 11.49 : 10);
+            assert.equal(f.leases[0].disposed, 1);
+            assert.equal(f.backend.current(), null);
+            assert.equal(
+                f.commands.filter((command) => command.type === "ended").length,
+                0
+            );
+            assert(f.timers.every((timer) => !timer.active));
+        }
+    );
+}
+
+test("terminal stop reentry cannot dispose or change replacement playback", (f) => {
+    const first = f.backend.open({ url: "failed" });
+    f.playing(0, 10);
+    let replacement;
+    const emit = f.ports.emit;
+    f.ports.emit = (...args) => {
+        emit(...args);
+        if (args[1] !== "stop") return;
+        f.domain({ generation: 2, kind: "vod", position: 0 });
+        replacement = f.backend.open({ url: "replacement" });
+        f.playing(1, 30);
+    };
+    f.leases[0].event("failed");
+    assert(replacement, "terminal failure must dispatch stop");
+    assert.equal(f.backend.current(), replacement);
+    assert.equal(first.snapshot().phase, "stopped");
+    assert.equal(replacement.snapshot().phase, "playing");
+    assert.equal(replacement.snapshot().position, 30);
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(f.leases[1].disposed, 0);
+    assert.equal(
+        f.commands.filter((command) => command.type === "stop").length,
+        1
+    );
+    assert.equal(
+        f.commands.filter((command) => command.type === "ended").length,
+        0
+    );
+});
+
+test("terminal failure during engine attachment disposes only the failed lease", (f) => {
+    const open = f.ports.open;
+    f.ports.open = (request, event) => {
+        const engine = open(request, event);
+        event("failed");
+        return engine;
+    };
+    const handle = f.backend.open({ url: "unavailable" });
+    assert.equal(handle.snapshot().phase, "stopped");
+    assert.equal(f.backend.current(), null);
+    assert.equal(f.leases[0].disposed, 1);
+    assert.equal(
+        f.commands.filter((command) => command.type === "stop").length,
+        1
+    );
+    assert.equal(
+        f.commands.filter((command) => command.type === "ended").length,
+        0
+    );
+});
+
+test("retired source failures cannot stop the current domain", (f) => {
+    const handle = f.backend.open({ url: "retired" });
+    f.playing(0, 10);
+    f.domain({ generation: 2, kind: "vod", position: 0 });
+    const count = f.commands.length;
+    f.leases[0].event("failed");
+    assert.equal(f.commands.length, count);
+    assert.equal(handle.snapshot().phase, "playing");
+    assert.equal(f.leases[0].disposed, 0);
+});
+
 for (const operation of ["seek", "resume"]) {
     test(
         "ready " + operation + " recovery permits natural completion again",

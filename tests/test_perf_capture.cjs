@@ -356,6 +356,85 @@ function test(name, fn) {
     tests.push({ fn, name });
 }
 const all = (f) => f.request("read", { after_seq: 0 }).data;
+test("core HLS error survives synchronous retirement exactly once without retaining source data", () => {
+    for (const version of [1, 2, 3]) {
+        const f = fixture({ version });
+        const hls = f.hls;
+        hls.__ottPerfErrors = true;
+        const secret = "https://private.invalid/key/playlist.m3u8";
+        const error = {
+            details: "levelParsingError",
+            error: new Error(secret),
+            fatal: true,
+            level: 0,
+            response: { code: 200, text: secret, url: secret },
+            type: "networkError",
+        };
+        hls.on("ERROR", () => {
+            f.w.__ottPerfSink.hlsError(hls, error);
+            f.replace();
+        });
+        f.request("start");
+        hls.emit("ERROR", error);
+        const report = all(f);
+        const errors = report.events.filter(
+            (e) => e.kind === "hls" && e.data.event === "error"
+        );
+        assert.equal(errors.length, 1);
+        assert.equal(errors[0].handle_id, 1);
+        assert.equal(errors[0].generation, 1);
+        assert.equal(errors[0].data.detail, "other");
+        assert.equal(errors[0].data.http_status, 200);
+        assert.equal(errors[0].data.fatal, true);
+        assert(!JSON.stringify(report).includes(secret));
+        assert.equal(
+            report.events.filter((e) => e.kind === "hls_error_action").length,
+            version === 3 ? 1 : 0
+        );
+        const before = report.events.length;
+        const sink = f.w.__ottPerfSink;
+        sink.hlsError(hls, error);
+        assert.equal(all(f).events.length, before, "retired owner is rejected");
+        f.request("stop");
+        const stopped = all(f).events.length;
+        sink.hlsError(f.hls, error);
+        assert.equal(all(f).events.length, stopped, "stopped capture is inert");
+        f.close();
+    }
+});
+test("failed attempts preserve counters without extending existing wire enums", () => {
+    for (const version of [1, 2, 3]) {
+        const f = fixture({ version });
+        f.backend.lastAttempt = () => ({
+            ...f.attempt,
+            fatalErrors: 1,
+            generation: 1,
+            handleId: 1,
+            reason: "failed",
+            url: "secret-must-not-appear",
+        });
+        f.request("start");
+        f.advance(1000);
+        f.hls.emit("ERROR", { details: "manifestParsingError", fatal: true });
+        const report = all(f);
+        assert.equal(
+            report.events.find((e) => e.kind === "hls").data.detail,
+            "other"
+        );
+        assert.equal(
+            report.events.find((e) => e.kind === "sample").data.last_attempt
+                .reason,
+            "disposed"
+        );
+        assert.equal(
+            report.events.find((e) => e.kind === "sample").data.last_attempt
+                .fatalErrors,
+            1
+        );
+        assert(!JSON.stringify(report).includes("secret-must-not-appear"));
+        f.close();
+    }
+});
 test("default off, status-only and stop cleanup leave no performance listeners or timers", () => {
     const f = fixture();
     assert.equal(f.timers.size, 0);

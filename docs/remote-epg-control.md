@@ -33,19 +33,26 @@ reject the request instead of playing a different channel at the old number.
 Unchanged snapshots share a receipt for up to two minutes; receipts do not survive
 a player reload. Parental and category admission remain owned by ordinary playback.
 
-When no current programme matches, the CLI retrieves `/match` and `/programmes`
+When the service advertises compact search, nonempty queries use `/search`
+for complete generation-bound candidates. Otherwise the CLI retrieves `/match` and `/programmes`
 from the same EPG service. Only channels with archive support are searched, within
 their advertised retention and at most 144 hours. Adjacent matching programmes
 form a chain; a different title, gap or overlap breaks it. The first programme
 with a readable manifest and initial media fragment becomes the chain's result.
 Multiple chains are listed separately, including chains on the same channel.
+Playback mode shuffles complete chains and stops at the first available result;
+`--list` still verifies the full set. Fast results never become a complete query
+cache. All search stages share one deadline. A configured local native guide
+may restart a failed read-only query, but cannot combine origins or retry playback.
 
 `resolve_archive` explicitly returns a provider-generated media URL to the
 authenticated controller for a local availability check. It does not switch
 channels or open a PIN prompt. The URL is never sent to the public EPG service,
 printed by the CLI or saved in its caches. `play_archive_catalog` carries only
 `catalog`, `id`, `start`, `end` and `title`; the player checks receipt, retention
-and access again, then enters its existing archive controller. A successful
+and access again, then enters its existing archive controller with the resolved
+URL pinned. A refused archive transition or deferred authorization is rejected
+instead of acknowledged; the reply identifies `mode: "archive"`. A successful
 reply confirms dispatch, not decoded video on physical hardware.
 
 The CLI caches mappings, schedules and archive search results for up to two
