@@ -1,10 +1,11 @@
-"""Pure driver-entrypoint tests. No subprocess/native/WebKit/workflow runs."""
+"""Driver tests with tiny owned subprocesses; no native/WebKit/workflow runs."""
 import importlib.util
 import contextlib
 import json
 import os
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -249,7 +250,9 @@ class DriverTests(unittest.TestCase):
         error = None
         with contextlib.ExitStack() as stack:
             stack.enter_context(mock.patch.object(m.subprocess, 'Popen', return_value=proc))
-            stack.enter_context(mock.patch.object(m.os, 'getpgid', side_effect=OSError('identity setup failed') if identity_error else lambda _pid: proc.pid))
+            identity_failure = (identity_error if isinstance(identity_error, BaseException)
+                                else OSError('identity setup failed') if identity_error else None)
+            stack.enter_context(mock.patch.object(m.os, 'getpgid', side_effect=identity_failure or (lambda _pid: proc.pid)))
             stack.enter_context(mock.patch.object(m.os, 'getsid', return_value=proc.pid))
             stack.enter_context(mock.patch.object(m.os, 'killpg', side_effect=killpg))
             stack.enter_context(mock.patch.object(self.driver, 'sample', side_effect=sample))
@@ -263,6 +266,157 @@ class DriverTests(unittest.TestCase):
                 error = caught
         self.assertTrue(proc.stdout.closed)
         return error, self.driver.commands[-1], state
+
+    def early_command(self, *, lookup='getpgid', exit_code=0, identity_error=None,
+                      group_state='absent', expire=False, log_cap=None):
+        """Return a genuinely reaped child, keeping its real stdout pipe unread."""
+        real_popen = m.subprocess.Popen
+        children, probes = [], []
+        marker = 'early-exit-marker'
+        argv = [sys.executable, '-c',
+                'import sys; print(' + repr(marker) + ', flush=True); sys.exit(' + str(exit_code) + ')']
+        name = 'early-exit-' + str(len(self.driver.commands))
+        def spawn(command, **kwargs):
+            self.assertTrue(kwargs['start_new_session'])
+            proc = real_popen(command, **kwargs)
+            children.append(proc)
+            try:
+                self.assertEqual(proc.wait(timeout=5), exit_code)
+            except BaseException:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait(timeout=5)
+                proc.stdout.close()
+                raise
+            proc.send_signal = mock.Mock(side_effect=AssertionError('signal after reap'))
+            return proc
+        failure = identity_error if identity_error is not None else ProcessLookupError('child exited before identity')
+        def missing_identity(pid):
+            self.assertEqual(pid, children[0].pid)
+            raise failure
+        def group_probe(pgid, sig):
+            probes.append((pgid, sig))
+            self.assertEqual(pgid, children[0].pid)
+            self.assertEqual(sig, 0, 'only a read-only group absence check is allowed after reap')
+            if group_state == 'denied':
+                raise PermissionError('group identity uncertain')
+            if group_state == 'absent' or (group_state == 'reappears' and len(probes) == 1):
+                raise ProcessLookupError()
+        def sample():
+            if expire:
+                self.clock.now = self.budget.work_deadline
+        error = None
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(m.subprocess, 'Popen', side_effect=spawn))
+            stack.enter_context(mock.patch.object(m.os, 'getpgid', side_effect=missing_identity if lookup == 'getpgid' else lambda pid: pid))
+            stack.enter_context(mock.patch.object(m.os, 'getsid', side_effect=missing_identity if lookup == 'getsid' else lambda pid: pid))
+            stack.enter_context(mock.patch.object(m.os, 'killpg', side_effect=group_probe))
+            stack.enter_context(mock.patch.object(self.driver, 'sample', side_effect=sample))
+            if log_cap is not None:
+                stack.enter_context(mock.patch.object(m, 'LOG_CAP', log_cap))
+            try:
+                self.driver.run(name, argv, limit=1)
+            except BaseException as caught:
+                error = caught
+        self.assertEqual(len(children), 1)
+        proc = children[0]
+        proc.send_signal.assert_not_called()
+        self.assertTrue(proc.stdout.closed)
+        self.assertTrue(all(sig == 0 for _, sig in probes))
+        log = self.driver.evidence / 'logs' / (name + '.log')
+        return error, self.driver.commands[-1], probes, log
+
+    def test_real_reaped_child_before_either_identity_lookup_still_collects_output(self):
+        for lookup in ('getpgid', 'getsid'):
+            with self.subTest(lookup=lookup):
+                error, entry, probes, log = self.early_command(lookup=lookup)
+                self.assertIsNone(error)
+                self.assertEqual(log.read_bytes(), b'early-exit-marker\n')
+                self.assertEqual(entry['exit_code'], 0)
+                self.assertTrue(entry['reaped'])
+                self.assertTrue(entry['group_gone'])
+                self.assertTrue(entry['cleanup_confirmed'])
+                self.assertFalse(entry['ownership_verified'])
+                self.assertEqual(entry['identity_state'], 'exited-before-identity')
+                self.assertEqual(entry['expected_pgid'], entry['pid'])
+                self.assertIsNone(entry['pgid'])
+                self.assertIsNone(entry['sid'])
+                self.assertTrue(probes)
+
+    def test_real_reaped_child_with_existing_or_reused_group_cannot_pass(self):
+        error, entry, probes, log = self.early_command(group_state='present')
+        self.assertIsInstance(error, RuntimeError)
+        self.assertIn('descendants remain', str(error))
+        self.assertEqual(log.read_bytes(), b'early-exit-marker\n')
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['ownership_verified'])
+        self.assertFalse(entry['group_gone'])
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertTrue(probes)
+
+    def test_real_reaped_child_nonzero_exit_remains_failure(self):
+        error, entry, probes, log = self.early_command(exit_code=7)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertEqual(entry['exit_code'], 7)
+        self.assertTrue(entry['reaped'])
+        self.assertTrue(entry['group_gone'])
+        self.assertTrue(entry['cleanup_confirmed'])
+        self.assertFalse(entry['ownership_verified'])
+        self.assertEqual(log.read_bytes(), b'early-exit-marker\n')
+
+    def test_real_reaped_child_reused_group_does_not_keep_stale_absence(self):
+        error, entry, probes, _log = self.early_command(group_state='reappears')
+        self.assertIsInstance(error, RuntimeError)
+        self.assertIn('cleanup is unknown', str(error))
+        self.assertGreaterEqual(len(probes), 2)
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['ownership_verified'])
+        self.assertFalse(entry['group_gone'])
+        self.assertFalse(entry['cleanup_confirmed'])
+
+    def test_real_reaped_child_permission_or_other_identity_error_is_not_recovered(self):
+        for failure in (PermissionError('identity denied'), OSError('identity unavailable')):
+            with self.subTest(failure=type(failure).__name__):
+                error, entry, probes, _log = self.early_command(identity_error=failure)
+                self.assertIs(error, failure)
+                self.assertTrue(entry['reaped'])
+                self.assertFalse(entry['ownership_verified'])
+                self.assertFalse(entry['cleanup_confirmed'])
+                self.assertNotIn('identity_state', entry)
+                self.assertEqual(probes, [])
+
+    def test_real_reaped_child_group_permission_error_remains_uncertain(self):
+        error, entry, probes, _log = self.early_command(group_state='denied')
+        self.assertIsInstance(error, PermissionError)
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['group_gone'])
+        self.assertFalse(entry['cleanup_confirmed'])
+        self.assertIn('PermissionError', entry['cleanup_errors'])
+        self.assertTrue(probes)
+
+    def test_real_reaped_child_keeps_original_deadline_and_log_cap(self):
+        for options, expected in (({'expire': True}, m.DeadlineError),
+                                  ({'log_cap': 0}, RuntimeError)):
+            with self.subTest(options=options):
+                self.clock.now = 0
+                error, entry, _probes, _log = self.early_command(**options)
+                self.assertIsInstance(error, expected)
+                self.assertTrue(entry['reaped'])
+                self.assertTrue(entry['group_gone'])
+                self.assertEqual(entry['primary_error'], expected.__name__)
+                self.assertIn('Original CI deadline exhausted' if options.get('expire')
+                              else 'Incremental combined log cap exceeded', str(error))
+
+    def test_missing_identity_while_child_is_running_retains_handle_only_cleanup(self):
+        failure = ProcessLookupError('identity missing but child still running')
+        error, entry, state = self.fake_command(identity_error=failure)
+        self.assertIs(error, failure)
+        self.assertNotIn('identity_state', entry)
+        self.assertFalse(entry['ownership_verified'])
+        self.assertEqual(state['group_signals'], [])
+        self.assertEqual(state['handle_signals'], [m.signal.SIGTERM])
+        self.assertTrue(entry['reaped'])
+        self.assertFalse(entry['cleanup_confirmed'])
 
     def test_reaped_leader_present_group_is_unknown_without_signals(self):
         error, entry, state = self.fake_command(natural=True, group_present=True)
