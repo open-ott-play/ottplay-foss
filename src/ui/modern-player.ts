@@ -557,56 +557,69 @@ function createModernPlayer(w: any) {
         if (code === keys.RETURN || code === keys.EXIT) return "back";
         return "";
     }
-    function onKeydown(event: any): void {
-        if (!active || !opened || kioskBlocked() || screenOpen()) return;
-        if (editingTarget(event.target) || modalOpen()) {
+    function onKeydown(event: any): boolean {
+        if (
+            !event ||
+            event.defaultPrevented ||
+            !active ||
+            !opened ||
+            kioskBlocked() ||
+            screenOpen()
+        )
+            return false;
+        if (
+            editingTarget(event.target) ||
+            editingTarget(w.document.activeElement) ||
+            modalOpen()
+        ) {
             syncVisibility();
-            return;
+            return false;
         }
         var id = keyId(event);
-        if (!id) return;
+        if (!id) return false;
         if (event.preventDefault) event.preventDefault();
         if (event.stopPropagation) event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         if (id === "back") {
             close();
-            return;
+            return true;
         }
         if (group === "timeline") {
             if (id === "left" || id === "right") {
                 seek(id === "left" ? -10 : 10);
-                return;
+                return true;
             }
             if (id === "down") {
                 setGroup("actions");
                 keepAlive();
-                return;
+                return true;
             }
             if (id === "up") {
                 close();
-                return;
+                return true;
             }
             if (id === "accept") {
                 togglePlayback();
-                return;
+                return true;
             }
-            return;
+            return true;
         }
         if (id === "up") {
             setGroup("timeline");
             keepAlive();
-            return;
+            return true;
         }
         if (id === "down") {
             close();
-            return;
+            return true;
         }
         if (id === "left" || id === "right") {
             moveRail(id === "left" ? -1 : 1);
             keepAlive();
-            return;
+            return true;
         }
         if (id === "accept") activateRail();
+        return true;
     }
     function videoTarget(target: any): boolean {
         if (!target || target.nodeType !== 1) return false;
@@ -655,6 +668,18 @@ function createModernPlayer(w: any) {
     }
     function editingTarget(target: any): boolean {
         if (!target || target.nodeType !== 1) return false;
+        for (
+            var ancestor = target;
+            ancestor;
+            ancestor = ancestor.parentElement
+        ) {
+            if (
+                ancestor.hidden ||
+                ancestor.style?.display === "none" ||
+                ancestor.style?.visibility === "hidden"
+            )
+                return false;
+        }
         var tag = String(target.tagName || "").toUpperCase();
         return (
             tag === "INPUT" ||
@@ -997,6 +1022,7 @@ function createModernPlayer(w: any) {
     }
     return {
         destroy: deactivate,
+        handleKey: onKeydown,
         refresh: refresh,
         state: function (): any {
             return {

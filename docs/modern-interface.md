@@ -84,12 +84,20 @@ a navigation action uses the same routes as keyboard operation. An open text
 editor or confirmation dialog keeps input ownership until it closes; covered
 navigation cannot change the provider behind it.
 
-The full-screen video shortcuts are unchanged: the presentation mode does not
-remap volume, previous/next or Favorites. With the playback overlay open,
+During full-screen playback, the default **Up** button selects the next channel
+or file and **Down** selects the previous one, in both Classic and Modern. This
+also applies while watching an archive or VOD item. Navigation follows the
+current category, mixed Favorites or temporary media queue, including its
+existing order and wrapping policy. Explicit custom button mappings remain
+available; the separate minute-seek actions still seek.
+
+The presentation mode does not remap volume or Favorites. With the playback overlay open,
 Left/Right seek ten seconds on the scrubber, Down enters the action row,
 Left/Right move between actions, Enter activates one and Up returns to the
 scrubber. Keys outside that set continue to reach the shared handler, and a
-dialog or number entry always keeps input priority. Kiosk restrictions remain
+dialog or number entry always keeps input priority. The same control ownership
+applies to browser keyboard events and native Android/remote button commands.
+Kiosk restrictions remain
 in force and are not relaxed by switching the presentation.
 
 The two modes share the current provider, category, global Favorites, selected

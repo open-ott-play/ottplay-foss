@@ -115,6 +115,138 @@ function fixture() {
     };
 }
 
+// Exercise native _doKey delivery as well as DOM events through the real shared
+// handler: Android and remote controls do not dispatch a browser keydown.
+function sharedInput(f, platform) {
+    const { w, api, calls } = f;
+    const file = "src/key-handler/index.ts";
+    const source = ts.createSourceFile(
+        file,
+        fs.readFileSync(path.join(root, file), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const names = [
+        "cancelNativeListInertia",
+        "keyHandler",
+        "dispatchKey",
+        "handleMainKey",
+        "keyFun",
+        "plusProg",
+        "minusProg",
+    ];
+    w.eval(
+        require("./helpers/numeric-key-state.cjs")() +
+            ts
+                .transpileModule(
+                    source.statements
+                        .filter(
+                            (node) =>
+                                ts.isFunctionDeclaration(node) &&
+                                names.includes(node.name?.text)
+                        )
+                        .map((node) => node.getText(source))
+                        .join("\n"),
+                    {
+                        compilerOptions: {
+                            module: ts.ModuleKind.ES2015,
+                            target: ts.ScriptTarget.ES5,
+                        },
+                    }
+                )
+                .outputText.replace(/^export /gm, "")
+    );
+    w.eval(compile("src/ui/input-router.ts"));
+    const device = fs.readFileSync(
+        path.join(root, `src/devices/${platform}/device.ts`),
+        "utf8"
+    );
+    w.keys = w.eval(
+        "(" + /var \w*Keys = (\{[\s\S]*?\});/.exec(device)[1] + ")"
+    );
+    const router = w.__ottInputRouter.create({ keys: () => w.keys });
+    w.__ottClassicScreenPort.normalize = router.normalize;
+    w.__ottClassicScreenPort.dispatch = (code, event, main) => main({ code });
+    Object.assign(w, {
+        __ottModernPlayer: api,
+        curList: ["one", "two", "three"],
+        nativeListInertia: null,
+        ott_device: platform,
+        primaryIndex: 0,
+        settings: { ...w.settings, adFun: 16, auFun: 15 },
+        shiftArchiveSelect: (...args) => calls.push(["seekDialog", ...args]),
+        stbEventToKeyCode: (event) => event.keyCode,
+    });
+    w.addEventListener("keydown", w.keyHandler);
+    return (name) => w.dispatchKey(w.keys[name]);
+}
+
+for (const platform of ["pc", "android"]) {
+    for (const mode of [0, 1700000000, -1e11]) {
+        test(`${platform} shared native arrows switch with Modern closed; focused controls retain ownership (${mode})`, () => {
+            const f = fixture();
+            try {
+                const key = sharedInput(f, platform);
+                f.w.playType = mode;
+                f.api.refresh();
+                key("UP");
+                key("DOWN");
+                assert.deepEqual(f.calls.splice(0), [
+                    ["playChannel", 3, 1],
+                    ["playChannel", 3, 2],
+                ]);
+
+                f.w.document.getElementById("info1").style.display = "block";
+                f.api.sync();
+                key("DOWN");
+                assert.equal(f.api.state().group, "actions");
+                key("UP");
+                assert.equal(f.w.document.activeElement, f.progress);
+                key("RIGHT");
+                assert.deepEqual(f.calls.splice(0), [
+                    ["showChannelInfo", 1],
+                    ["showChannelInfo", 1],
+                    ["shiftArchive", 10],
+                    ["showChannelInfo", 1],
+                ]);
+                const input = f.w.document.createElement("input");
+                f.w.document.body.appendChild(input);
+                input.focus();
+                assert.equal(
+                    f.api.handleKey({ keyCode: f.w.keys.DOWN }),
+                    false,
+                    "native editing focus is not stolen by the panel"
+                );
+                key("DOWN");
+                assert.deepEqual(
+                    f.calls,
+                    [],
+                    "native input focus also blocks background channel navigation"
+                );
+                input.blur();
+                key("RETURN");
+                assert.deepEqual(f.calls.splice(0), [["infoBarHide"]]);
+                f.w.document.getElementById("info1").style.display = "none";
+                f.api.sync();
+                f.w.document.body.dispatchEvent(
+                    new f.w.KeyboardEvent("keydown", {
+                        bubbles: true,
+                        keyCode: f.w.keys.UP,
+                    })
+                );
+                assert.deepEqual(
+                    f.calls,
+                    [["playChannel", 3, 1]],
+                    "closing the panel returns DOM keys to shared navigation"
+                );
+            } finally {
+                f.api.destroy();
+                f.dom.window.close();
+            }
+        });
+    }
+}
+
 test("Classic keeps the shared footer and creates no overlay", () => {
     const f = fixture();
     try {
