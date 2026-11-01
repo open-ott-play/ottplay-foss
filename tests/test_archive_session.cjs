@@ -161,6 +161,7 @@ function fixture() {
 // playback coordinator, including when a different live channel is active.
 for (const channelId of [101, 202]) {
     const c = fixture();
+    c.getChannelPicon = (id) => "logo:" + id;
     include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
     c.sStopPlay = 1;
     c.__ottClassicPlayback.command({ type: "playing" });
@@ -199,6 +200,14 @@ for (const channelId of [101, 202]) {
     const state = c.__ottClassicPlayback.snapshot();
     assert.equal(state.target.kind, "archive");
     assert.equal(state.target.channelId, String(channelId));
+    assert.equal(
+        c.elements.channel_name.textContent,
+        c.channels[channelId].channel_name
+    );
+    assert.equal(
+        c.elements.picon.style.backgroundImage,
+        `url("logo:${channelId}")`
+    );
     assert.equal(state.target.archiveStart, 999000);
 }
 

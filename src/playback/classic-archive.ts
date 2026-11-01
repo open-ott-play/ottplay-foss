@@ -37,8 +37,8 @@ function classicArchiveCapture(): ArchiveContext | null {
     return {
         channelId: String(id),
         file: !!w.fileArchive,
-        // Private selection tuple: category, channel id, list index.
-        host: [w.catIndex, id, w.primaryIndex],
+        // Keep the renderer-facing id; c/i are private selection coordinates.
+        host: { c: w.catIndex, i: w.primaryIndex, id: id },
         isCurrent: context.isCurrent,
         retention: Math.max(0, Number(channel.rec) || 0) * 3600,
         schedule:
@@ -67,7 +67,7 @@ function classicArchiveRuntime(): any {
     ): boolean {
         var payload = model.current && model.current.payload;
         if (select && typeof w.setCurrent === "function")
-            w.setCurrent(context.host[0], context.host[2], true);
+            w.setCurrent(context.host.c, context.host.i, true);
         if (
             playback.command({
                 archiveStart: model.position,
@@ -96,7 +96,7 @@ function classicArchiveRuntime(): any {
         ): boolean {
             return (
                 typeof w.ifParentalAccessChId === "function" &&
-                w.ifParentalAccessChId(context.host[1], allowed)
+                w.ifParentalAccessChId(context.host.id, allowed)
             );
         },
         capture: classicArchiveCapture,
@@ -114,7 +114,7 @@ function classicArchiveRuntime(): any {
         ): void {
             if (typeof w.getChannelEpgCached === "function")
                 w.getChannelEpgCached(
-                    context.host[1],
+                    context.host.id,
                     function (_id: any, data: any): void {
                         done(classicArchiveRows(data));
                     }
@@ -143,7 +143,7 @@ function classicArchiveRuntime(): any {
                 }
                 if (
                     !current() ||
-                    (w.curList || [])[w.primaryIndex] !== context.host[1] ||
+                    (w.curList || [])[w.primaryIndex] !== context.host.id ||
                     w.playType !== model.position
                 )
                     return null;
@@ -194,7 +194,7 @@ function classicArchiveRuntime(): any {
                 typeof w.publishChannelProgrammeRows === "function"
             )
                 w.publishChannelProgrammeRows(
-                    model.context.host[1],
+                    model.context.host.id,
                     w.epgArray
                 );
             if (typeof w.__ottRenderArchive === "function")
@@ -219,7 +219,7 @@ function classicArchiveRuntime(): any {
             done(
                 typeof w.getArchiveUrl === "function"
                     ? w.getArchiveUrl(
-                          context.host[1],
+                          context.host.id,
                           model.position,
                           model.window.end,
                           programme
