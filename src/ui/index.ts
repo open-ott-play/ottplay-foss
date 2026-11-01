@@ -636,7 +636,7 @@ export function uiInit(): void {
 
     $progressDiv.on("mousedown.ottUi", function (e: any) {
         if (!e) e = event;
-        if (e.clientX === undefined) {
+        if (e.clientX == null) {
             console.error("$progress_div[mousedown] evt.clientX not exist");
             return;
         }
@@ -645,7 +645,7 @@ export function uiInit(): void {
 
     function seekProgress(e: any, eventName: string): void {
         if (!e) e = event;
-        if (e.clientX === undefined) {
+        if (e.clientX == null) {
             console.error(
                 "$progress_div[" + eventName + "] evt.clientX not exist"
             );
@@ -711,7 +711,7 @@ export function uiInit(): void {
     $progressDiv.on("click.ottUi", function (e: any) {
         // A press/release also emits a click; seek once on release and let
         // that trailing click pass. A new press resets the phase.
-        if (seekInProgress > 1 && e.clientX != null) return;
+        if (seekInProgress > 1) return;
         seekProgress(e, "click");
     });
 
