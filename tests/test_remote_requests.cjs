@@ -1142,6 +1142,9 @@ function checkRemoteEpgCatalog() {
                 : ctx.require(name);
         vm.runInContext(code, context);
         return {
+            advance: (milliseconds) => {
+                clock += milliseconds;
+            },
             archives,
             expire: () => {
                 clock += 120001;
@@ -1251,6 +1254,58 @@ function checkRemoteEpgCatalog() {
         "receipt expiry must not invalidate the archive availability cache"
     );
     assert.notEqual(renewed.data.catalog, archiveSnapshot.data.catalog);
+
+    for (const action of [
+        "play_catalog",
+        "resolve_archive",
+        "play_archive_catalog",
+    ]) {
+        const active = fixture();
+        const initial = active.run("epg_catalog");
+        active.advance(119999);
+        const refreshed = active.run("epg_catalog");
+        assert.equal(refreshed.data.catalog, initial.data.catalog);
+        assert.equal(
+            refreshed.data.archive.revision,
+            initial.data.archive.revision
+        );
+        active.advance(2);
+        const request =
+            action === "play_catalog"
+                ? { catalog: initial.data.catalog, id: "7" }
+                : { ...params, catalog: initial.data.catalog };
+        assert.equal(
+            active.run(action, request).status,
+            "ok",
+            `${action}: final catalogue read renews the complete 120s lease`
+        );
+        const effects = active.plays.length + active.archives.length;
+        active.advance(119998);
+        assert.equal(
+            active.run(action, request).status,
+            "rejected",
+            `${action}: admission expires exactly 120s after the last catalogue read`
+        );
+        assert.equal(active.plays.length + active.archives.length, effects);
+    }
+
+    const idle = fixture();
+    const idleSnapshot = idle.run("epg_catalog");
+    idle.advance(120000);
+    assert.equal(
+        idle.run("play_catalog", {
+            catalog: idleSnapshot.data.catalog,
+            id: "7",
+        }).status,
+        "rejected"
+    );
+    const rotated = idle.run("epg_catalog");
+    assert.notEqual(rotated.data.catalog, idleSnapshot.data.catalog);
+    assert.equal(
+        rotated.data.archive.revision,
+        idleSnapshot.data.archive.revision
+    );
+    assert.equal(idle.plays.length, 0);
 
     a.h.channels[7].rec = 0.5;
     const fractional = a.run("epg_catalog");
