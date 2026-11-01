@@ -192,6 +192,11 @@ for (const platform of ["pc", "android"]) {
                 const closedInput = f.w.document.createElement("input");
                 f.w.document.body.appendChild(closedInput);
                 closedInput.focus();
+                assert.equal(
+                    f.api.handleKey({ keyCode: f.w.keys.VOL_UP }),
+                    false,
+                    "input focus leaves global volume commands available"
+                );
                 key("UP");
                 assert.deepEqual(
                     f.calls,
