@@ -707,33 +707,104 @@ for (const change of [
 }
 // A synchronous stop callback may replace the source or selection. Never open
 // the previously admitted archive over that newer choice.
-for (const change of [
-    (c) => {
-        c.p_pref = "source-b";
-    },
-    (c) => {
-        c.primaryIndex = 1;
-    },
-    (c) => c.__ottClassicPlayback.command({ channelId: 101, type: "live" }),
-    (c) =>
-        c.__ottClassicPlayback.command({
-            archiveStart: 998050,
-            channelId: 101,
-            type: "archive",
-        }),
+for (const [change, phase] of [
+    [
+        (c) => {
+            c.p_pref = "source-b";
+        },
+        "stopped",
+    ],
+    [
+        (c) => {
+            c.primaryIndex = 1;
+        },
+        "stopped",
+    ],
+    [
+        (c) => c.__ottClassicPlayback.command({ channelId: 101, type: "live" }),
+        "loading",
+    ],
+    [
+        (c) =>
+            c.__ottClassicPlayback.command({
+                archiveStart: 998050,
+                channelId: 101,
+                type: "archive",
+            }),
+        "loading",
+    ],
 ]) {
     const c = fixture();
     c.sStopPlay = 1;
     const stop = c.stbStop;
+    const play = c.stbPlay;
+    let decoder = { url: "previous-live" };
+    let replacementState;
+    c.stbPlay = (url, position) => {
+        decoder = { position, url };
+        play(url, position);
+    };
     c.stbStop = () => {
+        decoder = null;
         stop();
         change(c);
+        replacementState = JSON.stringify(c.__ottClassicPlayback.snapshot());
     };
     assert.equal(
         c.__ottClassicArchive.open(999050, "https://archive.example/selected"),
         false
     );
     assert.deepEqual(c.opens(), []);
+    assert.equal(
+        decoder,
+        null,
+        "retired archive cannot start an unadmitted source"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, phase);
+    assert.equal(
+        JSON.stringify(c.__ottClassicPlayback.snapshot()),
+        replacementState,
+        "pending replacement retains its own state and startup authority"
+    );
+}
+for (const type of ["live", "archive"]) {
+    const c = fixture();
+    c.sStopPlay = 1;
+    const stop = c.stbStop;
+    const play = c.stbPlay;
+    let decoder = { url: "previous-live" };
+    let replacementState;
+    const url = "https://replacement.example/" + type;
+    c.stbPlay = (url, position) => {
+        decoder = { position, url };
+        play(url, position);
+    };
+    c.stbStop = () => {
+        decoder = null;
+        stop();
+        c.__ottClassicPlayback.command({
+            archiveStart: 998050,
+            channelId: 101,
+            type,
+        });
+        c.stbPlay(url, 37);
+        replacementState = JSON.stringify(c.__ottClassicPlayback.snapshot());
+    };
+    assert.equal(
+        c.__ottClassicArchive.open(999050, "https://archive.example/retired"),
+        false
+    );
+    assert.deepEqual(decoder, { position: 37, url });
+    assert.deepEqual(
+        c.opens(),
+        [["open", url, 37]],
+        "replacement is neither restarted nor overwritten"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    assert.equal(
+        JSON.stringify(c.__ottClassicPlayback.snapshot()),
+        replacementState
+    );
 }
 // First display of a missing/terminal programme refreshes independently of renderer changes.
 for (const empty of [false, true]) {
