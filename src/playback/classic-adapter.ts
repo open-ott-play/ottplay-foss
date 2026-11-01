@@ -557,7 +557,7 @@ function classicPlaybackObservation(): PlaybackObservation & {
 function classicPlaybackAnnounce(intent: PlaybackIntent): void {
     var w = classicPlaybackHost();
     if (w.sInfoRew && typeof w.showChannelInfo === "function")
-        w.showChannelInfo(1);
+        w.showChannelInfo(1, null);
     if (typeof w.showShift !== "function") return;
     if (intent.intent === "begin")
         w.showShift(w._ ? w._("To begining") : "To beginning");

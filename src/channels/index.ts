@@ -2587,7 +2587,7 @@ function renderArchiveInfo(model: ArchiveView): void {
     }
 
     if (w.sInfoChange && model.changed && !$("#info1").is(":visible")) {
-        w.showChannelInfo(1);
+        w.showChannelInfo(1, null);
     }
 }
 if (typeof window !== "undefined")
@@ -2686,7 +2686,7 @@ export function showPlaybackSeekDialog(initialDelta: number): void {
         )
         .show();
     if (w.sInfoRew && typeof w.showChannelInfo === "function")
-        w.showChannelInfo(1);
+        w.showChannelInfo(1, null);
     var handler = function (e: number): void {
         if (finished || w.dialogBoxKeyHandler !== handler) return;
         switch (e) {
@@ -3723,7 +3723,10 @@ export function channelsKeyHandler(keyCode: number): boolean {
                         typeof window.showChannelInfo === "function" &&
                         window.sInfoSwitch
                     ) {
-                        window.showChannelInfo(window.settings.infoTimeout);
+                        window.showChannelInfo(
+                            window.settings.infoTimeout,
+                            null
+                        );
                     }
                     window.playType = 0;
                 }

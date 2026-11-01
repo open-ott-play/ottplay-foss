@@ -93,7 +93,18 @@ or control panel does not own the buttons; the separate minute-seek actions
 remain available. Temporary Plex queues keep their existing Up/Down behavior:
 next/previous item in the queue.
 
-The presentation mode does not remap volume or Favorites. With the playback overlay open,
+An information banner displayed automatically after a channel or programme
+change is passive. It does not focus the scrubber or take over the playback
+keys: repeated Up/Down presses continue through the list, and ordinary PC
+Left/Right presses keep controlling volume. Opening the controls explicitly
+with Info, Enter/OK or a pointer action activates their keyboard navigation,
+including when the automatic banner is already visible.
+Programme updates and seek feedback retain the current interaction mode. If
+you open the controls while a new item is loading, its later arrival does not
+take away that focus. A newly accepted channel, Favorite or queue selection
+starts with passive information again.
+
+The presentation mode does not remap volume or Favorites. With the playback controls active,
 Left/Right seek ten seconds on the scrubber, Down enters the action row,
 Left/Right move between actions, Enter activates one and Up returns to the
 scrubber. Keys outside that set continue to reach the shared handler, and a

@@ -790,6 +790,7 @@ export function hideInfoBarWhenReady(): void {
  * @analysis Hides the info bar unconditionally, even if it is already hidden.
  */
 export function infoBarHide(): void {
+    setInfoInteraction(false);
     try {
         var tooltip = document.getElementById("progress_span");
         if (tooltip) tooltip.style.display = "";
@@ -805,15 +806,22 @@ export function infoBarHide(): void {
     $("#descr").hide();
 }
 
-/**
- * Show the channel info bar and schedule its auto-hide after `timeoutSec` seconds.
- *
- * @param timeoutSec - Number of seconds before the info bar is hidden (multiplied by 1000 for setTimeout).
- * @returns void
- * @sideeffect Shows `$infoBar`, clears any existing `infoTimeout`, and sets a new timeout to call `infoBarHide`.
- */
-export function showChannelInfo(timeoutSec: number): void {
+/** Retain presentation intent across optional Modern asset loading. Null preserves it. */
+export function setInfoInteraction(value: boolean | null): void {
     var w = window as any;
+    if (value === null) value = w.__ottInfoInteractive === true;
+    w.__ottInfoInteractive = value;
+    w.__ottModernPlayer?.setInteractive?.(value);
+}
+(window as any).__ottSetInfoInteraction = setInfoInteraction;
+
+/** Show timed information; true activates controls, false resets, null preserves intent. */
+export function showChannelInfo(
+    timeoutSec: number,
+    interactive: boolean | null = true
+): void {
+    var w = window as any;
+    setInfoInteraction(interactive);
     clearTimeout(detailTimer);
     clearTimeout(detailScrollTimer);
     clearTimeout(infoTimeout);
@@ -868,7 +876,7 @@ export function showChannelInfo(timeoutSec: number): void {
             !$("#programm_name2, #programm_descr").text().trim() &&
             !$("#programm_descr").find("img,.img").length
         ) {
-            showChannelInfo(1);
+            showChannelInfo(1, null);
             return;
         }
         if (w.sInfoSlide) {
@@ -1919,7 +1927,7 @@ export function updateChannelInfo(channelId: number): void {
             !$infoBar.is(":visible") &&
             typeof w.showChannelInfo === "function"
         ) {
-            w.showChannelInfo(1);
+            w.showChannelInfo(1, null);
         }
     } catch (_info) {}
 }

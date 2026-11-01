@@ -26,7 +26,8 @@ function createPlexList(ports: any): any {
         resolved: any,
         guard: () => boolean,
         dispatched: () => void,
-        failed: () => void
+        failed: () => void,
+        preserveInfo = false
     ) {
         var items = ports.describe(records, {
             kind: "catalog",
@@ -35,6 +36,8 @@ function createPlexList(ports: any): any {
         });
         if (!items[index] || !ports.current() || !guard()) return failed();
         ports.api.cancelAuto();
+        if (!ports.current() || !guard()) return failed();
+        if (!preserveInfo) w.__ottSetInfoInteraction?.(false);
         ports.resolve(
             items[index],
             {
@@ -119,6 +122,7 @@ function createPlexList(ports: any): any {
         }
         ports.authorize(item, function () {
             if (!valid()) return;
+            w.__ottSetInfoInteraction?.(false);
             var loading = ports.showLoading(function () {
                 if (!valid()) return;
                 ports.api.cancelAuto();

@@ -131,6 +131,7 @@ function sharedInput(f, platform) {
         "keyHandler",
         "dispatchKey",
         "handleMainKey",
+        "toggleMainPlayback",
         "keyFun",
         "plusProg",
         "minusProg",
@@ -180,6 +181,910 @@ function sharedInput(f, platform) {
     w.addEventListener("keydown", w.keyHandler);
     return (name) => w.dispatchKey(w.keys[name]);
 }
+
+function actualFunctions(file, names) {
+    const source = ts.createSourceFile(
+        file,
+        fs.readFileSync(path.join(root, file), "utf8"),
+        ts.ScriptTarget.Latest,
+        true
+    );
+    const functions = names.map((name) => {
+        const node = source.statements.find(
+            (entry) =>
+                ts.isFunctionDeclaration(entry) && entry.name?.text === name
+        );
+        assert.ok(node, `actual ${name} exists`);
+        return node.getText(source).replace(/^export /, "");
+    });
+    return ts.transpileModule(functions.join("\n"), {
+        compilerOptions: { target: ts.ScriptTarget.ES5 },
+    }).outputText;
+}
+
+// Include the real channel/media launch and footer functions: a stub that only
+// records playChannel misses the automatic banner which originally stole Up.
+function automaticInfoFixture(platform = "pc", animations = false) {
+    const f = fixture();
+    const { w, calls } = f;
+    const nativeKey = sharedInput(f, platform);
+    w.eval(fs.readFileSync(path.join(root, "js/jquery-1.11.1.min.js"), "utf8"));
+    w.$.expr.filters.visible = (element) => element.style.display !== "none";
+    if (!animations) {
+        const show = w.$.fn.show;
+        w.$.fn.show = function (_duration, complete) {
+            show.call(this);
+            if (typeof complete === "function") complete.call(this[0]);
+            return this;
+        };
+        w.$.fn.slideDown = w.$.fn.show;
+        w.$.fn.slideUp = w.$.fn.hide;
+    }
+    const timers = new Map();
+    let nextTimer = 100000;
+    let now = 0;
+    const immediate = w.setTimeout.bind(w);
+    const clearImmediate = w.clearTimeout.bind(w);
+    w.setTimeout = (callback, delay) => {
+        if (!delay) return immediate(callback, 0);
+        const id = nextTimer++;
+        timers.set(id, { callback, delay, due: now + delay });
+        return id;
+    };
+    w.clearTimeout = (id) => {
+        if (!timers.delete(id)) clearImmediate(id);
+    };
+    Object.assign(w, {
+        $infoBar: w.$("#info1"),
+        cats: { All: ["one", "two", "three"] },
+        catsArray: ["unused0", "unused1", "unused2", "All"],
+        changeVolume: (delta) => calls.push(["changeVolume", delta]),
+        channels: { one: {}, three: {}, two: {} },
+        checkMedia() {},
+        detailScrollTimer: 0,
+        detailTimer: 0,
+        getChannelUrl: (id) => `https://media.invalid/${id}.m3u8`,
+        getMediaDescr: () => "A local test film",
+        ifParentalAccessChId: () => false,
+        infoTimeout: 0,
+        mediaCheckTimer: 0,
+        metadataCssUrl: (value) => value || "",
+        refreshAudioBadge() {},
+        setCurrent: (category, index) => {
+            w.catIndex = category;
+            w.curList = w.cats[w.catsArray[category]];
+            w.primaryIndex = index;
+        },
+        settings: {
+            ...w.settings,
+            alFun: 14,
+            arFun: 13,
+            infoSwitch: true,
+            infoTimeout: 5,
+            stopPlay: false,
+        },
+        stbPlay: (...args) => calls.push(["stbPlay", ...args]),
+        sVolumeStep: 5,
+        updateChannelInfo: (id) => {
+            w.document.getElementById("channel_name").textContent = id;
+        },
+        updateCoreVideoInfo() {},
+    });
+    w.eval(
+        actualFunctions("src/ui/index.ts", [
+            "hideInfoBarWhenReady",
+            "infoBarHide",
+            "showChannelInfo",
+            "setInfoInteraction",
+        ])
+    );
+    w.__ottSetInfoInteraction = w.setInfoInteraction;
+    w.eval(
+        actualFunctions("src/index.ts", [
+            "stopSourcePlayback",
+            "_playChannel",
+            "_playMedia",
+        ])
+    );
+    w.playChannel = (...args) => {
+        calls.push(["playChannel", ...args]);
+        return w._playChannel(...args);
+    };
+    const dialog = w.document.createElement("div");
+    dialog.id = "dialogbox";
+    dialog.style.display = "none";
+    w.document.body.appendChild(dialog);
+    f.api.refresh();
+    return {
+        ...f,
+        advance(milliseconds) {
+            const deadline = now + milliseconds;
+            for (let count = 0; count < 100; count++) {
+                const next = [...timers.entries()]
+                    .filter(([, timer]) => timer.due <= deadline)
+                    .sort((a, b) => a[1].due - b[1].due)[0];
+                if (!next) {
+                    now = deadline;
+                    return;
+                }
+                timers.delete(next[0]);
+                now = next[1].due;
+                next[1].callback();
+            }
+            assert.fail("unexpected recursive timer scheduling");
+        },
+        domKey(name, target = w.document.body) {
+            target.dispatchEvent(
+                new w.KeyboardEvent("keydown", {
+                    bubbles: true,
+                    cancelable: true,
+                    keyCode: w.keys[name],
+                })
+            );
+        },
+        nativeKey,
+        async settle() {
+            // MutationObserver queues the Modern sync on a zero-delay timer.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        },
+        timers,
+    };
+}
+
+for (const platform of ["pc", "android"]) {
+    for (const delivery of ["nativeKey", "domKey"]) {
+        test(`${platform} ${delivery}: automatic channel info never takes repeated Up/Up/Down`, async () => {
+            const f = automaticInfoFixture(platform);
+            try {
+                for (const name of ["UP", "UP", "DOWN"]) {
+                    f[delivery](name);
+                    await f.settle();
+                }
+                assert.deepEqual(
+                    f.calls.filter(([name]) => name === "playChannel"),
+                    [
+                        ["playChannel", 3, 1],
+                        ["playChannel", 3, 2],
+                        ["playChannel", 3, 1],
+                    ]
+                );
+                assert.deepEqual(
+                    f.calls
+                        .filter(([name]) => name === "stbPlay")
+                        .map((row) => row[1]),
+                    [
+                        "https://media.invalid/two.m3u8",
+                        "https://media.invalid/three.m3u8",
+                        "https://media.invalid/two.m3u8",
+                    ]
+                );
+                assert.equal(
+                    f.calls.some(([name]) => name === "shiftArchive"),
+                    false
+                );
+                assert.equal(f.api.state().open, true);
+                assert.equal(f.api.state().interactive, false);
+                assert.notEqual(f.w.document.activeElement, f.progress);
+            } finally {
+                f.api.destroy();
+                f.dom.window.close();
+            }
+        });
+    }
+}
+
+for (const delivery of ["nativeKey", "domKey"]) {
+    test(`PC ${delivery}: passive banner leaves Left/Right as volume`, async () => {
+        const f = automaticInfoFixture();
+        try {
+            f.nativeKey("UP");
+            await f.settle();
+            f.calls.length = 0;
+            f[delivery]("LEFT");
+            f[delivery]("RIGHT");
+            await f.settle();
+            assert.deepEqual(f.calls, [
+                ["changeVolume", -5],
+                ["changeVolume", 5],
+            ]);
+            assert.equal(f.api.state().interactive, false);
+        } finally {
+            f.api.destroy();
+            f.dom.window.close();
+        }
+    });
+}
+
+test("explicit info promotes an already visible passive footer before its observer runs", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.nativeKey("UP");
+        await f.settle();
+        f.nativeKey("INFO");
+        assert.equal(f.api.state().interactive, true);
+        f.calls.length = 0;
+        f.nativeKey("RIGHT");
+        assert.deepEqual(f.calls, [["shiftArchive", 10]]);
+        assert.equal(f.w.document.activeElement, f.progress);
+        f.nativeKey("DOWN");
+        assert.equal(f.api.state().group, "actions");
+        await f.settle();
+        assert.equal(f.api.state().interactive, true);
+        assert.equal(f.api.state().group, "actions");
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("passive preserve and batched hide/show do not revive an old controls owner", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        f.w.showChannelInfo(1, null);
+        await f.settle();
+        assert.equal(
+            f.api.state().interactive,
+            false,
+            "a seek/metadata refresh stays passive"
+        );
+        f.w.showChannelInfo(1, true);
+        f.nativeKey("DOWN");
+        assert.equal(f.api.state().group, "actions");
+        f.w.showChannelInfo(1, null);
+        await f.settle();
+        assert.equal(
+            f.api.state().interactive,
+            true,
+            "a refresh preserves explicit ownership"
+        );
+        assert.equal(f.api.state().group, "actions");
+        f.w.infoBarHide();
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        assert.equal(f.api.state().open, true);
+        assert.equal(f.api.state().interactive, false);
+        assert.notEqual(f.w.document.activeElement, f.progress);
+        assert.equal(f.w.document.activeElement.closest("#modernPlayer"), null);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+for (const gesture of ["video", "timeline", "focus", "enter"]) {
+    test(`${gesture} explicitly activates controls over a passive banner`, async () => {
+        const f = automaticInfoFixture();
+        try {
+            f.w.showChannelInfo(5, false);
+            await f.settle();
+            if (gesture === "video")
+                f.w.document.getElementById("video").click();
+            else if (gesture === "timeline")
+                f.progress.dispatchEvent(
+                    new f.w.MouseEvent("mousedown", { bubbles: true })
+                );
+            else if (gesture === "focus") f.progress.focus();
+            else f.nativeKey("ENTER");
+            assert.equal(f.api.state().interactive, true);
+            f.calls.length = 0;
+            f.nativeKey("RIGHT");
+            assert.deepEqual(f.calls, [["shiftArchive", 10]]);
+        } finally {
+            f.api.destroy();
+            f.dom.window.close();
+        }
+    });
+}
+
+test("accepted navigation releases only Modern focus; rejected navigation keeps controls", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5);
+        await f.settle();
+        f.nativeKey("DOWN");
+        const action = f.w.document.activeElement;
+        assert.ok(action.matches("[data-modern-player-action]"));
+        f.w.ifParentalAccessChId = () => true;
+        f.w.playChannel(3, 2);
+        assert.equal(f.api.state().interactive, true);
+        assert.equal(f.w.document.activeElement, action);
+        f.w.ifParentalAccessChId = () => false;
+        f.w.playChannel(3, 2);
+        await f.settle();
+        assert.equal(f.api.state().interactive, false);
+        assert.equal(f.w.document.activeElement.closest("#modernPlayer"), null);
+        f.calls.length = 0;
+        f.nativeKey("UP");
+        assert.deepEqual(
+            f.calls.filter(([name]) => name === "playChannel"),
+            [["playChannel", 3, 0]]
+        );
+
+        const input = f.w.document.createElement("input");
+        f.w.document.body.appendChild(input);
+        input.focus();
+        f.w.setInfoInteraction(false);
+        assert.equal(
+            f.w.document.activeElement,
+            input,
+            "reset never blurs an external editor"
+        );
+        f.calls.length = 0;
+        f.nativeKey("DOWN");
+        f.domKey("DOWN", input);
+        assert.deepEqual(f.calls, [], "both delivery paths protect the editor");
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("closed passive controls leave Enter to the channel list", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        f.w.infoBarHide();
+        await f.settle();
+        f.nativeKey("ENTER");
+        assert.deepEqual(f.calls, [["channelsList", 3, 0]]);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("explicit INFO replaces the passive hide timer and preserves intent under a dialog", async () => {
+    const f = automaticInfoFixture();
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        const passiveTimer = f.w.infoTimeout;
+        assert.ok(f.timers.has(passiveTimer));
+        f.nativeKey("INFO");
+        assert.equal(f.timers.has(passiveTimer), false);
+        const explicitTimer = f.w.infoTimeout;
+        assert.ok(f.timers.has(explicitTimer));
+        const dialog = f.w.document.getElementById("dialogbox");
+        dialog.style.display = "block";
+        await f.settle();
+        assert.equal(f.api.state().open, false);
+        f.calls.length = 0;
+        assert.equal(f.api.handleKey({ keyCode: f.w.keys.RIGHT }), false);
+        assert.deepEqual(f.calls, []);
+        dialog.style.display = "none";
+        await f.settle();
+        assert.equal(f.api.state().open, true);
+        assert.equal(f.api.state().interactive, true);
+        f.w.infoBarHide();
+        assert.equal(f.timers.has(explicitTimer), false);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+for (const target of ["timeline", "action"]) {
+    test(`Tab to ${target} near passive expiry grants a fresh explicit control lifetime`, async () => {
+        const f = automaticInfoFixture();
+        try {
+            f.w.showChannelInfo(5, false);
+            await f.settle();
+            f.advance(4500);
+            let focusEvents = 0;
+            const element =
+                target === "timeline"
+                    ? f.progress
+                    : f.w.document.querySelector(
+                          '[data-modern-player-action="play"]'
+                      );
+            element.addEventListener("focusin", () => focusEvents++);
+            element.focus();
+            assert.equal(
+                focusEvents,
+                1,
+                "promotion must not recurse through focus"
+            );
+            assert.equal(f.api.state().interactive, true);
+            f.advance(500);
+            await f.settle();
+            assert.equal(
+                f.api.state().open,
+                true,
+                "the old passive deadline cannot close explicit controls"
+            );
+            assert.equal(f.api.state().interactive, true);
+            f.advance(4500);
+            await f.settle();
+            assert.equal(
+                f.api.state().open,
+                false,
+                "the renewed deadline still closes idle controls"
+            );
+            assert.equal(focusEvents, 1);
+        } finally {
+            f.api.destroy();
+            f.dom.window.close();
+        }
+    });
+}
+
+test("late resolved media preserves INFO opened during its asynchronous load", async () => {
+    const f = automaticInfoFixture();
+    try {
+        let state = { generation: 1, phase: "playing", target: null };
+        const item = {
+            name: "Movie",
+            stream_url: "https://media.invalid/movie.mp4",
+        };
+        const ref = { itemId: "movie", sourceId: "plex@local" };
+        f.w.__ottMedia = {
+            channelLaunch: () => "two",
+            prepare: () => ({ item, ref, resume: 0, valid: () => true }),
+            title: () => "Movie",
+        };
+        f.w.__ottClassicPlayback = {
+            command: (command) => {
+                state = {
+                    generation: state.generation + 1,
+                    phase: "playing",
+                    target: {
+                        ...ref,
+                        channelId: command.channelId,
+                        kind: "vod",
+                    },
+                };
+                return true;
+            },
+            snapshot: () => state,
+        };
+        f.w.setInfoInteraction(false);
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        f.w.showChannelInfo();
+        f.nativeKey("DOWN");
+        const focused = f.w.document.activeElement;
+        f.w._playMedia(item, true, true);
+        await f.settle();
+        assert.equal(f.api.state().interactive, true);
+        assert.equal(f.api.state().group, "actions");
+        assert.equal(f.w.document.activeElement, focused);
+        assert.deepEqual(
+            f.calls.filter(([name]) => name === "stbPlay"),
+            [["stbPlay", item.stream_url, undefined]]
+        );
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("a queued real jQuery slide hide cannot erase newly explicit INFO intent", async () => {
+    const f = automaticInfoFixture("pc", true);
+    try {
+        f.w.showChannelInfo(5, false);
+        await f.settle();
+        f.w.sInfoSlide = 1;
+        f.w.infoBarHide();
+        await new Promise((resolve) => setTimeout(resolve, 35));
+        f.nativeKey("INFO");
+        assert.equal(f.api.state().interactive, true);
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        assert.equal(f.api.state().open, true);
+        assert.equal(f.api.state().interactive, true);
+        f.calls.length = 0;
+        f.nativeKey("RIGHT");
+        assert.deepEqual(f.calls, [["shiftArchive", 10]]);
+    } finally {
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+for (const step of ["plusProg", "minusProg"]) {
+    test(`${step}: busy Favorites navigation does not revoke newly opened INFO`, async () => {
+        const f = automaticInfoFixture();
+        let nav;
+        try {
+            f.w.eval(
+                actualFunctions("src/media/global-favorites-navigation.ts", [
+                    "createGlobalFavoritesNavigation",
+                ])
+            );
+            const snapshot = new Promise(() => {});
+            nav = f.w.createGlobalFavoritesNavigation({
+                allowed: () => true,
+                cancel() {},
+                capture: () => ({
+                    current: () => true,
+                    id: "first",
+                    value: { id: "first" },
+                }),
+                current: () => true,
+                failed: () => assert.fail("pending navigation must not fail"),
+                identity: (row) => row.id,
+                onMove: () => f.w.setInfoInteraction(false),
+                snapshot: () => snapshot,
+            });
+            nav.routeState({ id: "first", phase: "playing" });
+            f.w.__ottGlobalFavorites = { navigation: nav };
+            f.w.showChannelInfo(5);
+            await f.settle();
+            f.w[step]();
+            assert.equal(
+                f.api.state().interactive,
+                false,
+                "the first accepted move resets controls"
+            );
+            f.nativeKey("INFO");
+            assert.equal(f.api.state().interactive, true);
+            f.w[step]();
+            await f.settle();
+            assert.equal(
+                f.api.state().interactive,
+                true,
+                "a consumed busy repeat is not a new selection"
+            );
+            assert.equal(
+                f.calls.some(([name]) => name === "playChannel"),
+                false
+            );
+        } finally {
+            if (nav) nav.retire();
+            f.api.destroy();
+            f.dom.window.close();
+        }
+    });
+}
+
+function mediaIntentFixture() {
+    const c = require("./test_port_vod.cjs").fixture();
+    const pending = [];
+    c.p_pref = "plex";
+    c.__ottActiveProviderDriver = {
+        capabilities: { mediaPlaylist: true },
+        id: "plex",
+    };
+    c.catsArray = ["All"];
+    c.cats = { All: [101, 102] };
+    c.curList = c.cList = c.cats.All;
+    c.channels = Object.fromEntries(
+        c.curList.map((id) => [
+            id,
+            {
+                __ottMediaItem: { id, request: { id }, title: "Film " + id },
+                channel_name: "Film " + id,
+            },
+        ])
+    );
+    c.__ottChannels = {
+        capture: () => ({
+            active: () => true,
+            category: () => 0,
+            members: () => c.cats.All.slice(),
+        }),
+        group: () => "system:all",
+        index: () => 0,
+        select() {},
+    };
+    c.ifParentalAccessChId = () => false;
+    c.parentalArray = [];
+    c.__ottParental = { needs: () => false };
+    c.__ottSetInfoInteraction = c.setInfoInteraction;
+    c.providerMediaClient = {
+        cancel() {},
+        cancelAutomatic() {},
+        resolve(item, done) {
+            pending.push({ done, item });
+        },
+        stableRequests: true,
+    };
+    c.playChannel = c._playChannel;
+    c.__ottClassicPlayback.reconcile();
+    return {
+        c,
+        pending,
+        resolve() {
+            const { item, done } = pending[pending.length - 1];
+            done({ ...item, stream_url: "https://media.invalid/film.mp4" });
+        },
+    };
+}
+
+for (const entry of ["playOrderedQueue", "playQueue", "playItem"]) {
+    test(`new ${entry} resets prior controls once, then preserves INFO during resolution`, () => {
+        const f = mediaIntentFixture();
+        const item = { id: 201, request: { id: 201 }, title: "New film" };
+        let dispatched = 0;
+        const started = () => dispatched++;
+        const rejected = () => assert.fail("valid new media must be accepted");
+        f.c.setInfoInteraction(true);
+        if (entry === "playOrderedQueue")
+            f.c.__ottMedia.playOrderedQueue(
+                [item],
+                0,
+                "queue",
+                null,
+                () => true,
+                started,
+                rejected
+            );
+        else if (entry === "playQueue")
+            f.c.__ottMedia.playQueue([item], "New queue", () => true, started);
+        else f.c.__ottMedia.playItem(item, () => true, started, rejected);
+        assert.equal(
+            f.pending.length,
+            1,
+            "the real media adapter started resolution"
+        );
+        assert.equal(
+            f.c.__ottInfoInteractive,
+            false,
+            "a newly accepted request resets prior controls"
+        );
+        f.c.setInfoInteraction(true);
+        f.resolve();
+        assert.equal(dispatched, 1);
+        assert.equal(
+            f.c.__ottInfoInteractive,
+            true,
+            "completion preserves INFO opened while waiting"
+        );
+        assert.ok(f.c.calls.some(([name]) => name === "play"));
+    });
+    test(`rejected ${entry} preserves existing explicit controls`, () => {
+        const f = mediaIntentFixture();
+        const item = {
+            id: 201,
+            request: { id: 201 },
+            title: "Unaccepted film",
+        };
+        const unexpected = () => assert.fail("rejected media cannot start");
+        f.c.setInfoInteraction(true);
+        if (entry === "playOrderedQueue")
+            f.c.__ottMedia.playOrderedQueue(
+                [item],
+                0,
+                "queue",
+                null,
+                () => false,
+                unexpected,
+                () => {}
+            );
+        else if (entry === "playQueue")
+            f.c.__ottMedia.playQueue(
+                [item],
+                "New queue",
+                () => false,
+                unexpected
+            );
+        else
+            f.c.__ottMedia.playItem(
+                item,
+                () => false,
+                unexpected,
+                () => {}
+            );
+        assert.equal(f.pending.length, 0);
+        assert.equal(f.c.__ottInfoInteractive, true);
+    });
+}
+
+test("old EOF cannot demote INFO opened during an already admitted media skip", () => {
+    const f = mediaIntentFixture();
+    const records = [201, 202, 203].map((id) => ({
+        id,
+        request: { id },
+        title: "Film " + id,
+    }));
+    f.c.__ottMedia.playOrderedQueue(
+        records,
+        0,
+        "queue",
+        null,
+        () => true,
+        () => {},
+        () => assert.fail("valid queue")
+    );
+    f.resolve();
+    f.c.__ottMedia.skip(1);
+    assert.equal(f.pending.length, 2);
+    f.c.setInfoInteraction(true);
+    f.c.__ottClassicPlayback.command({ type: "stop" });
+    f.c.__ottMedia.ended(f.c.__ottClassicPlayback.snapshot().generation);
+    assert.equal(
+        f.pending.length,
+        3,
+        "EOF re-admits the pending skip against its new generation"
+    );
+    assert.equal(f.c.__ottInfoInteractive, true);
+    f.resolve();
+    assert.equal(f.c.__ottInfoInteractive, true);
+});
+
+function deferredFavoriteRoute(host, provider, play) {
+    const { load } = require("./global-favorites-fixture.cjs");
+    const createNavigation = load(
+        "src/media/global-favorites-navigation.ts"
+    ).createGlobalFavoritesNavigation;
+    const createRouter = load(
+        "src/media/global-favorites-router.ts"
+    ).createGlobalFavoritesRouter;
+    const codec = load(
+        "src/settings/global-favorites-portable.ts"
+    ).createGlobalFavoritesPortableCodec();
+    const origin = {
+        profile: "Local",
+        provider,
+        sourceAlias: "Local",
+        subprofile: null,
+    };
+    const entries = ["first", "second"].map((id, index) => ({
+        id,
+        locator:
+            provider === "m3u"
+                ? { channelId: index ? "two" : "one", kind: "channel" }
+                : {
+                      kind: "plex-media",
+                      ratingKey: String(101 + index),
+                      serverId: "server",
+                  },
+        origin,
+        title: id,
+    }));
+    let release, nav, route;
+    const snapshot = new Promise((resolve) => {
+        release = resolve;
+    });
+    const initial = { current: () => true, id: "first", value: entries[0] };
+    const reset = () => host.setInfoInteraction(false);
+    const router = createRouter({
+        activate: async () => ({
+            capturePlayback: () => ({
+                current: () => true,
+                matches: () => true,
+            }),
+            complete() {},
+            current: () => true,
+            origin,
+            play: (_resolved, guard, preserveInfo) => play(guard, preserveInfo),
+            release() {},
+            resolve: async (locator) => ({ available: true, locator }),
+        }),
+        allowed: () => true,
+        changed: (state) => nav.routeState(state),
+        clearTimer() {},
+        codec,
+        current: () => true,
+        now: () => 0,
+        onSelect: reset,
+        setTimer: () => 1,
+        snapshot: () => snapshot,
+        targets: async () => [{ current: () => true, origin }],
+    });
+    nav = createNavigation({
+        allowed: () => true,
+        cancel: router.cancel,
+        capture: () => router.captureCurrent() || initial,
+        current: () => true,
+        failed: (reason) => assert.fail("favorite route failed: " + reason),
+        identity: (row) =>
+            codec.identity({
+                locator: row.locator,
+                origin: row.origin,
+                title: row.title,
+            }),
+        onMove: reset,
+        select: (...args) => {
+            route = router.select(...args);
+            return route;
+        },
+        snapshot: () => snapshot,
+    });
+    nav.routeState({ id: "first", phase: "playing" });
+    return {
+        nav,
+        release: () => release({ current: () => true, entries }),
+        result: () => route.result,
+    };
+}
+
+test("completed M3U Favorite preserves INFO opened while its snapshot was pending", async () => {
+    const f = automaticInfoFixture();
+    let route;
+    try {
+        f.w.parentalArray = [];
+        f.w.__ottParental = { needs: () => false };
+        route = deferredFavoriteRoute(f.w, "m3u", (guard, preserveInfo) =>
+            f.w._playChannel(
+                3,
+                1,
+                true,
+                guard,
+                undefined,
+                false,
+                false,
+                undefined,
+                undefined,
+                preserveInfo
+            )
+        );
+        route.nav.move(1);
+        f.w.showChannelInfo(5);
+        await f.settle();
+        route.release();
+        await f.settle();
+        assert.equal((await route.result()).status, "ok");
+        assert.equal(f.api.state().interactive, true);
+        assert.ok(
+            f.calls.some(
+                ([name, url]) =>
+                    name === "stbPlay" &&
+                    url === "https://media.invalid/two.m3u8"
+            )
+        );
+        f.w._playChannel(3, 2);
+        assert.equal(
+            f.api.state().interactive,
+            false,
+            "a later independent selection still resets controls"
+        );
+    } finally {
+        if (route) route.nav.retire();
+        f.api.destroy();
+        f.dom.window.close();
+    }
+});
+
+test("completed catalog Favorite preserves INFO across router and media resolution", async () => {
+    const f = mediaIntentFixture();
+    const route = deferredFavoriteRoute(
+        f.c,
+        "plex",
+        (guard, preserveInfo) =>
+            new Promise((done) => {
+                const accepted = f.c._playChannel(
+                    0,
+                    1,
+                    true,
+                    guard,
+                    undefined,
+                    false,
+                    false,
+                    done,
+                    guard,
+                    preserveInfo
+                );
+                if (accepted !== true) done(false);
+            })
+    );
+    try {
+        route.nav.move(1);
+        f.c.setInfoInteraction(true);
+        route.release();
+        await new Promise((resolve) => setImmediate(resolve));
+        assert.equal(f.pending.length, 1);
+        assert.equal(
+            f.c.__ottInfoInteractive,
+            true,
+            "catalog resolution must preserve the already accepted route intent"
+        );
+        f.resolve();
+        assert.equal((await route.result()).status, "ok");
+        assert.equal(f.c.__ottInfoInteractive, true);
+        f.c._playChannel(0, 0);
+        assert.equal(
+            f.c.__ottInfoInteractive,
+            false,
+            "an unrelated catalog choice is a new request"
+        );
+    } finally {
+        route.nav.retire();
+    }
+});
 
 for (const platform of ["pc", "android"]) {
     for (const mode of [0, 1700000000, -1e11]) {

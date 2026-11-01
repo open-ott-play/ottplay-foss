@@ -293,6 +293,56 @@ test("explicit saved Plex queue preserves provider until preflight, starts at ze
     assert.equal(h.queue.snapshot().state, "idle");
     assert.equal(h.queue.snapshot().active, false);
 });
+test("real Plex resolver supports manual and automatic adapter playback without losing pending INFO", () => {
+    for (const automatic of [false, true]) {
+        const h = setup();
+        const request = h.call("play", ["1", "2"]);
+        h.prepare(["1", "2"]);
+        h.resolve("1");
+        assert.equal(request.replies[0].status, "ok");
+        const resolvedModes = [];
+        const client = h.c.__ottMedia.current().context.client;
+        const resolve = client.resolve;
+        client.resolve = (...resolveArgs) => {
+            resolvedModes.push(resolveArgs[2]);
+            return resolve(...resolveArgs);
+        };
+        h.c.__ottSetInfoInteraction = h.c.setInfoInteraction;
+        h.c.setInfoInteraction(true);
+        if (automatic) h.end();
+        else {
+            h.c.__ottMedia.open("", "Plex");
+            h.c.__ottMedia.select(1);
+            assert.equal(
+                h.c.__ottInfoInteractive,
+                false,
+                "accepted manual selection resets controls"
+            );
+            assert.equal(
+                new URL(h.requests[0].url).pathname,
+                "/library/sections"
+            );
+            h.reply();
+        }
+        assert.deepEqual(resolvedModes, [automatic]);
+        assert.equal(
+            h.requests.length,
+            1,
+            "adapter resolve reaches the real HTTP client"
+        );
+        h.c.setInfoInteraction(true);
+        h.resolve("2");
+        assert.equal(h.c.calls.filter((call) => call[0] === "play").length, 2);
+        assert.equal(
+            h.c.__ottInfoInteractive,
+            true,
+            "completion preserves INFO opened while waiting"
+        );
+        if (automatic) assert.equal(h.queue.snapshot().index, 1);
+        h.call("stop");
+    }
+});
+
 test("remote next refreshes one selected row while retaining a 265-item queue", () => {
     const h = setup();
     const ids = Array.from({ length: 265 }, (_, i) => String(i + 1));

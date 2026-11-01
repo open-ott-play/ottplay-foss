@@ -58,7 +58,7 @@ function classicArchiveRuntime(): any {
             (mode !== 1 || w.sInfoRew) &&
             typeof w.showChannelInfo === "function"
         )
-            w.showChannelInfo(mode);
+            w.showChannelInfo(mode, null);
     }
     function enter(
         context: ArchiveContext,

@@ -22,6 +22,7 @@ function createModernPlayer(w: any) {
     var progressMarker: Comment | null = null;
     var active = false;
     var opened = false;
+    var interactive = w.__ottInfoInteractive !== false;
     var group = "timeline";
     var railFocus = 0;
     var observer: MutationObserver | null = null;
@@ -366,6 +367,25 @@ function createModernPlayer(w: any) {
             },
             true
         );
+        node.addEventListener("focusin", function (event: FocusEvent): void {
+            if (!opened) return;
+            var promote = !interactive;
+            var target = event.target;
+            var visible = visibleActions();
+            for (var i = 0; i < visible.length; i++) {
+                if (visible[i].entry.button === target) {
+                    group = "actions";
+                    railFocus = i;
+                }
+            }
+            if (target === progress) group = "timeline";
+            node.classList.toggle(
+                "modern-player-actions-focus",
+                group === "actions"
+            );
+            setInteractive(true);
+            if (promote) keepAlive();
+        });
         node.addEventListener("touchmove", function (event: Event): void {
             event.stopPropagation();
         });
@@ -427,6 +447,26 @@ function createModernPlayer(w: any) {
     }
     function close(): void {
         if (typeof w.infoBarHide === "function") w.infoBarHide();
+    }
+    function setInteractive(value: boolean | null): void {
+        if (value === null) return;
+        var changed = interactive !== value;
+        interactive = w.__ottInfoInteractive = value;
+        if (!root) return;
+        var focused = w.document.activeElement;
+        if (!value) {
+            group = "timeline";
+            root.classList.remove("modern-player-actions-focus");
+            if (focused && root.contains(focused)) focused.blur();
+        } else if (
+            changed &&
+            opened &&
+            !editingTarget(focused) &&
+            !screenOpen() &&
+            !modalOpen()
+        ) {
+            setGroup(root.contains(focused) ? group : "timeline");
+        }
     }
     function keepAlive(): void {
         if (!opened) return;
@@ -576,6 +616,16 @@ function createModernPlayer(w: any) {
         // focused instead of falling through to background channel navigation.
         if (editingTarget(w.document.activeElement)) return !event.target;
         if (!opened) return false;
+        if (!interactive) {
+            if (id !== "accept") return false;
+            setInteractive(true);
+            keepAlive();
+            if (event.preventDefault) event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+            if (event.stopImmediatePropagation)
+                event.stopImmediatePropagation();
+            return true;
+        }
         if (event.preventDefault) event.preventDefault();
         if (event.stopPropagation) event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
@@ -611,7 +661,13 @@ function createModernPlayer(w: any) {
         );
     }
     function onClick(event: any): void {
-        if (!active || opened || kioskBlocked() || screenOpen()) return;
+        if (
+            !active ||
+            (opened && interactive) ||
+            kioskBlocked() ||
+            screenOpen()
+        )
+            return;
         if (modalOpen()) return;
         if (w.__ottTauriSuppressClick || w.__ottInfoBandFromMouseUp) return;
         if (!videoTarget(event.target)) return;
@@ -893,7 +949,8 @@ function createModernPlayer(w: any) {
             );
             mountProgress();
             render();
-            setGroup("timeline");
+            if (interactive && !editingTarget(w.document.activeElement))
+                setGroup("timeline");
             if (!ticker)
                 ticker = w.setInterval(function (): void {
                     if (opened) render();
@@ -1003,10 +1060,12 @@ function createModernPlayer(w: any) {
         destroy: deactivate,
         handleKey: onKeydown,
         refresh: refresh,
+        setInteractive: setInteractive,
         state: function (): any {
             return {
                 active: active,
                 group: group,
+                interactive: interactive,
                 open: opened,
                 railFocus: railFocus,
             };
