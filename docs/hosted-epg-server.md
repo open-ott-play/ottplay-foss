@@ -13,6 +13,44 @@ stored. The intended public ingress forwards only the match, current, search and
 routes; keep the health routes internal. A same-origin here.now proxy avoids a
 cross-origin dependency on LG. This API does not enable CORS itself.
 
+## Container build and launch
+
+The shared Dockerfile has a dedicated `epg` target. It builds the native server
+without compiling or packaging the player frontend, so a guide-only deployment
+does not depend on JavaScript bundle budgets. Its `server-runtime` base retains
+the pinned Alpine image, CA certificates, nonroot user, port and startup command
+used by the complete player image. The `epg` target defaults `EPG_ONLY=true`.
+
+```sh
+docker build --target epg -t ottplay-epg:local .
+docker run --rm --read-only --cap-drop=ALL \
+  --security-opt=no-new-privileges --memory=2g --cpus=2 \
+  -p 127.0.0.1:8080:8080 ottplay-epg:local
+```
+
+Check `/health` for liveness and `/epg/v1/health` for readiness. Readiness returns
+503 while the first public guide downloads and parses; wait for fresh metadata
+before routing clients to the container. Plan memory for both snapshots during
+refresh. The optional disk cache requires a separate writable private mount.
+
+For an ARM64 deployment, build the same target from the reviewed commit and
+publish to the dedicated EPG package:
+
+```sh
+docker buildx build --platform linux/arm64 --target epg \
+  --label org.opencontainers.image.revision="$(git rev-parse HEAD)" \
+  --label org.opencontainers.image.source=https://github.com/open-ott-play/ottplay-foss \
+  -t ghcr.io/open-ott-play/ottplay-epg:RELEASE_TAG --push .
+```
+
+Verify the published architecture and source revision, then deploy its immutable
+digest. A newly created package must permit the deployment's pull identity
+(anonymous pulls require public visibility). Qualify a candidate without the
+production Service's selector labels before replacing the production image.
+
+Without `--target epg`, Docker still builds the final `player` target with the
+validated web assets. It does not inherit `EPG_ONLY` from the sibling `epg` stage.
+
 ## Matching
 
 `POST /epg/v1/match` accepts JSON:
