@@ -436,27 +436,25 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
             1
     )
         return false;
-    var direction =
-        event.key === "ArrowLeft" || event.code === "ArrowLeft"
+    function namedArrow(name: string): boolean {
+        return event.key === name || event.code === name;
+    }
+    var direction = namedArrow("ArrowLeft")
+        ? -1
+        : namedArrow("ArrowRight")
+          ? 1
+          : event.keyCode === 37
             ? -1
-            : event.key === "ArrowRight" || event.code === "ArrowRight"
+            : event.keyCode === 39
               ? 1
-              : event.keyCode === 37
-                ? -1
-                : event.keyCode === 39
-                  ? 1
-                  : 0;
-    var fileDirection =
-        event.key === "ArrowUp" ||
-        event.code === "ArrowUp" ||
-        event.keyCode === 38
+              : 0;
+    var verticalDirection =
+        namedArrow("ArrowUp") || event.keyCode === 38
             ? 1
-            : event.key === "ArrowDown" ||
-                event.code === "ArrowDown" ||
-                event.keyCode === 40
+            : namedArrow("ArrowDown") || event.keyCode === 40
               ? -1
               : 0;
-    if (!direction && !fileDirection) return false;
+    if (!direction && !verticalDirection) return false;
     var seek = !!(event.altKey || event.ctrlKey || event.metaKey);
     if (!seek && !/^pc(?:2)?$/.test(w.ott_device || "")) return false;
     var provider = w.__ottActiveProviderDriver;
@@ -468,7 +466,7 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     // Native video controls can consume vertical keys before the bubble handler.
     // Route these through the same configured channel/queue action as a remote.
     if (
-        fileDirection &&
+        verticalDirection &&
         (seek ||
             (standby && standby.blocked()) ||
             (kiosk && kiosk.screenBlocked && kiosk.screenBlocked()))
@@ -508,8 +506,8 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     if (
         !playback ||
         typeof playback.snapshot !== "function" ||
-        (!fileDirection && typeof w[action] !== "function") ||
-        (fileDirection && typeof port.normalize !== "function")
+        (!verticalDirection && typeof w[action] !== "function") ||
+        (verticalDirection && typeof port.normalize !== "function")
     )
         return false;
     var state = playback.snapshot();
@@ -518,7 +516,7 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     if (
         !target ||
         (seek && state.phase !== "playing" && state.phase !== "paused") ||
-        (fileDirection &&
+        (verticalDirection &&
             localFile &&
             target.kind === "vod" &&
             (!history ||
@@ -531,8 +529,8 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
     if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
-    if (fileDirection)
-        handleMainKey(fileDirection > 0 ? w.keys.UP : w.keys.DOWN, event);
+    if (verticalDirection)
+        handleMainKey(verticalDirection > 0 ? w.keys.UP : w.keys.DOWN, event);
     else if (seek) w.shiftArchive(direction * 10);
     else w.changeVolume(direction * w.sVolumeStep);
     return true;
