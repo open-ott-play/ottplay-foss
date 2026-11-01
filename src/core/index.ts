@@ -1171,6 +1171,7 @@ export function stbEventToKeyCode(event: any): number {
 interface CoreStreamAttempt {
     dispose(): void;
     fail(kind: string, status?: number, position?: number): void;
+    loading(): boolean;
     pause(): void;
     progress(): void;
     resume(): boolean;
@@ -1217,7 +1218,8 @@ function createCoreStreamAttempt(
     primary: string,
     restart: (url: string, position?: number) => void,
     admitted?: () => boolean,
-    captureRetryIntent?: () => (() => boolean) | null
+    captureRetryIntent?: () => (() => boolean) | null,
+    notify?: (type: string) => void
 ): CoreStreamAttempt {
     var policy = (window as any).__ottStreamPolicy;
     var owner = policy && policy.capture();
@@ -1227,7 +1229,8 @@ function createCoreStreamAttempt(
     var endpoint = 0,
         attempts = 0,
         retries = 0,
-        parseRetried = false;
+        parseRetried = false,
+        decodeRetried = false;
     var retryIntent: (() => boolean) | null = null;
     // Intent changes cancel this retry without retiring the playback watcher.
     function intentCurrent(): boolean {
@@ -1260,6 +1263,11 @@ function createCoreStreamAttempt(
                 endpoint: endpoint,
                 state: state,
             });
+    }
+    function loading(): boolean {
+        if (!active()) return false;
+        if (notify) notify("error");
+        return active();
     }
     function clear(): void {
         if (timer !== null) clearTimeout(timer);
@@ -1309,7 +1317,7 @@ function createCoreStreamAttempt(
             clear();
         },
         fail: function (kind: string, status?: number, position?: number) {
-            if (!active() || ended) return;
+            if (ended || !loading()) return;
             var denied = status === 401 || status === 403 || kind === "auth";
             var parsing = kind === "parse";
             var recoverable =
@@ -1331,10 +1339,16 @@ function createCoreStreamAttempt(
                 !denied &&
                 transient &&
                 retries < 2 &&
-                (kind === "network" || (parsing && !parseRetried))
+                (kind === "network" ||
+                    (parsing && !parseRetried) ||
+                    (kind === "decode" &&
+                        owner &&
+                        !owner.live &&
+                        !decodeRetried))
             ) {
                 retries++;
                 parseRetried = parseRetried || parsing;
+                decodeRetried = decodeRetried || kind === "decode";
             } else if (
                 !denied &&
                 recoverable &&
@@ -1346,8 +1360,10 @@ function createCoreStreamAttempt(
                 pending = false;
                 ended = true;
                 report(denied ? "access-denied" : "failed");
+                if (!active()) return;
                 if ((window as any).__ottPlaybackFeedback)
                     (window as any).__ottPlaybackFeedback.fail(kind, status);
+                if (!active()) return;
                 $("#buffering").hide();
                 showShift(
                     denied
@@ -1356,6 +1372,7 @@ function createCoreStreamAttempt(
                           ? _("No stream meets the quality limits")
                           : _("Stream could not be played")
                 );
+                if (active() && notify) notify("failed");
                 return;
             }
             retryIntent = captureRetryIntent ? captureRetryIntent() : null;
@@ -1364,6 +1381,7 @@ function createCoreStreamAttempt(
             showShift(_("Reconnecting…"));
             schedule();
         },
+        loading: loading,
         pause: clear,
         progress: function () {
             if (active() && !pending && !ended) retries = 0;
@@ -1413,7 +1431,8 @@ function startCoreEngine(
     paused = false,
     sourceUrl = url,
     transient = false,
-    transport?: MediaSourceTransport
+    transport?: MediaSourceTransport,
+    notify?: (type: string) => void
 ): void {
     function retireCompatibility(next?: string): void {
         var previous = (window as any).__ottCoreCompatibilityUrl;
@@ -1796,7 +1815,8 @@ function startCoreEngine(
                   } else start();
               },
               retryCurrent,
-              captureLocalRetryIntent
+              captureLocalRetryIntent,
+              notify
           );
     if (_coreShakaTeardown) {
         if (session === _playSession) _coreShakaTeardown.resume = start;
@@ -1989,13 +2009,30 @@ function startCorePlayback(
         initialHlsBufferPolicy = snapshotInitialHlsBufferPolicy(hlsInstance);
         reportCorePerformance();
         var playbackHls = hlsInstance;
+        var currentHls = function (): boolean {
+            return session === _playSession && hlsInstance === playbackHls;
+        };
+        var detachHls = function (): void {
+            if (!currentHls()) return;
+            hlsInstance = null;
+            initialHlsBufferPolicy = null;
+            playbackHls.destroy();
+        };
+        var failHls = function (
+            kind: string,
+            status?: number,
+            position?: number
+        ): void {
+            // Failure observers can synchronously stop or replace this source.
+            coreStreamFailure(kind, status, position);
+            detachHls();
+        };
         var bitrateMeter = createCoreHlsBitrateMeter();
         _coreHlsBitrate = bitrateMeter;
         hlsInstance.on(
             Hls.Events.FRAG_LOADED,
             function (_event: any, data: any) {
-                if (session !== _playSession || hlsInstance !== playbackHls)
-                    return;
+                if (!currentHls()) return;
                 bitrateMeter.add(data);
             }
         );
@@ -2010,19 +2047,20 @@ function startCorePlayback(
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
-            if (session !== _playSession || hlsInstance !== playbackHls) return;
+            if (!currentHls()) return;
             if (data.fatal) {
                 countCoreAttempt(session, "fatalErrors");
+                if (!currentHls()) return;
                 console.error("[HLS] fatal error:", data.type, data.details);
                 var httpStatus = data.response && Number(data.response.code);
                 if (httpStatus === 401 || httpStatus === 403) {
-                    coreStreamFailure("auth", httpStatus);
-                    hlsInstance.destroy();
-                    hlsInstance = null;
-                    initialHlsBufferPolicy = null;
+                    failHls("auth", httpStatus);
                     return;
                 }
                 if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    if (coreStreamAttempt && !coreStreamAttempt.loading())
+                        return;
+                    if (!currentHls()) return;
                     // Recovery reattaches media and may reset currentTime.
                     // Preserve pending user seeks before sampling the decoder.
                     if (hlsInstance.hasEnoughToStart && !_corePendingSeek)
@@ -2053,8 +2091,7 @@ function startCorePlayback(
                         cancelCoreSeek();
                         hlsInstance.recoverMediaError();
                         if (
-                            session === _playSession &&
-                            hlsInstance === playbackHls &&
+                            currentHls() &&
                             hlsInstance.config.startPosition >= 0
                         )
                             hlsInstance.startLoad(
@@ -2077,10 +2114,6 @@ function startCorePlayback(
                         } catch (_e) {
                             canNative = false;
                         }
-                        var det = String((data && data.details) || "");
-                        var appendFail =
-                            det.indexOf("bufferAppend") !== -1 ||
-                            det.indexOf("bufferAppendError") !== -1;
                         // destroy() clears currentTime. Preserve the requested/resumed
                         // VOD position before moving from MSE to native HLS.
                         var nativePosition = hlsInstance.config.startPosition;
@@ -2088,9 +2121,6 @@ function startCorePlayback(
                             video && video.readyState > 0
                                 ? video.currentTime
                                 : nativePosition;
-                        hlsInstance.destroy();
-                        hlsInstance = null;
-                        initialHlsBufferPolicy = null;
                         // Auto already tried native. Never loop back to the
                         // decoder that silently dropped this stream's video.
                         if (
@@ -2099,11 +2129,15 @@ function startCorePlayback(
                             !limits.maxHeight &&
                             !limits.maxBitrate
                         ) {
+                            detachHls();
+                            if (session !== _playSession) return;
                             _corePlaybackMode = 0;
                             countCoreAttempt(session, "nativeFallbacks");
                             countCoreAttempt(session, "engineStarts");
+                            if (session !== _playSession) return;
                             if (streamPolicy)
                                 streamPolicy.begin("html5", false);
+                            if (session !== _playSession) return;
                             video!.src = url;
                             if (session === _playSession)
                                 coreNativeAttached = true;
@@ -2112,26 +2146,11 @@ function startCorePlayback(
                             if ((window as any).forcePlay !== false)
                                 playCoreMedia(video!);
                         } else {
-                            coreStreamFailure(
+                            failHls(
                                 "decode",
                                 undefined,
                                 failedPosition >= 0 ? failedPosition : undefined
                             );
-                            if (
-                                !coreCall(
-                                    (window as any).__ottPlaybackFeedback,
-                                    "visible",
-                                    [],
-                                    1
-                                )
-                            ) {
-                                $("#buffering").hide();
-                                $("#video_res").html(
-                                    "<br/>error DECODE" +
-                                        (appendFail ? " (HD Orig)" : "") +
-                                        " — try HD remux / AAC"
-                                );
-                            }
                         }
                     }
                 } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -2140,15 +2159,12 @@ function startCorePlayback(
                     // purged segments, proxy HTML error pages).
                     var det = String((data && data.details) || "");
                     if (!recovery.network(det)) {
-                        coreStreamFailure(
+                        failHls(
                             window.OttPlayCore.playbackParsingFailure(det)
                                 ? "parse"
                                 : "network",
                             httpStatus
                         );
-                        hlsInstance.destroy();
-                        hlsInstance = null;
-                        initialHlsBufferPolicy = null;
                     } else {
                         hlsInstance.startLoad(
                             _corePendingSeek || !hlsInstance.hasEnoughToStart
@@ -2157,20 +2173,14 @@ function startCorePlayback(
                         );
                     }
                 } else {
-                    coreStreamFailure("decode");
-                    hlsInstance.destroy();
-                    hlsInstance = null;
-                    initialHlsBufferPolicy = null;
+                    failHls("decode");
                 }
             }
         });
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            if (session !== _playSession || hlsInstance !== playbackHls) return;
+            if (!currentHls()) return;
             if (streamPolicy && !streamPolicy.hls(playbackHls, limits)) {
-                playbackHls.destroy();
-                hlsInstance = null;
-                initialHlsBufferPolicy = null;
-                coreStreamFailure("quality");
+                failHls("quality");
                 return;
             }
             if (limits.maxHeight || limits.maxBitrate)
@@ -2186,8 +2196,7 @@ function startCorePlayback(
         hlsInstance.on(
             Hls.Events.AUDIO_TRACKS_UPDATED,
             function (_e: any, d: any) {
-                if (session !== _playSession || hlsInstance !== playbackHls)
-                    return;
+                if (!currentHls()) return;
                 applyChannelPreference("aAudios", function (i: number) {
                     if (hlsInstance) hlsInstance.audioTrack = i;
                 });
@@ -2196,7 +2205,7 @@ function startCorePlayback(
             }
         );
         hlsInstance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function () {
-            if (session !== _playSession || hlsInstance !== playbackHls) return;
+            if (!currentHls()) return;
             setSubtitleTrack();
         });
         applyChannelPreference("aSubs", setSubtitleTrack);
@@ -2432,18 +2441,19 @@ function startCorePlayback(
  * Side effects: Mutates video element; may free decoder resources.
  */
 function stopCoreEngine(): void {
+    var failed = coreStreamAttempt && coreStreamAttempt.state().terminal;
     releaseCoreCompanion();
     var compatibilityUrl = (window as any).__ottCoreCompatibilityUrl;
     (window as any).__ottCoreCompatibilityUrl = "";
     if (compatibilityUrl) cancelCoreCompat(compatibilityUrl);
-    if ((window as any).__ottPlaybackFeedback)
+    if (!failed && (window as any).__ottPlaybackFeedback)
         (window as any).__ottPlaybackFeedback.stop();
     coreNativeAttached = false;
     if (video) video.loop = false;
     _coreTransientPlayback = false;
     cancelCoreStreamAttempt();
     var policy = (window as any).__ottStreamPolicy;
-    if (policy) policy.report({ state: "stopped" });
+    if (policy && !failed) policy.report({ state: "stopped" });
     _playSession++;
     cancelCoreSourcePreparation();
     cancelCoreSeek();
@@ -4488,7 +4498,10 @@ function openCoreEngineLease(
                 request.paused === true,
                 request.sourceUrl || request.url,
                 request.transient === true,
-                request.transport
+                request.transport,
+                function (type) {
+                    if (active()) event(type);
+                }
             );
     } catch (error) {
         lease.dispose();
