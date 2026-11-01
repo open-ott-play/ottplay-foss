@@ -1188,11 +1188,12 @@ var coreAttemptCounters: {
     nativeFallbacks: number;
     streamRetries: number;
 };
-function reportCorePerformance(key?: string): void {
+function reportCorePerformance(key?: string, error?: any): void {
     try {
         var sink = (window as any).__ottPerfSink;
         if (sink) {
-            if (key) sink.recovery(key);
+            if (error) sink.hlsError(hlsInstance, error);
+            else if (key) sink.recovery(key);
             else sink.changed();
         }
     } catch (_) {}
@@ -2006,6 +2007,7 @@ function startCorePlayback(
             hlsConfig.manifestLoadingMaxRetry = 1;
         }
         hlsInstance = new Hls(coreHlsConfig(hlsConfig, originalUrl));
+        hlsInstance.__ottPerfErrors = true;
         initialHlsBufferPolicy = snapshotInitialHlsBufferPolicy(hlsInstance);
         reportCorePerformance();
         var playbackHls = hlsInstance;
@@ -2048,6 +2050,9 @@ function startCorePlayback(
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.ERROR, function (_event: any, data: any) {
             if (!currentHls()) return;
+            // Record while this owner still exists: failure can dispose it synchronously.
+            reportCorePerformance(undefined, data);
+            if (!currentHls()) return;
             if (data.fatal) {
                 countCoreAttempt(session, "fatalErrors");
                 if (!currentHls()) return;
@@ -2063,39 +2068,39 @@ function startCorePlayback(
                     if (!currentHls()) return;
                     // Recovery reattaches media and may reset currentTime.
                     // Preserve pending user seeks before sampling the decoder.
-                    if (hlsInstance.hasEnoughToStart && !_corePendingSeek)
-                        hlsInstance.config.startPosition = video!.currentTime;
-                    var lvls = hlsInstance.levels || [];
+                    if (playbackHls.hasEnoughToStart && !_corePendingSeek)
+                        playbackHls.config.startPosition = video!.currentTime;
+                    var lvls = playbackHls.levels || [];
                     var failed =
                         data.frag && typeof data.frag.level === "number"
                             ? data.frag.level
                             : typeof data.level === "number"
                               ? data.level
-                              : hlsInstance.currentLevel;
+                              : playbackHls.currentLevel;
                     if (lvls.length > 1 && failed > 0) {
                         var cap = failed - 1;
-                        hlsInstance.autoLevelCapping = cap;
-                        if (typeof hlsInstance.removeLevel === "function") {
-                            hlsInstance.removeLevel(failed);
-                            hlsInstance.startLoad(
+                        playbackHls.autoLevelCapping = cap;
+                        if (typeof playbackHls.removeLevel === "function") {
+                            playbackHls.removeLevel(failed);
+                            playbackHls.startLoad(
                                 _corePendingSeek ||
-                                    !hlsInstance.hasEnoughToStart
-                                    ? hlsInstance.config.startPosition
+                                    !playbackHls.hasEnoughToStart
+                                    ? playbackHls.config.startPosition
                                     : -1
                             );
                             return;
                         }
-                        hlsInstance.currentLevel = cap;
+                        playbackHls.currentLevel = cap;
                     }
                     if (recovery.media()) {
                         cancelCoreSeek();
-                        hlsInstance.recoverMediaError();
+                        playbackHls.recoverMediaError();
                         if (
                             currentHls() &&
-                            hlsInstance.config.startPosition >= 0
+                            playbackHls.config.startPosition >= 0
                         )
-                            hlsInstance.startLoad(
-                                hlsInstance.config.startPosition
+                            playbackHls.startLoad(
+                                playbackHls.config.startPosition
                             );
                     } else {
                         // Chrome/Edge MSE cannot play HLS natively. Setting
@@ -2116,7 +2121,7 @@ function startCorePlayback(
                         }
                         // destroy() clears currentTime. Preserve the requested/resumed
                         // VOD position before moving from MSE to native HLS.
-                        var nativePosition = hlsInstance.config.startPosition;
+                        var nativePosition = playbackHls.config.startPosition;
                         var failedPosition =
                             video && video.readyState > 0
                                 ? video.currentTime
@@ -2166,9 +2171,9 @@ function startCorePlayback(
                             httpStatus
                         );
                     } else {
-                        hlsInstance.startLoad(
-                            _corePendingSeek || !hlsInstance.hasEnoughToStart
-                                ? hlsInstance.config.startPosition
+                        playbackHls.startLoad(
+                            _corePendingSeek || !playbackHls.hasEnoughToStart
+                                ? playbackHls.config.startPosition
                                 : -1
                         );
                     }

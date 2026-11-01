@@ -2382,6 +2382,58 @@ test("engine diagnostics identify attached ownership, not a mode preference", ()
     assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), "html5");
     w.stbStop();
 });
+test("HLS diagnostics precede fatal teardown and ignore retired callbacks", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.stbPlay("https://source.invalid/live.m3u8");
+    const player = players[0];
+    const observations = [];
+    const fatal = { fatal: true, response: { code: 403 }, type: "network" };
+    w.__ottPerfSink = {
+        changed() {},
+        hlsError(hls, data) {
+            observations.push([hls, data, hls.destroyCalls]);
+        },
+        recovery() {},
+    };
+    assert.equal(player.__ottPerfErrors, true);
+    player.events.error(null, fatal);
+    assert.deepEqual(observations, [[player, fatal, 0]]);
+    assert.equal(player.destroyCalls, 1);
+    player.events.error(null, fatal);
+    assert.equal(observations.length, 1);
+    w.stbStop();
+});
+test("throwing or reentrant diagnostic sinks cannot break HLS ownership", () => {
+    for (const replace of [false, true]) {
+        const { w, players } = fixture();
+        w.playerMode = 1;
+        w.stbPlay("https://source.invalid/live.m3u8");
+        w.__ottPerfSink = {
+            changed() {},
+            hlsError() {
+                if (replace)
+                    w.stbPlay("https://source.invalid/replacement.m3u8");
+                else throw Error("diagnostic failure");
+            },
+            recovery() {},
+        };
+        players[0].events.error(null, {
+            fatal: true,
+            response: { code: 403 },
+            type: "network",
+        });
+        assert.equal(players[0].destroyCalls, 1);
+        if (replace) {
+            assert.equal(players[1].destroyCalls, 0);
+            assert.equal(
+                w.__ottCoreBackend().current().diagnosticAttempt().fatalErrors,
+                0
+            );
+        }
+        w.stbStop();
+    }
+});
 test("attempt diagnostics retain fallback and retry history on the same handle", () => {
     const { w, players } = fixture();
     const timers = new Map();
