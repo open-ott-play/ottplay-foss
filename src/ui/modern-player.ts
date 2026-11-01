@@ -562,7 +562,6 @@ function createModernPlayer(w: any) {
             !event ||
             event.defaultPrevented ||
             !active ||
-            !opened ||
             kioskBlocked() ||
             screenOpen()
         )
@@ -574,52 +573,33 @@ function createModernPlayer(w: any) {
         // Synthetic native keys have no DOM target. Keep an unowned input
         // focused instead of falling through to background channel navigation.
         if (editingTarget(w.document.activeElement)) return !event.target;
+        if (!opened) return false;
         var id = keyId(event);
         if (!id) return false;
         if (event.preventDefault) event.preventDefault();
         if (event.stopPropagation) event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-        if (id === "back") {
-            close();
-            return true;
-        }
-        if (group === "timeline") {
-            if (id === "left" || id === "right") {
-                seek(id === "left" ? -10 : 10);
-                return true;
-            }
-            if (id === "down") {
-                setGroup("actions");
+        if (id === "back") close();
+        else if (id === "up" || id === "down") {
+            if ((id === "up") === (group === "timeline")) close();
+            else {
+                setGroup(id === "up" ? "timeline" : "actions");
                 keepAlive();
-                return true;
             }
-            if (id === "up") {
-                close();
-                return true;
+        } else if (id === "left" || id === "right") {
+            var direction = id === "left" ? -1 : 1;
+            if (group === "timeline") seek(direction * 10);
+            else {
+                moveRail(direction);
+                keepAlive();
             }
-            if (id === "accept") {
-                togglePlayback();
-                return true;
-            }
-            return true;
+        } else if (id === "accept") {
+            if (group === "timeline") togglePlayback();
+            else activateRail();
         }
-        if (id === "up") {
-            setGroup("timeline");
-            keepAlive();
-            return true;
-        }
-        if (id === "down") {
-            close();
-            return true;
-        }
-        if (id === "left" || id === "right") {
-            moveRail(id === "left" ? -1 : 1);
-            keepAlive();
-            return true;
-        }
-        if (id === "accept") activateRail();
         return true;
     }
+
     function videoTarget(target: any): boolean {
         if (!target || target.nodeType !== 1) return false;
         if (root && root.contains(target)) return false;

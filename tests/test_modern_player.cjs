@@ -189,6 +189,16 @@ for (const platform of ["pc", "android"]) {
                 const key = sharedInput(f, platform);
                 f.w.playType = mode;
                 f.api.refresh();
+                const closedInput = f.w.document.createElement("input");
+                f.w.document.body.appendChild(closedInput);
+                closedInput.focus();
+                key("UP");
+                assert.deepEqual(
+                    f.calls,
+                    [],
+                    "closed Modern panel still protects focused native input"
+                );
+                closedInput.remove();
                 key("UP");
                 key("DOWN");
                 assert.deepEqual(f.calls.splice(0), [
