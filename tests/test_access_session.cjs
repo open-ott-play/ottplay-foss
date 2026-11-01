@@ -578,7 +578,10 @@ ui(
             console: { log() {} },
             playChannel: (c, i) => f.events.push([c, i]),
         });
-        w.eval(functions("src/index.ts", ["_playChannel"]));
+        w.eval(
+            functions("src/ui/index.ts", ["setInfoInteraction"]) +
+                functions("src/index.ts", ["_playChannel"])
+        );
         w._playChannel(0, 0);
         w.catsArray = ["B", "A"];
         w.cats.A = [22, 11];

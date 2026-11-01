@@ -84,12 +84,33 @@ a navigation action uses the same routes as keyboard operation. An open text
 editor or confirmation dialog keeps input ownership until it closes; covered
 navigation cannot change the provider behind it.
 
-The full-screen video shortcuts are unchanged: the presentation mode does not
-remap volume, previous/next or Favorites. With the playback overlay open,
+During full-screen playback, the default **Up** button selects the next channel
+or file and **Down** selects the previous one, in both Classic and Modern. This
+also applies while watching an archive or VOD item. Navigation follows the
+current category, mixed Favorites or temporary media queue, including its
+existing order and wrapping policy. Custom mappings apply when an active queue
+or control panel does not own the buttons; the separate minute-seek actions
+remain available. Temporary Plex queues keep their existing Up/Down behavior:
+next/previous item in the queue.
+
+An information banner displayed automatically after a channel or programme
+change is passive. It does not focus the scrubber or take over the playback
+keys: repeated Up/Down presses continue through the list, and ordinary PC
+Left/Right presses keep controlling volume. Opening the controls explicitly
+with Info, Enter/OK or a pointer action activates their keyboard navigation,
+including when the automatic banner is already visible.
+Programme updates and seek feedback retain the current interaction mode. If
+you open the controls while a new item is loading, its later arrival does not
+take away that focus. A newly accepted channel, Favorite or queue selection
+starts with passive information again.
+
+The presentation mode does not remap volume or Favorites. With the playback controls active,
 Left/Right seek ten seconds on the scrubber, Down enters the action row,
 Left/Right move between actions, Enter activates one and Up returns to the
 scrubber. Keys outside that set continue to reach the shared handler, and a
-dialog or number entry always keeps input priority. Kiosk restrictions remain
+dialog or number entry always keeps input priority. The same control ownership
+applies to browser keyboard events and native Android/remote button commands.
+Kiosk restrictions remain
 in force and are not relaxed by switching the presentation.
 
 The two modes share the current provider, category, global Favorites, selected

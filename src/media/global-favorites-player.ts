@@ -863,7 +863,11 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                     });
                 });
             }
-            function play(item: any, guard: () => boolean): Promise<boolean> {
+            function play(
+                item: any,
+                guard: () => boolean,
+                preserveInfo = false
+            ): Promise<boolean> {
                 if (!same() || !guard()) return Promise.resolve(false);
                 expectedDispatch = playbackItem = item;
                 if (item.items)
@@ -889,7 +893,8 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                             },
                             function () {
                                 done(false);
-                            }
+                            },
+                            preserveInfo
                         );
                     });
                 if (
@@ -921,14 +926,26 @@ export function createGlobalFavoritesPlayer(w: any, ports: any): any {
                             finish,
                             function () {
                                 return same() && guard();
-                            }
+                            },
+                            preserveInfo
                         );
                         if (accepted !== true) finish(false);
                     });
                 return Promise.resolve(
-                    w.playChannel(item.group, item.index, true, function () {
-                        return same() && guard();
-                    }) === true
+                    w.playChannel(
+                        item.group,
+                        item.index,
+                        true,
+                        function () {
+                            return same() && guard();
+                        },
+                        undefined,
+                        false,
+                        false,
+                        undefined,
+                        undefined,
+                        preserveInfo
+                    ) === true
                 );
             }
             function capturePlayback(): any {

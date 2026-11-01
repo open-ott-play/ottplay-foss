@@ -990,6 +990,7 @@ function mountEdemProvider(
         var view = host._mediaLoadState;
         host.showPage();
         if (!current(token, view)) return;
+        if (!resolved) host.__ottSetInfoInteraction?.(false);
         busy();
         // Legacy Edem history was already scoped by its provider storage prefix.
         // Give its request-bearing entries an identity without rewriting old URLs.
@@ -1017,7 +1018,7 @@ function mountEdemProvider(
                 }
                 host.closeList();
                 // Closing the renderer intentionally cancels this completed operation.
-                if (active()) host._playMedia(playable);
+                if (active()) host._playMedia(playable, false, true);
             }
             if (result.names.length < 2) {
                 start(result.item.stream_url);

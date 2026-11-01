@@ -22,6 +22,7 @@ function createModernPlayer(w: any) {
     var progressMarker: Comment | null = null;
     var active = false;
     var opened = false;
+    var interactive = w.__ottInfoInteractive !== false;
     var group = "timeline";
     var railFocus = 0;
     var observer: MutationObserver | null = null;
@@ -366,6 +367,25 @@ function createModernPlayer(w: any) {
             },
             true
         );
+        node.addEventListener("focusin", function (event: FocusEvent): void {
+            if (!opened) return;
+            var promote = !interactive;
+            var target = event.target;
+            var visible = visibleActions();
+            for (var i = 0; i < visible.length; i++) {
+                if (visible[i].entry.button === target) {
+                    group = "actions";
+                    railFocus = i;
+                }
+            }
+            if (target === progress) group = "timeline";
+            node.classList.toggle(
+                "modern-player-actions-focus",
+                group === "actions"
+            );
+            setInteractive(true);
+            if (promote) keepAlive();
+        });
         node.addEventListener("touchmove", function (event: Event): void {
             event.stopPropagation();
         });
@@ -427,6 +447,26 @@ function createModernPlayer(w: any) {
     }
     function close(): void {
         if (typeof w.infoBarHide === "function") w.infoBarHide();
+    }
+    function setInteractive(value: boolean | null): void {
+        if (value === null) return;
+        var changed = interactive !== value;
+        interactive = w.__ottInfoInteractive = value;
+        if (!root) return;
+        var focused = w.document.activeElement;
+        if (!value) {
+            group = "timeline";
+            root.classList.remove("modern-player-actions-focus");
+            if (focused && root.contains(focused)) focused.blur();
+        } else if (
+            changed &&
+            opened &&
+            !editingTarget(focused) &&
+            !screenOpen() &&
+            !modalOpen()
+        ) {
+            setGroup(root.contains(focused) ? group : "timeline");
+        }
     }
     function keepAlive(): void {
         if (!opened) return;
@@ -557,57 +597,59 @@ function createModernPlayer(w: any) {
         if (code === keys.RETURN || code === keys.EXIT) return "back";
         return "";
     }
-    function onKeydown(event: any): void {
-        if (!active || !opened || kioskBlocked() || screenOpen()) return;
+    function onKeydown(event: any): boolean {
+        if (
+            !event ||
+            event.defaultPrevented ||
+            !active ||
+            kioskBlocked() ||
+            screenOpen()
+        )
+            return false;
         if (editingTarget(event.target) || modalOpen()) {
             syncVisibility();
-            return;
+            return false;
         }
         var id = keyId(event);
-        if (!id) return;
+        if (!id) return false;
+        // Synthetic native keys have no DOM target. Keep an unowned input
+        // focused instead of falling through to background channel navigation.
+        if (editingTarget(w.document.activeElement)) return !event.target;
+        if (!opened) return false;
+        if (!interactive) {
+            if (id !== "accept") return false;
+            setInteractive(true);
+            keepAlive();
+            if (event.preventDefault) event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+            if (event.stopImmediatePropagation)
+                event.stopImmediatePropagation();
+            return true;
+        }
         if (event.preventDefault) event.preventDefault();
         if (event.stopPropagation) event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-        if (id === "back") {
-            close();
-            return;
-        }
-        if (group === "timeline") {
-            if (id === "left" || id === "right") {
-                seek(id === "left" ? -10 : 10);
-                return;
-            }
-            if (id === "down") {
-                setGroup("actions");
+        if (id === "back") close();
+        else if (id === "up" || id === "down") {
+            if ((id === "up") === (group === "timeline")) close();
+            else {
+                setGroup(id === "up" ? "timeline" : "actions");
                 keepAlive();
-                return;
             }
-            if (id === "up") {
-                close();
-                return;
+        } else if (id === "left" || id === "right") {
+            var direction = id === "left" ? -1 : 1;
+            if (group === "timeline") seek(direction * 10);
+            else {
+                moveRail(direction);
+                keepAlive();
             }
-            if (id === "accept") {
-                togglePlayback();
-                return;
-            }
-            return;
+        } else if (id === "accept") {
+            if (group === "timeline") togglePlayback();
+            else activateRail();
         }
-        if (id === "up") {
-            setGroup("timeline");
-            keepAlive();
-            return;
-        }
-        if (id === "down") {
-            close();
-            return;
-        }
-        if (id === "left" || id === "right") {
-            moveRail(id === "left" ? -1 : 1);
-            keepAlive();
-            return;
-        }
-        if (id === "accept") activateRail();
+        return true;
     }
+
     function videoTarget(target: any): boolean {
         if (!target || target.nodeType !== 1) return false;
         if (root && root.contains(target)) return false;
@@ -619,7 +661,13 @@ function createModernPlayer(w: any) {
         );
     }
     function onClick(event: any): void {
-        if (!active || opened || kioskBlocked() || screenOpen()) return;
+        if (
+            !active ||
+            (opened && interactive) ||
+            kioskBlocked() ||
+            screenOpen()
+        )
+            return;
         if (modalOpen()) return;
         if (w.__ottTauriSuppressClick || w.__ottInfoBandFromMouseUp) return;
         if (!videoTarget(event.target)) return;
@@ -655,6 +703,18 @@ function createModernPlayer(w: any) {
     }
     function editingTarget(target: any): boolean {
         if (!target || target.nodeType !== 1) return false;
+        for (
+            var ancestor = target;
+            ancestor;
+            ancestor = ancestor.parentElement
+        ) {
+            if (
+                ancestor.hidden ||
+                ancestor.style?.display === "none" ||
+                ancestor.style?.visibility === "hidden"
+            )
+                return false;
+        }
         var tag = String(target.tagName || "").toUpperCase();
         return (
             tag === "INPUT" ||
@@ -889,7 +949,8 @@ function createModernPlayer(w: any) {
             );
             mountProgress();
             render();
-            setGroup("timeline");
+            if (interactive && !editingTarget(w.document.activeElement))
+                setGroup("timeline");
             if (!ticker)
                 ticker = w.setInterval(function (): void {
                     if (opened) render();
@@ -997,11 +1058,14 @@ function createModernPlayer(w: any) {
     }
     return {
         destroy: deactivate,
+        handleKey: onKeydown,
         refresh: refresh,
+        setInteractive: setInteractive,
         state: function (): any {
             return {
                 active: active,
                 group: group,
+                interactive: interactive,
                 open: opened,
                 railFocus: railFocus,
             };

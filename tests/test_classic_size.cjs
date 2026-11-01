@@ -11,6 +11,7 @@ let {
     TORZNAB_DISCOVERY_ALLOWANCE,
     TORRENT_PROVIDER_ALLOWANCE,
     MODERN_EXPERIENCE_ALLOWANCE,
+    MODERN_INFO_INTERACTION_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,
@@ -73,7 +74,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "ottplay-size-test-"));
 const androidOutput = fs.mkdtempSync(
     path.join(os.tmpdir(), "ottplay-size-android-output-")
 );
-const companionDiagnosticsCaps = {
+const modernInfoInteractionCaps = {
     BASE_TOTAL_BUDGET,
     BUDGET,
     LEGACY_TOTAL_BUDGET,
@@ -103,6 +104,52 @@ const subtract = (budget, delta) =>
             ])
         )
     );
+const modernInfoOptionalKinds = {
+    "favorites-transfer": "favorites",
+    "modern-interface": "renderer",
+};
+const modernInfoDelta = (name) => {
+    const kinds =
+        name === "BUDGET"
+            ? ["entry"]
+            : name === "LEGACY_TOTAL_BUDGET"
+              ? ["entry", "edem", "plex"]
+              : Object.keys(MODERN_INFO_INTERACTION_ALLOWANCE);
+    return Object.fromEntries(
+        ["bytes", "gzipBytes"].map((metric) => [
+            metric,
+            kinds.reduce(
+                (sum, kind) =>
+                    sum + MODERN_INFO_INTERACTION_ALLOWANCE[kind][metric],
+                0
+            ),
+        ])
+    );
+};
+// Keep earlier receipts immutable: remove only this newest measured feature
+// before replaying their original entry, provider and optional accounting.
+const companionDiagnosticsCaps = Object.fromEntries(
+    Object.entries(modernInfoInteractionCaps).map(([name, budget]) => [
+        name,
+        name === "OPTIONAL_BUDGETS"
+            ? Object.freeze(
+                  Object.fromEntries(
+                      Object.entries(budget).map(([key, value]) => [
+                          key,
+                          modernInfoOptionalKinds[key]
+                              ? subtract(
+                                    value,
+                                    MODERN_INFO_INTERACTION_ALLOWANCE[
+                                        modernInfoOptionalKinds[key]
+                                    ]
+                                )
+                              : value,
+                      ])
+                  )
+              )
+            : subtract(budget, modernInfoDelta(name)),
+    ])
+);
 // The playback overlay arrived after the companion evidence was frozen. Project
 // its optional allowance out before replaying the earlier cap snapshots.
 const modernPlayerCaps = Object.fromEntries(
@@ -338,6 +385,189 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const infoEvidence = require("../docs/evidence/modern-info-interaction-size-20261101.json");
+    assert.deepEqual(infoEvidence.allowance, MODERN_INFO_INTERACTION_ALLOWANCE);
+    assert.deepEqual(infoEvidence.beforeCaps, companionDiagnosticsCaps);
+    assert.deepEqual(infoEvidence.afterCaps, modernInfoInteractionCaps);
+    assert.deepEqual(infoEvidence.protectedCaps, {
+        optional: OPTIONAL_BUDGET,
+        provider: PROVIDER_BUDGET,
+    });
+    assert.equal(
+        infoEvidence.baseline.revision,
+        "3ef56b0f03d28b74a01d085a207d35853abba19c"
+    );
+    assert.equal(
+        infoEvidence.candidate.revision,
+        "2e6139060123a85315aad1d0a29213b9daf9b383"
+    );
+    for (const source of [infoEvidence.baseline, infoEvidence.candidate]) {
+        assert.equal(
+            source.version,
+            "1.1.62-beta.22+fix." + source.revision.slice(0, 8)
+        );
+        assert.equal(source.sourceHead, source.revision);
+        assert.equal(source.embeddedSourceRevision, null);
+        assert.equal(source.allTrackedInputsVerified, true);
+        assert.match(source.archiveSha256, /^[a-f0-9]{64}$/);
+    }
+    assert.deepEqual(infoEvidence.toolchain, {
+        gzipLevel: 9,
+        node: "26.8.2",
+        terser: "5.51.2",
+        typescript: "5.9.3",
+        vite: "8.3.5",
+        zlib: "1.2.12",
+    });
+    // Calculated metadata projections stay distinct from measured local builds.
+    // Three shorter version literals cover the one 40-byte source literal with
+    // the existing headroom, including a four-digit beta sequence; no reserve.
+    const metadata = infoEvidence.metadataProjection;
+    assert.equal(metadata.localVersion, infoEvidence.candidate.version);
+    assert.equal(metadata.localVersionLength, metadata.localVersion.length);
+    assert.equal(metadata.sourceRevisionBytes, 40);
+    assert.deepEqual(metadata.extraReserve, { bytes: 0, gzipBytes: 0 });
+    assert.deepEqual(Object.keys(metadata.variants).sort(), [
+        "mobile",
+        "native",
+        "web",
+    ]);
+    assert.deepEqual(
+        metadata.scenarios.map((scenario) => scenario.version),
+        ["1.1.62", "1.1.62-beta.23", "1.1.62-beta.9999"]
+    );
+    for (const [name, variant] of Object.entries(metadata.variants)) {
+        assert.equal(
+            variant.entrySha256,
+            infoEvidence.components.find((row) => row.name === "player.js")
+                .variants[name].after.sha256
+        );
+        assert.equal(variant.versionOccurrences, 3);
+        assert.equal(variant.sourceRevisionOccurrences, 1);
+        assert.equal(variant.occurrencesOutsideEntry, 0);
+        assert.equal(
+            variant.completeRawHeadroom,
+            modernInfoInteractionCaps.TOTAL_BUDGET.bytes -
+                infoEvidence.totals[name].after.complete.bytes
+        );
+        for (const scenario of metadata.scenarios) {
+            assert.equal(scenario.versionLength, scenario.version.length);
+            const delta =
+                metadata.sourceRevisionBytes +
+                variant.versionOccurrences *
+                    (scenario.versionLength - metadata.localVersionLength);
+            assert.equal(scenario.projectedEntryAndCompleteRawDelta, delta);
+            assert.equal(
+                scenario.remainingCompleteRawHeadroom[name],
+                variant.completeRawHeadroom - delta
+            );
+            assert(scenario.remainingCompleteRawHeadroom[name] >= 0);
+        }
+    }
+    const infoKinds = {
+        "favorites-transfer.js": "favorites",
+        "modern-interface.js": "renderer",
+        "player.js": "entry",
+        "provider-edem.js": "edem",
+        "provider-plex.js": "plex",
+    };
+    assert.deepEqual(
+        infoEvidence.components.map((row) => row.name).sort(),
+        Object.keys(infoKinds).sort()
+    );
+    const infoComponents = [
+        ...infoEvidence.components,
+        ...infoEvidence.unchangedComponents,
+    ];
+    assert.deepEqual(
+        infoComponents.map((row) => row.name).sort(),
+        [
+            "player.js",
+            ...Object.keys(CLASSIC_PROVIDER_BUNDLES).map(
+                (name) => `provider-${name}.js`
+            ),
+            ...Object.keys(CLASSIC_OPTIONAL_BUNDLES).map(
+                (name) => `${name}.js`
+            ),
+        ].sort()
+    );
+    assert(Object.isFrozen(MODERN_INFO_INTERACTION_ALLOWANCE));
+    for (const allowance of Object.values(MODERN_INFO_INTERACTION_ALLOWANCE))
+        assert(Object.isFrozen(allowance));
+    for (const row of infoComponents) {
+        assert.deepEqual(Object.keys(row.variants).sort(), [
+            "mobile",
+            "native",
+            "web",
+        ]);
+        for (const variant of Object.values(row.variants)) {
+            for (const record of infoKinds[row.name]
+                ? [variant.before, variant.after]
+                : [variant]) {
+                assert.match(record.sha256, /^[a-f0-9]{64}$/);
+                assert(Number.isInteger(record.bytes) && record.bytes > 0);
+                assert(
+                    Number.isInteger(record.gzipBytes) && record.gzipBytes > 0
+                );
+            }
+            if (infoKinds[row.name])
+                for (const metric of ["bytes", "gzipBytes"])
+                    assert.equal(
+                        variant.delta[metric],
+                        variant.after[metric] - variant.before[metric]
+                    );
+        }
+        if (infoKinds[row.name])
+            for (const metric of ["bytes", "gzipBytes"])
+                assert.equal(
+                    MODERN_INFO_INTERACTION_ALLOWANCE[infoKinds[row.name]][
+                        metric
+                    ],
+                    Math.max(
+                        ...Object.values(row.variants).map(
+                            (variant) => variant.delta[metric]
+                        )
+                    )
+                );
+    }
+    for (const [variantName, totals] of Object.entries(infoEvidence.totals))
+        for (const [scope, capName] of [
+            ["entry", "BUDGET"],
+            ["legacy", "LEGACY_TOTAL_BUDGET"],
+            ["complete", "TOTAL_BUDGET"],
+        ]) {
+            const rows = infoComponents.filter(
+                (row) =>
+                    scope === "complete" ||
+                    row.name === "player.js" ||
+                    (scope === "legacy" && row.name.startsWith("provider-"))
+            );
+            for (const metric of ["bytes", "gzipBytes"]) {
+                for (const state of ["before", "after"])
+                    assert.equal(
+                        totals[state][scope][metric],
+                        rows.reduce((sum, row) => {
+                            const variant = row.variants[variantName];
+                            return (
+                                sum +
+                                (infoKinds[row.name]
+                                    ? variant[state]
+                                    : variant)[metric]
+                            );
+                        }, 0)
+                    );
+                assert.equal(
+                    totals.delta[scope][metric],
+                    totals.after[scope][metric] - totals.before[scope][metric]
+                );
+                assert(
+                    modernInfoInteractionCaps[capName][metric] -
+                        totals.after[scope][metric] >=
+                        companionDiagnosticsCaps[capName][metric] -
+                            totals.before[scope][metric]
+                );
+            }
+        }
     const companionDiagnosticsEvidence = require("../docs/evidence/companion-diagnostics-size-20261031.json");
     assert.deepEqual(
         companionDiagnosticsEvidence.allowance,
@@ -3417,6 +3647,15 @@ try {
             modernPlayerEvidence.candidate[metric] -
                 modernPlayerEvidence.baseline[metric]
         );
+    // Exercise live inspectors against the actual latest caps after the
+    // historical assertions, including rejection one byte above every cap.
+    ({
+        BUDGET,
+        BASE_TOTAL_BUDGET,
+        LEGACY_TOTAL_BUDGET,
+        OPTIONAL_BUDGETS,
+        TOTAL_BUDGET,
+    } = modernInfoInteractionCaps);
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));
@@ -3803,6 +4042,7 @@ try {
             MEDIA_COMPANION_PREPARATION_ALLOWANCE,
         mediaCompanionSettingsAllowance: MEDIA_COMPANION_SETTINGS_ALLOWANCE,
         mediaCompanionTransportAllowance: MEDIA_COMPANION_TRANSPORT_ALLOWANCE,
+        modernInfoInteractionAllowance: MODERN_INFO_INTERACTION_ALLOWANCE,
     })) {
         assert.deepEqual(strictReport[key], allowance);
         assert.deepEqual(failed[key], strictReport[key]);
