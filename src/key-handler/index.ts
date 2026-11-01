@@ -593,35 +593,10 @@ export function keyHandler(event: KeyboardEvent): void {
     // If an input, textarea, or contenteditable is focused, let the browser handle
     // printable typing. But when #listEdit is open (native playlist-name editor),
     // still route accept/cancel so TV Back also reaches handleEditKey → editKey2.
-    var focused: Element | null = null;
-    if (!event.target && typeof document !== "undefined") {
-        var screenPort = (window as any).__ottClassicScreenPort;
-        screenPort?.reconcile?.();
-        // Owned editors route native D-pad keys themselves, including focus
-        // travel to their buttons. Only an unowned field blocks the main view.
-        if (!screenPort?.screens?.current?.()) focused = document.activeElement;
-    }
-    // Some native hosts retain focus in a closed editor. Only a visible field
-    // can own synthetic keys after its screen has been dismissed.
-    for (
-        var ancestor = focused as HTMLElement | null;
-        ancestor;
-        ancestor = ancestor.parentElement
-    ) {
-        if (
-            ancestor.hidden ||
-            ancestor.style?.display === "none" ||
-            ancestor.style?.visibility === "hidden"
-        ) {
-            focused = null;
-            break;
-        }
-    }
-    const target = (event.target || focused) as HTMLElement | null;
+    const target = event.target as HTMLElement | null;
     if (
         target &&
-        (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) ||
-            target.isContentEditable)
+        (/^(INPUT|TEXTAREA)$/.test(target.tagName) || target.isContentEditable)
     ) {
         try {
             const inputKeyCode = event.keyCode || event.which;

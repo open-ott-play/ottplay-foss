@@ -88,8 +88,10 @@ During full-screen playback, the default **Up** button selects the next channel
 or file and **Down** selects the previous one, in both Classic and Modern. This
 also applies while watching an archive or VOD item. Navigation follows the
 current category, mixed Favorites or temporary media queue, including its
-existing order and wrapping policy. Explicit custom button mappings remain
-available; the separate minute-seek actions still seek.
+existing order and wrapping policy. Custom mappings apply when an active queue
+or control panel does not own the buttons; the separate minute-seek actions
+remain available. Temporary Plex queues keep their existing Up/Down behavior:
+next/previous item in the queue.
 
 The presentation mode does not remap volume or Favorites. With the playback overlay open,
 Left/Right seek ten seconds on the scrubber, Down enters the action row,

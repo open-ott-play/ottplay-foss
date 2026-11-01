@@ -214,8 +214,8 @@ for (const platform of ["pc", "android"]) {
                 input.focus();
                 assert.equal(
                     f.api.handleKey({ keyCode: f.w.keys.DOWN }),
-                    false,
-                    "native editing focus is not stolen by the panel"
+                    true,
+                    "native editing focus is consumed without a playback action"
                 );
                 key("DOWN");
                 assert.deepEqual(

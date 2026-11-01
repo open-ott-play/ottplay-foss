@@ -567,14 +567,13 @@ function createModernPlayer(w: any) {
             screenOpen()
         )
             return false;
-        if (
-            editingTarget(event.target) ||
-            editingTarget(w.document.activeElement) ||
-            modalOpen()
-        ) {
+        if (editingTarget(event.target) || modalOpen()) {
             syncVisibility();
             return false;
         }
+        // Synthetic native keys have no DOM target. Keep an unowned input
+        // focused instead of falling through to background channel navigation.
+        if (editingTarget(w.document.activeElement)) return !event.target;
         var id = keyId(event);
         if (!id) return false;
         if (event.preventDefault) event.preventDefault();
