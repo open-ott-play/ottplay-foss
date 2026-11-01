@@ -57,20 +57,31 @@ function classicArchiveRuntime(): any {
         context: ArchiveContext,
         model: ArchiveView,
         select: boolean
-    ): void {
+    ): boolean {
         if (select && typeof w.setCurrent === "function")
             w.setCurrent(context.host.category, context.host.index, true);
-        w.__ottClassicPlayback.command({
-            archiveStart: model.position,
-            channelId: context.channelId,
-            label:
-                model.current &&
-                model.current.payload &&
-                typeof model.current.payload.name === "string"
-                    ? model.current.payload.name
-                    : "",
-            type: "archive",
-        });
+        if (
+            w.__ottClassicPlayback.command({
+                archiveStart: model.position,
+                channelId: context.channelId,
+                label:
+                    model.current &&
+                    model.current.payload &&
+                    typeof model.current.payload.name === "string"
+                        ? model.current.payload.name
+                        : "",
+                type: "archive",
+            }) === false
+        )
+            return false;
+        var target = w.__ottClassicPlayback.snapshot().target;
+        return (
+            !!target &&
+            target.kind === "archive" &&
+            target.sourceId === context.sourceId &&
+            target.channelId === context.channelId &&
+            target.archiveStart === model.position
+        );
     }
     classicArchiveController = w.__ottArchiveSession.create(w.OttPlayCore, {
         authorize: function (
@@ -125,7 +136,7 @@ function classicArchiveRuntime(): any {
                     classicArchiveReplacing = false;
                 }
             }
-            enter(context, model, select);
+            if (!enter(context, model, select)) return null;
             if (model.rewind !== undefined && typeof w.showShift === "function")
                 w.showShift(
                     model.rewind
@@ -145,7 +156,7 @@ function classicArchiveRuntime(): any {
             context: ArchiveContext,
             model: ArchiveView
         ): ArchiveContext | null {
-            enter(context, model, false);
+            if (!enter(context, model, false)) return null;
             w.__ottClassicPlayback.command({ type: "pause" });
             if (typeof w.showChannelInfo === "function") w.showChannelInfo(2);
             if (typeof w.showShift === "function")
@@ -208,7 +219,7 @@ function classicArchiveRuntime(): any {
             model: ArchiveView,
             offset: number
         ): ArchiveContext | null {
-            enter(context, model, false);
+            if (!enter(context, model, false)) return null;
             if (w.sInfoRew && typeof w.showChannelInfo === "function")
                 w.showChannelInfo(1);
             w.stbSetPosTime(offset);
@@ -225,6 +236,9 @@ function classicArchiveRuntime(): any {
     },
     open: function (epoch: number): void {
         classicArchiveRuntime().open(epoch);
+    },
+    openResolved: function (epoch: number, url: string): boolean {
+        return classicArchiveRuntime().openResolved(epoch, url);
     },
     pauseLive: function (): void {
         classicArchiveRuntime().pauseLive();

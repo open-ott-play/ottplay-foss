@@ -1089,7 +1089,12 @@ function checkRemoteEpgCatalog() {
         const h = {
             ...host,
             __ottActiveProviderDriver: { id: provider },
-            __ottClassicArchive: { open: (start) => archives.push(start) },
+            __ottClassicArchive: {
+                openResolved: (start) => {
+                    archives.push(start);
+                    return true;
+                },
+            },
             __ottClassicGuide: {
                 peek() {
                     throw new Error("EPG must not be read on the player");

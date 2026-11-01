@@ -157,6 +157,98 @@ function fixture() {
     return c;
 }
 
+// Remote archive selection must open the selected programme with the real
+// playback coordinator, including when a different live channel is active.
+for (const channelId of [101, 202]) {
+    const c = fixture();
+    include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.parentalArray = [];
+    let resolutions = 0;
+    c.getArchiveUrl = (id, start, end) => {
+        resolutions++;
+        return resolutions === 1
+            ? `https://archive.example/${id}?start=${start}&end=${end}`
+            : "https://live.example/changed-provider-result";
+    };
+    let reply;
+    c.handleRemoteArchive(
+        c,
+        {
+            action: "play_archive_catalog",
+            params: { end: 999100, start: 999000, title: "Selected programme" },
+        },
+        { id: String(channelId) },
+        () => true,
+        (data) => {
+            reply = data;
+        },
+        (message) => assert.fail(message)
+    );
+    assert.equal(reply?.dispatched, true);
+    assert.equal(reply.mode, "archive");
+    assert.equal(resolutions, 1, "dispatch uses the URL that was validated");
+    assert.deepEqual(c.opens(), [
+        [
+            "open",
+            `https://archive.example/${channelId}?start=999000&end=999100`,
+            0,
+        ],
+    ]);
+    const state = c.__ottClassicPlayback.snapshot();
+    assert.equal(state.target.kind, "archive");
+    assert.equal(state.target.channelId, String(channelId));
+    assert.equal(state.target.archiveStart, 999000);
+}
+
+// A refusal must not be reported as a dispatch or revive later after a PIN
+// callback. Keep the prior live decoder untouched in both cases.
+for (const refusal of [
+    "kiosk",
+    "authorization",
+    "source-change",
+    "mode-veto",
+]) {
+    const c = fixture();
+    include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.parentalArray = [];
+    c.getArchiveUrl = () => "https://archive.example/selected";
+    let checks = 0;
+    let allowed;
+    c.ifParentalAccessChId = (_id, callback) => {
+        checks++;
+        if (checks > 1 && refusal === "authorization") {
+            allowed = callback;
+            return true;
+        }
+        if (checks > 1 && refusal === "source-change") c.p_pref = "source-b";
+        return false;
+    };
+    if (refusal === "kiosk") c.__ottKiosk = { enabled: () => true };
+    if (refusal === "mode-veto") {
+        const command = c.__ottClassicPlayback.command;
+        c.__ottClassicPlayback.command = (request) =>
+            request.type === "archive" ? false : command(request);
+    }
+    let rejected;
+    c.handleRemoteArchive(
+        c,
+        {
+            action: "play_archive_catalog",
+            params: { end: 999100, start: 999000, title: "Selected programme" },
+        },
+        { id: "202" },
+        () => true,
+        () => assert.fail("An unopened archive must not be acknowledged"),
+        (message) => {
+            rejected = message;
+        }
+    );
+    assert.match(rejected, /cancelled before dispatch/);
+    if (allowed) allowed();
+    assert.deepEqual(c.opens(), []);
+    assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "live");
+}
+
 // A live now/next subscription survives entering archive. Archive ticks and
 // late guide replies must not repaint its footer with the wall-clock programme.
 {

@@ -105,7 +105,7 @@ export function handleRemoteArchive(
     }
     if (
         !host.__ottClassicArchive ||
-        typeof host.__ottClassicArchive.open !== "function" ||
+        typeof host.__ottClassicArchive.openResolved !== "function" ||
         typeof host.setCurrent !== "function"
     ) {
         reject("Update the player to support remote archive playback.");
@@ -116,14 +116,22 @@ export function handleRemoteArchive(
         return;
     }
     host.setCurrent(category, index, true);
+    if (!current()) {
+        reject("Channel access or the catalogue changed before playback.");
+        return;
+    }
     // Supply the selected programme, not the previous channel's guide. The
     // archive controller owns decoder replacement and later guide refills.
     host.epgArray = [programme];
-    host.__ottClassicArchive.open(params.start);
+    if (!host.__ottClassicArchive.openResolved(params.start, url)) {
+        reject("Archive playback was cancelled before dispatch.");
+        return;
+    }
     reply({
         channel: channel,
         dispatched: true,
         end: params.end,
+        mode: "archive",
         start: params.start,
     });
 }
