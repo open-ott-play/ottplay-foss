@@ -8,6 +8,7 @@ export function installBrowserLocalMedia(w: any): any {
     var reconnectTransactions: any[] = [];
     var pendingReads: any = Object.create(null);
     var pendingReadCounts = [0, 0];
+    var fileTimeoutMessage = "Local file did not respond";
     var pendingDirectories: any = Object.create(null);
     var cacheWrites = Promise.resolve();
     var urlApi = w.URL || w.webkitURL;
@@ -103,9 +104,9 @@ export function installBrowserLocalMedia(w: any): any {
     }
     function readTimeout(permission?: boolean, limit?: boolean): Error {
         var error: any = new Error(
-            "Local " +
-                (permission ? "source permission" : "file") +
-                " did not respond"
+            permission
+                ? "Local source permission did not respond"
+                : fileTimeoutMessage
         );
         error.name = "TimeoutError";
         error.localMediaLimit = !!limit;
@@ -1254,7 +1255,7 @@ export function installBrowserLocalMedia(w: any): any {
                           : name === "NotAllowedError"
                             ? "Folder permission is required"
                             : name === "TimeoutError"
-                              ? "Local file did not respond"
+                              ? fileTimeoutMessage
                               : "Local file could not be opened"
                 );
                 safe.name =
