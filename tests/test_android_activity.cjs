@@ -555,6 +555,9 @@ try {
             recovery.push("resume");
             return pendingRecovery;
         },
+        state() {
+            return { pending: pendingRecovery, terminal: false };
+        },
     };
     vm.runInContext(scripts.MEDIA_PAUSE, w);
     assert.equal(video.paused, true);

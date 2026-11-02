@@ -269,6 +269,7 @@ function fixture() {
                 "coreField",
             ]) +
             sourceFunctions("src/ui/index.ts", [
+                "setInfoInteraction",
                 "mediaPlaybackControls",
                 "updateMediaPlaybackControls",
                 "showMediaList1",

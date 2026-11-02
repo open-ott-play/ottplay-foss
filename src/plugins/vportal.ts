@@ -1842,6 +1842,7 @@ export function createVPortalClient(
             fail();
             return;
         }
+        if (!resolved) w.__ottSetInfoInteraction?.(false);
         var result: any = null;
         function start(url: string): void {
             if (finished || !current()) return;
@@ -1869,7 +1870,7 @@ export function createVPortalClient(
             }
             try {
                 if (resolved) resolved(playable);
-                else w._playMedia(playable);
+                else w._playMedia(playable, false, true);
                 if (session && mediaSession === session) heartbeat(session);
             } catch (error) {
                 if (mediaSession === session) stop();

@@ -365,6 +365,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         codec: codec,
         current: current,
         now: ports.now,
+        onSelect: function () {
+            if (permitted()) w.__ottSetInfoInteraction?.(false);
+        },
         setTimer: w.setTimeout.bind(w),
         snapshot: store.snapshot,
         targets: function (origin: any, guard: () => boolean, locator: any) {
@@ -393,6 +396,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                 origin: entry.origin,
                 title: entry.title,
             });
+        },
+        onMove: function () {
+            w.__ottSetInfoInteraction?.(false);
         },
         select: router.select,
         snapshot: store.snapshot,

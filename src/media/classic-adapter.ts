@@ -1121,7 +1121,8 @@ function classicMediaRuntime(): any {
     function skipPlayback(
         direction: number,
         dispatched?: () => void,
-        retry = false
+        retry = false,
+        preserveInfo = false
     ) {
         var playback = mediaClassicPlayback;
         var sequence = playback && playback.sequence;
@@ -1185,6 +1186,7 @@ function classicMediaRuntime(): any {
         // A resumed file can outlive a failed folder request. Recover its
         // original siblings when an arrow is pressed, including Repeat One.
         if (recovering) {
+            if (!preserveInfo) w.__ottSetInfoInteraction?.(false);
             request = {
                 feedback: feedback,
                 offset: direction,
@@ -1209,7 +1211,7 @@ function classicMediaRuntime(): any {
                     return;
                 }
                 playback.sequence = folder.sequence;
-                skipPlayback(request.offset);
+                skipPlayback(request.offset, undefined, false, true);
             });
             return;
         }
@@ -1233,6 +1235,7 @@ function classicMediaRuntime(): any {
             item,
             function () {
                 if (!valid()) return;
+                if (!preserveInfo) w.__ottSetInfoInteraction?.(false);
                 beginSkipLoading(request, item);
                 if (!valid()) return;
                 resolve(
@@ -1498,7 +1501,7 @@ function classicMediaRuntime(): any {
                 pendingStart = start;
                 try {
                     if (!admit || admit(payload))
-                        w._playMedia(payload, automatic);
+                        w._playMedia(payload, automatic, true);
                 } finally {
                     if (pendingStart === start) pendingStart = null;
                     var state = w.__ottClassicPlayback.snapshot();
@@ -1887,7 +1890,7 @@ function classicMediaRuntime(): any {
                     admitted() &&
                     valid()
                 )
-                    skipPlayback(skip);
+                    skipPlayback(skip, undefined, false, true);
                 return;
             }
             if (!sequence || !admitted() || !valid()) return;
@@ -1912,7 +1915,8 @@ function classicMediaRuntime(): any {
                     : (sequence.index + 1) % sequence.items.length;
             var item = sequence.items[index];
             function proceed() {
-                if (admitted() && valid())
+                if (admitted() && valid()) {
+                    w.__ottSetInfoInteraction?.(false);
                     resolve(
                         item,
                         {
@@ -1932,6 +1936,7 @@ function classicMediaRuntime(): any {
                                 completionRequest = null;
                         }
                     );
+                }
             }
             authorize(item, proceed);
         },
@@ -2179,7 +2184,8 @@ function classicMediaRuntime(): any {
             guard?: (loadingOwner?: any) => boolean,
             background = false,
             positionMode = "prompt",
-            committed?: (ok: boolean) => void
+            committed?: (ok: boolean) => void,
+            preserveInfo = false
         ) {
             if (!current() || (guard && !guard())) return false;
             var list = w.__ottChannels && w.__ottChannels.capture(w.catIndex);
@@ -2228,6 +2234,7 @@ function classicMediaRuntime(): any {
                 item,
                 function () {
                     if (!valid()) return;
+                    if (!preserveInfo) w.__ottSetInfoInteraction?.(false);
                     loading = background
                         ? null
                         : beginManualLoading(item, true);
@@ -2318,6 +2325,7 @@ function classicMediaRuntime(): any {
                 return false;
             api.cancelAuto();
             if (!current() || !guard()) return false;
+            w.__ottSetInfoInteraction?.(false);
             var completed = false;
             function finish(ok: boolean) {
                 if (completed) return;
@@ -2404,6 +2412,7 @@ function classicMediaRuntime(): any {
                 function () {
                     if (!valid()) return;
                     if (!allowed(item.payload)) return rejected();
+                    w.__ottSetInfoInteraction?.(false);
                     resolve(
                         item,
                         null,
@@ -2436,7 +2445,8 @@ function classicMediaRuntime(): any {
             resolved: any,
             guard: () => boolean,
             dispatched: () => void,
-            failed: () => void
+            failed: () => void,
+            preserveInfo = false
         ) {
             var plex = plexPresentation();
             return plex
@@ -2447,7 +2457,8 @@ function classicMediaRuntime(): any {
                       resolved,
                       guard,
                       dispatched,
-                      failed
+                      failed,
+                      preserveInfo
                   )
                 : failed();
         },
@@ -2477,6 +2488,8 @@ function classicMediaRuntime(): any {
                     w.__ottClassicPlayback.snapshot().generation === generation
                 );
             }
+            if (!valid()) return;
+            w.__ottSetInfoInteraction?.(false);
             var started = false;
             resolve(
                 items[0],
@@ -2685,6 +2698,7 @@ function classicMediaRuntime(): any {
             if (!valid()) return false;
             authorize(items[index], function () {
                 if (!valid()) return;
+                w.__ottSetInfoInteraction?.(false);
                 resolve(
                     items[index],
                     {
@@ -2759,6 +2773,7 @@ function classicMediaRuntime(): any {
                             classicMediaLabel(payload)
                         );
                 } else if (payload.stream_url || payload.request) {
+                    w.__ottSetInfoInteraction?.(false);
                     var loading = beginManualLoading(item);
                     var revision = automaticGeneration;
                     var generation =
@@ -2918,6 +2933,7 @@ function classicMediaRuntime(): any {
                 }
                 function proceed() {
                     if (!foreground()) return;
+                    w.__ottSetInfoInteraction?.(false);
                     resolve(
                         items[0],
                         {
@@ -3314,7 +3330,8 @@ function classicMediaRuntime(): any {
         guard?: (loadingOwner?: any) => boolean,
         background = false,
         positionMode = "prompt",
-        committed?: (ok: boolean) => void
+        committed?: (ok: boolean) => void,
+        preserveInfo = false
     ) {
         (window as any).__ottMedia.useSource(null);
         return classicMediaRuntime().playChannel(
@@ -3323,7 +3340,8 @@ function classicMediaRuntime(): any {
             guard,
             background,
             positionMode,
-            committed
+            committed,
+            preserveInfo
         );
     },
     playFavorite: function (
@@ -3353,7 +3371,8 @@ function classicMediaRuntime(): any {
         resolved: any,
         guard: () => boolean,
         dispatched: () => void,
-        failed: () => void
+        failed: () => void,
+        preserveInfo = false
     ) {
         return classicMediaRuntime().playOrderedQueue(
             records,
@@ -3362,7 +3381,8 @@ function classicMediaRuntime(): any {
             resolved,
             guard,
             dispatched,
-            failed
+            failed,
+            preserveInfo
         );
     },
     playQueue: function (

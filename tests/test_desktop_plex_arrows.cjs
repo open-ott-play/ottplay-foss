@@ -315,7 +315,17 @@ function localFixture(
             this.primaryIndex = index;
         },
         primaryIndex: 1,
+        settings: { ...f.w.settings, adFun: 16, auFun: 15 },
     });
+    f.w.__ottInputRouter.binding = (value) =>
+        ({
+            13: "volume.increase",
+            14: "volume.decrease",
+            15: "navigation.forward",
+            16: "navigation.backward",
+            18: "archive.minute-back",
+            19: "archive.minute-forward",
+        })[value];
     f.w.__ottClassicPlayback.snapshot = () => ({
         historyTarget: {
             channelId: "101",
@@ -428,7 +438,6 @@ for (const platform of ["pc", "pc2"]) {
         "locked",
         "strict",
         "foreign",
-        "live",
     ]) {
         test(`${platform} Local ${mode} retains input ownership`, () => {
             const f = localFixture(platform);
@@ -457,11 +466,6 @@ for (const platform of ["pc", "pc2"]) {
                             sourceId: "offline@folder",
                         },
                     });
-                else
-                    f.w.__ottClassicPlayback.snapshot = () => ({
-                        phase: "playing",
-                        target: { kind: "live" },
-                    });
                 assert.equal(
                     f.send("ArrowUp", f.video).defaultPrevented,
                     false
@@ -476,6 +480,81 @@ for (const platform of ["pc", "pc2"]) {
             }
         });
     }
+}
+for (const platform of ["pc", "pc2"]) {
+    for (const provider of [
+        "m3u",
+        "vportal",
+        "plex",
+        "stalker",
+        "torrent",
+        "offline",
+    ]) {
+        for (const kind of ["live", "archive", "vod"]) {
+            test(`${platform} ${provider} ${kind} video-focused navigation uses current order`, () => {
+                const f = localFixture(platform, "playing", provider);
+                try {
+                    f.w.playType =
+                        kind === "archive"
+                            ? 1700000000
+                            : kind === "vod"
+                              ? -1e11
+                              : 0;
+                    if (provider !== "offline" || kind !== "vod")
+                        f.w.__ottClassicPlayback.snapshot = () => ({
+                            phase: "playing",
+                            target: { kind },
+                        });
+                    f.video.focus();
+                    f.send("ArrowUp", f.video);
+                    f.send("ArrowDown", f.video);
+                    assert.deepEqual(f.calls, [
+                        ["file", 2, 2, 102],
+                        ["file", 2, 1, 101],
+                    ]);
+                } finally {
+                    f.close();
+                }
+            });
+        }
+    }
+    test(`${platform} video-focused remote Plex queue stays with queue`, () => {
+        const f = fixture(platform);
+        try {
+            f.video.focus();
+            f.send("ArrowUp", f.video);
+            f.send("ArrowDown", f.video);
+            assert.deepEqual(f.calls, [
+                ["skip", 1],
+                ["skip", -1],
+            ]);
+        } finally {
+            f.close();
+        }
+    });
+    test(`${platform} video-focused custom navigation and explicit seek are preserved`, () => {
+        const f = localFixture(platform, "playing", "m3u");
+        try {
+            f.w.settings.auFun = 16;
+            f.w.settings.adFun = 15;
+            f.send("ArrowUp", f.video);
+            f.send("ArrowDown", f.video);
+            assert.deepEqual(f.calls.splice(0), [
+                ["file", 2, 0, 103],
+                ["file", 2, 1, 101],
+            ]);
+            f.w.settings.auFun = 18;
+            f.w.settings.adFun = 19;
+            f.send("ArrowUp", f.video);
+            f.send("ArrowDown", f.video);
+            assert.deepEqual(f.calls, [
+                ["seek", -60],
+                ["seek", 60],
+            ]);
+        } finally {
+            f.close();
+        }
+    });
 }
 test("Local TV vertical keys retain the configured remote mapping", () => {
     const f = localFixture("lg/webos");

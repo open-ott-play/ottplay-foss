@@ -40,7 +40,11 @@ Ordinary live streams without archive support cannot be rewound. Media support
 and the provider's available archive window still limit where playback can go.
 
 Repeated presses accumulate; the player applies the seek after a short pause
-(500 ms) and shows its usual seek feedback. On PC, plain **Left/Right** decreases/increases volume, including when the native video element has focus in fullscreen. Other devices retain their arrow mappings.
+(500 ms) and shows its usual seek feedback. On PC, while playback controls are
+not active, plain **Left/Right** decreases/increases volume, including when the
+native video element has focus in fullscreen. Active [Modern playback controls](modern-interface.md#navigation-and-shared-state)
+use these arrows for seeking or selecting an action. Other devices retain their
+arrow mappings.
 Local videos keep the same playback session when seeking, including when file metadata arrives late. The timeline becomes available once the decoder reports a usable duration.
 Menus, lists, dialogs and text editors retain their normal keyboard behavior,
 and kiosk restrictions still take priority. The shortcuts do not change the

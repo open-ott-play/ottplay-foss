@@ -22,6 +22,14 @@ use std::{
 };
 use tokio::sync::{OwnedSemaphorePermit, RwLock, Semaphore};
 
+mod disk_cache;
+mod mapping_cache;
+mod search;
+mod unicode17;
+use disk_cache::DiskCache;
+use mapping_cache::{Mapping, MappingCache};
+use search::{SearchIndex, SearchInput};
+
 const SOURCE: &str = "epg-one";
 const SOURCE_URL: &str = "https://cdn.epg.one/epg2.xml.gz";
 const REFRESH_MS: u64 = 7_200_000;
@@ -70,6 +78,8 @@ struct Snapshot {
     index: MatchIndex,
     generation: String,
     fetched_at: u64,
+    mappings: Mutex<MappingCache>,
+    search_index: SearchIndex,
 }
 
 impl Snapshot {
@@ -101,19 +111,51 @@ impl Snapshot {
         // This process-local opaque revision names a complete immutable snapshot;
         // it is not an authentication token and survives no server restart.
         let nonce = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        let search_index = SearchIndex::new(&programs);
         Ok(Self {
             channels,
             programs,
             index,
             generation: format!("{fetched_at:x}-{nonce:x}"),
             fetched_at,
+            mappings: Mutex::new(MappingCache::default()),
+            search_index,
         })
     }
 
     fn metadata(&self, now: u64) -> Value {
-        json!({"version":1,"source":SOURCE,"generation":self.generation,
+        json!({"version":1,"source":SOURCE,"generation":self.generation,"searchVersion":1,
             "fetchedAt":self.fetched_at,"refreshMs":REFRESH_MS,
             "stale":now.saturating_sub(self.fetched_at) >= REFRESH_MS})
+    }
+
+    fn cached_mapping(&self, id: &str, tvg_name: &str, name: &str) -> Option<Mapping> {
+        self.mappings
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .get(id, tvg_name, name)
+    }
+
+    fn resolve(
+        &self,
+        id: &str,
+        tvg_name: &str,
+        name: &str,
+        budget: &MatchBudget,
+    ) -> anyhow::Result<Mapping> {
+        budget.check()?;
+        if let Some(found) = self.cached_mapping(id, tvg_name, name) {
+            return Ok(found);
+        }
+        let found = self
+            .index
+            .resolve_web_with_budget(id, &[tvg_name, name], name, budget)?;
+        budget.check()?;
+        self.mappings
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .insert(id, tvg_name, name, found.clone());
+        Ok(found)
     }
 
     fn matches(
@@ -125,12 +167,9 @@ impl Snapshot {
         let mut mappings = Map::new();
         for row in channels {
             budget.check()?;
-            if let Some((id, shift)) = self.index.resolve_web_with_budget(
-                &row.tvg_id,
-                &[&row.tvg_name, &row.name],
-                &row.name,
-                budget,
-            )? {
+            if let Some((id, shift)) =
+                self.resolve(&row.tvg_id, &row.tvg_name, &row.name, budget)?
+            {
                 let logo = self
                     .channels
                     .get(&id)
@@ -196,12 +235,8 @@ impl Snapshot {
         let mut bytes = serde_json::to_vec(&result)?.len();
         for row in input.channels {
             budget.check()?;
-            let Some((id, inferred_shift)) = self.index.resolve_web_with_budget(
-                &row.tvg_id,
-                &[&row.tvg_name, &row.name],
-                &row.name,
-                budget,
-            )?
+            let Some((id, inferred_shift)) =
+                self.resolve(&row.tvg_id, &row.tvg_name, &row.name, budget)?
             else {
                 continue;
             };
@@ -292,6 +327,7 @@ struct GuideState {
     match_requests: Arc<Semaphore>,
     match_execution: Arc<Semaphore>,
     programme_requests: Arc<Semaphore>,
+    cached_requests: Arc<Semaphore>,
 }
 
 impl GuideState {
@@ -305,6 +341,7 @@ impl GuideState {
             // serialized JS context. Both admission and execution are bounded.
             match_execution: Arc::new(Semaphore::new(1)),
             programme_requests: Arc::new(Semaphore::new(4)),
+            cached_requests: Arc::new(Semaphore::new(4)),
         })
     }
 
@@ -330,6 +367,49 @@ struct MatchInput {
     version: u8,
     source: String,
     channels: Vec<ChannelInput>,
+}
+
+trait CachedInput {
+    fn is_cached(&self, snapshot: &Snapshot) -> bool;
+    fn generation(&self) -> Option<&str> {
+        None
+    }
+}
+
+impl CachedInput for Vec<ChannelInput> {
+    fn is_cached(&self, snapshot: &Snapshot) -> bool {
+        !self.is_empty()
+            && self.iter().all(|row| {
+                snapshot
+                    .cached_mapping(&row.tvg_id, &row.tvg_name, &row.name)
+                    .is_some()
+            })
+    }
+}
+
+impl CachedInput for CurrentInput {
+    fn is_cached(&self, snapshot: &Snapshot) -> bool {
+        !self.channels.is_empty()
+            && self.channels.iter().all(|row| {
+                snapshot
+                    .cached_mapping(&row.tvg_id, &row.tvg_name, &row.name)
+                    .is_some()
+            })
+    }
+}
+
+impl CachedInput for SearchInput {
+    fn is_cached(&self, snapshot: &Snapshot) -> bool {
+        !self.channels.is_empty()
+            && self.channels.iter().all(|row| {
+                snapshot
+                    .cached_mapping(&row.tvg_id, &row.tvg_name, &row.name)
+                    .is_some()
+            })
+    }
+    fn generation(&self) -> Option<&str> {
+        self.generation.as_deref()
+    }
 }
 
 impl MatchInput {
@@ -461,6 +541,7 @@ fn router(state: Arc<GuideState>) -> Router {
         .route("/epg/v1/health", get(readiness))
         .route("/epg/v1/match", post(match_channels))
         .route("/epg/v1/current", post(current))
+        .route("/epg/v1/search", post(search_programmes))
         .route("/epg/v1/programmes", get(programmes))
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(512 * 1024))
@@ -550,7 +631,29 @@ async fn run_current(
     .await
 }
 
-async fn run_match_using<I: Send + 'static>(
+async fn search_programmes(
+    State(state): State<Arc<GuideState>>,
+    body: Result<Json<SearchInput>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let input = body
+        .map_err(|e| {
+            if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+                ApiError::Large
+            } else {
+                ApiError::Invalid
+            }
+        })?
+        .0;
+    if !input.valid() {
+        return Err(ApiError::Invalid);
+    }
+    run_match_using(state, input, MATCH_TIMEOUT, |snapshot, input, budget| {
+        snapshot.search(input, now_ms(), budget)
+    })
+    .await
+}
+
+async fn run_match_using<I: CachedInput + Send + 'static>(
     state: Arc<GuideState>,
     input: I,
     timeout: Duration,
@@ -563,23 +666,38 @@ async fn run_match_using<I: Send + 'static>(
         pending: None,
     };
     let deadline = tokio::time::Instant::from_std(budget.deadline());
-    let permit = state
-        .match_requests
-        .clone()
-        .try_acquire_owned()
-        .map_err(|_| ApiError::Busy)?;
     let snapshot = tokio::time::timeout_at(deadline, state.snapshot.read())
         .await
         .map_err(|_| ApiError::Timeout)?
         .clone()
         .ok_or(ApiError::NotReady)?;
-    let execution =
-        tokio::time::timeout_at(deadline, state.match_execution.clone().acquire_owned())
-            .await
-            .map_err(|_| ApiError::Timeout)?
-            .map_err(|_| ApiError::Internal)?;
+    if input
+        .generation()
+        .is_some_and(|generation| generation != snapshot.generation)
+    {
+        return Err(ApiError::Generation);
+    }
+    let cached = input.is_cached(&snapshot);
+    let permit = if cached {
+        &state.cached_requests
+    } else {
+        &state.match_requests
+    }
+    .clone()
+    .try_acquire_owned()
+    .map_err(|_| ApiError::Busy)?;
+    let execution = if cached {
+        None
+    } else {
+        Some(
+            tokio::time::timeout_at(deadline, state.match_execution.clone().acquire_owned())
+                .await
+                .map_err(|_| ApiError::Timeout)?
+                .map_err(|_| ApiError::Internal)?,
+        )
+    };
     let work_budget = budget.clone();
-    let pending = Arc::new(Mutex::new(Some((permit, Some(execution)))));
+    let pending = Arc::new(Mutex::new(Some((permit, execution))));
     cancel.pending = Some(pending.clone());
     let work = tokio::task::spawn_blocking(move || {
         let _permits = pending
@@ -652,7 +770,10 @@ async fn programmes(
     work.await.map_err(|_| ApiError::Internal)?
 }
 
-async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
+async fn fetch_snapshot(
+    client: &reqwest::Client,
+    cache: Option<DiskCache>,
+) -> anyhow::Result<Snapshot> {
     let download_started = Instant::now();
     let mut response = client.get(SOURCE_URL).send().await?.error_for_status()?;
     anyhow::ensure!(
@@ -673,25 +794,37 @@ async fn fetch_snapshot(client: &reqwest::Client) -> anyhow::Result<Snapshot> {
     );
     let fresh = now_ms();
     tokio::task::spawn_blocking(move || {
-        let decode_started = Instant::now();
-        let mut raw = Vec::new();
-        if bytes.starts_with(&[31, 139]) {
-            flate2::read::GzDecoder::new(&bytes[..])
-                .take((XML_LIMIT + 1) as u64)
-                .read_to_end(&mut raw)?;
-        } else {
-            raw = bytes;
+        let snapshot = decode_snapshot(&bytes, fresh)?;
+        if let Some(cache) = cache {
+            if cache.save(&bytes, fresh).is_err() {
+                eprintln!(
+                    "[Hosted EPG] disk cache update failed; keeping accepted memory snapshot"
+                );
+            }
         }
-        anyhow::ensure!(raw.len() <= XML_LIMIT, "EPG_XML_LIMIT");
-        let xml = std::str::from_utf8(&raw)?;
-        eprintln!(
-            "[Hosted EPG] phase=decode elapsedMs={} bytes={}",
-            decode_started.elapsed().as_millis(),
-            raw.len()
-        );
-        Snapshot::from_xml(xml, fresh)
+        Ok(snapshot)
     })
     .await?
+}
+
+fn decode_snapshot(bytes: &[u8], fresh: u64) -> anyhow::Result<Snapshot> {
+    let decode_started = Instant::now();
+    let mut raw = Vec::new();
+    if bytes.starts_with(&[31, 139]) {
+        flate2::read::GzDecoder::new(&bytes[..])
+            .take((XML_LIMIT + 1) as u64)
+            .read_to_end(&mut raw)?;
+    } else {
+        raw.extend_from_slice(bytes);
+    }
+    anyhow::ensure!(raw.len() <= XML_LIMIT, "EPG_XML_LIMIT");
+    let xml = std::str::from_utf8(&raw)?;
+    eprintln!(
+        "[Hosted EPG] phase=decode elapsedMs={} bytes={}",
+        decode_started.elapsed().as_millis(),
+        raw.len()
+    );
+    Snapshot::from_xml(xml, fresh)
 }
 
 pub fn enabled() -> anyhow::Result<bool> {
@@ -710,6 +843,7 @@ pub fn start() -> anyhow::Result<Router> {
         );
     }
     let state = GuideState::new();
+    let cache = DiskCache::configured()?;
     let client = reqwest::Client::builder()
         .user_agent("OTT-play-FOSS/1.0")
         .connect_timeout(Duration::from_secs(30))
@@ -721,9 +855,20 @@ pub fn start() -> anyhow::Result<Router> {
         .build()?;
     let refresh_state = state.clone();
     tokio::spawn(async move {
+        if let Some(cache) = cache.clone() {
+            if let Ok(Ok(snapshot)) = tokio::task::spawn_blocking(move || {
+                let (bytes, fetched) = cache.load()?;
+                decode_snapshot(&bytes, fetched)
+            })
+            .await
+            {
+                refresh_state.publish(snapshot).await;
+                eprintln!("[Hosted EPG] restored fresh public snapshot from disk cache");
+            }
+        }
         let mut failures = 0u32;
         loop {
-            match fetch_snapshot(&client).await {
+            match fetch_snapshot(&client, cache.clone()).await {
                 Ok(fresh) => {
                     refresh_state.publish(fresh).await;
                     failures = 0;
@@ -749,6 +894,263 @@ mod tests {
     };
     use tower::ServiceExt;
 
+    fn search_input(query: &str) -> SearchInput {
+        serde_json::from_value(json!({"version":1,"source":SOURCE,"search":query,
+            "channels":[{"id":"local","tvgId":"ren","tvgName":"","name":"РЕН ТВ","shift":0,"archiveHours":144}]})).unwrap()
+    }
+
+    #[test]
+    fn compact_search_preserves_literal_word_live_and_all_row_chain_rules() {
+        let mut fresh = snapshot();
+        let rows = fresh.programs.get_mut("ren").unwrap();
+        rows.clear();
+        for (start, stop, title) in [
+            (100, 110, "Match"),
+            (105, 110, "Other"),
+            (110, 120, "Match"),
+            (200, 210, "Match"),
+            (200, 210, " Match\t"),
+            (210, 220, "Match"),
+            (990, 1020, "Орёл и решка"),
+        ] {
+            rows.push(xmltv::Programme {
+                start,
+                stop,
+                title: title.into(),
+                ..Default::default()
+            });
+        }
+        let result = fresh
+            .search(
+                search_input("match"),
+                1_000_000,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(
+            result["archives"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| c["rows"].as_array().unwrap().len())
+                .collect::<Vec<_>>(),
+            vec![1, 1, 2]
+        );
+        assert_eq!(result["archives"][2]["rows"][0]["start"], 200);
+        assert_eq!(result["archives"][2]["rows"][1]["start"], 210);
+        assert_eq!(result["complete"], true);
+        assert_eq!(result["textProfile"], search::TEXT_PROFILE);
+        let result = fresh
+            .search(
+                search_input("орел решка"),
+                1_000_000,
+                &MatchBudget::new(MATCH_TIMEOUT),
+            )
+            .unwrap();
+        assert_eq!(result["current"], json!([]));
+        assert_eq!(result["archiveCurrent"][0]["title"], "Орёл и решка");
+        assert_eq!(result["validUntil"], 1020);
+        assert_eq!(result["archives"], json!([]));
+    }
+
+    #[test]
+    fn compact_search_bounds_a_single_large_chain_before_retaining_it() {
+        let mut fresh = snapshot();
+        fresh.programs.insert(
+            "ren".into(),
+            (1..300)
+                .map(|i| xmltv::Programme {
+                    start: i * 2,
+                    stop: i * 2 + 2,
+                    title: format!("Match {}", "x".repeat(16384)),
+                    ..Default::default()
+                })
+                .collect(),
+        );
+        assert!(fresh
+            .search(
+                search_input("match"),
+                1_000_000,
+                &MatchBudget::new(MATCH_TIMEOUT)
+            )
+            .unwrap_err()
+            .is::<CurrentResponseLimit>());
+    }
+
+    #[test]
+    fn compact_search_bounds_unmatched_scratch_but_skips_obsolete_rows() {
+        let mut fresh = snapshot();
+        let clock = (NOW / 1000) as i64;
+        fresh.programs.insert(
+            "ren".into(),
+            vec![xmltv::Programme {
+                start: clock - 20,
+                stop: clock - 10,
+                title: "x".repeat(MAX_ROW_BYTES),
+                ..Default::default()
+            }],
+        );
+        assert!(fresh
+            .search(
+                search_input("absent"),
+                NOW,
+                &MatchBudget::new(MATCH_TIMEOUT)
+            )
+            .unwrap_err()
+            .is::<CurrentResponseLimit>());
+        let mut rows = vec![
+            xmltv::Programme {
+                start: clock - 200 * 3600,
+                stop: clock - 199 * 3600,
+                title: "Obsolete".into(),
+                ..Default::default()
+            };
+            MAX_ROWS + 1
+        ];
+        rows.push(xmltv::Programme {
+            start: clock - 20,
+            stop: clock - 10,
+            title: "Match".into(),
+            ..Default::default()
+        });
+        fresh.programs.insert("ren".into(), rows);
+        let result = fresh
+            .search(search_input("match"), NOW, &MatchBudget::new(MATCH_TIMEOUT))
+            .unwrap();
+        assert_eq!(result["archives"][0]["rows"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn compact_search_excludes_expired_boundary_and_keeps_future_live_boundary() {
+        let mut fresh = snapshot();
+        let clock = (NOW / 1000) as i64;
+        fresh.programs.insert(
+            "ren".into(),
+            vec![
+                xmltv::Programme {
+                    start: clock - 144 * 3600,
+                    stop: clock - 144 * 3600 + 10,
+                    title: "Match".into(),
+                    ..Default::default()
+                },
+                xmltv::Programme {
+                    start: clock + 5,
+                    stop: clock + 20,
+                    title: "Unrelated".into(),
+                    ..Default::default()
+                },
+            ],
+        );
+        let result = fresh
+            .search(search_input("Match"), NOW, &MatchBudget::new(MATCH_TIMEOUT))
+            .unwrap();
+        assert_eq!(result["archives"], json!([]));
+        assert_eq!(result["validUntil"], clock + 5);
+        let input = serde_json::from_value(json!({"version":1,"source":SOURCE,"search":"Match",
+            "channels":[{"id":"local","tvgId":"ren","tvgName":"","name":"РЕН ТВ","shift":0,"archiveHours":0}]})).unwrap();
+        let result = fresh
+            .search(input, NOW, &MatchBudget::new(MATCH_TIMEOUT))
+            .unwrap();
+        assert_eq!(result["validUntil"], clock + 5);
+    }
+
+    #[tokio::test]
+    async fn compact_search_generation_and_schema_are_guarded() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let app = router(state);
+        let mut input =
+            json!({"version":1,"source":SOURCE,"search":"Match","generation":"old","channels":[]});
+        assert_eq!(
+            request(app.clone(), "POST", "/epg/v1/search", input.clone())
+                .await
+                .0,
+            StatusCode::CONFLICT
+        );
+        input.as_object_mut().unwrap().remove("generation");
+        let (status, result) = request(app.clone(), "POST", "/epg/v1/search", input.clone()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(result["searchVersion"], 1);
+        assert_eq!(result["checked"], 0);
+        input["url"] = json!("http://private/");
+        assert_eq!(
+            request(app, "POST", "/epg/v1/search", input).await.0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+
+    #[tokio::test]
+    async fn cached_mappings_bypass_busy_matcher_without_losing_cancellation() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let input = || current_input(vec![current_channel("local", "ren", "РЕН ТВ", 0)], "");
+        assert!(run_current(state.clone(), input(), MATCH_TIMEOUT)
+            .await
+            .is_ok());
+        let _execution = state.match_execution.clone().acquire_owned().await.unwrap();
+        let _requests = state
+            .match_requests
+            .clone()
+            .acquire_many_owned(2)
+            .await
+            .unwrap();
+        assert!(
+            run_current(state.clone(), input(), Duration::from_millis(50))
+                .await
+                .is_ok()
+        );
+        assert!(matches!(
+            run_current(state.clone(), input(), Duration::ZERO).await,
+            Err(ApiError::Timeout)
+        ));
+        assert_eq!(state.cached_requests.available_permits(), 4);
+        let fresh = state.snapshot.read().await.clone().unwrap();
+        let stopped = MatchBudget::new(Duration::ZERO);
+        assert!(fresh
+            .resolve("missing", "", "not-cached", &stopped)
+            .is_err());
+        assert!(fresh.cached_mapping("missing", "", "not-cached").is_none());
+        let replacement = snapshot();
+        assert!(replacement.cached_mapping("ren", "", "РЕН ТВ").is_none());
+    }
+
+    #[tokio::test]
+    async fn negative_cache_bypasses_match_queue_and_ids_do_not_affect_resolution() {
+        let state = GuideState::new();
+        state.publish(snapshot()).await;
+        let input = |local_id| {
+            current_input(
+                vec![current_channel(local_id, "absent", "Absent Unmatched", 0)],
+                "",
+            )
+        };
+        assert!(run_current(state.clone(), input("first"), MATCH_TIMEOUT)
+            .await
+            .is_ok());
+        let _execution = state.match_execution.clone().acquire_owned().await.unwrap();
+        let _requests = state
+            .match_requests
+            .clone()
+            .acquire_many_owned(2)
+            .await
+            .unwrap();
+        let response = run_current(
+            state.clone(),
+            input("different-id"),
+            Duration::from_millis(50),
+        )
+        .await
+        .unwrap();
+        let result: Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), MAX_CURRENT_BYTES)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["programs"], json!([]));
+        assert_eq!(result["checked"], 1);
+        assert_eq!(state.cached_requests.available_permits(), 4);
+    }
     const XML: &str = r#"<tv><channel id="ren"><display-name>РЕН ТВ</display-name><display-name>REN TV</display-name><icon src="http://epg.one/ren.png"/></channel><channel id="other"><display-name>Другой</display-name></channel><channel id="amb1"><display-name>Shared Alias</display-name></channel><channel id="amb2"><display-name>Shared Alias</display-name></channel><programme channel="ren" start="20260929100000 +0300" stop="20260929110000 +0300"><title>Передача</title><desc>Описание</desc></programme></tv>"#;
     const NOW: u64 = 1_790_665_200_000; // 2026-09-29 07:00 UTC
 
@@ -1112,9 +1514,9 @@ mod tests {
         assert_eq!(result["checked"], 1);
         assert_eq!(result["total"], 1);
         let held = state
-            .match_requests
+            .cached_requests
             .clone()
-            .acquire_many_owned(2)
+            .acquire_many_owned(4)
             .await
             .unwrap();
         let (status, result) = request(
@@ -1789,6 +2191,39 @@ mod tests {
         let mut report = json!({"referenceEpoch":now/1000,"decodeMs":decoded_ms,"readyMs":ready_ms,"xmlBytes":xml.len(),
             "channels":snapshot.channels.len(),"programmes":snapshot.programs.values().map(Vec::len).sum::<usize>(),
             "matchAndQueryMs":started.elapsed().as_millis()-ready_ms,"cases":cases});
+        let mut channel_ids = snapshot.channels.keys().cloned().collect::<Vec<_>>();
+        channel_ids.sort();
+        let mut searches = Vec::new();
+        for pass in ["cold", "warm"] {
+            let pass_started = Instant::now();
+            let mut elapsed = Vec::new();
+            let mut matches = [0, 0, 0];
+            let mut response_bytes = 0;
+            for batch in channel_ids.chunks(200) {
+                let channels = batch
+                    .iter()
+                    .map(|id| {
+                        json!({"id":id,"tvgId":id,
+                    "tvgName":"","name":"","shift":0,"archiveHours":144})
+                    })
+                    .collect::<Vec<_>>();
+                let input = serde_json::from_value(json!({"version":1,"source":SOURCE,
+                    "search":"три кота","channels":channels}))
+                .unwrap();
+                let batch_started = Instant::now();
+                let result = snapshot
+                    .search(input, now, &MatchBudget::new(MATCH_TIMEOUT))
+                    .unwrap();
+                elapsed.push(batch_started.elapsed().as_micros());
+                for (at, key) in ["current", "archiveCurrent", "archives"].iter().enumerate() {
+                    matches[at] += result[key].as_array().unwrap().len();
+                }
+                response_bytes += serde_json::to_vec(&result).unwrap().len();
+            }
+            searches.push(json!({"pass":pass,"elapsedMs":pass_started.elapsed().as_millis(),
+                "batches":elapsed.len(),"batchUs":elapsed,"matches":matches,"responseBytes":response_bytes}));
+        }
+        report["compactSearch"] = json!(searches);
         if std::env::var("OTTPLAY_EPG_TEST_REFRESH").as_deref() == Ok("1") {
             let refresh_started = std::time::Instant::now();
             let replacement = Snapshot::from_xml(&xml, now + 1).unwrap();

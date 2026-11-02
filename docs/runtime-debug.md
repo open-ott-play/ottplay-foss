@@ -82,11 +82,14 @@ An unavailable or unsupported producer reports `null`, never fabricated zeros.
 
 `lastAttempt` preserves one most recently retired attachment per lane, with the
 same counters plus `handleId`, `generation` (nullable), and `reason` (`ended`,
-`disposed`, or `suspended`). Natural EOF captures this record before synchronous
-playback disposal can erase the engine; later disposal preserves its `ended`
-reason. The next retirement replaces it. Acceptance of a complete playback must
-match this final record to the observed handle, generation and attachment and
-check its counters, including when no live handle remains. A mismatched or
+`disposed`, or `suspended`). Natural EOF and terminal failure capture this record
+before synchronous playback disposal can erase the engine. For wire
+compatibility, an internal terminal failure is reported as `disposed`, with its
+`fatalErrors` and other counters preserved; natural EOF retains `ended`. The next
+retirement replaces it. Only `ended` indicates natural completion. Acceptance of a
+complete playback must match this final record to the observed handle, generation
+and attachment and check its counters, including when no live handle remains. A
+mismatched or
 missing record cannot prove that playback finished without retry or fallback.
 Neither observation exports source URLs, arbitrary strings or credentials.
 Versions 1 and 2 neither read these producers nor add these fields.

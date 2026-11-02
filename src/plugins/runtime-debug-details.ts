@@ -31,12 +31,12 @@ function playbackAttempt(value: any, retired = false): any {
     if (retired) {
         result.handleId = value.handleId;
         result.generation = value.generation;
-        result.reason = value.reason;
+        result.reason = value.reason === "failed" ? "disposed" : value.reason;
         valid =
             valid &&
             debugInteger(value.handleId) &&
             (value.generation === null || debugInteger(value.generation)) &&
-            ["ended", "disposed", "suspended"].indexOf(value.reason) >= 0;
+            ["ended", "disposed", "suspended"].indexOf(result.reason) >= 0;
     }
     return valid ? result : null;
 }

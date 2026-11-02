@@ -1756,7 +1756,12 @@ function createPlexClient(
                 );
         } else request(path, params, token, accept);
     }
-    function resolve(item: any, done: (item: any) => void): void {
+    function resolve(
+        item: any,
+        done: (item: any) => void,
+        _automatic?: boolean,
+        accepted?: () => void
+    ): void {
         cancel();
         var token = revision;
         var finished = false;
@@ -1782,6 +1787,7 @@ function createPlexClient(
             finish(null);
             return;
         }
+        if (accepted && current(token)) accepted();
         var requestPath = item.request.path;
         release();
         function run(): void {
@@ -2138,9 +2144,16 @@ function createPlexClient(
         page: page,
         persist: persist,
         play: function (item: any) {
-            resolve(item, function (playable) {
-                w._playMedia(playable);
-            });
+            resolve(
+                item,
+                function (playable) {
+                    w._playMedia(playable, false, true);
+                },
+                false,
+                function () {
+                    w.__ottSetInfoInteraction?.(false);
+                }
+            );
         },
         queue: function (ids: string[], done: (result: any) => void) {
             cancel();

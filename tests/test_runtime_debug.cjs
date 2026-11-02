@@ -312,12 +312,26 @@ async function test(name, run) {
             current: () => null,
             lastAttempt: () => value,
         });
-        const data = plain(await f.api.snapshot(3));
-        assert.equal(data.media[0].attempt, null);
-        assert.deepEqual(data.media[0].lastAttempt, final);
-        assert(!JSON.stringify(data).includes(secret));
+        for (const reason of ["ended", "disposed", "suspended", "failed"]) {
+            const expected = {
+                ...final,
+                reason: reason === "failed" ? "disposed" : reason,
+            };
+            value = {
+                ...final,
+                error: { message: secret },
+                reason,
+                url: secret,
+            };
+            const data = plain(await f.api.snapshot(3));
+            assert.equal(data.media[0].attempt, null);
+            assert.deepEqual(data.media[0].lastAttempt, expected);
+            assert(!JSON.stringify(data).includes(secret));
+        }
         for (const patch of [
             { reason: secret },
+            { reason: "unknown" },
+            { reason: "" },
             { handleId: -1 },
             { generation: "7" },
             { streamRetries: Infinity },

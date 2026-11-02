@@ -267,7 +267,7 @@ test("webOS Plex arrows seek only behind no list or dialog and preserve volume k
     ]);
     assert.deepEqual(seeks, []);
 });
-test("Local videos arrows change files after finite classification and respect screen ownership", ({
+test("navigation arrows change channels and files without becoming archive seek", ({
     w,
     key,
 }) => {
@@ -357,18 +357,37 @@ test("Local videos arrows change files after finite classification and respect s
         ],
         "custom direction bindings are retained"
     );
-    w.__ottActiveProviderDriver = { id: "m3u" };
-    for (const mode of [12345, -1e11]) {
-        w.playType = mode;
-        key(w.keys.UP);
-        key(w.keys.DOWN);
-        assert.deepEqual(
-            seeks.splice(0),
-            [0, 60],
-            "nonlocal archives/VOD keep Seek"
-        );
-        assert.deepEqual(selected, []);
+    for (const provider of ["m3u", "vportal", "plex", "stalker", "torrent"]) {
+        w.__ottActiveProviderDriver = { id: provider };
+        for (const mode of [0, 12345, -1e11]) {
+            w.playType = mode;
+            key(w.keys.UP);
+            key(w.keys.DOWN);
+            assert.deepEqual(
+                selected.splice(0),
+                [
+                    [2, 0],
+                    [2, 1],
+                ],
+                provider +
+                    " retains reversed navigation bindings in mode " +
+                    mode
+            );
+            assert.deepEqual(seeks, [], "navigation never opens Seek");
+        }
     }
+    w.settings.auFun = 18;
+    w.settings.adFun = 19;
+    w.shiftArchive = (seconds) => seeks.push(seconds);
+    key(w.keys.UP);
+    key(w.keys.DOWN);
+    assert.deepEqual(
+        seeks.splice(0),
+        [-60, 60],
+        "explicit minute-seek bindings remain available"
+    );
+    w.settings.auFun = 16;
+    w.settings.adFun = 15;
     w.playType = 0;
     key(w.keys.UP);
     key(w.keys.DOWN);

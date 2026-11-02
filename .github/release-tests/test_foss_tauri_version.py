@@ -11,6 +11,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
+from importlib import import_module
 from pathlib import Path
 
 
@@ -289,6 +290,44 @@ class FossTauriVersionTests(unittest.TestCase):
                     }
                 ],
             )
+
+            # Matching versions and parsed TOML are not enough: a build must
+            # retain the exact Cargo.lock bytes recorded in the frozen inputs.
+            staging = import_module("stage_release_assets")
+            frozen_paths = (
+                checkout / ".release-plan.json",
+                checkout / ".release-inputs.json",
+                receipt,
+            )
+            frozen_bytes = {path: path.read_bytes() for path in frozen_paths}
+            baseline = staging.stage(
+                checkout, "windows-baseline", ["release-assets/windows-fixture.bin"]
+            )
+            self.assertEqual(
+                (baseline / "windows-fixture.bin").read_bytes(), b"windows fixture\n"
+            )
+
+            lock = checkout / "Cargo.lock"
+            prepared_lock = synchronized["Cargo.lock"]
+            lock.write_bytes(prepared_lock + b"\n")
+            self.assertEqual(
+                tomllib.loads(lock.read_text(encoding="utf-8")),
+                tomllib.loads(prepared_lock.decode("utf-8")),
+            )
+            planner.sync_versions(checkout, policy, plan, check=True)
+            with self.assertRaisesRegex(
+                ValueError,
+                r"Version input changed after plan preparation: Cargo\.lock",
+            ):
+                staging.stage(
+                    checkout,
+                    "windows-whitespace",
+                    ["release-assets/windows-fixture.bin"],
+                )
+            self.assertFalse((assets / "windows-whitespace").exists())
+            self.assertEqual(lock.read_bytes(), prepared_lock + b"\n")
+            for path, contents in frozen_bytes.items():
+                self.assertEqual(path.read_bytes(), contents)
 
 
 if __name__ == "__main__":

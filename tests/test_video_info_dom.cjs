@@ -34,7 +34,11 @@ const core = functions("src/core/index.ts", [
     "coreCall",
     "updateCoreVideoInfo",
 ]);
-const ui = functions("src/ui/index.ts", ["showChannelInfo", "infoBarHide"]);
+const ui = functions("src/ui/index.ts", [
+    "setInfoInteraction",
+    "showChannelInfo",
+    "infoBarHide",
+]);
 
 function fixture() {
     const dom = new JSDOM(

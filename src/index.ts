@@ -301,6 +301,7 @@ import {
     restoreListPanelState,
     saveListPanelState,
     selColorDialog,
+    setInfoInteraction,
     setSelect,
     showChannelInfo,
     showEditKey1,
@@ -2760,6 +2761,7 @@ function setupTauriEpgCacheReady(): void {
  * @param committed - Optional callback after asynchronous media dispatch settles.
  * @param postSelection - Persistent internal guard: selected=false after owned Stop,
  * before selecting; selected=true (default) while the new media resolves.
+ * @param preserveInfo - The owned request already reset info before asynchronous work.
  *
  * Side effects: Calls stbStop(), setCurrent(), updateChannelInfo(),
  * showChannelInfo(), stbPlay(). Sets window.playType = 0. Creates a
@@ -2782,7 +2784,8 @@ function _playChannel(
     background = false,
     fromStart = false,
     committed?: (ok: boolean) => void,
-    postSelection?: (loadingOwner?: any, selected?: boolean) => boolean
+    postSelection?: (loadingOwner?: any, selected?: boolean) => boolean,
+    preserveInfo = false
 ): boolean | void {
     var w = window as any;
     if (w.__ottStandby?.blocked()) return false;
@@ -2852,7 +2855,8 @@ function _playChannel(
                     background,
                     fromStart,
                     committed,
-                    postSelection
+                    postSelection,
+                    preserveInfo
                 );
         })
     ) {
@@ -2986,7 +2990,8 @@ function _playChannel(
                     (kiosk && kiosk.locked() && kiosk.allowed(channelId))
                   ? "resume"
                   : "prompt",
-            committed
+            committed,
+            preserveInfo
         );
     }
     if (
@@ -3003,8 +3008,9 @@ function _playChannel(
         )
             return false;
     } else w.playType = 0;
+    if (!preserveInfo) setInfoInteraction(false);
     updateChannelInfo(channelId);
-    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout, null);
     if (typeof setPlayer === "function") setPlayer();
     stbPlay(getChannelUrl(channelId), resume && resume.position);
     clearTimeout(w._tmedia);
@@ -3013,7 +3019,11 @@ function _playChannel(
 }
 
 /** Start a resolved MediaRef and render its metadata. The owned media journal chooses resume. */
-function _playMedia(item: MediaHistoryEntry, automatic = false): void {
+function _playMedia(
+    item: MediaHistoryEntry,
+    automatic = false,
+    preserveInfo = false
+): void {
     if ((window as any).__ottStandby?.blocked()) return;
     var kiosk = (window as any).__ottKiosk;
     var channelLaunch =
@@ -3056,6 +3066,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     if (channelLaunch == null) setCurrent(catIndex, -1);
     var media = (window as any).__ottMedia.prepare(item, streamUrl);
     if (!media) return;
+    if (!preserveInfo) setInfoInteraction(false);
     item = media.item;
     var resumePos = media.resume;
     var startupPosition = media.resumeStartup ? resumePos : undefined;
@@ -3078,7 +3089,7 @@ function _playMedia(item: MediaHistoryEntry, automatic = false): void {
     $("#programm_name2").text("");
     $("#programm_duration").text("");
     $("#programm_descr").html(getMediaDescr(item));
-    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout);
+    if (settings.infoSwitch) showChannelInfo(settings.infoTimeout, null);
     var mediaHost = window as any;
     var mediaDriver = mediaHost.__ottActiveProviderDriver;
     var mediaLoad = mediaHost.__ottCommandChannelLoad;

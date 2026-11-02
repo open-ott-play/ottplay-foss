@@ -1422,6 +1422,8 @@ function channelStepFixture() {
         ts.transpileModule(
             sourceFunction("src/channels/index.ts", "getChannelUrl") +
                 "\n" +
+                sourceFunction("src/ui/index.ts", "setInfoInteraction") +
+                "\n" +
                 sourceFunction("src/index.ts", "_playChannel") +
                 "\nexports.play = _playChannel;",
             { compilerOptions: { target: ts.ScriptTarget.ES5 } }

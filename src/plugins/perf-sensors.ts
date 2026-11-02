@@ -111,12 +111,16 @@ function createPerformanceSensors(w: any, ports: any): any {
                 integer(value.handleId) === null ||
                 (value.generation !== null &&
                     integer(value.generation) === null) ||
-                ["ended", "disposed", "suspended"].indexOf(value.reason) < 0
+                ["ended", "disposed", "suspended", "failed"].indexOf(
+                    value.reason
+                ) < 0
             )
                 return null;
             result.handleId = value.handleId;
             result.generation = value.generation;
-            result.reason = value.reason;
+            // Existing capture versions expose failures as disposal, with fatal counters.
+            result.reason =
+                value.reason === "failed" ? "disposed" : value.reason;
         }
         return result;
     }
@@ -549,6 +553,8 @@ function createPerformanceSensors(w: any, ports: any): any {
             ["ERROR", "error"],
             ["LEVEL_SWITCHED", "abr"],
         ].forEach(function (pair) {
+            // Main playback reports before its error handler can retire the owner.
+            if (pair[0] === "ERROR" && hls.__ottPerfErrors) return;
             var name = events[pair[0]];
             if (!name) return;
             var callback = function (_event: any, data: any) {
@@ -942,6 +948,16 @@ function createPerformanceSensors(w: any, ports: any): any {
     return {
         changed: function () {
             safe(refresh);
+        },
+        hlsError: function (hls: any, data: any) {
+            safe(function () {
+                refresh();
+                var owner = owners.main;
+                if (!owner || owner.hls !== hls || !attached(owner)) return;
+                hlsBufferPolicy(owner, "hls_event");
+                hlsErrorAction(owner, data);
+                hlsEvent(owner, "error", data);
+            });
         },
         notification: notification,
         recovery: function (key: string) {

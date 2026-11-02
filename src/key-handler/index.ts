@@ -436,27 +436,25 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
             1
     )
         return false;
-    var direction =
-        event.key === "ArrowLeft" || event.code === "ArrowLeft"
+    function namedArrow(name: string): boolean {
+        return event.key === name || event.code === name;
+    }
+    var direction = namedArrow("ArrowLeft")
+        ? -1
+        : namedArrow("ArrowRight")
+          ? 1
+          : event.keyCode === 37
             ? -1
-            : event.key === "ArrowRight" || event.code === "ArrowRight"
+            : event.keyCode === 39
               ? 1
-              : event.keyCode === 37
-                ? -1
-                : event.keyCode === 39
-                  ? 1
-                  : 0;
-    var fileDirection =
-        event.key === "ArrowUp" ||
-        event.code === "ArrowUp" ||
-        event.keyCode === 38
+              : 0;
+    var verticalDirection =
+        namedArrow("ArrowUp") || event.keyCode === 38
             ? 1
-            : event.key === "ArrowDown" ||
-                event.code === "ArrowDown" ||
-                event.keyCode === 40
+            : namedArrow("ArrowDown") || event.keyCode === 40
               ? -1
               : 0;
-    if (!direction && !fileDirection) return false;
+    if (!direction && !verticalDirection) return false;
     var seek = !!(event.altKey || event.ctrlKey || event.metaKey);
     if (!seek && !/^pc(?:2)?$/.test(w.ott_device || "")) return false;
     var provider = w.__ottActiveProviderDriver;
@@ -466,11 +464,10 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     var kiosk = w.__ottKiosk;
     var standby = w.__ottStandby;
     // Native video controls can consume vertical keys before the bubble handler.
-    // Local files use finite channels, without a media-library queue owner.
+    // Route these through the same configured channel/queue action as a remote.
     if (
-        fileDirection &&
-        (!localFile ||
-            seek ||
+        verticalDirection &&
+        (seek ||
             (standby && standby.blocked()) ||
             (kiosk && kiosk.screenBlocked && kiosk.screenBlocked()))
     )
@@ -504,18 +501,13 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
         return false;
     port.reconcile();
     if (port.screens.current()) return false;
-    var action = fileDirection
-        ? fileDirection > 0
-            ? "plusProg"
-            : "minusProg"
-        : seek
-          ? "shiftArchive"
-          : "changeVolume";
+    var action = seek ? "shiftArchive" : "changeVolume";
     var playback = w.__ottClassicPlayback;
     if (
         !playback ||
         typeof playback.snapshot !== "function" ||
-        typeof w[action] !== "function"
+        (!verticalDirection && typeof w[action] !== "function") ||
+        (verticalDirection && typeof port.normalize !== "function")
     )
         return false;
     var state = playback.snapshot();
@@ -524,9 +516,10 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     if (
         !target ||
         (seek && state.phase !== "playing" && state.phase !== "paused") ||
-        (fileDirection &&
-            (target.kind !== "vod" ||
-                !history ||
+        (verticalDirection &&
+            localFile &&
+            target.kind === "vod" &&
+            (!history ||
                 history.kind !== "live" ||
                 target.channelId !== "channel:" + history.channelId ||
                 target.sourceId !== history.sourceId))
@@ -536,7 +529,8 @@ export function tryKeyboardSeek(event: KeyboardEvent): boolean {
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
     if (typeof w.setSleepTimeout === "function") w.setSleepTimeout();
-    if (fileDirection) w[action]();
+    if (verticalDirection)
+        handleMainKey(verticalDirection > 0 ? w.keys.UP : w.keys.DOWN, event);
     else if (seek) w.shiftArchive(direction * 10);
     else w.changeVolume(direction * w.sVolumeStep);
     return true;
@@ -576,6 +570,9 @@ export function keyHandler(event: KeyboardEvent): void {
         kiosk.strictKey(event);
         return;
     }
+    // Native Android, touch and CLI keys enter here without a DOM event phase.
+    // Give the focused Modern player controls the same ownership as DOM keys.
+    if ((window as any).__ottModernPlayer?.handleKey?.(event)) return;
     if (
         typeof (window as any).__ottTryKeyboardFavorites === "function" &&
         (window as any).__ottTryKeyboardFavorites(event)
@@ -1002,14 +999,13 @@ export function dispatchKey(keyCode: number, event?: Event): void {
  *             toggleAspectRatio, toggleAudioTrack, togglePip, stbStopPip, bucketsList, epgList,
  *             popMedia, joyMenu, changeVolume, shiftArchive, plusProg/minusProg, toggleSubtitle,
  *             playArchive, playChannel, showShift, timeShift.
- * @analysis Functions 15/16/19/20/21 branch on playType to choose between shift-archive and live-channel actions.
+ * @analysis Navigation bindings 15/16 keep their meaning for live, archive and VOD.
+ *             Functions 19/20/21 branch on playType for explicit archive actions.
  *             Function 20 handles the "restart current program" use case with boundary checking against epgArray.
  */
 export function keyFun(fn: number): void {
     var w = window as any;
     var id = w.__ottInputRouter.binding(fn);
-    // Local videos are finite media, but these bindings still change files.
-    var localVideos = w.__ottActiveProviderDriver?.id === "offline";
     function call(name: string, ...args: any[]) {
         if (typeof w[name] === "function") return w[name].apply(w, args);
     }
@@ -1051,12 +1047,10 @@ export function keyFun(fn: number): void {
             call("popupList");
         },
         "navigation.backward": function () {
-            if (w.playType && !localVideos) call("shiftArchiveSelect", 0);
-            else call("minusProg");
+            call("minusProg");
         },
         "navigation.forward": function () {
-            if (w.playType && !localVideos) call("shiftArchiveSelect", 60);
-            else call("plusProg");
+            call("plusProg");
         },
         "navigation.quick": function () {
             call("joyMenu");

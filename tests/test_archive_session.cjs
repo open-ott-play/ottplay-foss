@@ -157,6 +157,113 @@ function fixture() {
     return c;
 }
 
+// Remote archive selection must open the selected programme with the real
+// playback coordinator, including when a different live channel is active.
+for (const channelId of [101, 202]) {
+    const c = fixture();
+    c.getChannelPicon = (id) => "logo:" + id;
+    include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.sStopPlay = 1;
+    c.__ottClassicPlayback.command({ type: "playing" });
+    c.parentalArray = [];
+    let resolutions = 0;
+    c.getArchiveUrl = (id, start, end) => {
+        resolutions++;
+        return resolutions === 1
+            ? `https://archive.example/${id}?start=${start}&end=${end}`
+            : "https://live.example/changed-provider-result";
+    };
+    let reply;
+    c.handleRemoteArchive(
+        c,
+        {
+            action: "play_archive_catalog",
+            params: { end: 999100, start: 999000, title: "Selected programme" },
+        },
+        { id: String(channelId) },
+        () => true,
+        (data) => {
+            reply = data;
+        },
+        (message) => assert.fail(message)
+    );
+    assert.equal(reply?.dispatched, true);
+    assert.equal(reply.mode, "archive");
+    assert.equal(resolutions, 1, "dispatch uses the URL that was validated");
+    assert.deepEqual(c.opens(), [
+        [
+            "open",
+            `https://archive.example/${channelId}?start=999000&end=999100`,
+            0,
+        ],
+    ]);
+    const state = c.__ottClassicPlayback.snapshot();
+    assert.equal(state.target.kind, "archive");
+    assert.equal(state.target.channelId, String(channelId));
+    assert.equal(
+        c.elements.channel_name.textContent,
+        c.channels[channelId].channel_name
+    );
+    assert.equal(
+        c.elements.picon.style.backgroundImage,
+        `url("logo:${channelId}")`
+    );
+    assert.equal(state.target.archiveStart, 999000);
+}
+
+// A refusal must not be reported as a dispatch or revive later after a PIN
+// callback. Keep the prior live decoder untouched in both cases.
+for (const refusal of [
+    "kiosk",
+    "authorization",
+    "source-change",
+    "mode-veto",
+]) {
+    const c = fixture();
+    include(c, ["handleRemoteArchive"], "src/commands/remote-archive.ts");
+    c.sStopPlay = 1;
+    c.__ottClassicPlayback.command({ type: "playing" });
+    c.parentalArray = [];
+    c.getArchiveUrl = () => "https://archive.example/selected";
+    let checks = 0;
+    let allowed;
+    c.ifParentalAccessChId = (_id, callback) => {
+        checks++;
+        if (checks > 1 && refusal === "authorization") {
+            allowed = callback;
+            return true;
+        }
+        if (checks > 1 && refusal === "source-change") c.p_pref = "source-b";
+        return false;
+    };
+    if (refusal === "kiosk") c.__ottKiosk = { enabled: () => true };
+    if (refusal === "mode-veto") {
+        const command = c.__ottClassicPlayback.command;
+        c.__ottClassicPlayback.command = (request) =>
+            request.type === "archive" ? false : command(request);
+    }
+    let rejected;
+    c.handleRemoteArchive(
+        c,
+        {
+            action: "play_archive_catalog",
+            params: { end: 999100, start: 999000, title: "Selected programme" },
+        },
+        { id: "202" },
+        () => true,
+        () => assert.fail("An unopened archive must not be acknowledged"),
+        (message) => {
+            rejected = message;
+        }
+    );
+    assert.equal(rejected, "Archive dispatch cancelled.");
+    if (allowed) allowed();
+    assert.deepEqual(c.opens(), []);
+    assert.equal(c.effects.filter((effect) => effect[0] === "stop").length, 0);
+    assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "live");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+}
+
 // A live now/next subscription survives entering archive. Archive ticks and
 // late guide replies must not repaint its footer with the wall-clock programme.
 {
@@ -596,6 +703,108 @@ for (const change of [
         "Coordinator-owned backend replacement is not external cancellation"
     );
     assert.equal(c.__ottClassicPlayback.snapshot().target.kind, "archive");
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+}
+// A synchronous stop callback may replace the source or selection. Never open
+// the previously admitted archive over that newer choice.
+for (const [change, phase] of [
+    [
+        (c) => {
+            c.p_pref = "source-b";
+        },
+        "stopped",
+    ],
+    [
+        (c) => {
+            c.primaryIndex = 1;
+        },
+        "stopped",
+    ],
+    [
+        (c) => c.__ottClassicPlayback.command({ channelId: 101, type: "live" }),
+        "loading",
+    ],
+    [
+        (c) =>
+            c.__ottClassicPlayback.command({
+                archiveStart: 998050,
+                channelId: 101,
+                type: "archive",
+            }),
+        "loading",
+    ],
+]) {
+    const c = fixture();
+    c.sStopPlay = 1;
+    const stop = c.stbStop;
+    const play = c.stbPlay;
+    let decoder = { url: "previous-live" };
+    let replacementState;
+    c.stbPlay = (url, position) => {
+        decoder = { position, url };
+        play(url, position);
+    };
+    c.stbStop = () => {
+        decoder = null;
+        stop();
+        change(c);
+        replacementState = JSON.stringify(c.__ottClassicPlayback.snapshot());
+    };
+    assert.equal(
+        c.__ottClassicArchive.open(999050, "https://archive.example/selected"),
+        false
+    );
+    assert.deepEqual(c.opens(), []);
+    assert.equal(
+        decoder,
+        null,
+        "retired archive cannot start an unadmitted source"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, phase);
+    assert.equal(
+        JSON.stringify(c.__ottClassicPlayback.snapshot()),
+        replacementState,
+        "pending replacement retains its own state and startup authority"
+    );
+}
+for (const type of ["live", "archive"]) {
+    const c = fixture();
+    c.sStopPlay = 1;
+    const stop = c.stbStop;
+    const play = c.stbPlay;
+    let decoder = { url: "previous-live" };
+    let replacementState;
+    const url = "https://replacement.example/" + type;
+    c.stbPlay = (url, position) => {
+        decoder = { position, url };
+        play(url, position);
+    };
+    c.stbStop = () => {
+        decoder = null;
+        stop();
+        c.__ottClassicPlayback.command({
+            archiveStart: 998050,
+            channelId: 101,
+            type,
+        });
+        c.stbPlay(url, 37);
+        replacementState = JSON.stringify(c.__ottClassicPlayback.snapshot());
+    };
+    assert.equal(
+        c.__ottClassicArchive.open(999050, "https://archive.example/retired"),
+        false
+    );
+    assert.deepEqual(decoder, { position: 37, url });
+    assert.deepEqual(
+        c.opens(),
+        [["open", url, 37]],
+        "replacement is neither restarted nor overwritten"
+    );
+    assert.equal(c.__ottClassicPlayback.snapshot().phase, "playing");
+    assert.equal(
+        JSON.stringify(c.__ottClassicPlayback.snapshot()),
+        replacementState
+    );
 }
 // First display of a missing/terminal programme refreshes independently of renderer changes.
 for (const empty of [false, true]) {

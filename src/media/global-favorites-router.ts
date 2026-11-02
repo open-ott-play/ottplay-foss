@@ -18,7 +18,11 @@ export function createGlobalFavoritesRouter(ports: any): any {
     function cancel(): void {
         if (running) running.finish("cancelled");
     }
-    function select(id: string, externalCurrent?: () => boolean): any {
+    function select(
+        id: string,
+        externalCurrent?: () => boolean,
+        preserveInfo = false
+    ): any {
         cancel();
         playing = null;
         var active = true,
@@ -94,6 +98,15 @@ export function createGlobalFavoritesRouter(ports: any): any {
             finish("timeout");
         }, 30000);
         publish("loading");
+        if (
+            !preserveInfo &&
+            typeof id === "string" &&
+            id.length > 0 &&
+            (!externalCurrent || externalCurrent()) &&
+            ports.current() &&
+            ports.onSelect
+        )
+            ports.onSelect();
         Promise.resolve()
             .then(async function () {
                 snapshot = await ports.snapshot();
@@ -162,9 +175,13 @@ export function createGlobalFavoritesRouter(ports: any): any {
                     return;
                 }
                 if (!guard()) return;
-                var accepted = await session.play(resolved, function () {
-                    return guard(true);
-                });
+                var accepted = await session.play(
+                    resolved,
+                    function () {
+                        return guard(true);
+                    },
+                    true
+                );
                 if (!active || !guard()) return;
                 if (accepted !== true) {
                     finish("unavailable");

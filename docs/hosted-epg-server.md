@@ -1,7 +1,7 @@
 # Hosted EPG service v1
 
 `EPG_ONLY=true` runs the Rust server as a restricted public guide service. It
-exposes only `/health`, `/epg/v1/health`, `/epg/v1/match`, `/epg/v1/current` and
+exposes only `/health`, `/epg/v1/health`, `/epg/v1/match`, `/epg/v1/current`, `/epg/v1/search` and
 `/epg/v1/programmes`. The ordinary server is unchanged when this variable is
 absent or false. Bind/TLS flags retain their existing behavior.
 
@@ -9,9 +9,47 @@ The administrator-owned source is `epg-one`, fixed to
 `https://cdn.epg.one/epg2.xml.gz`. If `EPG_URLS` is supplied in this mode it must
 be exactly that URL. HTTP redirects are disabled. Clients cannot submit feed,
 playlist, stream or proxy URLs. No playlist session or provider credentials are
-stored. The intended public ingress forwards only the match, current and programmes
+stored. The intended public ingress forwards only the match, current, search and programmes
 routes; keep the health routes internal. A same-origin here.now proxy avoids a
 cross-origin dependency on LG. This API does not enable CORS itself.
+
+## Container build and launch
+
+The shared Dockerfile has a dedicated `epg` target. It builds the native server
+without compiling or packaging the player frontend, so a guide-only deployment
+does not depend on JavaScript bundle budgets. Its `server-runtime` base retains
+the pinned Alpine image, CA certificates, nonroot user, port and startup command
+used by the complete player image. The `epg` target defaults `EPG_ONLY=true`.
+
+```sh
+docker build --target epg -t ottplay-epg:local .
+docker run --rm --read-only --cap-drop=ALL \
+  --security-opt=no-new-privileges --memory=2g --cpus=2 \
+  -p 127.0.0.1:8080:8080 ottplay-epg:local
+```
+
+Check `/health` for liveness and `/epg/v1/health` for readiness. Readiness returns
+503 while the first public guide downloads and parses; wait for fresh metadata
+before routing clients to the container. Plan memory for both snapshots during
+refresh. The optional disk cache requires a separate writable private mount.
+
+For an ARM64 deployment, build the same target from the reviewed commit and
+publish to the dedicated EPG package:
+
+```sh
+docker buildx build --platform linux/arm64 --target epg \
+  --label org.opencontainers.image.revision="$(git rev-parse HEAD)" \
+  --label org.opencontainers.image.source=https://github.com/open-ott-play/ottplay-foss \
+  -t ghcr.io/open-ott-play/ottplay-epg:RELEASE_TAG --push .
+```
+
+Verify the published architecture and source revision, then deploy its immutable
+digest. A newly created package must permit the deployment's pull identity
+(anonymous pulls require public visibility). Qualify a candidate without the
+production Service's selector labels before replacing the production image.
+
+Without `--target epg`, Docker still builds the final `player` target with the
+validated web assets. It does not inherit `EPG_ONLY` from the sibling `epg` stage.
 
 ## Matching
 
@@ -90,6 +128,67 @@ at **2 MiB**, including escaped strings; exceeding it returns 422
 `stale` is explicit, and clients should not automatically tune from stale
 results. This fixed-source endpoint does not substitute for another provider's
 private guide or a custom XMLTV feed.
+
+## Compact programme search
+
+Responses advertise `searchVersion: 1` when `POST /epg/v1/search` is available.
+The request uses the current endpoint's channel fields plus integer
+`archiveHours` (0–144), a nonempty `search`, and optionally the expected
+`generation`. Requests remain bounded to 2048 channels and 512 KiB. CLI clients
+use smaller 256-channel batches and require the same generation in every batch.
+
+```json
+{"version":1,"source":"epg-one","generation":"opaque","search":"три кота","channels":[{"id":"local-42","tvgId":"","tvgName":"","name":"СТС Kids HD","shift":0,"archiveHours":144}]}
+```
+
+The response includes ordinary freshness metadata, `asOf`, `checked`, `total`,
+`complete: true`, `validUntil` (Unix seconds), and the text profile
+`archive-nfkc-casefold-words-u17-v1`. `current` contains literal current-title
+matches as `{id,start,end,title}`. `archiveCurrent` contains current matches using
+the archive word predicate. `archives` contains `{id,rows:[{start,end,title}]}`
+for each complete contiguous matching chain. Gaps, overlaps and nonmatching
+rows break chains; filtering matching titles first would incorrectly join them.
+Descriptions and media URLs are not returned. The entire response is capped at
+2 MiB and 10,000 candidate rows; exceeding a limit rejects it atomically.
+
+The archive predicate pins Unicode 17 normalization/case folding, treats `ё`
+as `е`, and requires all normalized query terms. `current` retains the existing
+literal semantics. `validUntil` never exceeds the next relevant schedule
+boundary, refresh expiry, retention expiry or sixty seconds from `asOf`.
+Clients must recheck current programmes after that boundary before choosing an
+archive. Availability remains a separate authenticated player/provider check.
+
+Each snapshot caches exact raw `(tvgId,tvgName,name)` matching inputs, including
+negative results (16,384 entries/16 MiB). Fully cached requests use a separate
+four-reader lane; uncached requests retain matcher admission and deadlines.
+A deduplicated title-normalization index is limited to 32 MiB. Per-query
+retained rows, normalized scratch and response allocation are independently
+bounded; irrelevant old rows do not consume the retained timeline budget.
+The cache is discarded with its generation, so refresh cannot reuse old matches.
+
+## Optional local restart cache
+
+Set `EPG_CACHE_DIR` to a private persistent directory to retain the last accepted
+compressed canonical feed in `snapshot.bin`. Writes are atomic and include the
+source hash, content checksum and original fetch time. Startup accepts only a
+regular, fresh, correctly checksummed file and reparses it before publishing a
+new generation. Missing, stale or corrupt files fall back to normal download;
+restoring a file never resets its age. Failed refresh keeps the accepted
+snapshot, with the normal stale flag after two hours.
+
+For a separate local CLI fallback, bind only loopback and keep this process
+independent of the ordinary player web server:
+
+```sh
+EPG_ONLY=true EPG_CACHE_DIR="$HOME/.cache/ottplay-control/epg-native" \
+  ./ottplay-server --host 127.0.0.1 --port 18792
+```
+
+The companion control-server repository documents the macOS LaunchAgent
+installer and optional `epg.fallback_url` in
+[the local EPG runbook](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/local-epg.md).
+A fresh cache can support guide lookup during a network outage; video playback
+still requires the media provider. Plan memory for both snapshots during refresh.
 
 ## Programmes
 

@@ -55,7 +55,12 @@ export function createGlobalFavoritesNavigation(ports: any): any {
             pending = null;
         }
     }
-    function advance(captured: any, direction: number, mode?: string): void {
+    function advance(
+        captured: any,
+        direction: number,
+        mode?: string,
+        preserveInfo = false
+    ): void {
         var token: any = {
             epoch: ++epoch,
             external: false,
@@ -103,7 +108,11 @@ export function createGlobalFavoritesNavigation(ports: any): any {
                     failed("changed");
                     return;
                 }
-                token.route = ports.select(token.target);
+                token.route = ports.select(
+                    token.target,
+                    undefined,
+                    preserveInfo
+                );
                 var result = await token.route.result;
                 if (!owned()) return;
                 if (!result || result.status !== "ok") {
@@ -129,7 +138,9 @@ export function createGlobalFavoritesNavigation(ports: any): any {
             return false;
         }
         ending = null;
-        advance(captured, direction);
+        // Reset once at admission; the later route must preserve new user input.
+        advance(captured, direction, undefined, true);
+        if (ports.onMove) ports.onMove();
         return true;
     }
     function active(): boolean {

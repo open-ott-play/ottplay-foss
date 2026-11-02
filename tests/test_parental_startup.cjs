@@ -91,7 +91,11 @@ const modules = {
         "keyHandler",
     ],
     "src/localization/index.ts": ["translate"],
-    "src/ui/index.ts": ["confirmBox", "localizedTextHtml"],
+    "src/ui/index.ts": [
+        "confirmBox",
+        "localizedTextHtml",
+        "setInfoInteraction",
+    ],
     "src/utils/helpers.ts": [
         "metadataText",
         "metadataHtml",

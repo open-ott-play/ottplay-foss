@@ -682,8 +682,21 @@ const COMPANION_DIAGNOSTICS_ALLOWANCE = Object.freeze({
     companion: Object.freeze({ bytes: 663, gzipBytes: 192 }),
     entry: Object.freeze({ bytes: 2158, gzipBytes: 737 }),
 });
+// Separate passive playback information from explicit menu interaction. Count
+// measured intent propagation in entry, two providers and two lazy assets once.
+// Paired real-version Node 26 builds preserve all previous headroom; no reserve
+// or generic provider-cap increase. VPortal and other assets remain unchanged.
+// Evidence: docs/evidence/modern-info-interaction-size-20261101.json.
+const MODERN_INFO_INTERACTION_ALLOWANCE = Object.freeze({
+    edem: Object.freeze({ bytes: 78, gzipBytes: 39 }),
+    entry: Object.freeze({ bytes: 1424, gzipBytes: 356 }),
+    favorites: Object.freeze({ bytes: 424, gzipBytes: 165 }),
+    plex: Object.freeze({ bytes: 291, gzipBytes: 111 }),
+    renderer: Object.freeze({ bytes: 769, gzipBytes: 206 }),
+});
 const BUDGET = Object.freeze({
     bytes:
+        MODERN_INFO_INTERACTION_ALLOWANCE.entry.bytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.entry.bytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.bytes +
@@ -711,6 +724,7 @@ const BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_INFO_INTERACTION_ALLOWANCE.entry.gzipBytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.entry.gzipBytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
         TORZNAB_DISCOVERY_ALLOWANCE.entry.gzipBytes +
@@ -917,6 +931,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
     // Preserve the independent Plex (+8000/+3000) and Local (+12200/+3400)
     // allocations exactly once, plus independent folder scans (+2560/+768).
     bytes:
+        MODERN_INFO_INTERACTION_ALLOWANCE.entry.bytes +
+        MODERN_INFO_INTERACTION_ALLOWANCE.edem.bytes +
+        MODERN_INFO_INTERACTION_ALLOWANCE.plex.bytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.entry.bytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.catalog.bytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.bytes +
@@ -954,6 +971,9 @@ const LEGACY_TOTAL_BUDGET = Object.freeze({
         RELATIVE_SEEK_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes,
     gzipBytes:
+        MODERN_INFO_INTERACTION_ALLOWANCE.entry.gzipBytes +
+        MODERN_INFO_INTERACTION_ALLOWANCE.edem.gzipBytes +
+        MODERN_INFO_INTERACTION_ALLOWANCE.plex.gzipBytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.entry.gzipBytes +
         COMPANION_DIAGNOSTICS_ALLOWANCE.catalog.gzipBytes +
         MODERN_EXPERIENCE_ALLOWANCE.entry.gzipBytes +
@@ -1000,6 +1020,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "favorites-transfer": Object.freeze({
         bytes:
+            MODERN_INFO_INTERACTION_ALLOWANCE.favorites.bytes +
             TORZNAB_DISCOVERY_ALLOWANCE.favorites.bytes +
             TORRENT_PROVIDER_ALLOWANCE.favorites.bytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"].bytes +
@@ -1010,6 +1031,7 @@ const OPTIONAL_BUDGETS = Object.freeze({
             FAVORITES_RECOVERY_OPTIONAL_ALLOWANCE.bytes +
             MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE.bytes,
         gzipBytes:
+            MODERN_INFO_INTERACTION_ALLOWANCE.favorites.gzipBytes +
             TORZNAB_DISCOVERY_ALLOWANCE.favorites.gzipBytes +
             TORRENT_PROVIDER_ALLOWANCE.favorites.gzipBytes +
             MODERN_INTERFACE_RELATED_ALLOWANCES["favorites-transfer"]
@@ -1044,10 +1066,12 @@ const OPTIONAL_BUDGETS = Object.freeze({
     }),
     "modern-interface": Object.freeze({
         bytes:
+            MODERN_INFO_INTERACTION_ALLOWANCE.renderer.bytes +
             MODERN_INTERFACE_OPTIONAL_ALLOWANCE.bytes +
             MODERN_PLAYER_OPTIONAL_ALLOWANCE.bytes +
             MODERN_EXPERIENCE_ALLOWANCE.renderer.bytes,
         gzipBytes:
+            MODERN_INFO_INTERACTION_ALLOWANCE.renderer.gzipBytes +
             MODERN_INTERFACE_OPTIONAL_ALLOWANCE.gzipBytes +
             MODERN_PLAYER_OPTIONAL_ALLOWANCE.gzipBytes +
             MODERN_EXPERIENCE_ALLOWANCE.renderer.gzipBytes,
@@ -1117,6 +1141,10 @@ const OPTIONAL_BUDGETS = Object.freeze({
 // Count independent folder scans once; preserve legacy plus optional allocation.
 const BASE_TOTAL_BUDGET = Object.freeze({
     bytes:
+        Object.values(MODERN_INFO_INTERACTION_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.bytes,
+            0
+        ) +
         Object.values(COMPANION_DIAGNOSTICS_ALLOWANCE).reduce(
             (sum, cap) => sum + cap.bytes,
             0
@@ -1185,6 +1213,10 @@ const BASE_TOTAL_BUDGET = Object.freeze({
         PLAYER_PRESENCE_ENTRY_ALLOWANCE.bytes +
         PLAYER_PRESENCE_TRANSPORT_ALLOWANCE.bytes,
     gzipBytes:
+        Object.values(MODERN_INFO_INTERACTION_ALLOWANCE).reduce(
+            (sum, cap) => sum + cap.gzipBytes,
+            0
+        ) +
         Object.values(COMPANION_DIAGNOSTICS_ALLOWANCE).reduce(
             (sum, cap) => sum + cap.gzipBytes,
             0
@@ -1446,6 +1478,7 @@ function saveBundleReport(root, optimizer, modules, measured, sets) {
         mixedGlobalFavoritesProviderAllowance:
             MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
         modernExperienceAllowance: MODERN_EXPERIENCE_ALLOWANCE,
+        modernInfoInteractionAllowance: MODERN_INFO_INTERACTION_ALLOWANCE,
         modernPlayerOptionalAllowance: MODERN_PLAYER_OPTIONAL_ALLOWANCE,
         modules,
         optimizer,
@@ -1779,6 +1812,7 @@ function writeBuildBundleReport(
                 MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
             mode: label(context.mode || "standard"),
             modernExperienceAllowance: MODERN_EXPERIENCE_ALLOWANCE,
+            modernInfoInteractionAllowance: MODERN_INFO_INTERACTION_ALLOWANCE,
             optimizerBinding: {
                 outputSha256: optimizer.outputSha256,
                 stagedExpectedSha256: expectedSha256,
@@ -1889,6 +1923,7 @@ module.exports = {
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_PROVIDER_ALLOWANCE,
     MODERN_EXPERIENCE_ALLOWANCE,
+    MODERN_INFO_INTERACTION_ALLOWANCE,
     MODERN_INTERFACE_ENTRY_ALLOWANCE,
     MODERN_INTERFACE_OPTIONAL_ALLOWANCE,
     MODERN_INTERFACE_RELATED_ALLOWANCES,

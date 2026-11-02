@@ -100,7 +100,7 @@ function createClassicChannelSearch(host: any) {
                     if (!accepted()) return;
                     host.updateChannelInfo(id);
                     if (!accepted()) return;
-                    if (host.sInfoSwitch) host.showChannelInfo(1);
+                    if (host.sInfoSwitch) host.showChannelInfo(1, null);
                     if (accepted()) host.playType = 0;
                     return;
                 }

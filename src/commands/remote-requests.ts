@@ -1552,7 +1552,6 @@ export function executeRemoteRequest(
                           "-" +
                           Math.random().toString(36).slice(2);
                 remoteEpgCatalog = {
-                    expires: Date.now() + 120000,
                     load: catalogLoad,
                     revision: revision,
                     signature: catalogSignature,
@@ -1563,6 +1562,8 @@ export function executeRemoteRequest(
                         Math.random().toString(36).slice(2),
                 };
             }
+            // A successful read grants a full lease for subsequent playback.
+            remoteEpgCatalog.expires = Date.now() + 120000;
             reply({
                 archive: {
                     revision: remoteEpgCatalog.revision,

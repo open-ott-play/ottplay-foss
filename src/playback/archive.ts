@@ -172,15 +172,17 @@ function createArchiveController(core: any, ports: ArchivePorts) {
         context: ArchiveContext,
         epoch: number,
         select: boolean,
-        rewind?: number
-    ): void {
+        rewind?: number,
+        resolvedUrl?: string
+    ): boolean {
         if (
             !isFinite(epoch) ||
             epoch <= 0 ||
             !valid(ticket, context) ||
             !available(context, epoch)
         )
-            return;
+            return false;
+        var opened = false;
         var model = view(context, Math.floor(epoch));
         model.rewind = rewind;
         var key = model.current
@@ -217,6 +219,7 @@ function createArchiveController(core: any, ports: ArchivePorts) {
                         )
                       : null;
                 if (!next || generation !== ticket || !next.isCurrent()) return;
+                opened = true;
                 owner = next;
                 active = {
                     context: next,
@@ -231,6 +234,7 @@ function createArchiveController(core: any, ports: ArchivePorts) {
         permit(ticket, context, function () {
             if (!available(context, model.position)) return;
             if (reusable) finish();
+            else if (resolvedUrl !== undefined) finish(resolvedUrl);
             else {
                 var resolved = false;
                 ports.resolve(context, model, function (url) {
@@ -240,20 +244,21 @@ function createArchiveController(core: any, ports: ArchivePorts) {
                 });
             }
         });
+        return opened;
     }
     function begin(
         action: (ticket: number, context: ArchiveContext) => void
-    ): void {
-        generation++;
+    ): number {
+        var ticket = ++generation;
         refill++;
         var captured = ports.capture();
-        if (!captured) return;
+        if (!captured) return ticket;
         var context: ArchiveContext = captured;
         prepare(context, true);
-        var ticket = generation;
         permit(ticket, context, function () {
             action(ticket, context);
         });
+        return ticket;
     }
     function fromLive(offset: number | null): void {
         begin(function (ticket, context) {
@@ -300,11 +305,19 @@ function createArchiveController(core: any, ports: ArchivePorts) {
             generation++;
             refill++;
         },
-        open: function (epoch: number): void {
-            if (!isFinite(epoch) || epoch <= 0) return;
-            begin(function (ticket, context) {
-                launch(ticket, context, epoch, false);
+        // Remote commands already resolved this exact URL. They may only
+        // acknowledge a synchronous dispatch, never a pending PIN callback.
+        open: function (epoch: number, url?: string): boolean {
+            if (!isFinite(epoch) || epoch <= 0 || url === "") return false;
+            var opened = false;
+            var ticket = begin(function (ticket, context) {
+                opened = launch(ticket, context, epoch, false, undefined, url);
             });
+            if (url !== undefined && !opened && generation === ticket) {
+                generation++;
+                refill++;
+            }
+            return opened;
         },
         pauseLive: function (): void {
             fromLive(null);

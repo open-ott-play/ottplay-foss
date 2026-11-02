@@ -254,6 +254,20 @@ const playSource = playerAst.statements
             ts.isFunctionDeclaration(node) && node.name?.text === "_playChannel"
     )
     .getText(playerAst);
+const playerUiAst = ts.createSourceFile(
+    "ui/index.ts",
+    fs.readFileSync(path.join(root, "src/ui/index.ts"), "utf8"),
+    ts.ScriptTarget.Latest,
+    true
+);
+const infoInteractionSource = playerUiAst.statements
+    .find(
+        (node) =>
+            ts.isFunctionDeclaration(node) &&
+            node.name?.text === "setInfoInteraction"
+    )
+    .getText(playerUiAst)
+    .replace(/^export /, "");
 function playbackFixture() {
     const events = [];
     const p = {
@@ -294,7 +308,7 @@ function playbackFixture() {
         updateChannelInfo() {},
     };
     p.window = p;
-    vm.runInNewContext(emit(playSource), p);
+    vm.runInNewContext(emit(infoInteractionSource + "\n" + playSource), p);
     p.playChannel = p._playChannel;
     return { events, p };
 }

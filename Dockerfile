@@ -49,11 +49,22 @@ COPY plugins ./plugins
 RUN cargo build --locked --release --bin ottplay-server
 
 # Musl runtime (no glibc). ca-certificates for outbound HTTPS (EPG / M3U).
-FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS server-runtime
 RUN apk add --no-cache ca-certificates \
  && adduser -D -H -u 65532 -g nonroot nonroot
 WORKDIR /app
 COPY --from=rust-build /app/target/release/ottplay-server ./ottplay-server
+USER nonroot
+EXPOSE 8080
+CMD ["./ottplay-server", "--port", "8080"]
+
+# The public guide needs only the native binary. Selecting this target does not
+# build or copy the player frontend, and keeps the shared runtime restrictions.
+FROM server-runtime AS epg
+ENV EPG_ONLY=true
+
+# Keep the default image as the complete player server, without EPG_ONLY set.
+FROM server-runtime AS player
 # Use the validated web root, including the runtime-only player image allowlist.
 # Copying source trees here would reintroduce retired and private assets.
 COPY --from=build /app/dist/index.html ./index.html
@@ -66,6 +77,3 @@ COPY --from=build /app/dist/styles ./styles
 COPY --from=build /app/dist/images ./images
 COPY --from=build /app/dist/locales ./locales
 COPY --from=build /app/dist/providers ./providers
-USER nonroot
-EXPOSE 8080
-CMD ["./ottplay-server", "--port", "8080"]

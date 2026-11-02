@@ -199,18 +199,32 @@ class Driver:
             code = proc.poll()
             return reaped(code) if code is not None else None
         def group_gone():
-            if not entry['ownership_verified']:
+            if entry['ownership_verified']:
+                pgid = entry['pgid']
+            elif entry.get('identity_state') == 'exited-before-identity' and entry['reaped']:
+                # start_new_session establishes the expected initial group, but
+                # a reaped child never grants authority to signal that number.
+                # Existing/reused groups and permission errors stay unknown.
+                pgid = entry['expected_pgid']
+                entry['group_gone'] = False
+            else:
                 return False
             try:
-                os.killpg(entry['pgid'], 0)
+                os.killpg(pgid, 0)
             except ProcessLookupError:
                 entry['group_gone'] = True
             return entry['group_gone']
         log_path = self.evidence / 'logs' / (name + '.log')
         try:
-            entry.update(pgid=os.getpgid(proc.pid), sid=os.getsid(proc.pid))
-            require(entry['pgid'] == entry['sid'] == proc.pid, 'Owned command identity differs')
-            entry['ownership_verified'] = True
+            try:
+                entry.update(pgid=os.getpgid(proc.pid), sid=os.getsid(proc.pid))
+            except ProcessLookupError:
+                if observe() is None:
+                    raise
+                entry.update(identity_state='exited-before-identity', expected_pgid=proc.pid)
+            else:
+                require(entry['pgid'] == entry['sid'] == proc.pid, 'Owned command identity differs')
+                entry['ownership_verified'] = True
             selector = selectors.DefaultSelector()
             os.set_blocking(proc.stdout.fileno(), False)
             selector.register(proc.stdout, selectors.EVENT_READ)

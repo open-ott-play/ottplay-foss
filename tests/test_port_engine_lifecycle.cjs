@@ -1921,6 +1921,221 @@ test("HLS quality-limited startup preserves finite positive resume positions and
         }
     }
 });
+function archiveFailureFixture() {
+    const f = fixture();
+    const { w } = f;
+    const timers = new Map();
+    let sequence = 0;
+    w.setTimeout = (fn) => {
+        timers.set(++sequence, fn);
+        return sequence;
+    };
+    w.clearTimeout = (id) => timers.delete(id);
+    w.setInterval = () => ++sequence;
+    w.clearInterval = () => {};
+    const state = {
+        generation: 1,
+        phase: "loading",
+        position: 120,
+        target: { channelId: "channel", kind: "archive", sourceId: "source" },
+    };
+    const commands = [];
+    w.__ottClassicPlayback = {
+        cancel() {},
+        command(command) {
+            commands.push(command);
+            if (command.type === "position") state.position = command.position;
+            else if (command.type === "stop") {
+                state.phase = "stopped";
+                state.generation++;
+            } else state.phase = command.type;
+        },
+        context() {
+            const generation = state.generation;
+            const active = () =>
+                generation === state.generation && state.phase !== "stopped";
+            return { isCurrentBackend: active, isCurrentSource: active };
+        },
+        importLegacy() {},
+        snapshot: () => state,
+    };
+    w.playerMode = 1;
+    const url = "https://source.invalid/archive.m3u8?start=1234&duration=1800";
+    w.stbPlay(url, 100);
+    function playing(time) {
+        Object.assign(w.video, {
+            currentTime: time,
+            duration: 500,
+            paused: false,
+            readyState: 4,
+        });
+        f.players.at(-1).hasEnoughToStart = true;
+        for (const callback of [...w.video.listeners.playing]) callback();
+    }
+    playing(100);
+    return { ...f, commands, playing, state, timers, url };
+}
+test("archive HLS failures without DOM errors preserve time, recover once and then stop truthfully", () => {
+    for (const type of ["network", "other"]) {
+        const { w, players, playing, state, timers, url } =
+            archiveFailureFixture();
+        const backend = w.__ottCoreBackend();
+        const handle = backend.current();
+        w.video.currentTime = 107.5;
+        const fatal = { details: "manifestParsingError", fatal: true, type };
+        players[0].events.error(null, fatal);
+        assert.equal(
+            state.phase,
+            "loading",
+            "internal HLS error is authoritative without a DOM error"
+        );
+        assert.equal(handle.snapshot().position, 127.5);
+        assert.equal(
+            w.video.currentTime,
+            0,
+            "destroy cleared the decoder clock"
+        );
+        assert.equal(timers.size, 1, "one bounded outer retry");
+        const [id, retry] = timers.entries().next().value;
+        timers.delete(id);
+        retry();
+        assert.equal(
+            players[1].url,
+            url,
+            "retry stays on the same archive window"
+        );
+        assert.equal(players[1].config.startPosition, 107.5);
+        playing(107.5);
+        assert.equal(state.phase, "playing");
+        w.video.currentTime = 109;
+        players[1].events.error(null, fatal);
+        assert.equal(
+            timers.size,
+            0,
+            "exhausted parse/decode budget cannot loop"
+        );
+        assert.equal(state.phase, "stopped");
+        assert.equal(state.position, 129);
+        assert.equal(backend.current(), null);
+        assert.equal(handle.snapshot().phase, "stopped");
+        assert.equal(backend.lastAttempt().reason, "failed");
+        assert.equal(backend.lastAttempt().fatalErrors, 2);
+        assert.equal(backend.lastAttempt().streamRetries, 1);
+        assert.equal(w.__ottStreamPolicy.snapshot().state, "failed");
+        retry();
+        assert.equal(
+            players.length,
+            2,
+            "late retry cannot revive terminated archive"
+        );
+    }
+});
+test("archive access denial stops without retry and preserves the failure reason", () => {
+    const { w, players, state, timers } = archiveFailureFixture();
+    w.video.currentTime = 111;
+    players[0].events.error(null, {
+        fatal: true,
+        response: { code: 403 },
+        type: "network",
+    });
+    assert.equal(state.phase, "stopped");
+    assert.equal(state.position, 131);
+    assert.equal(w.__ottCoreBackend().current(), null);
+    assert.equal(w.__ottStreamPolicy.snapshot().state, "access-denied");
+    assert.equal(timers.size, 0);
+});
+for (const trigger of ["observation", "feedback"]) {
+    test(
+        "archive failure reentry through " +
+            trigger +
+            " cannot clear the replacement HLS",
+        () => {
+            const { w, players, state, timers } = archiveFailureFixture();
+            let replaced = false;
+            const replace = () => {
+                if (replaced) return;
+                replaced = true;
+                state.generation++;
+                state.phase = "loading";
+                w.stbPlay("https://source.invalid/replacement.m3u8", 220);
+            };
+            if (trigger === "observation")
+                w.__ottCoreBackend().subscribe((event) => {
+                    if (event.type === "error") replace();
+                });
+            else w.showShift = replace;
+            players[0].events.error(null, {
+                fatal: true,
+                response: { code: 403 },
+                type: "network",
+            });
+            assert.equal(players.length, 2);
+            assert.equal(players[0].destroyCalls, 1);
+            assert.equal(players[1].destroyCalls, 0);
+            assert.equal(w.hlsInstance, players[1]);
+            assert.equal(timers.size, 0);
+            w.stbStop();
+        }
+    );
+}
+for (const trigger of ["nativeFallbacks", "engineStarts", "policy"]) {
+    test(
+        "native fallback " + trigger + " reentry preserves replacement media",
+        () => {
+            const { w, players, state, timers } = archiveFailureFixture();
+            let replaced = false,
+                replacementSource;
+            const replace = () => {
+                if (replaced) return;
+                replaced = true;
+                state.generation++;
+                state.phase = "loading";
+                w.stbPlay("https://source.invalid/replacement.m3u8", 220);
+                replacementSource = w.video.src;
+            };
+            if (trigger === "policy") {
+                const begin = w.__ottStreamPolicy.begin;
+                w.__ottStreamPolicy.begin = function (...args) {
+                    const result = begin.apply(this, args);
+                    if (args[0] === "html5") replace();
+                    return result;
+                };
+            } else {
+                w.__ottPerfSink = {
+                    changed() {},
+                    recovery(key) {
+                        if (key === trigger) replace();
+                    },
+                };
+            }
+            const failed = players[0];
+            const error = {
+                details: "bufferAppendError",
+                fatal: true,
+                type: "media",
+            };
+            failed.events.error(null, error);
+            failed.events.error(null, error);
+            assert(replaced, "native fallback must reach the callback");
+            assert.equal(players.length, 2);
+            assert.equal(failed.destroyCalls, 1);
+            assert.equal(players[1].destroyCalls, 0);
+            assert.equal(w.hlsInstance, players[1]);
+            assert.equal(
+                w.video.src,
+                replacementSource,
+                "obsolete native fallback must not overwrite the new resource"
+            );
+            assert.equal(
+                w.__ottCoreBackend().current().diagnosticEngine(),
+                "hls.js"
+            );
+            assert.equal(w.__ottStreamPolicy.snapshot().engine, "hls.js");
+            assert.equal(timers.size, 0);
+            w.stbStop();
+        }
+    );
+}
 test("HLS outer recovery samples the VOD position before destroy resets the media", () => {
     const { w, players } = fixture();
     let retry;
@@ -2167,6 +2382,93 @@ test("engine diagnostics identify attached ownership, not a mode preference", ()
     assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), "html5");
     w.stbStop();
 });
+test("HLS diagnostics precede fatal teardown and ignore retired callbacks", () => {
+    const { w, players } = fixture();
+    w.playerMode = 1;
+    w.stbPlay("https://source.invalid/live.m3u8");
+    const player = players[0];
+    const observations = [];
+    const fatal = { fatal: true, response: { code: 403 }, type: "network" };
+    w.__ottPerfSink = {
+        changed() {},
+        hlsError(hls, data) {
+            observations.push([hls, data, hls.destroyCalls]);
+        },
+        recovery() {},
+    };
+    assert.equal(player.__ottPerfErrors, true);
+    player.events.error(null, fatal);
+    assert.deepEqual(observations, [[player, fatal, 0]]);
+    assert.equal(player.destroyCalls, 1);
+    player.events.error(null, fatal);
+    assert.equal(observations.length, 1);
+    w.stbStop();
+});
+test("throwing or reentrant diagnostic sinks cannot break HLS ownership", () => {
+    for (const replace of [false, true]) {
+        const { w, players } = fixture();
+        w.playerMode = 1;
+        w.stbPlay("https://source.invalid/live.m3u8");
+        w.__ottPerfSink = {
+            changed() {},
+            hlsError() {
+                if (replace)
+                    w.stbPlay("https://source.invalid/replacement.m3u8");
+                else throw Error("diagnostic failure");
+            },
+            recovery() {},
+        };
+        players[0].events.error(null, {
+            fatal: true,
+            response: { code: 403 },
+            type: "network",
+        });
+        assert.equal(players[0].destroyCalls, 1);
+        if (replace) {
+            assert.equal(players[1].destroyCalls, 0);
+            assert.equal(
+                w.__ottCoreBackend().current().diagnosticAttempt().fatalErrors,
+                0
+            );
+        }
+        w.stbStop();
+    }
+});
+test("HLS level callbacks cannot recover or restart a replaced owner", () => {
+    for (const hook of ["autoLevelCapping", "removeLevel", "currentLevel"]) {
+        const { w, players } = fixture();
+        w.playerMode = 1;
+        w.stbPlay("https://source.invalid/live.m3u8");
+        const old = players[0];
+        old.levels = [{}, {}];
+        let removed = 0;
+        let recovered = 0;
+        const replace = () =>
+            w.stbPlay("https://source.invalid/replacement.m3u8");
+        old.removeLevel = () => {
+            removed++;
+            if (hook === "removeLevel") replace();
+        };
+        old.recoverMediaError = () => recovered++;
+        if (hook === "currentLevel") old.removeLevel = undefined;
+        if (hook !== "removeLevel")
+            Object.defineProperty(old, hook, { set: replace });
+        const loads = old.startLoads.length;
+        old.events.error(null, { fatal: true, level: 1, type: "media" });
+        assert.equal(players.length, 2, hook);
+        assert.equal(old.destroyCalls, 1, hook);
+        assert.equal(old.startLoads.length, loads, hook);
+        assert.equal(recovered, 0, hook);
+        assert.equal(removed, hook === "removeLevel" ? 1 : 0, hook);
+        assert.equal(players[1].destroyCalls, 0, hook);
+        assert.equal(
+            w.__ottCoreBackend().current().diagnosticAttempt().fatalErrors,
+            0,
+            hook
+        );
+        w.stbStop();
+    }
+});
 test("attempt diagnostics retain fallback and retry history on the same handle", () => {
     const { w, players } = fixture();
     const timers = new Map();
@@ -2294,8 +2596,11 @@ test("unattached and failed engines never borrow a prior native identity", async
     w.__ottCoreTransport.configure({ prepareSource: null });
     w.playerMode = 1;
     w.stbPlay("fatal.m3u8");
+    const failed = w.__ottCoreBackend().current();
     players[0].events.error(null, { fatal: true, type: "other" });
-    assert.equal(w.__ottCoreBackend().current().diagnosticEngine(), null);
+    assert.equal(failed.diagnosticEngine(), null);
+    assert.equal(failed.snapshot().phase, "stopped");
+    assert.equal(w.__ottCoreBackend().current(), null);
     w.playerMode = 2;
     w.__ottNativeRuntime = true;
     w.shaka.Player.prototype.attach = function (media) {
@@ -3400,6 +3705,7 @@ test("local retry budget requires ten continuous wall-clock seconds of healthy p
             advance(2000);
             ready();
         }
+        const attempt = w.coreStreamAttempt;
         ready();
         retry();
         retry();
@@ -3459,7 +3765,7 @@ test("local retry budget requires ten continuous wall-clock seconds of healthy p
                     advance(1000);
                 }
                 assert.equal(
-                    w.coreStreamAttempt.state().terminal,
+                    attempt.state().terminal,
                     true,
                     "waiting events cannot postpone the stall deadline"
                 );
@@ -3469,8 +3775,20 @@ test("local retry budget requires ten continuous wall-clock seconds of healthy p
         }
         w.coreStreamFailure("network", 503);
         const recovered = mode === "healthy" || mode === "resumed-healthy";
-        assert.equal(w.coreStreamAttempt.state().terminal, !recovered, mode);
-        assert.equal(w.coreStreamAttempt.state().pending, recovered, mode);
+        assert.equal(attempt.state().terminal, !recovered, mode);
+        assert.equal(attempt.state().pending, recovered, mode);
+        if (!recovered) {
+            assert.equal(
+                w.coreStreamAttempt,
+                null,
+                "failed attempt is retired"
+            );
+            assert.equal(
+                w.__ottCoreBackend().current(),
+                null,
+                "failed decoder is released"
+            );
+        }
         w.stbStop();
         assert.deepEqual(
             observedEvents.map(

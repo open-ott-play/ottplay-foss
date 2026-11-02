@@ -3489,4 +3489,62 @@ test("whole catalog sanitizes C1 titles and category labels without changing ide
     );
 });
 
+for (const automatic of [false, true])
+    test(`resolver accepts the shared adapter automatic=${automatic} argument`, () => {
+        const f = fixture({ playback: "original" });
+        const resolved = [];
+        f.client.resolve(film, (value) => resolved.push(value), automatic);
+        assert.equal(f.requests.length, 1);
+        assert.equal(parsed(f).pathname, "/library/metadata/42");
+        last(f).reply(metadata());
+        assert.equal(resolved.length, 1);
+        assert.equal(
+            new URL(resolved[0].stream_url).pathname,
+            "/library/parts/1/file.mp4"
+        );
+    });
+
+test("legacy play resets accepted controls before resolution and preserves newer INFO on completion", () => {
+    const f = fixture({ playback: "original" });
+    const calls = [];
+    let interactive = true;
+    f.host.__ottSetInfoInteraction = (value) => {
+        calls.push(["intent", value]);
+        assert.equal(f.requests.length, 0, "reset precedes the HTTP request");
+        interactive = value;
+    };
+    f.host._playMedia = (...args) => calls.push(["play", ...args]);
+    f.client.play(film);
+    assert.deepEqual(calls, [["intent", false]]);
+    assert.equal(interactive, false);
+    assert.equal(f.requests.length, 1);
+    interactive = true; // The user opens INFO while Plex metadata is pending.
+    const response = last(f);
+    response.reply(metadata());
+    response.reply(metadata());
+    assert.equal(
+        calls.length,
+        2,
+        "one accepted reset and one playback dispatch"
+    );
+    assert.equal(calls[1][0], "play");
+    assert.equal(calls[1][2], false);
+    assert.equal(
+        calls[1][3],
+        true,
+        "late playback preserves the current intent"
+    );
+    assert.equal(interactive, true);
+});
+
+test("invalid legacy play does not reset explicit controls", () => {
+    const f = fixture();
+    const intents = [];
+    f.host.__ottSetInfoInteraction = (value) => intents.push(value);
+    f.host._playMedia = () => {};
+    f.client.play({ ...film, plexSource: "plex:another-account" });
+    assert.deepEqual(intents, []);
+    assert.equal(f.requests.length, 0);
+});
+
 console.log(`PASS Plex client (${passed} scenarios)`);
