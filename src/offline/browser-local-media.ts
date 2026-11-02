@@ -6,10 +6,8 @@ export function installBrowserLocalMedia(w: any): any {
     var knownSources: any[] = [];
     var scanGeneration = 0;
     var reconnectTransactions: any[] = [];
-    var pendingFiles: any = {};
-    var pendingFileCount = 0;
-    var pendingPermissions: any = Object.create(null);
-    var pendingPermissionCount = 0;
+    var pendingReads: any = Object.create(null);
+    var pendingReadCounts = [0, 0];
     var pendingDirectories: any = Object.create(null);
     var cacheWrites = Promise.resolve();
     var urlApi = w.URL || w.webkitURL;
@@ -103,105 +101,63 @@ export function installBrowserLocalMedia(w: any): any {
             )
         );
     }
-    function fileTimeout(limit = false): Error {
-        var error: any = new Error("Local file did not respond");
+    function readTimeout(permission?: boolean, limit?: boolean): Error {
+        var error: any = new Error(
+            "Local " +
+                (permission ? "source permission" : "file") +
+                " did not respond"
+        );
         error.name = "TimeoutError";
-        error.localMediaLimit = limit;
+        error.localMediaLimit = !!limit;
         error.localMediaReconnectRequired = true;
         return error;
     }
-    function permissionTimeout(limit = false): Error {
-        var error: any = new Error("Local source permission did not respond");
-        error.name = "TimeoutError";
-        error.localMediaLimit = limit;
-        error.localMediaReconnectRequired = true;
-        return error;
-    }
-    function readPermission(id: string, handle: any): Promise<any> {
-        // A restored native handle can stop answering without rejecting. Keep
-        // unresolved queries across scans so retry cannot accumulate IPC calls.
-        var old = pendingPermissions[id];
+    function readHandle(
+        id: string,
+        handle: any,
+        permission?: boolean
+    ): Promise<any> {
+        // Neither browser call can be cancelled. Keep independent file and
+        // permission limits across scans until the native calls really settle.
+        var kind = permission ? 1 : 0;
+        var key = kind + ":" + id;
+        var old = pendingReads[key];
         if (old)
             return old.timedOut
-                ? Promise.reject(permissionTimeout())
+                ? Promise.reject(readTimeout(permission))
                 : old.result;
-        if (pendingPermissionCount >= 2)
-            return Promise.reject(permissionTimeout(true));
-        var entry: any = { timedOut: false };
-        pendingPermissions[id] = entry;
-        pendingPermissionCount++;
+        if (pendingReadCounts[kind] >= 2)
+            return Promise.reject(readTimeout(permission, true));
+        var entry: any = {};
+        pendingReads[key] = entry;
+        pendingReadCounts[kind]++;
         entry.result = new Promise(function (resolve, reject) {
-            var settled = false;
             var timer = w.setTimeout(function () {
-                settled = true;
                 entry.timedOut = true;
-                reject(permissionTimeout());
+                reject(readTimeout(permission));
             }, 10000);
             var pending: Promise<any>;
             try {
                 pending = Promise.resolve(
-                    handle.queryPermission({ mode: "read" })
+                    permission
+                        ? handle.queryPermission({ mode: "read" })
+                        : handle.getFile()
                 );
             } catch (error) {
                 pending = Promise.reject(error);
             }
             if (w.__ottStandby) w.__ottStandby.observe(pending);
-            function finish(error: any, access?: any): void {
-                delete pendingPermissions[id];
-                pendingPermissionCount--;
+            function finish(error: any, value?: any): void {
+                delete pendingReads[key];
+                pendingReadCounts[kind]--;
                 w.clearTimeout(timer);
-                if (settled) return;
-                settled = true;
+                if (entry.timedOut) return;
                 if (error) reject(error);
-                else resolve(access);
+                else resolve(value);
             }
             pending.then(
-                function (access) {
-                    finish(null, access);
-                },
-                function (error) {
-                    finish(error);
-                }
-            );
-        });
-        return entry.result;
-    }
-    function readFile(id: string, handle: any): Promise<any> {
-        // Browser filesystem calls cannot be aborted. Retain timed-out calls
-        // until they really settle, across retries as well as catalog scans.
-        var old = pendingFiles[id];
-        if (old)
-            return old.timedOut ? Promise.reject(fileTimeout()) : old.result;
-        if (pendingFileCount >= 2) return Promise.reject(fileTimeout(true));
-        var entry: any = { timedOut: false };
-        pendingFiles[id] = entry;
-        pendingFileCount++;
-        entry.result = new Promise(function (resolve, reject) {
-            var settled = false;
-            var timer = w.setTimeout(function () {
-                settled = true;
-                entry.timedOut = true;
-                reject(fileTimeout());
-            }, 10000);
-            var pending: Promise<any>;
-            try {
-                pending = Promise.resolve(handle.getFile());
-            } catch (error) {
-                pending = Promise.reject(error);
-            }
-            if (w.__ottStandby) w.__ottStandby.observe(pending);
-            function finish(error: any, file?: any): void {
-                delete pendingFiles[id];
-                pendingFileCount--;
-                w.clearTimeout(timer);
-                if (settled) return;
-                settled = true;
-                if (error) reject(error);
-                else resolve(file);
-            }
-            pending.then(
-                function (file) {
-                    finish(null, file);
+                function (value) {
+                    finish(null, value);
                 },
                 function (error) {
                     finish(error);
@@ -603,7 +559,10 @@ export function installBrowserLocalMedia(w: any): any {
                             .then(function () {
                                 return readPhase("metadata", function () {
                                     return active()
-                                        ? readFile(sourceId + ":" + name, child)
+                                        ? readHandle(
+                                              sourceId + ":" + name,
+                                              child
+                                          )
                                         : null;
                                 });
                             })
@@ -676,7 +635,7 @@ export function installBrowserLocalMedia(w: any): any {
                 .then(function (fileHandle) {
                     return active() && fileHandle
                         ? readPhase("metadata", function () {
-                              return readFile(preferredId!, fileHandle);
+                              return readHandle(preferredId!, fileHandle);
                           })
                         : Promise.reject();
                 })
@@ -715,7 +674,7 @@ export function installBrowserLocalMedia(w: any): any {
                 chain = chain.then(function () {
                     if (!active() || firstPlayable || !candidate.handle) return;
                     return readPhase("metadata", function () {
-                        return readFile(
+                        return readHandle(
                             record.id + ":" + candidate.path,
                             candidate.handle
                         );
@@ -815,7 +774,7 @@ export function installBrowserLocalMedia(w: any): any {
                         record.access = "unknown";
                         progress(true);
                         if (!active()) return;
-                        return readPermission(record.id, record.handle)
+                        return readHandle(record.id, record.handle, true)
                             .then(function (access) {
                                 if (!active()) return;
                                 if (access !== "granted") {
@@ -844,7 +803,7 @@ export function installBrowserLocalMedia(w: any): any {
                                 return readPhase(
                                     "metadata",
                                     function () {
-                                        return readFile(
+                                        return readHandle(
                                             record.id,
                                             record.handle
                                         );
@@ -1216,7 +1175,7 @@ export function installBrowserLocalMedia(w: any): any {
         }
         // File-handle lookup can itself wait on a NAS. Share the same bounded
         // native-operation budget as getFile, without enumerating the folder.
-        return readFile("lookup:" + sourceId + ":" + path, {
+        return readHandle("lookup:" + sourceId + ":" + path, {
             getFile: function () {
                 var lookup = Promise.resolve(source.handle);
                 parts.slice(0, -1).forEach(function (part) {
@@ -1233,7 +1192,7 @@ export function installBrowserLocalMedia(w: any): any {
         })
             .then(function (handle) {
                 current();
-                return readFile(sourceId + ":" + path, handle).then(
+                return readHandle(sourceId + ":" + path, handle).then(
                     function (file) {
                         current();
                         if (!media(file))

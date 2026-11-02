@@ -351,6 +351,35 @@ async function flushScans() {
         2,
         "ordinary retry does not hide native reads"
     );
+    let releaseOtherPermission;
+    let otherPermissionQueries = 0;
+    deadFiles.saved().push({
+        created: 3,
+        handle: {
+            kind: "directory",
+            queryPermission: () => {
+                otherPermissionQueries++;
+                return new Promise((resolve) => {
+                    releaseOtherPermission = resolve;
+                });
+            },
+            values: () => assert.fail("timed-out permission cannot enumerate"),
+        },
+        id: "source-other-permission",
+        name: "Other source",
+    });
+    const mixedReadScan = deadFiles.api.list();
+    await flushScans();
+    assert.equal(
+        otherPermissionQueries,
+        1,
+        "two pending file reads do not consume the permission-call budget"
+    );
+    Array.from(fileDeadlines).at(-1).fn();
+    await settle(mixedReadScan);
+    releaseOtherPermission("granted");
+    await flushScans();
+    deadFiles.saved().pop();
     const remounted = {
         kind: "directory",
         name: "Remounted movies",
