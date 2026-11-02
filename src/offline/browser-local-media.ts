@@ -113,6 +113,16 @@ export function installBrowserLocalMedia(w: any): any {
         error.localMediaReconnectRequired = true;
         return error;
     }
+    function observeRead(read: () => any): Promise<any> {
+        var pending: Promise<any>;
+        try {
+            pending = Promise.resolve(read());
+        } catch (error) {
+            pending = Promise.reject(error);
+        }
+        if (w.__ottStandby) w.__ottStandby.observe(pending);
+        return pending;
+    }
     function readHandle(
         id: string,
         handle: any,
@@ -137,17 +147,11 @@ export function installBrowserLocalMedia(w: any): any {
                 entry.timedOut = true;
                 reject(readTimeout(permission));
             }, 10000);
-            var pending: Promise<any>;
-            try {
-                pending = Promise.resolve(
-                    permission
-                        ? handle.queryPermission({ mode: "read" })
-                        : handle.getFile()
-                );
-            } catch (error) {
-                pending = Promise.reject(error);
-            }
-            if (w.__ottStandby) w.__ottStandby.observe(pending);
+            var pending = observeRead(function () {
+                return permission
+                    ? handle.queryPermission({ mode: "read" })
+                    : handle.getFile();
+            });
             function finish(error: any, value?: any): void {
                 delete pendingReads[key];
                 pendingReadCounts[kind]--;
@@ -172,32 +176,26 @@ export function installBrowserLocalMedia(w: any): any {
         var entry: any = {};
         pendingDirectories[id] = entry;
         entry.pending = new Promise(function (resolve, reject) {
-            var settled = false;
+            var timedOut = false;
             // Chrome may enumerate an entire network directory before returning
             // its first entry. Keep that allowance, but do not share a dead read
             // forever after a mount disappears and comes back.
             var timer = w.setTimeout(function () {
-                if (settled) return;
-                settled = true;
+                timedOut = true;
                 var error: any = new Error("Local folder did not respond");
                 error.name = "TimeoutError";
                 error.localMediaReconnectRequired = true;
                 reject(error);
             }, 2700000);
-            var pending: Promise<any>;
-            try {
+            var pending = observeRead(function () {
                 entry.iterator = handle.values();
-                pending = Promise.resolve(entry.iterator.next());
-            } catch (error) {
-                pending = Promise.reject(error);
-            }
-            if (w.__ottStandby) w.__ottStandby.observe(pending);
+                return entry.iterator.next();
+            });
             function finish(error: any, value?: any): void {
                 if (pendingDirectories[id] === entry)
                     delete pendingDirectories[id];
                 w.clearTimeout(timer);
-                if (settled) return;
-                settled = true;
+                if (timedOut) return;
                 if (error) reject(error);
                 else resolve(value);
             }
