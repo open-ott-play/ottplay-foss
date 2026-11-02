@@ -663,9 +663,9 @@ for (const [profile, code] of profiles) {
             host.showPage();
             const commands = [];
             f.port.screens.open({
+                handle: (command) => commands.push(command.id),
                 kind: "dialog",
                 priority: 10,
-                handle: (command) => commands.push(command.id),
             });
             f.key("LEFT");
             f.key("RIGHT");
