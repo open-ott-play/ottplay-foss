@@ -8,6 +8,8 @@ export function installBrowserLocalMedia(w: any): any {
     var reconnectTransactions: any[] = [];
     var pendingFiles: any = {};
     var pendingFileCount = 0;
+    var pendingPermissions: any = Object.create(null);
+    var pendingPermissionCount = 0;
     var pendingDirectories: any = Object.create(null);
     var cacheWrites = Promise.resolve();
     var urlApi = w.URL || w.webkitURL;
@@ -107,6 +109,62 @@ export function installBrowserLocalMedia(w: any): any {
         error.localMediaLimit = limit;
         error.localMediaReconnectRequired = true;
         return error;
+    }
+    function permissionTimeout(limit = false): Error {
+        var error: any = new Error("Local source permission did not respond");
+        error.name = "TimeoutError";
+        error.localMediaLimit = limit;
+        error.localMediaReconnectRequired = true;
+        return error;
+    }
+    function readPermission(id: string, handle: any): Promise<any> {
+        // A restored native handle can stop answering without rejecting. Keep
+        // unresolved queries across scans so retry cannot accumulate IPC calls.
+        var old = pendingPermissions[id];
+        if (old)
+            return old.timedOut
+                ? Promise.reject(permissionTimeout())
+                : old.result;
+        if (pendingPermissionCount >= 2)
+            return Promise.reject(permissionTimeout(true));
+        var entry: any = { timedOut: false };
+        pendingPermissions[id] = entry;
+        pendingPermissionCount++;
+        entry.result = new Promise(function (resolve, reject) {
+            var settled = false;
+            var timer = w.setTimeout(function () {
+                settled = true;
+                entry.timedOut = true;
+                reject(permissionTimeout());
+            }, 10000);
+            var pending: Promise<any>;
+            try {
+                pending = Promise.resolve(
+                    handle.queryPermission({ mode: "read" })
+                );
+            } catch (error) {
+                pending = Promise.reject(error);
+            }
+            if (w.__ottStandby) w.__ottStandby.observe(pending);
+            function finish(error: any, access?: any): void {
+                delete pendingPermissions[id];
+                pendingPermissionCount--;
+                w.clearTimeout(timer);
+                if (settled) return;
+                settled = true;
+                if (error) reject(error);
+                else resolve(access);
+            }
+            pending.then(
+                function (access) {
+                    finish(null, access);
+                },
+                function (error) {
+                    finish(error);
+                }
+            );
+        });
+        return entry.result;
     }
     function readFile(id: string, handle: any): Promise<any> {
         // Browser filesystem calls cannot be aborted. Retain timed-out calls
@@ -757,9 +815,7 @@ export function installBrowserLocalMedia(w: any): any {
                         record.access = "unknown";
                         progress(true);
                         if (!active()) return;
-                        return Promise.resolve(
-                            record.handle.queryPermission({ mode: "read" })
-                        )
+                        return readPermission(record.id, record.handle)
                             .then(function (access) {
                                 if (!active()) return;
                                 if (access !== "granted") {
