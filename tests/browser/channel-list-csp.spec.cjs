@@ -5604,8 +5604,15 @@ test("Modern fullscreen timeline and audio picker preserve the playback owner", 
         await page.evaluate(() => {
             // The decoder reports an actual zero after rewind. A stale shared
             // footer fill must not be mistaken for a newer timing sample.
-            const video = document.getElementById("video");
-            if (!video) throw new Error("Production video element is missing");
+            // This fixture replaces stbPlay and never starts a decoder. Supply
+            // its timing element at the same #video boundary used by the UI.
+            let video = document.getElementById("video");
+            if (!video) {
+                video = document.createElement("video");
+                video.id = "video";
+                video.hidden = true;
+                document.body.appendChild(video);
+            }
             Object.defineProperty(video, "currentTime", {
                 configurable: true,
                 value: 0,
