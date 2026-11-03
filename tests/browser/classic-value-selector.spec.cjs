@@ -126,6 +126,7 @@ async function focus(page) {
 async function geometry(page) {
     return page.evaluate(() => {
         const panel = document.getElementById("listAbout");
+        const grid = panel.firstElementChild;
         const p = panel.getBoundingClientRect();
         const rows = Array.from(panel.querySelectorAll(".osk-key")).map(
             (node) => {
@@ -157,6 +158,7 @@ async function geometry(page) {
             }
         );
         return {
+            horizontalOverflow: grid.scrollWidth > grid.clientWidth,
             panel: {
                 bottom: p.bottom,
                 left: p.left,
@@ -177,6 +179,7 @@ async function expectFocusedVisible(page) {
             const row = g.rows.find((row) => row.id === g.selected);
             return (
                 !!row &&
+                !g.horizontalOverflow &&
                 row.top >= g.panel.top - 1 &&
                 row.bottom <= g.panel.bottom + 1
             );

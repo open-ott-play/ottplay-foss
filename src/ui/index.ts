@@ -4197,12 +4197,13 @@ export function mediaList(target: MediaTarget | null): void {
  * already selected, dispatches ENTER to confirm it.
  *
  * @param e - The zero-based index of the clicked option.
+ * @param focusOnly - Move or repaint focus without confirming the current value.
  * @returns void
  * @sideeffect Updates highlight styles for old and new selection. The grid consumes the DOM click.
  *             Calls `aboutKeyHandler(keys.ENTER)` if clicking the already-selected item.
  */
-export function clickVal(e: number): void {
-    if (_curVal === e && aboutKeyHandler) {
+export function clickVal(e: number, focusOnly?: boolean): void {
+    if (!focusOnly && _curVal === e && aboutKeyHandler) {
         aboutKeyHandler((window as any).keys.ENTER);
         return;
     }
@@ -4214,6 +4215,16 @@ export function clickVal(e: number): void {
         color: (window as any).curColor,
     });
     if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
+    var cell = key[0];
+    var scroller = cell && cell.parentElement;
+    if (scroller && scroller.clientHeight)
+        scroller.scrollTop = Math.min(
+            cell.offsetTop,
+            Math.max(
+                scroller.scrollTop,
+                cell.offsetTop + cell.offsetHeight - scroller.clientHeight
+            )
+        );
 }
 
 /**
@@ -4229,27 +4240,11 @@ export function clickVal(e: number): void {
  *             RETURN/EXIT discards and calls `restoreListPanelState()`.
  */
 export function selectValue(t: any): void {
-    function paintSelectedValue(): void {
-        var key = $("#ik" + _curVal);
-        key.css({
-            "background-color": (window as any).curColorB,
-            color: (window as any).curColor,
-        });
-        if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
-        var cell = key[0];
-        var scroller = cell && cell.parentElement;
-        if (scroller && scroller.clientHeight) {
-            var top = cell.offsetTop;
-            var bottom = top + cell.offsetHeight;
-            if (top < scroller.scrollTop) scroller.scrollTop = top;
-            else if (bottom > scroller.scrollTop + scroller.clientHeight)
-                scroller.scrollTop = bottom - scroller.clientHeight;
-        }
-    }
     var r = t.values.filter(function (v: any) {
         return v !== "@@@";
     });
-    if (!r.length) return;
+    var count = r.length;
+    if (!count) return;
     _curVal = r.indexOf(t.values[t.val]);
     if (_curVal < 0) _curVal = 0;
     saveListPanelState();
@@ -4258,41 +4253,38 @@ export function selectValue(t: any): void {
         listFooterElement.innerHTML =
             renderButtonHint(keys.RETURN, strRETURN, "Close") +
             renderButtonHint(keys.ENTER, strENTER, "Set");
-    if (listDetailElement) listDetailElement.innerHTML = "";
-
     // Reserve scrollbar space while measuring. Scrolling belongs to this
     // disposable grid, not the panel shared with other dialogs.
     var grid = $("#listAbout").html("<div></div>").show().children().css({
         fontSize: "larger",
         height: "100%",
-        overflowX: "hidden",
-        overflowY: "scroll",
+        overflow: "scroll",
         position: "relative",
     });
     /* Measure labels at the grid's actual font size, including UI scaling. */
     var testEl = $("#testFont");
     var probeStyle = testEl.attr("style");
-    testEl.css({
-        fontFamily: grid.css("font-family"),
-        fontSize: grid.css("font-size"),
-        fontStyle: grid.css("font-style"),
-        fontWeight: grid.css("font-weight"),
-        letterSpacing: grid.css("letter-spacing"),
-    });
+    testEl.css(
+        grid.css([
+            "fontFamily",
+            "fontSize",
+            "fontStyle",
+            "fontWeight",
+            "letterSpacing",
+        ])
+    );
     var maxW = 0;
-    for (var i = 0; i < r.length; i++) {
-        testEl.html("&nbsp;" + r[i] + "&nbsp;");
+    for (var i = 0; i < count; i++) {
+        testEl.html(r[i]);
         maxW = Math.max(maxW, testEl.width());
     }
-    testEl.text("");
-    if (probeStyle === undefined) testEl.removeAttr("style");
-    else testEl.attr("style", probeStyle);
+    testEl.text("").attr("style", probeStyle === undefined ? null : probeStyle);
     var listAboutW = grid[0].clientWidth || $("#listAbout").width();
     var n = 6;
     if (maxW > 0 && listAboutW > 0) {
         n = Math.max(
             1,
-            Math.min(Math.floor((listAboutW * 0.98) / (maxW + 2)), r.length)
+            Math.min(Math.floor((listAboutW * 0.98) / (maxW + 2)), count)
         );
     }
 
@@ -4302,11 +4294,11 @@ export function selectValue(t: any): void {
     );
 
     var html = "";
-    for (var i = 0; i < r.length; i++) {
+    for (var i = 0; i < count; i++) {
         if (i > 0 && i % n === 0) html += "<br/>";
         html += '<div id="ik' + i + '" class="osk-key">' + r[i] + "</div>";
     }
-    grid.html(html).css("overflow-y", "auto");
+    grid.html(html).css("overflow", "auto");
     grid.find(".osk-key").css({
         height: lineHeight + 2 + "px",
         lineHeight: lineHeight + "px",
@@ -4317,12 +4309,9 @@ export function selectValue(t: any): void {
     });
     grid.on("click", ".osk-key", function (event: any) {
         event.stopPropagation();
-        if (input.owner.foreground()) {
-            clickVal(Number(this.id.slice(2)));
-            if (input.owner.foreground()) paintSelectedValue();
-        }
+        if (input.owner.foreground()) clickVal(Number(this.id.slice(2)));
     });
-    paintSelectedValue();
+    clickVal(_curVal, true);
 
     /**
      * Move the selection cursor by `delta` positions in the grid, wrapping at edges.
@@ -4332,49 +4321,28 @@ export function selectValue(t: any): void {
      * @sideeffect Updates `_curVal` and highlight styles. Refreshes `listDetailElement`.
      */
     function move(delta: number): void {
-        $("#ik" + _curVal).css({ "background-color": "", color: "" });
-        _curVal += delta;
-        if (_curVal < 0) _curVal = r.length - 1;
-        if (_curVal >= r.length) _curVal = 0;
-        paintSelectedValue();
+        clickVal(_curVal + delta, true);
     }
 
     var input = (window as any).__ottClassicScreenPort.setOwnedCallback(
         "about",
         function (e: number): boolean {
+            var pos = _curVal;
             switch (e) {
                 case keys.UP:
-                    move(
-                        _curVal >= n
-                            ? -n
-                            : r.length -
-                                  (r.length % n) +
-                                  (_curVal + 1 > r.length % n ? -n : 0)
-                    );
+                    move(pos >= n ? -n : Math.floor((count - 1 - pos) / n) * n);
                     return true;
                 case keys.DOWN:
-                    move(_curVal < r.length - n ? n : -_curVal + (_curVal % n));
+                    move(pos < count - n ? n : -pos + (pos % n));
                     return true;
                 case keys.LEFT:
-                    move(
-                        _curVal % n > 0
-                            ? -1
-                            : _curVal + n - 1 > r.length - 1
-                              ? r.length - _curVal - 1
-                              : n - 1
-                    );
+                    move(pos % n > 0 ? -1 : Math.min(n, count - pos) - 1);
                     return true;
                 case keys.RIGHT:
-                    move(
-                        _curVal % n < n - 1
-                            ? _curVal + 1 == r.length
-                                ? -_curVal % n
-                                : 1
-                            : -n + 1
-                    );
+                    move((pos + 1) % n && pos + 1 < count ? 1 : -(pos % n));
                     return true;
                 case keys.ENTER:
-                    t.val = t.values.indexOf(r[_curVal]);
+                    t.val = t.values.indexOf(r[pos]);
                 /* fall through */
                 case keys.RETURN:
                 case keys.EXIT:
