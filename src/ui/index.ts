@@ -4236,10 +4236,20 @@ export function selectValue(t: any): void {
             color: (window as any).curColor,
         });
         if (listDetailElement) listDetailElement.innerHTML = key.html() || "";
+        var cell = key[0];
+        var scroller = cell && cell.parentElement;
+        if (scroller && scroller.clientHeight) {
+            var top = cell.offsetTop;
+            var bottom = top + cell.offsetHeight;
+            if (top < scroller.scrollTop) scroller.scrollTop = top;
+            else if (bottom > scroller.scrollTop + scroller.clientHeight)
+                scroller.scrollTop = bottom - scroller.clientHeight;
+        }
     }
     var r = t.values.filter(function (v: any) {
         return v !== "@@@";
     });
+    if (!r.length) return;
     _curVal = r.indexOf(t.values[t.val]);
     if (_curVal < 0) _curVal = 0;
     saveListPanelState();
@@ -4250,44 +4260,67 @@ export function selectValue(t: any): void {
             renderButtonHint(keys.ENTER, strENTER, "Set");
     if (listDetailElement) listDetailElement.innerHTML = "";
 
-    /* Measure longest text to calculate column count */
+    // Reserve scrollbar space while measuring. Scrolling belongs to this
+    // disposable grid, not the panel shared with other dialogs.
+    var grid = $("#listAbout").html("<div></div>").show().children().css({
+        fontSize: "larger",
+        height: "100%",
+        overflowX: "hidden",
+        overflowY: "scroll",
+        position: "relative",
+    });
+    /* Measure labels at the grid's actual font size, including UI scaling. */
     var testEl = $("#testFont");
+    var probeStyle = testEl.attr("style");
+    testEl.css({
+        fontFamily: grid.css("font-family"),
+        fontSize: grid.css("font-size"),
+        fontStyle: grid.css("font-style"),
+        fontWeight: grid.css("font-weight"),
+        letterSpacing: grid.css("letter-spacing"),
+    });
     var maxW = 0;
     for (var i = 0; i < r.length; i++) {
         testEl.html("&nbsp;" + r[i] + "&nbsp;");
         maxW = Math.max(maxW, testEl.width());
     }
     testEl.text("");
-    var listAboutW = $("#listAbout").width();
+    if (probeStyle === undefined) testEl.removeAttr("style");
+    else testEl.attr("style", probeStyle);
+    var listAboutW = grid[0].clientWidth || $("#listAbout").width();
     var n = 6;
     if (maxW > 0 && listAboutW > 0) {
         n = Math.max(
-            Math.min(Math.round(listAboutW / maxW) - 1, r.length),
-            Math.round(r.length / 6) + 1
+            1,
+            Math.min(Math.floor((listAboutW * 0.98) / (maxW + 2)), r.length)
         );
     }
 
-    var lineHeight = Math.floor(
-        (800 * getViewportHeightScale()) / settings.pageSize
+    var lineHeight = Math.max(
+        Math.floor((800 * getViewportHeightScale()) / settings.pageSize),
+        Math.ceil(parseFloat(grid.css("font-size")) * 1.2) || 0
     );
 
     var html = "";
     for (var i = 0; i < r.length; i++) {
-        if (i % n === 0) html += "<br/>";
+        if (i > 0 && i % n === 0) html += "<br/>";
         html += '<div id="ik' + i + '" class="osk-key">' + r[i] + "</div>";
     }
-    var grid = $("#listAbout")
-        .html("<div>" + html + "</div>")
-        .show()
-        .children()
-        .css("font-size", "larger");
+    grid.html(html).css("overflow-y", "auto");
     grid.find(".osk-key").css({
+        height: lineHeight + 2 + "px",
         lineHeight: lineHeight + "px",
+        margin: "2px " + 0.9 / n + "%",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
         width: 98 / n + "%",
     });
     grid.on("click", ".osk-key", function (event: any) {
         event.stopPropagation();
-        if (input.owner.foreground()) clickVal(Number(this.id.slice(2)));
+        if (input.owner.foreground()) {
+            clickVal(Number(this.id.slice(2)));
+            if (input.owner.foreground()) paintSelectedValue();
+        }
     });
     paintSelectedValue();
 
