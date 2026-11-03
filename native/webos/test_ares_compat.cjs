@@ -65,11 +65,14 @@ test("unknown versions, changed source, command paths and redirected files fail 
     assert.throws(() => validateCli(root, "ares-device"), /command mapping/);
     metadata.bin["ares-device"] = "bin/ares-device.js";
     save();
-    fs.renameSync(
-        path.join(root, "bin/ares-device.js"),
-        path.join(root, "elsewhere.js")
+    fs.renameSync(path.join(root, "bin"), path.join(root, "elsewhere"));
+    // A directory junction needs no Windows file-symlink privilege. On POSIX,
+    // the type is ignored and this still exercises a real redirected path.
+    fs.symlinkSync(
+        path.join(root, "elsewhere"),
+        path.join(root, "bin"),
+        "junction"
     );
-    fs.symlinkSync("../elsewhere.js", path.join(root, "bin/ares-device.js"));
     assert.throws(() => validateCli(root, "ares-device"), /redirected paths/);
 });
 
