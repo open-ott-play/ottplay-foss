@@ -38,6 +38,8 @@ ZIP_LIMIT = 1024 * 1024 * 1024
 EXPANDED_LIMIT = 2 * ZIP_LIMIT
 TRANSFER_SECONDS = 600
 RECEIPT = "promotion.json"
+NOTES_LIMIT = 64 * 1024
+DEFAULT_RELEASE_BODY = "Experimental native webOS package with matching source. Device validation is not performed by this publication workflow."
 
 
 class PromotionError(ValueError):
@@ -73,6 +75,37 @@ def validate_inputs(run_id, source_sha, version, tag):
     require(isinstance(version, str) and re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version), "Invalid native version")
     require(isinstance(tag, str) and re.fullmatch(r"native-webos-v" + re.escape(version) + r"(?:-(?:beta|rc)\.[1-9]\d*)?", tag), "Native tag/version mismatch")
     return {"repository": REPOSITORY, "run_id": run_id, "source_sha": source_sha, "version": version, "tag": tag}
+
+
+def release_body(inputs):
+    """Read optional version notes from the verified commit, never the worktree."""
+    checked = validate_inputs(inputs["run_id"], inputs["source_sha"], inputs["version"], inputs["tag"])
+    path = "native/webos/releases/" + checked["version"] + ".md"
+
+    def git(*arguments):
+        result = subprocess.run(["git", "--no-replace-objects", *arguments], cwd=ROOT,
+                                capture_output=True, timeout=30)
+        require(result.returncode == 0, "Cannot read committed native release notes")
+        return result.stdout
+
+    entry = git("ls-tree", "-z", checked["source_sha"], "--", path)
+    if not entry:
+        return DEFAULT_RELEASE_BODY
+    match = re.fullmatch(rb"(?:100644|100755) blob ([0-9a-f]{40})\t" + re.escape(path.encode()) + rb"\x00", entry)
+    require(match is not None, "Native release notes must be a tracked regular file")
+    oid = match[1].decode("ascii")
+    raw_size = git("cat-file", "-s", oid)
+    require(re.fullmatch(rb"[0-9]+\n", raw_size), "Invalid release notes object size")
+    size = int(raw_size)
+    require(0 < size <= NOTES_LIMIT, "Native release notes exceed size limit or are empty")
+    raw = git("cat-file", "blob", oid)
+    require(len(raw) == size, "Native release notes object size changed")
+    try:
+        body = raw.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        raise PromotionError("Native release notes must be UTF-8") from None
+    require(body and "\x00" not in body, "Native release notes are empty or contain NUL")
+    return body
 
 
 def candidate_names(version):
@@ -374,13 +407,14 @@ def publish(args):
     prefix, tag = "/repos/" + REPOSITORY, inputs["tag"]
     require(api_json(prefix + "/releases/tags/" + tag, allow_not_found=True) is None, "Release already exists; operator recovery required")
     require(api_json(prefix + "/git/ref/tags/" + tag, allow_not_found=True) is None, "Tag already exists; operator recovery required")
+    body = release_body(inputs)
     check_environment(inputs)
     # Atomic ref creation prevents racing another publisher and pins the source.
     api_json(prefix + "/git/refs", method="POST", payload={"ref": "refs/tags/" + tag, "sha": inputs["source_sha"]})
     verify_tag(inputs)
     release = api_json(prefix + "/releases", method="POST", payload={
         "tag_name": tag, "target_commitish": inputs["source_sha"], "name": "OTTPlay Native " + tag,
-        "body": "Experimental native webOS package with matching source. Device validation is not performed by this publication workflow.",
+        "body": body,
         "draft": True, "prerelease": "-beta." in tag or "-rc." in tag, "make_latest": "false",
     })
     release_id = positive(release.get("id"))
@@ -394,6 +428,7 @@ def publish(args):
     check_environment(inputs)
     current = api_json(prefix + f"/releases/{release_id}")
     require(current.get("draft") is True and current.get("tag_name") == tag, "Draft state changed before publication")
+    require(current.get("body") == body, "Draft release notes changed before publication")
     published = api_json(prefix + f"/releases/{release_id}", method="PATCH", payload={"draft": False, "make_latest": "false"})
     require(published.get("draft") is False and published.get("tag_name") == tag, "Release publication did not complete")
     return {"release_id": release_id, "tag": tag, "published": True}

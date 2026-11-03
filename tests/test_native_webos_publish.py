@@ -56,6 +56,103 @@ def artifact(raw=b"zip"):
             "workflow_run": {"id": 17, "head_sha": SHA, "head_branch": "main"}}
 
 
+class ReleaseNotesTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.git("init", "--quiet")
+        self.notes = self.root / "native/webos/releases/0.1.0.md"
+        self.notes.parent.mkdir(parents=True)
+        self.notes.write_text("# Native 0.1.0\n\nPlayback and résumé fixes.\n", encoding="utf-8")
+        self.notes.with_name("0.2.0.md").write_text("Future version\n", encoding="utf-8")
+        self.commit()
+
+    def git(self, *args):
+        environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        environment.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")
+        return subprocess.run([
+            "git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false",
+            "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", *args,
+        ], cwd=self.root, env=environment, capture_output=True, check=True, timeout=30).stdout
+
+    def commit(self):
+        self.git("add", "native")
+        self.git("commit", "--quiet", "-m", "Fixture release notes")
+        self.sha = self.git("rev-parse", "HEAD").decode().strip()
+
+    def body(self, version=VERSION):
+        checked = publish.validate_inputs(17, self.sha, version, "native-webos-v" + version)
+        with patch.object(publish, "ROOT", self.root):
+            return publish.release_body(checked)
+
+    def test_exact_version_uses_commit_bytes_not_changed_or_untracked_notes(self):
+        expected = self.notes.read_text(encoding="utf-8").strip()
+        self.notes.write_text("Changed checkout text\n", encoding="utf-8")
+        self.assertEqual(self.body(), expected)
+        self.assertEqual(self.body("0.2.0"), "Future version")
+        self.notes.with_name("0.3.0.md").write_text("Untracked text\n", encoding="utf-8")
+        self.assertEqual(self.body("0.3.0"), publish.DEFAULT_RELEASE_BODY)
+
+    def test_missing_notes_keep_legacy_body(self):
+        self.assertEqual(self.body("0.9.0"), publish.DEFAULT_RELEASE_BODY)
+
+    def test_later_commit_and_replace_ref_cannot_change_verified_notes(self):
+        expected = self.notes.read_text(encoding="utf-8").strip()
+        original = self.sha
+        self.notes.write_text("Later commit text\n", encoding="utf-8")
+        self.commit()
+        self.git("replace", original, self.sha)
+        self.sha = original
+        self.assertEqual(self.body(), expected)
+
+    def test_exact_size_limit_is_accepted(self):
+        self.notes.write_bytes(b"x" * (64 * 1024))
+        self.commit()
+        self.assertEqual(len(self.body()), 64 * 1024)
+
+    def test_oversized_notes_are_rejected(self):
+        self.notes.write_bytes(b"x" * (64 * 1024 + 1))
+        self.commit()
+        with self.assertRaises(publish.PromotionError):
+            self.body()
+
+    def test_empty_invalid_utf8_and_nul_notes_are_rejected(self):
+        for raw in (b"", b" \n", b"\xff", b"text\x00text"):
+            with self.subTest(raw=raw):
+                self.notes.write_bytes(raw)
+                self.commit()
+                with self.assertRaises(publish.PromotionError):
+                    self.body()
+
+    def test_tracked_symlink_is_not_read_as_release_notes(self):
+        self.notes.unlink()
+        self.notes.symlink_to("0.2.0.md")
+        self.commit()
+        with self.assertRaises(publish.PromotionError):
+            self.body()
+
+    def test_tracked_directory_is_not_missing_notes(self):
+        self.notes.unlink()
+        self.notes.mkdir()
+        (self.notes / "entry").write_text("Not a notes file", encoding="utf-8")
+        self.commit()
+        with self.assertRaises(publish.PromotionError):
+            self.body()
+
+    def test_git_failure_does_not_fall_back_to_generic_notes(self):
+        failed = subprocess.CompletedProcess([], 1, b"", b"unavailable")
+        with patch.object(publish.subprocess, "run", return_value=failed), self.assertRaises(publish.PromotionError):
+            self.body()
+
+    def test_invalid_version_or_source_cannot_construct_a_git_path(self):
+        for change in ({"version": "../0.1.0"}, {"source_sha": "HEAD"}):
+            with self.subTest(change=change), patch.object(publish.subprocess, "run") as execute:
+                with self.assertRaises(publish.PromotionError):
+                    publish.release_body(dict(inputs(), **change))
+                execute.assert_not_called()
+
+
 class ProvenanceTests(unittest.TestCase):
     def test_exact_run_workflow_and_artifact_are_accepted(self):
         publish.validate_run(run(), workflow(), inputs())
@@ -366,6 +463,7 @@ class PromotionPipelineTests(unittest.TestCase):
         self.directory = self.root / "prepared"
         self.args = SimpleNamespace(**{key: value for key, value in inputs().items() if key != "repository"}, output=self.directory)
         self.environment = self.start(patch.object(publish, "check_environment"))
+        self.notes = self.start(patch.object(publish, "release_body", return_value=publish.DEFAULT_RELEASE_BODY))
         self.start(patch.object(publish, "api_json", side_effect=self.gh.api))
         self.start(patch.object(publish, "download_api", side_effect=self.gh.download))
         self.start(patch.object(publish, "upload_asset", side_effect=self.gh.upload))
@@ -427,6 +525,35 @@ class PromotionPipelineTests(unittest.TestCase):
         self.assertLess(max(downloads), public)
         self.assertEqual(sum(event[0] == "DOWNLOAD" and event[1].endswith("/zip") for event in self.gh.events), 2)
         self.assertFalse(any(event[0] == "DELETE" for event in self.gh.events))
+
+    def test_version_notes_are_published_with_the_verified_bundle(self):
+        self.prepare()
+        self.notes.return_value = "# Native changes\n\nVerified package notes."
+        self.do_publish()
+        self.assertEqual(self.gh.release["body"], self.notes.return_value)
+        self.notes.assert_called_once_with(inputs())
+
+    def test_invalid_notes_fail_before_tag_or_release_mutation(self):
+        self.prepare()
+        self.notes.side_effect = publish.PromotionError("Invalid notes fixture")
+        with self.assertRaises(publish.PromotionError):
+            self.do_publish()
+        self.assertIsNone(self.gh.tag)
+        self.assertIsNone(self.gh.release)
+        self.assertFalse(any(event[0] in ("POST", "PATCH", "UPLOAD") for event in self.gh.events))
+
+    def test_draft_notes_changed_during_asset_checks_are_not_published(self):
+        self.prepare()
+        compare = publish.compare_assets
+
+        def edited(*args):
+            compare(*args)
+            self.gh.release["body"] = "Changed draft text"
+
+        with patch.object(publish, "compare_assets", side_effect=edited), self.assertRaisesRegex(publish.PromotionError, "notes changed"):
+            self.do_publish()
+        self.assertTrue(self.gh.release["draft"])
+        self.assertFalse(any(event[0] == "PATCH" for event in self.gh.events))
 
     def test_existing_release_or_tag_is_never_overwritten(self):
         self.prepare()

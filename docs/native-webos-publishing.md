@@ -80,6 +80,22 @@ The internal promotion receipt stays in the workflow artifact; it is not an
 eleventh release asset or an independent proof of provenance. Publication
 revalidates its source against GitHub's original candidate artifact.
 
+## Describe the version
+
+Commit optional release notes at `native/webos/releases/X.Y.Z.md` before
+building the candidate, using its numeric application version. The publisher
+reads this regular UTF-8 file from the verified source commit and uses it as
+the release description. A beta or RC tag uses the same numeric version's notes.
+Keep the file nonempty and at most 64 KiB, and describe features, limitations,
+and the validation actually performed. Package verification alone does not
+establish television playback compatibility.
+
+An absent notes file preserves the generic description used by older versions.
+Untracked files and later checkout edits cannot supply notes. A symlink,
+invalid encoding, empty file, or oversized file stops publication before it
+creates a tag or release. Do not edit the draft description while publication
+is running: the publisher checks it again before making the release public.
+
 ## When a run fails
 
 An existing tag or release, including a draft from a previous attempt, causes
