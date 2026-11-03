@@ -6,10 +6,10 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import importlib.util
 import io
 import json
 import os
-from pathlib import Path, PurePosixPath
 import re
 import shutil
 import struct
@@ -17,11 +17,16 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from pathlib import Path, PurePosixPath
+
 import tomllib
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 SPEC = json.loads((HERE / "manifest.json").read_text())
+LINKER_SPEC = importlib.util.spec_from_file_location("ott_companion_webos_link", ROOT / "src-rs/companion/webos_link.py")
+linker = importlib.util.module_from_spec(LINKER_SPEC)
+LINKER_SPEC.loader.exec_module(linker)
 
 
 def fail(message):
@@ -57,6 +62,7 @@ def version(value):
 
 def inspect_elf(binary, report, spec=SPEC):
     """Inspect actual ELF headers; readelf supplies symbols/dynamic information."""
+    linker.check_embedded_paths(binary)
     data = Path(binary).read_bytes()
     if len(data) < 52 or data[:7] != b"\x7fELF\x01\x01\x01":
         fail("Companion must be a little-endian ELF32 executable")
@@ -154,19 +160,20 @@ def local_source_archive(destination, source, root=ROOT):
     with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as temporary:
         pending = Path(temporary.name)
     try:
-        with pending.open("wb") as output, gzip.GzipFile(filename="", fileobj=output, mode="wb", mtime=0) as compressed:
-            with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive:
-                for row in source["local_inputs"]:
-                    content = (root / row["path"]).read_bytes()
-                    if hashlib.sha256(content).hexdigest() != row["sha256"]:
-                        fail("Source changed during archive creation")
-                    info = tarfile.TarInfo("source/" + safe_relative(row["path"]))
-                    info.size, info.mode, info.mtime = len(content), row["mode"], 0
-                    archive.addfile(info, io.BytesIO(content))
-                content = canonical(source)
-                info = tarfile.TarInfo("source-receipt.json")
-                info.size, info.mode, info.mtime = len(content), 0o644, 0
+        with (pending.open("wb") as output,
+              gzip.GzipFile(filename="", fileobj=output, mode="wb", mtime=0) as compressed,
+              tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive):
+            for row in source["local_inputs"]:
+                content = (root / row["path"]).read_bytes()
+                if hashlib.sha256(content).hexdigest() != row["sha256"]:
+                    fail("Source changed during archive creation")
+                info = tarfile.TarInfo("source/" + safe_relative(row["path"]))
+                info.size, info.mode, info.mtime = len(content), row["mode"], 0
                 archive.addfile(info, io.BytesIO(content))
+            content = canonical(source)
+            info = tarfile.TarInfo("source-receipt.json")
+            info.size, info.mode, info.mtime = len(content), 0o644, 0
+            archive.addfile(info, io.BytesIO(content))
         assert_sources(source, root)
         pending.replace(destination)
     finally:
@@ -225,23 +232,26 @@ def build(args):
     subprocess.run(command, cwd=ROOT, env=environment, check=True)
     assert_sources(source)
     binary = target / SPEC["target"] / "release" / SPEC["package"]
-    linkmap = binary.with_suffix(".link.map")
-    if "libglibc_polyfills" in linkmap.read_text():
-        fail("SDK glibc polyfills unexpectedly linked")
+    linker.check_evidence(binary, compiler=tools["gcc"])
     elf = inspect_elf(binary, elf_report(binary, tools["readelf"]))
     output.mkdir(parents=True, exist_ok=True)
     local_source_archive(output / "local-source.tar.gz", source)
     (output / "source-receipt.json").write_bytes(canonical(source))
     shutil.copyfile(binary, output / "ottplay-companion")
     (output / "ottplay-companion").chmod(0o755)
-    # Preserve private link map for the release runtime-source collector, not IPK.
-    shutil.copyfile(linkmap, output / "ottplay-companion.link.map")
+    # Preserve actual linker evidence for the release runtime-source collector,
+    # never reconstruct an input trace from the ELF or put private paths in IPK.
+    for suffix in linker.SUFFIXES:
+        shutil.copyfile(linker.sidecar(binary, suffix), linker.sidecar(output / SPEC["package"], suffix))
     receipt = {"schema": 1, "package": SPEC["package"], "target": SPEC["target"],
                "features": SPEC["features"], "manifest_sha256": sha(HERE / "manifest.json"),
                "rustc": rustc, "sdk": sdk, "elf": elf, "device_executed": False,
                "source_receipt_sha256": sha(output / "source-receipt.json"),
+               "local_inputs_sha256": source["local_inputs_sha256"],
                "local_source_archive_sha256": sha(output / "local-source.tar.gz"),
                "link_map_sha256": sha(output / "ottplay-companion.link.map"),
+               "link_trace_sha256": sha(output / "ottplay-companion.link.trace"),
+               "link_receipt_sha256": sha(output / "ottplay-companion.link.json"),
                "sdk_glibc_polyfills_linked": False}
     (output / "receipt.json").write_bytes(canonical(receipt))
     print(json.dumps({"output": str(output), "sha256": elf["sha256"], "device_executed": False}))
@@ -251,13 +261,16 @@ def checked_bundle(bundle, readelf, root=ROOT):
     receipt = json.loads((bundle / "receipt.json").read_text())
     for name, key in (("source-receipt.json", "source_receipt_sha256"),
                       ("local-source.tar.gz", "local_source_archive_sha256"),
-                      ("ottplay-companion.link.map", "link_map_sha256")):
+                      ("ottplay-companion.link.map", "link_map_sha256"),
+                      ("ottplay-companion.link.trace", "link_trace_sha256"),
+                      ("ottplay-companion.link.json", "link_receipt_sha256")):
         if sha(bundle / name) != receipt[key]:
             fail("Bundle checksum mismatch: " + name)
     if receipt["manifest_sha256"] != sha(HERE / "manifest.json"):
         fail("Build policy changed after companion build")
     source = json.loads((bundle / "source-receipt.json").read_text())
     assert_sources(source, root)
+    linker.check_evidence(bundle / SPEC["package"])
     elf = inspect_elf(bundle / "ottplay-companion", elf_report(bundle / "ottplay-companion", readelf))
     if elf != receipt["elf"] or "libglibc_polyfills" in (bundle / "ottplay-companion.link.map").read_text():
         fail("Companion changed after build or links prohibited SDK polyfills")
@@ -270,6 +283,13 @@ def stage(args):
     # Only own these two new paths. Never replace another packager's output.
     binary = destination / safe_relative(SPEC["install_path"])
     metadata = destination / "companion"
+    evidence = getattr(args, "link_evidence", None)
+    if evidence is not None:
+        evidence = evidence.resolve()
+        if evidence == destination or destination in evidence.parents:
+            fail("Private linker evidence must be outside the staged application")
+        if any(linker.sidecar(evidence / SPEC["package"], suffix).exists() for suffix in linker.SUFFIXES):
+            fail("Linker evidence already staged; use a fresh evidence directory")
     if binary.exists() or binary.is_symlink() or metadata.exists() or metadata.is_symlink():
         fail("Companion already staged; use a fresh package directory")
     destination.mkdir(parents=True, exist_ok=True)
@@ -279,7 +299,7 @@ def stage(args):
         parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(args.bundle / "ottplay-companion", binary)
     binary.chmod(0o755)
-    (metadata / "manifest.json").write_bytes(canonical(SPEC))
+    shutil.copyfile(HERE / "manifest.json", metadata / "manifest.json")
     (metadata / "receipt.json").write_bytes(canonical(receipt))
     # Avoid duplicating thousands of source paths into device metadata.
     (metadata / "source.json").write_bytes(canonical({
@@ -296,6 +316,12 @@ def stage(args):
     if sha(binary) != receipt["elf"]["sha256"]:
         fail("Staged binary checksum mismatch")
     assert_sources(source)
+    if evidence is not None:
+        evidence.mkdir(parents=True, exist_ok=True)
+        for suffix in linker.SUFFIXES:
+            shutil.copyfile(linker.sidecar(args.bundle / SPEC["package"], suffix),
+                            linker.sidecar(evidence / SPEC["package"], suffix))
+        linker.check_evidence(binary, evidence / SPEC["package"])
     print(json.dumps({"binary": str(binary), "sha256": sha(binary), "device_executed": False}))
 
 
@@ -316,6 +342,8 @@ def main():
     install.add_argument("--bundle", type=Path, required=True)
     install.add_argument("--readelf", type=Path, required=True)
     install.add_argument("--destination", type=Path, required=True)
+    install.add_argument("--link-evidence", type=Path,
+                         help="Private collector directory outside the staged application (for example pkg/link-evidence/stable)")
     args = parser.parse_args()
     try:
         if args.command == "build":
@@ -324,7 +352,7 @@ def main():
             stage(args)
         else:
             print(json.dumps(inspect_elf(args.binary, elf_report(args.binary, args.readelf)), indent=2))
-    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, TypeError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, "Companion verification failed: " + str(error) + "\n")
 
 

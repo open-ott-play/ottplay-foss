@@ -1,18 +1,25 @@
 import importlib.util
-import io
 import json
-from pathlib import Path
+import os
+import shlex
+import shutil
 import struct
 import subprocess
+import sys
 import tarfile
 import tempfile
-from types import SimpleNamespace
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 LOADER = importlib.util.spec_from_file_location("webos_companion_build", Path(__file__).with_name("build.py"))
 build = importlib.util.module_from_spec(LOADER)
 LOADER.loader.exec_module(build)
+FLAGS_LOADER = importlib.util.spec_from_file_location("webos_companion_flags", build.ROOT / "src-rs/companion/build-webos.py")
+flags = importlib.util.module_from_spec(FLAGS_LOADER)
+with patch.dict(sys.modules, {"webos_link": build.linker}):
+    FLAGS_LOADER.loader.exec_module(flags)
 
 
 def executable(flags=0x5000200, interpreter=b"/lib/ld-linux.so.3\0", stack_flags=6):
@@ -48,6 +55,18 @@ class ElfTests(unittest.TestCase):
         self.assertEqual(result["float_abi"], "soft")
         self.assertFalse(result["device_executed"])
         self.assertEqual(result["sha256"], build.sha(self.binary))
+
+    def test_private_host_paths_rejected_in_elf_bytes(self):
+        for prefix in (b"/Users", b"/home"):
+            with self.subTest(prefix=prefix):
+                self.binary.write_bytes(executable() + prefix + b"/builder/src/lib.rs\0")
+                with self.assertRaisesRegex(ValueError, "private host paths"):
+                    build.inspect_elf(self.binary, REPORT)
+
+    def test_private_path_split_at_scan_boundary_rejected(self):
+        self.binary.write_bytes(b"x" * (1024 * 1024 - 3) + b"/Users/builder\0")
+        with self.assertRaisesRegex(ValueError, "private host paths"):
+            build.linker.check_embedded_paths(self.binary)
 
     def test_wrong_class_or_machine(self):
         for index, value in ((4, 2), (5, 2), (18, 62)):
@@ -95,9 +114,8 @@ class ElfTests(unittest.TestCase):
                    REPORT + " (RPATH) [/tmp/build]", REPORT + " (RUNPATH) [$ORIGIN]",
                    REPORT + " (TEXTREL) 0", REPORT + " GLOBAL DEFAULT UND getauxval@GLIBC_2.16"]
         for report in reports:
-            with self.subTest(report=report):
-                with self.assertRaises(ValueError):
-                    build.inspect_elf(self.binary, report)
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                build.inspect_elf(self.binary, report)
 
     def test_unversioned_getauxval(self):
         with self.assertRaisesRegex(ValueError, "getauxval"):
@@ -174,12 +192,22 @@ class BundleTests(unittest.TestCase):
         (self.root / "ottplay-companion").write_bytes(executable())
         (self.root / "source-receipt.json").write_text('{"local_inputs": []}')
         (self.root / "local-source.tar.gz").write_bytes(b"local source")
-        (self.root / "ottplay-companion.link.map").write_text("normal linker evidence")
+        (self.root / "ottplay-companion.link.map").write_text("LOAD /sdk/lib/crti.o\n")
+        (self.root / "ottplay-companion.link.trace").write_text("/sdk/lib/crti.o\n")
+        self.link_record = {"schema": 1, "archive_excluded": True,
+                            "build_root": str(self.root), "build_target": str(self.root), "rust_sysroot": str(self.root), "archive_inputs": [],
+                            "compiler_sha256": "a" * 64,
+                            "elf_sha256": build.sha(self.root / "ottplay-companion"),
+                            "map_sha256": build.sha(self.root / "ottplay-companion.link.map"),
+                            "trace_sha256": build.sha(self.root / "ottplay-companion.link.trace")}
+        (self.root / "ottplay-companion.link.json").write_bytes(build.canonical(self.link_record))
         self.receipt = {
             "manifest_sha256": build.sha(build.HERE / "manifest.json"),
             "source_receipt_sha256": build.sha(self.root / "source-receipt.json"),
             "local_source_archive_sha256": build.sha(self.root / "local-source.tar.gz"),
             "link_map_sha256": build.sha(self.root / "ottplay-companion.link.map"),
+            "link_trace_sha256": build.sha(self.root / "ottplay-companion.link.trace"),
+            "link_receipt_sha256": build.sha(self.root / "ottplay-companion.link.json"),
             "elf": build.inspect_elf(self.root / "ottplay-companion", REPORT)}
         self.save()
 
@@ -211,6 +239,50 @@ class BundleTests(unittest.TestCase):
         (self.root / "local-source.tar.gz").write_text("changed")
         with self.assertRaisesRegex(ValueError, "checksum"):
             self.check()
+
+    def test_changed_trace_rejected(self):
+        (self.root / "ottplay-companion.link.trace").write_text("different trace")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            self.check()
+
+    def test_missing_trace_rejected(self):
+        (self.root / "ottplay-companion.link.trace").unlink()
+        with self.assertRaises(OSError):
+            self.check()
+
+    def test_archive_exclusion_is_not_just_an_outer_checksum(self):
+        self.link_record["archive_excluded"] = False
+        (self.root / "ottplay-companion.link.json").write_bytes(build.canonical(self.link_record))
+        self.receipt["link_receipt_sha256"] = build.sha(self.root / "ottplay-companion.link.json")
+        self.save()
+        with self.assertRaisesRegex(ValueError, "exclusion"):
+            self.check()
+
+    def test_trace_is_checked_even_if_outer_checksum_was_updated(self):
+        (self.root / "ottplay-companion.link.trace").write_text("different trace")
+        self.receipt["link_trace_sha256"] = build.sha(self.root / "ottplay-companion.link.trace")
+        self.save()
+        with self.assertRaisesRegex(ValueError, "trace_sha256"):
+            self.check()
+
+    def test_explicit_private_evidence_staging(self):
+        source = {"local_inputs_sha256": "source-hash"}
+        destination = self.root / "ipk"
+        evidence = self.root / "link-evidence/stable"
+        args = SimpleNamespace(bundle=self.root, readelf=Path("readelf"),
+                               destination=destination, link_evidence=evidence)
+        with patch.object(build, "checked_bundle", return_value=(self.receipt, source)), \
+                patch.object(build, "assert_sources"), patch("builtins.print"):
+            build.stage(args)
+        build.linker.check_evidence(destination / "bin/ottplay-companion", evidence / "ottplay-companion")
+        self.assertFalse(list(destination.rglob("*.link.*")))
+
+    def test_private_evidence_cannot_be_put_in_application_payload(self):
+        args = SimpleNamespace(bundle=self.root, readelf=Path("readelf"),
+                               destination=self.root / "ipk", link_evidence=self.root / "ipk/evidence")
+        with patch.object(build, "checked_bundle", return_value=(self.receipt, {})), \
+                self.assertRaisesRegex(ValueError, "outside"):
+            build.stage(args)
 
     def test_polyfill_rejected_even_with_updated_checksum(self):
         (self.root / "ottplay-companion.link.map").write_text("/sdk/libglibc_polyfills.a(member.o)")
@@ -244,6 +316,195 @@ class BundleTests(unittest.TestCase):
         with patch.object(build, "checked_bundle", return_value=(self.receipt, {})), \
                 self.assertRaisesRegex(ValueError, "already staged|symlink"):
             build.stage(args)
+
+
+class CompilerFlagsTests(unittest.TestCase):
+    def remaps(self):
+        return flags.path_remaps(
+            Path("/home/builder/source"), Path("/home/builder/target"), Path("/opt/cargo cache"),
+            Path("/home/builder/.rustup/toolchains/pinned"), Path("/home/builder/sdk"),
+            Path("/home/builder"), Path("/tmp"))
+
+    def test_specific_roots_override_home_and_all_build_inputs_are_mapped(self):
+        mappings = self.remaps()
+        expected = {"/home/builder": "/build/user", "/tmp": "/build/tmp",
+                    "/home/builder/source": "/build/ottplay-companion",
+                    "/home/builder/target": "/build/ottplay-target",
+                    "/opt/cargo cache": "/build/cargo",
+                    "/home/builder/.rustup/toolchains/pinned": "/build/rust",
+                    "/home/builder/sdk": "/build/webos-sdk"}
+        self.assertEqual({key: dict(mappings)[key] for key in expected}, expected)
+        lengths = [len(path) for path, _ in mappings]
+        self.assertEqual(lengths, sorted(lengths))
+        self.assertLess(mappings.index(("/home/builder", "/build/user")),
+                        mappings.index(("/home/builder/source", "/build/ottplay-companion")))
+
+    def test_symlink_and_canonical_roots_are_both_mapped(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "source"
+            source.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(source, target_is_directory=True)
+            mappings = dict(flags.path_remaps(alias, root / "target", root / "cargo", root / "rust",
+                                             root / "sdk", root, Path("/tmp")))
+            self.assertEqual(mappings[str(source)], "/build/ottplay-companion")
+            self.assertEqual(mappings[str(alias)], "/build/ottplay-companion")
+
+    def test_rust_and_native_macro_flags_keep_spaces_and_bindgen_is_separate(self):
+        mappings = self.remaps()
+        rust, native, bindgen = flags.compilation_flags(Path("/sdk with spaces/sysroot"), mappings)
+        self.assertEqual("\x1f".join(rust).split("\x1f"), rust)
+        self.assertEqual(shlex.split(shlex.join(native)), native)
+        self.assertEqual(bindgen, ["--sysroot=/sdk with spaces/sysroot"])
+        for original, replacement in mappings:
+            mapping = original + "=" + replacement
+            index = rust.index(mapping)
+            self.assertEqual(rust[index - 1], "--remap-path-prefix")
+            self.assertIn("-ffile-prefix-map=" + mapping, native)
+            self.assertIn("-fmacro-prefix-map=" + mapping, native)
+
+    def test_unsafe_compiler_prefixes_are_rejected(self):
+        for prefix in ("/", "/tmp/with=newvalue", "/tmp/with\nnewline"):
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(ValueError, "Unsafe"):
+                flags.path_remaps(prefix, "/target", "/cargo", "/rust", "/sdk", "/user", "/tmp")
+
+
+class LinkerTests(unittest.TestCase):
+    """A compiler-process fixture tests capture, never stands in for release evidence."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="companion-link-test-")
+        self.root = Path(self.temp.name).resolve()
+        self.compiler = self.root / "sdk with spaces/compiler"
+        self.compiler.parent.mkdir()
+        self.compiler.write_text('''#!/usr/bin/env python3
+import os, pathlib, sys
+args = sys.argv[1:]
+if os.environ.get('FIXTURE_ARGV0'):
+    assert pathlib.Path(sys.argv[0]).name == os.environ['FIXTURE_ARGV0']
+assert '-tno-glibc-polyfill' in args
+assert '-t' in args and '--cref' in args
+output = pathlib.Path(args[args.index('-o') + 1])
+mapfile = pathlib.Path(args[args.index('-Map') + 2])
+output.parent.mkdir(parents=True, exist_ok=True)
+output.write_bytes(b'\\x7fELFfixture-' + os.environ.get('FIXTURE_BYTES', 'a').encode())
+text = 'LOAD /sdk/lib/crti.o\\n'
+if os.environ.get('FIXTURE_FORBIDDEN'):
+    text += 'LOAD /sdk/libglibc_polyfills.a\\n'
+mapfile.write_text(text)
+if os.environ.get('FIXTURE_ARCHIVE'):
+    with mapfile.open('a') as stream:
+        stream.write('LOAD ' + os.environ['FIXTURE_ARCHIVE'] + '\\n')
+    print(os.environ['FIXTURE_ARCHIVE'])
+print('/sdk/lib/crti.o')
+print('compiler fixture diagnostic', file=sys.stderr)
+sys.exit(int(os.environ.get('FIXTURE_FAIL', '0')))
+''')
+        self.compiler.chmod(0o755)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def run_link(self, output, **environment):
+        return subprocess.run([sys.executable, str(Path(build.linker.__file__)), '-o', str(output)],
+                              env={**os.environ, 'OTT_COMPANION_CC': str(self.compiler),
+                                   'OTT_COMPANION_BUILD_ROOT':str(self.root),
+                                   'OTT_COMPANION_BUILD_TARGET':str(self.root),
+                                   'OTT_COMPANION_RUST_SYSROOT':str(self.root), **environment},
+                              capture_output=True, text=True, check=False)
+
+    def test_real_subprocess_trace_and_byte_bound_receipt(self):
+        output = self.root / 'with spaces,commas/program'
+        result = self.run_link(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = build.linker.check_evidence(output, compiler=self.compiler)
+        trace = build.linker.sidecar(output, '.link.trace').read_text()
+        self.assertEqual(trace, result.stdout + result.stderr)
+        self.assertIn('/sdk/lib/crti.o', trace)
+        self.assertTrue(record['archive_excluded'])
+
+    def test_failed_relink_removes_previous_success_receipt(self):
+        output = self.root / 'program'
+        self.assertEqual(self.run_link(output).returncode, 0)
+        self.assertEqual(self.run_link(output, FIXTURE_FAIL='2').returncode, 2)
+        self.assertFalse(build.linker.sidecar(output, '.link.json').exists())
+
+    def test_compiler_symlink_preserves_basename_for_multicall_wrapper(self):
+        wrapper = self.compiler.with_name("toolchain-wrapper")
+        self.compiler.rename(wrapper)
+        self.compiler.symlink_to(wrapper.name)
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_ARGV0=self.compiler.name)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = build.linker.check_evidence(output, compiler=self.compiler)
+        self.assertEqual(record['compiler_sha256'], build.sha(wrapper))
+
+    def test_forbidden_archive_cannot_be_attested(self):
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_FORBIDDEN='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(build.linker.sidecar(output, '.link.json').exists())
+
+    def test_cargo_copy_finds_exact_internal_binary(self):
+        output = self.root / 'target/triple/release/deps/ottplay_companion-correct'
+        stale = output.with_name('ottplay_companion-stale')
+        self.assertEqual(self.run_link(stale, FIXTURE_BYTES='stale').returncode, 0)
+        self.assertEqual(self.run_link(output).returncode, 0)
+        public = output.parent.parent / 'ottplay-companion'
+        shutil.copyfile(output, public)
+        build.linker.stage_evidence(public, compiler=self.compiler)
+        self.assertEqual(build.linker.check_evidence(public)['elf_sha256'], build.sha(output))
+
+    def test_map_alone_never_substitutes_for_actual_trace(self):
+        output = self.root / 'target/triple/release/ottplay-companion'
+        output.parent.mkdir(parents=True)
+        output.write_bytes(b'\x7fELFfixture')
+        build.linker.sidecar(output, '.link.map').write_text('LOAD /sdk/lib/crti.o\n')
+        with self.assertRaisesRegex(ValueError, 'real linker evidence'):
+            build.linker.stage_evidence(output)
+
+    def test_response_file_output_path_is_detected_without_rewriting_arguments(self):
+        response = self.root / 'args.rsp'
+        response.write_text('-Wl,--as-needed -o "with spaces/program"')
+        self.assertEqual(build.linker.link_output(['@' + str(response)]), Path('with spaces/program').absolute())
+        self.assertIsNone(build.linker.link_output(['-c', '-o', 'file.o']))
+
+    def test_actual_archive_bytes_are_hashed_before_temporary_input_disappears(self):
+        archive = self.root / 'target/deps/rustctemporary/libfixture.rlib'
+        archive.parent.mkdir(parents=True)
+        archive.write_bytes(b'!<arch>\nfixture archive')
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_ARCHIVE=str(archive))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = build.linker.check_evidence(output)
+        self.assertEqual(record['archive_inputs'], [{'path':str(archive), 'sha256':build.sha(archive), 'bytes':archive.stat().st_size,
+                                                   'observed_at_link':True, 'validation':'link_time_only_ephemeral'}])
+        archive.unlink()
+        # Verification retains the actual link-time hash; it does not substitute
+        # a different persistent rlib after rustc removes its temporary copy.
+        self.assertEqual(build.linker.check_evidence(output)['archive_inputs'], record['archive_inputs'])
+
+    def test_archive_inventory_cannot_add_or_duplicate_unobserved_inputs(self):
+        output = self.root / 'program'
+        self.assertEqual(self.run_link(output).returncode, 0)
+        path = build.linker.sidecar(output, '.link.json')
+        record = json.loads(path.read_text())
+        record['archive_inputs'] = [{'path':str(self.root/'deps/rustctmp/injected.a'), 'sha256':'a'*64, 'bytes':8,
+                                    'observed_at_link':True, 'validation':'link_time_only_ephemeral'}]
+        path.write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'observed'):
+            build.linker.check_evidence(output)
+
+    def test_symlink_archive_is_not_attested(self):
+        target = self.root / 'real.a'
+        target.write_bytes(b'!<arch>\nreal')
+        archive = self.root / 'alias.a'
+        archive.symlink_to(target)
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_ARCHIVE=str(archive))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(build.linker.sidecar(output, '.link.json').exists())
 
 
 if __name__ == "__main__":
