@@ -174,6 +174,14 @@ def checked_bundle(bundle, source_root, readelf):
         if not record.get("archive_excluded"):
             fail("Companion linker exclusion was not attested")
         build.linker.check_evidence(binary, compiler=readelf.with_name("arm-webos-linux-gnueabi-gcc"))
+        sdk = receipt.get("sdk")
+        executables = sdk.get("executables") if isinstance(sdk, dict) else None
+        if not isinstance(executables, dict):
+            fail("Companion SDK compiler hashes are missing from build receipt")
+        for outer_key, link_key in (("gcc", "compiler_sha256"), ("gcc_backend", "compiler_backend_sha256")):
+            value = executables.get(outer_key)
+            if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value) or record.get(link_key) != value:
+                fail("Companion SDK compiler differs from build receipt: " + outer_key)
         linkage.update(
             trace_available=True,
             trace_sha256=receipt["link_trace_sha256"],

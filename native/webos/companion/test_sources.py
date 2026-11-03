@@ -214,7 +214,7 @@ class SourceTests(unittest.TestCase):
         with patch.object(sources.build, "run", return_value=receipt["rustc"]), self.assertRaises(ValueError):
             sources.rust_sources(sysroot, archive, receipt, spec)
 
-    def test_linkage_verifies_sdk_compiler_and_preserves_backend_digest(self):
+    def linkage_fixture(self):
         bundle = self.root / "bundle"
         root = self.root / "source"
         bundle.mkdir()
@@ -252,6 +252,16 @@ class SourceTests(unittest.TestCase):
             "features": [],
             "elf": {"sha256": file_hash},
             "manifest_sha256": sources.build.sha(manifest_path),
+            "sdk": {
+                "archive_sha256": "d" * 64,
+                "executables": {
+                    "gcc": "c" * 64,
+                    "gcc_backend": "b" * 64,
+                    "g++": "e" * 64,
+                    "ar": "a" * 64,
+                    "readelf": "f" * 64,
+                },
+            },
         }
         for name, key in (
             ("local-source.tar.gz", "local_source_archive_sha256"),
@@ -263,6 +273,10 @@ class SourceTests(unittest.TestCase):
             receipt[key] = sources.build.sha(bundle / name)
         (bundle / "receipt.json").write_text(json.dumps(receipt))
         readelf = self.root / "sdk/bin/arm-webos-linux-gnueabi-readelf"
+        return bundle, root, readelf, receipt
+
+    def check_linkage(self, bundle, root, readelf, receipt):
+        (bundle / "receipt.json").write_text(json.dumps(receipt))
         with (
             patch.object(sources, "extract_local"),
             patch.object(sources.build, "elf_report"),
@@ -273,7 +287,47 @@ class SourceTests(unittest.TestCase):
         check.assert_called_once_with(
             bundle / "ottplay-companion", compiler=readelf.with_name("arm-webos-linux-gnueabi-gcc")
         )
+        return result
+
+    def test_linkage_verifies_sdk_compiler_and_preserves_backend_digest(self):
+        result = self.check_linkage(*self.linkage_fixture())
         self.assertEqual(result[3]["compiler_backend_sha256"], "b" * 64)
+
+    def test_linkage_rejects_only_outer_backend_digest_changed(self):
+        bundle, root, readelf, receipt = self.linkage_fixture()
+        receipt["sdk"]["executables"]["gcc_backend"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "compiler differs.*gcc_backend"):
+            self.check_linkage(bundle, root, readelf, receipt)
+
+    def test_linkage_rejects_only_outer_wrapper_digest_changed(self):
+        bundle, root, readelf, receipt = self.linkage_fixture()
+        receipt["sdk"]["executables"]["gcc"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "compiler differs.*gcc"):
+            self.check_linkage(bundle, root, readelf, receipt)
+
+    def test_linkage_requires_outer_compiler_hash_fields(self):
+        bundle, root, readelf, original = self.linkage_fixture()
+        for missing in ("sdk", "executables", "gcc", "gcc_backend"):
+            with self.subTest(missing=missing):
+                receipt = json.loads(json.dumps(original))
+                if missing == "sdk":
+                    receipt.pop("sdk")
+                elif missing == "executables":
+                    receipt["sdk"].pop("executables")
+                else:
+                    receipt["sdk"]["executables"].pop(missing)
+                with self.assertRaisesRegex(ValueError, "compiler"):
+                    self.check_linkage(bundle, root, readelf, receipt)
+
+    def test_linkage_rejects_malformed_outer_compiler_hashes(self):
+        bundle, root, readelf, original = self.linkage_fixture()
+        for field in ("gcc", "gcc_backend"):
+            for bad in (None, "", "not-a-sha256", 1):
+                with self.subTest(field=field, value=bad):
+                    receipt = json.loads(json.dumps(original))
+                    receipt["sdk"]["executables"][field] = bad
+                    with self.assertRaisesRegex(ValueError, "compiler"):
+                        self.check_linkage(bundle, root, readelf, receipt)
 
     def test_wrong_rust_compiler_and_archive_are_rejected(self):
         sysroot, archive, receipt, spec = self.rust_fixture()
