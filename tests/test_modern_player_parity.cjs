@@ -23,7 +23,10 @@ function fixture(t, kind = "vod") {
     );
     const w = dom.window;
     const calls = [];
-    const record = (name) => (...args) => calls.push([name, ...args]);
+    const record =
+        (name) =>
+        (...args) =>
+            calls.push([name, ...args]);
     Object.assign(w, {
         _: (value) => value,
         __ottClassicPlayback: {
@@ -53,7 +56,10 @@ function fixture(t, kind = "vod") {
         stbPause: record("stbPause"),
     });
     const video = w.document.getElementById("video");
-    Object.defineProperty(video, "duration", { configurable: true, value: 600 });
+    Object.defineProperty(video, "duration", {
+        configurable: true,
+        value: 600,
+    });
     video.currentTime = 300;
     w.eval(source);
     const api = w.__ottModernPlayerFactory(w);
@@ -105,13 +111,15 @@ for (const timing of [
     test(`Modern keeps shared progress for unavailable timing ${timing.position}/${timing.duration}`, (t) => {
         const { open, video, w } = fixture(t);
         Object.defineProperties(video, {
-            duration: { value: timing.duration },
             currentTime: { value: timing.position },
+            duration: { value: timing.duration },
         });
         open();
         assert.equal(w.document.getElementById("progress").style.width, "25%");
         assert.equal(
-            w.document.getElementById("progress_div").getAttribute("aria-valuenow"),
+            w.document
+                .getElementById("progress_div")
+                .getAttribute("aria-valuenow"),
             "25"
         );
     });
@@ -162,7 +170,9 @@ test("Modern does not expose non-finite calculated archive times", (t) => {
         assert.equal(element.hidden, true);
     }
     assert.equal(
-        w.document.getElementById("progress_div").getAttribute("aria-valuetext"),
+        w.document
+            .getElementById("progress_div")
+            .getAttribute("aria-valuetext"),
         "0:00"
     );
 });
@@ -214,14 +224,17 @@ for (const key of ["Enter", " ", "Spacebar"]) {
         status.focus();
         assert.equal(w.document.activeElement, status);
         const event = new w.KeyboardEvent("keydown", {
-            key,
             bubbles: true,
             cancelable: true,
+            key,
         });
         status.dispatchEvent(event);
         assert.equal(event.defaultPrevented, true);
         assert.equal(opened(), 1, "focused status opens playback details");
-        assert.equal(calls.some(([name]) => name === "stbPause"), false);
+        assert.equal(
+            calls.some(([name]) => name === "stbPause"),
+            false
+        );
     });
 }
 
@@ -230,7 +243,10 @@ test("Modern focused playback status accepts native remote Enter", (t) => {
     status.focus();
     assert.equal(api.handleKey({ keyCode: 13 }), true);
     assert.equal(opened(), 1);
-    assert.equal(calls.some(([name]) => name === "stbPause"), false);
+    assert.equal(
+        calls.some(([name]) => name === "stbPause"),
+        false
+    );
 });
 
 for (const owner of ["dialog", "kiosk"]) {
@@ -286,7 +302,10 @@ test("Modern leaves Space on the scrubber to existing playback shortcuts", (t) =
     open();
     const status = w.document.querySelector(".modern-player-status");
     assert.notEqual(w.document.activeElement, status);
-    const event = new w.KeyboardEvent("keydown", { key: " ", cancelable: true });
+    const event = new w.KeyboardEvent("keydown", {
+        cancelable: true,
+        key: " ",
+    });
     assert.equal(api.handleKey(event), false);
     assert.equal(event.defaultPrevented, false);
     assert.deepEqual(calls, []);
