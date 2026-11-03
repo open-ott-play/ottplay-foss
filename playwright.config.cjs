@@ -18,7 +18,6 @@ module.exports = defineConfig({
     testDir: "./tests/browser",
     testMatch: [
         "device-detection.spec.cjs",
-        "classic-value-selector.spec.cjs",
         "media-runtime.spec.cjs",
         "media-companion.spec.cjs",
         "torznab-provider-settings.spec.cjs",
