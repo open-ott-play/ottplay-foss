@@ -97,11 +97,11 @@ export var providerIds = [
     "xtream",
     "plex",
     "vportal",
-    "",
     "demo",
     "offline",
     "torrent",
     // OTTPLAY_FULL_ONLY_BEGIN
+    "",
     "ottclub",
     "edem",
     "shura",
@@ -1610,7 +1610,6 @@ export function showProviderSelection(): void {
             "xtream",
             "plex",
             "vportal",
-            "",
             "demo",
             "offline",
             "torrent",
@@ -1628,11 +1627,11 @@ export function showProviderSelection(): void {
             (sNoColorKeys ? "" : '<div class="btn blue">&nbsp;</div>&nbsp;') +
                 "Plex",
             "VPortal",
-            "",
             _("Demo — moving test pattern"),
             _("Local videos"),
             "Torrent",
             // OTTPLAY_FULL_ONLY_BEGIN
+            "",
             "OTTCLUB",
             "Эдем / iLookTV",
             "Шура ТВ",
@@ -1773,6 +1772,7 @@ export function showProviderSelection(): void {
     }
 
     var recentCount = providerIds.indexOf("");
+    if (recentCount < 0) recentCount = providerIds.length;
     var savedProvId = stbGetItem("ottplayprov") || "no";
     var recentProviders: string[] = [];
     try {

@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "scope": "Native-style Modern Home/Library navigation, selected-item actions, artwork and bounded layouts. Only the optional Modern asset and complete payload allowance change; the separate Plex artwork provider change is not included.",
+  "reproduction": "node scripts/measure-modern-shell.cjs e7f18d5786f5853e7e32f66644090ab0a82f8713 /tmp/ott-modern-shell-size",
+  "measurement": "Identical TypeScript options, production classic assembler, optimizer and retained-name policy; gzip level 9. Both inputs are snapshotted before compilation. No version stamping occurs in this optional asset.",
+  "toolchain": {
+    "node": "26.8.2",
+    "zlib": "1.2.12",
+    "typescript": "5.9.3",
+    "terser": "5.51.2",
+    "gzipLevel": 9
+  },
+  "packageLock": "b8c1a17b830a48366a835c3c4c4808ab45bc103676b9fcff04c86e7179a0d0c8",
+  "baseline": {
+    "revision": "e7f18d5786f5853e7e32f66644090ab0a82f8713",
+    "inputs": {
+      "src/ui/modern-player.ts": "f79e673d7739251431f148ff332fae994d553b0dee9165918f4aa69eb886dbe0",
+      "src/ui/modern.ts": "36017279cacabb39cb1de98772d47616a0b84bd9d8dfd03619a7b7ca57a118c3"
+    },
+    "output": {
+      "bytes": 31633,
+      "gzipBytes": 10008,
+      "sha256": "825ebd4f115f8ad9c287f225064ad53ef6e698c7cbf12f891b9a6bfc992a98b0"
+    }
+  },
+  "candidate": {
+    "inputs": {
+      "src/ui/modern-player.ts": "f79e673d7739251431f148ff332fae994d553b0dee9165918f4aa69eb886dbe0",
+      "src/ui/modern.ts": "92f544035b4f91545d8977cd8dc97c536f7c5025f24b1e869cead75ea7ce48fc"
+    },
+    "output": {
+      "bytes": 37827,
+      "gzipBytes": 11747,
+      "sha256": "2da23c9d66c997c8c7bfed3334df9dc39dccd6761b9953964d378cc9ef4650c2"
+    }
+  },
+  "allowance": {
+    "bytes": 6194,
+    "gzipBytes": 1739
+  },
+  "budgets": {
+    "before": {
+      "modern": {
+        "bytes": 31730,
+        "gzipBytes": 10177
+      },
+      "baseTotal": {
+        "bytes": 1839601,
+        "gzipBytes": 566722
+      },
+      "total": {
+        "bytes": 1844081,
+        "gzipBytes": 569026
+      }
+    },
+    "after": {
+      "modern": {
+        "bytes": 37924,
+        "gzipBytes": 11916
+      },
+      "baseTotal": {
+        "bytes": 1845795,
+        "gzipBytes": 568461
+      },
+      "total": {
+        "bytes": 1850275,
+        "gzipBytes": 570765
+      }
+    }
+  },
+  "protectedCaps": {
+    "entry": {
+      "bytes": 1184448,
+      "gzipBytes": 361805
+    },
+    "legacy": {
+      "bytes": 1429319,
+      "gzipBytes": 445983
+    },
+    "provider": {
+      "bytes": 863400,
+      "gzipBytes": 268490
+    }
+  },
+  "preservedOptionalHeadroom": {
+    "bytes": 97,
+    "gzipBytes": 169
+  },
+  "reviewedCleanup": [
+    "Removed hidden, unused brand markup and its stylesheet rule.",
+    "Kept owner, overlay, selection and kiosk admission checks; existing playback overlay source is byte-identical."
+  ],
+  "limits": "This receipt measures only the two-module optional asset. Full web/Tauri/Capacitor builds must still pass every existing entry, provider, legacy and total gate."
+}

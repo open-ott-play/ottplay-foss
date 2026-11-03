@@ -522,7 +522,13 @@ test("actual build transform removes every branded provider ID and label", () =>
         Array.from(play.w.arrayProvaiders).filter(Boolean),
         permitted
     );
-    assert.equal(play.w.provArray.length, permitted.length + 1);
+    assert.equal(play.w.provArray.length, permitted.length);
+    for (let index = 0; index < play.w.listArray.length; index++)
+        assert.doesNotMatch(
+            play.w.getListItemFn(play.w.listArray[index], index),
+            /class="btn">[1-9]</,
+            "Play has no TV-service group or numeric service shortcuts"
+        );
     // Parse all literal strings in the transformed module: hidden registry names
     // or unreachable activation implementations must not survive the Play build.
     const parsed = ts.createSourceFile(
@@ -803,7 +809,6 @@ test("settings restored after startup still pass policy at the script boundary",
         "xtream",
         "plex",
         "vportal",
-        "",
         "demo",
         "offline",
     ]);
