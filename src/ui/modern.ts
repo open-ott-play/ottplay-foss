@@ -1082,7 +1082,11 @@ function createModernInterface(w: any) {
         );
         var pageStart = Math.floor(selected / pageSize) * pageSize;
         var firstVisibleRow = selected - pageStart < (layout?.columns || 1);
-        if (shell && actions.length && command.id === "up" && firstVisibleRow) {
+        // Linear lists must traverse page boundaries before entering navigation.
+        var navigationEdge = activeGrid(owner)
+            ? firstVisibleRow
+            : selected === 0;
+        if (shell && actions.length && command.id === "up" && navigationEdge) {
             if (homeView() && heroActions.length) focusHero(0);
             else {
                 var active = actions

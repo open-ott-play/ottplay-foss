@@ -425,6 +425,7 @@ const historicalCaps = Object.fromEntries(
     ])
 );
 try {
+    const shellEvidence = require("../docs/evidence/modern-native-shell-size-20261102.json");
     const artworkEvidence = require("../docs/evidence/plex-artwork-size-20261102.json");
     assert.deepEqual(PLEX_ARTWORK_ALLOWANCE, artworkEvidence.allowance);
     assert(Object.isFrozen(PLEX_ARTWORK_ALLOWANCE));
@@ -450,9 +451,16 @@ try {
         before: modernNativeShellCaps,
     }))
         assert.deepEqual(artworkEvidence.budgets[stage], {
-            baseTotal: caps.BASE_TOTAL_BUDGET,
+            // Replay the immutable Plex receipt before later Modern fixes.
+            baseTotal: subtract(
+                caps.BASE_TOTAL_BUDGET,
+                shellEvidence.finalization.delta
+            ),
             legacy: caps.LEGACY_TOTAL_BUDGET,
-            total: caps.TOTAL_BUDGET,
+            total: subtract(
+                caps.TOTAL_BUDGET,
+                shellEvidence.finalization.delta
+            ),
         });
     assert.deepEqual(artworkEvidence.protectedCaps, {
         entry: BUDGET,
@@ -463,13 +471,23 @@ try {
         plexArtworkCaps.OPTIONAL_BUDGETS,
         modernNativeShellCaps.OPTIONAL_BUDGETS
     );
-    const shellEvidence = require("../docs/evidence/modern-native-shell-size-20261102.json");
     assert.deepEqual(
         MODERN_NATIVE_SHELL_OPTIONAL_ALLOWANCE,
         shellEvidence.allowance
     );
     assert(Object.isFrozen(MODERN_NATIVE_SHELL_OPTIONAL_ALLOWANCE));
     for (const metric of ["bytes", "gzipBytes"]) {
+        assert.equal(
+            shellEvidence.finalization.delta[metric],
+            shellEvidence.candidate.output[metric] -
+                shellEvidence.previousCandidate.output[metric]
+        );
+        assert.equal(
+            MODERN_NATIVE_SHELL_OPTIONAL_ALLOWANCE[metric],
+            shellEvidence.previousCandidate.allowance[metric] +
+                shellEvidence.finalization.delta[metric],
+            "finalization adds only the measured optional cost"
+        );
         assert.equal(
             MODERN_NATIVE_SHELL_OPTIONAL_ALLOWANCE[metric],
             shellEvidence.candidate.output[metric] -

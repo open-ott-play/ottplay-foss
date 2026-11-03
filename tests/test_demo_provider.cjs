@@ -710,6 +710,44 @@ test("Plex blue shortcut uses every shipped device mapping in both distributions
     }
 });
 
+test("service numbering and all nine shortcuts respect the provider-group boundary", () => {
+    for (let number = 1; number <= 9; number++) {
+        const { w, saved, loaded } = uiFixture();
+        saved.set("ottplayprovs", JSON.stringify(["edem", "demo", "ottclub"]));
+        w.keys["N" + number] = 48 + number;
+        w.selectProvaider();
+        const divider = w.arrayProvaiders.indexOf("");
+        assert(divider >= 0);
+        assert.equal(w.arrayProvaiders[divider + 1], "ottclub");
+        assert.equal(w.arrayProvaiders[divider + 2], "edem");
+        const index = divider + number;
+        const expected = w.arrayProvaiders[index];
+        assert.match(
+            w.getListItemFn(w.listArray[index], index),
+            new RegExp('class="btn">' + number + "<")
+        );
+        assert.doesNotMatch(
+            w.getListItemFn(w.listArray[divider + 10], divider + 10),
+            /class="btn">10</
+        );
+        w.listKeyHandlerFn(48 + number);
+        assert.equal(saved.get("ottplayprov"), expected);
+        assert.equal(loaded.length, 1);
+    }
+});
+
+test("malformed recent history keeps the default service order", () => {
+    const { w, saved } = uiFixture();
+    saved.set("ottplayprovs", "{");
+    assert.doesNotThrow(() => w.selectProvaider());
+    const firstService = w.arrayProvaiders.indexOf("") + 1;
+    assert.equal(w.arrayProvaiders[firstService], "ottclub");
+    assert.match(
+        w.getListItemFn(w.listArray[firstService], firstService),
+        /class="btn">1</
+    );
+});
+
 test("Plex hides its blue hint when color hints are disabled and remains selectable", () => {
     const { w, saved } = uiFixture();
     w.sNoColorKeys = true;

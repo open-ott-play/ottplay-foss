@@ -624,13 +624,14 @@ const MODERN_PLAYER_OPTIONAL_ALLOWANCE = Object.freeze({
     bytes: 17600,
     gzipBytes: 5100,
 });
-// Native-style Home/Library shell, artwork and guarded selected-item actions.
+// Native-style Home/Library shell, artwork and guarded selected-item actions,
+// including final focus ownership and finite playback-time presentation fixes.
 // Paired e7f18/current optional builds retain the existing raw/gzip headroom.
 // Entry, provider and legacy-total limits are unchanged; count this once below.
 // Evidence: docs/evidence/modern-native-shell-size-20261102.json.
 const MODERN_NATIVE_SHELL_OPTIONAL_ALLOWANCE = Object.freeze({
-    bytes: 6194,
-    gzipBytes: 1739,
+    bytes: 6607,
+    gzipBytes: 1897,
 });
 // Authenticated poster/backdrop getters stay in the lazy Plex provider.
 // Count its measured delta only in legacy/complete totals, preserving the

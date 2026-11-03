@@ -529,6 +529,13 @@ test("actual build transform removes every branded provider ID and label", () =>
             /class="btn">[1-9]</,
             "Play has no TV-service group or numeric service shortcuts"
         );
+    for (let number = 1; number <= 9; number++) {
+        play.w.keys["N" + number] = 48 + number;
+        play.w.listKeyHandlerFn(48 + number);
+        assert.equal(play.stored.has("ottplayprov"), false);
+        assert.deepEqual(play.scripts, []);
+        assert.deepEqual(play.requests, []);
+    }
     // Parse all literal strings in the transformed module: hidden registry names
     // or unreachable activation implementations must not survive the Play build.
     const parsed = ts.createSourceFile(

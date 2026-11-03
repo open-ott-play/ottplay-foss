@@ -4322,6 +4322,53 @@ for (const profile of ["server", "tauri", "capacitor"]) {
         }
     });
 
+    test(`Modern live list crosses a page boundary before Up enters navigation (${profile})`, async ({
+        browser,
+    }) => {
+        const fixture = await fixturePage(browser, profile, {
+            interfaceTheme: 2,
+        });
+        const { page } = fixture;
+        try {
+            await page.evaluate(() => {
+                saveSettings({ interfaceMode: 1 });
+                stbBindKeyHandler();
+            });
+            await expect(page.locator("#listIn")).toHaveClass(/modern-live/);
+            const boundary = await page.evaluate(() => {
+                const boundary = Number(listPageSize);
+                if (!(boundary > 0 && boundary < listArray.length))
+                    throw new Error("Live fixture must have a second page");
+                changeSelect(boundary - selIndex);
+                document.getElementById("it" + selIndex).focus();
+                return boundary;
+            });
+            await page.keyboard.press("ArrowUp");
+            expect(await page.evaluate(() => selIndex)).toBe(boundary - 1);
+            await expect(page.locator("#it" + (boundary - 1))).toBeFocused();
+            await page.screenshot({
+                path: test.info().outputPath("modern-live-previous-page.png"),
+            });
+            await page.evaluate(() => {
+                changeSelect(-selIndex);
+                document.getElementById("it0").focus();
+            });
+            await page.keyboard.press("ArrowUp");
+            expect(
+                await page.evaluate(
+                    () => !!document.activeElement.closest("#modernRail")
+                )
+            ).toBe(true);
+            expect(await page.evaluate(() => selIndex)).toBe(0);
+            await page.keyboard.press("ArrowDown");
+            await expect(page.locator("#it0")).toBeFocused();
+            expect(fixture.errors).toEqual([]);
+            expect(fixture.unexpectedRequests).toEqual([]);
+        } finally {
+            await fixture.close();
+        }
+    });
+
     test(`Modern grid stays bounded at 10000 files and respects modal ownership (${profile})`, async ({
         browser,
     }) => {
@@ -5554,6 +5601,74 @@ test("Modern fullscreen timeline and audio picker preserve the playback owner", 
                 () => __ottCoreBackend().current() === __modernPlaybackOwner
             )
         ).toBe(true);
+        await page.evaluate(() => {
+            // The decoder reports an actual zero after rewind. A stale shared
+            // footer fill must not be mistaken for a newer timing sample.
+            const video = document.getElementById("video");
+            if (!video) throw new Error("Production video element is missing");
+            Object.defineProperty(video, "currentTime", {
+                configurable: true,
+                value: 0,
+            });
+            Object.defineProperty(video, "duration", {
+                configurable: true,
+                value: 1000,
+            });
+            window.stbGetPosTime = () => 0;
+            showChannelInfo(30);
+            $("#info1").finish();
+            document.getElementById("progress").style.width = "65%";
+            __ottModernPlayer.sync();
+        });
+        await expect(page.locator("#modernPlayer")).toBeVisible();
+        expect(
+            await page
+                .locator("#progress")
+                .evaluate((element) => element.style.width)
+        ).toBe("0%");
+        await expect(page.locator(".modern-player-elapsed")).toHaveText("0:00");
+
+        await page.evaluate(() => {
+            window.__modernStatusChoices = 0;
+            const source = document.getElementById("video_res");
+            source.textContent = "Playback details";
+            source.setAttribute("role", "button");
+            source.onclick = () => {
+                window.__modernStatusChoices++;
+            };
+            __ottModernPlayer.sync();
+        });
+        const status = page.locator(".modern-player-status");
+        for (const key of ["Enter", "Space"]) {
+            await page.evaluate(() => {
+                showChannelInfo(30);
+                $("#info1").finish();
+                __ottModernPlayer.sync();
+            });
+            await expect(status).toHaveAttribute("role", "button");
+            await status.focus();
+            await page.keyboard.press(key);
+            await expect(page.locator("#modernPlayer")).toBeHidden();
+        }
+        expect(await page.evaluate(() => __modernStatusChoices)).toBe(2);
+        await page.evaluate(() => {
+            showChannelInfo(30);
+            $("#info1").finish();
+            __ottModernPlayer.sync();
+        });
+        await status.focus();
+        await page.evaluate(() => {
+            document.getElementById("video_res").textContent = "";
+            __ottModernPlayer.sync();
+        });
+        await expect(status).toBeHidden();
+        await expect(status).not.toHaveAttribute("tabindex", "0");
+        await expect(
+            page.locator(".modern-player-actions button:focus")
+        ).toBeVisible();
+        await page.screenshot({
+            path: test.info().outputPath("modern-fullscreen-zero-position.png"),
+        });
         expect(await page.evaluate(() => __modernMediaEffects)).toEqual([]);
         expect(fixture.errors).toEqual([]);
         expect(fixture.unexpectedRequests).toEqual([]);

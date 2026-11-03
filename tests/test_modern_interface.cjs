@@ -877,6 +877,59 @@ test("option pages never focus a category control hidden with the catalog headin
     }
 });
 
+for (const type of ["live catalogue", "option list"]) {
+    test(`Modern ${type} keeps Up linear across page boundaries`, () => {
+        const f = shellFixture();
+        try {
+            const formatter = () => "Settings";
+            if (type === "live catalogue")
+                formatter.__ottCatalog = {
+                    row: (id) => ({ channel_name: "Channel " + id }),
+                };
+            f.owner.model.render = formatter;
+            f.w.selIndex = 0;
+            const layout = f.api.prepare(f.ids, formatter, f.container);
+            assert.equal(layout.grid, false);
+            for (const index of [1, layout.pageSize, layout.pageSize * 2]) {
+                f.w.selIndex = index;
+                const row = f.container.appendChild(f.doc.createElement("div"));
+                row.id = "it" + index;
+                row.tabIndex = 0;
+                row.focus();
+                assert.equal(f.api.navigation({ id: "up" }, f.owner), false);
+                assert.equal(f.doc.activeElement, row);
+                assert.equal(f.w.selIndex, index);
+                // The shared linear handler retains ownership of this step.
+                f.w.changeSelect(-1);
+                assert.equal(f.w.selIndex, index - 1);
+            }
+            f.w.selIndex = 0;
+            assert.equal(f.api.navigation({ id: "up" }, f.owner), true);
+            assert.equal(
+                f.doc.activeElement.dataset.modernAction,
+                type === "live catalogue" ? "library" : "browse"
+            );
+        } finally {
+            f.dom.window.close();
+        }
+    });
+}
+
+test("Modern grid keeps top navigation available from a later page's first row", () => {
+    const f = shellFixture();
+    try {
+        const layout = f.api.prepare(f.ids, f.formatter, f.container);
+        assert.equal(layout.grid, true);
+        const selected = layout.pageSize + layout.columns - 1;
+        f.w.selIndex = selected;
+        assert.equal(f.api.navigation({ id: "up" }, f.owner), true);
+        assert.equal(f.doc.activeElement.dataset.modernAction, "home");
+        assert.equal(f.w.selIndex, selected);
+    } finally {
+        f.dom.window.close();
+    }
+});
+
 test("top navigation uses horizontal travel and Back returns to the same media item", () => {
     const f = shellFixture();
     try {
