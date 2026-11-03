@@ -2,22 +2,22 @@
   "schema": 1,
   "feature": "Installation-wide Favorites category persistence",
   "base": "e7f18d5786f5853e7e32f66644090ab0a82f8713",
-  "candidate": "91e8fa150de7f75a4c11446e83c7e82b37de4452",
-  "candidateTree": "3c96d1ad05415d1e071eaaa9a9f4f990318051c8",
+  "candidate": "a727149b1c24360e34da640a1c7c04c568d9f0f9",
+  "candidateTree": "fa641cedd72757d2a120b5251679a1437ea59a0f",
   "version": "1.1.62",
   "toolchain": {
     "node": "26.8.2",
     "zlib": "1.2.12"
   },
-  "method": "Paired clean source archives, same installed dependencies and build command. Neither archive embeds a Git revision. Runtime source is unchanged by the allowance. Existing source-identity and release-version reserves are retained.",
+  "method": "Paired clean source archives, same dependencies and build command. The candidateTree adds the reviewed storage failure, unmounted catalogue and explicit-selection fixes to candidate. Neither archive embeds a Git revision. Budget-only edits do not alter emitted JavaScript. Existing source identity and release reserves remain.",
   "allowance": {
     "entry": {
-      "bytes": 2176,
-      "gzipBytes": 640
+      "bytes": 2848,
+      "gzipBytes": 832
     },
     "favorites": {
-      "bytes": 448,
-      "gzipBytes": 96
+      "bytes": 288,
+      "gzipBytes": 64
     }
   },
   "previousCaps": {
@@ -65,42 +65,42 @@
       },
       "candidate": {
         "entry": {
-          "bytes": 1186329,
-          "gzipBytes": 361057,
+          "bytes": 1187000,
+          "gzipBytes": 361265,
           "path": "dist/player.js",
-          "sha256": "1f0e6c4631e1984b049fd0274829d47c1450c300a6e3b02bbc96f657709486b8"
+          "sha256": "2263465493119da05e38ace3f7beed4bc06b059a11a849e2302ae3067a97fddb"
         },
         "favorites": {
-          "bytes": 249648,
-          "gzipBytes": 64092,
+          "bytes": 249504,
+          "gzipBytes": 64051,
           "path": "dist/favorites-transfer.js",
-          "sha256": "d97e9dc56c6d7ef11bb2995e224508bbca175e2ee6bebe5cb7e82de002759ca3"
+          "sha256": "ae31d35414962c3094a07942ee634086f6e0961c5398f3c894ec404ae3d9bdc8"
         },
         "legacy": {
-          "bytes": 1431017,
-          "gzipBytes": 445217
+          "bytes": 1431688,
+          "gzipBytes": 445425
         },
         "total": {
-          "bytes": 1846583,
-          "gzipBytes": 567902
+          "bytes": 1847110,
+          "gzipBytes": 568069
         }
       },
       "delta": {
         "entry": {
-          "bytes": 2152,
-          "gzipBytes": 601
+          "bytes": 2823,
+          "gzipBytes": 809
         },
         "favorites": {
-          "bytes": 427,
-          "gzipBytes": 90
+          "bytes": 283,
+          "gzipBytes": 49
         },
         "legacy": {
-          "bytes": 2152,
-          "gzipBytes": 601
+          "bytes": 2823,
+          "gzipBytes": 809
         },
         "total": {
-          "bytes": 2579,
-          "gzipBytes": 691
+          "bytes": 3106,
+          "gzipBytes": 858
         }
       }
     },
@@ -130,42 +130,42 @@
       },
       "candidate": {
         "entry": {
-          "bytes": 1186287,
-          "gzipBytes": 361107,
+          "bytes": 1186958,
+          "gzipBytes": 361315,
           "path": "src-tauri/frontend/dist/player.js",
-          "sha256": "c0120f057de7fa9d37004fd33fcb131c5bc6eb7061e76dc035209c75934cc9da"
+          "sha256": "9e4587cdc301863a703376c4ef09490554d5da055fbebd2c57db1594670fd685"
         },
         "favorites": {
-          "bytes": 249648,
-          "gzipBytes": 64092,
+          "bytes": 249504,
+          "gzipBytes": 64051,
           "path": "src-tauri/frontend/dist/favorites-transfer.js",
-          "sha256": "d97e9dc56c6d7ef11bb2995e224508bbca175e2ee6bebe5cb7e82de002759ca3"
+          "sha256": "ae31d35414962c3094a07942ee634086f6e0961c5398f3c894ec404ae3d9bdc8"
         },
         "legacy": {
-          "bytes": 1430975,
-          "gzipBytes": 445267
+          "bytes": 1431646,
+          "gzipBytes": 445475
         },
         "total": {
-          "bytes": 1846541,
-          "gzipBytes": 567952
+          "bytes": 1847068,
+          "gzipBytes": 568119
         }
       },
       "delta": {
         "entry": {
-          "bytes": 2152,
-          "gzipBytes": 598
+          "bytes": 2823,
+          "gzipBytes": 806
         },
         "favorites": {
-          "bytes": 427,
-          "gzipBytes": 90
+          "bytes": 283,
+          "gzipBytes": 49
         },
         "legacy": {
-          "bytes": 2152,
-          "gzipBytes": 598
+          "bytes": 2823,
+          "gzipBytes": 806
         },
         "total": {
-          "bytes": 2579,
-          "gzipBytes": 688
+          "bytes": 3106,
+          "gzipBytes": 855
         }
       }
     },
@@ -195,66 +195,44 @@
       },
       "candidate": {
         "entry": {
-          "bytes": 1186287,
-          "gzipBytes": 361107,
+          "bytes": 1186958,
+          "gzipBytes": 361315,
           "path": "dist-mobile/dist/player.js",
-          "sha256": "c0120f057de7fa9d37004fd33fcb131c5bc6eb7061e76dc035209c75934cc9da"
+          "sha256": "9e4587cdc301863a703376c4ef09490554d5da055fbebd2c57db1594670fd685"
         },
         "favorites": {
-          "bytes": 249648,
-          "gzipBytes": 64092,
+          "bytes": 249504,
+          "gzipBytes": 64051,
           "path": "dist-mobile/dist/favorites-transfer.js",
-          "sha256": "d97e9dc56c6d7ef11bb2995e224508bbca175e2ee6bebe5cb7e82de002759ca3"
+          "sha256": "ae31d35414962c3094a07942ee634086f6e0961c5398f3c894ec404ae3d9bdc8"
         },
         "legacy": {
-          "bytes": 1430975,
-          "gzipBytes": 445267
+          "bytes": 1431646,
+          "gzipBytes": 445475
         },
         "total": {
-          "bytes": 1846541,
-          "gzipBytes": 567952
+          "bytes": 1847068,
+          "gzipBytes": 568119
         }
       },
       "delta": {
         "entry": {
-          "bytes": 2152,
-          "gzipBytes": 598
+          "bytes": 2823,
+          "gzipBytes": 806
         },
         "favorites": {
-          "bytes": 427,
-          "gzipBytes": 90
+          "bytes": 283,
+          "gzipBytes": 49
         },
         "legacy": {
-          "bytes": 2152,
-          "gzipBytes": 598
+          "bytes": 2823,
+          "gzipBytes": 806
         },
         "total": {
-          "bytes": 2579,
-          "gzipBytes": 688
+          "bytes": 3106,
+          "gzipBytes": 855
         }
       }
     }
-  ],
-  "hostedObservation": {
-    "run": "41562825838",
-    "head": "91e8fa150de7f75a4c11446e83c7e82b37de4452",
-    "node": "22.23.4",
-    "webEntry": {
-      "bytes": 1186369,
-      "gzipBytes": 362235
-    },
-    "nativeEntry": {
-      "bytes": 1186327,
-      "gzipBytes": 362290
-    },
-    "webTotal": {
-      "bytes": 1846623,
-      "gzipBytes": 569301
-    },
-    "nativeTotal": {
-      "bytes": 1846581,
-      "gzipBytes": 569356
-    },
-    "note": "Independent current-head hosted diagnostic, not used as a paired baseline; allocated caps also cover these observed outputs."
-  }
+  ]
 }

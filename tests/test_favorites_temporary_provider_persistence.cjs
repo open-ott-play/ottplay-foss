@@ -168,6 +168,7 @@ function deferredFavorites(f, delaySnapshot = false) {
 // Actual storage session wrapper and catalogue adapter, with only rendering and
 // provider IO replaced by deterministic ports. No device or user library access.
 function fixture(saved = new Map([["ottplayprov", "m3u"]])) {
+    const messages = [];
     const host = {
         localStorage: {
             getItem: (key) => saved.get(key) ?? null,
@@ -213,6 +214,7 @@ function fixture(saved = new Map([["ottplayprov", "m3u"]])) {
         providerGetPersistedItem: (key) => saved.get(provider + key) ?? null,
         providerSetItem: (key, value) => storage.set(provider + key, value),
         sFavorites: 0,
+        showShift: (message) => messages.push(message),
         stbDelItem: storage.del,
         stbGetItem: storage.get,
         stbGetPersistedItem: exports.stbGetPersistedItem,
@@ -257,6 +259,7 @@ function fixture(saved = new Map([["ottplayprov", "m3u"]])) {
         },
         enter,
         host,
+        messages,
         open() {
             opened = null;
             host.__ottChannels.restoreBrowsing();
@@ -514,8 +517,10 @@ test("async restoration and list refresh do not promote historical Favorites", a
     assert(f.host.__ottChannels.restoreBrowsing());
     assert.equal(f.saved.has("globalFavoritesSelection"), false);
     await deferred.finish();
+    assert.equal(deferred.painted(), 1);
     assert.equal(f.saved.has("globalFavoritesSelection"), false);
     await deferred.refresh();
+    assert.equal(deferred.painted(), 2);
     assert.equal(f.saved.has("globalFavoritesSelection"), false);
 });
 
@@ -571,4 +576,183 @@ test("a newer category while the Favorites snapshot loads also prevents stale re
     assert.equal(f.saved.get("globalFavoritesSelection"), "0");
     assert.equal(f.browsing(), "provider:news");
     assert.equal(deferred.painted(), 0);
+});
+
+test("a missing channel library still opens and saves explicit Favorites", async () => {
+    const f = fixture();
+    const deferred = deferredFavorites(f);
+    assert(f.host.openGlobalFavorites());
+    await deferred.finish();
+    assert.equal(deferred.painted(), 1);
+    assert.equal(f.saved.get("globalFavoritesSelection"), "1");
+    assert.deepEqual(f.messages, []);
+    const restart = fixture(f.saved);
+    restart.enter("m3u", "first");
+    assert.equal(restart.open(), "system:favorites");
+});
+
+test("unmounted category handles cannot survive a mount followed by reset", () => {
+    const f = fixture();
+    const selection = f.host.__ottChannels.captureCategorySelection();
+    const current = f.host.__ottChannels.captureCategoryCurrent();
+    assert.equal(selection.current(), true);
+    assert.equal(current(), true);
+    f.enter("m3u", "first");
+    f.host.__ottChannels.reset();
+    assert.equal(selection.current(), false);
+    assert.equal(current(), false);
+    assert.equal(selection("system:favorites"), false);
+    assert.equal(f.saved.has("globalFavoritesSelection"), false);
+});
+
+test("an unmounted async opening cannot repaint after mount and reset", async () => {
+    const f = fixture();
+    const deferred = deferredFavorites(f, true);
+    assert(f.host.openGlobalFavorites());
+    deferred.start();
+    await Promise.race([
+        deferred.snapshotReady,
+        deferred.settled().then(() => {
+            throw new Error("Favorites did not reach the view");
+        }),
+    ]);
+    f.enter("m3u", "first");
+    f.host.__ottChannels.reset();
+    deferred.releaseSnapshot();
+    await deferred.settled();
+    assert.equal(deferred.painted(), 0);
+});
+
+test("an explicit Favorites opening reports refused persistence without painting", async () => {
+    const f = fixture();
+    f.enter("m3u", "first");
+    f.browse("provider:news");
+    f.host.stbSetItem = () => {};
+    const deferred = deferredFavorites(f);
+    f.browse("system:favorites");
+    await assert.rejects(deferred.finish(), /category_save_failed/);
+    assert.equal(deferred.painted(), 0);
+    assert.equal(f.saved.get("globalFavoritesSelection"), "0");
+    assert(f.messages.includes("Favorites: Unavailable"));
+});
+
+for (const explicit of [false, true]) {
+    test(
+        "Favorites playback does not select a category: explicit prior choice " +
+            explicit,
+        () => {
+            const f = fixture();
+            f.enter("m3u", "first");
+            if (explicit) f.browse("provider:news");
+            const saved = Array.from(f.saved);
+            let routed = 0;
+            let published = 0;
+            Object.assign(f.host, {
+                current: () => true,
+                navigation: { routeState: () => routed++ },
+                permitted: () => true,
+                ports: { changed: () => published++ },
+                router: {
+                    captureCurrent: () => ({
+                        current: () => true,
+                        id: "chosen",
+                    }),
+                },
+            });
+            const changed = sourceNode(
+                "src/media/global-favorites-host.ts",
+                (n) =>
+                    ts.isPropertyAssignment(n) && n.name.getText() === "changed"
+            );
+            runCode(
+                f.host,
+                "var playbackChanged = " +
+                    changed.node.initializer.getText(changed.source)
+            );
+            f.host.playbackChanged({ id: "chosen", phase: "playing" });
+            assert.equal(routed, 1);
+            assert.equal(published, 1);
+            assert.deepEqual(Array.from(f.saved), saved);
+            const restart = fixture(f.saved);
+            restart.enter("m3u", "first");
+            assert.notEqual(restart.browsing(), "system:favorites");
+        }
+    );
+}
+
+for (const refusal of ["throw", "ignore", "memory-only"]) {
+    test("failed global rollback is reported: " + refusal, () => {
+        const f = fixture();
+        f.enter("m3u", "first");
+        f.browse("provider:news");
+        const set = f.host.stbSetItem;
+        const get = f.host.stbGetItem;
+        let memory;
+        f.host.stbGetItem = (key) => memory ?? get(key);
+        f.host.stbSetItem = (key, value) => {
+            if (value === "1") return set(key, value);
+            if (refusal === "throw") throw new Error("rollback refused");
+            if (refusal === "memory-only") memory = value;
+        };
+        f.host.providerSetItem = () => {
+            throw new Error("source refused");
+        };
+        f.host.__ottChannels.mount(f.host);
+        assert.equal(
+            f.host.__ottChannels.rememberCategory("system:favorites"),
+            false
+        );
+        assert.equal(f.saved.get("globalFavoritesSelection"), "1");
+        assert(f.messages.includes("Favorites: Unavailable"));
+    });
+}
+
+test("rollback verifies durable restoration even when the setter throws afterwards", () => {
+    const f = fixture();
+    f.enter("m3u", "first");
+    f.browse("provider:news");
+    const set = f.host.stbSetItem;
+    f.host.stbSetItem = (key, value) => {
+        set(key, value);
+        if (value === "0") throw new Error("after durable restoration");
+    };
+    f.host.providerSetItem = () => {
+        throw new Error("source refused");
+    };
+    f.host.__ottChannels.mount(f.host);
+    assert.equal(
+        f.host.__ottChannels.rememberCategory("system:favorites"),
+        false
+    );
+    assert.equal(f.saved.get("globalFavoritesSelection"), "0");
+    assert.deepEqual(f.messages, []);
+});
+
+test("unmounted category handles are invalidated by source identity changes", () => {
+    const f = fixture();
+    let source = "first";
+    f.host.__ottSourceIdentity = { current: () => source };
+    const selection = f.host.__ottChannels.captureCategorySelection();
+    const current = f.host.__ottChannels.captureCategoryCurrent();
+    source = "second";
+    assert.equal(selection.current(), false);
+    assert.equal(current(), false);
+    assert.equal(selection("system:favorites"), false);
+    assert.equal(f.saved.has("globalFavoritesSelection"), false);
+});
+
+test("a failed rollback removal of the first global choice is reported", () => {
+    const f = fixture();
+    f.enter("m3u", "first");
+    f.host.stbDelItem = () => {};
+    f.host.providerSetItem = () => {
+        throw new Error("source refused");
+    };
+    f.host.__ottChannels.mount(f.host);
+    assert.equal(
+        f.host.__ottChannels.rememberCategory("system:favorites"),
+        false
+    );
+    assert.equal(f.saved.get("globalFavoritesSelection"), "1");
+    assert(f.messages.includes("Favorites: Unavailable"));
 });

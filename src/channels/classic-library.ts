@@ -41,17 +41,53 @@ function channelLibraryFavoritesSelection(host: any): string | null {
     }
 }
 
+function captureChannelLibraryCategoryOwner(host: any): () => boolean {
+    var library = channelLibraryInstance;
+    var generation = channelLibraryGeneration;
+    var sourcePort = host.__ottSourceIdentity;
+    var sourceCurrent = sourcePort?.current;
+    var source: any;
+    var valid = true;
+    try {
+        if (typeof sourceCurrent === "function")
+            source = sourceCurrent.call(sourcePort, host);
+    } catch (_) {
+        valid = false;
+    }
+    return function (): boolean {
+        try {
+            return !!(
+                valid &&
+                generation === channelLibraryGeneration &&
+                library === channelLibraryInstance &&
+                (!library || library.active()) &&
+                sourcePort === host.__ottSourceIdentity &&
+                sourceCurrent === host.__ottSourceIdentity?.current &&
+                (typeof sourceCurrent !== "function" ||
+                    source === sourceCurrent.call(sourcePort, host))
+            );
+        } catch (_) {
+            return false;
+        }
+    };
+}
+
 function rememberChannelLibraryCategory(host: any, groupId: string): boolean {
     var intent = ++channelLibraryBrowseIntent;
     var library = channelLibraryInstance;
-    if (!library?.active()) return false;
+    var owner = captureChannelLibraryCategoryOwner(host);
+    if (
+        !owner() ||
+        (!library && groupId !== "system:favorites" && groupId !== "system:all")
+    )
+        return false;
     var get = host.stbGetItem;
     var set = host.stbSetItem;
     var persisted = host.stbGetPersistedItem;
     var remove = host.stbDelItem;
     // Legacy hosts without global storage retain their per-source category.
     if (typeof get !== "function" || typeof set !== "function")
-        return library.browse(groupId);
+        return !!library && library.browse(groupId);
     var key = channelLibraryFavoritesSelectionKey;
     var value = groupId === "system:favorites" ? "1" : "0";
     var prior: string | null;
@@ -59,8 +95,7 @@ function rememberChannelLibraryCategory(host: any, groupId: string): boolean {
     function current(): boolean {
         return (
             intent === channelLibraryBrowseIntent &&
-            library === channelLibraryInstance &&
-            library.active() &&
+            owner() &&
             get === host.stbGetItem &&
             set === host.stbSetItem &&
             persisted === host.stbGetPersistedItem &&
@@ -69,14 +104,39 @@ function rememberChannelLibraryCategory(host: any, groupId: string): boolean {
     }
     function rollback(): void {
         try {
-            if (!changed || !current() || get.call(host, key) !== value) return;
-            if (prior === null) remove?.call(host, key);
-            else set.call(host, key, prior);
+            if (!changed || !current()) return;
+            if (get.call(host, key) === value) {
+                if (prior === null) remove?.call(host, key);
+                else set.call(host, key, prior);
+            }
+        } catch (_) {}
+        // A failed or memory-only rollback must not look like a restored
+        // category. Re-read both views even if the rollback writer threw.
+        try {
+            if (!current()) return;
+            var live = get.call(host, key);
+            var durable =
+                typeof persisted === "function"
+                    ? persisted.call(host, key)
+                    : live;
+            if (live === prior && durable === prior) return;
+        } catch (_) {}
+        try {
+            if (current())
+                host.showShift?.(
+                    host._("Favorites") + ": " + host._("Unavailable")
+                );
         } catch (_) {}
     }
     try {
         prior = get.call(host, key);
-        if (!current() || (prior === null && typeof remove !== "function"))
+        if (
+            !current() ||
+            (typeof persisted === "function" &&
+                persisted.call(host, key) !== prior) ||
+            !current() ||
+            (prior === null && typeof remove !== "function")
+        )
             return false;
         if (prior !== value) {
             changed = true;
@@ -90,10 +150,11 @@ function rememberChannelLibraryCategory(host: any, groupId: string): boolean {
             (typeof persisted === "function" &&
                 persisted.call(host, key) !== value) ||
             !current() ||
-            !library.browse(
-                groupId,
-                typeof host.providerGetPersistedItem === "function"
-            )
+            (library &&
+                !library.browse(
+                    groupId,
+                    typeof host.providerGetPersistedItem === "function"
+                ))
         ) {
             rollback();
             return false;
@@ -497,18 +558,14 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
         };
     },
     captureCategoryCurrent: function () {
-        var library = channelLibraryInstance;
+        var owner = captureChannelLibraryCategoryOwner(window);
         var intent = channelLibraryBrowseIntent;
         return function (): boolean {
-            return !!(
-                library === channelLibraryInstance &&
-                library?.active() &&
-                intent === channelLibraryBrowseIntent
-            );
+            return owner() && intent === channelLibraryBrowseIntent;
         };
     },
     captureCategorySelection: function () {
-        var library = channelLibraryInstance;
+        var owner = captureChannelLibraryCategoryOwner(window);
         var remember = !channelLibraryBrowseTransient;
         var intent = remember
             ? ++channelLibraryBrowseIntent
@@ -517,16 +574,12 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
         var selection: any = function (groupId: string): boolean {
             if (consumed || !selection.current()) return false;
             consumed = true;
-            if (!remember) return false;
+            if (!remember) return true;
             intent++;
             return rememberChannelLibraryCategory(window, groupId);
         };
         selection.current = function (): boolean {
-            return !!(
-                library === channelLibraryInstance &&
-                library?.active() &&
-                intent === channelLibraryBrowseIntent
-            );
+            return owner() && intent === channelLibraryBrowseIntent;
         };
         return selection;
     },
@@ -588,6 +641,11 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
     },
     rememberCategory: function (category: number | string): boolean {
         if (channelLibraryBrowseTransient) return false;
+        if (
+            !channelLibraryInstance &&
+            (category === "system:favorites" || category === "system:all")
+        )
+            return rememberChannelLibraryCategory(window, category);
         var index =
             typeof category === "string"
                 ? channelLibraryIndex(category)

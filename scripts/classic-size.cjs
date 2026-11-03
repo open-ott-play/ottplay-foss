@@ -703,12 +703,13 @@ const MODERN_INFO_INTERACTION_ALLOWANCE = Object.freeze({
     renderer: Object.freeze({ bytes: 769, gzipBytes: 206 }),
 });
 // Installation-wide Favorites category persistence: paired clean 1.1.62
-// builds add 2152 raw / at most 601 gzip entry bytes and 427 / 90 to
-// the optional Favorites family. Preserve prior source/release headroom;
-// count each part once. Evidence: favorites-category-persistence-size-20261102.json.
+// builds add 2823 raw / at most 809 gzip entry bytes and 283 / 49 to
+// the optional Favorites family, including rejected-save and unmounted-view
+// guards. Preserve prior source/release headroom and count each part once.
+// Evidence: favorites-category-persistence-size-20261102.json.
 const FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE = Object.freeze({
-    entry: Object.freeze({ bytes: 2176, gzipBytes: 640 }),
-    favorites: Object.freeze({ bytes: 448, gzipBytes: 96 }),
+    entry: Object.freeze({ bytes: 2848, gzipBytes: 832 }),
+    favorites: Object.freeze({ bytes: 288, gzipBytes: 64 }),
 });
 const BUDGET = Object.freeze({
     bytes:
