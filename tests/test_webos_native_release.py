@@ -502,6 +502,36 @@ class NativeReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "size limit"):
             release.index_archive(io.BytesIO(tar_bytes({"large": b"x" * 1024})), total_limit=100)
 
+    def test_gzip_trailer_and_trailing_garbage_are_checked(self):
+        raw = tar_bytes({"fixture": b"small archive"})
+        bad_crc = bytearray(raw)
+        bad_crc[-8] ^= 1
+        bad_size = bytearray(raw)
+        bad_size[-4] ^= 1
+        variants = {"crc": bad_crc, "isize": bad_size, "truncated": raw[:-1], "garbage": raw + b"garbage"}
+        for label, data in variants.items():
+            with self.subTest(label=label), self.assertRaises((OSError, EOFError, tarfile.TarError, ValueError)):
+                release.index_archive(io.BytesIO(data))
+
+    def test_tar_end_cannot_hide_data_or_unbounded_padding(self):
+        raw = gzip.decompress(tar_bytes({"fixture": b"small archive"}))
+        variants = {
+            "nonzero": gzip.compress(raw + b"hidden payload"),
+            "extra member": gzip.compress(raw) + gzip.compress(b"hidden payload"),
+            "padding": gzip.compress(raw + bytes(tarfile.RECORDSIZE * 2)),
+        }
+        for label, data in variants.items():
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, "archive trailer"):
+                release.index_archive(io.BytesIO(data))
+
+    def test_gzip_members_may_split_one_valid_tar_stream(self):
+        raw = gzip.decompress(tar_bytes({"fixture": b"small archive"}))
+        stream = io.BytesIO(gzip.compress(raw[:700]) + gzip.compress(raw[700:]))
+        rows, content = release.index_archive(stream, captures={"fixture"})
+        self.assertEqual(set(rows), {"fixture"})
+        self.assertEqual(content, {"fixture": b"small archive"})
+        self.assertFalse(stream.closed)
+
     def test_pax_header_size_is_bounded_before_read(self):
         item = tarfile.TarInfo("././@PaxHeader")
         item.type, item.size = tarfile.XHDTYPE, release.JSON_LIMIT + 1
@@ -589,6 +619,23 @@ class NativeReleaseTests(unittest.TestCase):
         self.bundle.write()
         self.fails("compiler binding")
 
+    def test_packaged_libavformat_requires_ffmpeg_despite_source_declaration(self):
+        for declared in ([], [{"id": "ffmpeg", "bundled": False}]):
+            with self.subTest(declared=declared):
+                source, manifest = self.bundle.source, self.bundle.source_manifest
+                source["ci/dependencies.json"] = encoded(declared)
+                source.pop("sources/ffmpeg.tar.gz", None)
+                manifest["dependencies"] = [row for row in manifest["dependencies"] if row["id"] != "ffmpeg"]
+                manifest["files"] = {
+                    name: {"sha256": digest(data), "mode": 0o644}
+                    for name, data in source.items()
+                    if name != "SOURCE-MANIFEST.json"
+                }
+                manifest["snapshot_sha256"] = digest(encoded(manifest["files"]))
+                source["SOURCE-MANIFEST.json"] = encoded(manifest)
+                self.bundle.write()
+                self.fails("Missing bundled dependency source")
+
     def test_package_artwork_must_match_distributed_source(self):
         self.bundle.package[self.bundle.prefix + "largeIcon.png"] += b"modified"
         self.bundle.write()
@@ -617,6 +664,43 @@ class NativeReleaseTests(unittest.TestCase):
         feed["sourceArchiveUrls"] = [url.replace("/native/", "/downloads/") for url in feed["sourceArchiveUrls"]]
         (self.bundle.root / "ottplay-native-webos-manifest.json").write_bytes(encoded(feed))
         self.assertTrue(self.verify()["homebrew_validated"])
+
+    def test_homebrew_rejects_localhost_and_non_global_ip_literals(self):
+        hosts = (
+            "localhost",
+            "LOCALHOST.",
+            "sub.localhost",
+            "127.0.0.1",
+            "127.1",
+            "2130706433",
+            "0x7f000001",
+            "0177.0.0.1",
+            "127.0x0.0.1",
+            "010.010.010.010",
+            "10.0.0.1",
+            "172.16.0.1",
+            "192.168.1.1",
+            "100.64.0.1",
+            "169.254.1.1",
+            "192.0.2.1",
+            "0.0.0.0",
+            "224.0.0.1",
+            "[::1]",
+            "[::]",
+            "[fc00::1]",
+            "[fe80::1]",
+            "[ff02::1]",
+            "[::ffff:127.0.0.1]",
+        )
+        for host in hosts:
+            with self.subTest(host=host), self.assertRaisesRegex(ValueError, "public HTTPS"):
+                release.artifact_url("https://" + host + "/release/file.ipk", "file.ipk")
+
+    def test_homebrew_accepts_public_dns_and_global_ip_literals_without_dns_lookup(self):
+        for host in ("github.com", "8.8.8.8", "[2001:4860:4860::8888]"):
+            with self.subTest(host=host):
+                result = release.artifact_url("https://" + host + "/release/file.ipk", "file.ipk")
+                self.assertEqual(result, ("https", host, "/release"))
 
     def test_duplicate_json_keys_and_false_device_claims(self):
         with self.assertRaisesRegex(ValueError, "Duplicate JSON key"):

@@ -9,9 +9,11 @@ from a source archive is extracted or executed.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import importlib.util
 import io
+import ipaddress
 import json
 import re
 import sys
@@ -142,8 +144,13 @@ class BoundedTarInfo(tarfile.TarInfo):
 def index_archive(source, captures=(), *, total_limit=EXPANDED_LIMIT, regular_only=True):
     """Index a tar in bounded memory, hashing each member as it is consumed."""
     rows, content, total, captured = {}, {}, 0, 0
-    kwargs = {"fileobj": source} if hasattr(source, "read") else {"name": source}
-    with tarfile.open(mode="r|gz", tarinfo=BoundedTarInfo, **kwargs) as archive:
+    kwargs = {"fileobj": source} if hasattr(source, "read") else {"filename": source}
+    # tarfile's streaming gzip reader does not validate CRC/ISIZE. Let gzip
+    # validate the complete compressed stream, including after the tar EOF.
+    with (
+        gzip.GzipFile(mode="rb", **kwargs) as decoded,
+        tarfile.open(fileobj=decoded, mode="r|", tarinfo=BoundedTarInfo) as archive,
+    ):
         for item in archive:
             key = member_name(item.name)
             require(key not in rows, "Duplicate archive member: " + key)
@@ -186,6 +193,15 @@ def index_archive(source, captures=(), *, total_limit=EXPANDED_LIMIT, regular_on
             }
             if keep:
                 content[key] = b"".join(parts)
+        # Drain through the tar reader so already-buffered bytes are checked
+        # too. Only bounded zero record padding may follow the tar end marker.
+        padding = 0
+        while trailer := archive.fileobj.read(tarfile.RECORDSIZE):
+            padding += len(trailer)
+            require(
+                padding <= tarfile.RECORDSIZE and not trailer.strip(b"\0"),
+                "Unexpected or oversized archive trailer",
+            )
     return rows, content
 
 
@@ -317,6 +333,8 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
     recorded_file(rows, "THIRD-PARTY-NOTICES.md", package_rows[package_prefix + "THIRD-PARTY-NOTICES.md"]["sha256"])
     declared = decode(content["ci/dependencies.json"])
     required = {row["id"] for row in declared if row.get("bundled")} | {"cargo-vendor", "rust-runtime"}
+    if any(key.startswith(package_prefix + "libavformat") for key in package_rows):
+        required.add("ffmpeg")
     dependencies = manifest["dependencies"]
     require(len({row["id"] for row in dependencies}) == len(dependencies), "Duplicate source dependency")
     by_id = {row["id"]: row for row in dependencies}
@@ -393,12 +411,29 @@ def check_runtime(path, metadata, source_set, primary, package_rows, upstream):
             checksum(attestation["runtime_files_sha256"].get(item["sdk_path"]))
 
 
+def public_artifact_host(host):
+    # Offline checks cannot prove DNS reachability, but must reject explicitly
+    # local names and non-global IP literals without querying any resolver.
+    if not host:
+        return False
+    host = host.rstrip(".").lower()
+    if not host or host == "localhost" or host.endswith(".localhost") or "%" in host:
+        return False
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        # URL clients can interpret legacy numeric forms (127.1, 2130706433,
+        # 0x7f000001, 0177.0.0.1) as IPv4. Do not mistake those for DNS names.
+        return not all(re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", part) for part in host.split("."))
+    return address.is_global and not address.is_multicast
+
+
 def artifact_url(value, expected):
     require(isinstance(value, str), "Missing Homebrew URL")
     parsed = urlsplit(value)
     require(
         parsed.scheme == "https"
-        and parsed.hostname
+        and public_artifact_host(parsed.hostname)
         and not parsed.username
         and not parsed.password
         and not parsed.query
@@ -557,7 +592,16 @@ def main():
     args = parser.parse_args()
     try:
         result = verify(args.metadata, require_feed=args.require_feed, check_checkout=args.check_checkout)
-    except (ValueError, KeyError, TypeError, AttributeError, OSError, RecursionError, tarfile.TarError) as error:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        OSError,
+        EOFError,
+        RecursionError,
+        tarfile.TarError,
+    ) as error:
         print("FAIL: " + str(error), file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2, sort_keys=True))
