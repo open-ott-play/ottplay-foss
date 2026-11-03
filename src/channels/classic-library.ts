@@ -3,6 +3,8 @@ var channelLibraryInstance: any = null;
 var channelLibraryView: any[] = [];
 var channelLibraryGeneration = 0;
 var channelLibraryBrowseTransient = false;
+var channelLibraryBrowseIntent = 0;
+var channelLibraryFavoritesSelectionKey = "globalFavoritesSelection";
 var channelRemoteCatalog: any = null;
 var channelPreferenceKinds: any = {
     aAspects: "aspect",
@@ -18,11 +20,89 @@ function channelLibraryIndex(id: string): number {
 }
 
 function channelLibraryBrowsingIndex(host: any): number {
+    var preference = channelLibraryFavoritesSelection(host);
     var id = channelLibraryInstance?.browsedGroup?.();
+    if (preference === "1") id = "system:favorites";
+    else if (preference === "0" && id === "system:favorites") id = "system:all";
     var index = id ? channelLibraryIndex(id) : host.catIndex;
     return typeof index === "number" && index >= 0 && channelLibraryView[index]
         ? index
         : channelLibraryIndex("system:all");
+}
+
+function channelLibraryFavoritesSelection(host: any): string | null {
+    try {
+        var get = host.stbGetPersistedItem || host.stbGetItem;
+        return typeof get === "function"
+            ? get.call(host, channelLibraryFavoritesSelectionKey)
+            : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function rememberChannelLibraryCategory(host: any, groupId: string): boolean {
+    var intent = ++channelLibraryBrowseIntent;
+    var library = channelLibraryInstance;
+    if (!library?.active()) return false;
+    var get = host.stbGetItem;
+    var set = host.stbSetItem;
+    var persisted = host.stbGetPersistedItem;
+    var remove = host.stbDelItem;
+    // Legacy hosts without global storage retain their per-source category.
+    if (typeof get !== "function" || typeof set !== "function")
+        return library.browse(groupId);
+    var key = channelLibraryFavoritesSelectionKey;
+    var value = groupId === "system:favorites" ? "1" : "0";
+    var prior: string | null;
+    var changed = false;
+    function current(): boolean {
+        return (
+            intent === channelLibraryBrowseIntent &&
+            library === channelLibraryInstance &&
+            library.active() &&
+            get === host.stbGetItem &&
+            set === host.stbSetItem &&
+            persisted === host.stbGetPersistedItem &&
+            remove === host.stbDelItem
+        );
+    }
+    function rollback(): void {
+        try {
+            if (!changed || !current() || get.call(host, key) !== value) return;
+            if (prior === null) remove?.call(host, key);
+            else set.call(host, key, prior);
+        } catch (_) {}
+    }
+    try {
+        prior = get.call(host, key);
+        if (!current() || (prior === null && typeof remove !== "function"))
+            return false;
+        if (prior !== value) {
+            changed = true;
+            // This installation-wide key is never provider-prefixed or part
+            // of a temporary Local playback overlay.
+            set.call(host, key, value);
+        }
+        if (
+            !current() ||
+            get.call(host, key) !== value ||
+            (typeof persisted === "function" &&
+                persisted.call(host, key) !== value) ||
+            !current() ||
+            !library.browse(
+                groupId,
+                typeof host.providerGetPersistedItem === "function"
+            )
+        ) {
+            rollback();
+            return false;
+        }
+        return true;
+    } catch (_) {
+        rollback();
+        return false;
+    }
 }
 
 function showChannelLibraryGroup(
@@ -416,6 +496,40 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
             },
         };
     },
+    captureCategoryCurrent: function () {
+        var library = channelLibraryInstance;
+        var intent = channelLibraryBrowseIntent;
+        return function (): boolean {
+            return !!(
+                library === channelLibraryInstance &&
+                library?.active() &&
+                intent === channelLibraryBrowseIntent
+            );
+        };
+    },
+    captureCategorySelection: function () {
+        var library = channelLibraryInstance;
+        var remember = !channelLibraryBrowseTransient;
+        var intent = remember
+            ? ++channelLibraryBrowseIntent
+            : channelLibraryBrowseIntent;
+        var consumed = false;
+        var selection: any = function (groupId: string): boolean {
+            if (consumed || !selection.current()) return false;
+            consumed = true;
+            if (!remember) return false;
+            intent++;
+            return rememberChannelLibraryCategory(window, groupId);
+        };
+        selection.current = function (): boolean {
+            return !!(
+                library === channelLibraryInstance &&
+                library?.active() &&
+                intent === channelLibraryBrowseIntent
+            );
+        };
+        return selection;
+    },
     capturePreference: function (name: string, channelId: number | null) {
         var host = window as any;
         var library = channelLibraryInstance;
@@ -479,11 +593,7 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
                 ? channelLibraryIndex(category)
                 : category;
         var group = channelLibraryView[index];
-        return !!(
-            group &&
-            channelLibraryInstance &&
-            channelLibraryInstance.browse(group.id)
-        );
+        return !!(group && rememberChannelLibraryCategory(window, group.id));
     },
     remoteCatalog: function () {
         return channelRemoteCatalog && channelRemoteCatalog.active()
@@ -501,7 +611,8 @@ function channelLibraryChange(action: string, value?: any, extra?: any): any {
         var library = channelLibraryInstance;
         if (
             !library?.active() ||
-            !library.browsedGroup() ||
+            (!library.browsedGroup() &&
+                channelLibraryFavoritesSelection(host) !== "1") ||
             host.__ottStandby?.blocked() ||
             host.__ottKiosk?.enabled() ||
             typeof host.channelsList !== "function"

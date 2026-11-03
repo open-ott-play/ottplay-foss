@@ -410,10 +410,12 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         captureScreen: function () {
             var handler = w.listKeyHandlerFn,
                 screen = w.__ottClassicScreenPort?.screens.current();
+            var category = w.__ottChannels?.captureCategoryCurrent?.();
             return function () {
                 return (
                     handler === w.listKeyHandlerFn &&
-                    screen === w.__ottClassicScreenPort?.screens.current()
+                    screen === w.__ottClassicScreenPort?.screens.current() &&
+                    (!category || category())
                 );
             };
         },
@@ -510,6 +512,7 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
             w.__ottChannelListView.show(
                 /* biome-ignore assist/source/useSortedKeys: Preserve list state reads around permission and translation callbacks. */ {
                     id: list.id,
+                    rememberCategory: false,
                     rows: list.rows.map(function (row: any) {
                         return row.id;
                     }),
@@ -1081,6 +1084,9 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
         }
     ) {
         if (!permitted() || !admitted()) throw new Error("policy_denied");
+        var remember =
+            _payload?.rememberCategory ||
+            w.__ottChannels?.captureCategorySelection?.();
         try {
             var captured = await captureGlobalFavoriteMigration(
                 w,
@@ -1127,7 +1133,14 @@ export function createGlobalFavoritesHost(w: any, ports: any): any {
                     { reason: "unresolved", title: w._("Favorites") },
                 ];
         }
-        if (permitted() && admitted()) return view.open();
+        if (
+            permitted() &&
+            admitted() &&
+            (!remember?.current || remember.current())
+        ) {
+            remember?.("system:favorites");
+            if (!remember?.current || remember.current()) return view.open();
+        }
     }
     var recovery = createGlobalFavoritesRecovery({
         authorized: ports.authorized,
