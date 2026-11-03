@@ -168,6 +168,8 @@ class NativePackageTests(unittest.TestCase):
         for path in (
             "ottplay-profile.json",
             "ottplay-control.json",
+            "ott-state.json",
+            "nested/ott-state.json",
             "ott-state/OttControl",
             "ott-state/OttState",
             "nested/ottplay-control.json",
