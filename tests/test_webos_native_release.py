@@ -41,6 +41,19 @@ def tar_bytes(files, modes=None, extra=None):
     return output.getvalue()
 
 
+def pax_bytes(headers, *, global_header=False, data=b"fixture"):
+    output = io.BytesIO()
+    with tarfile.open(
+        fileobj=output, mode="w:gz", format=tarfile.PAX_FORMAT, pax_headers=headers if global_header else None
+    ) as archive:
+        item = tarfile.TarInfo("fixture")
+        item.size, item.mode = len(data), 0o644
+        if not global_header:
+            item.pax_headers = headers
+        archive.addfile(item, io.BytesIO(data))
+    return output.getvalue()
+
+
 def ar_bytes(files):
     output = bytearray(b"!<arch>\n")
     for name, value in files.items():
@@ -495,6 +508,70 @@ class NativeReleaseTests(unittest.TestCase):
         archive = gzip.compress(item.tobuf())
         with self.assertRaisesRegex(ValueError, "header exceeds size limit"):
             release.index_archive(io.BytesIO(archive))
+
+    def test_sparse_pax_variants_are_rejected_before_stdlib_sparse_parser(self):
+        variants = (
+            (
+                "00",
+                {
+                    "GNU.sparse.size": "1",
+                    "GNU.sparse.numblocks": "1",
+                    "GNU.sparse.offset": "0",
+                    "GNU.sparse.numbytes": "1",
+                },
+            ),
+            ("01", {"GNU.sparse.map": "0,1", "GNU.sparse.size": "1"}),
+            ("10", {"GNU.sparse.major": "1", "GNU.sparse.minor": "0", "GNU.sparse.realsize": "1"}),
+        )
+        for version, headers in variants:
+            for global_header in (False, True):
+                with self.subTest(version=version, global_header=global_header):
+                    # Tiny payload only. The mocked parser raises before any
+                    # attempted allocation even if early rejection regresses.
+                    raw = pax_bytes(headers, global_header=global_header, data=b"999999999999999999999\n")
+                    self.assertLess(len(raw), 1024)
+                    with (
+                        patch.object(
+                            tarfile.TarInfo,
+                            "_proc_gnusparse_" + version,
+                            side_effect=AssertionError("stdlib sparse parser must not run"),
+                        ) as parser,
+                        self.assertRaisesRegex(ValueError, "Sparse archive entries are unsupported"),
+                    ):
+                        release.index_archive(io.BytesIO(raw))
+                    parser.assert_not_called()
+
+    def test_unknown_and_incomplete_sparse_pax_metadata_are_rejected(self):
+        for headers in ({"GNU.sparse.realsize": "1"}, {"GNU.sparse.future": "fixture"}):
+            for global_header in (False, True):
+                with self.subTest(headers=headers, global_header=global_header):
+                    raw = pax_bytes(headers, global_header=global_header)
+                    with self.assertRaisesRegex(ValueError, "Sparse archive entries are unsupported"):
+                        release.index_archive(io.BytesIO(raw))
+
+    def test_ordinary_local_and_global_pax_metadata_still_work(self):
+        path = "directory/" + "x" * 150
+        for global_header in (False, True):
+            with self.subTest(global_header=global_header):
+                raw = pax_bytes(
+                    {"path": path, "comment": "ordinary value mentioning GNU.sparse.map"}, global_header=global_header
+                )
+                rows, content = release.index_archive(io.BytesIO(raw), captures={path})
+                self.assertEqual(set(rows), {path})
+                self.assertEqual(content[path], b"fixture")
+
+    def test_old_gnu_sparse_header_is_rejected_before_stdlib_sparse_parser(self):
+        item = tarfile.TarInfo("fixture")
+        item.type = tarfile.GNUTYPE_SPARSE
+        raw = gzip.compress(item.tobuf(format=tarfile.GNU_FORMAT))
+        with (
+            patch.object(
+                tarfile.TarInfo, "_proc_sparse", side_effect=AssertionError("sparse parser must not run")
+            ) as parser,
+            self.assertRaisesRegex(ValueError, "Sparse archive entries are unsupported"),
+        ):
+            release.index_archive(io.BytesIO(raw))
+        parser.assert_not_called()
 
     def test_private_source_file_is_rejected(self):
         self.bundle.source["pkg/ottplay-control.json"] = b"private fixture"

@@ -106,6 +106,22 @@ def hash_file(path, expected, limit=ARCHIVE_LIMIT):
 
 
 class BoundedTarInfo(tarfile.TarInfo):
+    def _reject_sparse(self, *_args):
+        raise ValueError("Sparse archive entries are unsupported")
+
+    # _proc_pax dispatches here before index_archive sees the member. In
+    # particular, GNU sparse 1.0 reads its map from the payload at this point.
+    # Reject at dispatch rather than letting the stdlib parse any sparse map.
+    _proc_gnusparse_00 = _reject_sparse
+    _proc_gnusparse_01 = _reject_sparse
+    _proc_gnusparse_10 = _reject_sparse
+
+    def _apply_pax_info(self, pax_headers, encoding, errors):
+        # Also reject incomplete/unknown GNU sparse variants and global PAX
+        # metadata, which need not enter one of the known sparse handlers.
+        require(not any(key.startswith("GNU.sparse.") for key in pax_headers), "Sparse archive entries are unsupported")
+        return super()._apply_pax_info(pax_headers, encoding, errors)
+
     def _proc_member(self, archive):
         # Tarfile consumes extended headers before yielding an entry to the
         # caller. Bound those allocations too, including malicious PAX input.
