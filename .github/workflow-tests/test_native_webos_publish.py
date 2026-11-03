@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -28,7 +29,7 @@ class NativePublishWorkflowTests(unittest.TestCase):
         self.assertEqual(workflow["jobs"]["publish"]["if"],
                          "${{ github.ref == 'refs/heads/main' && inputs.source_sha == github.sha }}")
         self.assertEqual(workflow["jobs"]["publish"]["needs"], "prepare")
-        self.assertEqual(workflow["jobs"]["verify-public"]["needs"], "publish")
+        self.assertEqual(workflow["jobs"]["verify-public"]["needs"], ["prepare", "publish"])
         self.assertEqual(workflow["concurrency"]["cancel-in-progress"], "false")
 
     def test_wrong_dispatch_context_fails_instead_of_silently_skipping(self):
@@ -70,11 +71,32 @@ class NativePublishWorkflowTests(unittest.TestCase):
                 if re.match(r"actions/(upload|download)-artifact@", step.get("uses", "")):
                     artifact_names.append(step["with"]["name"])
                 self.assertNotIn("${{ inputs.", step.get("run", ""))
-        self.assertEqual(artifact_names,
-                         ["native-release-${{ github.run_id }}-${{ github.run_attempt }}"] * 3)
+        self.assertEqual(artifact_names, ["${{ steps.bundle-identity.outputs.name }}",
+                         "${{ needs.prepare.outputs.bundle-name }}",
+                         "${{ needs.prepare.outputs.bundle-name }}"])
         commands = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
         for operation in ("prepare", "publish", "verify-public"):
             self.assertTrue(any("scripts/publish-webos-native.py " + operation in cmd for cmd in commands))
+
+    def test_failed_job_retry_reuses_the_preparing_attempt_artifact(self):
+        jobs = self.workflow()["jobs"]
+        self.assertEqual(jobs["prepare"]["outputs"]["bundle-name"],
+                         "${{ steps.bundle-identity.outputs.name }}")
+        producer = next(step for step in jobs["prepare"]["steps"]
+                        if step.get("id") == "bundle-identity")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "outputs"
+            subprocess.run(["bash", "-c", producer["run"]], check=True,
+                           env={**os.environ, "GITHUB_RUN_ID": "456", "GITHUB_RUN_ATTEMPT": "1",
+                                "GITHUB_OUTPUT": str(output)})
+            self.assertEqual(output.read_text(), "name=native-release-456-1\n")
+        for name in ("publish", "verify-public"):
+            download = next(step for step in jobs[name]["steps"]
+                            if step.get("uses", "").startswith("actions/download-artifact@"))
+            # On attempt 2, the successful prepare job is not rerun. Both
+            # consumers must use its saved output instead of their attempt.
+            self.assertEqual(download["with"]["name"], "${{ needs.prepare.outputs.bundle-name }}")
+            self.assertNotIn("run_attempt", download["with"]["name"])
 
     def test_promotion_contract_suite(self):
         # Included in the existing required workflow-test gate without modifying

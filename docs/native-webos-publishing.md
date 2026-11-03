@@ -90,5 +90,8 @@ new publication attempt. If the source changes, first build a new candidate.
 
 If verification fails after the release becomes public, the workflow reports
 failure and leaves that release intact for inspection. Correct the delivery
-problem and repeat verification; a green build alone is not evidence of
-successful public delivery or television playback.
+problem and use **Re-run failed jobs** to repeat public verification with the
+original preparation bundle. The downstream jobs retain its producing
+attempt's artifact name. Re-running the whole workflow also reruns publication,
+which intentionally refuses the existing tag. A green build alone is not
+evidence of successful public delivery or television playback.
