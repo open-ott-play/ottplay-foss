@@ -429,8 +429,9 @@ def publish(args):
     current = api_json(prefix + f"/releases/{release_id}")
     require(current.get("draft") is True and current.get("tag_name") == tag, "Draft state changed before publication")
     require(current.get("body") == body, "Draft release notes changed before publication")
-    published = api_json(prefix + f"/releases/{release_id}", method="PATCH", payload={"draft": False, "make_latest": "false"})
+    published = api_json(prefix + f"/releases/{release_id}", method="PATCH", payload={"draft": False, "make_latest": "false", "body": body})
     require(published.get("draft") is False and published.get("tag_name") == tag, "Release publication did not complete")
+    require(published.get("body") == body, "Published release notes differ from verified text")
     return {"release_id": release_id, "tag": tag, "published": True}
 
 

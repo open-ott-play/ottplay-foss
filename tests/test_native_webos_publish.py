@@ -555,6 +555,37 @@ class PromotionPipelineTests(unittest.TestCase):
         self.assertTrue(self.gh.release["draft"])
         self.assertFalse(any(event[0] == "PATCH" for event in self.gh.events))
 
+    def test_draft_edit_after_final_read_cannot_replace_verified_notes(self):
+        self.prepare()
+        self.notes.return_value = "# Verified version notes\n\nPackage changes."
+        edits = []
+
+        def edit_before_patch(path, **kwargs):
+            if kwargs.get("method") == "PATCH":
+                self.gh.release["body"] = "Concurrent unverified edit"
+                edits.append(path)
+            return self.gh.api(path, **kwargs)
+
+        with patch.object(publish, "api_json", side_effect=edit_before_patch):
+            result = self.do_publish()
+        self.assertTrue(result["published"])
+        self.assertEqual(len(edits), 1)
+        self.assertFalse(self.gh.release["draft"])
+        self.assertEqual(self.gh.release["body"], self.notes.return_value)
+
+    def test_unexpected_published_notes_are_not_reported_as_success(self):
+        self.prepare()
+
+        def changed_response(path, **kwargs):
+            response = self.gh.api(path, **kwargs)
+            if kwargs.get("method") == "PATCH":
+                response["body"] = "Unexpected published text"
+            return response
+
+        with patch.object(publish, "api_json", side_effect=changed_response), \
+                self.assertRaisesRegex(publish.PromotionError, "Published release notes differ"):
+            self.do_publish()
+
     def test_existing_release_or_tag_is_never_overwritten(self):
         self.prepare()
         for kind in ("release", "tag"):
