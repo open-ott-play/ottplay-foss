@@ -23,11 +23,32 @@ It never prints the token or complete endpoint. `OTT_COMPANION_HOST` may only
 be `127.0.0.1`, and `OTT_COMPANION_ALLOW_REMOTE=1` is rejected. This binary has
 no remote-bind or TLS mode.
 
+Per-process limits can be reduced without changing desktop/server defaults:
+`OTT_COMPANION_CACHE_BYTES` accepts 64 MiB–2 GiB in bytes,
+`OTT_COMPANION_MAX_SESSIONS` accepts 1–2, and
+`OTT_COMPANION_MAX_STREAMS` accepts 1–4. Invalid values fail startup. The
+authenticated capabilities response reports the actual limits. The native TV
+launcher defaults to a 256 MiB cache, one session and two streams, and reduces
+the cache when needed to leave 96 MiB free for indexer references and other app
+data. It refuses to start when fewer than 64 MiB remain for media caching.
+
+The cache reserves the selected file's complete aligned piece range. It is
+not a rolling cache: a file larger than the available budget is rejected with
+`cache_limit`. File selection and search still work within those limits.
+
+For `.torrent` metadata and saved local references, the service reads the
+private flag before starting the torrent session. Private torrents use their
+declared trackers without creating a public DHT bootstrap session. Public
+magnets retain DHT discovery. Incoming peer listening and local service
+discovery remain disabled.
+
 The caller owns startup and termination. `SIGTERM` on Unix and `Ctrl-C` shut
 down the service and its sessions before exit. An application embedding this
 binary must supervise the child and stop it when the application closes.
-Automatic parent-death detection and a private endpoint IPC channel are not
-implemented here. No browser code starts this binary automatically.
+The standalone binary does not detect parent death. The native TV launcher
+owns that responsibility: ordinary stop requests use SIGTERM followed by a
+bounded forced stop, and unexpected launcher death uses the Linux parent-death
+signal. No browser code starts this binary automatically.
 
 ## ARM webOS build status
 
