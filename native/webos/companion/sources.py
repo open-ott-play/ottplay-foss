@@ -173,12 +173,13 @@ def checked_bundle(bundle, source_root, readelf):
                 fail("Companion linker receipt mismatch")
         if not record.get("archive_excluded"):
             fail("Companion linker exclusion was not attested")
-        build.linker.check_evidence(binary)
+        build.linker.check_evidence(binary, compiler=readelf.with_name("arm-webos-linux-gnueabi-gcc"))
         linkage.update(
             trace_available=True,
             trace_sha256=receipt["link_trace_sha256"],
             receipt_sha256=receipt["link_receipt_sha256"],
             compiler_sha256=record["compiler_sha256"],
+            compiler_backend_sha256=record["compiler_backend_sha256"],
         )
     return receipt, source, spec, linkage
 
@@ -262,6 +263,7 @@ def rust_sources(sysroot, archive, receipt, spec):
     identity = build.run([str(sysroot / "bin/rustc"), "--version", "--verbose"]).strip()
     if identity != receipt["rustc"]:
         fail("Rust compiler differs from companion build")
+    build.validate_rust_identity(identity, spec)
     commit = re.search(r"^commit-hash: ([0-9a-f]{40})$", identity, re.MULTILINE)
     if not commit:
         fail("Rust compiler commit is missing")

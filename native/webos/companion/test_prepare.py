@@ -79,9 +79,43 @@ class PreparationTests(unittest.TestCase):
     def test_libclang_selects_explicit_directory_and_probes_it(self):
         library = self.root / "libclang.so"
         library.touch()
-        with patch.object(prepare, "probe_libclang") as probe:
+        with patch.object(prepare, "probe_libclang") as probe, patch.object(prepare.sys, "platform", "linux"):
             self.assertEqual(prepare.find_libclang(self.root), library)
         probe.assert_called_once_with(library)
+
+    def test_libclang_rejects_arbitrary_and_cpp_filenames(self):
+        for name in ("custom-compiler.so", "libclang-cpp.so.18"):
+            library = self.root / name
+            library.touch()
+            with (
+                patch.object(prepare, "probe_libclang") as probe,
+                patch.object(prepare.sys, "platform", "linux"),
+                self.assertRaisesRegex(ValueError, "not discoverable"),
+            ):
+                prepare.find_libclang(library)
+            probe.assert_not_called()
+
+    def test_libclang_preserves_ubuntu_and_macos_symlink_aliases(self):
+        for host, alias, target in (
+            ("linux", "libclang.so", "libclang-18.so.18.1.3"),
+            ("darwin", "libclang.dylib", "libclang.18.dylib"),
+        ):
+            with self.subTest(host=host):
+                actual = self.root / target
+                actual.touch()
+                selected = self.root / alias
+                selected.symlink_to(actual)
+                with patch.object(prepare, "probe_libclang") as probe, patch.object(prepare.sys, "platform", host):
+                    self.assertEqual(prepare.find_libclang(selected), selected)
+                probe.assert_called_once_with(actual)
+
+    def test_explicit_versioned_linux_library_is_not_replaced_by_sibling(self):
+        selected = self.root / "libclang-18.so.18.1.3"
+        selected.touch()
+        (self.root / "libclang.so").touch()
+        with patch.object(prepare, "probe_libclang") as probe, patch.object(prepare.sys, "platform", "linux"):
+            self.assertEqual(prepare.find_libclang(selected), selected)
+        probe.assert_called_once_with(selected)
 
     def test_libclang_missing_is_clear(self):
         with self.assertRaisesRegex(ValueError, "libclang-18-dev"):
@@ -153,6 +187,7 @@ class PreparationTests(unittest.TestCase):
             patch.object(prepare, "probe_libclang"),
             patch.object(prepare, "run", side_effect=run),
             patch.object(prepare, "source_archive", return_value=archive),
+            patch.object(prepare.sys, "platform", "linux"),
             patch("builtins.print"),
             patch.dict(
                 os.environ,
@@ -165,6 +200,8 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(result["environment"]["CARGO_HOME"], str(args.cache_dir / "cargo"))
         self.assertEqual(result["environment"]["CARGO_BUILD_JOBS"], "2")
         self.assertEqual(result["environment"]["CARGO_NET_OFFLINE"], "true")
+        self.assertEqual(result["environment"]["LIBCLANG_PATH"], str(library))
+        self.assertEqual(result["libclang"], str(library))
         fetch = next(command for command, _ in calls if "fetch" in command)
         self.assertIn("--locked", fetch)
         self.assertNotIn("--target", fetch)

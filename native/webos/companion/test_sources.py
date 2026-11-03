@@ -185,9 +185,9 @@ class SourceTests(unittest.TestCase):
         (notices / "licenses").mkdir(parents=True)
         for name in ("COPYRIGHT.html", "COPYRIGHT-library.html", "licenses/MIT.txt"):
             (notices / name).write_text("public fixture license")
-        commit = "a" * 40
-        version = "1.96.1 (aaaaaaaaa 2026-06-26)"
-        identity = "rustc " + version + "\ncommit-hash: " + commit
+        commit = sources.build.SPEC["rust_commit"]
+        version = "1.96.1 (" + commit[:9] + " 2026-06-26)"
+        identity = "rustc " + version + "\nrelease: 1.96.1\ncommit-hash: " + commit
         path = self.root / "rust-src.tar.xz"
         with tarfile.open(path, "w:xz") as archive:
             info = tarfile.TarInfo("rust-src-1.96.1/rust-src/lib/rustlib/src/rust/library/Cargo.lock")
@@ -197,7 +197,7 @@ class SourceTests(unittest.TestCase):
         )
         manifest += '\n[pkg.rust-src.target."*"]\nhash="' + sources.build.sha(path) + '"\n'
         (library / "multirust-channel-manifest.toml").write_text(manifest)
-        return sysroot, path, {"rustc": identity}, {"rust_toolchain": "1.96.1"}
+        return sysroot, path, {"rustc": identity}, {"rust_toolchain": "1.96.1", "rust_commit": commit}
 
     def test_rust_archive_and_compiler_commit_are_verified(self):
         sysroot, archive, receipt, spec = self.rust_fixture()
@@ -205,7 +205,75 @@ class SourceTests(unittest.TestCase):
             result, notices = sources.rust_sources(sysroot, archive, receipt, spec)
         self.assertTrue(result["source_archive_hash_verified"])
         self.assertIn("COPYRIGHT-library.html", notices)
-        self.assertEqual(result["commit"], "a" * 40)
+        self.assertEqual(result["commit"], spec["rust_commit"])
+
+    def test_rust_commit_suffix_mismatch_fails_even_with_matching_build_receipt(self):
+        sysroot, archive, receipt, spec = self.rust_fixture()
+        wrong = spec["rust_commit"][:-1] + ("0" if spec["rust_commit"][-1] != "0" else "1")
+        receipt["rustc"] = receipt["rustc"].replace(spec["rust_commit"], wrong)
+        with patch.object(sources.build, "run", return_value=receipt["rustc"]), self.assertRaises(ValueError):
+            sources.rust_sources(sysroot, archive, receipt, spec)
+
+    def test_linkage_verifies_sdk_compiler_and_preserves_backend_digest(self):
+        bundle = self.root / "bundle"
+        root = self.root / "source"
+        bundle.mkdir()
+        manifest_path = root / "native/webos/companion/manifest.json"
+        manifest_path.parent.mkdir(parents=True)
+        spec = {
+            "package": "ottplay-companion",
+            "target": "armv7-unknown-linux-gnueabi",
+            "features": [],
+            "required_source_files": [],
+        }
+        manifest_path.write_text(json.dumps(spec))
+        (bundle / "source-receipt.json").write_text(json.dumps({"schema": 1, "local_inputs": []}))
+        for name in (
+            "local-source.tar.gz",
+            "ottplay-companion",
+            "ottplay-companion.link.map",
+            "ottplay-companion.link.trace",
+        ):
+            (bundle / name).write_bytes(b"fixture")
+        file_hash = sources.build.sha(bundle / "ottplay-companion")
+        record = {
+            "elf_sha256": file_hash,
+            "map_sha256": file_hash,
+            "trace_sha256": file_hash,
+            "archive_excluded": True,
+            "compiler_sha256": "c" * 64,
+            "compiler_backend_sha256": "b" * 64,
+        }
+        (bundle / "ottplay-companion.link.json").write_text(json.dumps(record))
+        receipt = {
+            "schema": 1,
+            "package": spec["package"],
+            "target": spec["target"],
+            "features": [],
+            "elf": {"sha256": file_hash},
+            "manifest_sha256": sources.build.sha(manifest_path),
+        }
+        for name, key in (
+            ("local-source.tar.gz", "local_source_archive_sha256"),
+            ("source-receipt.json", "source_receipt_sha256"),
+            ("ottplay-companion.link.map", "link_map_sha256"),
+            ("ottplay-companion.link.trace", "link_trace_sha256"),
+            ("ottplay-companion.link.json", "link_receipt_sha256"),
+        ):
+            receipt[key] = sources.build.sha(bundle / name)
+        (bundle / "receipt.json").write_text(json.dumps(receipt))
+        readelf = self.root / "sdk/bin/arm-webos-linux-gnueabi-readelf"
+        with (
+            patch.object(sources, "extract_local"),
+            patch.object(sources.build, "elf_report"),
+            patch.object(sources.build, "inspect_elf", return_value=receipt["elf"]),
+            patch.object(sources.build.linker, "check_evidence") as check,
+        ):
+            result = sources.checked_bundle(bundle, root, readelf)
+        check.assert_called_once_with(
+            bundle / "ottplay-companion", compiler=readelf.with_name("arm-webos-linux-gnueabi-gcc")
+        )
+        self.assertEqual(result[3]["compiler_backend_sha256"], "b" * 64)
 
     def test_wrong_rust_compiler_and_archive_are_rejected(self):
         sysroot, archive, receipt, spec = self.rust_fixture()

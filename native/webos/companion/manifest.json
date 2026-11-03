@@ -3,6 +3,7 @@
   "package": "ottplay-companion",
   "target": "armv7-unknown-linux-gnueabi",
   "rust_toolchain": "1.96.1",
+  "rust_commit": "31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd",
   "features": ["webos-legacy-glibc"],
   "install_path": "bin/ottplay-companion",
   "receipt_path": "companion/receipt.json",

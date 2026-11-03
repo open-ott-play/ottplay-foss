@@ -60,6 +60,23 @@ def version(value):
     return tuple(int(part) for part in value.split("."))
 
 
+def validate_rust_identity(identity, spec=SPEC):
+    """Validate the full toolchain pin at every build/source entry point."""
+    commit = spec.get("rust_commit", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        fail("Missing full Rust compiler commit in build policy")
+    fields = {}
+    for line in identity.splitlines()[1:]:
+        name, separator, value = line.partition(": ")
+        if separator:
+            if name in fields:
+                fail("Duplicate Rust compiler identity field")
+            fields[name] = value
+    if (not identity.startswith("rustc " + spec["rust_toolchain"] + " ")
+            or fields.get("release") != spec["rust_toolchain"] or fields.get("commit-hash") != commit):
+        fail("Unexpected Rust toolchain release or commit")
+
+
 def inspect_elf(binary, report, spec=SPEC):
     """Inspect actual ELF headers; readelf supplies symbols/dynamic information."""
     linker.check_embedded_paths(binary)
@@ -199,8 +216,10 @@ def attest_sdk(sdk, archive):
         fail("SDK archive does not match a pinned webOS SDK")
     # Record what is actually used; archive pin alone does not prove extraction.
     tools = sdk_tools(sdk)
+    compiler = linker.compiler_digests(tools["gcc"])
     return {"version": spec["version"], "archive_sha256": archive_hash, "host": matches[0],
-            "executables": {name: sha(path.resolve()) for name, path in tools.items()},
+            "executables": {**{name: sha(path.resolve()) for name, path in tools.items()},
+                            "gcc_backend": compiler["compiler_backend_sha256"]},
             "extracted_tree_attested": False,
             "note": "Release runtime-source collector must verify used SDK inputs against the pinned archive."}
 
@@ -221,18 +240,24 @@ def build(args):
                  "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER"):
         environment.pop(name, None)
     rustc = run(["rustc", "--version", "--verbose"], env=environment).strip()
-    if not rustc.startswith("rustc " + SPEC["rust_toolchain"] + " "):
-        fail("Unexpected Rust toolchain")
+    validate_rust_identity(rustc)
     inventory = source_inventory()
     source = source_receipt(inventory)
     command = [sys.executable, str(ROOT / "src-rs/companion/build-webos.py"),
                "--sdk", str(args.sdk.resolve()), "--target-dir", str(target)]
     if args.libclang:
-        command.extend(["--libclang", str(args.libclang.resolve(strict=True))])
+        libclang = args.libclang.expanduser().absolute()
+        if not (libclang.is_file() or libclang.is_dir()):
+            fail("Host libclang path is missing or unsupported")
+        # clang-sys matches the supplied basename; keep an accepted symlink name.
+        command.extend(["--libclang", str(libclang)])
     subprocess.run(command, cwd=ROOT, env=environment, check=True)
     assert_sources(source)
     binary = target / SPEC["target"] / "release" / SPEC["package"]
-    linker.check_evidence(binary, compiler=tools["gcc"])
+    link_record = linker.check_evidence(binary, compiler=tools["gcc"])
+    if (link_record["compiler_sha256"] != sdk["executables"]["gcc"]
+            or link_record["compiler_backend_sha256"] != sdk["executables"]["gcc_backend"]):
+        fail("SDK compiler or backend changed after build preparation")
     elf = inspect_elf(binary, elf_report(binary, tools["readelf"]))
     output.mkdir(parents=True, exist_ok=True)
     local_source_archive(output / "local-source.tar.gz", source)
@@ -268,9 +293,14 @@ def checked_bundle(bundle, readelf, root=ROOT):
             fail("Bundle checksum mismatch: " + name)
     if receipt["manifest_sha256"] != sha(HERE / "manifest.json"):
         fail("Build policy changed after companion build")
+    validate_rust_identity(receipt["rustc"])
     source = json.loads((bundle / "source-receipt.json").read_text())
     assert_sources(source, root)
-    linker.check_evidence(bundle / SPEC["package"])
+    compiler = Path(readelf).with_name("arm-webos-linux-gnueabi-gcc")
+    link_record = linker.check_evidence(bundle / SPEC["package"], compiler=compiler)
+    if (link_record["compiler_sha256"] != receipt["sdk"]["executables"]["gcc"]
+            or link_record["compiler_backend_sha256"] != receipt["sdk"]["executables"]["gcc_backend"]):
+        fail("Bundle compiler or backend digest differs from link evidence")
     elf = inspect_elf(bundle / "ottplay-companion", elf_report(bundle / "ottplay-companion", readelf))
     if elf != receipt["elf"] or "libglibc_polyfills" in (bundle / "ottplay-companion.link.map").read_text():
         fail("Companion changed after build or links prohibited SDK polyfills")

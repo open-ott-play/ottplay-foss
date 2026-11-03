@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import fnmatch
 import hashlib
 import json
 import os
@@ -26,7 +27,7 @@ import tomllib
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 RUST_VERSION = "1.96.1"
-RUST_COMMIT = "31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd"
+RUST_COMMIT = json.loads((HERE / "manifest.json").read_text())["rust_commit"]
 RUST_SOURCE_URL = "https://static.rust-lang.org/dist/2026-06-30/rust-src-1.96.1.tar.xz"
 RUST_SOURCE_SHA256 = "b343b6553bc772225f6a2b5be5055017f29794dcf4e08020366b27a0a40fc1c2"
 SOURCE_LIMIT = 64 * 1024 * 1024
@@ -101,6 +102,12 @@ def probe_libclang(path):
 
 
 def find_libclang(explicit=None):
+    # clang-sys 1.9.1 also applies filename patterns to an explicit file, and
+    # excludes libclang-cpp. Match its runtime discovery for supported hosts.
+    patterns = {
+        "darwin": ("libclang.dylib",),
+        "win32": ("clang.dll", "libclang.dll"),
+    }.get(sys.platform, ("libclang.so", "libclang-*.so", "libclang.so.*", "libclang-*.so.*"))
     paths = [explicit] if explicit else list(LIBCLANG_DIRS)
     for path in paths:
         candidates = (
@@ -109,8 +116,16 @@ def find_libclang(explicit=None):
         for candidate in candidates:
             if not candidate.is_file():
                 continue
-            candidate = candidate.resolve(strict=True)
-            probe_libclang(candidate)
+            if "-cpp." in candidate.name or not any(
+                fnmatch.fnmatchcase(candidate.name, pattern) for pattern in patterns
+            ):
+                if path.is_file():
+                    fail("Selected libclang filename is not discoverable by clang-sys")
+                continue
+            # Preserve a valid distro alias even when its target has another
+            # basename. All later build stages must use this exact path.
+            candidate = candidate.absolute()
+            probe_libclang(candidate.resolve(strict=True))
             return candidate
     fail(
         "Host libclang not found; on Ubuntu 24.04 install libclang-18-dev, or pass --libclang /path/to/library-or-directory"
@@ -136,7 +151,7 @@ def verify_rust(identity, sysroot, target):
 
 def prepare(args):
     spec = json.loads((HERE / "manifest.json").read_text())
-    if spec["rust_toolchain"] != RUST_VERSION:
+    if spec["rust_toolchain"] != RUST_VERSION or spec["rust_commit"] != RUST_COMMIT:
         fail("Companion Rust pin changed; review preparation commit/source pins before use")
     root = args.root.resolve(strict=True)
     lock = root / "Cargo.lock"
@@ -160,7 +175,7 @@ def prepare(args):
         "CARGO_INCREMENTAL": "0",
         "RUSTUP_TOOLCHAIN": RUST_VERSION,
         "CARGO_NET_OFFLINE": "false",
-        "LIBCLANG_PATH": str(libclang.parent),
+        "LIBCLANG_PATH": str(libclang),
     }
     for name in (
         "RUSTC",
@@ -214,7 +229,7 @@ def prepare(args):
         "cache_dir": str(cache),
         "cargo_home": str(cargo_home),
         "target_dir": str(target),
-        "libclang": str(libclang.parent),
+        "libclang": str(libclang),
         "libclang_library": str(libclang),
         "rust_source_archive": str(archive),
         "rust_source_archive_sha256": RUST_SOURCE_SHA256,

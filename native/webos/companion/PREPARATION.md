@@ -17,10 +17,14 @@ python3 native/webos/companion/prepare.py \
 ```
 
 Standard output is a single JSON object; progress/errors go to standard error.
-The optional `--libclang` accepts a host library or its directory. The receipt's
+The optional `--libclang` accepts a host library or its directory. Explicit files
+must use a filename discoverable by clang-sys; `libclang-cpp` is not accepted.
+The selected file path, including a valid distribution symlink alias, is retained
+in `libclang`, `libclang_library` and `environment.LIBCLANG_PATH`. Later steps use
+that exact file rather than rediscovering another library in its directory. The receipt's
 `environment` object must be passed to **both** subsequent subprocesses. It sets
 the prepared Cargo cache, pinned toolchain, two build jobs, no incremental build,
-offline dependency access and the checked libclang directory. For example:
+offline dependency access and the checked libclang file. For example:
 
 ```python
 import json
@@ -52,8 +56,10 @@ subprocess.run([
 Bundle and source output directories must be new/empty as their respective
 commands require. Cache entries are reusable only after their checksums match;
 a corrupt Rust source cache entry fails explicitly instead of being silently
-replaced. The Rust source URL, SHA256 and full compiler commit are fixed in the
-preparation script and checked against the installed toolchain manifest.
+replaced. The Rust source URL and SHA256 are fixed in the preparation script
+and checked against the installed toolchain manifest. The full
+compiler commit is pinned in `manifest.json` and checked by preparation, build and
+source collection, including when preparation was not invoked first.
 
 Source collection remains incomplete until the enclosing native release binds
 the final helper ELF/map/trace and verifies its SDK runtime sources. Do not

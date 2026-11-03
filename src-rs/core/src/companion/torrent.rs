@@ -84,16 +84,17 @@ mod private_policy_tests {
     }
 
     #[tokio::test]
-    async fn public_magnets_keep_discovery_and_bad_metadata_fails_before_engine() {
-        let (_, private) = resolve_source(Source::Url(
-            "magnet:?xt=urn:btih:0123456789012345678901234567890123456789".into(),
-        ))
-        .await
-        .unwrap();
-        assert!(!private);
-        assert!(session_options(CancellationToken::new(), private)
-            .dht
-            .is_some());
+    async fn unresolved_magnets_keep_discovery_and_bad_metadata_fails_before_engine() {
+        for magnet in [
+            "magnet:?xt=urn:btih:0123456789012345678901234567890123456789",
+            "magnet:?xt=urn:btih:0123456789012345678901234567890123456789&tr=http%3A%2F%2F127.0.0.1%3A90%2Fannounce",
+        ] {
+            let (_, private) = resolve_source(Source::Url(magnet.into())).await.unwrap();
+            assert!(!private, "a magnet does not carry the metainfo private flag");
+            assert!(session_options(CancellationToken::new(), private)
+                .dht
+                .is_some(), "a declared tracker does not disable magnet DHT discovery");
+        }
         assert!(resolve_source(Source::Metainfo(b"not metainfo".to_vec()))
             .await
             .is_err());

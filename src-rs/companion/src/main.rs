@@ -155,7 +155,7 @@ async fn serve(configuration: Configuration) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     if let Some(argument) = std::env::args_os().nth(1) {
         if argument == "--help" || argument == "-h" {
-            println!("Usage: ottplay-companion\n\nRequired environment: OTT_COMPANION_DIR (absolute), OTT_COMPANION_TOKEN\nOptional: OTT_COMPANION_PORT (default 8793; 0 selects a free port), OTT_COMPANION_PLUGIN_DIR\nBinds only to 127.0.0.1. The caller owns process startup and termination.");
+            println!("Usage: ottplay-companion\n\nRequired environment: OTT_COMPANION_DIR (absolute), OTT_COMPANION_TOKEN\nOptional: OTT_COMPANION_PORT (default 8793; 0 selects a free port), OTT_COMPANION_PLUGIN_DIR\nResource limits (optional):\n  OTT_COMPANION_CACHE_BYTES: 67108864..=2147483648 bytes (64 MiB..=2 GiB; default 2147483648)\n  OTT_COMPANION_MAX_SESSIONS: 1..=2 (default 2)\n  OTT_COMPANION_MAX_STREAMS: 1..=4 (default 4)\nBinds only to 127.0.0.1. The caller owns process startup and termination.");
             return Ok(());
         }
         anyhow::bail!("Unexpected argument; use --help for configuration");

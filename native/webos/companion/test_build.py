@@ -39,6 +39,38 @@ REPORT = """
   Name: GLIBC_2.12
   Name: GCC_4.3.0
 """
+RUST_IDENTITY = ("rustc " + build.SPEC["rust_toolchain"] + " (" + build.SPEC["rust_commit"][:9]
+                 + " 2026-06-26)\nrelease: " + build.SPEC["rust_toolchain"]
+                 + "\ncommit-hash: " + build.SPEC["rust_commit"])
+
+
+class RustIdentityTests(unittest.TestCase):
+    def test_exact_release_and_full_commit_are_accepted(self):
+        build.validate_rust_identity(RUST_IDENTITY)
+
+    def test_wrong_missing_short_or_duplicate_commit_is_rejected(self):
+        for identity in (
+            RUST_IDENTITY.replace(build.SPEC["rust_commit"], "a" * 40),
+            RUST_IDENTITY.split("\ncommit-hash:")[0],
+            RUST_IDENTITY.replace(build.SPEC["rust_commit"], build.SPEC["rust_commit"][:9]),
+            RUST_IDENTITY + "\ncommit-hash: " + build.SPEC["rust_commit"],
+            RUST_IDENTITY.replace("release: " + build.SPEC["rust_toolchain"], "release: 1.0.0"),
+        ):
+            with self.subTest(identity=identity), self.assertRaises(ValueError):
+                build.validate_rust_identity(identity)
+
+    def test_build_rejects_wrong_commit_before_invoking_compilation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args = SimpleNamespace(jobs=1, output=root / "output", target_dir=root / "target", sdk=root,
+                                   sdk_archive=root / "sdk.tar", libclang=None)
+            with (patch.object(build, "sdk_tools", return_value={}),
+                  patch.object(build, "attest_sdk", return_value={}),
+                  patch.object(build, "run", return_value=RUST_IDENTITY.replace(build.SPEC["rust_commit"], "a" * 40)),
+                  patch.object(build.subprocess, "run") as compile_process,
+                  self.assertRaisesRegex(ValueError, "release or commit")):
+                build.build(args)
+            compile_process.assert_not_called()
 
 
 class ElfTests(unittest.TestCase):
@@ -189,6 +221,10 @@ class BundleTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
+        self.compiler = self.root / "arm-webos-linux-gnueabi-gcc"
+        self.compiler.write_bytes(b"wrapper")
+        self.backend = self.compiler.with_name(self.compiler.name + ".br_real")
+        self.backend.write_bytes(b"backend")
         (self.root / "ottplay-companion").write_bytes(executable())
         (self.root / "source-receipt.json").write_text('{"local_inputs": []}')
         (self.root / "local-source.tar.gz").write_bytes(b"local source")
@@ -196,12 +232,14 @@ class BundleTests(unittest.TestCase):
         (self.root / "ottplay-companion.link.trace").write_text("/sdk/lib/crti.o\n")
         self.link_record = {"schema": 1, "archive_excluded": True,
                             "build_root": str(self.root), "build_target": str(self.root), "rust_sysroot": str(self.root), "archive_inputs": [],
-                            "compiler_sha256": "a" * 64,
+                            **build.linker.compiler_digests(self.compiler),
                             "elf_sha256": build.sha(self.root / "ottplay-companion"),
                             "map_sha256": build.sha(self.root / "ottplay-companion.link.map"),
                             "trace_sha256": build.sha(self.root / "ottplay-companion.link.trace")}
         (self.root / "ottplay-companion.link.json").write_bytes(build.canonical(self.link_record))
         self.receipt = {
+            "rustc": RUST_IDENTITY,
+            "sdk": {"executables": {"gcc": build.sha(self.compiler), "gcc_backend": build.sha(self.backend)}},
             "manifest_sha256": build.sha(build.HERE / "manifest.json"),
             "source_receipt_sha256": build.sha(self.root / "source-receipt.json"),
             "local_source_archive_sha256": build.sha(self.root / "local-source.tar.gz"),
@@ -219,10 +257,21 @@ class BundleTests(unittest.TestCase):
 
     def check(self):
         with patch.object(build, "assert_sources"), patch.object(build, "elf_report", return_value=REPORT):
-            return build.checked_bundle(self.root, Path("readelf"))
+            return build.checked_bundle(self.root, self.root / "arm-webos-linux-gnueabi-readelf")
 
     def test_valid_receipt(self):
         self.assertEqual(self.check()[0], self.receipt)
+
+    def test_changed_sdk_backend_is_rejected(self):
+        self.backend.write_bytes(b"changed backend")
+        with self.assertRaisesRegex(ValueError, "compiler_backend_sha256"):
+            self.check()
+
+    def test_outer_backend_digest_must_match_link_receipt(self):
+        self.receipt["sdk"]["executables"]["gcc_backend"] = "e" * 64
+        self.save()
+        with self.assertRaisesRegex(ValueError, "backend digest"):
+            self.check()
 
     def test_changed_binary_rejected(self):
         with (self.root / "ottplay-companion").open("ab") as stream:
@@ -369,6 +418,50 @@ class CompilerFlagsTests(unittest.TestCase):
             with self.subTest(prefix=prefix), self.assertRaisesRegex(ValueError, "Unsafe"):
                 flags.path_remaps(prefix, "/target", "/cargo", "/rust", "/sdk", "/user", "/tmp")
 
+    def test_cross_build_preserves_exact_libclang_alias(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            sdk, rust, target = root / "sdk", root / "rust", root / "target"
+            (sdk / "bin").mkdir(parents=True)
+            (sdk / "arm-webos-linux-gnueabi/sysroot").mkdir(parents=True)
+            rust.mkdir()
+            for name in ("gcc", "g++", "ar"):
+                (sdk / "bin" / ("arm-webos-linux-gnueabi-" + name)).write_bytes(b"fixture")
+            library = root / "libclang.18.dylib"
+            library.write_bytes(b"fixture")
+            alias = root / "libclang.dylib"
+            alias.symlink_to(library.name)
+            binary = target / "armv7-unknown-linux-gnueabi/release/ottplay-companion"
+            binary.parent.mkdir(parents=True)
+            binary.write_bytes(executable())
+            with (patch.object(sys, "argv", ["build-webos.py", "--sdk", str(sdk), "--target-dir", str(target),
+                                             "--libclang", str(alias)]),
+                  patch.object(flags.subprocess, "check_output", return_value=str(rust)),
+                  patch.object(flags.subprocess, "run", return_value=SimpleNamespace(stdout="ELF fixture")) as run,
+                  patch.object(flags.webos_link, "stage_evidence"), patch("builtins.print")):
+                flags.main()
+            self.assertEqual(run.call_args_list[0].kwargs["env"]["LIBCLANG_PATH"], str(alias))
+
+    def test_bundle_build_forwards_exact_libclang_alias(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            library = root / "libclang-18.so.18.1.3"
+            library.write_bytes(b"fixture")
+            alias = root / "libclang.so"
+            alias.symlink_to(library.name)
+            args = SimpleNamespace(jobs=1, output=root / "output", target_dir=root / "target", sdk=root,
+                                   sdk_archive=root / "sdk.tar", libclang=alias)
+            with (patch.object(build, "sdk_tools", return_value={}),
+                  patch.object(build, "attest_sdk", return_value={}),
+                  patch.object(build, "run", return_value=RUST_IDENTITY),
+                  patch.object(build, "source_inventory", return_value=[]),
+                  patch.object(build, "source_receipt", return_value={}),
+                  patch.object(build.subprocess, "run", side_effect=RuntimeError("captured build")) as run,
+                  self.assertRaisesRegex(RuntimeError, "captured build")):
+                build.build(args)
+            command = run.call_args.args[0]
+            self.assertEqual(command[command.index("--libclang") + 1], str(alias))
+
 
 class LinkerTests(unittest.TestCase):
     """A compiler-process fixture tests capture, never stands in for release evidence."""
@@ -380,9 +473,15 @@ class LinkerTests(unittest.TestCase):
         self.compiler.parent.mkdir()
         self.compiler.write_text('''#!/usr/bin/env python3
 import os, pathlib, sys
-args = sys.argv[1:]
 if os.environ.get('FIXTURE_ARGV0'):
     assert pathlib.Path(sys.argv[0]).name == os.environ['FIXTURE_ARGV0']
+backend = str(pathlib.Path(sys.argv[0]).absolute()) + '.br_real'
+os.execv(backend, [backend, *sys.argv[1:]])
+''')
+        self.backend = self.compiler.with_name(self.compiler.name + ".br_real")
+        self.backend.write_text('''#!/usr/bin/env python3
+import os, pathlib, sys
+args = sys.argv[1:]
 assert '-tno-glibc-polyfill' in args
 assert '-t' in args and '--cref' in args
 output = pathlib.Path(args[args.index('-o') + 1])
@@ -399,9 +498,13 @@ if os.environ.get('FIXTURE_ARCHIVE'):
     print(os.environ['FIXTURE_ARCHIVE'])
 print('/sdk/lib/crti.o')
 print('compiler fixture diagnostic', file=sys.stderr)
+if os.environ.get('FIXTURE_MUTATE_BACKEND'):
+    with pathlib.Path(__file__).open('a') as stream:
+        stream.write('\\n# changed during link\\n')
 sys.exit(int(os.environ.get('FIXTURE_FAIL', '0')))
 ''')
         self.compiler.chmod(0o755)
+        self.backend.chmod(0o755)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -423,6 +526,36 @@ sys.exit(int(os.environ.get('FIXTURE_FAIL', '0')))
         self.assertEqual(trace, result.stdout + result.stderr)
         self.assertIn('/sdk/lib/crti.o', trace)
         self.assertTrue(record['archive_excluded'])
+        self.assertEqual(record['compiler_backend_sha256'], build.sha(self.backend))
+
+    def test_changed_backend_does_not_hide_behind_unchanged_wrapper(self):
+        output = self.root / 'program'
+        self.assertEqual(self.run_link(output).returncode, 0)
+        before = build.sha(self.compiler)
+        self.backend.write_text(self.backend.read_text() + '\n# new backend\n')
+        self.assertEqual(before, build.sha(self.compiler))
+        with self.assertRaisesRegex(ValueError, 'compiler_backend_sha256'):
+            build.linker.check_evidence(output, compiler=self.compiler)
+
+    def test_backend_change_during_link_prevents_success_receipt(self):
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_MUTATE_BACKEND='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('backend changed during final link', result.stderr)
+        self.assertFalse(build.linker.sidecar(output, '.link.json').exists())
+
+    def test_missing_backend_or_its_digest_is_rejected(self):
+        output = self.root / 'program'
+        self.assertEqual(self.run_link(output).returncode, 0)
+        path = build.linker.sidecar(output, '.link.json')
+        record = json.loads(path.read_text())
+        del record['compiler_backend_sha256']
+        path.write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'compiler_backend_sha256'):
+            build.linker.check_evidence(output)
+        self.backend.unlink()
+        self.assertNotEqual(self.run_link(output).returncode, 0)
+        self.assertFalse(path.exists())
 
     def test_failed_relink_removes_previous_success_receipt(self):
         output = self.root / 'program'
@@ -485,12 +618,25 @@ sys.exit(int(os.environ.get('FIXTURE_FAIL', '0')))
         # a different persistent rlib after rustc removes its temporary copy.
         self.assertEqual(build.linker.check_evidence(output)['archive_inputs'], record['archive_inputs'])
 
+    def test_static_archive_in_rustc_directory_remains_persistent(self):
+        archive = self.root / 'target/deps/rustctemporary/libfixture.a'
+        archive.parent.mkdir(parents=True)
+        archive.write_bytes(b'!<arch>\nfixture archive')
+        output = self.root / 'program'
+        result = self.run_link(output, FIXTURE_ARCHIVE=str(archive))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = build.linker.check_evidence(output)
+        self.assertEqual(record['archive_inputs'][0]['validation'], 'link_time_and_current')
+        archive.unlink()
+        with self.assertRaisesRegex(ValueError, 'Persistent archive missing'):
+            build.linker.check_evidence(output)
+
     def test_archive_inventory_cannot_add_or_duplicate_unobserved_inputs(self):
         output = self.root / 'program'
         self.assertEqual(self.run_link(output).returncode, 0)
         path = build.linker.sidecar(output, '.link.json')
         record = json.loads(path.read_text())
-        record['archive_inputs'] = [{'path':str(self.root/'deps/rustctmp/injected.a'), 'sha256':'a'*64, 'bytes':8,
+        record['archive_inputs'] = [{'path':str(self.root/'deps/rustctmp/injected.rlib'), 'sha256':'a'*64, 'bytes':8,
                                     'observed_at_link':True, 'validation':'link_time_only_ephemeral'}]
         path.write_text(json.dumps(record))
         with self.assertRaisesRegex(ValueError, 'observed'):

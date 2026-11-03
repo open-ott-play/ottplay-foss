@@ -40,6 +40,24 @@ def sha(path):
     return digest.hexdigest()
 
 
+def compiler_digests(compiler):
+    """Bind the SDK's dispatch wrapper and the backend selected by its basename."""
+    compiler = Path(compiler).absolute()
+    paths = {"compiler_sha256": compiler,
+             "compiler_backend_sha256": compiler.with_name(compiler.name + ".br_real")}
+    digests = {}
+    for key, path in paths.items():
+        target = path.resolve(strict=True)
+        if not target.is_file():
+            raise ValueError("SDK compiler or backend is not a regular file")
+        before = target.stat()
+        digests[key] = sha(target)
+        after = target.stat()
+        if (before.st_ino, before.st_size, before.st_mtime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns):
+            raise ValueError("SDK compiler or backend changed during digest capture")
+    return digests
+
+
 def sidecar(base, suffix):
     return Path(str(base) + suffix)
 
@@ -90,7 +108,7 @@ def ephemeral_archive(path, build_target):
         relative = Path(path).relative_to(build_target).as_posix()
     except ValueError:
         return False
-    return re.search(r"(?:^|/)deps/rustc[^/]+/", relative) is not None
+    return Path(path).suffix == ".rlib" and re.search(r"(?:^|/)deps/rustc[^/]+/", relative) is not None
 
 
 def capture_archives(link_map, trace, build_root, build_target):
@@ -154,10 +172,13 @@ def check_evidence(binary, base=None, compiler=None):
                          ("trace_sha256", hashlib.sha256(trace).hexdigest())):
         if record.get(name) != digest:
             raise ValueError("Link evidence changed: " + name)
-    if not re.fullmatch(r"[a-f0-9]{64}", record.get("compiler_sha256", "")):
-        raise ValueError("Missing compiler digest")
-    if compiler is not None and record["compiler_sha256"] != sha(Path(compiler).resolve(strict=True)):
-        raise ValueError("Link evidence uses a different compiler")
+    for key in ("compiler_sha256", "compiler_backend_sha256"):
+        if not re.fullmatch(r"[a-f0-9]{64}", record.get(key, "")):
+            raise ValueError("Missing compiler digest: " + key)
+    if compiler is not None:
+        for key, value in compiler_digests(compiler).items():
+            if record[key] != value:
+                raise ValueError("Link evidence uses a different compiler: " + key)
     return record
 
 
@@ -254,6 +275,7 @@ def main(args=None):
         raise ValueError("Link output is outside the explicit build target")
     for suffix in SUFFIXES:
         sidecar(output, suffix).unlink(missing_ok=True)
+    compiler_before = compiler_digests(real)
     # Separate -Xlinker arguments preserve spaces and commas in the output path.
     command = [str(real), *args, "-tno-glibc-polyfill", "-Xlinker", "-Map",
                "-Xlinker", str(sidecar(output, SUFFIXES[0])), "-Xlinker", "--cref",
@@ -264,6 +286,8 @@ def main(args=None):
     sidecar(output, SUFFIXES[1]).write_bytes(result.stdout + result.stderr)
     if result.returncode:
         return result.returncode
+    if compiler_digests(real) != compiler_before:
+        raise ValueError("SDK compiler or backend changed during final link")
     link_map, trace = (sidecar(output, suffix).read_bytes() for suffix in SUFFIXES[:2])
     check_inputs(link_map, trace)
     archives = capture_archives(link_map, trace, build_root, build_target)
@@ -273,7 +297,7 @@ def main(args=None):
     record = {"schema": 1, "elf_sha256": sha(output),
               "map_sha256": sha(sidecar(output, SUFFIXES[0])),
               "trace_sha256": sha(sidecar(output, SUFFIXES[1])),
-              "compiler_sha256": sha(compiler_file), "archive_excluded": True,
+              **compiler_before, "archive_excluded": True,
               "build_root": str(build_root), "build_target": str(build_target),
               "rust_sysroot": str(rust_sysroot),
               "archive_inputs": archives, "archive_inputs_capture": "during-final-link"}

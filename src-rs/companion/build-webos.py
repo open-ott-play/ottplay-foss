@@ -80,7 +80,10 @@ def main():
     environment["CXXFLAGS_" + key] = environment["CFLAGS_" + key]
     environment["BINDGEN_EXTRA_CLANG_ARGS_" + key] = shlex.join(bindgen_flags)
     if args.libclang:
-        environment["LIBCLANG_PATH"] = str(args.libclang.resolve(strict=True))
+        libclang = args.libclang.expanduser().absolute()
+        if not (libclang.is_file() or libclang.is_dir()):
+            parser.error("Host libclang path is missing or unsupported")
+        environment["LIBCLANG_PATH"] = str(libclang)
     binary = output / target / "release/ottplay-companion"
     # Encoded flags preserve SDK and output paths containing spaces and override
     # ambient Rust flags for this explicit target build. Host builds are separate.

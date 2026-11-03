@@ -1,11 +1,18 @@
 # Native webOS companion package
 
-The native player launches the existing Rust `ottplay-companion` as an app-owned
-child process. This is the same torrent, storage and plugin implementation used
-by the other native players. It is not an HTTP server exposed to the LAN.
+The separate native-player integration candidate launches the existing Rust
+`ottplay-companion` as an app-owned child process. This is the same torrent,
+storage and plugin implementation used by the other native players. It is not
+an HTTP server exposed to the LAN.
 `bin/ottplay-companion` listens only on loopback; every API request requires the
 per-launch capability in `/companion/<token>/v1`. The launcher owns its lifetime,
 cache directory, resource limits and capability.
+
+The player controls, remote adapter and launcher policy described below belong
+to that separate native integration. This helper packaging checkout does not
+by itself provide those controls or install a launcher. Check the installed
+native release's capabilities before using them. TV execution remains pending;
+the build and staging commands below do not establish device compatibility.
 
 ## Using the native player
 
@@ -31,6 +38,14 @@ Only local/private-network indexers are accepted. This is distinct from torrent
 peer traffic: P2P playback can communicate with peers and trackers outside the
 LAN. There is no public companion proxy, remote engine address setting or
 automatic fallback to an external engine when the bundled helper is missing.
+
+Only materialized `.torrent` metadata, including byte-backed local references,
+lets the helper inspect the private flag before creating its torrent engine.
+When that flag is set, it creates no DHT session. Unresolved magnets, including
+saved magnet references, use public DHT for metadata discovery even when they
+list trackers. Their info hash may therefore reach DHT peers before metadata
+reveals a private flag. Use original `.torrent` metadata when that distinction
+matters; local indexer access does not make magnet discovery private.
 
 ## Authenticated remote control
 
