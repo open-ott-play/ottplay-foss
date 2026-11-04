@@ -28,9 +28,25 @@ from urllib.parse import urlparse
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 TARGET = "armv7-unknown-linux-gnueabi"
+PRODUCT_CONFIG = "ci/ottplay-integration/release/product.json"
+RELEASE_DOCUMENT_LIMIT = 64 * 1024
 # Unused upstream platform-modification implementation is never part of this
 # product's source or binary distribution. The overlay removes its module.
 EXCLUDED_SOURCE = "rust-modules/platform/src/webos/jail_repair.rs"
+
+# Load exactly this tracked helper's source, without reading/writing bytecode.
+_profile_path = HERE / "control_discovery_config.py"
+_profile_spec = importlib.util.spec_from_file_location("control_discovery_config", _profile_path)
+control_discovery_config = importlib.util.module_from_spec(_profile_spec)
+exec(compile(_profile_path.read_bytes(), str(_profile_path), "exec"), control_discovery_config.__dict__)
+
+
+def control_discovery_profile(args):
+    url = getattr(args, "control_discovery_url", None)
+    digest = getattr(args, "control_discovery_sha256", None)
+    if (url is None) != (digest is None):
+        fail("Control discovery requires both explicit build inputs")
+    return control_discovery_config.profile(url, digest)
 
 
 def fail(message: str):
@@ -67,9 +83,83 @@ def run(args, *, cwd=None, env=None, capture=False) -> str:
     return result.stdout.strip() if capture else ""
 
 
+def release_product_config(spec):
+    app = spec["application"]
+    version = app["version"]
+    if app["id"] != "com.openottplay.player.native" or not re.fullmatch(
+        r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version
+    ):
+        fail("Invalid release product identity")
+    return {
+        "schema": 1,
+        "product": "ottplay-native",
+        "application_id": app["id"],
+        "version": version,
+        "notes": f"ci/ottplay-integration/release/notes/v{version}.md",
+        "audit": f"ci/ottplay-integration/release/audits/v{version}.md",
+        "notes_contract": "outer-publisher-verbatim-v1",
+    }
+
+
+def release_document_sources(spec):
+    version = release_product_config(spec)["version"]
+    return {"notes": HERE / f"releases/{version}.md", "audit": HERE / f"releases/{version}-audit.md"}
+
+
+def release_document_bytes(path):
+    if path.resolve() != path.absolute() or not path.is_file():
+        fail("Release document must be a regular file without symlink ancestors")
+    with path.open("rb") as stream:
+        raw = stream.read(RELEASE_DOCUMENT_LIMIT + 1)
+    if not raw or len(raw) > RELEASE_DOCUMENT_LIMIT or b"\0" in raw:
+        fail("Release document is empty, oversized, or contains NUL")
+    if not raw.decode("utf-8").strip():
+        fail("Release document is empty")
+    return raw
+
+
+def stage_release_product(source, spec):
+    config = release_product_config(spec)
+    for role, path in release_document_sources(spec).items():
+        raw = release_document_bytes(path)
+        destination = source / config[role]
+        if destination.resolve() != destination.absolute():
+            fail("Prepared release destination must not traverse symlinks")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    destination = source / PRODUCT_CONFIG
+    if destination.resolve() != destination.absolute():
+        fail("Prepared product configuration must not traverse symlinks")
+    write_json(destination, config)
+    return release_product_receipt(source, spec)
+
+
+def release_product_receipt(source, spec):
+    config = release_product_config(spec)
+    raw_config = release_document_bytes(source / PRODUCT_CONFIG)
+    if json.loads(raw_config) != config:
+        fail("Prepared release product configuration changed")
+    documents = {}
+    for role, path in release_document_sources(spec).items():
+        raw = release_document_bytes(path)
+        if release_document_bytes(source / config[role]) != raw:
+            fail("Prepared release document changed: " + role)
+        documents[role] = hashlib.sha256(raw).hexdigest()
+    return {
+        "path": PRODUCT_CONFIG,
+        "sha256": hashlib.sha256(raw_config).hexdigest(),
+        "documents": documents,
+        "audit_evidence": "authored_only",
+    }
+
+
 def integration_files() -> list[Path]:
-    names = ("build.py", "upstream.json", "README.md", "COPYING", "test_build.py")
-    return sorted([HERE / name for name in names] + list((HERE / "patches").glob("*.patch")))
+    names = ("build.py", "control_discovery_config.py", "upstream.json", "README.md", "COPYING", "test_build.py")
+    return sorted(
+        [HERE / name for name in names]
+        + list((HERE / "patches").glob("*.patch"))
+        + list(release_document_sources(manifest()).values())
+    )
 
 
 def integration_digest() -> str:
@@ -123,9 +213,10 @@ def prepare(args, spec):
         destination = integration / path.relative_to(HERE)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, destination)
+    product = stage_release_product(source, spec)
     write_json(integration / "PROVENANCE.json", dict(expected, patches={p.name: sha256(p) for p in patches}))
     run(["git", "-C", source, "add", "ci/ottplay-integration"])
-    write_json(receipt, dict(expected, tree=source_tree(source)))
+    write_json(receipt, dict(expected, tree=source_tree(source), product_release=product))
     check_source(args, spec)
 
 
@@ -146,6 +237,8 @@ def check_source(args, spec):
     for field in ("id", "title", "version"):
         if app.get(field) != spec["application"][field]:
             fail("Native overlay did not set application " + field)
+    if receipt.get("product_release") != release_product_receipt(source, spec):
+        fail("Prepared release product receipt changed")
     if app.get("type") != "native":
         fail("Expected a native application, not a web launcher")
     if (source / "pkg/telemetry.local.json").exists():
@@ -164,6 +257,7 @@ def toolchain(source: Path) -> str:
 
 
 def build_env(args) -> dict:
+    profile = control_discovery_profile(args)
     env = dict(os.environ)
     for key in list(env):
         if key.startswith(("PLX_", "SENTRY_", "POSTHOG_", "OTTPLAY_")) or key in {
@@ -177,6 +271,8 @@ def build_env(args) -> dict:
             "RUST_TOOLCHAIN",
             "RUST_TARGET",
             "RUST_TDIR",
+            "OTT_PRODUCT_CONFIG",
+            "REQUIRE_PACKAGE",
         }:
             env.pop(key)
     env.update(
@@ -190,6 +286,9 @@ def build_env(args) -> dict:
             "CARGO_INCREMENTAL": "0",
         }
     )
+    if profile["configured"]:
+        env[control_discovery_config.URL_ENV] = profile["url"]
+        env[control_discovery_config.SHA256_ENV] = profile["sha256"]
     return env
 
 
@@ -290,13 +389,15 @@ def bootstrap(args, spec):
 
 
 def build(args, spec):
+    profile = control_discovery_profile(args)
     source = check_source(args, spec)
     if not (args.sdk / "bin/arm-webos-linux-gnueabi-gcc").is_file():
         fail("SDK is missing; run bootstrap or supply --sdk")
     # Source overlay removes upstream device-repair and automatic cleanup entry
     # points. No make target accepting a TV address is ever invoked here.
-    make = ["make", "-j" + str(args.jobs), "RELEASE=1", "FLAVOR=stable"]
+    make = ["make", "-j" + str(args.jobs), "RELEASE=1", "FLAVOR=stable", "OTT_PRODUCT_CONFIG=" + PRODUCT_CONFIG]
     environment = build_env(args)
+    environment["REQUIRE_PACKAGE"] = "1"
     companion = getattr(args, "companion_bundle", None)
     expected_companion = None
     if companion is not None:
@@ -343,7 +444,8 @@ def build(args, spec):
             "ipk_sha256": sha256(binary),
             "rust_toolchain": toolchain(source),
             "sdk_compiler_sha256": sha256(args.sdk / "bin/arm-webos-linux-gnueabi-gcc.br_real"),
-            "configuration": {"RELEASE": "1", "FLAVOR": "stable", "target": TARGET},
+            "configuration": {"RELEASE": "1", "FLAVOR": "stable", "target": TARGET,
+                              "control_discovery": profile},
         }
     )
     if "companion" in verified:
@@ -747,7 +849,7 @@ def verify_source_archive(output: Path, source: Path, spec) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("command", choices=("prepare", "bootstrap", "build", "package", "source", "verify", "all"))
     parser.add_argument("--work-dir", type=Path, default=ROOT / "build/native-webos")
     parser.add_argument(
@@ -765,7 +867,12 @@ def main():
         "--download-base-url", help="Optional HTTPS directory for IPK and source downloads, separate from metadata"
     )
     parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--control-discovery-url", help="Explicit public HTTPS catalog URL (build/all only)")
+    parser.add_argument("--control-discovery-sha256", help="Reviewed raw catalog SHA-256 (build/all only)")
     args = parser.parse_args()
+    control_discovery_profile(args)
+    if (args.control_discovery_url is not None or args.control_discovery_sha256 is not None) and args.command not in ("build", "all"):
+        fail("Control discovery inputs are only accepted by build or all")
     args.work_dir = args.work_dir.expanduser().resolve()
     args.output = (args.output or args.work_dir / "dist").expanduser().resolve()
     if args.companion_bundle is not None:

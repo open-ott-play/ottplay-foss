@@ -6,8 +6,8 @@
   "application": {
     "id": "com.openottplay.player.native",
     "title": "OTTPlay Native",
-    "version": "0.2.0",
-    "channel": "experimental"
+    "version": "0.3.0",
+    "channel": "beta"
   },
   "sdk": {
     "version": "webos-d7ed7ee.6",

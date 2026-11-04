@@ -392,7 +392,10 @@ class NativeCompanionBuildTests(unittest.TestCase):
     def external_command(self, command, *, cwd=None, env=None):
         if command[0] == "make":
             step = command[-1]
-            self.assertEqual(command[:-1], ["make", "-j2", "RELEASE=1", "FLAVOR=stable"])
+            self.assertEqual(command[:-1], [
+                "make", "-j2", "RELEASE=1", "FLAVOR=stable", "OTT_PRODUCT_CONFIG=" + build.PRODUCT_CONFIG
+            ])
+            self.assertEqual(env["REQUIRE_PACKAGE"], "1")
             self.assertEqual(cwd, self.source)
         else:
             step = "companion-stage"
@@ -495,6 +498,154 @@ class NativeCompanionBuildTests(unittest.TestCase):
             self.build_candidate()
         self.assertEqual(self.steps, ["validate", "ipk-stage", "companion-stage", "ipk-pack"])
         self.assertFalse((self.root / "built.json").exists())
+
+
+class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
+    """All external commands are intercepted by the existing build fixture."""
+
+    URL = "https://catalog.example.invalid/local/control-discovery.json"
+    DIGEST = "a" * 64
+
+    def configured(self, url=URL, digest=DIGEST):
+        self.args.control_discovery_url = url
+        self.args.control_discovery_sha256 = digest
+
+    def test_discovery_absent_scrubs_inherited_profile(self):
+        with patch.dict(build.os.environ, {
+            "PLX_CONTROL_DISCOVERY_URL": self.URL,
+            "PLX_CONTROL_DISCOVERY_SHA256": self.DIGEST,
+        }):
+            env = build.build_env(self.args)
+        self.assertNotIn("PLX_CONTROL_DISCOVERY_URL", env)
+        self.assertNotIn("PLX_CONTROL_DISCOVERY_SHA256", env)
+
+    def test_discovery_explicit_pair_overrides_inherited_values_after_scrub(self):
+        self.configured()
+        with patch.dict(build.os.environ, {
+            "PLX_CONTROL_DISCOVERY_URL": "$(shell never-execute)",
+            "PLX_CONTROL_DISCOVERY_SHA256": "unreviewed",
+        }):
+            env = build.build_env(self.args)
+        self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_URL"), self.URL)
+        self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_SHA256"), self.DIGEST)
+
+    def test_discovery_invalid_inputs_refuse_before_any_build_command(self):
+        invalid = [
+            (self.URL, None), (None, self.DIGEST), ("", None), ("", self.DIGEST),
+            (self.URL, "a" * 63), (self.URL, "G" * 64),
+            ("http://catalog.example.invalid/list.json", self.DIGEST),
+            ("https://user@catalog.example.invalid/list.json", self.DIGEST),
+            (self.URL + "?query=1", self.DIGEST), (self.URL + "#part", self.DIGEST),
+            ("https://catalog.example.invalid/../list.json", self.DIGEST),
+            ("https://catalog.example.invalid/%2e/list.json", self.DIGEST),
+            ("https://catalog.example.invalid/a//b", self.DIGEST),
+            ("https://catalog.example.invalid:0/list.json", self.DIGEST),
+            ("https://catalog.example.invalid:65536/list.json", self.DIGEST),
+            ("https://127.00.0.1/list.json", self.DIGEST),
+            ("https://1.2.3/list.json", self.DIGEST),
+            ("https://catalog.example.invalid/" + "x" * 2048, self.DIGEST),
+        ]
+        invalid += [(self.URL + suffix, self.DIGEST) for suffix in (
+            "'", '"', "`never-execute`", "$(never-execute)", ";never-execute",
+            "\nnever-execute", "\\segment", " space", "&never-execute",
+        )]
+        for url, digest in invalid:
+            with self.subTest(url=url, digest=digest):
+                self.configured(url, digest)
+                with self.assertRaises(ValueError):
+                    self.build_candidate()
+                self.assertEqual(self.steps, [])
+                self.assertFalse((self.root / "built.json").exists())
+
+    def test_discovery_pair_reaches_every_stage_without_command_interpolation(self):
+        self.configured()
+        observed = []
+        original = self.external_command
+        def inspect(command, *, cwd=None, env=None):
+            self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_URL"), self.URL)
+            self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_SHA256"), self.DIGEST)
+            self.assertFalse(any(self.URL in str(arg) for arg in command))
+            observed.append(command[-1])
+            return original(command, cwd=cwd, env=env)
+        self.external_command = inspect
+        self.build_candidate()
+        self.assertEqual(observed[0], "ipk-stage")
+        self.assertEqual(observed[-1], "ipk-pack")
+        config = json.loads((self.root / "built.json").read_text())["configuration"]
+        self.assertEqual(config["control_discovery"]["url"], self.URL)
+        self.assertEqual(config["control_discovery"]["sha256"], self.DIGEST)
+        self.assertIs(config["control_discovery"]["configured"], True)
+
+    def test_discovery_configuration_identity_changes_and_removes(self):
+        self.args.companion_bundle = None
+        self.payload = fixture(self.spec)
+        fingerprints = []
+        for url, digest in ((self.URL, self.DIGEST), (self.URL + "2", self.DIGEST),
+                            (self.URL + "2", "b" * 64), (None, None)):
+            self.configured(url, digest)
+            self.build_candidate()
+            config = json.loads((self.root / "built.json").read_text())["configuration"]
+            profile = config["control_discovery"]
+            fingerprints.append(profile["fingerprint"])
+            self.assertEqual(profile["configured"], url is not None)
+            self.assertEqual(profile.get("url"), url)
+            self.assertEqual(profile.get("sha256"), digest)
+        self.assertEqual(len(set(fingerprints)), 4)
+        self.assertEqual(fingerprints[-1], "none")
+
+    def test_discovery_cli_pair_is_explicit_and_retained(self):
+        argv = ["build.py", "build", "--work-dir", str(self.root), "--sdk", str(self.args.sdk),
+                "--control-discovery-url", self.URL, "--control-discovery-sha256", self.DIGEST]
+        with patch.object(build.sys, "argv", argv), patch.object(build, "build") as run_build:
+            build.main()
+        args, _ = run_build.call_args.args
+        self.assertEqual(args.control_discovery_url, self.URL)
+        self.assertEqual(args.control_discovery_sha256, self.DIGEST)
+
+    def test_discovery_validator_and_make_share_the_receipt_fingerprint(self):
+        """Check exported Make wiring; full prepared-source replay is a separate gate."""
+        self.configured()
+        self.args.companion_bundle = None
+        self.payload = fixture(self.spec)
+        self.build_candidate()
+        recorded = json.loads((self.root / "built.json").read_text())["configuration"]["control_discovery"]
+        module = build.control_discovery_config
+        self.assertEqual(recorded, module.profile(self.URL, self.DIGEST))
+        self.assertEqual(module.profile("", ""), {"configured": False, "fingerprint": "none"})
+        helper = build.HERE / "control_discovery_config.py"
+        self.assertIn(helper, build.integration_files(), "prepare must copy and hash the actual validator")
+        overlay = build.HERE / "patches/0006-native-control-discovery.patch"
+        self.assertIn(overlay, build.integration_files(), "prepare must carry the Make wiring overlay")
+        lines = overlay.read_text().splitlines()
+        headers = [i for i, line in enumerate(lines) if line.startswith("diff --git ")]
+        matches = [i for i in headers if lines[i] == "diff --git a/Makefile b/Makefile"]
+        self.assertEqual(len(matches), 1, "the overlay must contain exactly one native Makefile section")
+        start = matches[0]
+        end = next((i for i in headers if i > start), len(lines))
+        section = lines[start + 1:end]
+        self.assertEqual(section.count("--- a/Makefile"), 1)
+        self.assertEqual(section.count("+++ b/Makefile"), 1)
+        hunks = [i for i, line in enumerate(section) if line.startswith("@@ ")]
+        self.assertTrue(hunks, "native Makefile section must contain source hunks")
+        self.assertLess(section.index("--- a/Makefile"), section.index("+++ b/Makefile"))
+        self.assertLess(section.index("+++ b/Makefile"), hunks[0])
+        # Context and additions form the exported postimage fragments in hunk
+        # order. Removed lines and diff metadata are not proposed Make source.
+        make = "\n".join(line[1:] for line in section[hunks[0] + 1:]
+                         if line.startswith((" ", "+")))
+        self.assertIn("CONTROL_DISCOVERY_CFG := $(shell python3 -B ci/ottplay-integration/control_discovery_config.py stamp)", make)
+        self.assertIn("+control:$(CONTROL_DISCOVERY_CFG)", make)
+        self.assertLess(make.index("override PLX_CONTROL_DISCOVERY_URL := $(value PLX_CONTROL_DISCOVERY_URL)"),
+                        make.index("CONTROL_DISCOVERY_CFG :="))
+        self.assertNotIn("'$(PLX_CONTROL_DISCOVERY_URL)'", make)
+        self.assertNotIn("'$(PLX_CONTROL_DISCOVERY_SHA256)'", make)
+
+    def test_discovery_cli_invalid_pair_cannot_start_preparation(self):
+        argv = ["build.py", "all", "--control-discovery-url", self.URL]
+        with patch.object(build.sys, "argv", argv), patch.object(build, "prepare") as prepare:
+            with self.assertRaises(ValueError):
+                build.main()
+        prepare.assert_not_called()
 
 
 class NativeSdkTests(unittest.TestCase):

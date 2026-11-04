@@ -9,16 +9,96 @@ Our reviewed changes are in `patches/`; upstream code is fetched during the
 build, not silently copied into the main player's source tree.
 
 The application ID is `com.openottplay.player.native`, the title is **OTTPlay
-Native**. Native **0.2.0** is published as
-[native-webos-v0.2.0-beta.1](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1).
-Publication does not establish physical-TV acceptance. The
-existing `com.openottplay.player` hosted web application remains separate.
+Native**. This guide's current examples target the **0.3.0 candidate**. The
+[0.3.0 preparation notes](releases/0.3.0.md) are not a publication or device-test
+receipt: use these package filenames only after the matching release is available
+or a verified candidate has been supplied. The earlier
+[native-webos-v0.2.0-beta.1](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1)
+is a separate historical release, not a download source for 0.3.0.
+The existing `com.openottplay.player` hosted web application remains separate.
+
+For everyday use, start with the [Classic and Modern user guide](https://github.com/open-ott-play/ottplay-foss/blob/main/docs/native-player-user-guide.md).
+For attached storage, read [USB SSD and offline viewing](https://github.com/open-ott-play/ottplay-foss/blob/main/docs/native-usb-offline.md), which
+distinguishes current source selection from the proposed folder-browser update.
+The [release audit](releases/0.3.0-audit.md) records what still needs verification.
+
+## Optional public command-server discovery profile
+
+Generic builds contain no discovery catalog. An operator may explicitly select
+a reviewed public profile for one distribution through the existing builder:
+
+```sh
+python3 ci/ottplay-integration/build.py build \
+  --work-dir /absolute/path/to/prepared-build \
+  --control-discovery-url "$REVIEWED_PUBLIC_CATALOG_URL" \
+  --control-discovery-sha256 "$REVIEWED_CATALOG_SHA256"
+```
+
+The two flags are accepted together by `build` and `all`. They identify the exact
+HTTPS metadata URL and SHA-256 of its raw response bytes; they are not a command
+API, token, private configuration path or automatic Home default. No metadata is
+downloaded by the builder. Use a lowercase canonical DNS hostname, optional
+decimal port, and nonempty safe path; credentials, query/fragment, URL escapes,
+whitespace and shell/Make punctuation are rejected. The digest is 64 lowercase
+hexadecimal characters. A missing partner or invalid value fails before a build
+command. Both omitted (or both explicitly empty) produce an unconfigured build.
+
+The builder removes inherited `PLX_CONTROL_DISCOVERY_*` values and supplies only
+the explicit pair after its normal environment scrub. `built.json` records
+`configuration.control_discovery`: configured state, exact URL/digest and the
+configuration fingerprint. Keep the reviewed public source revision and catalog
+bytes/hash in the delivery evidence alongside that receipt. A receipt does not
+replace inspection of the actual built artifact.
+
+For an already prepared source tree, direct Make builds accept the same pair
+only as environment variables `PLX_CONTROL_DISCOVERY_URL` and
+`PLX_CONTROL_DISCOVERY_SHA256`; Make command-line assignments are rejected. The
+fixed validator command reads environment data without interpolating it into
+Make or shell expressions. Its fingerprint enters the existing configuration
+stamp, including a transition back to `none` when the pair is removed. Bare
+Cargo bypasses that Make relink fence; its runtime profile parser still must
+reject partial/invalid inputs, and it is not a qualified packaging route.
+
+`control_discovery_config.py` is part of the integration digest and is copied by
+`prepare`. Rust/Make changes must also be delivered in the reviewed integration
+patch sequence, so the exported upstream tree actually contains their consumer.
+If that sequence or the helper changes, prepare a new source directory through
+the existing provenance checks. Merely setting environment variables on old
+prepared source does not add a feature. Qualify both configured and generic
+artifacts, including profile changes and removal.
+
+### Connect the player
+
+Open **Browse → Settings → Remote control server**. Browse is in the bottom
+bar in **Classic** and the top header in **Modern**; close an open editor or
+Description view to return to it. Builds containing the first-run shortcut also
+show **Settings** as the last row of **Providers** and **Profiles** while no
+saved profile is enabled. This shortcut does not appear in channel/video lists.
+
+For manual setup, enter the controller's HTTPS base URL, for example
+`https://controller.example.invalid/home`, then select **Save**. Enter the
+controller address, not the player website, a discovery catalog JSON URL or
+an `/api/discovery` endpoint. Manual entry remains available in generic builds.
+
+Builds configured with a public discovery catalog also offer **Find command
+server** in Settings. It fetches and verifies that catalog without credentials;
+select the intended server from the results. This avoids typing its controller
+address. Discovery errors preserve the prior connection. Complete the normal
+pairing approval and wait for the connection and saved configuration to be
+confirmed; displaying a pairing code alone does not establish a connection.
+
+These instructions describe the candidate's source capabilities, not proof that
+an installed or published package contains them. For a local diagnostic update,
+retain the normal **OTTPlay Native** name and `com.openottplay.player.native`
+identity; follow [the in-place update procedure](#updates-and-developer-mode-expiry).
+Host/ARM builds, artifact inspection, transport and physical first-run acceptance
+require their own receipts.
 
 ## What this target provides
 
-The native interface provides M3U, Xtream, Stalker, VPortal, local folders and Plex as provider profiles, with a linear channel/video list, categories, full descriptions and artwork where the source supplies them. Saved profiles, selection, Favorites and playback position use the protected native store. Local files are read from their source, without an import copy.
+The candidate offers Classic and Modern presentations of the same sources. Select **Settings → Interface mode** to change the presentation. M3U, Xtream, Stalker, VPortal, local folders and Plex use provider profiles, a channel/video list and categories, with descriptions and artwork where the source supplies them. Saved profiles, selection, Favorites and playback position use the protected native store. Local files are read from their source, without an import copy. These are source-reviewed behaviors; the release audit keeps device acceptance separate.
 
-Global Favorites can mix providers and profiles. Their portable identities bind to the receiving player's own matching profiles, source aliases and paths; credentials are not copied through a Favorite. Missing or ambiguous bindings are reported instead of choosing an unrelated source. The legacy form of a portal embedded inside an M3U profile is retained in Favorites but is not a supported native binding.
+Global Favorites can mix providers and profiles. Their portable identities bind to the receiving player's own matching profiles, source aliases and paths; credentials are not copied through a Favorite. Missing or ambiguous bindings are reported instead of choosing an unrelated source. An M3U profile can retain a private media attachment for matching VPortal Favorites; configure that attachment separately on each receiving player. Such attached-media Favorites are not supported as kiosk targets.
 
 Older local Favorites that retained only a filename can have lost their parent folders. The native client cannot distinguish such a truncated path from a genuine root-level file with the same name. Recreate those Favorites from their full relative paths before transfer; compatibility with that legacy capture format is not yet complete.
 
@@ -93,7 +173,7 @@ linker evidence to the exact package:
 
 ```sh
 python3 scripts/webos-runtime-sources.py \
-  --metadata build/native-webos/dist/ottplay-native-webos-0.2.0.json \
+  --metadata build/native-webos/dist/ottplay-native-webos-0.3.0.json \
   --source build/native-webos/source \
   --sdk build/native-webos/toolchain/arm-webos-linux-gnueabi_sdk-buildroot
 ```
@@ -106,11 +186,11 @@ archive; distribution requires this second step as well.
 
 Default results are in `build/native-webos/dist/`. Keep these together:
 
-- `ottplay-native-webos-0.2.0.ipk`
-- `ottplay-native-webos-0.2.0.json` and `.sha256`
-- `ottplay-native-webos-0.2.0-source.tar.gz` and its `.release.json` report
-- `ottplay-native-webos-0.2.0-runtime-source.tar.gz`
-- `ottplay-native-webos-0.2.0-source-set.json`
+- `ottplay-native-webos-0.3.0.ipk`
+- `ottplay-native-webos-0.3.0.json` and `.sha256`
+- `ottplay-native-webos-0.3.0-source.tar.gz` and its `.release.json` report
+- `ottplay-native-webos-0.3.0-runtime-source.tar.gz`
+- `ottplay-native-webos-0.3.0-source-set.json`
 - `ottplay-native-webos-icon.png`
 
 `verify` rechecks the IPK. Source-validation reports distinguish a verified
@@ -141,7 +221,7 @@ implementations; regenerating the fixture alone does not establish compatibility
 
 ### Complete candidate build with companion
 
-The complete experimental `0.2` candidate must include the companion and its
+The complete experimental `0.3.0` candidate must include the companion and its
 verified source closure. The native-only commands above remain useful for
 isolated development but do not produce that complete candidate. This procedure
 is not a record of a completed ARM build or TV test. Use the same pinned SDK and
@@ -234,19 +314,20 @@ rebuild, real-device execution or functional parity.
 
 ### Choose and verify the native package
 
-The current experimental release is
-[native-webos-v0.2.0-beta.1](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.2.0-beta.1).
-Download `ottplay-native-webos-0.2.0.ipk`, its `.sha256` and `.json` files, and
-the matching source set from that release. From the download directory, check:
+The following example is for the planned `native-webos-v0.3.0-beta.1` release.
+After publication, obtain `ottplay-native-webos-0.3.0.ipk`, its `.sha256` and
+`.json` files, and the matching source set from that same release. Until then,
+use only an explicitly supplied, verified candidate; these instructions do not
+claim that a public 0.3.0 download exists. From the download directory, check:
 
 ```sh
-shasum -a 256 -c ottplay-native-webos-0.2.0.sha256
+shasum -a 256 -c ottplay-native-webos-0.3.0.sha256
 ```
 
 Use the [checked update guide](../../docs/native-webos-delivery.md) for an
 existing installation. The initial
 [0.1.0 release](https://github.com/open-ott-play/ottplay-foss/releases/tag/native-webos-v0.1.0-beta.1)
-remains available; its device observations do not qualify 0.2.0.
+remains a historical release; its device observations do not qualify 0.3.0.
 
 The metadata must identify `type: native`, architecture `arm`, and application
 ID **`com.openottplay.player.native`**. The ordinary OTT-play webOS package
@@ -322,7 +403,7 @@ and launch its native ID. Run this from the download directory, or substitute
 the build output path `build/native-webos/dist/`:
 
 ```sh
-ares-install --device YOUR_TV ./ottplay-native-webos-0.2.0.ipk
+ares-install --device YOUR_TV ./ottplay-native-webos-0.3.0.ipk
 ares-install --device YOUR_TV --listfull
 ares-launch --device YOUR_TV com.openottplay.player.native
 ares-launch --device YOUR_TV --running
@@ -357,7 +438,7 @@ connection and system information were verified, installation and launch
 completed successfully, and `--running` confirmed the native application ID.
 The IPK SHA256 matched the published release digest. This is installation and
 startup evidence only; playback and decoder compatibility remain unverified on
-this model as well. It does not qualify the published **0.2.0** package.
+this model as well. It does not qualify the **0.3.0** candidate.
 
 ### Connection and startup troubleshooting
 
@@ -388,15 +469,40 @@ this model as well. It does not qualify the published **0.2.0** package.
   platform denies a native capability, use the existing hosted player while
   investigating; do not change platform permissions or install system packages.
 
-#### CLI 3.2.6: `Callback was already called.`
+#### CLI 3.2.6: duplicate callbacks or truncated command output
 
 This was reproduced with `@webos-tools/cli` **3.2.6** and Node **26.8.2** after
 validating the key and passphrase. The CLI's TCP connection probe connected,
 then socket closure emitted `ENOTCONN`, completing the same callback twice.
 It was a CLI probe error, not a reason to reset the TV or obtain another key.
 
+The same CLI can report remote command completion on the SSH exit event before
+stdout and stderr have drained. A successful exit alone therefore does not
+prove that a large `ares-novacom --run` response is complete.
+
 The optional [`ares-compat.cjs`](ares-compat.cjs) launcher guards that probe's
 completion once, only for the exact reviewed CLI version and source hash.
+For explicit `ares-novacom --run` commands (including `-r` and `--run=...`), it also waits for both output
+channels to end and close and for destination writes to flush, preserving
+nonzero exits and transport/write errors. Other commands keep the TCP-only
+workaround. The launcher has no built-in deadline: a direct invocation can wait
+indefinitely if a channel never closes. The native updater supplies its own
+bounded subprocess timeout. For a direct diagnostic command, use a caller that
+sets a timeout, for example this portable Python invocation (which terminates
+and waits for its local launcher on timeout):
+
+```sh
+python3 - <<'PY'
+import subprocess
+subprocess.run([
+    "node", "native/webos/ares-compat.cjs", "/path/to/node_modules/@webos-tools/cli",
+    "ares-novacom", "--device", "YOUR_TV", "--run", "id",
+], stdin=subprocess.DEVNULL, timeout=30, check=True)
+PY
+```
+
+Ending the local launcher does not prove that a remote command has stopped;
+use only bounded, read-only commands for this diagnostic.
 It retains SSH authentication and original command options; it changes neither
 the installed CLI files nor global `NODE_OPTIONS`. From the repository root:
 
@@ -412,7 +518,16 @@ After those checks succeed, the same launcher accepts `ares-install` and
 `ares-launch` with the installation or launch arguments shown above. It refuses
 an unreviewed version or source mismatch; do not weaken those checks to force
 another CLI version through it. Normal CLI commands remain the first choice
-when this specific failure is absent.
+when neither of these failures is present. The native updater opts in with
+both `--ares-root /path/to/node_modules/@webos-tools/cli` and `--ares-compat`;
+these options never modify the installed SDK or enable the workaround globally.
+
+The updater verifies downloaded release assets against their expected size and
+SHA-256 before publishing the final cache filename. It uses a same-filesystem
+hard link that refuses to overwrite an existing file; use a local cache filesystem
+with hard-link support. An abruptly killed download may leave a private
+`.native-asset-*.part` staging directory, but a retry does not reuse it. Existing
+cache files still undergo release verification and are never silently replaced.
 
 ### Updates and Developer Mode expiry
 
