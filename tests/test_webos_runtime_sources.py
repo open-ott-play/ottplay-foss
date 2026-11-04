@@ -26,6 +26,52 @@ def write_tar(path, files, mode="w:gz"):
             archive.addfile(member, io.BytesIO(data))
 
 
+def write_primary(path, files=None, dependencies=()):
+    files = {} if files is None else files
+    rows = {name: {"sha256": hashlib.sha256(data).hexdigest(), "mode": 0o644} for name, data in files.items()}
+    snapshot = hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    manifest = {"schema": 1, "files": rows, "snapshot_sha256": snapshot, "dependencies": list(dependencies)}
+    write_tar(path, {**files, "SOURCE-MANIFEST.json": runtime.canonical(manifest)})
+    return snapshot
+
+
+def primary_inputs(root):
+    recipes = (
+        "Makefile",
+        "rust-modules/Cargo.toml",
+        "rust-modules/Cargo.lock",
+        "rust-modules/build.rs",
+        "rust-modules/src/lib.rs",
+        "ci/check-staticlib-artifact.py",
+        "ci/build-sentry-native.sh",
+        "ci/build-libass.py",
+    )
+    files = {name: ("fixture recipe: " + name).encode() for name in recipes}
+    for name, data in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    dependencies = []
+    for identity, recipe in (
+        ("cargo-vendor", "rust-modules/Cargo.toml"),
+        ("rust-runtime", "Makefile"),
+        ("sentry-native", "ci/build-sentry-native.sh"),
+        *((name, "ci/build-libass.py") for name in ("libass", "freetype", "fribidi", "harfbuzz", "libunibreak")),
+    ):
+        name = "dependencies/" + identity + "/source.tar.gz"
+        data = ("fixture source: " + identity).encode()
+        files[name] = data
+        dependencies.append(
+            {
+                "id": identity,
+                "sources": [{"path": name, "sha256": hashlib.sha256(data).hexdigest()}],
+                "recipes": [recipe],
+                "patches": [],
+            }
+        )
+    return files, dependencies
+
+
 class CompanionFixture:
     """Tiny real source/bundle receipts; only ELF inspection is mocked."""
 
@@ -214,14 +260,14 @@ class CompanionFixture:
             elf_sha256=self.record["elf_sha256"], receipt_sha256=runtime.digest(self.bundle / "receipt.json")
         )
         (self.root / "native.ipk").write_bytes(b"fixture package")
-        (self.root / "primary.tar.gz").write_bytes(b"fixture primary source")
+        primary_snapshot = write_primary(self.root / "primary.tar.gz")
         self.metadata.update(
             sha256=runtime.digest(self.root / "native.ipk"),
             build={"tree": "fixture"},
             corresponding_source={
                 "file": "primary.tar.gz",
                 "sha256": runtime.digest(self.root / "primary.tar.gz"),
-                "snapshot_sha256": "f" * 64,
+                "snapshot_sha256": primary_snapshot,
             },
         )
         (self.root / "native.json").write_bytes(runtime.canonical(self.metadata))
@@ -374,7 +420,7 @@ class RuntimeSourceTests(unittest.TestCase):
             root = Path(directory)
             metadata = root / "native.json"
             (root / "native.ipk").write_bytes(b"fixture IPK")
-            (root / "primary.tar.gz").write_bytes(b"fixture primary source")
+            primary_snapshot = write_primary(root / "primary.tar.gz")
             metadata.write_text(
                 json.dumps(
                     {
@@ -383,7 +429,7 @@ class RuntimeSourceTests(unittest.TestCase):
                         "corresponding_source": {
                             "file": "primary.tar.gz",
                             "sha256": runtime.digest(root / "primary.tar.gz"),
-                            "snapshot_sha256": "fixture",
+                            "snapshot_sha256": primary_snapshot,
                         },
                     }
                 )
@@ -474,30 +520,42 @@ class RuntimeArchiveContainmentTests(unittest.TestCase):
             with self.subTest(path=str(path)), self.assertRaisesRegex(ValueError, "Unclassified static archive"):
                 self.inputs(path)
 
-    def test_resolved_source_archives_remain_accepted(self):
+    def test_unknown_source_archives_do_not_gain_coverage_from_containment(self):
         local = self.archive(self.source / "vendor/liblocal.a")
+        custom = self.archive(self.source / "custom/libprivate.a")
         alias = self.source / "vendor-alias"
         alias.symlink_to("vendor", target_is_directory=True)
-        native_relative = Path("rust-modules/target-release-sym/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a")
-        native = self.archive(self.source / native_relative)
-        for path in (
-            local,
-            self.source / "src/../vendor/liblocal.a",
-            "vendor/liblocal.a",
-            "src/../vendor/liblocal.a",
-            "vendor-alias/liblocal.a",
-            native,
-            native_relative,
-        ):
+        for path in (local, custom, "vendor/liblocal.a", "src/../vendor/liblocal.a", "vendor-alias/liblocal.a"):
+            with self.subTest(path=str(path)), self.assertRaisesRegex(ValueError, "[Ss]ource archive"):
+                self.inputs(path)
+
+    def test_resolved_generated_source_archive_requires_bundled_inputs(self):
+        files, dependencies = primary_inputs(self.source)
+        primary = self.root / "primary.tar.gz"
+        snapshot = write_primary(primary, files, dependencies)
+        coverage = runtime.PrimarySourceCoverage(primary, snapshot, self.source)
+        relative = Path("rust-modules/target-release-sym/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a")
+        native = self.archive(self.source / relative)
+        alias = self.source / "rust-alias"
+        alias.symlink_to("rust-modules", target_is_directory=True)
+        for path in (native, relative, Path("rust-alias") / Path(*relative.parts[1:])):
             with self.subTest(path=str(path)):
-                self.assertEqual(self.inputs(path), [])
+                self.assertEqual(self.inputs(path, source_coverage=coverage), [])
+        self.assertEqual(coverage.covered, {relative.as_posix(): ["cargo-vendor", "rust-runtime"]})
 
     def test_sdk_runtime_keeps_its_separate_source_owner(self):
         sdk_archive = self.archive(self.sdk / "lib/libgcc.a")
         rows = self.inputs(sdk_archive)
         self.assertEqual(
             rows,
-            [{"source": "gcc-runtime", "archive_or_object": "libgcc.a", "member": "member.o", "sdk_path": "lib/libgcc.a"}],
+            [
+                {
+                    "source": "gcc-runtime",
+                    "archive_or_object": "libgcc.a",
+                    "member": "member.o",
+                    "sdk_path": "lib/libgcc.a",
+                }
+            ],
         )
         outside = self.archive(self.root / "outside/libgcc.a")
         with self.assertRaisesRegex(ValueError, "outside the recorded SDK"):
@@ -515,8 +573,9 @@ class RuntimeArchiveContainmentTests(unittest.TestCase):
             self.inputs("../helper-target/libhelper.a", archive_root=self.source, allowed_archives=allowed), []
         )
         for path, kwargs in ((helper, {}), (sibling, {"allowed_archives": allowed})):
-            with self.subTest(path=str(path), explicit=bool(kwargs)), self.assertRaisesRegex(
-                ValueError, "Unclassified static archive"
+            with (
+                self.subTest(path=str(path), explicit=bool(kwargs)),
+                self.assertRaisesRegex(ValueError, "Unclassified static archive"),
             ):
                 self.inputs(path, **kwargs)
 
@@ -539,7 +598,9 @@ class RuntimeArchiveContainmentTests(unittest.TestCase):
             with self.subTest(path=str(path)):
                 self.assertEqual(runtime.runtime_inputs("LOAD " + str(path) + "\n", self.source, self.sdk), [])
         startup = self.archive(self.sdk / "lib/crtbegin.o")
-        expected = [{"source": "gcc-runtime", "archive_or_object": "crtbegin.o", "member": "", "sdk_path": "lib/crtbegin.o"}]
+        expected = [
+            {"source": "gcc-runtime", "archive_or_object": "crtbegin.o", "member": "", "sdk_path": "lib/crtbegin.o"}
+        ]
         for path, kwargs in (
             (startup, {}),
             ("vendor/sdk/lib/crtbegin.o", {}),
@@ -776,6 +837,37 @@ class CompanionRuntimeTests(unittest.TestCase):
         )
         self.assertTrue(rows)
 
+    def test_companion_inventory_does_not_authorize_unclassified_native_source_archive(self):
+        f = self.fixture
+        path = f.source / "custom/libunknown.a"
+        path.parent.mkdir()
+        path.write_bytes(b"fixture")
+        f.link_map += ("LOAD " + str(path) + "\n" + str(path) + "(object.o)\n").encode()
+        f.trace += (str(path) + "\n").encode()
+        f.record["archive_inputs"].append(
+            {
+                "path": str(path),
+                "sha256": runtime.digest(path),
+                "bytes": 7,
+                "observed_at_link": True,
+                "validation": "link_time_and_current",
+            }
+        )
+        _, allowed = self.inventory()
+        self.assertIn(str(path), allowed)  # Real byte-bound inventory admits this source-root member.
+        coverage = runtime.PrimarySourceCoverage(
+            f.root / "primary.tar.gz", f.metadata["corresponding_source"]["snapshot_sha256"], f.source
+        )
+        with self.assertRaisesRegex(ValueError, "Unclassified static source archive"):
+            runtime.runtime_inputs(
+                f.link_map.decode(),
+                f.source,
+                f.sdk,
+                allowed_archives=allowed,
+                archive_root=f.build_root,
+                source_coverage=coverage,
+            )
+
     def test_published_relative_target_paths_match_normalized_inventory(self):
         f = self.fixture
         link_map = f.link_map.replace(str(f.target).encode(), b"../target")
@@ -857,6 +949,182 @@ class CompanionRuntimeTests(unittest.TestCase):
         ):
             runtime.collect(f.args)
         self.assertFalse((f.root / "native-runtime-source.tar.gz").exists())
+
+
+class PrimaryArchiveCoverageTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.source = self.root / "source"
+        self.files, self.dependencies = primary_inputs(self.source)
+        self.primary = self.root / "primary.tar.gz"
+
+    def coverage(self, files=None, dependencies=None, native_archive=None):
+        snapshot = write_primary(
+            self.primary,
+            self.files if files is None else files,
+            self.dependencies if dependencies is None else dependencies,
+        )
+        return runtime.PrimarySourceCoverage(self.primary, snapshot, self.source, native_archive)
+
+    def classify(self, name, coverage):
+        path = self.source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"generated archive fixture")
+        return runtime.runtime_inputs(
+            str(path) + "(member.o)", self.source, self.root / "sdk", source_coverage=coverage
+        )
+
+    def test_every_supported_generated_archive_has_a_bundled_owner(self):
+        coverage = self.coverage()
+        names = [
+            "vendor/libass-prefix/lib/lib" + item + ".a"
+            for item in ("ass", "unibreak", "freetype", "fribidi", "harfbuzz")
+        ]
+        names += [
+            "vendor/sentry-native-prefix/lib/" + item for item in ("libsentry.a", "libunwind.a", "libunwind_remote.a")
+        ]
+        names += [
+            "vendor/sentry-native-build/vendor/libunwind/" + item for item in ("libunwind.a", "libunwind_remote.a")
+        ]
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(self.classify(name, coverage), [])
+        self.assertEqual(set(coverage.covered), set(names))
+
+    def test_unknown_archive_rejected_even_if_binary_itself_is_in_source_tar(self):
+        name = "custom/libprivate.a"
+        coverage = self.coverage(files={**self.files, name: b"generated archive fixture"})
+        with self.assertRaisesRegex(ValueError, "Unclassified static source archive"):
+            self.classify(name, coverage)
+
+    def test_known_path_without_dependency_or_with_changed_recipe_is_rejected(self):
+        without = [row for row in self.dependencies if row["id"] != "sentry-native"]
+        with self.assertRaisesRegex(ValueError, "Missing bundled archive dependency"):
+            self.classify("vendor/sentry-native-prefix/lib/libsentry.a", self.coverage(dependencies=without))
+        coverage = self.coverage()
+        (self.source / "ci/build-sentry-native.sh").write_bytes(b"changed recipe")
+        with self.assertRaisesRegex(ValueError, "changed bundled archive recipe"):
+            self.classify("vendor/sentry-native-prefix/lib/libsentry.a", coverage)
+
+    def test_missing_dependency_member_and_wrong_digest_are_rejected(self):
+        name = self.dependencies[0]["sources"][0]["path"]
+        for files in ({k: v for k, v in self.files.items() if k != name}, {**self.files, name: b"tampered"}):
+            with self.subTest(files=len(files)):
+                coverage = self.coverage(files=files)
+                with self.assertRaisesRegex(ValueError, "Missing bundled archive dependency bytes"):
+                    self.classify(
+                        "rust-modules/target-release/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a",
+                        coverage,
+                    )
+
+    def test_archive_members_must_equal_manifest_and_expected_snapshot(self):
+        snapshot = write_primary(self.primary, self.files, self.dependencies)
+        with tarfile.open(self.primary) as source:
+            manifest = source.extractfile("SOURCE-MANIFEST.json").read()
+        write_tar(self.primary, {**self.files, "Makefile": b"tampered", "SOURCE-MANIFEST.json": manifest})
+        with self.assertRaisesRegex(ValueError, "file set/hash/mode mismatch"):
+            runtime.PrimarySourceCoverage(self.primary, snapshot, self.source)
+        write_primary(self.primary, self.files, self.dependencies)
+        with self.assertRaisesRegex(ValueError, "snapshot mismatch"):
+            runtime.PrimarySourceCoverage(self.primary, "0" * 64, self.source)
+
+    def test_native_archive_cannot_differ_from_compilation_record(self):
+        name = "rust-modules/target-release/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a"
+        record = {"path": name, "sha256": hashlib.sha256(b"generated archive fixture").hexdigest()}
+        self.assertEqual(self.classify(name, self.coverage(native_archive=record)), [])
+        for wrong in ({**record, "sha256": "0" * 64}, {**record, "path": "other.a"}):
+            with self.subTest(wrong=wrong), self.assertRaisesRegex(ValueError, "compilation evidence"):
+                self.classify(name, self.coverage(native_archive=wrong))
+
+    def test_load_and_trace_only_archives_cannot_escape_classification(self):
+        for text in ("LOAD custom/libprivate.a\n", "custom/libprivate.a\n"):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, "Unclassified static source archive"):
+                runtime.runtime_inputs(text, self.source, self.root / "sdk", source_coverage=self.coverage())
+
+    def test_real_collector_cannot_publish_pass_for_unknown_archive(self):
+        snapshot = write_primary(self.primary, self.files, self.dependencies)
+        binary = b"\x7fELFfixture"
+        link_map = b"LOAD custom/libprivate.a\ncustom/libprivate.a(member.o)\n"
+        trace = b"custom/libprivate.a\n"
+        base = self.source / "pkg/link-evidence/stable/player"
+        base.parent.mkdir(parents=True)
+        record = {
+            "archive_excluded": True,
+            "elf_sha256": hashlib.sha256(binary).hexdigest(),
+            "map_sha256": hashlib.sha256(link_map).hexdigest(),
+            "trace_sha256": hashlib.sha256(trace).hexdigest(),
+        }
+        for suffix, data in (
+            (".link.map", link_map),
+            (".link.trace", trace),
+            (".link.json", runtime.canonical(record)),
+        ):
+            Path(str(base) + suffix).write_bytes(data)
+        ipk = self.root / "native.ipk"
+        ipk.write_bytes(b"fixture package")
+        metadata = self.root / "native.json"
+        metadata.write_bytes(
+            runtime.canonical(
+                {
+                    "sha256": runtime.digest(ipk),
+                    "build": {},
+                    "corresponding_source": {
+                        "file": self.primary.name,
+                        "sha256": runtime.digest(self.primary),
+                        "snapshot_sha256": snapshot,
+                    },
+                }
+            )
+        )
+        spec = self.root / "inputs.json"
+        spec.write_bytes(runtime.canonical({"inputs": [], "sdk_recipe_reference": {}}))
+        args = SimpleNamespace(metadata=metadata, source=self.source, sdk=self.root / "sdk", cache=self.root)
+        with (
+            patch.object(runtime, "MANIFEST", spec),
+            patch.object(runtime, "package_elfs", return_value={"player": binary}),
+            patch.object(runtime.subprocess, "check_output", return_value=""),
+            patch.object(runtime, "attest_sdk", return_value={}),
+            self.assertRaisesRegex(ValueError, "Unclassified static source archive"),
+        ):
+            runtime.collect(args)
+        self.assertFalse((self.root / "native-source-set.json").exists())
+        self.assertFalse((self.root / "native-runtime-source.tar.gz").exists())
+
+    def test_sentry_relative_inputs_are_resolved_from_its_actual_cmake_build(self):
+        binary = b"\x7fELFfixture"
+        name = "vendor/libunwind/libunwind_remote.a"
+        link_map = ("LOAD " + name + "\n" + name + "(member.o)\n").encode()
+        trace = (name + "\n").encode()
+        base = self.source / "pkg/link-evidence/stable/sentry-crash"
+        base.parent.mkdir(parents=True)
+        for suffix, data in (
+            (".link.map", link_map),
+            (".link.trace", trace),
+            (
+                ".link.json",
+                runtime.canonical(
+                    {
+                        "archive_excluded": True,
+                        "elf_sha256": hashlib.sha256(binary).hexdigest(),
+                        "map_sha256": hashlib.sha256(link_map).hexdigest(),
+                        "trace_sha256": hashlib.sha256(trace).hexdigest(),
+                    }
+                ),
+            ),
+        ):
+            Path(str(base) + suffix).write_bytes(data)
+        coverage = self.coverage()
+        with patch.object(runtime.subprocess, "check_output", return_value=""):
+            _, files, _ = runtime.link_evidence(
+                {"sentry-crash": binary}, self.source, self.root / "sdk", source_coverage=coverage
+            )
+        self.assertEqual(coverage.covered, {"vendor/sentry-native-build/" + name: ["sentry-native"]})
+        self.assertIn(
+            b"/build/ottplay-native/vendor/sentry-native-build/" + name.encode(),
+            files["evidence/sentry-crash.link.map"],
+        )
 
 
 if __name__ == "__main__":
