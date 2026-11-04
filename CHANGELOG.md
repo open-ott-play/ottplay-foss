@@ -146,6 +146,20 @@
 - Keep Local videos Up/Down mapped to previous/next file after finite-media detection, while respecting custom key mappings and open menus.
 - Resume the exact selected Local videos file at its saved playback position after Q, page closure, or native app exit. Capture the decoder clock before exit/stop; keep completed files and explicit channel changes starting at zero.
 
+## [1.1.65] - Development line
+
+- Integrate the experimental native webOS client with progressive Local and
+  VPortal catalogues, folder categories and metadata, portable Favorites,
+  managed Plex profiles, and individually pinned attached M3U media.
+- Preserve source ownership across native playback, remote settings, track
+  selection, seeking, cancellation and saved browsing state in Classic and
+  Modern. Physical LG playback and device installation remain separately
+  qualified; these native changes do not replace the shared web player.
+- Verify native build-profile stamps and the corresponding source of linked
+  runtime archives. Keep release notes and generated package audits consistent.
+- Align dependency-check fixtures with their current build inputs and record
+  original and measured baseline trees in native build comparisons.
+
 ## [1.1.64] - 2026-11-04
 
 ### Changes
