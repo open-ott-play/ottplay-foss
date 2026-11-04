@@ -150,5 +150,126 @@ class EvidenceTests(unittest.TestCase):
             kill.assert_not_called()
 
 
+def restoration_evidence(phase, initial, final):
+    def state(value):
+        return {"topmost": value, "win32_topmost": value, "fullscreen": False}
+    return {
+        "status": "pass", "mode": "preference-restoration", "phase": phase,
+        "owned_labels": ["main", "pip"], "cleanup_errors": [], "aux_unchanged": True,
+        "initial": state(initial), "final": state(final),
+    }
+
+
+def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeout=None):
+    class Process:
+        pid = 45682
+        done = False
+
+        def __init__(self, command, **kwargs):
+            self.directory = Path(command[1])
+            self.phase = command[3]
+            self.preferences = Path(kwargs["env"]["OTTPLAY_DATA_DIR"])
+            captured.append((self.directory, self.preferences, self.phase, kwargs["env"]))
+            self.stored = self.preferences / "window-always-on-top"
+            self.initial = self.stored.exists() and self.stored.read_bytes() == b"1\n"
+
+        def wait(self, timeout):
+            if self.phase == timeout_phase and timeout == 40:
+                raise subprocess.TimeoutExpired("fixture.exe", timeout)
+            self.done = True
+            final = self.phase == "pin"
+            if self.phase not in {"verify-off", skip_write}:
+                self.stored.write_bytes(b"1\n" if final else b"0\n")
+            initial = not self.initial if self.phase == wrong_initial else self.initial
+            report = restoration_evidence(self.phase, initial, final)
+            (self.directory / "result.json").write_text(json.dumps(report))
+            return 0
+
+        def poll(self):
+            return 0 if self.done else None
+
+    timeout_phase = timeout
+    return Process
+
+
+class RestorationTests(unittest.TestCase):
+    def test_three_fresh_processes_share_only_owned_preferences_and_cleanup(self):
+        captured = []
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            sentinel = output / "keep.txt"
+            sentinel.write_text("keep")
+            with patch.dict(runner.os.environ, {"OTTPLAY_DATA_DIR": "outside", "OTTPLAY_INSTANCE": "other"}):
+                with patch.object(runner.subprocess, "Popen", restoration_process(captured)):
+                    result = runner.run_restoration_sequence(Path("fixture.exe"), output)
+                self.assertEqual(runner.os.environ["OTTPLAY_DATA_DIR"], "outside")
+                self.assertEqual(runner.os.environ["OTTPLAY_INSTANCE"], "other")
+            self.assertEqual(result["status"], "pass")
+            self.assertTrue(result["preferences_removed"])
+            self.assertEqual([item[2] for item in captured], ["pin", "unpin", "verify-off"])
+            self.assertEqual(len({item[0] for item in captured}), 3)
+            self.assertEqual(len({item[1] for item in captured}), 1)
+            self.assertEqual([item["native"]["initial"]["win32_topmost"] for item in result["runs"]], [False, True, False])
+            for webview, preferences, _, environment in captured:
+                self.assertFalse(webview.exists())
+                self.assertFalse(preferences.exists())
+                self.assertNotIn("OTTPLAY_INSTANCE", environment)
+            self.assertEqual(sentinel.read_text(), "keep")
+            self.assertTrue((output / "restoration.json").is_file())
+
+    def test_wrong_native_startup_state_stops_before_next_process(self):
+        captured = []
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(runner.subprocess, "Popen", restoration_process(captured, wrong_initial="unpin")),
+        ):
+            result = runner.run_restoration_sequence(Path("fixture.exe"), Path(directory))
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(len(captured), 2)
+        self.assertIn("Wrong restored initial native state", result["runs"][-1]["error"])
+        self.assertTrue(result["preferences_removed"])
+
+    def test_native_success_cannot_hide_missing_confirmed_saved_bytes(self):
+        captured = []
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(runner.subprocess, "Popen", restoration_process(captured, skip_write="unpin")),
+        ):
+            result = runner.run_restoration_sequence(Path("fixture.exe"), Path(directory))
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(len(captured), 2)
+        self.assertIn("preference bytes were not retained", result["runs"][-1]["error"])
+        self.assertTrue(result["preferences_removed"])
+
+    def test_second_process_timeout_stops_and_removes_shared_preferences(self):
+        captured = []
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(runner.subprocess, "Popen", restoration_process(captured, timeout="unpin")),
+            patch.object(runner.subprocess, "run") as kill,
+        ):
+            result = runner.run_restoration_sequence(Path("fixture.exe"), Path(directory))
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(len(captured), 2)
+        self.assertTrue(result["preferences_removed"])
+        self.assertFalse(captured[0][1].exists())
+        self.assertEqual(kill.call_count, 1)
+        self.assertEqual(kill.call_args.args[0], ["taskkill.exe", "/PID", "45682", "/T", "/F"])
+
+    def test_restoration_requires_both_native_bits_correct_phase_and_cleanup(self):
+        mutations = [
+            lambda report: report.update(phase="pin"),
+            lambda report: report["initial"].update(win32_topmost=False),
+            lambda report: report["final"].update(topmost=True),
+            lambda report: report.update(aux_unchanged=False),
+            lambda report: report.update(cleanup_errors=["failed"]),
+        ]
+        for mutate in mutations:
+            report = restoration_evidence("unpin", True, False)
+            mutate(report)
+            with self.assertRaises(RuntimeError):
+                runner.validate_restoration_evidence(report, "unpin")
+
+
 if __name__ == "__main__":
     unittest.main()

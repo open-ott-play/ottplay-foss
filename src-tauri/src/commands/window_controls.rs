@@ -60,6 +60,18 @@ fn apply_and_persist_always_on_top(
     Ok(result)
 }
 
+/// Initial state for the main window, using the same instance root as the setter.
+/// Kept here so the isolated native fixture exercises the production startup loader.
+pub fn initial_always_on_top(app: &tauri::AppHandle) -> bool {
+    crate::instance::app_data_dir(app)
+        .map_err(std::io::Error::other)
+        .and_then(|root| crate::window_preferences::read_always_on_top(&root))
+        .unwrap_or_else(|_| {
+            tracing::warn!("Always-on-top preference unavailable; using normal window state");
+            false
+        })
+}
+
 /// Set, rather than toggle, so retrying the same request is idempotent.
 /// The injected caller window prevents selecting a different window by label.
 #[tauri::command]

@@ -308,6 +308,16 @@ Geometry is polled for at most two seconds per transition because Windows may
 finish applying it after the API state changes. Commands are never retried to
 make the test pass.
 
+Three more independent fixture processes share only a fresh, parent-owned
+preference directory. The first confirms a normal initial window and enables
+Always on top through the production IPC command. The second uses the same
+startup preference loader as the application, confirms both Tauri and Win32
+report on-top before any IPC, and disables it. The third confirms the next
+initial window is normal without changing it. The runner checks the saved bytes
+after each phase. These checks exercise the shared restoration path and actual
+native window creation; they do not launch the full player or replace its manual
+relaunch and multi-instance UI checklist.
+
 Each process has a hard 30-second internal deadline. The parent runner has a
 40-second process deadline and terminates only the PID tree it created. Normal
 completion destroys only its two fixture windows. Private WebView data is created

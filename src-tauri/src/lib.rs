@@ -192,15 +192,7 @@ pub fn run() {
             #[cfg(not(dev))]
             let dev_url = None;
 
-            let always_on_top = instance::app_data_dir(app.handle())
-                .map_err(std::io::Error::other)
-                .and_then(|root| window_preferences::read_always_on_top(&root))
-                .unwrap_or_else(|_| {
-                    tracing::warn!(
-                        "Always-on-top preference unavailable; using normal window state"
-                    );
-                    false
-                });
+            let always_on_top = commands::window_controls::initial_always_on_top(app.handle());
             let mut builder = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
