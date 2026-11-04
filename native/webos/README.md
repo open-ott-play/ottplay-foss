@@ -79,10 +79,12 @@ For manual setup, open **Remote control server** and enter the controller's
 HTTPS base URL, for example
 `https://controller.example.invalid/home`, then select **Save**. Enter the
 controller address, not the player website, a discovery catalog JSON URL or
-an `/api/discovery` endpoint. Manual entry remains available in generic builds.
+an `/api/discovery` endpoint. The address is normalized and must use HTTPS;
+embedded credentials, query strings, fragments and percent escapes are
+rejected. Manual entry remains available in generic builds.
 
-After protected-storage initialization succeeds, builds containing Linux DNS-SD
-support offer **Find command server** without requiring a catalog or typed
+Once preferences are ready and access-policy checks permit it, builds with
+Linux DNS-SD offer **Find command server** without requiring a catalog or typed
 controller address. This is unicast DNS-SD for `_ottplay-ctrl._tcp` through the
 system resolver and the network's search domains, not multicast mDNS. If DNS
 returns a valid empty result, an explicitly configured public catalog can supply
@@ -101,9 +103,17 @@ See the [command-server discovery guide](../../docs/remote-command-server.md#loo
 for other players and deployment setup. The explicit Native Find action and
 its three-second UI deadline are described above.
 
-Protected storage holds this installation's saved settings and pairing data.
-Find does not bypass its initialization or Save. A storage error must be
-resolved before the new connection can be committed. A displayed storage
+Only the normalized HTTPS controller address, interface mode and stable
+installation device ID use typed non-secret preferences through the storage
+helper. A genuinely absent configuration can establish a durable, disabled
+identity without a token or KeyManager. An actual pairing token still requires
+a successful protected, durable write before the new connection can be
+activated. Saving preferences does not prove pairing or protected storage
+works. There is no plaintext fallback for the full saved state. Existing
+encrypted records retain their read, migration and erase paths. A legacy
+decryption failure preserves the ciphertext and remains a private-storage
+failure; independent preference storage does not unlock access when the prior
+kiosk or parental policy is unknown. A displayed storage
 diagnostic identifies which operation or step failed; it does not repair or
 reset saved settings. If the error persists, note its exact on-screen text,
 the action that produced it and the application version for the maintainer.
@@ -111,6 +121,12 @@ No shell access is needed to report that information. This candidate has no
 on-screen export for the developer storage log. Keep the previous
 configuration; discovering a server or receiving a pairing code does not prove
 that settings will survive restart.
+
+**Key Server** in Developer Mode supplies the computer's SSH key; enable it
+when following [LG's key-download procedure](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app).
+**KeyManager** is the separate TV credential service used for protected token
+storage. Pairing the player with an OTT controller is another process.
+Downloading an SSH key does not approve OTT pairing or verify a protected Save.
 
 These instructions describe the candidate's source capabilities, not proof that
 an installed or published package contains them. For a local diagnostic update,
@@ -124,8 +140,13 @@ require their own receipts; see [diagnostic versus release delivery](../../docs/
 
 The candidate offers Classic and Modern presentations of the same sources.
 Open **Browse → Settings → Interface mode**, choose **Classic** or **Modern**,
-and wait for **Selected**. Choosing the mode itself requests a protected-storage
-save; there is no extra Save button for this setting. If an error appears,
+and wait for **Selected**. Choosing the mode itself requests a non-secret
+preference save through the storage helper; there is no extra Save button for
+this setting. Success requires current write permission and a durable
+compare-and-swap write with exact readback. The previous selection remains
+displayed while the result is pending. An uncertain write blocks further
+preference writes until a full application restart; inspect the saved value
+after reopening before retrying. If an error appears,
 record its exact text, the action and the application version for the
 maintainer. Fully close and reopen the application to check that the mode was
 retained; closing and reopening Settings alone does not test persistence.

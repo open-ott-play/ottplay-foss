@@ -70,8 +70,8 @@ candidate and historical results separate.
 Start with [Connect the player](../native/webos/README.md#connect-the-player)
 and identify the failed stage before changing the connection:
 
-- **Find/DNS:** check that the installed candidate includes Native Find and
-  that protected-storage initialization succeeded. An empty result or lookup
+- **Find/DNS:** check that the installed candidate includes Native Find,
+  preferences are ready and access-policy checks permit the action. An empty result or lookup
   error concerns discovery; it does not establish whether a known controller
   is reachable. Follow the linked guide's DNS and catalog rules.
 - **HTTPS:** finding a server does not prove the TV can reach its HTTPS
@@ -82,7 +82,14 @@ and identify the failed stage before changing the connection:
   connection. The administrator must match the intended player's full identity
   and current displayed code using the [pairing procedure](remote-command-server.md).
   An empty pending list alone does not establish success.
-- **Protected Save:** a helper result of `complete` does not prove that
+- **Preferences:** only the normalized HTTPS controller address, stable
+  installation device ID and Classic/Modern mode use the non-secret record.
+  A genuinely absent configuration can save a disabled, tokenless identity
+  without KeyManager. Wait for durable write/readback success; an uncertain
+  write blocks further preference writes until the application restarts.
+  Preference success does not complete pairing, verify protected storage or
+  unlock access when prior kiosk or parental policy is unknown.
+- **Protected pairing-token Save:** a helper result of `complete` does not prove that
   application-side encryption or the subsequent commit succeeded. If a diagnostic
   reports `operation=seal stage=generate service_code=-1000`, the meaning of
   that numeric code is not yet established. It is not evidence of a missing
@@ -90,10 +97,13 @@ and identify the failed stage before changing the connection:
   Preserve the existing state; do not bypass encryption or reset keys to force
   a connection. An already working or provisioned connection does not prove
   that a new protected Save can succeed.
-- **Reconnect after restart:** after successful approval and Save, fully close
-  and reopen the application without entering credentials again. Check the
-  chosen connection and Classic/Modern mode, and obtain a fresh player response.
-  Closing Settings or seeing a changed display does not test persistence.
+- **After restart:** check preference retention and pairing separately. Fully
+  close and reopen the application, then check the selected address and
+  Classic/Modern mode. After successful approval and protected token Save,
+  also check that the connection returns without re-entering credentials and
+  obtain a fresh player response. Preference retention alone does not prove
+  token storage or authenticated reconnect. Closing Settings or seeing a
+  changed display does not test persistence.
   If the connection is lost, retain the error before repeating setup; follow
   the [state-preservation guidance](#prepare-an-update-without-discarding-state).
 
@@ -116,6 +126,10 @@ and any `capabilities_error` or `playback_error`. Repeat after an independently
 observed restart; responses alone do not prove persistence. Pending output
 contains pairing codes: keep raw output private and redact identifiers,
 addresses and credentials before sharing.
+
+For a protected-write failure, distinguish credential KeyManager from Developer
+Mode's Key Server. Obtaining an SSH key does not approve OTT pairing or prove
+protected Save works; see the [connection explanation](../native/webos/README.md#connect-the-player).
 
 Report the model/firmware, package version and hash, action sequence and exact
 visible error. With authorized diagnostic access, correlate helper outcomes
