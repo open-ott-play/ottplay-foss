@@ -3,10 +3,12 @@
 
 No command installs or launches an application. Build outputs and native
 dependency caches stay in the chosen work directory. Rust toolchains and the
-Cargo registry use their normal user locations.
+Cargo registry use their normal user locations; Cargo configuration is isolated.
 """
 
 from __future__ import annotations
+
+from contextlib import contextmanager
 
 import argparse
 import hashlib
@@ -245,7 +247,55 @@ def check_source(args, spec):
         fail("Private upstream build settings are not permitted in this target")
     if (source / EXCLUDED_SOURCE).exists() or (source / "pkg/ottplay-profile.json").exists():
         fail("Prepared source contains excluded code or private profile settings")
+    check_cargo_configs(source, receipt["tree"])
     return source
+
+
+def check_cargo_configs(source: Path, tree: str):
+    """Admit only regular config blobs from the already validated prepared tree."""
+    source = source.absolute()
+    if source.resolve() != source:
+        fail("Native source ancestry must not traverse symlinks")
+    cwd = source / "rust-modules"
+    for directory in (cwd, *cwd.parents):
+        for name in ("config", "config.toml"):
+            path = directory / ".cargo" / name
+            if not path.exists() and not path.is_symlink():
+                continue
+            if not path.is_relative_to(source):
+                fail("External ancestor Cargo configuration is not permitted: " + str(path))
+            if not path.is_file() or path.resolve() != path:
+                fail("Prepared Cargo configuration must be a regular non-symlink file")
+            relative = path.relative_to(source).as_posix()
+            entry = run(["git", "-C", source, "ls-tree", tree, "--", relative], capture=True)
+            expected = run(["git", "-C", source, "hash-object", "--no-filters", path], capture=True)
+            if entry not in ("100644 blob " + expected + "\t" + relative,
+                             "100755 blob " + expected + "\t" + relative):
+                fail("Cargo configuration differs from the prepared source tree: " + relative)
+
+
+@contextmanager
+def cargo_environment(args):
+    """Reuse caches and their locks, never the caller's Cargo configuration or credentials."""
+    env = build_env(args)
+    cache = Path(env.get("CARGO_HOME") or Path.home() / ".cargo").expanduser().resolve()
+    cache.mkdir(parents=True, exist_ok=True)
+    # Shared locks serialize access even when another Cargo process uses the original home.
+    # Global usage tracking is private; do not alias a SQLite database and its journal paths.
+    with tempfile.TemporaryDirectory(prefix=".native-cargo-", dir=args.work_dir) as directory:
+        home = Path(directory)
+        for name in ("registry", "git"):
+            target = cache / name
+            target.mkdir(exist_ok=True)
+            (home / name).symlink_to(target.resolve(), target_is_directory=True)
+        for name in (".package-cache", ".package-cache-mutate"):
+            target = cache / name
+            target.touch(exist_ok=True)
+            if not target.is_file():
+                fail("Cargo cache lock must be a regular file")
+            (home / name).symlink_to(target.resolve())
+        env["CARGO_HOME"] = str(home)
+        yield env
 
 
 def toolchain(source: Path) -> str:
@@ -452,8 +502,14 @@ def bootstrap(args, spec):
 
 
 def build(args, spec):
-    profile = control_discovery_profile(args)
+    control_discovery_profile(args)
     source = check_source(args, spec)
+    with cargo_environment(args) as environment:
+        build_with_environment(args, spec, source, environment)
+
+
+def build_with_environment(args, spec, source, environment):
+    profile = control_discovery_profile(args)
     if not (args.sdk / "bin/arm-webos-linux-gnueabi-gcc").is_file():
         fail("SDK is missing; run bootstrap or supply --sdk")
     # Source overlay removes upstream device-repair and automatic cleanup entry
@@ -461,7 +517,6 @@ def build(args, spec):
     make = ["make", "-j" + str(args.jobs), "RELEASE=1", "FLAVOR=stable", "OTT_PRODUCT_CONFIG=" + PRODUCT_CONFIG,
             "ARM_PROFILE=release", "RUST_TDIR=target-release", "STORAGE_TDIR=target-release-storage",
             "RUST_TARGET=" + TARGET, "RUST_TOOLCHAIN=" + toolchain(source)]
-    environment = build_env(args)
     environment["REQUIRE_PACKAGE"] = "1"
     (args.work_dir / "built.json").unlink(missing_ok=True)
     companion = getattr(args, "companion_bundle", None)
@@ -859,7 +914,11 @@ def feed(args, spec, verified, filename):
 
 def sources(args, spec):
     source = check_source(args, spec)
-    env = build_env(args)
+    with cargo_environment(args) as env:
+        sources_with_environment(args, spec, source, env)
+
+
+def sources_with_environment(args, spec, source, env):
     binary = args.output / (output_name(spec) + ".ipk")
     verify_ipk(binary, spec)
     recorded = json.loads((args.output / (output_name(spec) + ".json")).read_text())

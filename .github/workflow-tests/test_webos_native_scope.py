@@ -90,6 +90,17 @@ class NativeScopeTests(unittest.TestCase):
         self.assertEqual(native["jobs"]["native-candidate"]["if"],
                          "${{ needs.contracts.outputs.build == 'true' }}")
 
+    def test_native_jobs_do_not_persist_checkout_credentials(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        for name, job in workflow["jobs"].items():
+            checkouts = [step for step in job["steps"]
+                         if step.get("uses", "").startswith("actions/checkout@")]
+            self.assertTrue(checkouts, name)
+            for step in checkouts:
+                with self.subTest(job=name):
+                    self.assertEqual(step.get("with", {}).get("persist-credentials"), "false")
+
     def test_complete_bundle_is_verified_before_upload(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
                              Loader=yaml.BaseLoader)

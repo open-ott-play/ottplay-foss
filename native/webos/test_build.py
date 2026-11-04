@@ -359,6 +359,10 @@ class NativeCompanionBuildTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        # The fixture exercises private Cargo-home setup without touching a user cache.
+        cargo_home = patch.dict(build.os.environ, {"CARGO_HOME": str(self.root / "cargo-cache")})
+        cargo_home.start()
+        self.addCleanup(cargo_home.stop)
         self.spec = build.manifest()
         self.source = self.root / "source"
         (self.source / "rust-modules").mkdir(parents=True)
@@ -412,6 +416,12 @@ class NativeCompanionBuildTests(unittest.TestCase):
                 'RUST_TARGET=' + build.TARGET, 'RUST_TOOLCHAIN=1.99.1'
             ])
             self.assertEqual(env["REQUIRE_PACKAGE"], "1")
+            cargo_home = Path(env["CARGO_HOME"])
+            self.assertTrue(cargo_home.is_dir())
+            self.assertTrue(cargo_home.name.startswith(".native-cargo-"))
+            self.assertFalse((cargo_home / "config").exists())
+            self.assertFalse((cargo_home / "config.toml").exists())
+            self.assertEqual((cargo_home / "registry").resolve(), self.root / "cargo-cache/registry")
             self.assertEqual(cwd, self.source)
             if step == 'print-bench-config':
                 self.assertTrue(capture)
@@ -805,6 +815,163 @@ class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
             with self.assertRaises(ValueError):
                 build.main()
         prepare.assert_not_called()
+
+
+
+class NativeCargoConfigurationTests(unittest.TestCase):
+    """Filesystem/Git contracts only; no Cargo, compiler, linker or SDK is executed."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.source = self.root / "work/source"
+        self.source.mkdir(parents=True)
+        self.args = SimpleNamespace(work_dir=self.source.parent, sdk=self.root / "sdk")
+        self.cache = self.root / "cache"
+        environment = patch.dict(build.os.environ, {"CARGO_HOME": str(self.cache)})
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.git("init", "-q")
+        self.config = self.source / "rust-modules/.cargo/config.toml"
+        self.config.parent.mkdir(parents=True)
+        self.config.write_text('[target.armv7-unknown-linux-gnueabi]\nrustflags = ["-C", "target-cpu=cortex-a9"]\n')
+        self.tree = self.record_tree()
+
+    def git(self, *argv):
+        return subprocess.check_output(["git", "-C", str(self.source), *argv], text=True).strip()
+
+    def record_tree(self):
+        self.git("add", ".")
+        return self.git("write-tree")
+
+    def test_caller_config_and_credentials_are_not_inherited_but_offline_caches_are(self):
+        self.cache.mkdir()
+        for name in ("config", "config.toml", "credentials.toml"):
+            (self.cache / name).write_text('[build]\nrustc-wrapper = "/unreviewed"\n')
+        for name in ("registry", "git"):
+            (self.cache / name).mkdir()
+            (self.cache / name / "cached").write_bytes(b"offline input")
+        with patch.dict(build.os.environ, {"RUSTUP_HOME": str(self.root / "toolchains"), "CARGO_NET_OFFLINE": "true"}):
+            with build.cargo_environment(self.args) as env:
+                home = Path(env["CARGO_HOME"])
+                self.assertNotEqual(home, self.cache)
+                self.assertEqual(set(p.name for p in home.iterdir()),
+                                 {"registry", "git", ".package-cache", ".package-cache-mutate"})
+                for name in ("registry", "git"):
+                    self.assertEqual((home / name).resolve(), self.cache / name)
+                    self.assertEqual((home / name / "cached").read_bytes(), b"offline input")
+                    (home / name / "new").write_bytes(b"retained input")
+                for name in (".package-cache", ".package-cache-mutate"):
+                    self.assertEqual((home / name).stat().st_ino, (self.cache / name).stat().st_ino)
+                self.assertEqual(env["RUSTUP_HOME"], str(self.root / "toolchains"))
+                self.assertEqual(env["CARGO_NET_OFFLINE"], "true")
+                self.assertEqual(env["WEBOS_SDK"], str(self.args.sdk))
+        self.assertFalse(home.exists())
+        self.assertEqual((self.cache / "registry/new").read_bytes(), b"retained input")
+        self.assertTrue((self.cache / "config.toml").is_file())
+
+    def test_unset_cargo_home_uses_default_cache_and_each_call_gets_fresh_configuration(self):
+        with patch.dict(build.os.environ, {"HOME": str(self.root / "home")}):
+            build.os.environ.pop("CARGO_HOME", None)
+            with build.cargo_environment(self.args) as env:
+                first = Path(env["CARGO_HOME"])
+                self.assertEqual((first / "registry").resolve(), self.root / "home/.cargo/registry")
+                (first / "config.toml").write_text('[build]\nrustflags = ["--cfg", "injected"]\n')
+            with build.cargo_environment(self.args) as env:
+                second = Path(env["CARGO_HOME"])
+                self.assertNotEqual(first, second)
+                self.assertFalse((second / "config.toml").exists())
+            self.assertFalse(first.exists())
+            self.assertFalse(second.exists())
+
+    def test_exception_cleans_private_home_without_removing_shared_cache(self):
+        with self.assertRaisesRegex(RuntimeError, "fixture abort"):
+            with build.cargo_environment(self.args) as env:
+                home = Path(env["CARGO_HOME"])
+                (home / "registry/kept").write_bytes(b"cache")
+                raise RuntimeError("fixture abort")
+        self.assertFalse(home.exists())
+        self.assertEqual((self.cache / "registry/kept").read_bytes(), b"cache")
+
+    def test_cache_entry_must_be_directory(self):
+        self.cache.mkdir()
+        (self.cache / "registry").write_text("not a directory")
+        with self.assertRaises(OSError):
+            with build.cargo_environment(self.args):
+                self.fail("invalid cache must not reach a build")
+        self.assertEqual(list(self.args.work_dir.glob(".native-cargo-*")), [])
+
+    def test_regular_configs_from_exact_prepared_tree_are_allowed(self):
+        (self.source / ".cargo").mkdir()
+        (self.source / ".cargo/config").write_text('[net]\noffline = true\n')
+        # A reviewed source replacement remains part of source closure; no blanket stripping.
+        with self.config.open("a") as f:
+            f.write('[source.crates-io]\nreplace-with = "bundled"\n[source.bundled]\ndirectory = "cargo-vendor"\n')
+        tree = self.record_tree()
+        build.check_cargo_configs(self.source, tree)
+
+    def test_modified_staged_config_does_not_match_original_prepared_tree(self):
+        self.config.write_text('[build]\nrustc-wrapper = "/unreviewed"\n')
+        self.record_tree()
+        with self.assertRaisesRegex(ValueError, "differs from the prepared source tree"):
+            build.check_cargo_configs(self.source, self.tree)
+
+    def test_assume_unchanged_does_not_hide_config_mutation(self):
+        self.git("update-index", "--assume-unchanged", str(self.config.relative_to(self.source)))
+        self.config.write_text('[build]\nrustflags = ["--cfg", "injected"]\n')
+        with self.assertRaisesRegex(ValueError, "differs from the prepared source tree"):
+            build.check_cargo_configs(self.source, self.tree)
+
+    def test_untracked_source_config_is_rejected_for_both_spellings(self):
+        for name in ("config", "config.toml"):
+            path = self.source / ".cargo" / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text('[build]\nrustc-wrapper = "/unreviewed"\n')
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "differs from the prepared source tree"):
+                build.check_cargo_configs(self.source, self.tree)
+            path.unlink()
+
+    def test_external_ancestor_config_is_rejected_for_both_spellings(self):
+        for name in ("config", "config.toml"):
+            path = self.args.work_dir / ".cargo" / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text('[build]\nrustc-wrapper = "/unreviewed"\n')
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "External ancestor Cargo configuration"):
+                build.check_cargo_configs(self.source, self.tree)
+            path.unlink()
+
+    def test_tracked_symlink_config_and_symlinked_config_parent_are_rejected(self):
+        target = self.root / "external.toml"
+        target.write_text(self.config.read_text())
+        self.config.unlink()
+        self.config.symlink_to(target)
+        tree = self.record_tree()
+        with self.assertRaisesRegex(ValueError, "regular non-symlink"):
+            build.check_cargo_configs(self.source, tree)
+        self.config.unlink()
+        self.config.parent.rmdir()
+        external = self.root / "external-cargo"
+        external.mkdir()
+        (external / "config.toml").write_text(target.read_text())
+        self.config.parent.symlink_to(external, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "regular non-symlink"):
+            build.check_cargo_configs(self.source, self.tree)
+
+    def test_dangling_ancestor_config_is_not_silently_ignored(self):
+        path = self.args.work_dir / ".cargo/config"
+        path.parent.mkdir()
+        path.symlink_to(self.root / "missing")
+        with self.assertRaisesRegex(ValueError, "External ancestor Cargo configuration"):
+            build.check_cargo_configs(self.source, self.tree)
+
+    def test_source_collection_uses_same_isolated_caches(self):
+        with patch.object(build, "check_source", return_value=self.source), \
+                patch.object(build, "sources_with_environment") as collect:
+            build.sources(self.args, {})
+        env = collect.call_args.args[3]
+        self.assertNotEqual(env["CARGO_HOME"], str(self.cache))
+        self.assertFalse(Path(env["CARGO_HOME"]).exists())
 
 
 class NativeSdkTests(unittest.TestCase):

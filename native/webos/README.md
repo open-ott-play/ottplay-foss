@@ -121,6 +121,14 @@ need CMake, Ninja, Meson, pkg-config, autoconf, automake and libtool. Docker is
 not required. Allow several GiB for source, the SDK, Rust and intermediate
 objects; no build command deletes other projects or global build caches.
 
+Native packaging and source export use a temporary Cargo home without the
+caller's Cargo configuration or credentials. Registry and Git caches, including
+their locks, are shared with the normal Cargo home; installed Rust toolchains
+are unchanged. Only Cargo configuration files verified against the prepared
+source tree are accepted. An external ancestor `.cargo/config` or
+`.cargo/config.toml` is rejected; choose `--work-dir` outside that configuration's
+directory tree rather than changing or deleting the existing configuration.
+
 From the repository root:
 
 ```sh
