@@ -17094,7 +17094,7 @@ index 18f8dbbaaabb0c6c4d12e6fa83c1e0f40d947cf5..2a83e17045c0b71afcaedd20919a6411
 +#[path = "records_tests.rs"]
 +mod records_tests;
 diff --git a/rust-modules/screens/src/ott/navigation.rs b/rust-modules/screens/src/ott/navigation.rs
-index 159d0585c6719605289e04dc020662f36b980598..c69725dc44e865c233f85298989b377f7de6d0aa 100644
+index 159d0585c6719605289e04dc020662f36b980598..86a50a6616acabaa2e3321c41d7513b53b708a68 100644
 --- a/rust-modules/screens/src/ott/navigation.rs
 +++ b/rust-modules/screens/src/ott/navigation.rs
 @@ -76,9 +76,9 @@ fn build_header(measure: &dyn Measure, width: f32, browse: u32,
@@ -17117,7 +17117,7 @@ index 159d0585c6719605289e04dc020662f36b980598..c69725dc44e865c233f85298989b377f
              add("nav:favorite", Row::new(if row.favorite { msg::ott_favorite_remove() } else { msg::ott_favorite_add() })
                  .detail(row.title.clone()).server_detail(), FormAction::Forward(OttAction::ToggleFavorite(id.clone())));
          }
-@@ -163,6 +164,59 @@ pub(super) fn route() -> RouteLayout {
+@@ -163,6 +164,57 @@ pub(super) fn route() -> RouteLayout {
  
  pub(super) fn clip() -> Rect { Rect::FULL }
  
@@ -17153,9 +17153,7 @@ index 159d0585c6719605289e04dc020662f36b980598..c69725dc44e865c233f85298989b377f
 +                    if direction < 0 {
 +                        if finite { self.send(OttAction::Back, fx); }
 +                        else { self.activate_context("nav:categories", fx); }
-+                    } else if finite {
-+                        self.activate_context("nav:description", fx);
-+                    } else if !self.activate_context("nav:guide", fx) {
++                    } else if finite || !self.activate_context("nav:guide", fx) {
 +                        self.activate_context("nav:description", fx);
 +                    }
 +                }
