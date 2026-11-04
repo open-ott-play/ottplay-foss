@@ -507,7 +507,7 @@ def publish(args):
     api_json(prefix + "/git/refs", method="POST", payload={"ref": "refs/tags/" + tag, "sha": inputs["source_sha"]})
     verify_tag(inputs)
     release = api_json(prefix + "/releases", method="POST", payload={
-        "tag_name": tag, "target_commitish": inputs["source_sha"], "name": "OTTPlay Native " + tag,
+        "tag_name": tag, "target_commitish": inputs["source_sha"], "name": "OTTPlay " + tag,
         "body": body,
         "draft": True, "prerelease": "-beta." in tag or "-rc." in tag, "make_latest": "false",
     })

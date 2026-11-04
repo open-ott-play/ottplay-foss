@@ -238,7 +238,7 @@ class Bundle:
         self.root = root
         self.stem = "ottplay-native-webos-" + version
         self.metadata_path = root / (self.stem + ".json")
-        self.app = {"id": release.APP_ID, "title": "OTTPlay Native", "version": version, "channel": "experimental"}
+        self.app = {"id": release.APP_ID, "title": "OTTPlay", "version": version, "channel": "experimental"}
         self.prefix = "usr/palm/applications/" + release.APP_ID + "/"
         service_id = release.APP_ID + ".storage"
         self.service = "usr/palm/services/" + service_id + "/"

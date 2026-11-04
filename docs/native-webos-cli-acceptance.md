@@ -1,7 +1,7 @@
-# Read-only CLI acceptance for OTTPlay Native
+# Read-only CLI acceptance for native OTTPlay
 
 The native CLI smoke helper collects evidence from an already running, paired
-**OTTPlay Native for LG**. It checks the reported native version, remote request
+**OTTPlay** native installation for LG. It checks the reported native version, remote request
 handling and changes in the reported playback position. It does not install,
 launch, stop, wake or reconfigure a player, select media, send keys or change
 volume. No physical-TV validation has been performed for this helper yet.

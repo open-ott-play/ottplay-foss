@@ -1,4 +1,4 @@
-# Deliver and update OTTPlay Native for LG
+# Deliver and update OTTPlay for LG (native)
 
 For Developer Mode account setup, pairing, session renewal and CLI diagnostics,
 see the [LG Developer Mode runbook](lg-developer-mode.md). The checked native
@@ -18,10 +18,15 @@ not proof of playback or state retention on the receiving television.
 
 ## Identify the application first
 
-**OTTPlay Native** uses application ID `com.openottplay.player.native` and a
+**OTTPlay** is the native app's display name. It uses application ID
+`com.openottplay.player.native` and a
 native ARM executable with an SDL/OpenGL interface. **OTT-play hosted** uses
 `com.openottplay.player` and loads the shared player website. The Plex
 application from LG Apps is another independent installation.
+
+Older releases and their immutable catalog entries may retain the title
+**OTTPlay Native**. Use application IDs to distinguish native and hosted
+installations; a display-name change does not change those IDs.
 
 These applications have separate update streams and state. A deployment to
 `player.ottplay.here.now` or a new Tauri/OTTserver build does not replace the
@@ -42,8 +47,8 @@ descriptors and manifests.
 
 ## Local diagnostic candidates and published releases
 
-An explicitly supplied local diagnostic candidate may retain the normal
-**OTTPlay Native** title and `com.openottplay.player.native` ID so an in-place
+An explicitly supplied local diagnostic candidate may use the **OTTPlay**
+display name and retain the `com.openottplay.player.native` ID so an in-place
 update targets the existing installation. The name and ID do not establish
 release qualification. Record the exact native source, enabled development
 features, application/storage/helper hashes and final IPK hash. Preserve the
@@ -536,8 +541,9 @@ https://ottplay-webos.igw-2560801.workers.dev/v1/NATIVE_RELEASE_TAG/ottplay-nati
 ```
 
 Replace `NATIVE_RELEASE_TAG` with the exact tag containing the verified native
-assets. Add that repository in Homebrew Channel, select **OTTPlay Native** and
-check its application ID and version before choosing **Install** or **Update**.
+assets. Add that repository in Homebrew Channel and select the entry with
+application ID `com.openottplay.player.native`. Verify its version before
+choosing **Install** or **Update**; older snapshots may display the former name.
 Follow the same private-state preservation steps as for a Developer Mode
 update. Remove obsolete snapshot repositories from Homebrew settings when
 they create duplicate entries; do not remove the application itself.

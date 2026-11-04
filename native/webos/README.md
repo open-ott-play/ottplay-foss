@@ -1,4 +1,4 @@
-# OTTPlay Native for LG webOS
+# OTTPlay for LG webOS (native)
 
 This is a separate, experimental **native OTT player**. Its SDL2/OpenGL ES
 interface runs on the television without Chromium or a WebView. Media is
@@ -8,8 +8,8 @@ The UI and Plex runtime derive from
 Our reviewed changes are in `patches/`; upstream code is fetched during the
 build, not silently copied into the main player's source tree.
 
-The application ID is `com.openottplay.player.native`, the title is **OTTPlay
-Native**. This guide's current examples target the **0.3.0 candidate**. The
+The application ID is `com.openottplay.player.native`; the current display
+title is **OTTPlay**. This guide's examples target the **0.3.0 candidate**. The
 [0.3.0 preparation notes](releases/0.3.0.md) are not a publication or device-test
 receipt: use these package filenames only after the matching release is available
 or a verified candidate has been supplied. The earlier
@@ -114,7 +114,7 @@ that settings will survive restart.
 
 These instructions describe the candidate's source capabilities, not proof that
 an installed or published package contains them. For a local diagnostic update,
-retain the normal **OTTPlay Native** name and `com.openottplay.player.native`
+use the **OTTPlay** display name and retain the `com.openottplay.player.native`
 identity; follow [the in-place update procedure](#updates-and-developer-mode-expiry).
 A diagnostic feature set under that identity is not an official release build.
 Host/ARM builds, artifact inspection, transport and physical first-run acceptance
@@ -408,7 +408,7 @@ The metadata must identify `type: native`, architecture `arm`, and application
 ID **`com.openottplay.player.native`**. The ordinary OTT-play webOS package
 uses **`com.openottplay.player`**. The Plex app from the LG store is a third,
 independent application; launching it through a TV remote-control shortcut does
-not launch OTTPlay Native. Main-player releases and here.now deployments do not
+not launch the native OTTPlay app. Main-player releases and here.now deployments do not
 update this native executable.
 
 The initial 0.1.0 candidate passed loader-symbol checks against sampled webOS 3.4.0–11.2.0
