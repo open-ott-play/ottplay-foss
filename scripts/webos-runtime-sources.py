@@ -679,7 +679,14 @@ def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None,
             pass
         else:
             fail("Unclassified static archive: " + base)
-    for obj in re.findall(r"(?:^|\s)([^\s()]+/[^/\s()]+\.o)(?=\s|$)", text, re.MULTILINE):
+    # As with archive members, preserve complete absolute object paths before
+    # considering source-relative tokens; a suffix can belong to another root.
+    objects = re.finditer(
+        r"(?<!\S)(/[^()\r\n]*?\.o)(?=\s|$)"
+        r"|(?:^|\s)([^\s()]+/[^/\s()]+\.o)(?=\s|$)", text, re.MULTILINE
+    )
+    for match in objects:
+        obj = match[1] or match[2]
         base = PurePosixPath(obj).name
         is_startup = base.startswith(("crt", "Scrt"))
         if not is_startup and not archive_path(obj).is_relative_to(sdk) and "/sysroot/" not in obj:

@@ -981,6 +981,46 @@ def check_companion(archive, rows, content, metadata, runtime, package_rows, pac
     check_companion_link_inventory(evidence, link_streams, runtime["sdk_attestation"])
 
 
+def check_native_rust_archives(evidence, link_streams):
+    # Use the collector's pure parser, as for companion inputs. Public paths
+    # are evidence identities; never resolve them or query a local toolchain.
+    loader = importlib.util.spec_from_file_location("native_runtime_sources", ROOT / "scripts/webos-runtime-sources.py")
+    runtime_sources = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(runtime_sources)
+
+    def lines(stream):
+        stream.seek(0)
+        while line := stream.readline(1024 * 1024 + 1):
+            require(len(line) <= 1024 * 1024, "Native Rust archive linker line exceeds size limit")
+            yield line
+
+    observed = {path for path in runtime_sources.observed_archive_names(
+        lines(link_streams[0]), lines(link_streams[1])) if path.endswith(".rlib")}
+    if "native_rust_runtime" not in evidence:
+        require(not observed, "Native Rust archive inputs have no binding")
+        return
+    binding = evidence["native_rust_runtime"]
+    require(binding.get("sysroot") == "/build/native-rust", "Native Rust archive sysroot mismatch")
+    inventory = binding.get("archives")
+    require(isinstance(inventory, list) and 0 < len(inventory) <= FILE_COUNT_LIMIT,
+            "Native Rust archive inventory missing or empty")
+    declared = set()
+    for row in inventory:
+        require(isinstance(row, dict) and set(row) == {"path", "sha256", "bytes", "validation"},
+                "Native Rust archive fields mismatch")
+        path = row["path"]
+        require(isinstance(path, str) and re.fullmatch(
+                    r"/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib/"
+                    r"libcompiler_builtins-[0-9a-f]{16}\.rlib", path)
+                and path not in declared and type(row["bytes"]) is int and row["bytes"] > 0
+                and row["validation"] == "collection-time",
+                "Native Rust archive identity or validation scope mismatch")
+        # These are collection-time observations, not historical link-time hashes.
+        checksum(row["sha256"])
+        declared.add(path)
+    require(observed == declared, "Native Rust archive inventory differs from this ELF's linker inputs")
+
+
 def check_runtime(path, metadata, source_set, primary, package_rows, upstream, package_content, native_rust):
     captures = {
         "RUNTIME-SOURCE-MANIFEST.json",
@@ -989,12 +1029,13 @@ def check_runtime(path, metadata, source_set, primary, package_rows, upstream, p
         "companion/SOURCE-MANIFEST.json",
     }
     with ExitStack() as stack:
+        native_elfs = sorted({PurePosixPath(path).name for path, row in package_rows.items()
+                              if row.get("elf") and PurePosixPath(path).name != "ottplay-companion"})
         names = (
             "companion/companion-source.tar.gz",
             "evidence/ottplay-companion.link.map",
             "evidence/ottplay-companion.link.trace",
-            "evidence/plxnative.link.map",
-            "evidence/plxnative.link.trace",
+            *("evidence/" + elf + ".link." + role for elf in native_elfs for role in ("map", "trace")),
         )
         spools = {name: stack.enter_context(tempfile.TemporaryFile()) for name in names}
         rows, content = index_archive(path, captures, spools=spools)
@@ -1015,10 +1056,17 @@ def check_runtime(path, metadata, source_set, primary, package_rows, upstream, p
                     and (native_rust["channel"] is None
                          or re.findall(r"^release: (.+)$", identity, re.MULTILINE) == [native_rust["channel"]]),
                     "Native Rust runtime compiler binding mismatch")
+        for elf in native_elfs:
+            check_native_rust_archives(runtime["shipped_elfs"][elf],
+                (spools["evidence/" + elf + ".link.map"], spools["evidence/" + elf + ".link.trace"]))
+        if "ottplay-companion" in runtime["shipped_elfs"]:
+            require("native_rust_runtime" not in runtime["shipped_elfs"]["ottplay-companion"],
+                    "Native Rust archive binding cannot replace companion inventory")
         if "compilation" in metadata["build"]:
             archive = metadata["build"]["compilation"]["archive"]["path"].encode("utf-8")
             expected = {archive, b"/build/ottplay-native/" + archive}
-            for label, stream in (("map", spools[names[3]]), ("trace", spools[names[4]])):
+            for label, stream in (("map", spools["evidence/plxnative.link.map"]),
+                                  ("trace", spools["evidence/plxnative.link.trace"])):
                 stream.seek(0)
                 found = False
                 while line := stream.readline(1024 * 1024 + 1):

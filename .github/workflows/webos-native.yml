@@ -551,6 +551,13 @@ jobs:
                   raise ValueError('Incomplete or unsuccessful benchmark')
               if doc['runs'] != count:
                   raise ValueError('Unexpected sample count')
+              if 'sizes' in expected:
+                  sizes = doc.get('sizes')
+                  if (not isinstance(sizes, dict)
+                          or type(sizes.get('count')) is not int or sizes['count'] < 1
+                          or type(sizes.get('total_mb')) not in (int, float)
+                          or not math.isfinite(sizes['total_mb']) or sizes['total_mb'] <= 0):
+                      raise ValueError('Missing or invalid sizes measurement')
               # Prove the edited crate rebuilt; downstream dependency reuse is allowed.
               rebuild_flags = {
                   'leaf': 'base_rebuilt', 'platform': 'platform_rebuilt',

@@ -60,14 +60,66 @@ separate physical-TV acceptance. The official release gates remain unchanged;
 a local diagnostic candidate does not claim to have passed them. The [0.3.0 audit](../native/webos/releases/0.3.0-audit.md) keeps the current
 candidate and historical results separate.
 
-Before entering a server address again, check whether the installed candidate
-includes [Native Find](../native/webos/README.md#connect-the-player). It remains
-an explicit user action after protected-storage initialization, followed by
-server selection, pairing approval and successful saving of the resulting
-connection. Neither discovery nor a new diagnostic log repairs a protected-store
-failure. Fully close and reopen the application to verify the chosen connection
-and Classic/Modern mode. Closing and reopening Settings alone is insufficient;
-a changed display does not establish durable settings.
+### Troubleshoot a local diagnostic candidate
+
+Start with [Connect the player](../native/webos/README.md#connect-the-player)
+and identify the failed stage before changing the connection:
+
+- **Find/DNS:** check that the installed candidate includes Native Find and
+  that protected-storage initialization succeeded. An empty result or lookup
+  error concerns discovery; it does not establish whether a known controller
+  is reachable. Follow the linked guide's DNS and catalog rules.
+- **HTTPS:** finding a server does not prove the TV can reach its HTTPS
+  endpoints. Record the exact connection error and the action that produced
+  it. A successful request from a computer does not prove the TV has the same
+  DNS, routing or certificate trust.
+- **Pairing approval:** a displayed code is a request, not an approved or saved
+  connection. The administrator must match the intended player's full identity
+  and current displayed code using the [pairing procedure](remote-command-server.md).
+  An empty pending list alone does not establish success.
+- **Protected Save:** a helper result of `complete` does not prove that
+  application-side encryption or the subsequent commit succeeded. If a diagnostic
+  reports `operation=seal stage=generate service_code=-1000`, the meaning of
+  that numeric code is not yet established. It is not evidence of a missing
+  server or wrong password, or proof that the connection was saved.
+  Preserve the existing state; do not bypass encryption or reset keys to force
+  a connection. An already working or provisioned connection does not prove
+  that a new protected Save can succeed.
+- **Reconnect after restart:** after successful approval and Save, fully close
+  and reopen the application without entering credentials again. Check the
+  chosen connection and Classic/Modern mode, and obtain a fresh player response.
+  Closing Settings or seeing a changed display does not test persistence.
+  If the connection is lost, retain the error before repeating setup; follow
+  the [state-preservation guidance](#prepare-an-update-without-discarding-state).
+
+An administrator with an already configured CLI can inspect the controller
+and request read-only player diagnostics. `NAME` is the existing alias for
+the intended native installation:
+
+```sh
+ott -j discover
+ott -j pending
+ott -j --receipt NAME caps
+ott -j --receipt NAME status
+```
+
+`discover` and `pending` query the configured controller; they do not find an
+unknown server, reproduce the TV's lookup or approve pairing. `caps` and
+`status` request fresh player responses without changing settings. Check
+successful terminal receipts, not just queue acceptance, the reported runtime,
+and any `capabilities_error` or `playback_error`. Repeat after an independently
+observed restart; responses alone do not prove persistence. Pending output
+contains pairing codes: keep raw output private and redact identifiers,
+addresses and credentials before sharing.
+
+Report the model/firmware, package version and hash, action sequence and exact
+visible error. With authorized diagnostic access, correlate helper outcomes
+and application protection/commit/load results, retaining their build/process
+identities, diagnostic schema and sequence. Snapshot publication can fail or
+omit unchanged outcomes, so a snapshot alone does not establish the latest
+attempt. Share relevant redacted fields, never keys, state files or raw request
+payloads. This candidate has no on-screen developer-log export. For Ares access
+failures, use [connection troubleshooting](../native/webos/README.md#connection-and-startup-troubleshooting).
 
 ## Keep one complete release bundle
 

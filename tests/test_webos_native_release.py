@@ -1496,7 +1496,7 @@ class CurrentNativeReleaseTests(unittest.TestCase):
                 self.verify()
             self.current(compilation=True)
 
-    def native_rust_binding(self):
+    def native_rust_binding(self, elf="plxnative-storage"):
         b = self.bundle
         commit = "a" * 40
         identity = ("rustc 1.99.1 (aaaaaaaaa 2026-09-01)\n"
@@ -1509,9 +1509,22 @@ class CurrentNativeReleaseTests(unittest.TestCase):
                        "path": "/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib/"
                                "libcompiler_builtins-0123456789abcdef.rlib",
                        "sha256": "b" * 64, "bytes": 100, "validation": "collection-time"}]}
-        b.runtime_manifest["shipped_elfs"]["plxnative-storage"]["native_rust_runtime"] = binding
+        b.runtime_manifest["shipped_elfs"][elf]["native_rust_runtime"] = binding
+        path = binding["archives"][0]["path"]
+        self.native_rust_link(elf, "LOAD " + path + "\n", path + "\n")
         self.refresh_source()
         return binding
+
+    def native_rust_link(self, elf, link_map, trace):
+        for role, text in (("map", link_map), ("trace", trace)):
+            key = "evidence/" + elf + ".link." + role
+            # Keep the existing native compilation archive and all other inputs.
+            original = self.bundle.runtime[key].decode()
+            original = "\n".join(line for line in original.splitlines()
+                                  if "compiler_builtins-" not in line)
+            value = (original + "\n" + text).encode()
+            self.bundle.runtime[key] = value
+            self.bundle.runtime_manifest["shipped_elfs"][elf]["distributed_" + role + "_sha256"] = digest(value)
 
     def test_native_rust_binding_accepts_matching_offline_evidence(self):
         self.native_rust_binding()
@@ -1561,6 +1574,91 @@ class CurrentNativeReleaseTests(unittest.TestCase):
         binding["source_commit"] = "b" * 40
         with self.assertRaisesRegex(ValueError, "Native Rust runtime source binding"):
             self.verify()
+
+    def test_native_rust_archive_inputs_match_each_native_elf_without_tools(self):
+        for elf in ("plxnative", "plxnative-storage"):
+            for form in ("load-and-bare", "map-member-only", "trace-member-only"):
+                with self.subTest(elf=elf, form=form):
+                    binding = self.native_rust_binding(elf)
+                    path = binding["archives"][0]["path"]
+                    link_map, trace = {
+                        "load-and-bare": ("LOAD " + path + "\n", path + "\n"),
+                        "map-member-only": (path + "(builtins.o)\n", ""),
+                        "trace-member-only": ("", "(" + path + ")builtins.o\n"),
+                    }[form]
+                    self.native_rust_link(elf, link_map, trace)
+                    with (patch("subprocess.run", side_effect=AssertionError("external command forbidden")),
+                          patch("subprocess.check_output", side_effect=AssertionError("external command forbidden"))):
+                        self.assertEqual(self.verify()["bundle_validation"], "PASS")
+
+    def test_native_rust_archive_rejects_unobserved_or_unlisted_inputs(self):
+        for elf in ("plxnative", "plxnative-storage"):
+            for case in ("missing-both", "different-map", "extra-trace"):
+                with self.subTest(elf=elf, case=case):
+                    binding = self.native_rust_binding(elf)
+                    path = binding["archives"][0]["path"]
+                    other = path.replace("0123456789abcdef", "fedcba9876543210")
+                    link_map, trace = {
+                        "missing-both": ("", ""),
+                        "different-map": ("LOAD " + other + "\n", ""),
+                        "extra-trace": ("LOAD " + path + "\n", path + "\n" + other + "\n"),
+                    }[case]
+                    self.native_rust_link(elf, link_map, trace)
+                    with self.assertRaisesRegex(ValueError, "Native Rust archive"):
+                        self.verify()
+                    self.native_rust_link(elf, "LOAD " + path + "\n", path + "\n")
+
+    def test_native_rust_archive_rejects_missing_binding(self):
+        for elf in ("plxnative", "plxnative-storage"):
+            with self.subTest(elf=elf):
+                self.native_rust_binding(elf)
+                del self.bundle.runtime_manifest["shipped_elfs"][elf]["native_rust_runtime"]
+                with self.assertRaisesRegex(ValueError, "Native Rust archive"):
+                    self.verify()
+                self.native_rust_link(elf, "", "")
+
+    def test_native_rust_archive_rejects_empty_duplicate_and_noncanonical_inventory(self):
+        paths = (
+            "relative/compiler_builtins.rlib",
+            "/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib/../lib/libcompiler_builtins-0123456789abcdef.rlib",
+            "/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib//libcompiler_builtins-0123456789abcdef.rlib",
+            "/build/native-rust/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcompiler_builtins-0123456789abcdef.rlib",
+            "/outside/libcompiler_builtins-0123456789abcdef.rlib",
+            "/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib/libunknown-0123456789abcdef.rlib",
+        )
+        for case in ("empty", "duplicate", "wrong-root", *paths):
+            with self.subTest(case=case):
+                binding = self.native_rust_binding()
+                if case == "empty":
+                    binding["archives"] = []
+                elif case == "duplicate":
+                    binding["archives"] *= 2
+                elif case == "wrong-root":
+                    binding["sysroot"] = "/outside"
+                else:
+                    binding["archives"][0]["path"] = case
+                    self.native_rust_link("plxnative-storage", "LOAD " + case + "\n", case + "\n")
+                with self.assertRaisesRegex(ValueError, "Native Rust archive"):
+                    self.verify()
+
+    def test_native_rust_archive_preserves_collection_time_evidence_scope(self):
+        for key, value in (("sha256", "bad"), ("bytes", 0), ("bytes", -1),
+                           ("bytes", True), ("validation", "during-final-link")):
+            with self.subTest(key=key, value=value):
+                binding = self.native_rust_binding()
+                binding["archives"][0][key] = value
+                with self.assertRaises(ValueError):
+                    self.verify()
+
+    def test_native_rust_archive_cannot_borrow_another_elfs_inputs(self):
+        binding = self.native_rust_binding("plxnative-storage")
+        self.bundle.runtime_manifest["shipped_elfs"]["plxnative"]["native_rust_runtime"] = binding
+        with self.assertRaisesRegex(ValueError, "Native Rust archive"):
+            self.verify()
+
+    def test_native_rust_archive_legacy_no_binding_and_no_rlib_stays_valid(self):
+        self.current(compilation=False)
+        self.assertEqual(self.verify()["bundle_validation"], "PASS")
 
     def test_current_runtime_host_must_match_compilation(self):
         self.bundle.metadata["build"]["configuration"]["host"] = "darwin-arm64"

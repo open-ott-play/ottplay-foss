@@ -611,6 +611,7 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         scope = {"json": json, "math": math}
         exec(compile(ast.Module(body=[node], type_ignores=[]), "benchmark result predicate", "exec"), scope)  # noqa: S102
         good = {"failure": None, "red": [], "restored_clean": True, "via_make": True, "runs": 3,
+                "sizes": {"dirs": [{"dir": "target", "mb": 1.5}], "count": 1, "total_mb": 1.5},
                 "scenarios": [{"id": "noop", "status": "ok", "samples": [
                     {"seconds": 1.0, "app_rebuilt": False} for _ in range(3)]},
                     {"id": "sizes", "status": "ok", "samples": []}]}
@@ -638,6 +639,45 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                 else:
                     with self.assertRaises(ValueError):
                         scope["checked_document"](path, ["noop", "sizes"], 3)
+
+    def test_bench_sizes_requires_positive_finite_typed_measurement(self):
+        import ast
+        import math
+
+        node = next(node for node in ast.parse(self.bench_code()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "checked_document")
+        scope = {"json": json, "math": math}
+        # Execute only the workflow's pure result predicate, never its benchmark body.
+        exec(compile(ast.Module(body=[node], type_ignores=[]), "benchmark sizes predicate", "exec"), scope)  # noqa: S102
+        invalid = [None, [], True, {}, {"count": 1}, {"total_mb": 1.5}]
+        invalid += [{"count": count, "total_mb": 1.5} for count in (0, -1, True, False, 1.0, "1")]
+        invalid += [{"count": 1, "total_mb": total} for total in
+                    (0, -1, True, False, "1.5", None, float("nan"), float("inf"), -float("inf"))]
+        cases = [("absent", False, None, False)]
+        cases += [(f"invalid-{index}", True, value, False) for index, value in enumerate(invalid)]
+        cases += [("integer", True, {"count": 1, "total_mb": 1}, True),
+                  ("fractional", True, {"count": 2, "total_mb": 1.5}, True)]
+        for name, present, sizes, accepted in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                doc = {"failure": None, "red": [], "restored_clean": True, "via_make": True,
+                       "runs": 3, "scenarios": [{"id": "sizes", "status": "ok", "samples": []}]}
+                if present:
+                    doc["sizes"] = sizes
+                path = Path(directory) / "result.json"
+                path.write_text(json.dumps(doc))
+                if accepted:
+                    self.assertEqual(scope["checked_document"](path, ["sizes"], 3), doc)
+                else:
+                    with self.assertRaisesRegex(ValueError, "sizes measurement"):
+                        scope["checked_document"](path, ["sizes"], 3)
+        # The separate check-only document does not request or measure target sizes.
+        with tempfile.TemporaryDirectory() as directory:
+            doc = {"failure": None, "red": [], "restored_clean": True, "via_make": True,
+                   "runs": 1, "sizes": None,
+                   "scenarios": [{"id": "check", "status": "ok", "samples": [{"seconds": 1.0}]}]}
+            path = Path(directory) / "result.json"
+            path.write_text(json.dumps(doc))
+            self.assertEqual(scope["checked_document"](path, ["check"], 1), doc)
 
     def test_bench_scrubs_overrides_at_both_measured_commands(self):
         import ast

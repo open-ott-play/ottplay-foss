@@ -510,6 +510,29 @@ class RuntimeArchiveContainmentTests(unittest.TestCase):
         self.assertEqual(rows, [{"source": "gcc-runtime", "archive_or_object": "libgcc.a",
                                  "member": "div.o", "sdk_path": "lib/libgcc.a"}])
 
+    def test_spaced_startup_objects_keep_full_sdk_paths(self):
+        sdk = self.root / "sdk with spaces"
+        sdk.mkdir()
+        for name, owner in (("crt1.o", "glibc-runtime"), ("Scrt1.o", "glibc-runtime"),
+                            ("crti.o", "glibc-runtime"), ("crtn.o", "glibc-runtime"),
+                            ("crtbeginS.o", "gcc-runtime"), ("crtendS.o", "gcc-runtime")):
+            obj = self.archive(sdk / "lib" / name)
+            for line in ("LOAD " + str(obj), " .text 0x100 0x10 " + str(obj), str(obj)):
+                with self.subTest(name=name, line=line):
+                    rows = runtime.runtime_inputs(line + "\n", self.source, sdk)
+                    self.assertEqual(rows, [{"source": owner, "archive_or_object": name,
+                                             "member": "", "sdk_path": "lib/" + name}])
+
+    def test_spaced_objects_cannot_borrow_sdk_suffix_authority(self):
+        outside = self.archive(self.root / "outside with spaces/lib/crti.o")
+        # Even a valid SDK startup object with the same basename cannot authorize it.
+        self.archive(self.sdk / "lib/crti.o")
+        with self.assertRaisesRegex(ValueError, "outside the recorded SDK"):
+            runtime.runtime_inputs("LOAD " + str(outside), self.source, self.sdk)
+        unknown = self.archive(self.sdk / "directory with spaces/unreviewed.o")
+        with self.assertRaisesRegex(ValueError, "Unclassified static SDK object"):
+            runtime.runtime_inputs("LOAD " + str(unknown), self.source, self.sdk)
+
     def test_spaced_unknown_archives_cannot_borrow_suffix_authority(self):
         for suffix in (".a", ".rlib"):
             for location, expected in ((self.source, "Static source archive has no bundled source evidence"),
