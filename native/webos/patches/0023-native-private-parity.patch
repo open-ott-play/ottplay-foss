@@ -22673,7 +22673,7 @@ index 0000000000000000000000000000000000000000..85da49daa49cddc96ded48349f0b58ad
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_catalog.rs b/rust-modules/src/app/ott_catalog.rs
-index c8026ec111c445afce2d8d5ad0df1d34a2eb9908..69670d468a212e6c71ca795f4bea9382df26f884 100644
+index c8026ec111c445afce2d8d5ad0df1d34a2eb9908..c70c08312815899c7789a11ebe9166155e8cfa2a 100644
 --- a/rust-modules/src/app/ott_catalog.rs
 +++ b/rust-modules/src/app/ott_catalog.rs
 @@ -16,6 +16,24 @@ pub(super) use connections::{Request as LocalBindingRequest, Validated as LocalB
@@ -22941,7 +22941,7 @@ index c8026ec111c445afce2d8d5ad0df1d34a2eb9908..69670d468a212e6c71ca795f4bea9382
 +
 +/// A completed two-choice resolver result for application event tests. This
 +/// constructs no worker; the real parser and lease state machine are tested separately.
-+#[cfg(test)]
++#[cfg(all(test, feature = "hostsim"))]
 +pub(super) fn quality_result_for_test(leases: Vec<super::ott_vportal_lease::Lease>) -> VPortalChoices {
 +    let first = QualityOption { key: "High".into(), label: "High".into(),
 +        url: "https://fixture.invalid/high.mp4".into(), lease: (!leases.is_empty()).then_some(0) };
@@ -57698,7 +57698,7 @@ index 0000000000000000000000000000000000000000..e9eb18c1b260bb32441dd0b7c60b73f8
 +
 +}
 diff --git a/rust-modules/src/app/ott_vportal_lease.rs b/rust-modules/src/app/ott_vportal_lease.rs
-index cb7cd98ae8e11c502d6a4eb606cc2af1770129ea..c96ff137297342e5f0a8e9532120c87f477b56e2 100644
+index cb7cd98ae8e11c502d6a4eb606cc2af1770129ea..1a7d646e1e3ff883b9264423feaa5e2d1ef61b9c 100644
 --- a/rust-modules/src/app/ott_vportal_lease.rs
 +++ b/rust-modules/src/app/ott_vportal_lease.rs
 @@ -23,6 +23,12 @@ impl Lease {
@@ -57732,7 +57732,7 @@ index cb7cd98ae8e11c502d6a4eb606cc2af1770129ea..c96ff137297342e5f0a8e9532120c87f
 +/// One ownership slot per already-deduplicated validated stop identity.
 +pub(super) struct LeaseSet { leases: Vec<Option<Lease>> }
 +impl LeaseSet {
-+    #[cfg(test)]
++    #[cfg(all(test, feature = "hostsim"))]
 +    pub(super) fn for_test(leases: Vec<Lease>) -> Self {
 +        Self { leases: leases.into_iter().map(Some).collect() }
 +    }
