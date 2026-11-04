@@ -25,7 +25,7 @@ Generic builds contain no discovery catalog. An operator may explicitly select
 a reviewed public profile for one distribution through the existing builder:
 
 ```sh
-python3 ci/ottplay-integration/build.py build \
+python3 native/webos/build.py build \
   --work-dir /absolute/path/to/prepared-build \
   --control-discovery-url "$REVIEWED_PUBLIC_CATALOG_URL" \
   --control-discovery-sha256 "$REVIEWED_CATALOG_SHA256"
