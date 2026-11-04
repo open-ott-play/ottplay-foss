@@ -1,0 +1,41 @@
+diff --git a/tests/test_harness.py b/tests/test_harness.py
+--- a/tests/test_harness.py
++++ b/tests/test_harness.py
+@@ -5997,6 +5997,9 @@
+         "rust-modules/screens/src",
+         "rust-modules/Cargo.toml",
+         "rust-modules/build.rs",
++        "rust-modules/base/Cargo.toml",
++        "rust-modules/base/build.rs",
++        "rust-modules/build_support/host_link.rs",
+         "rust-modules/net/Cargo.toml",
+         "rust-modules/plex/Cargo.toml",
+         "rust-modules/telemetry/Cargo.toml",
+@@ -6004,15 +6007,12 @@
+         "rust-modules/session/Cargo.toml",
+         "rust-modules/media/Cargo.toml",
+         "rust-modules/appkit/Cargo.toml",
+-        "rust-modules/appkit/build.rs",
+         "rust-modules/screens/Cargo.toml",
+-        "rust-modules/screens/build.rs",
+         "rust-modules/platform/Cargo.toml",
+         "rust-modules/platform/build.rs",
+         "rust-modules/gfx/Cargo.toml",
+         "rust-modules/gfx/build.rs",
+         "rust-modules/ui/Cargo.toml",
+-        "rust-modules/ui/build.rs",
+         "rust-modules/storage/Cargo.toml",
+         "rust-modules/storage/build.rs",
+         "rust-modules/.cargo",
+@@ -6068,9 +6068,9 @@
+         is missing from the output and that input's subtest fails by name. Run one file at a
+         time this was 17 of the 73 `ci/check-deps.sh` runs in this class (about a quarter of
+         the module's CPU)."""
+-        inputs = ("rust-modules/Cargo.toml", "rust-modules/build.rs", "rust-modules/net/Cargo.toml", "rust-modules/plex/Cargo.toml", "rust-modules/telemetry/Cargo.toml", "rust-modules/data/Cargo.toml", "rust-modules/session/Cargo.toml", "rust-modules/media/Cargo.toml", "rust-modules/appkit/Cargo.toml", "rust-modules/appkit/build.rs", "rust-modules/screens/Cargo.toml", "rust-modules/screens/build.rs", "rust-modules/platform/Cargo.toml",
++        inputs = ("rust-modules/Cargo.toml", "rust-modules/build.rs", "rust-modules/base/Cargo.toml", "rust-modules/base/build.rs", "rust-modules/build_support/host_link.rs", "rust-modules/net/Cargo.toml", "rust-modules/plex/Cargo.toml", "rust-modules/telemetry/Cargo.toml", "rust-modules/data/Cargo.toml", "rust-modules/session/Cargo.toml", "rust-modules/media/Cargo.toml", "rust-modules/appkit/Cargo.toml", "rust-modules/screens/Cargo.toml", "rust-modules/platform/Cargo.toml",
+                   "rust-modules/platform/build.rs", "rust-modules/gfx/Cargo.toml",
+-                  "rust-modules/gfx/build.rs", "rust-modules/ui/Cargo.toml", "rust-modules/ui/build.rs",
++                  "rust-modules/gfx/build.rs", "rust-modules/ui/Cargo.toml",
+                   "rust-modules/storage/Cargo.toml",
+                   "rust-modules/storage/build.rs", "rust-modules/.cargo/config.toml", "Makefile")
+         for rel in inputs:

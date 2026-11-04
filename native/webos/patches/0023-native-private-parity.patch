@@ -95605,3 +95605,45 @@ index f1308a9ac67e7ca2dfb39070bf54f70c2ae41d54..460a93bd120adb858ec02877e62d7c18
 +{"bit":true,"f":823,"t":"present","why":null}
 +{"elem":0,"entry":1,"f":823,"group":0,"t":"fo"}
 +{"f":823,"hash":2587249330677148605,"t":"st"}
+diff --git a/tests/test_harness.py b/tests/test_harness.py
+index 2eb8deedc6a0d27e7f9f5ba8f74ce9b40fbd271e..26e62ff68bcddce46aab216b43d97ea9e55a4968 100644
+--- a/tests/test_harness.py
++++ b/tests/test_harness.py
+@@ -5997,6 +5997,9 @@ class DepGates(unittest.TestCase):
+         "rust-modules/screens/src",
+         "rust-modules/Cargo.toml",
+         "rust-modules/build.rs",
++        "rust-modules/base/Cargo.toml",
++        "rust-modules/base/build.rs",
++        "rust-modules/build_support/host_link.rs",
+         "rust-modules/net/Cargo.toml",
+         "rust-modules/plex/Cargo.toml",
+         "rust-modules/telemetry/Cargo.toml",
+@@ -6004,15 +6007,12 @@ class DepGates(unittest.TestCase):
+         "rust-modules/session/Cargo.toml",
+         "rust-modules/media/Cargo.toml",
+         "rust-modules/appkit/Cargo.toml",
+-        "rust-modules/appkit/build.rs",
+         "rust-modules/screens/Cargo.toml",
+-        "rust-modules/screens/build.rs",
+         "rust-modules/platform/Cargo.toml",
+         "rust-modules/platform/build.rs",
+         "rust-modules/gfx/Cargo.toml",
+         "rust-modules/gfx/build.rs",
+         "rust-modules/ui/Cargo.toml",
+-        "rust-modules/ui/build.rs",
+         "rust-modules/storage/Cargo.toml",
+         "rust-modules/storage/build.rs",
+         "rust-modules/.cargo",
+@@ -6068,9 +6068,9 @@ class DepGates(unittest.TestCase):
+         is missing from the output and that input's subtest fails by name. Run one file at a
+         time this was 17 of the 73 `ci/check-deps.sh` runs in this class (about a quarter of
+         the module's CPU)."""
+-        inputs = ("rust-modules/Cargo.toml", "rust-modules/build.rs", "rust-modules/net/Cargo.toml", "rust-modules/plex/Cargo.toml", "rust-modules/telemetry/Cargo.toml", "rust-modules/data/Cargo.toml", "rust-modules/session/Cargo.toml", "rust-modules/media/Cargo.toml", "rust-modules/appkit/Cargo.toml", "rust-modules/appkit/build.rs", "rust-modules/screens/Cargo.toml", "rust-modules/screens/build.rs", "rust-modules/platform/Cargo.toml",
++        inputs = ("rust-modules/Cargo.toml", "rust-modules/build.rs", "rust-modules/base/Cargo.toml", "rust-modules/base/build.rs", "rust-modules/build_support/host_link.rs", "rust-modules/net/Cargo.toml", "rust-modules/plex/Cargo.toml", "rust-modules/telemetry/Cargo.toml", "rust-modules/data/Cargo.toml", "rust-modules/session/Cargo.toml", "rust-modules/media/Cargo.toml", "rust-modules/appkit/Cargo.toml", "rust-modules/screens/Cargo.toml", "rust-modules/platform/Cargo.toml",
+                   "rust-modules/platform/build.rs", "rust-modules/gfx/Cargo.toml",
+-                  "rust-modules/gfx/build.rs", "rust-modules/ui/Cargo.toml", "rust-modules/ui/build.rs",
++                  "rust-modules/gfx/build.rs", "rust-modules/ui/Cargo.toml",
+                   "rust-modules/storage/Cargo.toml",
+                   "rust-modules/storage/build.rs", "rust-modules/.cargo/config.toml", "Makefile")
+         for rel in inputs:

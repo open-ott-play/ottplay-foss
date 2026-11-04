@@ -458,14 +458,53 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         code = self.bench_code()
         nodes = list(ast.walk(ast.parse(code)))
         final = next(node.finalbody for node in nodes if isinstance(node, ast.Try) and node.finalbody)
-        self.assertEqual(ast.unparse(final[0]), "git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)")
+        self.assertIsInstance(final[0], ast.Try)
+        self.assertIn("git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)",
+                      ast.unparse(final[0].body))
+        self.assertIn("git(source, 'restore', '--source=' + expected_tree, '--staged', '--worktree', '--', fixture_path)",
+                      ast.unparse(final[0].finalbody))
         self.assertEqual(ast.unparse(final[1]), "builder.check_source(args, manifest)")
-        self.assertIn("git(source, 'commit-tree', expected_tree, '-p', upstream", code)
+        self.assertIn("git(source, 'commit-tree', measured_tree, '-p', upstream", code)
         self.assertIn("'update-ref', '--no-deref', 'HEAD', bench_commit, upstream", code)
         self.assertIn("with builder.cargo_environment(args) as isolated:", code)
         self.assertIn("synthetic_benchmark_commit=bench_commit", code)
+        self.assertIn("original_prepared_tree=expected_tree, measured_tree=measured_tree", code)
+        self.assertIn("'ec4696bc1a0bc8ac750fcd03a07b686d383410f5'", code)
         self.assertNotIn("reset --hard", code)
         self.assertNotIn("git push", code)
+
+    def test_bench_fixture_patch_is_exact_and_not_a_symlink(self):
+        import ast
+        import hashlib
+        body = ast.parse(self.bench_code()).body
+        start = next(i for i, node in enumerate(body) if isinstance(node, ast.Assign)
+                     and any(isinstance(t, ast.Name) and t.id == "fixture_path" for t in node.targets))
+        end = next(i for i in range(start, len(body)) if isinstance(body[i], ast.If))
+        code = compile(ast.Module(body=body[start:end + 1], type_ignores=[]),
+                       "benchmark fixture preflight", "exec")
+        patch = (ROOT / "native/webos/benchmarks/fpflags-fixture.patch").read_bytes()
+        self.assertEqual(hashlib.sha256(patch).hexdigest(),
+                         "5fcdf6f5a1327f6776a4ad83c8e4ae7b190a3e884ce31bdc2cf8eb11e8b5741d")
+        for case in ("exact", "tampered", "missing", "symlink"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                path = root / "native/webos/benchmarks/fpflags-fixture.patch"
+                path.parent.mkdir(parents=True)
+                if case == "symlink":
+                    target = root / "outside.patch"
+                    target.write_bytes(patch)
+                    path.symlink_to(target)
+                elif case != "missing":
+                    path.write_bytes(patch if case == "exact" else patch + b"\n")
+                scope = dict(workspace=root, digest=lambda p: hashlib.sha256(p.read_bytes()).hexdigest())
+                with mock.patch("subprocess.run") as run, mock.patch("subprocess.check_output") as output:
+                    if case == "exact":
+                        exec(code, scope)  # noqa: S102: exact workflow preflight; no process
+                    else:
+                        with self.assertRaises(ValueError):
+                            exec(code, scope)  # noqa: S102
+                    run.assert_not_called()
+                    output.assert_not_called()
 
     def test_bench_is_sequential_supported_make_subset_with_raw_evidence(self):
         code = self.bench_code()
@@ -525,79 +564,138 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
 
     def test_bench_restores_snapshot_after_binding_failure(self):
         import ast
+        from contextlib import nullcontext
         tree = ast.parse(self.bench_code())
         phase = next(node for node in tree.body if isinstance(node, ast.For)
                      and isinstance(node.target, ast.Tuple)
                      and node.target.elts[0].id == "label")
-        swap = next(i for i, node in enumerate(phase.body)
-                    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
-                    and isinstance(node.value.func, ast.Name) and node.value.func.id == "git"
-                    and ast.unparse(node).endswith("'HEAD', bench_commit, upstream)"))
-        end = next(i for i in range(swap + 1, len(phase.body))
-                   if isinstance(phase.body[i], ast.Try))
-        start = swap
-        while start and isinstance(phase.body[start - 1], ast.Assign) and all(
-                isinstance(target, ast.Name) and target.id in ("binding", "prepared_sha256")
-                for target in phase.body[start - 1].targets):
-            start -= 1
-        # Execute the workflow's actual swap-to-finally transaction, with no Git/build process.
+        start = next(i for i, node in enumerate(phase.body) if isinstance(node, ast.Assign)
+                     and any(isinstance(t, ast.Name) and t.id == "prepared_sha256" for t in node.targets))
+        end = next(i for i in range(start, len(phase.body)) if isinstance(phase.body[i], ast.Try))
+        # Execute the actual fixture/snapshot transaction with no Git or build process.
         code = compile(ast.Module(body=phase.body[start:end + 1], type_ignores=[]),
                        "benchmark snapshot transaction", "exec")
-        for point in ("binding-digest", "binding-write", "benchmark-entry"):
-            with self.subTest(point=point), tempfile.TemporaryDirectory() as directory:
+        cases = [(label, point) for label in ("before", "after") for point in (
+            "success", "corrected-hash", "commit", "swap", "binding-digest", "binding-write",
+            "benchmark-entry", "benchmark-failure", "document-failure", "head-restore")]
+        cases += [("before", point) for point in ("original-hash", "apply", "measured-tree")]
+        for label, point in cases:
+            with self.subTest(label=label, point=point), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 prepared_path = root / "prepared.json"
                 prepared_path.write_text("{}\n")
                 upstream, snapshot = "a" * 40, "b" * 40
-                current = [upstream]
-                transitions = []
+                expected_tree, corrected_tree = "c" * 40, "d" * 40
+                old_hash, new_hash = "1" * 64, "2" * 64
+                initial_hash = old_hash if label == "before" else new_hash
+                current = dict(head=upstream, index=expected_tree, fixture=initial_hash)
+                calls = []
                 failure = OSError("injected " + point)
+                fixture_path = "tests/test_harness.py"
 
-                def git(source, *args):
-                    self.assertEqual(args[:3], ("update-ref", "--no-deref", "HEAD"))
-                    new, old = args[3:]
-                    self.assertEqual(current[0], old)  # Preserve real compare-and-swap semantics.
-                    current[0] = new
-                    transitions.append(new)
-                    return ""
+                def git(source, *args, **kwargs):
+                    calls.append(args)
+                    if args[:2] == ("apply", "--index"):
+                        self.assertEqual(label, "before", "AFTER must not apply the fixture twice")
+                        current.update(index=corrected_tree, fixture=new_hash)
+                        if point == "apply":
+                            raise failure  # Even a partially applied fixture must be restored.
+                        return ""
+                    if args == ("write-tree",):
+                        return "e" * 40 if point == "measured-tree" else current["index"]
+                    if args[0] == "diff-tree":
+                        return fixture_path
+                    if args[0] == "commit-tree":
+                        self.assertEqual(args[1], current["index"])
+                        if point == "commit":
+                            raise failure
+                        return snapshot
+                    if args[:3] == ("update-ref", "--no-deref", "HEAD"):
+                        new, old = args[3:]
+                        self.assertEqual(current["head"], old)  # Real CAS semantics.
+                        if (new == snapshot and point == "swap") or (new == upstream and point == "head-restore"):
+                            raise failure
+                        current["head"] = new
+                        return ""
+                    if args[0] == "restore":
+                        self.assertEqual(args, ("restore", "--source=" + expected_tree,
+                                               "--staged", "--worktree", "--", fixture_path))
+                        current.update(index=expected_tree, fixture=initial_hash)
+                        return ""
+                    self.fail("Unexpected Git command: " + repr(args))
 
                 def digest(path):
                     if point == "binding-digest" and path.name == "Makefile":
                         raise failure
-                    return "c" * 64
+                    if path == root / "source" / fixture_path:
+                        if point == "original-hash" or (point == "corrected-hash" and current["fixture"] == new_hash):
+                            return "0" * 64
+                        return current["fixture"]
+                    return "f" * 64
 
                 def check_source(*_):
-                    self.assertEqual(current[0], upstream)
+                    self.assertEqual(current, dict(head=upstream, index=expected_tree, fixture=initial_hash))
+                    self.assertEqual(prepared_path.read_bytes(), b"{}\n")
 
                 original_write = Path.write_text
                 def write_text(path, *args, **kwargs):
-                    if point == "binding-write" and path.name == "before-binding-before.json":
+                    if point == "binding-write" and path.name == label + "-binding-before.json":
                         raise failure
                     return original_write(path, *args, **kwargs)
 
+                def checked_document(*_):
+                    if point == "document-failure":
+                        raise failure
+                    return dict(git_sha=snapshot[:12], tree_dirty=False,
+                                toolchain="pinned", host="same", runner="same")
+
                 builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source),
-                    cargo_environment=mock.Mock(side_effect=failure))
+                    cargo_environment=mock.Mock(return_value=nullcontext({"CARGO_HOME": "/unused"})))
+                if point == "benchmark-entry":
+                    builder.cargo_environment.side_effect = failure
                 scope = dict(git=git, digest=digest, builder=builder, source=root / "source",
-                             upstream=upstream, bench_commit=snapshot, label="before",
+                             upstream=upstream, label=label, expected_tree=expected_tree,
+                             baseline_measured_tree=corrected_tree, identity={},
+                             fixture_path=fixture_path, fixture_patch=root / "correction.patch",
+                             fixture_before_sha256=old_hash, fixture_after_sha256=new_hash,
+                             fixture_patch_sha256="9" * 64,
                              outer_sha="d" * 40, prepared={}, prepared_path=prepared_path,
                              provenance=root / "PROVENANCE.json", tool_hash="e" * 64,
                              mod_path=root / "build.py", evidence=root, args=object(),
-                             manifest={}, json=json, os=os, subprocess=subprocess)
+                             manifest={}, json=json, os=os, subprocess=subprocess,
+                             rows="noop,sizes", checked_document=checked_document)
                 with mock.patch.object(Path, "write_text", new=write_text), \
                         mock.patch("subprocess.run") as run, \
                         mock.patch("subprocess.check_output") as output:
-                    with self.assertRaises(OSError) as caught:
+                    if point == "benchmark-failure":
+                        run.side_effect = failure
+                    if point == "success":
                         exec(code, scope)  # noqa: S102: real transaction; process adapters are mocked
-                    self.assertIs(caught.exception, failure)
-                    run.assert_not_called()
+                    else:
+                        expected = ValueError if point in ("original-hash", "corrected-hash", "measured-tree") else OSError
+                        with self.assertRaises(expected) as caught:
+                            exec(code, scope)  # noqa: S102
+                        if expected is OSError:
+                            self.assertIs(caught.exception, failure)
                     output.assert_not_called()
-                self.assertEqual(current[0], upstream, "failure must restore the prepared HEAD")
-                self.assertEqual(transitions, [snapshot, upstream])
-                builder.check_source.assert_called_once()
-                if point != "benchmark-entry":
-                    builder.cargo_environment.assert_not_called()
+                self.assertEqual(current["index"], expected_tree)
+                self.assertEqual(current["fixture"], initial_hash)
+                if point == "head-restore":
+                    self.assertEqual(current["head"], snapshot)
+                    builder.check_source.assert_not_called()
                 else:
-                    builder.cargo_environment.assert_called_once()
+                    self.assertEqual(current["head"], upstream)
+                    builder.check_source.assert_called_once()
+                if label == "after":
+                    self.assertFalse(any(call[0] in ("apply", "restore") for call in calls))
+                if point == "success":
+                    binding = json.loads((root / (label + "-binding-after.json")).read_text())
+                    self.assertEqual(binding["original_prepared_tree"], expected_tree)
+                    self.assertEqual(binding["measured_tree"], corrected_tree if label == "before" else expected_tree)
+                    self.assertEqual(binding["fixture_correction"]["applied"], label == "before")
+                    self.assertEqual(binding["fixture_correction"]["measured_sha256"], new_hash)
+                elif point == "head-restore":
+                    self.assertFalse((root / (label + "-binding-after.json")).exists())
                 self.assertFalse((root / "complete-pair.json").exists())
 
 
