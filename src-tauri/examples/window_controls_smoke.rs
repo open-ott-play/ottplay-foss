@@ -4,7 +4,9 @@
 
 #[cfg(target_os = "windows")]
 mod smoke {
-    use ottplay_tauri_lib::native_window_smoke_commands::{tauri_commands, window_controls};
+    use ottplay_tauri_lib::native_window_smoke_commands::{
+        tauri_commands, window_aspect, window_controls,
+    };
     use serde_json::{json, Value};
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicBool, AtomicI32, AtomicUsize, Ordering};
@@ -183,6 +185,237 @@ mod smoke {
         Ok(())
     }
 
+    #[repr(C)]
+    #[derive(Default, Clone, Copy)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    #[repr(C)]
+    #[derive(Default)]
+    struct MinMax {
+        reserved: Point,
+        max_size: Point,
+        max_position: Point,
+        min_track: Point,
+        max_track: Point,
+    }
+    type Hwnd = *mut std::ffi::c_void;
+    type Subclass = unsafe extern "system" fn(Hwnd, u32, usize, isize, usize, usize) -> isize;
+    const PROBE_ID: usize = 0x4f545450;
+    #[link(name = "comctl32")]
+    extern "system" {
+        fn SetWindowSubclass(w: Hwnd, callback: Option<Subclass>, id: usize, data: usize) -> i32;
+        fn RemoveWindowSubclass(w: Hwnd, callback: Option<Subclass>, id: usize) -> i32;
+        fn DefSubclassProc(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
+    }
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetClientRect(w: Hwnd, rect: *mut Rect) -> i32;
+        fn SetWindowPos(
+            w: Hwnd,
+            after: Hwnd,
+            x: i32,
+            y: i32,
+            width: i32,
+            height: i32,
+            flags: u32,
+        ) -> i32;
+        fn SendMessageW(w: Hwnd, message: u32, wparam: usize, lparam: isize) -> isize;
+    }
+    #[derive(Default)]
+    struct Probe {
+        captures: usize,
+        limits: [i32; 4],
+    }
+    unsafe extern "system" fn observe_bounds(
+        w: Hwnd,
+        message: u32,
+        wp: usize,
+        lp: isize,
+        _id: usize,
+        data: usize,
+    ) -> isize {
+        let result = DefSubclassProc(w, message, wp, lp);
+        if message == 0x0024 && lp != 0 {
+            let native = &*(lp as *const MinMax);
+            let probe = &mut *(data as *mut Probe);
+            probe.captures += 1;
+            probe.limits = [
+                native.min_track.x,
+                native.min_track.y,
+                native.max_track.x,
+                native.max_track.y,
+            ];
+        }
+        result
+    }
+    struct ProbeGuard {
+        hwnd: Hwnd,
+        data: *mut Probe,
+    }
+    impl ProbeGuard {
+        unsafe fn finish(&mut self) -> Result<(), String> {
+            if RemoveWindowSubclass(self.hwnd, Some(observe_bounds), PROBE_ID) == 0 {
+                return Err("Cannot remove owned bounds observer".into());
+            }
+            drop(Box::from_raw(self.data));
+            self.data = std::ptr::null_mut();
+            Ok(())
+        }
+    }
+    impl Drop for ProbeGuard {
+        fn drop(&mut self) {
+            if !self.data.is_null() {
+                unsafe {
+                    // On removal failure retain the callback storage until this
+                    // isolated process exits; never leave a dangling subclass pointer.
+                    if RemoveWindowSubclass(self.hwnd, Some(observe_bounds), PROBE_ID) != 0 {
+                        drop(Box::from_raw(self.data));
+                    }
+                }
+            }
+        }
+    }
+    fn coordinates(rect: &Rect) -> [i32; 4] {
+        [rect.left, rect.top, rect.right, rect.bottom]
+    }
+
+    // Real owned HWND dispatch, not a copy of production geometry. SetWindowPos
+    // provokes OS-initialized tracking bounds; never send a fabricated MINMAXINFO.
+    // WM_SIZING below is a deliberate message probe, not a claimed mouse gesture.
+    async fn sizing_probe(window: &tauri::WebviewWindow, enabled: bool) -> Result<Value, String> {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let target = window.clone();
+        window
+            .run_on_main_thread(move || {
+                let result = (|| -> Result<Value, String> {
+                    let hwnd = target.hwnd().map_err(|e| e.to_string())?.0 as Hwnd;
+                    let mut pid = 0;
+                    let mut original = Rect::default();
+                    let mut client = Rect::default();
+                    unsafe {
+                        if GetWindowThreadProcessId(hwnd, &mut pid) == 0
+                            || pid != std::process::id()
+                            || GetWindowRect(hwnd, &mut original) == 0
+                            || GetClientRect(hwnd, &mut client) == 0
+                        {
+                            return Err("Sizing probe requires the live owned HWND".into());
+                        }
+                        let width = original.right - original.left;
+                        let height = original.bottom - original.top;
+                        let insets = [
+                            width - (client.right - client.left),
+                            height - (client.bottom - client.top),
+                        ];
+                        let data = Box::into_raw(Box::new(Probe::default()));
+                        if SetWindowSubclass(hwnd, Some(observe_bounds), PROBE_ID, data as usize)
+                            == 0
+                        {
+                            drop(Box::from_raw(data));
+                            return Err("Cannot install owned bounds observer".into());
+                        }
+                        let mut guard = ProbeGuard { hwnd, data };
+                        let changed =
+                            SetWindowPos(hwnd, std::ptr::null_mut(), 0, 0, width + 1, height, 0x16);
+                        // Always restore, even if the deliberate one-pixel proposal failed.
+                        let restored =
+                            SetWindowPos(hwnd, std::ptr::null_mut(), 0, 0, width, height, 0x16);
+                        if changed == 0 || restored == 0 || (*data).captures == 0 {
+                            return Err("OS did not supply real tracking bounds".into());
+                        }
+                        let limits = (*data).limits;
+                        if insets.iter().any(|v| *v < 0)
+                            || limits[0] <= 0
+                            || limits[1] <= 0
+                            || limits[2] < limits[0]
+                            || limits[3] < limits[1]
+                        {
+                            return Err("OS tracking limits/insets are invalid".into());
+                        }
+                        let mut samples = Vec::new();
+                        for edge in 1..=8 {
+                            let mut proposed = Rect {
+                                left: original.left,
+                                top: original.top,
+                                right: original.left + 843,
+                                bottom: original.top + 527,
+                            };
+                            let input = coordinates(&proposed);
+                            SendMessageW(hwnd, 0x0214, edge, (&mut proposed as *mut Rect) as isize);
+                            let output = coordinates(&proposed);
+                            if enabled {
+                                let w = i64::from(proposed.right) - i64::from(proposed.left);
+                                let h = i64::from(proposed.bottom) - i64::from(proposed.top);
+                                if ((w - i64::from(insets[0])) * 9
+                                    - (h - i64::from(insets[1])) * 16)
+                                    .abs()
+                                    > 4
+                                    || w < i64::from(limits[0])
+                                    || h < i64::from(limits[1])
+                                    || w > i64::from(limits[2])
+                                    || h > i64::from(limits[3])
+                                {
+                                    return Err(format!(
+                                        "Native WM_SIZING edge {edge} violated ratio/bounds"
+                                    ));
+                                }
+                            } else if input != output {
+                                return Err(format!(
+                                    "Disabled constraint changed WM_SIZING edge {edge}"
+                                ));
+                            }
+                            samples.push(json!({"edge": edge, "input": input, "output": output}));
+                        }
+                        let report = json!({"kind": "owned-hwnd-message-probe", "enabled": enabled,
+                        "os_bounds_captures": (*data).captures, "outer_limits": limits,
+                        "client_insets": insets, "samples": samples});
+                        guard.finish()?;
+                        Ok(report)
+                    }
+                })();
+                let _ = sender.send(result);
+            })
+            .map_err(|e| e.to_string())?;
+        tokio::time::timeout(Duration::from_secs(4), receiver)
+            .await
+            .map_err(|_| "Sizing probe deadline".to_owned())?
+            .map_err(|_| "Sizing probe channel closed".to_owned())?
+    }
+
+    async fn aspect(
+        window: &tauri::WebviewWindow,
+        enabled: Option<bool>,
+        active: bool,
+    ) -> Result<Value, String> {
+        let reply = if let Some(enabled) = enabled {
+            allowed(
+                window,
+                "set_window_aspect_lock",
+                json!({"enabled": enabled}),
+            )
+            .await?
+        } else {
+            allowed(window, "get_window_aspect_lock", json!({})).await?
+        };
+        let desired = enabled.unwrap_or(active);
+        if reply != json!({"ok": true, "supported": true, "enabled": desired, "active": active}) {
+            return Err(format!("Wrong native aspect response: {reply}"));
+        }
+        Ok(reply)
+    }
+    async fn aspect_state(
+        window: &tauri::WebviewWindow,
+        enabled: bool,
+        active: bool,
+    ) -> Result<Value, String> {
+        let reply = allowed(window, "get_window_aspect_lock", json!({})).await?;
+        if reply != json!({"ok": true, "supported": true, "enabled": enabled, "active": active}) {
+            return Err(format!("Wrong native aspect state: {reply}"));
+        }
+        Ok(reply)
+    }
+
     async fn exercise(main: tauri::WebviewWindow, missing: bool) -> Result<Value, String> {
         let aux = main
             .app_handle()
@@ -196,6 +429,8 @@ mod smoke {
                 ("set_always_on_top", json!({"alwaysOnTop": true})),
                 ("set_fullscreen", json!({"fullscreen": true})),
                 ("toggle_fullscreen", json!({})),
+                ("get_window_aspect_lock", json!({})),
+                ("set_window_aspect_lock", json!({"enabled": true})),
             ] {
                 denials.push(denied(&main, command, args).await?);
             }
@@ -204,6 +439,17 @@ mod smoke {
             );
         }
         denials.push(denied(&aux, "set_always_on_top", json!({"alwaysOnTop": true})).await?);
+        denials.push(denied(&aux, "get_window_aspect_lock", json!({})).await?);
+        denials.push(denied(&aux, "set_window_aspect_lock", json!({"enabled": true})).await?);
+        let aspect_initial = aspect_state(&main, false, false).await?;
+        let mut aspect_sequence = Vec::new();
+        let mut aspect_geometry = Vec::new();
+        for enabled in [true, true, false, false] {
+            aspect_sequence.push(aspect(&main, Some(enabled), enabled).await?);
+            aspect_geometry.push(settled(&main, false, false, Some(baseline.rect)).await?);
+        }
+        aspect(&main, Some(true), true).await?;
+        let mut aspect_fullscreen = Vec::new();
         let mut states = Vec::new();
         for value in [true, true, false, false] {
             top(&main, value).await?;
@@ -231,6 +477,7 @@ mod smoke {
                     baseline.rect
                 };
                 fullscreen_states.push(settled(&main, pinned, target, Some(rect)).await?);
+                aspect_fullscreen.push(aspect_state(&main, true, !target).await?);
             }
         }
         // Escape uses explicit set, so exercise that production command as well.
@@ -250,7 +497,13 @@ mod smoke {
                 }),
             )
             .await?;
+            aspect_fullscreen.push(aspect_state(&main, true, !target).await?);
         }
+        let sizing_enabled = sizing_probe(&main, true).await?;
+        settled(&main, true, false, Some(baseline.rect)).await?;
+        aspect(&main, Some(false), false).await?;
+        let sizing_disabled = sizing_probe(&main, false).await?;
+        let aspect_final = aspect_state(&main, false, false).await?;
         top(&main, false).await?;
         let final_state = settled(&main, false, false, Some(baseline.rect)).await?;
         if snapshot(&aux)? != aux_before {
@@ -259,7 +512,10 @@ mod smoke {
         Ok(
             json!({"status": "pass", "mode": "production-permissions", "implementation": "production handlers via WebView2 JavaScript IPC",
             "denials": denials, "topmost_sequence": states, "fullscreen_sequence": fullscreen_states,
-            "initial": baseline, "final": final_state, "aux_unchanged": true}),
+            "initial": baseline, "final": final_state, "aux_unchanged": true,
+            "aspect": {"initial": aspect_initial, "set_sequence": aspect_sequence, "set_geometry": aspect_geometry,
+                "fullscreen_sequence": aspect_fullscreen, "sizing_enabled": sizing_enabled,
+                "sizing_disabled": sizing_disabled, "final": aspect_final}}),
         )
     }
 
@@ -292,17 +548,27 @@ mod smoke {
         // Inspect startup state before issuing any mutating IPC. Each phase is a
         // new process; only the parent-owned preference directory is reused.
         let initial = settled(&main, matches!(phase, PreferencePhase::Unpin), false, None).await?;
+        let aspect_initial = aspect_state(
+            &main,
+            matches!(phase, PreferencePhase::Unpin),
+            matches!(phase, PreferencePhase::Unpin),
+        )
+        .await?;
         let target = matches!(phase, PreferencePhase::Pin);
         if !matches!(phase, PreferencePhase::VerifyOff) {
             top(&main, target).await?;
+            aspect(&main, Some(target), target).await?;
         }
+        let aspect_final = aspect_state(&main, target, target).await?;
+        let aspect_sizing = sizing_probe(&main, target).await?;
         let final_state = settled(&main, target, false, Some(initial.rect)).await?;
         if snapshot(&aux)? != aux_before {
             return Err("Preference restoration changed auxiliary window".into());
         }
         Ok(
             json!({"status": "pass", "mode": "preference-restoration", "phase": phase.name(),
-            "initial": initial, "final": final_state, "aux_unchanged": true}),
+            "initial": initial, "final": final_state, "aux_unchanged": true,
+            "aspect_initial": aspect_initial, "aspect_final": aspect_final, "aspect_sizing": aspect_sizing}),
         )
     }
 
@@ -355,8 +621,11 @@ mod smoke {
         let report_output = output.clone();
         let app = tauri::Builder::default()
             .manage(window_controls::AlwaysOnTopPersistence::default())
+            .manage(window_aspect::WindowAspectLock::default())
             .invoke_handler(tauri::generate_handler![
                 window_controls::set_always_on_top,
+                window_aspect::get_window_aspect_lock,
+                window_aspect::set_window_aspect_lock,
                 tauri_commands::set_fullscreen,
                 tauri_commands::toggle_fullscreen,
             ])
@@ -369,7 +638,7 @@ mod smoke {
                         tauri::WebviewUrl::App("index.html".into()),
                     )
                     .title(format!("OttPlay isolated window controls: {label}"))
-                    .inner_size(640.0, 360.0)
+                    .inner_size(640.0, 400.0)
                     .position(40.0, 40.0)
                     .decorations(false)
                     .fullscreen(false)
@@ -380,6 +649,15 @@ mod smoke {
                     .incognito(true)
                     .data_directory(data.join(label))
                     .build()?;
+                }
+                if let Some(webview) = app.get_webview_window("main") {
+                    let window = webview.as_ref().window();
+                    let handle = app.handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(error) = window_aspect::initialize(handle, window).await {
+                            tracing::warn!(%error, "Fixture aspect restore failed");
+                        }
+                    });
                 }
                 Ok(())
             })

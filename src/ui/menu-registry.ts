@@ -47,6 +47,10 @@ function createDesktopWindowControls(host: any) {
         }
     }
     function title(kind: string): string {
+        if (kind === "aspectLock")
+            return host._
+                ? host._("Lock window to 16:9")
+                : "Lock window to 16:9";
         return kind === "fullscreen"
             ? host._
                 ? host._("Full screen")
@@ -98,6 +102,37 @@ function createDesktopWindowControls(host: any) {
                     )
                         throw new Error("Unconfirmed fullscreen state");
                     return result.fullscreen;
+                });
+            }
+            if (kind === "aspectLock") {
+                return Promise.resolve(
+                    native.owner.invoke("get_window_aspect_lock")
+                ).then(function (current: any) {
+                    if (
+                        !current ||
+                        current.ok !== true ||
+                        current.supported !== true ||
+                        typeof current.enabled !== "boolean" ||
+                        typeof current.active !== "boolean"
+                    )
+                        throw new Error("Window aspect lock unavailable");
+                    if (!admitted(context)) return null;
+                    var desired = !current.enabled;
+                    return Promise.resolve(
+                        native.owner.invoke("set_window_aspect_lock", {
+                            enabled: desired,
+                        })
+                    ).then(function (result: any) {
+                        if (
+                            !result ||
+                            result.ok !== true ||
+                            result.supported !== true ||
+                            result.enabled !== desired ||
+                            typeof result.active !== "boolean"
+                        )
+                            throw new Error("Unconfirmed window aspect lock");
+                        return result.enabled;
+                    });
                 });
             }
             if (typeof native.current.isAlwaysOnTop !== "function")
@@ -158,6 +193,7 @@ function createDesktopWindowControls(host: any) {
             return !!(
                 native &&
                 (kind === "fullscreen" ||
+                    kind === "aspectLock" ||
                     typeof native.current.isAlwaysOnTop === "function")
             );
         },
@@ -403,20 +439,22 @@ function createScreenMenuRegistry() {
         var records = importClassic(host);
         var context: any = { owner: null };
         var controls = desktopControls(host);
-        ["fullscreen", "alwaysOnTop"].forEach(function (kind, index) {
-            if (!controls.available(kind)) return;
-            records.push({
-                action: function () {
-                    return controls.run(kind, context);
-                },
-                detail: controls.title(kind),
-                hint: kind === "fullscreen" ? "L" : undefined,
-                id: "window." + kind,
-                legacyId: "window." + kind,
-                sourceIndex: -2 - index,
-                title: controls.title(kind),
-            });
-        });
+        ["fullscreen", "alwaysOnTop", "aspectLock"].forEach(
+            function (kind, index) {
+                if (!controls.available(kind)) return;
+                records.push({
+                    action: function () {
+                        return controls.run(kind, context);
+                    },
+                    detail: controls.title(kind),
+                    hint: kind === "fullscreen" ? "L" : undefined,
+                    id: "window." + kind,
+                    legacyId: "window." + kind,
+                    sourceIndex: -2 - index,
+                    title: controls.title(kind),
+                });
+            }
+        );
         var hidden = host.sHideMenus || [];
         var focus = 0;
         var rows = records

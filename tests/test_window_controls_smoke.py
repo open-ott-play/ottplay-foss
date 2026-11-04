@@ -14,22 +14,73 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 
 
+def aspect_state(enabled=False, active=None):
+    return {"ok": True, "supported": True, "enabled": enabled,
+            "active": enabled if active is None else active}
+
+
+def sizing_evidence(enabled):
+    outputs = [[43, 38, 843, 488], [0, 38, 800, 488], [21, 77, 821, 527],
+               [43, 77, 843, 527], [0, 77, 800, 527], [21, 0, 821, 450],
+               [43, 0, 843, 450], [0, 0, 800, 450]]
+    return {"kind": "owned-hwnd-message-probe", "enabled": enabled, "os_bounds_captures": 2,
+            "outer_limits": [160, 90, 3840, 2160], "client_insets": [0, 0],
+            "samples": [{"edge": edge, "input": [0, 0, 843, 527],
+                         "output": outputs[edge - 1] if enabled else [0, 0, 843, 527]}
+                        for edge in range(1, 9)]}
+
+
 def evidence(missing=False):
     def state(top=False, full=False):
         return {"topmost": top, "win32_topmost": top, "fullscreen": full, "rect": [0, 0, 640, 360]}
-    commands = ["set_always_on_top", "set_fullscreen", "toggle_fullscreen"] if missing else ["set_always_on_top"]
+    commands = (["set_always_on_top", "set_fullscreen", "toggle_fullscreen"] if missing else ["set_always_on_top"]) + ["get_window_aspect_lock", "set_window_aspect_lock"]
     return {"status": "pass", "owned_labels": ["main", "pip"], "cleanup_errors": [],
             "mode": "missing-permission" if missing else "production-permissions",
             "denials": [{"command": command, "window": "main" if missing else "pip", "error": "command not allowed"} for command in commands],
             "aux_unchanged": True, "initial": state(), "final": state(),
             "topmost_sequence": [state(top=top) for top in [True, True, False, False]],
-            "fullscreen_sequence": [state(top, full) for top, full in [(False, True), (False, False), (True, True), (True, False)]]}
+            "fullscreen_sequence": [state(top, full) for top, full in [(False, True), (False, False), (True, True), (True, False)]],
+            "aspect": {"initial": aspect_state(), "final": aspect_state(),
+                       "set_sequence": [aspect_state(v) for v in [True, True, False, False]],
+                       "set_geometry": [state() for _ in range(4)],
+                       "fullscreen_sequence": [aspect_state(True, v) for v in [False, True] * 3],
+                       "sizing_enabled": sizing_evidence(True), "sizing_disabled": sizing_evidence(False)}}
 
 
 class EvidenceTests(unittest.TestCase):
     def test_complete_native_results_are_required_in_both_modes(self):
         for missing in [False, True]:
             runner.validate_evidence(evidence(missing), missing)
+
+    def test_aspect_state_and_fullscreen_suspension_cannot_be_omitted_or_faked(self):
+        mutations = [lambda r: r.pop("aspect"),
+                     lambda r: r["aspect"]["set_sequence"].pop(),
+                     lambda r: r["aspect"]["set_geometry"][0].update(rect=[0, 0, 800, 450]),
+                     lambda r: r["aspect"]["initial"].update(supported=False),
+                     lambda r: r["aspect"]["initial"].update(enabled=0),
+                     lambda r: r["aspect"]["fullscreen_sequence"][0].update(active=True),
+                     lambda r: r["aspect"]["fullscreen_sequence"][0].update(enabled=False)]
+        for mutate in mutations:
+            report = evidence()
+            mutate(report)
+            with self.assertRaises(RuntimeError):
+                runner.validate_evidence(report, False)
+
+    def test_sizing_receipt_requires_real_bounds_all_edges_and_disabled_passthrough(self):
+        mutations = [lambda r: r.update(os_bounds_captures=0),
+                     lambda r: r.update(outer_limits=[0, 0, 2147483647, 2147483647]),
+                     lambda r: r["samples"].pop(),
+                     lambda r: r["samples"][0].update(output=[0, 0, 843, 527]),
+                     lambda r: r["samples"][0].update(output=[44, 38, 844, 488])]
+        for mutate in mutations:
+            report = sizing_evidence(True)
+            mutate(report)
+            with self.assertRaises(RuntimeError):
+                runner.validate_sizing_probe(report, True)
+        report = sizing_evidence(False)
+        report["samples"][0]["output"][2] += 1
+        with self.assertRaises(RuntimeError):
+            runner.validate_sizing_probe(report, False)
 
     def test_transport_timeout_is_not_an_acl_success(self):
         report = evidence(True)
@@ -157,10 +208,12 @@ def restoration_evidence(phase, initial, final):
         "status": "pass", "mode": "preference-restoration", "phase": phase,
         "owned_labels": ["main", "pip"], "cleanup_errors": [], "aux_unchanged": True,
         "initial": state(initial), "final": state(final),
+        "aspect_initial": aspect_state(initial), "aspect_final": aspect_state(final),
+        "aspect_sizing": sizing_evidence(final),
     }
 
 
-def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeout=None):
+def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeout=None, skip_aspect_write=None):
     class Process:
         pid = 45682
         done = False
@@ -172,6 +225,8 @@ def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeou
             captured.append((self.directory, self.preferences, self.phase, kwargs["env"]))
             self.stored = self.preferences / "window-always-on-top"
             self.initial = self.stored.exists() and self.stored.read_bytes() == b"1\n"
+            self.aspect_stored = self.preferences / "window-aspect-lock"
+            self.aspect_initial = self.aspect_stored.exists() and self.aspect_stored.read_bytes() == b"1\n"
 
         def wait(self, timeout):
             if self.phase == timeout_phase and timeout == 40:
@@ -180,8 +235,11 @@ def restoration_process(captured, *, wrong_initial=None, skip_write=None, timeou
             final = self.phase == "pin"
             if self.phase not in {"verify-off", skip_write}:
                 self.stored.write_bytes(b"1\n" if final else b"0\n")
+            if self.phase not in {"verify-off", skip_aspect_write}:
+                self.aspect_stored.write_bytes(b"1\n" if final else b"0\n")
             initial = not self.initial if self.phase == wrong_initial else self.initial
             report = restoration_evidence(self.phase, initial, final)
+            report["aspect_initial"] = aspect_state(self.aspect_initial)
             (self.directory / "result.json").write_text(json.dumps(report))
             return 0
 
@@ -239,6 +297,16 @@ class RestorationTests(unittest.TestCase):
         self.assertEqual(result["status"], "fail")
         self.assertEqual(len(captured), 2)
         self.assertIn("preference bytes were not retained", result["runs"][-1]["error"])
+        self.assertTrue(result["preferences_removed"])
+
+    def test_native_success_cannot_hide_missing_saved_aspect_bytes(self):
+        captured = []
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(runner.subprocess, "Popen", restoration_process(captured, skip_aspect_write="unpin"))):
+            result = runner.run_restoration_sequence(Path("fixture.exe"), Path(directory))
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(len(captured), 2)
+        self.assertIn("aspect preference bytes were not retained", result["runs"][-1]["error"])
         self.assertTrue(result["preferences_removed"])
 
     def test_second_process_timeout_stops_and_removes_shared_preferences(self):

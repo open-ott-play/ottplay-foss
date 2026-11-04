@@ -21,10 +21,55 @@ def validate_common_evidence(report):
     require(report.get("cleanup_errors") == [], "Native window cleanup failed")
 
 
+def validate_aspect_state(value, enabled, active):
+    expected = {"ok": True, "supported": True, "enabled": enabled, "active": active}
+    require(isinstance(value, dict) and value.keys() == expected.keys()
+            and all(type(value[key]) is bool and value[key] is target for key, target in expected.items()),
+            "Wrong native aspect state")
+
+
+def validate_sizing_probe(probe, enabled):
+    require(probe.get("kind") == "owned-hwnd-message-probe" and probe.get("enabled") is enabled,
+            "Wrong native sizing probe")
+    require(type(probe.get("os_bounds_captures")) is int and probe["os_bounds_captures"] > 0,
+            "Missing OS-initialized tracking bounds")
+    limits, insets = probe.get("outer_limits"), probe.get("client_insets")
+    require(isinstance(limits, list) and len(limits) == 4 and all(type(v) is int for v in limits)
+            and 0 < limits[0] <= limits[2] and 0 < limits[1] <= limits[3], "Invalid tracking bounds")
+    require(isinstance(insets, list) and len(insets) == 2 and all(type(v) is int and v >= 0 for v in insets),
+            "Invalid client insets")
+    samples = probe.get("samples", [])
+    require(len(samples) == 8 and all(type(s.get("edge")) is int for s in samples)
+            and [s.get("edge") for s in samples] == list(range(1, 9)),
+            "Incomplete native sizing edges")
+    for sample in samples:
+        before, after = sample.get("input"), sample.get("output")
+        require(all(isinstance(r, list) and len(r) == 4 and all(type(v) is int for v in r)
+                    for r in [before, after]), "Malformed sizing rectangle")
+        if not enabled:
+            require(before == after, "Disabled constraint changed native sizing")
+            continue
+        width, height = after[2] - after[0], after[3] - after[1]
+        require(limits[0] <= width <= limits[2] and limits[1] <= height <= limits[3],
+                "Native sizing exceeded OS tracking limits")
+        require(width > insets[0] and height > insets[1]
+                and abs((width - insets[0]) * 9 - (height - insets[1]) * 16) <= 4,
+                "Native sizing did not constrain content to 16:9")
+        edge = sample["edge"]
+        if edge in [1, 4, 7]:
+            require(after[2] == before[2], "Opposite right edge moved")
+        if edge in [2, 5, 8]:
+            require(after[0] == before[0], "Opposite left edge moved")
+        if edge in [3, 4, 5]:
+            require(after[3] == before[3], "Opposite bottom edge moved")
+        if edge in [6, 7, 8]:
+            require(after[1] == before[1], "Opposite top edge moved")
+
+
 def validate_evidence(report, missing):
     validate_common_evidence(report)
     denials = report.get("denials", [])
-    expected = {"set_always_on_top", "set_fullscreen", "toggle_fullscreen"} if missing else {"set_always_on_top"}
+    expected = ({"set_always_on_top", "set_fullscreen", "toggle_fullscreen"} if missing else {"set_always_on_top"}) | {"get_window_aspect_lock", "set_window_aspect_lock"}
     require(len(denials) == len(expected), "Missing ACL denial evidence")
     require({entry.get("command") for entry in denials} == expected, "Wrong denied commands")
     require(all(entry.get("window") == ("main" if missing else "pip")
@@ -47,6 +92,30 @@ def validate_evidence(report, missing):
         require(all(state.get(key) is False for key in ["topmost", "win32_topmost", "fullscreen"]),
                 f"Wrong {name} native state")
 
+    aspect = report.get("aspect", {})
+    validate_aspect_state(aspect.get("initial"), False, False)
+    validate_aspect_state(aspect.get("final"), False, False)
+    sequence = aspect.get("set_sequence", [])
+    require(len(sequence) == 4, "Incomplete aspect idempotence sequence")
+    for value, enabled in zip(sequence, [True, True, False, False]):
+        validate_aspect_state(value, enabled, enabled)
+    geometry = aspect.get("set_geometry", [])
+    baseline = report.get("initial", {}).get("rect")
+    require(isinstance(baseline, list) and len(baseline) == 4
+            and all(type(v) is int for v in baseline), "Missing initial native geometry")
+    require(len(geometry) == 4, "Incomplete aspect geometry sequence")
+    for item in geometry:
+        rect = item.get("rect")
+        require(isinstance(rect, list) and len(rect) == 4 and all(type(v) is int for v in rect)
+                and all(abs(a - b) <= 2 for a, b in zip(rect, baseline)),
+                "Aspect toggle changed native geometry")
+    full = aspect.get("fullscreen_sequence", [])
+    require(len(full) == 6, "Incomplete aspect fullscreen sequence")
+    for value, active in zip(full, [False, True, False, True, False, True]):
+        validate_aspect_state(value, True, active)
+    validate_sizing_probe(aspect.get("sizing_enabled", {}), True)
+    validate_sizing_probe(aspect.get("sizing_disabled", {}), False)
+
 
 def validate_restoration_evidence(report, phase):
     validate_common_evidence(report)
@@ -57,6 +126,10 @@ def validate_restoration_evidence(report, phase):
         state = report.get(name, {})
         require(state.get("topmost") is expected and state.get("win32_topmost") is expected
                 and state.get("fullscreen") is False, f"Wrong restored {name} native state")
+
+    validate_aspect_state(report.get("aspect_initial"), phase == "unpin", phase == "unpin")
+    validate_aspect_state(report.get("aspect_final"), phase == "pin", phase == "pin")
+    validate_sizing_probe(report.get("aspect_sizing", {}), phase == "pin")
 
 
 def stop_owned_process(process):
@@ -113,7 +186,13 @@ def run_case(binary, output, missing, *, phase=None, preferences=None):
             with stored.open("rb") as stream:
                 require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
                         "Confirmed preference bytes were not retained")
+            aspect_stored = preferences / "window-aspect-lock"
+            require(aspect_stored.is_file() and not aspect_stored.is_symlink(), "Aspect preference file is missing or invalid")
+            with aspect_stored.open("rb") as stream:
+                require(stream.read(3) == (b"1\n" if phase == "pin" else b"0\n"),
+                        "Confirmed aspect preference bytes were not retained")
             result["saved_preference"] = phase == "pin"
+            result["saved_aspect_preference"] = phase == "pin"
         else:
             validate_evidence(result["native"], missing)
         result["status"] = "pass"
