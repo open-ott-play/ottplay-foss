@@ -31,6 +31,8 @@ let {
     CATEGORY_NAVIGATION_FAVORITES_ALLOWANCE,
     CATEGORY_PICKER_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_ENTRY_ALLOWANCE,
+    CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
+    EPG_PRESENTATION_ENTRY_ALLOWANCE,
     CATEGORY_SELECTION_FAVORITES_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_ENTRY_ALLOWANCE,
     MIXED_GLOBAL_FAVORITES_OPTIONAL_ALLOWANCE,
@@ -125,6 +127,79 @@ function capsWithoutAllowances(names) {
     baseline._compile(source, filename);
     return baseline.exports;
 }
+// Qualify the new EPG layer against exact paired output, keeping old receipts immutable.
+const epgBaseline = capsWithoutAllowances(["EPG_PRESENTATION_ENTRY_ALLOWANCE"]);
+const epgEvidence = require("../docs/evidence/epg-presentation-size.json");
+assert(Object.isFrozen(EPG_PRESENTATION_ENTRY_ALLOWANCE));
+assert.deepEqual(EPG_PRESENTATION_ENTRY_ALLOWANCE, epgEvidence.allowance);
+for (const metric of ["bytes", "gzipBytes"]) {
+    const delta = epgEvidence.candidate[metric] - epgEvidence.baseline[metric];
+    assert.equal(delta, EPG_PRESENTATION_ENTRY_ALLOWANCE[metric]);
+    assert.equal(
+        epgBaseline.BUDGET[metric],
+        epgEvidence.previousEntryCap[metric]
+    );
+    assert.equal(
+        latestCaps.BUDGET[metric] - epgEvidence.candidate[metric],
+        epgBaseline.BUDGET[metric] - epgEvidence.baseline[metric]
+    );
+    for (const name of [
+        "BUDGET",
+        "LEGACY_TOTAL_BUDGET",
+        "BASE_TOTAL_BUDGET",
+        "TOTAL_BUDGET",
+    ])
+        assert.equal(
+            latestCaps[name][metric] - epgBaseline[name][metric],
+            delta
+        );
+}
+for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        epgBaseline[name]
+    );
+// This feature changes only the shared entry. Retain historical receipts and
+// verify the exact increment once in each affected aggregate.
+const visibilityBaseline = capsWithoutAllowances([
+    "CATEGORY_VISIBILITY_ENTRY_ALLOWANCE",
+    "EPG_PRESENTATION_ENTRY_ALLOWANCE",
+]);
+const visibilityEvidence = require("../docs/evidence/category-visibility-size.json");
+assert(Object.isFrozen(CATEGORY_VISIBILITY_ENTRY_ALLOWANCE));
+assert.deepEqual(
+    CATEGORY_VISIBILITY_ENTRY_ALLOWANCE,
+    visibilityEvidence.allowance
+);
+for (const metric of ["bytes", "gzipBytes"]) {
+    const delta =
+        visibilityEvidence.candidate[metric] -
+        visibilityEvidence.baseline[metric];
+    assert.equal(delta, CATEGORY_VISIBILITY_ENTRY_ALLOWANCE[metric]);
+    assert.equal(
+        visibilityBaseline.BUDGET[metric],
+        visibilityEvidence.previousEntryCap[metric]
+    );
+    assert.equal(
+        epgBaseline.BUDGET[metric] - visibilityEvidence.candidate[metric],
+        visibilityBaseline.BUDGET[metric] - visibilityEvidence.baseline[metric]
+    );
+    for (const name of [
+        "BUDGET",
+        "LEGACY_TOTAL_BUDGET",
+        "BASE_TOTAL_BUDGET",
+        "TOTAL_BUDGET",
+    ])
+        assert.equal(
+            epgBaseline[name][metric] - visibilityBaseline[name][metric],
+            delta
+        );
+}
+for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        visibilityBaseline[name]
+    );
 const favoritesCategoryPersistenceBaseline = capsWithoutAllowances([
     "FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE",
 ]);
@@ -136,6 +211,8 @@ const localFavoriteWriteRecoveryBaseline = capsWithoutAllowances([
     "LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE",
 ]);
 const historicalIncomingCaps = capsWithoutAllowances([
+    "EPG_PRESENTATION_ENTRY_ALLOWANCE",
+    "CATEGORY_VISIBILITY_ENTRY_ALLOWANCE",
     "NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE",
     "LOCAL_SOURCE_DIAGNOSTICS_ALLOWANCE",
     "LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE",
@@ -536,11 +613,18 @@ try {
     })) {
         assert.deepEqual(
             windowEvidence.budget_before[evidenceName],
-            withoutWindowControls[budgetName]
+            subtract(withoutWindowControls[budgetName], {
+                bytes:
+                    CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.bytes +
+                    EPG_PRESENTATION_ENTRY_ALLOWANCE.bytes,
+                gzipBytes:
+                    CATEGORY_VISIBILITY_ENTRY_ALLOWANCE.gzipBytes +
+                    EPG_PRESENTATION_ENTRY_ALLOWANCE.gzipBytes,
+            })
         );
         assert.deepEqual(
             windowEvidence.budget_after[evidenceName],
-            latestCaps[budgetName]
+            visibilityBaseline[budgetName]
         );
     }
     for (const metric of ["bytes", "gzipBytes"])
@@ -4855,6 +4939,14 @@ try {
         CATEGORY_SELECTION_ENTRY_ALLOWANCE
     );
     assert.deepEqual(
+        failed.categoryVisibilityEntryAllowance,
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        failed.epgPresentationEntryAllowance,
+        EPG_PRESENTATION_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
         failed.categorySelectionFavoritesAllowance,
         CATEGORY_SELECTION_FAVORITES_ALLOWANCE
     );
@@ -5451,6 +5543,14 @@ try {
     assert.deepEqual(
         report.categorySelectionEntryAllowance,
         CATEGORY_SELECTION_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.categoryVisibilityEntryAllowance,
+        CATEGORY_VISIBILITY_ENTRY_ALLOWANCE
+    );
+    assert.deepEqual(
+        report.epgPresentationEntryAllowance,
+        EPG_PRESENTATION_ENTRY_ALLOWANCE
     );
     assert.deepEqual(
         report.categorySelectionFavoritesAllowance,
