@@ -2643,12 +2643,11 @@ async function relayRecovery(mode = 3, options = {}) {
     const calls = [];
     const f = fixture({
         ...options,
-        savedPlayerMode: mode,
         globals: {
             __TAURI__: {
                 core: {
                     invoke(command, args) {
-                        calls.push({ command, args });
+                        calls.push({ args, command });
                         return Promise.resolve(
                             command === "native_hls_start"
                                 ? {
@@ -2661,11 +2660,12 @@ async function relayRecovery(mode = 3, options = {}) {
                 },
             },
         },
+        savedPlayerMode: mode,
     });
     const url = "https://source.invalid/recover.m3u8";
     f.w.video.getVideoPlaybackQuality = () => ({
-        totalVideoFrames: 0,
         droppedVideoFrames: 0,
+        totalVideoFrames: 0,
     });
     f.w.video.buffered = { length: 0 };
     f.w.stbPlay(url);
@@ -2726,10 +2726,10 @@ function bufferedNoFrame(f) {
     media.videoHeight = 1080;
     media.videoTracks = [{}];
     media.audioTracks = [{}];
-    media.buffered = { length: 1, start: () => 0, end: () => 12 };
+    media.buffered = { end: () => 12, length: 1, start: () => 0 };
     media.getVideoPlaybackQuality = () => ({
-        totalVideoFrames: 0,
         droppedVideoFrames: 0,
+        totalVideoFrames: 0,
     });
     media.emit("loadedmetadata");
 }
@@ -2843,7 +2843,7 @@ test("direct recovery resets interrupted observation and cannot mistake paused o
         }
         if (interruption === "seeking") f.w.video.seeking = false;
         if (interruption === "ended") f.w.video.ended = false;
-        f.w.video.buffered = { length: 1, start: () => 0, end: () => 12 };
+        f.w.video.buffered = { end: () => 12, length: 1, start: () => 0 };
         seconds(f, 30);
         assert.equal(
             f.players.length,
@@ -2868,15 +2868,15 @@ test("first direct frame or clock progress permanently completes startup observa
         seconds(f, 20);
         if (progress === "frame")
             f.w.video.getVideoPlaybackQuality = () => ({
-                totalVideoFrames: 1,
                 droppedVideoFrames: 0,
+                totalVideoFrames: 1,
             });
         else f.w.video.currentTime = 0.04;
         seconds(f, 1);
         // A later no-frame state must not resurrect the completed startup monitor.
         f.w.video.getVideoPlaybackQuality = () => ({
-            totalVideoFrames: 0,
             droppedVideoFrames: 0,
+            totalVideoFrames: 0,
         });
         f.w.video.currentTime = 0;
         seconds(f, 60);
@@ -2951,8 +2951,8 @@ test("a queued direct recovery checks ownership and current play intent again", 
                         f.w.document.visibilityState = "hidden";
                     if (retire === "frame")
                         f.w.video.getVideoPlaybackQuality = () => ({
-                            totalVideoFrames: 1,
                             droppedVideoFrames: 0,
+                            totalVideoFrames: 1,
                         });
                     if (retire === "clock") f.w.video.currentTime = 0.04;
                     if (retire === "src")

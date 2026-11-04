@@ -184,12 +184,6 @@ function fixture(options = {}) {
             addEventListener(event, callback) {
                 (documentListeners[event] ||= []).push(callback);
             },
-            removeEventListener(event, callback) {
-                documentListeners[event] = (
-                    documentListeners[event] || []
-                ).filter((fn) => fn !== callback);
-            },
-            visibilityState: "visible",
             body: { classList: { remove() {} }, style: {} },
             getElementById(id) {
                 if (id === "video") return w.video;
@@ -197,6 +191,12 @@ function fixture(options = {}) {
                 if (id === "video_res") return footer;
                 return id === "vdiv" ? {} : null;
             },
+            removeEventListener(event, callback) {
+                documentListeners[event] = (
+                    documentListeners[event] || []
+                ).filter((fn) => fn !== callback);
+            },
+            visibilityState: "visible",
         },
         fetch() {
             throw new Error(

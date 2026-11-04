@@ -2457,13 +2457,13 @@ function startCorePlayback(
                                 );
                             });
                         },
-                        // A failed relay gets one direct native chance before Auto
-                        // gives up on a buffered attempt which never displays video.
-                        monitorInitialStall: directRetry,
                         monitorDroppedFrames: !!(
                             (window as any).__TAURI__ ||
                             (window as any).__TAURI_INTERNALS__
                         ),
+                        // A failed relay gets one direct native chance before Auto
+                        // gives up on a buffered attempt which never displays video.
+                        monitorInitialStall: directRetry,
                         restore: function () {
                             var nextPosition = resumePosition();
                             cancelCoreSeek();
