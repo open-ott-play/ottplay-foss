@@ -1496,6 +1496,72 @@ class CurrentNativeReleaseTests(unittest.TestCase):
                 self.verify()
             self.current(compilation=True)
 
+    def native_rust_binding(self):
+        b = self.bundle
+        commit = "a" * 40
+        identity = ("rustc 1.99.1 (aaaaaaaaa 2026-09-01)\n"
+                    "commit-hash: " + commit + "\nrelease: 1.99.1\n")
+        next(row for row in b.source_manifest["dependencies"]
+             if row["id"] == "rust-runtime")["version"] = commit
+        b.source_manifest["build_environment"]["rustc"] = identity
+        binding = {"source": "rust-runtime", "source_commit": commit, "rustc": identity,
+                   "sysroot": "/build/native-rust", "archives": [{
+                       "path": "/build/native-rust/lib/rustlib/armv7-unknown-linux-gnueabi/lib/"
+                               "libcompiler_builtins-0123456789abcdef.rlib",
+                       "sha256": "b" * 64, "bytes": 100, "validation": "collection-time"}]}
+        b.runtime_manifest["shipped_elfs"]["plxnative-storage"]["native_rust_runtime"] = binding
+        self.refresh_source()
+        return binding
+
+    def test_native_rust_binding_accepts_matching_offline_evidence(self):
+        self.native_rust_binding()
+        with (patch("subprocess.run", side_effect=AssertionError("external command forbidden")),
+              patch("subprocess.check_output", side_effect=AssertionError("external command forbidden"))):
+            result = self.verify()
+        self.assertEqual(result["bundle_validation"], "PASS")
+        self.assertEqual(result["binary_correspondence"], "NOT_PROVEN")
+        self.assertEqual(result["device_validation"], "not_performed")
+
+    def test_native_rust_binding_source_commit_matches_distributed_dependency(self):
+        for elf in ("plxnative", "plxnative-storage"):
+            for value in ("b" * 40, None, 123):
+                with self.subTest(elf=elf, source_commit=value):
+                    binding = self.native_rust_binding()
+                    binding["source_commit"] = value
+                    entries = self.bundle.runtime_manifest["shipped_elfs"]
+                    entries[elf]["native_rust_runtime"] = binding
+                    with self.assertRaisesRegex(ValueError, "Native Rust runtime source binding"):
+                        self.verify()
+                    entries[elf].pop("native_rust_runtime", None)
+
+    def test_native_rust_binding_uses_own_single_release_not_build_environment(self):
+        identities = ("release: 1.98.0\n", "", "release: 1.99.1\nrelease: 1.99.1\n", None)
+        for identity in identities:
+            with self.subTest(identity=identity):
+                binding = self.native_rust_binding()
+                binding["rustc"] = ("commit-hash: " + "a" * 40 + "\n" + identity
+                                    if isinstance(identity, str) else identity)
+                with self.assertRaisesRegex(ValueError, "Native Rust runtime compiler binding"):
+                    self.verify()
+
+    def test_native_rust_binding_compiler_commit_matches_source_commit(self):
+        for identity in ("commit-hash: " + "b" * 40 + "\nrelease: 1.99.1\n",
+                         "release: 1.99.1\n"):
+            with self.subTest(identity=identity):
+                binding = self.native_rust_binding()
+                binding["rustc"] = identity
+                with self.assertRaisesRegex(ValueError, "Native Rust runtime compiler binding"):
+                    self.verify()
+
+    def test_native_rust_binding_legacy_checks_commit_without_compilation_release_pin(self):
+        self.current(compilation=False)
+        binding = self.native_rust_binding()
+        binding["rustc"] = binding["rustc"].replace("1.99.1", "1.98.0")
+        self.assertEqual(self.verify()["bundle_validation"], "PASS")
+        binding["source_commit"] = "b" * 40
+        with self.assertRaisesRegex(ValueError, "Native Rust runtime source binding"):
+            self.verify()
+
     def test_current_runtime_host_must_match_compilation(self):
         self.bundle.metadata["build"]["configuration"]["host"] = "darwin-arm64"
         with self.assertRaisesRegex(ValueError, "host binding"):

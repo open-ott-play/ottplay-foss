@@ -285,7 +285,7 @@ test("boot retains prior connection routes while the recovery module is unavaila
     const text = fs.readFileSync("src/index.ts", "utf8");
     const start = text.indexOf("        var recoverySettings: any =");
     const end = text.indexOf(
-        '        if (typeof (window as any).applyLocalSwopConfig',
+        "        if (typeof (window as any).applyLocalSwopConfig",
         start
     );
     const bootCode = ts.transpileModule(text.slice(start, end), {
@@ -305,6 +305,7 @@ test("boot retains prior connection routes while the recovery module is unavaila
     };
     const w = {
         __ottCommandServer: { configure: (...args) => commandCalls.push(args) },
+        __ottControlDiscovery: { start: () => discoveries.push(true) },
         __ottLocalHttpRemote: {
             configure: (...args) => {
                 localCalls.push(args);
@@ -312,9 +313,8 @@ test("boot retains prior connection routes while the recovery module is unavaila
             },
             init: () => assert.fail("must retain the prior tuple"),
         },
-        __ottRemoteNotifications: { setEnabled: () => {} },
         __ottRemoteDiagnostics: {},
-        __ottControlDiscovery: { start: () => discoveries.push(true) },
+        __ottRemoteNotifications: { setEnabled: () => {} },
     };
     const context = {
         getScriptDOM: (...args) => loads.push(args),

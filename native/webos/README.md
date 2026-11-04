@@ -66,34 +66,71 @@ artifacts, including profile changes and removal.
 
 ### Connect the player
 
-Open **Browse → Settings → Remote control server**. Browse is in the bottom
-bar in **Classic** and the top header in **Modern**; close an open editor or
-Description view to return to it. Builds containing the first-run shortcut also
-show **Settings** as the last row of **Providers** and **Profiles** while no
-saved profile is enabled. This shortcut does not appear in channel/video lists.
+Open **Browse → Settings**. Browse is in the bottom bar in **Classic** and the
+top header in **Modern**; close an open editor or Description view to return to
+it. **Find command server** is a separate Settings action alongside the manual
+**Remote control server** editor. If that editor is open, choose **Cancel** to
+return to Settings before choosing Find. Builds containing the first-run
+shortcut also show **Settings** as the last row of **Providers** and **Profiles**
+while no saved profile is enabled. This shortcut does not appear in
+channel/video lists.
 
-For manual setup, enter the controller's HTTPS base URL, for example
+For manual setup, open **Remote control server** and enter the controller's
+HTTPS base URL, for example
 `https://controller.example.invalid/home`, then select **Save**. Enter the
 controller address, not the player website, a discovery catalog JSON URL or
 an `/api/discovery` endpoint. Manual entry remains available in generic builds.
 
-Builds configured with a public discovery catalog also offer **Find command
-server** in Settings. It fetches and verifies that catalog without credentials;
-select the intended server from the results. This avoids typing its controller
-address. Discovery errors preserve the prior connection. Complete the normal
+After protected-storage initialization succeeds, builds containing Linux DNS-SD
+support offer **Find command server** without requiring a catalog or typed
+controller address. This is unicast DNS-SD for `_ottplay-ctrl._tcp` through the
+system resolver and the network's search domains, not multicast mDNS. If DNS
+returns a valid empty result, an explicitly configured public catalog can supply
+the results instead; its raw response digest is verified. Resolver errors,
+malformed or oversized answers, and timeouts do not trigger that fallback.
+Builds without Linux DNS-SD support retain the catalog path.
+
+Select the intended server from the results. Native Find is an explicit action,
+including on a fresh installation, and it does not automatically approve pairing.
+The three-second UI deadline cannot interrupt a blocking OS lookup. Another
+Find remains unavailable until that worker finishes; late results are discarded.
+Discovery errors preserve the prior saved configuration. Complete the normal
 pairing approval and wait for the connection and saved configuration to be
 confirmed; displaying a pairing code alone does not establish a connection.
+See the [command-server discovery guide](../../docs/remote-command-server.md#lookup-by-platform)
+for other players and deployment setup. The explicit Native Find action and
+its three-second UI deadline are described above.
+
+Protected storage holds this installation's saved settings and pairing data.
+Find does not bypass its initialization or Save. A storage error must be
+resolved before the new connection can be committed. A displayed storage
+diagnostic identifies which operation or step failed; it does not repair or
+reset saved settings. If the error persists, note its exact on-screen text,
+the action that produced it and the application version for the maintainer.
+No shell access is needed to report that information. This candidate has no
+on-screen export for the developer storage log. Keep the previous
+configuration; discovering a server or receiving a pairing code does not prove
+that settings will survive restart.
 
 These instructions describe the candidate's source capabilities, not proof that
 an installed or published package contains them. For a local diagnostic update,
 retain the normal **OTTPlay Native** name and `com.openottplay.player.native`
 identity; follow [the in-place update procedure](#updates-and-developer-mode-expiry).
+A diagnostic feature set under that identity is not an official release build.
 Host/ARM builds, artifact inspection, transport and physical first-run acceptance
-require their own receipts.
+require their own receipts; see [diagnostic versus release delivery](../../docs/native-webos-delivery.md#local-diagnostic-candidates-and-published-releases).
 
 ## What this target provides
 
-The candidate offers Classic and Modern presentations of the same sources. Select **Settings → Interface mode** to change the presentation. M3U, Xtream, Stalker, VPortal, local folders and Plex use provider profiles, a channel/video list and categories, with descriptions and artwork where the source supplies them. Saved profiles, selection, Favorites and playback position use the protected native store. Local files are read from their source, without an import copy. These are source-reviewed behaviors; the release audit keeps device acceptance separate.
+The candidate offers Classic and Modern presentations of the same sources.
+Open **Browse → Settings → Interface mode**, choose **Classic** or **Modern**,
+and wait for **Selected**. Choosing the mode itself requests a protected-storage
+save; there is no extra Save button for this setting. If an error appears,
+record its exact text, the action and the application version for the
+maintainer. Fully close and reopen the application to check that the mode was
+retained; closing and reopening Settings alone does not test persistence.
+
+M3U, Xtream, Stalker, VPortal, local folders and Plex use provider profiles, a channel/video list and categories, with descriptions and artwork where the source supplies them. Saved profiles, selection, Favorites and playback position use the protected native store. Local files are read from their source, without an import copy. These are source-reviewed behaviors; the release audit keeps device acceptance separate.
 
 Global Favorites can mix providers and profiles. Their portable identities bind to the receiving player's own matching profiles, source aliases and paths; credentials are not copied through a Favorite. Missing or ambiguous bindings are reported instead of choosing an unrelated source. An M3U profile can retain a private media attachment for matching VPortal Favorites; configure that attachment separately on each receiving player. An attached-media Favorite can be pinned as a single kiosk item with its exact M3U parent and attachment binding. Playback still requires current source authority and parental authorization; changing the source configuration invalidates the pin. Mixed attached-media kiosk queues are not supported.
 

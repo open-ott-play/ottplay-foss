@@ -28,6 +28,9 @@ These applications have separate update streams and state. A deployment to
 native executable. Conversely, installing a native IPK does not update the
 hosted player, import its profiles or transfer its remote-control consent.
 Select the intended application ID in both the installer and the launch command.
+New native DNS discovery, settings or interface behavior requires a newly built
+and installed native IPK; updating the hosted website cannot add it to an older
+native installation.
 
 The native package has its own numeric version. Read it from the release's
 metadata and IPK; do not derive it from a main-player release number. For
@@ -36,6 +39,35 @@ native package version `0.1.0`. A beta label is not part of the numeric version
 that the TV installer compares. A subsequent installable candidate needs the
 version chosen for that candidate, consistently applied to all package
 descriptors and manifests.
+
+## Local diagnostic candidates and published releases
+
+An explicitly supplied local diagnostic candidate may retain the normal
+**OTTPlay Native** title and `com.openottplay.player.native` ID so an in-place
+update targets the existing installation. The name and ID do not establish
+release qualification. Record the exact native source, enabled development
+features, application/storage/helper hashes and final IPK hash. Preserve the
+existing state as described below; do not uninstall or change the ID to avoid
+an update refusal.
+
+Such a candidate is separate from the published-release update helper and its
+release-tag checks. Use only the candidate's explicitly agreed installation
+procedure. A successful application compile or final link is not a completed
+package. A diagnostic feature set does not establish passing the official
+stable release's feature and size checks. Official delivery still requires the
+matching companion, package and source-closure verification, final workflow results and
+separate physical-TV acceptance. The official release gates remain unchanged;
+a local diagnostic candidate does not claim to have passed them. The [0.3.0 audit](../native/webos/releases/0.3.0-audit.md) keeps the current
+candidate and historical results separate.
+
+Before entering a server address again, check whether the installed candidate
+includes [Native Find](../native/webos/README.md#connect-the-player). It remains
+an explicit user action after protected-storage initialization, followed by
+server selection, pairing approval and successful saving of the resulting
+connection. Neither discovery nor a new diagnostic log repairs a protected-store
+failure. Fully close and reopen the application to verify the chosen connection
+and Classic/Modern mode. Closing and reopening Settings alone is insufficient;
+a changed display does not establish durable settings.
 
 ## Keep one complete release bundle
 

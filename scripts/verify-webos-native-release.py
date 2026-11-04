@@ -362,10 +362,12 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
         manifest.get("schema") == 1 and manifest.get("license") == "GPL-3.0-or-later", "Source schema/license mismatch"
     )
     environment = manifest["build_environment"]
+    rust_channel = None
     if "compilation" in metadata["build"]:
         toolchain = tomllib.loads(content.get("rust-modules/rust-toolchain.toml", b"").decode("utf-8"))
         require(toolchain.get("toolchain", {}).get("channel") == metadata["build"]["rust_toolchain"],
                 "Native compilation source toolchain mismatch")
+        rust_channel = toolchain["toolchain"]["channel"]
     require(
         manifest["rebuild_status"] == "NOT_RUN"
         and environment["rust_target"] == build.TARGET
@@ -473,7 +475,7 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
         require(by_id[dep_id].get("sources"), "Dependency sources are not included")
         for item in by_id[dep_id]["sources"]:
             recorded_file(rows, item["path"], item["sha256"])
-    return upstream
+    return upstream, {"source_commit": by_id["rust-runtime"].get("version"), "channel": rust_channel}
 
 
 def companion_canonical(value):
@@ -979,7 +981,7 @@ def check_companion(archive, rows, content, metadata, runtime, package_rows, pac
     check_companion_link_inventory(evidence, link_streams, runtime["sdk_attestation"])
 
 
-def check_runtime(path, metadata, source_set, primary, package_rows, upstream, package_content):
+def check_runtime(path, metadata, source_set, primary, package_rows, upstream, package_content, native_rust):
     captures = {
         "RUNTIME-SOURCE-MANIFEST.json",
         "tools/webos-runtime-sources.json",
@@ -997,6 +999,22 @@ def check_runtime(path, metadata, source_set, primary, package_rows, upstream, p
         spools = {name: stack.enter_context(tempfile.TemporaryFile()) for name in names}
         rows, content = index_archive(path, captures, spools=spools)
         runtime = check_runtime_evidence(rows, content, metadata, source_set, primary, package_rows, upstream)
+        for entry in runtime["shipped_elfs"].values():
+            if "native_rust_runtime" not in entry:
+                continue
+            binding = entry["native_rust_runtime"]
+            require(isinstance(binding, dict) and binding.get("source") == "rust-runtime"
+                    and isinstance(binding.get("source_commit"), str)
+                    and re.fullmatch(r"[0-9a-f]{40}", binding["source_commit"])
+                    and binding["source_commit"] == native_rust["source_commit"],
+                    "Native Rust runtime source binding mismatch")
+            identity = binding.get("rustc")
+            require(isinstance(identity, str)
+                    and re.findall(r"^commit-hash: ([0-9a-f]{40})$", identity, re.MULTILINE)
+                    == [binding["source_commit"]]
+                    and (native_rust["channel"] is None
+                         or re.findall(r"^release: (.+)$", identity, re.MULTILINE) == [native_rust["channel"]]),
+                    "Native Rust runtime compiler binding mismatch")
         if "compilation" in metadata["build"]:
             archive = metadata["build"]["compilation"]["archive"]["path"].encode("utf-8")
             expected = {archive, b"/build/ottplay-native/" + archive}
@@ -1315,8 +1333,8 @@ def verify(metadata_path, *, require_feed=False, check_checkout=False):
         and receipt["rebuild_status"] == "NOT_RUN",
         "Primary release receipt mismatch",
     )
-    upstream = check_primary(primary_path, metadata, receipt, package_rows, descriptor)
-    check_runtime(runtime_path, metadata, source_set, primary, package_rows, upstream, package_content)
+    upstream, native_rust = check_primary(primary_path, metadata, receipt, package_rows, descriptor)
+    check_runtime(runtime_path, metadata, source_set, primary, package_rows, upstream, package_content, native_rust)
     feed = check_feed(directory, metadata, stem, require_feed)
     if check_checkout:
         current = build.manifest()
