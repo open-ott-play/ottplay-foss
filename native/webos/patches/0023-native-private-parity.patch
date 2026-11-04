@@ -23265,7 +23265,7 @@ index 76cc8883cf04afbb18e39d0f152061e9cd748e84..87a1f6828582ca6967546986adaef019
 +        surface.entry.inst.as_ref().is_some_and(|body| body.id == instance)), "original overlay retired");
 +}
 diff --git a/rust-modules/src/app/content.rs b/rust-modules/src/app/content.rs
-index c3ea99a935ac1490a666b15e0a35a506fb582e2d..3ed9d39fa472f20c045f8f74e062e60ae091f4a0 100644
+index c3ea99a935ac1490a666b15e0a35a506fb582e2d..fdec4f0974ebe4e02cc3435bcad7fd03d7aacf4a 100644
 --- a/rust-modules/src/app/content.rs
 +++ b/rust-modules/src/app/content.rs
 @@ -7,6 +7,7 @@
@@ -23316,7 +23316,18 @@ index c3ea99a935ac1490a666b15e0a35a506fb582e2d..3ed9d39fa472f20c045f8f74e062e60a
          if !super::ott_runtime::kiosk_player_request(app, &request) { continue; }
          let Some(request) = super::ott_runtime::track_request(app, request) else { continue };
          let viewer_transport = super::playback::player_requests(&mut app.player,
-@@ -580,7 +582,7 @@ pub(crate) fn content_requests(app: &mut App, fr: &Frame) {
+@@ -527,9 +529,7 @@ pub(crate) fn content_requests(app: &mut App, fr: &Frame) {
+             &mut app.ok_armed,
+             &mut app.input.press,
+         );
+-        if viewer_transport {
+-            super::ott_runtime::viewer_transport(app);
+-        }
++        super::ott_runtime::viewer_action(app, viewer_transport);
+     }
+     // …and the item context menu's committed row, for the same reason and at the same moment: it
+     // is a surface on the shared stack, so what it decides reaches the loop as a request. The
+@@ -580,7 +580,7 @@ pub(crate) fn content_requests(app: &mut App, fr: &Frame) {
                  // second, hand-written `NavOp::Push` after the fact.
                  start_playback(&mut app.player.session, &mut app.adapters.player, resume_ns,
                      super::playback::Origin::Here,
@@ -23325,7 +23336,7 @@ index c3ea99a935ac1490a666b15e0a35a506fb582e2d..3ed9d39fa472f20c045f8f74e062e60a
                      Some(ret), &mut app.pages, &mut app.bridge);
              }
              ContentReq::PreviewStart { sid, rk, part, vcodec, acodec, title } => {
-@@ -1002,7 +1004,7 @@ pub(crate) unsafe fn library_page_request(
+@@ -1002,7 +1002,7 @@ pub(crate) unsafe fn library_page_request(
              let play = matches!(request, LibraryReq::Play { .. });
              let from_deck = matches!(request, LibraryReq::Detail { from_deck: true, .. });
              if let LibraryReq::Play { resume_ns, .. } = request { item.resume_ms = resume_ns / 1_000_000; }
@@ -23334,7 +23345,7 @@ index c3ea99a935ac1490a666b15e0a35a506fb582e2d..3ed9d39fa472f20c045f8f74e062e60a
          }
      }
  }
-@@ -1848,7 +1850,7 @@ mod library_publication_tests {
+@@ -1848,7 +1848,7 @@ mod library_publication_tests {
          bridge::dismiss_surfaces(&mut pages);
          frame(&mut pages, &mut rig, &mut frame_no);
          unsafe {
@@ -23343,7 +23354,7 @@ index c3ea99a935ac1490a666b15e0a35a506fb582e2d..3ed9d39fa472f20c045f8f74e062e60a
                  &mut pages, &mut rig, &mut wait, frame_no * 16);
          }
          let gen_x = gen(&mut rig);
-@@ -2608,7 +2610,7 @@ fn activate_home_item(app: &mut App, source: MachineId, entry: EntryId,
+@@ -2608,7 +2608,7 @@ fn activate_home_item(app: &mut App, source: MachineId, entry: EntryId,
      let _ = (source, entry);
      let from_deck = home_menu_from_deck(&ret);
      unsafe { activate_deck_card(&mut app.player.session, &mut app.adapters.player, &item, from_deck,
@@ -24508,7 +24519,7 @@ index 0a83dd170a77f24061ff9df6d86b05962d750c78..84cdce22447b4b6a144c89f0006d3c92
          self.page = if pending.favorites { "favorites" } else { "channels" };
          self.changed();
 diff --git a/rust-modules/src/app/ott_commands.rs b/rust-modules/src/app/ott_commands.rs
-index 4ee617b9d39a03a0f3a8c24c464f8f5de7996df8..a82e9a9473dd949b3c55840766bd90bec0224a86 100644
+index 4ee617b9d39a03a0f3a8c24c464f8f5de7996df8..825ba48d27d6cb5ffe5d2ab1a80e274dcc23214a 100644
 --- a/rust-modules/src/app/ott_commands.rs
 +++ b/rust-modules/src/app/ott_commands.rs
 @@ -4,9 +4,23 @@ use super::*;
@@ -24581,6 +24592,15 @@ index 4ee617b9d39a03a0f3a8c24c464f8f5de7996df8..a82e9a9473dd949b3c55840766bd90be
      settings::after_saved(runtime, app)
  }
  fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> Option<Value> {
+@@ -877,7 +904,7 @@ fn playback_command(runtime: &mut Runtime, app: &mut App, inv: &Invocation) -> O
+         };
+         let position = target.clamp(0.0, duration as f64 / 1e9);
+         playback::commit_seek((position * 1e9) as i64);
+-        runtime.viewer_transport(app);
++        runtime.viewer_seek(app);
+         let mut data = json!({"dispatched":true,"operation":operation,"position":position});
+         if operation == "seek_relative" {
+             data["from"] = json!(from);
 @@ -912,6 +939,14 @@ fn media_tracks_failure(
  }
  
@@ -26284,13 +26304,41 @@ index 4f20c498e40ed05935d4724f85da64d024c38dfc..7f12c8aeeac0ddfbe8f11b5d2ac4a237
 +    assert!(mailbox().is_none());
 +}
 diff --git a/rust-modules/src/app/ott_continuity.rs b/rust-modules/src/app/ott_continuity.rs
-index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5a6b45b13 100644
+index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..7186ef5fc3a267412877fbd4bf7cd78b5ba1ea31 100644
 --- a/rust-modules/src/app/ott_continuity.rs
 +++ b/rust-modules/src/app/ott_continuity.rs
-@@ -24,6 +24,12 @@ pub(super) struct ResumePoint {
+@@ -24,6 +24,40 @@ pub(super) struct ResumePoint {
      pub position_ms: u64,
  }
  
++/// An automatic seek may first present the preceding keyframe. That preroll
++/// must not replace the bookmark which requested the seek. The runtime binds
++/// this policy to one admitted playback identity and retires it on viewer seek.
++pub(super) struct ResumeFloor {
++    position_ms: u64,
++}
++
++impl ResumeFloor {
++    pub fn new(position_ms: u64) -> Option<Self> {
++        (position_ms > 0).then_some(Self { position_ms })
++    }
++
++    pub fn checkpoint(&mut self, position_ms: u64, observed_ms: Option<u64>, duration_ms: Option<u64>) -> u64 {
++        if let Some(duration_ms) = duration_ms.filter(|duration| *duration > 0) {
++            self.position_ms = self.position_ms.min(duration_ms);
++        }
++        let floor_ms = self.position_ms;
++        // The initial seek seeds the published position with its target before
++        // the first callback. Equality is not evidence that preroll has ended.
++        if observed_ms.is_some_and(|position| position > self.position_ms) {
++            self.position_ms = 0;
++        }
++        // The checkpoint sample can precede the observation which discharged
++        // the floor. Apply this call's floor even when future calls may regress.
++        position_ms.max(floor_ms)
++    }
++}
++
 +#[derive(Clone, Debug, PartialEq, Eq)]
 +struct DeferredStart {
 +    point: ResumePoint,
@@ -26300,23 +26348,25 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
  pub(super) enum Reason {
      First,
-@@ -54,6 +60,7 @@ pub(super) struct PendingRetry<'a> {
+@@ -54,6 +88,8 @@ pub(super) struct PendingRetry<'a> {
  pub(super) struct Continuity {
      generation: u64,
      restore: Option<ResumePoint>,
++    issued_restore: Option<ResumePoint>,
 +    deferred: Option<DeferredStart>,
      current: Option<String>,
      waiting_after: Option<String>,
      failed: HashSet<String>,
-@@ -70,6 +77,7 @@ impl Continuity {
+@@ -70,6 +106,8 @@ impl Continuity {
          Self {
              generation,
              restore,
++            issued_restore: None,
 +            deferred: None,
              current: None,
              waiting_after: None,
              failed: HashSet::new(),
-@@ -90,19 +98,59 @@ impl Continuity {
+@@ -90,19 +128,73 @@ impl Continuity {
          self.complete = false;
      }
  
@@ -26353,6 +26403,20 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
 +        })
 +    }
 +
++    /// The resolver may be parked and reissued across suspend. Keep the exact
++    /// automatic origin until admission, independently of its worker generation.
++    pub fn issued_restore(&self, generation: u64, id: &str, position_ms: u64) -> bool {
++        generation == self.generation && self.current.as_deref() == Some(id)
++            && self.issued_restore.as_ref().is_some_and(|point|
++                point.entry_id == id && point.position_ms == position_ms)
++    }
++
++    pub fn restore_admitted(&mut self, generation: u64, id: &str, position_ms: u64) {
++        if self.issued_restore(generation, id, position_ms) {
++            self.issued_restore = None;
++        }
++    }
++
 +    /// The policy has selected this exact target, but its source capability is
 +    /// not ready yet. Waiting is neither an admission nor a failed attempt.
 +    pub fn defer_start(
@@ -26379,7 +26443,7 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
      }
  
      /// `ids` is the complete discovered order so far, never merely a new page.
-@@ -127,6 +175,20 @@ impl Continuity {
+@@ -127,6 +219,20 @@ impl Continuity {
                  self.restore = None;
              }
          }
@@ -26400,10 +26464,11 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
          if let Some(after) = self.waiting_after.clone() {
              return self.advance(&after, ids);
          }
-@@ -153,6 +215,10 @@ impl Continuity {
+@@ -153,6 +259,11 @@ impl Continuity {
      pub fn cancel_restore(&mut self, generation: u64, retained: Option<&str>) {
          if generation != self.generation { return; }
          self.restore = None;
++        self.issued_restore = None;
 +        if self.deferred.as_ref().is_some_and(|pending| pending.reason == Reason::Restore) {
 +            self.deferred = None;
 +            self.current = retained.map(str::to_owned);
@@ -26411,31 +26476,34 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
          if let Some(id) = retained { self.current = Some(id.into()); }
      }
  
-@@ -174,6 +240,7 @@ impl Continuity {
+@@ -174,6 +285,8 @@ impl Continuity {
          self.enabled = true;
          self.explicitly_stopped = false;
          self.restore = None;
++        self.issued_restore = None;
 +        self.deferred = None;
          self.waiting_after = None;
          self.failed_continuation = FailedContinuation::None;
          self.failed.remove(id);
-@@ -190,6 +257,7 @@ impl Continuity {
+@@ -190,6 +303,8 @@ impl Continuity {
          self.explicitly_stopped = true;
          self.suspended = false;
          self.restore = None;
++        self.issued_restore = None;
 +        self.deferred = None;
          self.waiting_after = None;
          self.current = None;
          self.failed_continuation = FailedContinuation::None;
-@@ -202,6 +270,7 @@ impl Continuity {
+@@ -202,6 +317,8 @@ impl Continuity {
          }
          self.enabled = false;
          self.restore = None;
++        self.issued_restore = None;
 +        self.deferred = None;
          self.cancel_failed_continuation();
      }
  
-@@ -242,18 +311,28 @@ impl Continuity {
+@@ -242,18 +359,29 @@ impl Continuity {
      /// An accepted EOF may still return Idle when no successor is available.
      pub fn accepts_end(&self, generation: u64, id: &str) -> bool {
          self.accepts(generation) && self.current.as_deref() == Some(id)
@@ -26458,6 +26526,7 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
 +        if !self.accepts_end(generation, installed_id) {
              return Decision::Idle;
          }
++        self.issued_restore = None;
          self.complete |= complete;
          self.consecutive_failures = 0;
 -        self.waiting_after = Some(id.into());
@@ -26467,7 +26536,7 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
      }
  
      /// Resolution/codec failures skip an item once per scan, rather than entering
-@@ -267,7 +346,7 @@ impl Continuity {
+@@ -267,9 +395,10 @@ impl Continuity {
          now_ms: u64,
      ) -> Decision {
          if !self.accepts(generation) || self.current.as_deref() != Some(id)
@@ -26475,16 +26544,22 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
 +            || self.failed.contains(id) || self.deferred.is_some() {
              return Decision::Idle;
          }
++        self.issued_restore = None;
          self.complete |= complete;
-@@ -344,6 +423,7 @@ impl Continuity {
+         self.failed.insert(id.into());
+         self.waiting_after = Some(id.into());
+@@ -344,6 +473,10 @@ impl Continuity {
      }
  
      fn start(&mut self, id: &str, position_ms: u64, reason: Reason) -> Decision {
 +        self.deferred = None;
++        self.issued_restore = (reason == Reason::Restore).then(|| ResumePoint {
++            entry_id: id.into(), position_ms,
++        });
          self.current = Some(id.into());
          self.waiting_after = None;
          self.failed_continuation = FailedContinuation::None;
-@@ -365,9 +445,17 @@ impl Continuity {
+@@ -365,9 +498,17 @@ impl Continuity {
      /// Read the same next-item rule as EOF without changing playback intent.
      /// Pause keeps the planned order; a stopped or different owner has no plan.
      pub fn peek_next<'a>(&self, generation: u64, current: &str, ids: &[&'a str], complete: bool) -> Option<&'a str> {
@@ -26504,7 +26579,46 @@ index d164a95aa2d1c75df8bf81514ba6a3e8b7c9e975..c4ff5a842ac5edc992d3054b10279cd5
      }
  
      fn successor<'a>(&self, after: &str, ids: &[&'a str], complete: bool) -> Option<&'a str> {
-@@ -983,3 +1071,179 @@ mod failed_catalog_burst_tests {
+@@ -397,6 +538,38 @@ impl Continuity {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    #[test]
++    fn resume_floor_keeps_this_checkpoint_when_a_later_sample_releases_it() {
++        let mut floor = ResumeFloor::new(30_000).unwrap();
++        // The callback advances between reading the intended checkpoint and
++        // reading the raw observation. Only subsequent checkpoints are free.
++        assert_eq!(floor.checkpoint(29_000, Some(31_000), Some(60_000)), 30_000);
++        assert_eq!(floor.checkpoint(29_000, Some(29_000), Some(60_000)), 29_000);
++    }
++
++    #[test]
++    fn issued_restore_survives_suspend_but_requires_exact_unconsumed_intent() {
++        let mut c = Continuity::new(1, Some(ResumePoint {
++            entry_id: "saved".into(), position_ms: 30_000,
++        }));
++        assert_eq!(c.catalog_updated(1, &["saved"], true), start("saved", 30_000, Reason::Restore));
++        c.suspend(1);
++        c.rebase(2);
++        c.resume_after_suspend(2);
++        assert!(c.issued_restore(2, "saved", 30_000));
++        assert!(!c.issued_restore(1, "saved", 30_000));
++        assert!(!c.issued_restore(2, "other", 30_000));
++        assert!(!c.issued_restore(2, "saved", 29_000));
++        c.restore_admitted(2, "other", 30_000);
++        assert!(c.issued_restore(2, "saved", 30_000));
++        c.restore_admitted(2, "saved", 30_000);
++        assert!(!c.issued_restore(2, "saved", 30_000));
++
++        let _ = c.start("saved", 30_000, Reason::Restore);
++        c.user_selected(2, "saved");
++        assert!(!c.issued_restore(2, "saved", 30_000), "same row is still new viewer intent");
++    }
++
+     #[test]
+     fn programme_peek_is_the_eof_rule_and_does_not_change_its_owner() {
+         let mut c=Continuity::new(1,None);c.user_selected(1,"c");
+@@ -983,3 +1156,179 @@ mod failed_catalog_burst_tests {
          assert_eq!(attempts, 5, "finite failure budget must not drain a whole large catalogue");
      }
  }
@@ -26899,7 +27013,7 @@ index 0000000000000000000000000000000000000000..a7bb5a4e20d32e1dea57b730d5bad7a0
 +    );
 +}
 diff --git a/rust-modules/src/app/ott_desktop_input.rs b/rust-modules/src/app/ott_desktop_input.rs
-index 3abfdc5592bad9fd81229cca6ca66f9c0b12a0e1..4f2dd6d8653f29960da4ce5bbf12d82a152ffa62 100644
+index 3abfdc5592bad9fd81229cca6ca66f9c0b12a0e1..2d5ab1d478fed3e9a834ba625556e8a03dc55b66 100644
 --- a/rust-modules/src/app/ott_desktop_input.rs
 +++ b/rust-modules/src/app/ott_desktop_input.rs
 @@ -1,4 +1,4 @@
@@ -27088,6 +27202,15 @@ index 3abfdc5592bad9fd81229cca6ca66f9c0b12a0e1..4f2dd6d8653f29960da4ce5bbf12d82a
          }
          Action::Seek(delta) => {
              if !commands::playback_ready(app) {
+@@ -114,7 +229,7 @@ fn perform(
+                 .jump_by(&app.player.session, delta, false, now)
+                 .ok_or("Seeking requires a finite video timeline")?;
+             playback::commit_seek(target);
+-            runtime.viewer_transport(app);
++            runtime.viewer_seek(app);
+         }
+         Action::Step(offset) => {
+             let id = playback_step::target(runtime, app, offset)?;
 @@ -129,9 +244,23 @@ fn perform(
      Ok(())
  }
@@ -30802,9 +30925,18 @@ index 29207a5bd5fd9010cd12abec30743226cf21c7e9..a69dba15a5b0164415b74271fb94bb9f
 +    assert!(runtime.rx.try_recv().is_err());
 +}
 diff --git a/rust-modules/src/app/ott_kiosk_file_tests.rs b/rust-modules/src/app/ott_kiosk_file_tests.rs
-index 0ad7dbe80d8e229616d6a5c4e1ce1569d62bbb2e..a9cc4b8e2f6b2b8fde67039685c8f2ac52562643 100644
+index 0ad7dbe80d8e229616d6a5c4e1ce1569d62bbb2e..9bc5b5383a49f0dc0fb26facc5d918f9f7c5c365 100644
 --- a/rust-modules/src/app/ott_kiosk_file_tests.rs
 +++ b/rust-modules/src/app/ott_kiosk_file_tests.rs
+@@ -6,7 +6,7 @@ use crate::app::ott_local_session as local;
+ use crate::app::ott_runtime::tests::local_integration as fixture;
+ use plx_base::task::OffFrame;
+ 
+-fn setup_file() -> (fixture::TempDir, App, local::BoundSource) {
++fn setup_file() -> (fixture::TempDir, Box<App>, local::BoundSource) {
+     let (guard, mut app, mut source) = fixture::setup();
+     let folder = std::path::Path::new(source.canonical_path.as_deref().unwrap());
+     std::fs::write(folder.join("clip.mp4"), b"held file fixture").unwrap();
 @@ -249,6 +249,7 @@ fn install_file(app: &mut App, source: &local::BoundSource) {
      let info = plx_media::ff::inspect::MediaInfo {
          tracks: Default::default(),
@@ -31492,6 +31624,19 @@ index bdf044e407b3cfd6b6d0f8a5198cda793cbe198c..8b5917154cb3ecd69401135119db170f
          if let Some((mut attempt, fence)) = pending {
              let current = kiosk_source::finish_native_admission(self, app, &mut attempt, fence);
              if let Some(Recovery::Admitted(state)) = self.source_lifecycle.recovery.as_mut() {
+diff --git a/rust-modules/src/app/ott_list_order_runtime_tests.rs b/rust-modules/src/app/ott_list_order_runtime_tests.rs
+index ce3ad53cd30c49017bcf31025590eb1b10afaa33..b1aa61f3b9b46cd841de0f2d45edfd455d728f55 100644
+--- a/rust-modules/src/app/ott_list_order_runtime_tests.rs
++++ b/rust-modules/src/app/ott_list_order_runtime_tests.rs
+@@ -4,7 +4,7 @@ use super::*;
+ use crate::app::ott_runtime::tests::local_integration;
+ use plx_data::ott::{catalog_from_local_files, LocalFile};
+ 
+-fn fixture(permanent: bool) -> (local_integration::TempDir, App) {
++fn fixture(permanent: bool) -> (local_integration::TempDir, Box<App>) {
+     let (directory, mut app, _) = local_integration::setup();
+     app.running = true;
+     bridge::show_page(&mut app.pages, AppArg::Ott);
 diff --git a/rust-modules/src/app/ott_live_label_tests.rs b/rust-modules/src/app/ott_live_label_tests.rs
 index 4be377cc03dc3dedcfdb5cfe1f3f87be75715f58..731ca60a668fa56dca8c90a9268c424b39a45e0e 100644
 --- a/rust-modules/src/app/ott_live_label_tests.rs
@@ -31519,9 +31664,18 @@ index 87e51bb111d69acc02a5c32f4264349bed371298..3d2550fb0ecd4b9ad77391dc2219a73f
              }
          }
 diff --git a/rust-modules/src/app/ott_local_asset_tests.rs b/rust-modules/src/app/ott_local_asset_tests.rs
-index 57966957ccd2904fdb7bc3d265bdb8c9ca416bd5..2d0d315617d41b7188bcfd150f1ae8d34b2aa56f 100644
+index 57966957ccd2904fdb7bc3d265bdb8c9ca416bd5..f32344a13ec8169fa116a04af504bae9edbe2b80 100644
 --- a/rust-modules/src/app/ott_local_asset_tests.rs
 +++ b/rust-modules/src/app/ott_local_asset_tests.rs
+@@ -14,7 +14,7 @@ impl Drop for Reset {
+         route::reset_player_control_for_test(&route::PlaybackSession::IDLE);
+     }
+ }
+-fn fixture() -> (TempDir, App, BoundSource) {
++fn fixture() -> (TempDir, Box<App>, BoundSource) {
+     let (guard, mut app, root) = local_fixture::setup();
+     std::fs::write(
+         Path::new(root.canonical_path.as_deref().unwrap()).join("first.mp4"),
 @@ -592,6 +592,7 @@ fn long_whitespace_prefix_keeps_usable_label_and_discovery_does_not_repeat() {
      let info = plx_media::ff::inspect::MediaInfo {
          tracks: Default::default(),
@@ -36355,7 +36509,7 @@ index e659181b87fb2c031947f9b63c13c0f10d7c7754..6273e86766397aa90f4733484d75ebf1
      }
 diff --git a/rust-modules/src/app/ott_numeric_input.rs b/rust-modules/src/app/ott_numeric_input.rs
 new file mode 100644
-index 0000000000000000000000000000000000000000..7bb5bb839cf431bf766e040ed0994eb3275d6e70
+index 0000000000000000000000000000000000000000..1ffa44252a94c412a35626d9f6f0cacbe964a958
 --- /dev/null
 +++ b/rust-modules/src/app/ott_numeric_input.rs
 @@ -0,0 +1,212 @@
@@ -36468,7 +36622,7 @@ index 0000000000000000000000000000000000000000..7bb5bb839cf431bf766e040ed0994eb3
 +    app.last_input = now;
 +    app.rec.refuse("Numeric seek input is not bound in this recording format");
 +    playback::commit_seek(target);
-+    runtime.viewer_transport(app);
++    runtime.viewer_seek(app);
 +    runtime.changed();
 +    true
 +}
@@ -41118,7 +41272,7 @@ index 98f84bf62ac4d6ef700b9da90736a1f70c0e41d9..1ee1c615cd53cb6ff91a63c5f9b6ab79
              body: r.body,
          });
 diff --git a/rust-modules/src/app/ott_runtime.rs b/rust-modules/src/app/ott_runtime.rs
-index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2db2bcde01 100644
+index 9681ec31dfc280aab9cf7b9fd396c897e040857d..28433b1d30cfb955e97312442db4335b2ade7ed4 100644
 --- a/rust-modules/src/app/ott_runtime.rs
 +++ b/rust-modules/src/app/ott_runtime.rs
 @@ -1,6 +1,8 @@
@@ -41274,7 +41428,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      play_generation: u64,
      resolver_busy: bool,
      resolver_next: Option<ResolveRequest>,
-@@ -489,9 +524,13 @@ pub(super) struct Runtime {
+@@ -489,17 +524,25 @@ pub(super) struct Runtime {
      command_receipts: commands::Receipts,
      kiosk_capture: kiosk_capture::Capture,
      verified_imports: Vec<super::ott_import::VerifiedSource>,
@@ -41288,7 +41442,11 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      /// Only an automatic saved-file restore may be superseded by transport on
      /// the fallback that is still playing. An explicit successor keeps priority.
      restore_play_generation: Option<u64>,
-@@ -500,6 +539,7 @@ pub(super) struct Runtime {
++    /// Preroll protection belongs to the admitted logical playback, not its
++    /// resolver generation or a later decoder reload of the same item.
++    resume_floor: Option<(plx_media::route::PlaybackIdentity, continuity::ResumeFloor)>,
+     resume_pending: Option<PlaybackRequest>,
+     checkpoints: BTreeMap<String, SavedResume>,
      last_checkpoint_ms: u64,
      persistence_uncertain: bool,
      active_lease: Option<HeldLease>,
@@ -41296,7 +41454,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      plex_refresh_pending: bool,
      plex_refresh_requested: bool,
      companion: super::ott_companion::Supervisor,
-@@ -748,6 +788,8 @@ impl Runtime {
+@@ -748,6 +791,8 @@ impl Runtime {
          let (catalog_tx, catalog_rx) = mpsc::sync_channel(4);
          Self {
              desktop_input: desktop_input::State::default(),
@@ -41305,7 +41463,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              guide: None,
              organization: organization_runtime::State::default(),
              search: search::Search::default(),
-@@ -763,6 +805,8 @@ impl Runtime {
+@@ -763,6 +808,8 @@ impl Runtime {
              local_inventory: transient::Inventory::default(),
              write_permit: private::WritePermit::new(),
              clock_sample: None,
@@ -41314,7 +41472,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              clock_anchor: None,
              wall_clock_ms: 0,
              catalog: Catalog::default(),
-@@ -772,7 +816,10 @@ impl Runtime {
+@@ -772,7 +819,10 @@ impl Runtime {
              generation: 0,
              catalog_revision: 0,
              selected: None,
@@ -41325,7 +41483,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              settings_focus: None,
              plex_omitted_servers: 0,
              reply: None,
-@@ -785,6 +832,7 @@ impl Runtime {
+@@ -785,6 +835,7 @@ impl Runtime {
              save_navigation: SaveNavigation::Preserve,
              save_ui_owner: None,
              subtitle_save: None,
@@ -41333,7 +41491,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              loaded: false,
              state_load: StateLoad::Idle,
              cancel: Arc::new(AtomicBool::new(false)),
-@@ -804,6 +852,7 @@ impl Runtime {
+@@ -804,6 +855,7 @@ impl Runtime {
              setup: None,
              pending_setup_save: None,
              archive_hours_editor: None,
@@ -41341,7 +41499,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              remote: Remote::from_install("", ""),
              play_generation: 0,
              resolver_busy: false,
-@@ -827,15 +876,18 @@ impl Runtime {
+@@ -827,15 +879,19 @@ impl Runtime {
              command_receipts: commands::Receipts::default(),
              kiosk_capture: kiosk_capture::Capture::default(),
              verified_imports: Vec::new(),
@@ -41351,6 +41509,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              play_target: None,
 +            play_profile: None,
              restore_play_generation: None,
++            resume_floor: None,
              resume_pending: None,
              checkpoints: BTreeMap::new(),
              last_checkpoint_ms: 0,
@@ -41360,7 +41519,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              plex_refresh_pending: false,
              plex_refresh_requested: false,
              companion,
-@@ -912,9 +964,9 @@ impl Runtime {
+@@ -912,9 +968,9 @@ impl Runtime {
              return Err(error);
          }
          let tx = self.tx.clone();
@@ -41372,7 +41531,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              }))
              .unwrap_or(Err("Plex verification worker failed"));
              let _ = tx.send(Job::PlexVerified(invocation, result));
-@@ -934,6 +986,8 @@ impl Runtime {
+@@ -934,6 +990,8 @@ impl Runtime {
      /// An accepted UI action or a visible partial navigation advances this
      /// stamp. Only a save begun by the accepted action acquires its new stamp.
      fn accepted_navigation(&mut self, started_save: bool) {
@@ -41381,7 +41540,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          self.usb_navigation_exit();
          self.navigation_epoch = self.navigation_epoch.wrapping_add(1);
          self.rebase_organization_navigation();
-@@ -945,6 +999,39 @@ impl Runtime {
+@@ -945,6 +1003,39 @@ impl Runtime {
              self.save_navigation = SaveNavigation::Activate(self.navigation_epoch);
          }
      }
@@ -41421,7 +41580,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      fn sync_saved_context(&mut self) {
          self.observe_m3u_attachments();
          self.parental_confirmed();
-@@ -964,6 +1051,7 @@ impl Runtime {
+@@ -964,6 +1055,7 @@ impl Runtime {
              }
          });
          self.observe_organization_context();
@@ -41429,7 +41588,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      }
      fn changed(&mut self) {
          self.reconcile_search();
-@@ -1001,7 +1089,7 @@ impl Runtime {
+@@ -1001,7 +1093,7 @@ impl Runtime {
      }
      fn catalog_return_after_back(&self) -> Option<String> {
          if self.transient.accepted.is_some() || self.transient.candidate.is_some() { return None; }
@@ -41438,7 +41597,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              ProviderKind::M3u | ProviderKind::VPortal | ProviderKind::Plex))?;
          let fingerprint = profile_fingerprint(profile);
          let carrying = self.page == "profiles"
-@@ -1013,15 +1101,17 @@ impl Runtime {
+@@ -1013,15 +1105,17 @@ impl Runtime {
      fn resume_returned_catalog(&mut self) {
          if self.catalog_return.take().is_some_and(|(generation, fingerprint)|
              generation == self.generation
@@ -41458,7 +41617,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if self.saved.favorites_selected {
              Some("favorites".into())
          } else {
-@@ -1029,6 +1119,9 @@ impl Runtime {
+@@ -1029,6 +1123,9 @@ impl Runtime {
          }
      }
      fn ordered_ids(&self) -> Vec<String> {
@@ -41468,7 +41627,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let (_, favorites) = self.view_selection();
          let category = self.effective_category();
          if favorites {
-@@ -1037,14 +1130,37 @@ impl Runtime {
+@@ -1037,14 +1134,37 @@ impl Runtime {
              self.organization_rows(category).into_iter().map(|(_, entry)|entry.id.clone()).collect()
          }
      }
@@ -41508,7 +41667,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              .and_then(|key| {
                  self.checkpoints
                      .get(&key)
-@@ -1054,10 +1170,13 @@ impl Runtime {
+@@ -1054,10 +1174,13 @@ impl Runtime {
              .map(|value| continuity::ResumePoint {
                  entry_id: value.entry_id.clone(),
                  position_ms: value.position_ms,
@@ -41524,7 +41683,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              self.provider = profile.kind;
              self.page = if self.saved.favorites_selected {
                  "favorites"
-@@ -1084,6 +1203,9 @@ impl Runtime {
+@@ -1084,6 +1207,9 @@ impl Runtime {
      /// Refresh listings without converting an asynchronous completion into a
      /// playback command. In-flight resolvers keep their independent generation.
      fn refresh_catalog_preserving_playback(&mut self) {
@@ -41534,7 +41693,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if self.transient.accepted.is_some() || self.transient.candidate.is_some() { return; }
          let page = self.page;
          let provider = self.provider;
-@@ -1093,7 +1215,7 @@ impl Runtime {
+@@ -1093,7 +1219,7 @@ impl Runtime {
          );
          let resume_pending = self.resume_pending.take();
          let retry = self.continuity_retry_log.take();
@@ -41543,7 +41702,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          self.page = page;
          self.provider = provider;
          continuity.rebase(self.generation);
-@@ -1104,28 +1226,67 @@ impl Runtime {
+@@ -1104,28 +1230,67 @@ impl Runtime {
                  self.now_ms(), self.generation);
          }
      }
@@ -41630,7 +41789,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let Some(task) = task else { return; };
          if !ott_catalog::start(
              task,
-@@ -1134,6 +1295,7 @@ impl Runtime {
+@@ -1134,6 +1299,7 @@ impl Runtime {
              self.catalog_tx.clone(),
              self.catalog_done.clone(),
          ) {
@@ -41638,7 +41797,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              self.usb_launch_failed();
              transient::launch_failed(self);
              self.status = "Could not start catalogue loader".into();
-@@ -1178,6 +1340,7 @@ impl Runtime {
+@@ -1178,6 +1344,7 @@ impl Runtime {
              return Err("A Favorites operation needs reconciliation");
          }
          category_state::prepare_profile_change(&self.saved, &mut candidate)?;
@@ -41646,7 +41805,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          // Forget proof with an explicitly removed or replaced descriptor. Live
          // mount identity refusal is supplied by the existing Local source owner.
          let previous_roots = super::ott_local_sources::RememberedFolders::read(&self.saved.settings)?;
-@@ -1286,9 +1449,9 @@ impl Runtime {
+@@ -1286,9 +1453,9 @@ impl Runtime {
          let tx = self.tx.clone();
          let cancel = self.begin_plex_restore();
          self.plex_refresh_pending =
@@ -41658,7 +41817,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  }))
                  .unwrap_or_else(|_| vec![Err("Plex restoration worker failed")]);
                  let _ = tx.send(Job::PlexRestored(cancel, result));
-@@ -1303,6 +1466,9 @@ impl Runtime {
+@@ -1303,6 +1470,9 @@ impl Runtime {
          self.suspend_with_retry_reason(app, continuity_diagnostics::Reason::Suspend);
      }
      fn suspend_with_retry_reason(&mut self, app: &mut App, reason: continuity_diagnostics::Reason) {
@@ -41668,7 +41827,15 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          self.retire_parental_source();
          let preparation_preserved = self.preserve_kiosk_preparation(app);
          self.preserve_admitted_resume(app);
-@@ -1359,6 +1525,8 @@ impl Runtime {
+@@ -1350,6 +1520,7 @@ impl Runtime {
+         self.continuity.stop(self.generation);
+         self.release_active_lease();
+         self.playing = None;
++        self.resume_floor = None;
+         self.changed();
+     }
+     fn stop_catalog(&mut self, app: &mut App) {
+@@ -1359,6 +1530,8 @@ impl Runtime {
      }
      fn consume_exit(&mut self, app: &mut App) {
          if let Some(exit) = app.player.pending_exit.take() {
@@ -41677,7 +41844,40 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              self.checkpoint_at(app, true, Some(&exit));
              self.retire_catalog_playback(app);
              let reason = match exit.cause {
-@@ -1530,7 +1698,17 @@ impl Runtime {
+@@ -1372,6 +1545,12 @@ impl Runtime {
+     /// Accepted viewer transport commits the currently playing fallback. This
+     /// is called by remote and native performers, never by internal clock holds.
+     fn viewer_transport(&mut self, app: &App) {
++        self.viewer_transport_intent(app, false);
++    }
++    fn viewer_seek(&mut self, app: &App) {
++        self.viewer_transport_intent(app, true);
++    }
++    fn viewer_transport_intent(&mut self, app: &App, seek: bool) {
+         if !playback_allowed(app) || app.player.pending_exit.is_some() {
+             return;
+         }
+@@ -1387,6 +1566,11 @@ impl Runtime {
+         if playing_superseded(playing, app) {
+             return;
+         }
++        // The performer supplies accepted viewer intent, not an inference from
++        // the native seek mailbox: internal speed/reload work uses that too.
++        if seek {
++            self.resume_floor = None;
++        }
+         let id = playing.selection_id.clone();
+         self.playback_epoch = self.playback_epoch.wrapping_add(1);
+         if restoring {
+@@ -1442,6 +1626,7 @@ impl Runtime {
+         let plex_failure = transient::plex_remote::failure_event(self, app);
+         self.checkpoint(app, false);
+         self.playing = None;
++        self.resume_floor = None;
+         self.release_active_lease();
+         plx_media::player::stop_bufferfeed(&mut app.player.session, &mut app.adapters.player);
+         plx_media::route::cancel_play(&mut app.player.session);
+@@ -1530,7 +1715,17 @@ impl Runtime {
              else {
                  break;
              };
@@ -41696,7 +41896,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  Ok(()) => {
                      self.restore_play_generation = (reason == continuity::Reason::Restore)
                          .then_some(self.play_generation);
-@@ -1583,6 +1761,43 @@ impl Runtime {
+@@ -1583,6 +1778,43 @@ impl Runtime {
      fn checkpoint(&mut self, app: &App, force: bool) {
          self.checkpoint_at(app, force, None);
      }
@@ -41740,7 +41940,38 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      fn checkpoint_at(
          &mut self,
          app: &App,
-@@ -1633,7 +1848,7 @@ impl Runtime {
+@@ -1622,18 +1854,37 @@ impl Runtime {
+         } else {
+             playing.profile.id.clone()
+         };
+-        let position_ms = exit
++        let mut position_ms = exit
+             .map_or_else(
+                 || playback::intended_pos(&app.player.session),
+                 |exit| exit.position_ns,
+             )
+             .max(0) as u64
+             / 1_000_000;
++        if let Some((owner, floor)) = self.resume_floor.as_mut() {
++            if playing.identity.as_ref() == Some(&*owner) {
++                // ExitReceipt captures intended position before teardown. It
++                // may be a pending target, so it can never discharge this floor.
++                // Neither can intended_pos while the initial seek is pending.
++                let observed = exit.is_none() && plx_media::player::seen_frame()
++                    && !plx_media::route::play_pending();
++                let duration_ns = plx_media::player::duration_ns();
++                let raw_ns = plx_media::player::playpos_ns();
++                let observed_ms = (observed && raw_ns >= 0
++                    && (duration_ns <= 0 || raw_ns <= duration_ns))
++                    .then_some(raw_ns.max(0) as u64 / 1_000_000);
++                let duration_ms = (observed && duration_ns > 0)
++                    .then_some(duration_ns.max(0) as u64 / 1_000_000);
++                position_ms = floor.checkpoint(position_ms, observed_ms, duration_ms);
++            } else {
++                self.resume_floor = None;
++            }
++        }
+         let durable_local = kiosk_resume::checkpoint(self, &playing, position_ms);
          let temporary = self.transient_checkpoint(&playing, position_ms);
          if let Some(point) = durable_local {
              self.checkpoints.insert(kiosk_resume::KEY.into(), point);
@@ -41749,7 +41980,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          else { self.checkpoints.insert(
              key,
              SavedResume {
-@@ -1744,9 +1959,37 @@ impl Runtime {
+@@ -1744,9 +1995,37 @@ impl Runtime {
          Ok(())
      }
      fn launch_metadata(&mut self) {
@@ -41787,7 +42018,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if !self.metadata_work_allowed() { return; }
          if matches!(self.metadata_next.as_ref(), Some((_, MetadataSelection::LocalPublish(_)))) { return; }
          if !self.metadata_done.load(Ordering::Acquire) {
-@@ -1774,7 +2017,10 @@ impl Runtime {
+@@ -1774,7 +2053,10 @@ impl Runtime {
                  self.metadata_done.clone(),
              )),
              MetadataSelection::Favorite(favorite, local_proof) => query.is_some_and(|query| {
@@ -41799,7 +42030,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                      super::ott_metadata::start_attachment_favorite(receipt,favorite,self.metadata_generation,
                          query,self.metadata_cancel.clone(),
                          self.metadata_tx.clone(),self.metadata_done.clone())
-@@ -1853,15 +2099,23 @@ impl Runtime {
+@@ -1853,15 +2135,23 @@ impl Runtime {
          self.organization_categories().into_iter().find(|category| category.id == id).map(|category| category.title)
      }
  
@@ -41824,7 +42055,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if let Some(mut view) = companion_adapter::view(self) {
              if let Some(status) = self.protected_state_status() {
                  view.status = status.into();
-@@ -1875,7 +2129,8 @@ impl Runtime {
+@@ -1875,7 +2165,8 @@ impl Runtime {
          let search = self.search_filter();
          let media_resume = self.ui_media_resume();
          let favorite_index = self.selection_bindings().ok().and_then(|bindings|self.row_owner()
@@ -41834,7 +42065,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let mut rows: Vec<OttRow> = match self.page {
              "profile-setup" => self.setup.as_ref().map(|setup| {
                  let editable = self.pending_setup_save != Some(setup.id);
-@@ -1924,10 +2179,25 @@ impl Runtime {
+@@ -1924,10 +2215,25 @@ impl Runtime {
              .collect(),
              "profiles" => {
                  let mut profiles: Vec<_> = self.saved.profiles.profiles.iter()
@@ -41863,7 +42094,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if self.provider != ProviderKind::Plex {
                      let refusal = self.profile_add_refusal();
                      let mut add = row("action/profile.add".into(), "Add profile".into(),
-@@ -1941,8 +2211,15 @@ impl Runtime {
+@@ -1941,8 +2247,15 @@ impl Runtime {
                      connect.enabled = self.loaded && !self.saving;
                      profiles.push(connect);
                  }
@@ -41879,7 +42110,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              "categories" => std::iter::once(row(
                  "all".into(),
                  "All".into(),
-@@ -1993,6 +2270,8 @@ impl Runtime {
+@@ -1993,6 +2306,8 @@ impl Runtime {
                      if let Some(entry) = preview {
                          item.guide_available = self.prepare_play_request(PlaybackRequest::ordinary(&id, 0))
                              .is_ok_and(|(_, profile, _, _)| guide_ui::is_live(&profile, entry));
@@ -41888,7 +42119,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                          item.description = entry.description.clone();
                          item.poster = if matches!(entry.media, MediaLocator::Local { .. }) { self.local_entry_art(entry) } else { entry_poster(entry) };
                      }
-@@ -2010,7 +2289,16 @@ impl Runtime {
+@@ -2010,7 +2325,16 @@ impl Runtime {
                  ("remote.address", "Remote control server"),
                  ("remote.find", "Find command server"),
                  ("uiFontScale", "Interface text scale (%)"),
@@ -41905,7 +42136,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  ("native.audio", "Audio tracks"),
                  ("native.subtitles", "Subtitles and appearance"),
                  ("native.settings", "Playback and interface settings"),
-@@ -2030,18 +2318,25 @@ impl Runtime {
+@@ -2030,18 +2354,25 @@ impl Runtime {
                      id.into(),
                      title.into(),
                      if id == "uiFontScale" { format!("{}%", self.font_scale_percent()) }
@@ -41932,7 +42163,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if id == "remote.find" {
                      item.enabled = self.remote_snapshot["persisted"] != false && self.remote_snapshot["saving"] != true;
                  }
-@@ -2066,6 +2361,7 @@ impl Runtime {
+@@ -2066,6 +2397,7 @@ impl Runtime {
                              .is_some_and(|index| index.contains(e)),
                      );
                      item.guide_available = self.effective_profile().is_some_and(|profile| guide_ui::is_live(profile, e));
@@ -41940,7 +42171,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                      item.content_title = Some(e.title.clone());
                      item.media = ui_projection::entry(e, &e.id, media_resume);
                      item.guide = self.selected_row_guide(&e.id, Some(e));
-@@ -2170,12 +2466,17 @@ impl Runtime {
+@@ -2170,12 +2502,17 @@ impl Runtime {
                  else { self.organization_category_id(effective_category) }),
              "settings" => self.settings_focus.filter(|id| rows.iter().any(|row| row.enabled && row.id == *id))
                  .map(str::to_owned),
@@ -41959,7 +42190,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          };
          let page_id = if self.page == "profile-setup" {
              format!("profile-setup:{}", self.setup.as_ref()
-@@ -2185,7 +2486,7 @@ impl Runtime {
+@@ -2185,7 +2522,7 @@ impl Runtime {
          } else {
              self.search_page_id().unwrap_or_else(|| self.page.into())
          };
@@ -41968,7 +42199,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              preview_context: preview::context(self),
              order_context: self.local_order_key(),
              random_context: random::context(self, &rows),
-@@ -2197,13 +2498,16 @@ impl Runtime {
+@@ -2197,13 +2534,16 @@ impl Runtime {
                  "providers" => "Providers",
                  "profiles" => "Profiles",
                  "profile-setup" => "Profile setup",
@@ -41986,7 +42217,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  "Enter the connection details supplied by your provider".into()
              } else if self.page == "settings" && self.remote_snapshot["pairing_server"].as_str().is_some_and(|s| !s.is_empty()) {
                  self.remote_snapshot["pairing_server"].as_str().unwrap_or("").into()
-@@ -2297,10 +2601,18 @@ impl Runtime {
+@@ -2297,10 +2637,18 @@ impl Runtime {
              return Err("This profile changed; reopen its setup before saving");
          }
          let mut candidate = self.saved.clone();
@@ -42005,7 +42236,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              candidate.profiles.profiles.push(profile.clone());
          }
          candidate.profiles.active_profile = Some(profile.id);
-@@ -2316,6 +2628,7 @@ impl Runtime {
+@@ -2316,6 +2664,7 @@ impl Runtime {
              return;
          }
          self.complete_archive_hours(session);
@@ -42013,7 +42244,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if let Some(profile) = self.edit_profile.as_ref().and_then(|draft|
              self.saved.profiles.profiles.iter().find(|current| current.id == draft.id)).cloned()
          {
-@@ -2339,6 +2652,7 @@ impl Runtime {
+@@ -2339,6 +2688,7 @@ impl Runtime {
      }
  
      fn recover_plex_profiles(&mut self, app: &mut App, explicit: bool) -> Result<(), &'static str> {
@@ -42021,7 +42252,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          use super::ott_plex_setup::{self, PlexSetupPlan, PlexSetupServer};
          self.profile_focus = None;
          self.plex_omitted_servers = 0;
-@@ -2347,6 +2661,7 @@ impl Runtime {
+@@ -2347,6 +2697,7 @@ impl Runtime {
          let servers: Vec<_> = plx_plex::plex::server_ids().into_iter().filter_map(|sid| {
              let client = plx_plex::plex::client_for(sid)?;
              let machine_id = client.machine_id();
@@ -42029,7 +42260,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              if machine_id.is_empty()
                  || !plx_plex::plex::grant::credential_allowed_for(machine_id, client.origin())
              {
-@@ -2367,6 +2682,7 @@ impl Runtime {
+@@ -2367,6 +2718,7 @@ impl Runtime {
          }
          if let Some(error) = self.settings_write_refusal() { return Err(error); }
          match ott_plex_setup::plan(&self.saved.profiles, &servers)? {
@@ -42037,7 +42268,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              PlexSetupPlan::Login => app.pages.emit(MachineId::Nav,
                  Fx::App(plx_screens::registry::AppFx::Loop(
                      plx_screens::registry::LoopReq::AccountSignIn))),
-@@ -2387,6 +2703,7 @@ impl Runtime {
+@@ -2387,6 +2739,7 @@ impl Runtime {
  
      fn cancel_editor(&mut self) {
          self.archive_hours_editor = None;
@@ -42045,7 +42276,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          self.organization_cancel_editor();
          self.edit_session = None;
          self.edit_profile = None;
-@@ -2395,6 +2712,47 @@ impl Runtime {
+@@ -2395,6 +2748,47 @@ impl Runtime {
          // a draft must neither cancel that write nor retarget its result.
      }
  
@@ -42093,7 +42324,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      fn editor_result(&mut self, app: &mut App, session: &EditorSession, error: Option<String>) {
          if error.is_none() && self.edit_session.as_ref() == Some(session) {
              self.cancel_editor();
-@@ -2405,7 +2763,7 @@ impl Runtime {
+@@ -2405,7 +2799,7 @@ impl Runtime {
                  MachineId::Instance(session.owner),
                  Delivery::Screen(plx_ui::screen::ScreenEvent::App(AppMsg::OttEditorResult {
                      session: session.id,
@@ -42102,7 +42333,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  })),
              ),
          );
-@@ -2424,11 +2782,18 @@ impl Runtime {
+@@ -2424,11 +2818,18 @@ impl Runtime {
              );
          }
      }
@@ -42121,7 +42352,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          self.restore_play_generation = None;
          self.play_ticket = None;
          self.resolver_next = None;
-@@ -2438,6 +2803,7 @@ impl Runtime {
+@@ -2438,6 +2839,7 @@ impl Runtime {
          }
      }
      fn rebind_native_admission(&mut self,app:&App,profile:&ProviderProfile,entry:&CatalogEntry)->Result<(),&'static str> {
@@ -42129,7 +42360,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if favorites_items::pending_error(self).is_some() { return Err("Favorite selection changed before playback"); }
          let request=self.play_target.as_ref().ok_or("Playback request is no longer current")?.clone();
          let (bound,bound_profile,bound_entry,favorite)=match transient::staged_native_binding(self,&request) {
-@@ -2459,6 +2825,7 @@ impl Runtime {
+@@ -2459,6 +2861,7 @@ impl Runtime {
          kiosk_capture::explicit_admitted(self);
          Ok(())
      }
@@ -42137,7 +42368,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      fn play(&mut self, app: &mut App, id: &str) -> Result<(), &'static str> {
          self.play_with_policy(app, id, true)
      }
-@@ -2472,6 +2839,9 @@ impl Runtime {
+@@ -2472,6 +2875,9 @@ impl Runtime {
          self.play_request_with_policy(app,request)
      }
      fn play_request_with_policy(&mut self,app:&mut App,request:PlaybackRequest)->Result<(),&'static str> {
@@ -42147,7 +42378,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2480,6 +2850,7 @@ impl Runtime {
+@@ -2480,6 +2886,7 @@ impl Runtime {
          if !transient::lifecycle_target_ready(self, &profile, request.local_selection.as_ref()) {
              return Err("The local source is still being validated");
          }
@@ -42155,7 +42386,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let policy_profile=self.attachment_policy_profile(&profile,favorite.as_ref())?;
          self.require_parental_playback(&policy_profile)?;
          kiosk_source::admit_bound(self,app,kiosk_source::BoundCandidate {request:&request,profile:&profile,entry:entry.as_ref(),favorite:favorite.as_ref()}).map_err(kiosk_source::SourceError::message)?;
-@@ -2487,9 +2858,10 @@ impl Runtime {
+@@ -2487,9 +2894,10 @@ impl Runtime {
          self.resume_pending=None;
          self.playback_epoch=self.playback_epoch.wrapping_add(1);
          self.continuity.user_selected(self.generation,&id);
@@ -42167,7 +42398,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              if let Some(playing) = self.playing.as_ref() {
                  self.continuity
                      .retain_selection(self.generation, &playing.selection_id);
-@@ -2573,7 +2945,11 @@ impl Runtime {
+@@ -2573,7 +2981,11 @@ impl Runtime {
          self.queue_play_request(request,profile,entry,favorite,true)
      }
      fn queue_play_request(&mut self, request:PlaybackRequest, profile:ProviderProfile,
@@ -42180,7 +42411,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if !self.play_work_allowed() {
              return Err("Media work is waiting for foreground or worker retirement");
          }
-@@ -2594,7 +2970,9 @@ impl Runtime {
+@@ -2594,7 +3006,9 @@ impl Runtime {
          let selected_id = request.id.clone();
          let archive = request.archive.clone();
          self.play_target=Some(request);
@@ -42190,7 +42421,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          transient::plex_remote::selected(self, &selected_id);
          self.status="Opening video…".into();
          self.resolver_next=Some(ResolveRequest{archive,generation:self.play_generation,profile,entry,favorite,local_proof,cancel:self.play_cancel.clone(),plex:None,plex_choice,local_read});
-@@ -2623,6 +3001,17 @@ impl Runtime {
+@@ -2623,6 +3037,17 @@ impl Runtime {
          }
      }
      fn launch_resolver(&mut self) -> Result<(), &'static str> {
@@ -42208,7 +42439,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if self.resolver_next.is_some() && !self.pending_attachment_current() { return Err("M3U media attachment changed before lookup"); }
          if !self.play_work_allowed() { return Ok(()); }
          if self.resolver_busy {
-@@ -2642,6 +3031,12 @@ impl Runtime {
+@@ -2642,6 +3067,12 @@ impl Runtime {
              archive, generation, profile, entry, favorite, local_proof, cancel, plex, plex_choice, local_read,
          } = request;
          let sender = self.tx.clone();
@@ -42221,7 +42452,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          // Preparation only reads Plex metadata. An actual prepared choice is
          // a replacement: transfer the previous lease to this same worker so
          // its stop completion is drained before native Plex admission.
-@@ -2662,9 +3057,9 @@ impl Runtime {
+@@ -2662,9 +3093,9 @@ impl Runtime {
                      .lock()
                      .unwrap_or_else(|poison| poison.into_inner())
                      .take();
@@ -42234,7 +42465,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if cancel.load(Ordering::Relaxed) {
                      return Err("Playback request cancelled");
                  }
-@@ -2697,23 +3092,20 @@ impl Runtime {
+@@ -2697,23 +3128,20 @@ impl Runtime {
                      let (source, lease) = if matches!(entry.media, MediaLocator::Local { .. }) {
                          (transient::open_video_source(worker, local_read.as_ref(), &profile, &entry, &cancel)?, None)
                      } else {
@@ -42266,7 +42497,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  };
                  if cancel.load(Ordering::Relaxed) {
                      if let ReadySource::External(_, _, Some(lease)) = ready {
-@@ -2721,16 +3113,24 @@ impl Runtime {
+@@ -2721,16 +3149,24 @@ impl Runtime {
                      }
                      return Err("Playback request cancelled");
                  }
@@ -42293,7 +42524,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              if let Some(lease) = previous_lease.lock().unwrap_or_else(|poison| poison.into_inner()).take() {
                  self.active_lease = Some(lease);
              }
-@@ -2829,6 +3229,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2829,6 +3265,10 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
              Job::FavoriteCommit(result) => favorites::finish(runtime, result),
              Job::FavoriteRecovery(result) => favorites_recovery::finish(runtime, result),
              Job::PlexPrepared(..) => { runtime.resolver_busy = false; }
@@ -42304,7 +42535,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              Job::Play(_, _, result) => {
                  runtime.resolver_busy = false;
                  if let Ok((_, ReadySource::External(_, _, Some(lease)))) = result {
-@@ -2848,6 +3252,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2848,6 +3288,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      let started = ClockSample::capture_main(app.adapters.player.mt()).ok();
      Runtime::withdraw_reminder_ui(app);
      runtime.reminders.invalidate();
@@ -42312,7 +42543,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      runtime.reminder_save = None;
      runtime.consume_exit(app);
      runtime.checkpoint(app, false);
-@@ -2863,7 +3268,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2863,7 +3304,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
      transient::plex_remote::cancel_shutdown(&runtime);
      runtime.cancel_play_request();
      runtime.cancel_catalog();
@@ -42321,7 +42552,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      if let Some(lease) = runtime.active_lease.take() {
          lease.begin_release();
          leases.push(lease.into_lease());
-@@ -2920,6 +3325,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+@@ -2920,6 +3361,7 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
          transient::revoke_unavailable_proofs(&runtime, &mut saved);
          kiosk_resume::merge(&mut saved, &runtime.checkpoints);
          kiosk_resume::sanitize(&mut saved);
@@ -42329,7 +42560,26 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let _ = favorites::write_verified(&saved, &runtime.write_permit);
      }
      for lease in leases {
-@@ -2942,12 +3348,14 @@ pub(super) fn viewer_transport(app: &mut App) {
+@@ -2933,8 +3375,17 @@ fn shutdown_with_budget(app: &mut App, allowance: std::time::Duration) {
+ 
+ /// Synchronous native-input handoff, after the media performer accepted it.
+ pub(super) fn viewer_transport(app: &mut App) {
++    viewer_action(app, playback::ViewerTransport::Transport);
++}
++
++/// Preserve the performer's distinction between accepted seek and pause/play.
++pub(super) fn viewer_action(app: &mut App, action: playback::ViewerTransport) {
+     if let Some(mut runtime) = app.ott.take() {
+-        runtime.viewer_transport(app);
++        match action {
++            playback::ViewerTransport::None => {}
++            playback::ViewerTransport::Transport => runtime.viewer_transport(app),
++            playback::ViewerTransport::Seek => runtime.viewer_seek(app),
++        }
+         app.ott = Some(runtime);
+     }
+ }
+@@ -2942,12 +3393,14 @@ pub(super) fn viewer_transport(app: &mut App) {
  pub(super) fn track_request(app: &mut App, request: plx_screens::registry::PlayerReq)
      -> Option<plx_screens::registry::PlayerReq>
  {
@@ -42346,7 +42596,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
  }
  
  /// Validate queued remote track work before the native pump consumes it. The
-@@ -2963,6 +3371,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
+@@ -2963,6 +3416,16 @@ pub(super) fn before_playback_tick(app: &mut App) {
  }
  
  pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSample) {
@@ -42363,7 +42613,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      let programme_changed = observe_programme(app, clock_sample.unix_ms());
      let Some(mut runtime) = app.ott.take() else {
          app.bridge.publish_ott_catalog_offer(None);
-@@ -2982,12 +3400,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2982,12 +3445,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          app.rec
              .refuse("Nondefault UI typography is not bound in this recording format");
      }
@@ -42379,7 +42629,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  runtime.persistence_uncertain = true;
                  Job::Loaded(Ok((saved, entropy)))
              },
-@@ -2995,6 +3415,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -2995,6 +3460,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          };
          match job {
              Job::LoadedItemsUncertain(_, _) => unreachable!("load uncertainty normalized above"),
@@ -42387,7 +42637,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              Job::Parental(completion) => parental_runtime::completed(&mut runtime, app, completion),
              Job::Loaded(result) => {
                  runtime.kiosk_capture.cancel_unwritten();
-@@ -3004,8 +3425,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3004,8 +3470,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let browse = (runtime.page, runtime.provider);
                  match result {
                      Ok((saved, entropy)) => {
@@ -42400,7 +42650,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                          runtime.saved = saved;
                          transient::local_save_finished(&mut runtime, true);
                          runtime.sync_saved_context();
-@@ -3013,7 +3438,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3013,7 +3483,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          runtime.parental_authoritative_load();
                          runtime.status.clear();
                          if let Err(error) = runtime.load_reminders(app) { runtime.status = error.into(); }
@@ -42409,7 +42659,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                              runtime.status = error.into();
                          }
                          if let Err(error) = runtime
-@@ -3028,6 +3453,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3028,6 +3498,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          } else {
                              runtime.plex_refresh_requested = true;
                              let kiosk_startup = runtime.stage_kiosk_startup(app);
@@ -42417,7 +42667,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                              if runtime.active().is_some() {
                                  if runtime.navigation_epoch == 0 {
                                      runtime.load_catalog();
-@@ -3080,6 +3506,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3080,6 +3551,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          (Err(Cow::Owned(save_error::message(error))), invocation, reload, response),
                      _ => unreachable!("matched settings write completion"),
                  };
@@ -42425,7 +42675,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  let browse = (runtime.page, runtime.provider);
                  let navigation = std::mem::replace(&mut runtime.save_navigation, SaveNavigation::Preserve);
                  let ui_owner = runtime.save_ui_owner.take();
-@@ -3102,7 +3529,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3102,7 +3574,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  let usb_activation_ready = result.as_ref().is_ok_and(|candidate|
                      owner_current && runtime.save_playback_epoch == runtime.playback_epoch
                          && runtime.usb_save_ready(candidate));
@@ -42435,7 +42685,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  let mut editor_error = None;
                  let setup_persisted = result.is_ok();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
-@@ -3126,10 +3554,19 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3126,10 +3599,19 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          if (source_changed && restore_allowed) || usb_ready {
                              runtime.invalidate_source(app);
                          }
@@ -42455,7 +42705,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                          runtime.usb_save_finished(usb_ready);
                          kiosk_resume::reconciled(&mut runtime);
                          runtime.parental_confirmed();
-@@ -3151,7 +3588,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3151,7 +3633,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      super::ott_import::register_verified(&source).map(|_| ())
                                  })
                              })
@@ -42465,7 +42715,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                          kiosk_settings_applied = applied.is_ok();
                          if let Err(error) = applied {
                              subtitle_outcome = TrackCommitOutcome::Rejected(TrackCommitFailure::Unavailable);
-@@ -3176,7 +3614,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3176,7 +3659,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                                      } else {
                                          runtime.continuity.suppress_unrequested_start();
                                      }
@@ -42476,7 +42726,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                                  }
                              }
                              response
-@@ -3192,6 +3632,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3192,6 +3677,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                          response
                      }
                  };
@@ -42484,7 +42734,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if let Some(startup) = usb_startup { runtime.finish_usb_startup(app, startup); }
                  if !may_navigate || usb_preserve_browse {
                      (runtime.page, runtime.provider) = browse;
-@@ -3235,10 +3676,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3235,10 +3721,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.remote.complete(invocation, response);
                  }
                  if let Some(pending) = subtitle_save { pending.finish(app, subtitle_outcome); }
@@ -42498,7 +42748,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  runtime.kiosk_capture.cancel_unwritten();
                  let capture_write=invocation.is_none() && runtime.kiosk_capture.pending();
                  runtime.parental_uncertain();
-@@ -3389,7 +3833,12 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3389,7 +3878,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.changed();
                  }
              }
@@ -42508,10 +42758,11 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
 +            }
              Job::Play(generation, profile, result) if generation == runtime.play_generation => {
 +                vportal_quality::completed_resolution(&mut runtime, generation);
++                let automatic_resume = runtime.restore_play_generation == Some(generation);
                  runtime.restore_play_generation = None;
                  let superseded = runtime
                      .play_ticket
-@@ -3448,8 +3897,19 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3448,8 +3943,23 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              runtime.retire_result(Ok((entry,source)));
                              return Err(error);
                          }
@@ -42523,7 +42774,11 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
 +                            .and_then(|favorite| selection::ChannelCapture::resolved(favorite, &entry));
                          let before=plx_media::route::play_request_ticket();
 -                        let result=runtime.start_resolved_with_kiosk(app,profile,entry,source);
++                        // Carry the resolver's reason only through synchronous
++                        // admission. Pre-admission refusal keeps its old policy.
++                        runtime.restore_play_generation = automatic_resume.then_some(generation);
 +                        let result=start(&mut runtime,app,profile,entry,source);
++                        runtime.restore_play_generation = None;
 +                        if result.is_ok() {
 +                            if let Some(playing) = runtime.playing.as_mut() {
 +                                if playing.channel_capture.is_none() { playing.channel_capture = resolved_capture; }
@@ -42532,7 +42787,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                          native_start=Some(NativeStartReceipt {generation,before,after:plx_media::route::play_request_ticket()});
                          result
                      })
-@@ -3527,7 +3987,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3527,7 +4037,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      }
      runtime.reconcile_m3u_attachment(app);
      let resolver_generation = runtime.play_generation;
@@ -42541,7 +42796,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          transient::plex_remote::resolver_failed(&mut runtime);
          // Synchronous resolver refusal has the same kiosk-before-catalog order.
          let pinned_retry = runtime.kiosk_resolve_failed(app, runtime.play_generation);
-@@ -3555,18 +4015,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3555,18 +4065,40 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      // immutable screen model. Large local folders must not rebuild the full list
      // once for every 64 files that arrived during the same frame.
      runtime.rearm_source_work(app);
@@ -42584,7 +42839,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              }
              CatalogEvent::Finished(generation, result) if generation == runtime.generation => {
                  runtime.catalog_warning = None;
-@@ -3581,11 +4063,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3581,11 +4113,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          }
      }
      transient::scan_result(&mut runtime,app,&mut incoming,&mut finished);
@@ -42599,7 +42854,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              finished = None;
          } else {
              runtime.catalog_revision = runtime.catalog_revision.wrapping_add(1);
-@@ -3605,12 +4089,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3605,12 +4139,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  .map(|(_, warning)| warning.to_owned())
                  .unwrap_or_else(|| format!("{} videos", runtime.catalog.entries.len())));
          runtime.changed();
@@ -42614,7 +42869,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if guide_ui::accept_failure(&mut runtime, &event) { continue; }
                  event
              },
-@@ -3631,6 +4117,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3631,6 +4167,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                  continue;
              }
          };
@@ -42624,7 +42879,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if !runtime.metadata_attachment_current() { continue; }
          if let Some(binding)=runtime.metadata_local_selection.as_ref(){
              let current=runtime.saved.favorites.entries().iter().find(|f|event.entry_id==format!("favorite:{}",f.identity()));
-@@ -3696,7 +4185,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3696,7 +4235,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      if updated != entry
                          && runtime
                              .catalog
@@ -42633,7 +42888,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                                  entries: vec![updated],
                              })
                              .is_ok()
-@@ -3741,7 +4230,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3741,7 +4280,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      transient::cleanup_local_proofs(&mut runtime);
      transient::pending_tick(&mut runtime,app);
      runtime.poll_local_assets(app);
@@ -42642,7 +42897,24 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      if playback_allowed(app) {
          live_hud::rearm_player(&mut runtime, app);
          runtime.refresh_metadata();
-@@ -3785,13 +4274,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3765,6 +4304,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+         };
+         if let Some(request) = resume {
+             let exact = !request.advance_on_failure;
++            let automatic_resume = runtime.continuity.issued_restore(
++                runtime.generation, &request.id, request.position_ms);
+             let result = if request.continuation.as_ref().is_some_and(|identity|
+                 !plx_media::route::playback_identity_matches(&app.player.session, identity))
+             {
+@@ -3776,6 +4317,7 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+                 runtime.play_request(request)
+             };
+             if result.is_ok() {
++                runtime.restore_play_generation = automatic_resume.then_some(runtime.play_generation);
+                 if let Some(attempt) = kiosk_source::admitted_pinned_request(&runtime) {
+                     runtime.note_kiosk_attempt(attempt);
+                 }
+@@ -3785,13 +4327,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                      runtime.continuity.stop(runtime.generation);
                  }
                  runtime.play_target = None;
@@ -42659,7 +42931,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              let ids = runtime.ordered_ids();
              let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
              let decision = runtime.continuity.catalog_updated(
-@@ -3835,10 +4324,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3835,10 +4377,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
              OttOut::Action { reply, action } => {
                  runtime.reply = Some(reply);
                  let navigates = match &action {
@@ -42676,7 +42948,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                      OttAction::EditSetting(key) if key == "local.usb" || key.starts_with("local.usb.select:")
                          || key.starts_with("local.usb.browse:") => false,
                      OttAction::Back if runtime.usb_browsing() => false,
-@@ -3850,36 +4342,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3850,36 +4395,13 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
                              && matches!(editor.purpose, search::EditorPurpose::Search { .. })),
                      OttAction::CancelSetting { session } => runtime.edit_session.as_ref()
                          .is_some_and(|editor| editor.id == *session && editor.owner == reply),
@@ -42716,7 +42988,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if runtime.reply.is_none() { break; }
              }
          }
-@@ -3889,8 +4358,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3889,8 +4411,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      let state = state(app, &runtime);
      for invocation in runtime.remote.tick(now, state) {
          let response = if let Err(error) = input_policy::remote(&mut runtime, &invocation) {
@@ -42727,7 +42999,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          } else if matches!(
              invocation.action.as_str(),
              "native_companion" | "torrent_indexer"
-@@ -3901,6 +4370,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3901,6 +4423,9 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          } else {
              commands::command(&mut runtime, app, &invocation)
          };
@@ -42737,7 +43009,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          if let Some(response) = response {
              runtime.remote.complete(invocation, response);
          }
-@@ -3913,9 +4385,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3913,9 +4438,14 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
          runtime.remote_snapshot = snapshot;
          runtime.changed();
      }
@@ -42752,7 +43024,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      // Consume failed-start deadlines only after viewer and remote commands, so
      // Stop/standby/source changes win even on the frame a retry becomes due.
      if playback_allowed(app) && runtime.play_work_allowed() && runtime.play_target.is_none()
-@@ -3936,6 +4413,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3936,6 +4466,8 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      if !plx_appkit::menu_visibility::projected().is_default() {
          app.rec.refuse("Nondefault menu visibility is not bound in this recording format");
      }
@@ -42761,7 +43033,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      let programme_dirty=programme_changed || runtime.revision != before;
      publish_programme(&mut runtime, app, programme_dirty);
      if runtime.revision != before {
-@@ -3945,40 +4424,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
+@@ -3945,40 +4477,111 @@ pub(super) fn tick(app: &mut App, clock_sample: plx_base::task::time::ClockSampl
      app.ott = Some(runtime);
  }
  
@@ -42878,7 +43150,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              | OttAction::PlayArchive { .. } | OttAction::ReturnLive { .. } | OttAction::ToggleReminder { .. }
              => unreachable!("guide action was handled above"),
          OttAction::ReminderAnswer { .. } => return Err("Reminder reply must come from the player"),
-@@ -3990,6 +4540,10 @@ fn handle_action(
+@@ -3990,6 +4593,10 @@ fn handle_action(
              | OttAction::CancelSearch { .. } => unreachable!("search action was handled above"),
          OttAction::ShowProviders => { runtime.cancel_setup(); runtime.page = "providers"; }
          OttAction::ShowProfiles => { runtime.cancel_setup(); runtime.page = "profiles"; }
@@ -42889,7 +43161,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          OttAction::ShowCategories => { runtime.cancel_setup(); runtime.page = "categories"; }
          OttAction::ShowFavorites => {
              runtime.save_category_choice(None)?;
-@@ -4014,6 +4568,18 @@ fn handle_action(
+@@ -4014,6 +4621,18 @@ fn handle_action(
                  runtime.recover_plex_profiles(app, false)?;
              }
          }
@@ -42908,7 +43180,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          OttAction::SelectProfile(id) => {
              let mut saved = runtime.saved.clone();
              saved.profiles.active_profile = Some(id);
-@@ -4038,12 +4604,16 @@ fn handle_action(
+@@ -4038,12 +4657,16 @@ fn handle_action(
                      .ok_or("Video not found")?;
                  let bindings=runtime.selection_bindings().map_err(|_|"Source inventory is invalid")?;
                  let owner=runtime.row_owner().ok_or("Select a provider profile")?;
@@ -42925,7 +43197,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          OttAction::Preview(id) => {
              if id.starts_with("favorite:") {
                  return runtime.request_favorite_metadata(&id);
-@@ -4060,13 +4630,24 @@ fn handle_action(
+@@ -4060,13 +4683,24 @@ fn handle_action(
                  }
              }
          }
@@ -42951,7 +43223,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              runtime.cancel_setup();
          }
          OttAction::Refresh => {
-@@ -4077,7 +4658,13 @@ fn handle_action(
+@@ -4077,7 +4711,13 @@ fn handle_action(
                  // Only this admitted viewer action may attribute cancellation to Refresh.
                  // Hold its diagnostic record away from generic source invalidation below.
                  let retry = runtime.continuity_retry_log.take();
@@ -42966,7 +43238,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  if let Some(retry) = retry {
                      if runtime.continuity.pending_retry().is_some_and(|pending|
                          retry.catalog_generation == pending.generation
-@@ -4103,6 +4690,8 @@ fn handle_action(
+@@ -4103,6 +4743,8 @@ fn handle_action(
                  return Ok(());
              }
              let return_catalog = runtime.catalog_return_after_back();
@@ -42975,7 +43247,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              let leaving_setup = runtime.setup.is_some();
              runtime.cancel_setup();
              transient::cancel_play_candidate(runtime,app);
-@@ -4112,6 +4701,7 @@ fn handle_action(
+@@ -4112,6 +4754,7 @@ fn handle_action(
              runtime.playback_epoch = runtime.playback_epoch.wrapping_add(1);
              runtime.cancel_play_request();
              runtime.cancel_catalog();
@@ -42983,7 +43255,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              runtime.catalog_return = return_catalog.map(|profile| (runtime.generation, profile));
              runtime.status.clear();
              if leaving_setup || matches!(runtime.page, "channels" | "favorites") {
-@@ -4279,6 +4869,10 @@ fn handle_action(
+@@ -4279,6 +4922,10 @@ fn handle_action(
                  }
                  "profile.history_hours" => ("Archive hours (0 uses playlist values)",
                      runtime.begin_archive_hours()?, false, 4, OttTextPolicy::Literal),
@@ -42994,7 +43266,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  "uiFontScale" => ("Interface text scale (20–200%)",
                      runtime.font_scale_percent().to_string(), false, 3, OttTextPolicy::Literal),
                  "remote.address" => ("Remote control server", remote_settings::address_input(runtime), false, 2048, OttTextPolicy::Literal),
-@@ -4300,8 +4894,8 @@ fn handle_action(
+@@ -4300,8 +4947,8 @@ fn handle_action(
                  let editor = OttEditor {
                      kind: plx_screens::ott::OttEditorKind::Setting,
                      session,
@@ -43004,7 +43276,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                      value,
                      secret,
                      limit,
-@@ -4364,9 +4958,18 @@ fn handle_action(
+@@ -4364,9 +5011,18 @@ fn handle_action(
                      runtime.status.clear();
                      return Ok(true);
                  }
@@ -43024,7 +43296,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  } else if key == "uiFontScale" {
                      let saved = runtime.font_scale_candidate(&value, session)?;
                      runtime.save(saved, None, false)?;
-@@ -4392,6 +4995,12 @@ fn handle_action(
+@@ -4392,6 +5048,12 @@ fn handle_action(
                      }
                      profile.validate().map_err(|_| "Invalid profile source or name")?;
                      let original = runtime.edit_profile_original.clone();
@@ -43037,7 +43309,14 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                      let saved = runtime.profile_candidate(profile, original.as_ref())?;
                      runtime.save(saved, None, true)?;
                  }
-@@ -4458,7 +5067,8 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4452,13 +5114,15 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+         app.ott = Some(runtime);
+         return true;
+     }
++    runtime.resume_floor = None;
+     let durable = runtime.playing.as_ref().and_then(|playing|
+         kiosk_resume::checkpoint(&runtime, playing, 0)).filter(|_|
+         runtime.continuity.pending_restore().is_none()
              && runtime.restore_play_generation != Some(runtime.play_generation));
      let mut checkpoint_changed = durable.is_some();
      if let Some(point) = durable { runtime.checkpoints.insert(kiosk_resume::KEY.into(), point); }
@@ -43047,7 +43326,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          let key = if current.starts_with("favorite:") {
              "favorites".into()
          } else {
-@@ -4479,12 +5089,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
+@@ -4479,12 +5143,12 @@ pub(super) fn finish_catalog_playback(app: &mut App) -> bool {
      }
      let ids = runtime.ordered_ids();
      let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
@@ -43066,7 +43345,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
      if let Some(playing) = runtime.playing.as_mut() {
          playing.advance_on_failure = true;
      }
-@@ -4569,6 +5179,10 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4569,8 +5233,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
      source: ReadySource,
      resources: &mut R,
  ) -> Result<(), &'static str> {
@@ -43076,8 +43355,31 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
 +    }
      let request = runtime.play_target.clone()
          .unwrap_or_else(|| PlaybackRequest::ordinary(&entry.id, 0));
++    let automatic_resume = runtime.restore_play_generation == Some(runtime.play_generation);
      if let Err(error) = runtime.validate_archive_admission(&request, &profile, &entry, &source) {
-@@ -4673,7 +5287,7 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+         runtime.retire_result(Ok((entry, source)));
+         return Err(error);
+@@ -4601,10 +5270,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+     } else {
+         plx_media::route::cancel_play(&mut app.player.session);
+     }
++    let retained_resume_floor = runtime.resume_floor.take().filter(|(owner, _)|
++        request.continuation.as_ref() == Some(owner));
+     runtime.playing = None;
+     runtime.active_lease = None;
+     let selection_id = request.id;
+     let position_ms = request.position_ms;
++    let mut resume_floor_ms = position_ms;
+     let advance_on_failure = request.advance_on_failure;
+     let mut owned_source = None;
+     match source {
+@@ -4668,12 +5340,13 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+             } else {
+                 0
+             };
++            resume_floor_ms = resume_ns.max(0) as u64 / 1_000_000;
+             if !playback::start_playback_with(
+                 &mut app.player.session,
                  &mut app.adapters.player,
                  resume_ns,
                  playback::Origin::Here,
@@ -43086,7 +43388,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
                  None,
                  &mut app.pages,
                  &mut app.bridge,
-@@ -4713,8 +5327,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4713,8 +5386,14 @@ fn start_resolved_with<R: playback::PlaybackResources>(
              }
          }
      }
@@ -43101,7 +43403,27 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          kiosk_selection: request.kiosk_selection,
          archive: request.archive,
          identity: plx_media::route::playback_identity(&app.player.session),
-@@ -4738,6 +5358,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+@@ -4727,10 +5406,19 @@ fn start_resolved_with<R: playback::PlaybackResources>(
+         advance_on_failure,
+         requires_server_lease,
+     });
++    let identity = runtime.playing.as_ref().and_then(|playing| playing.identity.clone());
++    runtime.resume_floor = if automatic_resume {
++        identity.zip(continuity::ResumeFloor::new(resume_floor_ms))
++    } else {
++        retained_resume_floor.filter(|(owner, _)| identity.as_ref() == Some(owner))
++    };
+     transient::plex_remote::admitted(runtime);
+     bridge::dismiss_ott_catalogs(&mut app.pages);
+     runtime.reply = None;
+     if let Some(playing)=runtime.playing.clone(){
++        if automatic_resume {
++            runtime.continuity.restore_admitted(runtime.generation, &playing.selection_id, position_ms);
++        }
+         if playing.archive.is_none() && transient::plex_remote::choice(runtime, &playing.entry.id).is_none() {
+             if runtime.playing_attachment.is_some() && playing.selection_id.starts_with("favorite:") {
+                 let _=runtime.request_favorite_metadata(&playing.selection_id);
+@@ -4738,6 +5426,9 @@ fn start_resolved_with<R: playback::PlaybackResources>(
                  runtime.request_metadata(playing.profile.clone(), playing.entry.clone());
              }
          }
@@ -43111,7 +43433,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
          runtime.transient_checkpoint(&playing,position_ms);
      }
      Ok(())
-@@ -4830,7 +5453,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
+@@ -4830,7 +5521,13 @@ fn publish_programme(runtime:&mut Runtime,app:&mut App,changed:bool) {
      let start=playing.identity.as_ref().and_then(|identity|app.player.programme.started_at(identity));
      let next=if runtime.play_target.is_some() || runtime.transient.owns_playback() {None} else {
          let ids=runtime.ordered_ids();let refs:Vec<&str>=ids.iter().map(String::as_str).collect();
@@ -43126,7 +43448,7 @@ index 9681ec31dfc280aab9cf7b9fd396c897e040857d..0eba8972afe58570cd417c033ec8ce2d
              let title=if let Some(identity)=id.strip_prefix("favorite:") {
                  runtime.saved.favorites.entries().iter().find(|favorite|favorite.identity()==identity).map(|favorite|favorite.title.clone())
              } else {runtime.catalog.entries.iter().find(|entry|entry.id==id).map(|entry|entry.title.clone())}?;
-@@ -4958,6 +5587,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
+@@ -4958,6 +5655,12 @@ pub(super) fn foreign_content_allowed(app:&mut App)->bool {
  #[path = "ott_reminder_wiring_tests.rs"]
  mod reminder_wiring_tests;
  
@@ -43211,9 +43533,18 @@ index 0ce913a3706c9571255a584dd11cfec15d117673..9f86ec28496d83e7f0e30c57eaf9e716
 +#[path = "ott_runtime_tests/classic_settings.rs"]
 +mod classic_settings;
 diff --git a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs b/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
-index 2dd650a1f9db16cff7ea63223b2cdb95ede6914e..b91939e6dceb84543a146990061967ad43913c7b 100644
+index 2dd650a1f9db16cff7ea63223b2cdb95ede6914e..2c6c6b9c89faef86a15898f4ac18ff1a9752cfdd 100644
 --- a/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/catalog_remote.rs
+@@ -11,7 +11,7 @@ impl Drop for ResetMedia {
+ }
+ 
+ struct Fixture {
+-    app: App,
++    app: Box<App>,
+     serial: u64,
+ }
+ 
 @@ -186,7 +186,7 @@ fn install_previous(f: &mut Fixture, _leased: bool, _exact: bool) -> Playing {
      // Admission only: never call start_playback or open a decoder/socket.
      let mut entry = synthetic_entry();
@@ -43223,6 +43554,15 @@ index 2dd650a1f9db16cff7ea63223b2cdb95ede6914e..b91939e6dceb84543a146990061967ad
          kiosk_selection: None,
          archive: None,
          transient_owner: None,
+@@ -215,7 +215,7 @@ fn retire_previous_for_replacement(f: &mut Fixture) {
+ }
+ impl Fixture {
+     fn new(count: usize) -> Self {
+-        let mut app = app_fixture();
++        let mut app = Box::new(app_fixture());
+         // Model the running application; the common inert rig defaults to stopped.
+         app.running = true;
+         let runtime = app.ott.as_mut().unwrap();
 @@ -1393,7 +1393,7 @@ fn catalog_pending_append_reaches_native_admission_but_invalidates_read_pages()
          later.title = "Later discovered file".into();
          let runtime = f.app.ott.as_ref().unwrap();
@@ -45972,9 +46312,21 @@ index 0000000000000000000000000000000000000000..7590969b3a61d57449e4cea6f92f394e
 +  "contract_sha256": "4ebbb877dfe540ae471bca7df74305cb0951eb332cf4d5038ae9a623e72ee2db"
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_integration.rs b/rust-modules/src/app/ott_runtime_tests/local_integration.rs
-index ac5158fdc9ec0fb184462b1f43ed35ab9ce5c10d..72cfa0e957ecd861ad0894c68cd785c6ad61977c 100644
+index ac5158fdc9ec0fb184462b1f43ed35ab9ce5c10d..db8daa77af08948fad7b3f3ebb98cc945fba0b5a 100644
 --- a/rust-modules/src/app/ott_runtime_tests/local_integration.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/local_integration.rs
+@@ -144,9 +144,9 @@ fn item(id: &str) -> CatalogEntry {
+     };
+     entry
+ }
+-pub(in crate::app::ott_runtime) fn setup() -> (TempDir, App, local::BoundSource) {
++pub(in crate::app::ott_runtime) fn setup() -> (TempDir, Box<App>, local::BoundSource) {
+     let root_dir = TempDir::new();
+-    let mut app = app_fixture();
++    let mut app = Box::new(app_fixture());
+     let root = local::BoundSource {
+         id: "root".into(),
+         name: "Movies".into(),
 @@ -263,7 +263,7 @@ pub(in crate::app::ott_runtime) fn install(app: &mut App, root: Option<&local::B
          };
          (permanent(), entry, None)
@@ -46002,6 +46354,15 @@ index ac5158fdc9ec0fb184462b1f43ed35ab9ce5c10d..72cfa0e957ecd861ad0894c68cd785c6
                  entries: vec![item("candidate"), item("successor")],
              },
          ))
+@@ -737,7 +737,7 @@ fn remembered_local_favorite_restore_waits_for_bound_inventory_validation() {
+     }
+ }
+ 
+-fn candidate_with_successor(op: &str) -> (TempDir, App) {
++fn candidate_with_successor(op: &str) -> (TempDir, Box<App>) {
+     let (_root_dir, mut app, root) = setup();
+     install(&mut app, Some(&root), "first");
+     let mut runtime = app.ott.take().unwrap();
 @@ -1202,6 +1202,9 @@ fn late_favorite_commit_after_observed_loss_cannot_restore_grant_even_when_clean
  #[path = "local_lifecycle.rs"]
  mod lifecycle_tests;
@@ -46131,9 +46492,18 @@ index ac5158fdc9ec0fb184462b1f43ed35ab9ce5c10d..72cfa0e957ecd861ad0894c68cd785c6
 +    assert_eq!(runtime.saved.profiles.active_profile.as_deref(), Some("permanent"));
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_kiosk_preparation.rs b/rust-modules/src/app/ott_runtime_tests/local_kiosk_preparation.rs
-index b24c447a3b13352d4f17e7971294b7a53e9ccbf3..f9df0c3fcd0aaa51db3a89a395d1eb5addac77ec 100644
+index b24c447a3b13352d4f17e7971294b7a53e9ccbf3..8b35265c3616da22168d434cb3310095c5b6dc99 100644
 --- a/rust-modules/src/app/ott_runtime_tests/local_kiosk_preparation.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/local_kiosk_preparation.rs
+@@ -5,7 +5,7 @@ use crate::app::ott_kiosk_stored::{self as stored, Stored};
+ use crate::app::ott_runtime::work_lifecycle::RestoreStartError;
+ use plx_data::ott::favorites::Origin;
+ 
+-fn fixture() -> (TempDir, App, local::BoundSource, String) {
++fn fixture() -> (TempDir, Box<App>, local::BoundSource, String) {
+     let (directory, mut app, root) = setup();
+     let sample = plx_base::task::time::ClockSample::capture_main(app.adapters.player.mt()).unwrap();
+     let runtime = app.ott.as_mut().unwrap();
 @@ -53,7 +53,7 @@ fn start(
  fn first_row(app: &mut App) {
      let mut runtime = app.ott.take().unwrap();
@@ -46542,7 +46912,7 @@ index a0a9137070eace786958f62b7371cc83a8a88499..329583a2edb8e3c9eb863d57d34ee018
      let mut finished = None;
 diff --git a/rust-modules/src/app/ott_runtime_tests/local_multi_source_favorites.rs b/rust-modules/src/app/ott_runtime_tests/local_multi_source_favorites.rs
 new file mode 100644
-index 0000000000000000000000000000000000000000..1c61a1f806c4c225098c1df498049b517650df77
+index 0000000000000000000000000000000000000000..857bccdbbbeb2990dc26174735f67253b38ce48a
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/local_multi_source_favorites.rs
 @@ -0,0 +1,220 @@
@@ -46571,7 +46941,7 @@ index 0000000000000000000000000000000000000000..1c61a1f806c4c225098c1df498049b51
 +    format!("favorite:{}", favorite.identity())
 +}
 +
-+fn pair() -> (TempDir, App, [local::BoundSource; 2], [Catalog; 2], [String; 2]) {
++fn pair() -> (TempDir, Box<App>, [local::BoundSource; 2], [Catalog; 2], [String; 2]) {
 +    let (directory, mut app, first) = setup();
 +    let second = local::BoundSource {
 +        id: "second-root".into(), name: "Series".into(), kind: local::SourceKind::Folder,
@@ -48058,10 +48428,10 @@ index 0000000000000000000000000000000000000000..c5357f57a07e078c210e402cbd536adb
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs b/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
-index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2a1be7e3f 100644
+index f1433df14dc6d4ad93eea4b5b90c7495082defd9..0db8fb8ab46fe2c36ffcce13df51a30948f050b0 100644
 --- a/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/playing_favorite.rs
-@@ -17,10 +17,11 @@ fn ready(
+@@ -17,7 +17,7 @@ fn ready(
      local: bool,
  ) -> (
      local_integration::TempDir,
@@ -48069,13 +48439,8 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2
 +    Box<App>,
      crate::app::ott_local_session::BoundSource,
  ) {
--    let (dir, mut app, root) = local_integration::setup();
-+    let (dir, app, root) = local_integration::setup();
-+    let mut app = Box::new(app);
-     // The shared lifecycle fixture is inert by default. These admission tests
-     // model a running application with an already-mounted video page.
-     app.running = true;
-@@ -29,6 +30,13 @@ fn ready(
+     let (dir, mut app, root) = local_integration::setup();
+@@ -29,6 +29,13 @@ fn ready(
          install_local(&mut app, &root);
      } else {
          local_integration::install(&mut app, None, "playing-selection");
@@ -48089,7 +48454,7 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2
      }
      let r = app.ott.as_mut().unwrap();
      r.entropy = Some([1; 16]);
-@@ -108,7 +116,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
+@@ -108,7 +115,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
          Some(source.clone())
      );
      let r = app.ott.as_mut().unwrap();
@@ -48098,7 +48463,7 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2
          kiosk_selection: None,
          archive: None,
          identity,
-@@ -129,7 +137,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
+@@ -129,7 +136,7 @@ fn install_local(app: &mut App, root: &crate::app::ott_local_session::BoundSourc
  
  fn ready_file() -> (
      local_integration::TempDir,
@@ -48107,7 +48472,7 @@ index f1433df14dc6d4ad93eea4b5b90c7495082defd9..43f7a7bf4c495cdb31f101f51d7bfed2
      crate::app::ott_local_session::BoundSource,
  ) {
      use crate::app::ott_local_session::SourceKind;
-@@ -542,3 +550,180 @@ fn non_session_folder_uses_original_media_withdrawal_fence() {
+@@ -542,3 +549,180 @@ fn non_session_folder_uses_original_media_withdrawal_fence() {
      r.local_inventory.install(vec![reopened], 8);
      assert!(action::candidate(r, &playing).is_err());
  }
@@ -50285,7 +50650,7 @@ index 0000000000000000000000000000000000000000..96fd2f3054445a917ea2c1cff7ba1c3b
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/strict_folder_favorites.rs b/rust-modules/src/app/ott_runtime_tests/strict_folder_favorites.rs
 new file mode 100644
-index 0000000000000000000000000000000000000000..e27f14c5b85ff122e1f8eb5a195608a6970956a9
+index 0000000000000000000000000000000000000000..171582fff63866788edf4a5e1f4ced19ff2606dd
 --- /dev/null
 +++ b/rust-modules/src/app/ott_runtime_tests/strict_folder_favorites.rs
 @@ -0,0 +1,737 @@
@@ -50340,7 +50705,7 @@ index 0000000000000000000000000000000000000000..e27f14c5b85ff122e1f8eb5a195608a6
 +        .unwrap();
 +}
 +
-+fn fixture(mixed: bool) -> (local_integration::TempDir, App, local::BoundSource) {
++fn fixture(mixed: bool) -> (local_integration::TempDir, Box<App>, local::BoundSource) {
 +    let (directory, mut app, root) = local_integration::setup();
 +    app.running = true; // Actual kiosk completion requires a running application.
 +    for id in ["A", "B", "C"] {
@@ -51027,9 +51392,18 @@ index 0000000000000000000000000000000000000000..e27f14c5b85ff122e1f8eb5a195608a6
 +    assert!(app.ott.as_ref().unwrap().local_source_read_is_current(&read));
 +}
 diff --git a/rust-modules/src/app/ott_runtime_tests/successor_navigation.rs b/rust-modules/src/app/ott_runtime_tests/successor_navigation.rs
-index 524b30e7191d5f687fa97a070e90b241f84d717a..8d676e79f5f95e4c32dfd82bc787f471b956e587 100644
+index 524b30e7191d5f687fa97a070e90b241f84d717a..7860642b1a4ac93350794d7e9eaf32c1dcb2f896 100644
 --- a/rust-modules/src/app/ott_runtime_tests/successor_navigation.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/successor_navigation.rs
+@@ -31,7 +31,7 @@ impl Drop for Reset {
+ }
+ 
+ fn setup(local: bool, two: bool, complete: bool)
+-    -> (local_integration::TempDir, App, AcceptedResources)
++    -> (local_integration::TempDir, Box<App>, AcceptedResources)
+ {
+     let (root_dir, mut app, _) = local_integration::setup();
+     let runtime = app.ott.as_mut().unwrap();
 @@ -108,12 +108,16 @@ fn try_admit_pending(app: &mut App, resources: &mut AcceptedResources) -> Result
  }
  
@@ -51087,7 +51461,7 @@ index 39a8da9492a8850e13c45183c4d057446aee2cf2..3134bf781352f06e3d315be68c3f574e
              },
          ))
 diff --git a/rust-modules/src/app/ott_runtime_tests/transport.rs b/rust-modules/src/app/ott_runtime_tests/transport.rs
-index 211c75abebcce521f7ea7f63806e382cc02e3198..e777c4a03887f1ad116cf64d4e6d7246627eb6d5 100644
+index 211c75abebcce521f7ea7f63806e382cc02e3198..462c34eb65e5dbb1e008256aa706c8da40b22737 100644
 --- a/rust-modules/src/app/ott_runtime_tests/transport.rs
 +++ b/rust-modules/src/app/ott_runtime_tests/transport.rs
 @@ -45,7 +45,7 @@ fn remote_transport(app: &mut App, params: Value) -> Value {
@@ -51099,6 +51473,498 @@ index 211c75abebcce521f7ea7f63806e382cc02e3198..e777c4a03887f1ad116cf64d4e6d7246
      )).unwrap_or_else(|_| panic!("fixture catalogue receiver disappeared"));
      runtime_tick(app);
  }
+@@ -563,3 +563,491 @@ fn unavailable_kiosk_policy_rejects_transport_without_consuming_restore() {
+         assert!(app.adapters.player.is_live());
+     }
+ }
++
++// These regressions run the real restore selection, Local authority rebind,
++// source admission, checkpoint and input/Exit paths. Only native resource
++// acceptance and its later clock samples are supplied by the fixture. The
++// existing catalogue, metadata, resolver and writer slots stay held: no media
++// bytes, decoder, network or protected-storage write is exercised here.
++#[derive(Default)]
++struct AutomaticResumeResources { requested_ns: Option<i64> }
++
++impl playback::PlaybackResources for AutomaticResumeResources {
++    fn request_movie(&mut self, _: &mut plx_media::route::PlaybackSession,
++        _: &mut plx_data::stores::metadata::MetadataStore, _: &plx_data::pms::PmsMovie,
++        _: Option<plx_plex::plex::MediaId>) -> bool { panic!("Local restore only") }
++    fn request_episode(&mut self, _: &mut plx_media::route::PlaybackSession,
++        _: &mut plx_data::stores::metadata::MetadataStore, _: &str,
++        _: Option<plx_plex::plex::MediaId>) -> bool { panic!("Local restore only") }
++    fn describe_movie(&mut self, _: &mut plx_data::stores::metadata::MetadataStore,
++        _: plx_plex::plex::ServerId, _: &str) { panic!("Local restore only") }
++    fn prepare_start(&mut self, _: &mut plx_media::route::PlaybackSession,
++        _: &mut plx_media::player::adapter::PlayerAdapter, resume_ns: i64) -> bool {
++        self.requested_ns = Some(resume_ns);
++        true
++    }
++}
++
++fn automatic_resume_admit(app: &mut App) -> i64 {
++    automatic_resume_admit_with_duration(app, 60_000_000_000)
++}
++
++fn automatic_resume_admit_with_duration(app: &mut App, duration_ns: i64) -> i64 {
++    let runtime = app.ott.as_mut().unwrap();
++    let request = runtime.play_target.clone().expect("a real selected request");
++    let profile = runtime.active().unwrap().clone();
++    let entry = runtime.catalog.entries.iter().find(|entry| entry.id == request.id)
++        .expect("selected catalogue row").clone();
++    let relative_path = match &entry.media {
++        MediaLocator::Local { relative_path } => relative_path,
++        _ => panic!("Local restore only"),
++    };
++    let source = plx_media::ff::ExternalSource::Local(
++        std::path::Path::new(&profile.source).join(relative_path));
++    let mut info = unsupported_info();
++    info.video_codec = "h264".into();
++    info.audio_codec = "aac".into();
++    info.audio_channels = 2;
++    info.audio_sample_rate = 48_000;
++    info.audio_bit_depth = 16;
++    info.duration_ns = duration_ns;
++    let mut resources = AutomaticResumeResources::default();
++    let generation = runtime.play_generation;
++    let automatic = runtime.restore_play_generation == Some(generation);
++    // Model the already-running resolver having taken its work item. The
++    // existing busy slot prevents any actual resolver thread from starting.
++    let _ = runtime.resolver_next.take();
++    // The real Job::Play receiver must keep the automatic-restore marker until
++    // start_resolved_with sees it, then settle the request itself. Calling the
++    // start helper directly would miss an early marker-clearing regression.
++    runtime.tx.send(Job::Play(generation, profile, Ok((entry,
++        ReadySource::External(source, info, None)))))
++        .unwrap_or_else(|_| panic!("fixture resolver receiver disappeared"));
++    let clock = plx_base::task::time::ClockSample::capture_main(app.adapters.player.mt()).unwrap();
++    let mut starts = 0;
++    tick_with_start(app, clock, |runtime, app, profile, entry, source| {
++        starts += 1;
++        assert_eq!(runtime.restore_play_generation, automatic.then_some(generation),
++            "the addressed resolver reason must survive through native admission");
++        start_resolved_with(runtime, app, profile, entry, source, &mut resources)?;
++        app.adapters.player.install(plx_media::player::engine::engine_after_reload_for_test());
++        assert!(lifecycle::set_transport_paused(&mut app.adapters.player, false));
++        plx_media::player::swap_state_for_test(plx_media::player::PlaybackState::Playing);
++        plx_media::player::SHARED.duration_ns.store(duration_ns, Ordering::Relaxed);
++        plx_media::player::SHARED.seen_frame.store(false, Ordering::Relaxed);
++        plx_media::player::SHARED.playpos_ns.store(
++            resources.requested_ns.unwrap(), Ordering::Relaxed);
++        Ok(())
++    });
++    assert_eq!(starts, 1, "the addressed real Job must reach native admission once");
++    let runtime = app.ott.as_ref().unwrap();
++    assert!(runtime.play_target.is_none() && runtime.restore_play_generation.is_none());
++    assert!(playing_matches(runtime.playing.as_ref().unwrap(), app));
++    // The actual completed job released its resolver slot. Hold it again so a
++    // following test's selected successor remains a request, not a new worker.
++    app.ott.as_mut().unwrap().resolver_busy = true;
++    settle_pages(app);
++    resources.requested_ns.expect("the real start supplied a resume offset")
++}
++
++fn automatic_resume_select(app: &mut App, id: &str, position_ms: u64) {
++    let runtime = app.ott.as_mut().unwrap();
++    let profile = runtime.active().unwrap().clone();
++    runtime.saved.resume.insert(profile.id.clone(), SavedResume {
++        entry_id: id.into(), position_ms, source_fingerprint: profile_fingerprint(&profile),
++    });
++    runtime.checkpoints.clear();
++    runtime.continuity = continuity::Continuity::new(runtime.generation,
++        Some(continuity::ResumePoint { entry_id: id.into(), position_ms }));
++    let ids = runtime.ordered_ids();
++    let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
++    let decision = runtime.continuity.catalog_updated(runtime.generation, &refs, true);
++    assert_eq!(decision, continuity::Decision::Start {
++        entry_id: id.into(), position_ms, reason: continuity::Reason::Restore,
++    });
++    runtime.apply_continuity(decision);
++    assert_eq!(runtime.restore_play_generation, Some(runtime.play_generation));
++}
++
++fn automatic_resume_clock(position_ms: u64, credited: bool) {
++    // Model the consumed automatic seek and a published callback. This is not
++    // a new user seek and does not exercise a decoder or attest displayed media.
++    plx_media::player::TX.seek_to_ns.store(-1, Ordering::Relaxed);
++    plx_media::player::SHARED.seek_to_ns.store(-1, Ordering::Relaxed);
++    plx_media::player::SHARED.seek_target_ns.store(-1, Ordering::Relaxed);
++    plx_media::player::SHARED.seek_display_ns.store(-1, Ordering::Relaxed);
++    plx_media::player::SHARED.seeking.store(false, Ordering::Relaxed);
++    plx_media::player::SHARED.seen_frame.store(credited, Ordering::Relaxed);
++    plx_media::player::SHARED.playpos_ns.store((position_ms * 1_000_000) as i64, Ordering::Relaxed);
++    plx_media::player::swap_state_for_test(plx_media::player::PlaybackState::Playing);
++}
++
++fn automatic_resume_fixture() -> Box<App> {
++    automatic_resume_fixture_with_duration(60_000_000_000)
++}
++
++fn automatic_resume_fixture_with_duration(duration_ns: i64) -> Box<App> {
++    let mut app = automatic_resume_queued_fixture(true);
++    let expected_ns = if duration_ns > 0 { duration_ns.min(42_000_000_000) } else { 0 };
++    assert_eq!(automatic_resume_admit_with_duration(&mut app, duration_ns), expected_ns);
++    automatic_resume_clock((expected_ns.max(0) as u64 / 1_000_000).saturating_sub(4_000), true);
++    app
++}
++
++fn automatic_resume_queued_fixture(automatic: bool) -> Box<App> {
++    let mut app = Box::new(ready_app_fixture());
++    local_playing(&mut app, None, 0);
++    app.running = true;
++    {
++        let runtime = app.ott.as_mut().unwrap();
++        runtime.catalog_done.store(false, Ordering::Release);
++        runtime.metadata_done.store(false, Ordering::Release);
++        runtime.catalog_complete = true;
++        assert!(runtime.resolver_busy && runtime.saving);
++    }
++    automatic_resume_select(&mut app, "first", 42_000);
++    if !automatic {
++        // A newer explicit request with identical item and nonzero position
++        // must retire the old automatic origin, even across a later suspend.
++        let mut runtime = app.ott.take().unwrap();
++        runtime.play_request_with_policy(&mut app,
++            PlaybackRequest::ordinary("first", 42_000)).unwrap();
++        assert!(runtime.restore_play_generation.is_none());
++        app.ott = Some(runtime);
++    }
++    app
++}
++
++fn automatic_resume_checkpoint(app: &mut App) {
++    let mut runtime = app.ott.take().unwrap();
++    runtime.checkpoint(app, true);
++    app.ott = Some(runtime);
++}
++
++fn automatic_resume_point(app: &App) -> SavedResume {
++    let runtime = app.ott.as_ref().unwrap();
++    let key = &runtime.active().unwrap().id;
++    runtime.checkpoints.get(key).or_else(|| runtime.saved.resume.get(key))
++        .expect("effective checkpoint or original durable bookmark").clone()
++}
++
++#[test]
++fn automatic_resume_preroll_exit_preserves_the_complete_bookmark() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let before = automatic_resume_point(&app);
++    let saved = serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap();
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before, "periodic preroll must preserve all bookmark fields");
++    exit_through_content(&mut app);
++    assert!(app.player.pending_exit.is_some(), "the real Exit must provide its pre-teardown receipt");
++    runtime_tick(&mut app);
++    assert!(automatic_resume_point(&app) == before, "early Exit must not persist the backward keyframe position");
++    assert_eq!(serde_json::to_value(&app.ott.as_ref().unwrap().saved).unwrap(), saved,
++        "held writer leaves the entire durable image unchanged");
++    assert!(app.ott.as_ref().unwrap().playing.is_none());
++}
++
++#[test]
++fn automatic_resume_credited_progress_releases_the_floor() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    automatic_resume_clock(42_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert_eq!(automatic_resume_point(&app).position_ms, 42_000);
++    automatic_resume_clock(43_500, true);
++    automatic_resume_checkpoint(&mut app);
++    assert_eq!(automatic_resume_point(&app).position_ms, 43_500);
++    // Crossing the resume point returns to ordinary checkpoint semantics; the
++    // guard must not become a permanent maximum-of-all-previous-positions rule.
++    automatic_resume_clock(40_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert_eq!(automatic_resume_point(&app).position_ms, 40_000);
++}
++
++#[test]
++fn automatic_resume_optimistic_target_is_not_credited_progress() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let before = automatic_resume_point(&app);
++    automatic_resume_clock(0, false);
++    plx_media::player::SHARED.seeking.store(true, Ordering::Relaxed);
++    plx_media::player::SHARED.seek_display_ns.store(42_000_000_000, Ordering::Relaxed);
++    plx_media::player::swap_state_for_test(plx_media::player::PlaybackState::Seeking);
++    assert_eq!(playback::intended_pos(&app.player.session), 42_000_000_000);
++    automatic_resume_checkpoint(&mut app);
++    // A synthetic initial position/first callback exactly at the target must
++    // not retire protection before the backward keyframe is actually observed.
++    automatic_resume_clock(42_000, true);
++    automatic_resume_checkpoint(&mut app);
++    automatic_resume_clock(39_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before);
++}
++
++#[test]
++fn automatic_resume_floor_uses_the_effective_finite_seek_target() {
++    let _serial = plx_base::testlock::serial();
++    for (duration_ns, expected_ms) in [(10_000_000_000, 10_000), (0, 8_000)] {
++        let _reset = ResetMedia;
++        let mut app = automatic_resume_fixture_with_duration(duration_ns);
++        automatic_resume_clock(8_000, true);
++        automatic_resume_checkpoint(&mut app);
++        assert_eq!(automatic_resume_point(&app).position_ms, expected_ms,
++            "clamp to an admitted finite seek; unknown duration did not request a resume seek");
++    }
++}
++
++#[test]
++fn automatic_resume_pause_and_resume_preserve_preroll_protection() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let before = automatic_resume_point(&app);
++    assert_eq!(remote_transport(&mut app, json!({"operation":"pause"}))["status"], "ok");
++    assert!(lifecycle::viewer_paused());
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before);
++    assert_eq!(remote_transport(&mut app, json!({"operation":"resume"}))["status"], "ok");
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before, "Resume is not a request to seek backwards");
++}
++
++#[test]
++fn automatic_resume_internal_seek_plus_pause_is_not_explicit_seek() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let before = automatic_resume_point(&app);
++    // Internal reload/speed paths also reach this low-level mailbox. Its
++    // presence cannot relabel an unrelated accepted Pause as a viewer seek.
++    playback::request_seek(12_000_000_000);
++    plx_media::player::swap_state_for_test(plx_media::player::PlaybackState::Seeking);
++    assert_eq!(playback::intended_pos(&app.player.session), 12_000_000_000);
++    assert_eq!(remote_transport(&mut app, json!({"operation":"pause"}))["status"], "ok");
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before);
++    plx_media::player::abandon_seek();
++    automatic_resume_clock(39_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before);
++}
++
++#[test]
++fn automatic_resume_batched_speed_reload_and_pause_preserve_the_floor() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let before = automatic_resume_point(&app);
++    // The inert Engine does not publish native-start. A speed change only
++    // reloads a started decoder; otherwise it is saved for the next Load.
++    plx_media::player::TX.started.store(true, Ordering::Relaxed);
++    assert!(plx_media::player::is_started());
++    // Model an existing nonnormal speed. Returning to Normal is always a
++    // supported menu action and avoids assuming decoder speed capabilities.
++    plx_media::player::SHARED.play_rate_permille.store(1500, Ordering::Relaxed);
++    app.pages.emit(MachineId::Nav, Fx::App(AppFx::Player(PlayerReq::More(
++        plx_appkit::more_menu::Action::SetSpeed(plx_media::player::RATE_NORMAL)))));
++    // Both decisions drain through the real content performer before a pump:
++    // the internal speed reload leaves TX pending when Pause is accepted.
++    native_transport(&mut app, PlayerReq::Transport(Some(false)));
++    assert_eq!(plx_media::player::play_rate_permille(), plx_media::player::RATE_NORMAL);
++    assert!(plx_media::player::SHARED.rate_reload.load(Ordering::Relaxed));
++    assert_eq!(plx_media::player::seek_pending(), 38_000_000_000);
++    assert!(lifecycle::viewer_paused());
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before,
++        "the pending internal reload must not turn Pause into an explicit seek");
++}
++
++#[test]
++fn automatic_resume_accepted_remote_and_native_seek_can_lower_bookmark() {
++    let _serial = plx_base::testlock::serial();
++    for native in [false, true] {
++        let _reset = ResetMedia;
++        let mut app = automatic_resume_fixture();
++        if native {
++            native_transport(&mut app, PlayerReq::CommitSeek(12_000_000_000));
++        } else {
++            let response = remote_transport(&mut app, json!({"operation":"seek","position":12}));
++            assert_eq!(response["status"], "ok", "{response}");
++            assert_eq!(response["data"]["dispatched"], true);
++        }
++        assert_eq!(plx_media::player::seek_pending(), 12_000_000_000,
++            "the real input performer must have accepted the explicit seek");
++        // App admission already treats this queued explicit seek as viewer
++        // intent. No physical seek/decoder completion is claimed by this test.
++        automatic_resume_clock(12_000, true);
++        automatic_resume_checkpoint(&mut app);
++        let point = automatic_resume_point(&app);
++        assert_eq!(point.position_ms, 12_000);
++        assert_eq!(point.entry_id, "first");
++    }
++}
++
++#[test]
++fn automatic_resume_batched_explicit_seek_then_exit_keeps_the_lower_target() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    app.pages.emit(MachineId::Nav, Fx::App(AppFx::Player(
++        PlayerReq::CommitSeek(12_000_000_000))));
++    // Exit is queued after the accepted seek, in the same content drain and
++    // before any media pump. Its intended-position receipt must retain 12s.
++    exit_through_content(&mut app);
++    assert_eq!(app.player.pending_exit.as_ref().unwrap().position_ns, 12_000_000_000);
++    runtime_tick(&mut app);
++    assert_eq!(automatic_resume_point(&app).position_ms, 12_000);
++    assert!(app.ott.as_ref().unwrap().playing.is_none());
++}
++
++#[test]
++fn automatic_resume_queued_origin_survives_suspend_without_promoting_explicit_seek() {
++    let _serial = plx_base::testlock::serial();
++    for automatic in [true, false] {
++        let _reset = ResetMedia;
++        let mut app = automatic_resume_queued_fixture(automatic);
++        // Exercise the Runtime boundary invoked by the OS event path, with
++        // the real WindowActivity already closed. No SDL/decoder runs here.
++        app.window_activity.event(0x104);
++        assert!(!playback_allowed(&app));
++        super::super::super::suspend(&mut app);
++        assert_eq!(app.ott.as_ref().unwrap().resume_pending.as_ref().unwrap().position_ms, 42_000);
++        assert!(app.ott.as_ref().unwrap().play_target.is_none());
++        app.window_activity.event(0x106);
++        super::super::super::resume(&mut app);
++        let mut runtime = app.ott.take().unwrap();
++        runtime.catalog_done.store(true, Ordering::Release);
++        runtime.rearm_source_work(&mut app);
++        // Supply the normal validation result using the same retained live
++        // root. The worker slot is held again before any subsequent tick.
++        runtime.catalog_done.store(false, Ordering::Release);
++        let generation = runtime.generation;
++        let sources = runtime.local_inventory.sources.clone();
++        runtime.local_inventory.phase = transient::InventoryPhase::Loading(generation);
++        transient::binding_result(&mut runtime, &mut app, generation, Ok(ott_catalog::LocalBindings {
++            sources, lookup: None, matched: vec![], operation_error: None,
++        }));
++        assert_eq!(transient::lifecycle_resume_ready(&runtime,
++            runtime.resume_pending.as_ref().unwrap()), Ok(true));
++        assert!(runtime.resolver_busy);
++        app.ott = Some(runtime);
++        runtime_tick(&mut app);
++        let runtime = app.ott.as_ref().unwrap();
++        assert!(runtime.resume_pending.is_none());
++        assert_eq!(runtime.play_target.as_ref().unwrap().position_ms, 42_000);
++        assert_eq!(runtime.restore_play_generation,
++            automatic.then_some(runtime.play_generation));
++        assert_eq!(automatic_resume_admit(&mut app), 42_000_000_000);
++        automatic_resume_clock(38_000, true);
++        automatic_resume_checkpoint(&mut app);
++        let expected_ms = if automatic { 42_000 } else { 38_000 };
++        assert_eq!(automatic_resume_point(&app).position_ms, expected_ms);
++        exit_through_content(&mut app);
++        runtime_tick(&mut app);
++        assert_eq!(automatic_resume_point(&app).position_ms, expected_ms);
++    }
++}
++
++#[test]
++fn automatic_resume_rejected_seek_does_not_release_the_floor() {
++    let _serial = plx_base::testlock::serial();
++    for kind in 0..4 {
++        let _reset = ResetMedia;
++        let mut app = automatic_resume_fixture();
++        let before = automatic_resume_point(&app);
++        let mut held_engine = None;
++        let params = match kind {
++            0 => json!({"operation":"seek","position":-1}),
++            1 => json!({"operation":"seek","position":90}),
++            2 => {
++                // Authenticated remote seek is allowed by strict policy, but
++                // a background window must reject it before native admission.
++                app.window_activity.event(0x104);
++                assert!(!playback_allowed(&app));
++                json!({"operation":"seek","position":12})
++            }
++            _ => {
++                held_engine = app.adapters.player.take();
++                json!({"operation":"seek","position":12})
++            }
++        };
++        let response = remote_transport(&mut app, params);
++        assert_eq!(response["status"], if kind == 0 { "unsupported" } else { "rejected" },
++            "case {kind}: {response}");
++        assert_eq!(plx_media::player::seek_pending(), -1, "refusal must precede seek admission");
++        if kind == 2 {
++            assert_eq!(response["data"]["error"], "Playback is suspended");
++            app.window_activity.event(0x106);
++            assert!(playback_allowed(&app));
++        }
++        if let Some(engine) = held_engine { app.adapters.player.install(engine); }
++        automatic_resume_checkpoint(&mut app);
++        assert!(automatic_resume_point(&app) == before, "case {kind} must retain the complete bookmark");
++    }
++}
++
++#[test]
++fn automatic_resume_eof_zero_and_next_are_not_clamped() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    app.ott.as_mut().unwrap().catalog.entries.push(local_entry("second"));
++    assert!(finish_catalog_playback(&mut app));
++    assert_eq!(automatic_resume_point(&app).position_ms, 0, "accepted EOF retains its reset semantics");
++    assert_eq!(app.ott.as_ref().unwrap().play_target, Some(PlaybackRequest::ordinary("second", 0)));
++    assert_eq!(automatic_resume_admit(&mut app), 0);
++    automatic_resume_clock(3_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert_eq!(automatic_resume_point(&app).entry_id, "second");
++    assert_eq!(automatic_resume_point(&app).position_ms, 3_000);
++}
++
++#[test]
++fn automatic_resume_explicit_replacement_does_not_inherit_the_floor() {
++    let _serial = plx_base::testlock::serial();
++    for id in ["first", "second"] {
++        let _reset = ResetMedia;
++        let mut app = automatic_resume_fixture();
++        let old_identity = plx_media::route::playback_identity(&app.player.session);
++        app.ott.as_mut().unwrap().catalog.entries.push(local_entry("second"));
++        explicit_play(&mut app, id);
++        assert_eq!(automatic_resume_admit(&mut app), 0);
++        assert_ne!(plx_media::route::playback_identity(&app.player.session), old_identity);
++        automatic_resume_clock(4_000, true);
++        automatic_resume_checkpoint(&mut app);
++        assert_eq!(automatic_resume_point(&app).entry_id, id);
++        assert_eq!(automatic_resume_point(&app).position_ms, 4_000);
++    }
++}
++
++#[test]
++fn automatic_resume_stale_exit_receipt_cannot_clear_a_new_restore_floor() {
++    let _serial = plx_base::testlock::serial();
++    let _reset = ResetMedia;
++    let mut app = automatic_resume_fixture();
++    let old = app.ott.as_ref().unwrap().playing.as_ref().unwrap();
++    let receipt = plx_media::player::machine::ExitReceipt {
++        cause: plx_media::player::machine::ExitCause::RequestedExit,
++        playback_identity: old.identity.clone(),
++        position_ns: 55_000_000_000,
++        sid: plx_plex::plex::ServerId::UNSET,
++        rating_key: String::new(),
++        source: old.source.clone(),
++    };
++    app.ott.as_mut().unwrap().catalog.entries.push(local_entry("second"));
++    automatic_resume_select(&mut app, "second", 50_000);
++    assert_eq!(automatic_resume_admit(&mut app), 50_000_000_000);
++    let before = automatic_resume_point(&app);
++    assert_ne!(receipt.playback_identity, plx_media::route::playback_identity(&app.player.session));
++    let mut runtime = app.ott.take().unwrap();
++    runtime.checkpoint_at(&app, true, Some(&receipt));
++    app.ott = Some(runtime);
++    assert!(automatic_resume_point(&app) == before, "foreign receipt cannot write the new checkpoint");
++    automatic_resume_clock(46_000, true);
++    automatic_resume_checkpoint(&mut app);
++    assert!(automatic_resume_point(&app) == before, "foreign receipt must not retire the newer guard either");
++}
 diff --git a/rust-modules/src/app/ott_runtime_tests/volume_step.rs b/rust-modules/src/app/ott_runtime_tests/volume_step.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..aea9f65596a9d70a0682df6a4b9f081fab481aeb
@@ -53514,9 +54380,18 @@ index e4697c98c5ab2b6e4dafd06a9e92d916cf4dbabd..b2dac8828cefc836116dc8071fde5b8e
              return false;
          };
 diff --git a/rust-modules/src/app/ott_transient_file_authority_tests.rs b/rust-modules/src/app/ott_transient_file_authority_tests.rs
-index 13794104217622a7535c0ed415f8b4f6590e4ea5..ca904b4f04990097232383e271fd28d646a03f42 100644
+index 13794104217622a7535c0ed415f8b4f6590e4ea5..2049d7a0186da56568cd72a7ef30abe516fa98b9 100644
 --- a/rust-modules/src/app/ott_transient_file_authority_tests.rs
 +++ b/rust-modules/src/app/ott_transient_file_authority_tests.rs
+@@ -3,7 +3,7 @@
+ use super::*;
+ use std::path::Path;
+ 
+-fn setup_file() -> (fixture::TempDir, App, BoundSource) {
++fn setup_file() -> (fixture::TempDir, Box<App>, BoundSource) {
+     let (guard, mut app, mut source) = fixture::setup();
+     let path = Path::new(source.canonical_path.as_deref().unwrap()).join("clip.mp4");
+     std::fs::write(&path, b"temporary file authority fixture").unwrap();
 @@ -278,6 +278,7 @@ fn install_file_favorite(app: &mut App, source: &BoundSource) -> PlaybackRequest
      let info = plx_media::ff::inspect::MediaInfo {
          tracks: Default::default(),
@@ -54557,6 +55432,19 @@ index cbf4e0495de993aa77a7228b71888ccefa2cce69..9777f143e8f679742c40330dcc01c096
          BrowseTask::Confirm { location, source } => {
              verify(off, &location, cancel, observe, identify, verify_root)?;
              let answer = super::execute_probed(
+diff --git a/rust-modules/src/app/ott_usb_browser_runtime_tests.rs b/rust-modules/src/app/ott_usb_browser_runtime_tests.rs
+index 46f223fdc883840078b5cb06ca45bfd8f0c9df31..ea11971f0db0659b0b09cd6ef5cad6d2ad9b0da2 100644
+--- a/rust-modules/src/app/ott_usb_browser_runtime_tests.rs
++++ b/rust-modules/src/app/ott_usb_browser_runtime_tests.rs
+@@ -10,7 +10,7 @@ use std::path::Path;
+ 
+ fn fixture() -> (
+     crate::app::ott_runtime::tests::local_integration::TempDir,
+-    App,
++    Box<App>,
+     MountCandidate,
+ ) {
+     let (directory, mut app, root) = crate::app::ott_runtime::tests::local_integration::setup();
 diff --git a/rust-modules/src/app/ott_usb_cold_browser_tests.rs b/rust-modules/src/app/ott_usb_cold_browser_tests.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..c91f92a3c1ba0831b07771fcf161f7f790b4d21a
@@ -60059,7 +60947,7 @@ index 0000000000000000000000000000000000000000..1f1fb81c966a23ca2636d0fc3d9605a8
 +#[path = "ott_runtime_tests/vportal_quality.rs"]
 +mod tests;
 diff --git a/rust-modules/src/app/playback.rs b/rust-modules/src/app/playback.rs
-index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536cf11cd942 100644
+index e81099c3b9e43f14262ac61f82883722b773434d..6263f8fb467d52509171a1dc780f1e831afceea2 100644
 --- a/rust-modules/src/app/playback.rs
 +++ b/rust-modules/src/app/playback.rs
 @@ -19,6 +19,7 @@
@@ -60194,7 +61082,56 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          }
          TrackCommit::SubtitleTone(tone) => plx_media::player::set_subtitle_tone(tone),
          // live first, persisted after, nothing republished on completion (`route::select_subtitle_size`)
-@@ -664,6 +684,12 @@ pub(crate) fn player_requests(
+@@ -625,11 +645,35 @@ pub(crate) fn commit_track_outcome(
+     TrackCommitOutcome::Admitted
+ }
+ 
++/// Accepted application intent, not a decoder acknowledgement or pending-TX sample.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub(crate) enum ViewerTransport {
++    None,
++    Transport,
++    Seek,
++}
++impl ViewerTransport {
++    pub(crate) fn from_transport(accepted: bool) -> Self {
++        if accepted { Self::Transport } else { Self::None }
++    }
++    pub(crate) fn from_seek(accepted: bool) -> Self {
++        if accepted { Self::Seek } else { Self::None }
++    }
++    /// A later pause in the same drained batch must not hide an accepted seek.
++    pub(crate) fn merge(self, other: Self) -> Self {
++        match (self, other) {
++            (Self::Seek, _) | (_, Self::Seek) => Self::Seek,
++            (Self::Transport, _) | (_, Self::Transport) => Self::Transport,
++            _ => Self::None,
++        }
++    }
++}
++
+ /// **Perform what a player overlay decided** (§14): the panel owns its own state and its own
+ /// input, but not the playback — seeking, pausing, applying a quality rung and leaving for a
+ /// detail page all need the player adapter, the route or the trail, none of which a screen may
+ /// name. Drained once per frame, after the dispatcher's, exactly as the Library's requests are.
+-/// Returns whether any explicit transport or seek request was accepted. The caller notifies
++/// Returns the accepted explicit intent, with seek taking priority in a batch. The caller notifies
+ /// its catalogue owner synchronously, before a late restore can replace the viewer's choice.
+ #[allow(clippy::too_many_arguments)]
+ pub(crate) fn player_requests(
+@@ -643,9 +687,9 @@ pub(crate) fn player_requests(
+     bridge: &mut super::bridge::Bridge,
+     ok_armed: &mut bool,
+     press: &mut plx_ui::press::Press,
+-) -> bool {
++) -> ViewerTransport {
+     use plx_screens::registry::PlayerReq;
+-    let mut viewer_transport = false;
++    let mut viewer_transport = ViewerTransport::None;
+     for req in reqs {
+         match req {
+             // The app consumes these before ordinary transport dispatch. A caller
+@@ -664,6 +708,12 @@ pub(crate) fn player_requests(
                      plx_machine::idle::invalidate();
                  }
              }
@@ -60207,7 +61144,22 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
              PlayerReq::ExtendHud(ms) => {
                  if let Some(player) = super::bridge::player_mut(pages) {
                      player.hud.extend(now, ms);
-@@ -688,6 +714,9 @@ pub(crate) fn player_requests(
+@@ -678,16 +728,21 @@ pub(crate) fn player_requests(
+             }
+             // The fall-through a surface cannot perform (`screens::player::overlay`'s module doc):
+             // the same toggle the bare transport reaches, with the panel left untouched.
+-            PlayerReq::Transport(play) => viewer_transport |= apply_transport(pa, play, now, pages),
+-            PlayerReq::SeekTo(ns) => viewer_transport |= apply_seek_to(pa, ns),
++            PlayerReq::Transport(play) => viewer_transport = viewer_transport.merge(
++                ViewerTransport::from_transport(apply_transport(pa, play, now, pages))),
++            PlayerReq::SeekTo(ns) => viewer_transport = viewer_transport.merge(
++                ViewerTransport::from_seek(apply_seek_to(pa, ns))),
+             // …and its twin, which does NOT resume: the scrub bar is how a paused film is moved.
+             // The pump keeps the pause across it (see `commit_seek`).
+             PlayerReq::CommitSeek(ns) => {
+                 commit_seek(ns);
+-                viewer_transport = true;
++                viewer_transport = ViewerTransport::Seek;
              }
              PlayerReq::More(action) => apply_more_action(&mut player.session, pa, bridge, action),
              PlayerReq::CommitTrack(commit) => commit_track(&mut player.session, commit),
@@ -60217,7 +61169,33 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
              PlayerReq::ViewportAddressed(request) => {
                  super::player_viewport::reject_unhandled(pages, &request);
              }
-@@ -1033,7 +1062,7 @@ pub(crate) fn finish_playback(
+@@ -707,7 +762,8 @@ pub(crate) fn player_requests(
+                 *ok_armed = true;
+             }
+             PlayerReq::Info(action) => {
+-                viewer_transport |= apply_info_action(player, pa, repause_at, action, refresh_hubs, pages, bridge);
++                viewer_transport = viewer_transport.merge(ViewerTransport::from_seek(
++                    apply_info_action(player, pa, repause_at, action, refresh_hubs, pages, bridge)));
+             }
+             // The old `key_ok`'s tabs-row (`focus == 2`) and failure-read-out (`ChooseQuality`)
+             // arms, both of which presented a panel immediately rather than through the deferred
+@@ -727,11 +783,13 @@ pub(crate) fn player_requests(
+             // already played, so this performs at once (the pointer's `ArmControlRow` above dips
+             // here and performs from the loop's commit frame, through the same two functions).
+             PlayerReq::Command(command) => {
+-                viewer_transport |= perform_hud_command(command, player, pa, repause_at, now, refresh_hubs, pages, bridge);
++                viewer_transport = viewer_transport.merge(
++                    perform_hud_command(command, player, pa, repause_at, now, refresh_hubs, pages, bridge));
+             }
+             PlayerReq::StandIn => {
+                 if let Some(ctrl) = super::bridge::player(pages).map(|screen| screen.slot) {
+-                    viewer_transport |= activate_stand_in(player, pa, repause_at, ctrl, now, refresh_hubs, pages, bridge);
++                    viewer_transport = viewer_transport.merge(ViewerTransport::from_seek(
++                        activate_stand_in(player, pa, repause_at, ctrl, now, refresh_hubs, pages, bridge)));
+                 }
+             }
+             // The STOP key, a BACK with nothing else open and the failure read-out's own BACK
+@@ -1033,7 +1091,7 @@ pub(crate) fn finish_playback(
      bridge: &mut super::bridge::Bridge,
  ) -> bool {
      if plx_media::route::next_episode_mode() != plx_media::route::NextEpisodeMode::Off
@@ -60226,7 +61204,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
      {
          return true;
      }
-@@ -1069,7 +1098,7 @@ pub(crate) fn activate_ctrl_row(
+@@ -1069,7 +1127,7 @@ pub(crate) fn activate_ctrl_row(
          // being caught out.
          ControlSlot::UpNext(_) => {
              if btn == plx_appkit::up_next::BTN_NEXT {
@@ -60235,7 +61213,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
              } else {
                  if let Some(player) = super::bridge::player_mut(pages) {
                      player.up_next.cancel();
-@@ -1123,7 +1152,7 @@ pub(crate) fn activate_ctrl_row(
+@@ -1123,7 +1181,7 @@ pub(crate) fn activate_ctrl_row(
  pub(crate) fn play_up_next(
      ps: &mut plx_media::route::PlaybackSession,
      pa: &mut plx_media::player::adapter::PlayerAdapter,
@@ -60244,7 +61222,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
      pages: &mut plx_ui::dispatch::Dispatcher<super::bridge::AppHost>,
      bridge: &mut super::bridge::Bridge,
  ) -> bool {
-@@ -1142,14 +1171,14 @@ pub(crate) fn play_up_next(
+@@ -1142,14 +1200,14 @@ pub(crate) fn play_up_next(
      ps.finished = true;
      if let Some(row) = plx_media::route::queue_neighbor(ps, plx_media::route::QueueStep::Next)
          .filter(|row| row.rk == u.rk) {
@@ -60261,7 +61239,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
  }
  
  /// Direct-play a LEAF catalog item (movie or episode) — the hero-pill / Continue-Watching
-@@ -1164,12 +1193,12 @@ pub(crate) unsafe fn play_item_now(
+@@ -1164,12 +1222,12 @@ pub(crate) unsafe fn play_item_now(
      mm: &plx_data::pms::PmsMovie,
      from_start: bool,
      from: Origin,
@@ -60276,7 +61254,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
  }
  
  /// Shared captured-row launch, including the empty/request guards, metadata scheduling,
-@@ -1182,7 +1211,7 @@ pub(super) fn play_item_now_with<R: PlaybackResources>(
+@@ -1182,7 +1240,7 @@ pub(super) fn play_item_now_with<R: PlaybackResources>(
      // the version the viewer picked (Play Version), `None` for the default
      version: Option<plx_plex::plex::MediaId>,
      from: Origin,
@@ -60285,7 +61263,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
      ret: Option<plx_ui::screen::ReturnState<u32, plx_screens::registry::PageMemory>>,
      pages: &mut plx_ui::dispatch::Dispatcher<super::bridge::AppHost>,
      bridge: &mut super::bridge::Bridge,
-@@ -1220,7 +1249,7 @@ pub(super) fn play_item_now_with<R: PlaybackResources>(
+@@ -1220,7 +1278,7 @@ pub(super) fn play_item_now_with<R: PlaybackResources>(
              plx_data::metadata::resume_ns(mm.resume_ms, mm.dur_ns / 1_000_000)
          },
          from,
@@ -60294,7 +61272,85 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          ret,
          pages,
          bridge,
-@@ -1414,7 +1443,7 @@ pub(crate) fn perform_hud_command(
+@@ -1345,7 +1403,7 @@ pub(crate) fn perform_hud_command(
+     refresh_hubs: &mut bool,
+     pages: &mut plx_ui::dispatch::Dispatcher<super::bridge::AppHost>,
+     bridge: &mut super::bridge::Bridge,
+-) -> bool {
++) -> ViewerTransport {
+     use plx_appkit::player_hud::command::{HudCommand, Section};
+     use plx_media::route::QueueStep;
+     use plx_screens::player::overlay::OverlayKind;
+@@ -1353,9 +1411,9 @@ pub(crate) fn perform_hud_command(
+     let viewer_transport = match command {
+         HudCommand::TogglePlay => {
+             match super::bridge::player_mut(pages).map(|screen| screen.toggle_play(None, now)) {
+-                Some(PlayerReq::SeekTo(ns)) => apply_seek_to(pa, ns),
+-                Some(PlayerReq::Transport(play)) => apply_transport(pa, play, now, pages),
+-                _ => false,
++                Some(PlayerReq::SeekTo(ns)) => ViewerTransport::from_seek(apply_seek_to(pa, ns)),
++                Some(PlayerReq::Transport(play)) => ViewerTransport::from_transport(apply_transport(pa, play, now, pages)),
++                _ => ViewerTransport::None,
+             }
+         }
+         HudCommand::Seek(by) => {
+@@ -1364,30 +1422,28 @@ pub(crate) fn perform_hud_command(
+                 .and_then(|screen| screen.jump_by(&player.session, step, true, now));
+             if let Some(target) = target {
+                 commit_seek(target);
+-                true
++                ViewerTransport::Seek
+             } else {
+-                false
++                ViewerTransport::None
+             }
+         }
+         HudCommand::Previous => {
+-            queue_transport::step(&mut player.session, pa, QueueStep::Previous, pages, bridge);
+-            return false;
++            return queue_transport::step(&mut player.session, pa, QueueStep::Previous, pages, bridge);
+         }
+         HudCommand::Next => {
+-            queue_transport::step(&mut player.session, pa, QueueStep::Next, pages, bridge);
+-            return false;
++            return queue_transport::step(&mut player.session, pa, QueueStep::Next, pages, bridge);
+         }
+         HudCommand::OpenTracks(tab) => {
+             super::bridge::open_player_overlay(
+                 &mut player.session, bridge.metadata_view(), pages, OverlayKind::Tracks { tab: tab.index() },
+             );
+-            false
++            ViewerTransport::None
+         }
+         HudCommand::OpenMore(page) => {
+             super::bridge::open_player_overlay(
+                 &mut player.session, bridge.metadata_view(), pages, OverlayKind::More { page: page.page() },
+             );
+-            false
++            ViewerTransport::None
+         }
+         HudCommand::ToggleSection(section) => {
+             let kind = match section {
+@@ -1399,22 +1455,22 @@ pub(crate) fn perform_hud_command(
+             } else {
+                 super::bridge::open_player_overlay(&mut player.session, bridge.metadata_view(), pages, kind);
+             }
+-            false
++            ViewerTransport::None
+         }
+-        HudCommand::FromBeginning => from_beginning(pa),
++        HudCommand::FromBeginning => ViewerTransport::from_seek(from_beginning(pa)),
+         HudCommand::GoToDetail => {
+             if let Some(rk) = plx_appkit::info_panel::detail_rk(bridge.metadata_view()).map(str::to_owned) {
+                 go_to_detail(player, pa, repause_at, refresh_hubs, &rk, pages, bridge);
+             }
+-            false
++            ViewerTransport::None
+         }
+         HudCommand::ToggleStats => {
+             crate::app::diagnostics::toggle();
+-            false
++            ViewerTransport::None
          }
      };
      if let Some(player) = super::bridge::player_mut(pages) {
@@ -60303,7 +61359,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          player.publish();
      }
      viewer_transport
-@@ -1431,7 +1460,7 @@ fn apply_transport(
+@@ -1431,7 +1487,7 @@ fn apply_transport(
  ) -> bool {
      let accepted = set_transport_paused(pa, super::lifecycle::transport_target(play, super::lifecycle::viewer_paused()));
      if let Some(player) = super::bridge::player_mut(pages) {
@@ -60312,7 +61368,30 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          player.publish();
      }
      accepted
-@@ -1499,7 +1528,7 @@ fn activate_stand_in(
+@@ -1464,7 +1520,7 @@ pub(crate) unsafe fn activate_player_row(
+     refresh_hubs: &mut bool,
+     pages: &mut plx_ui::dispatch::Dispatcher<super::bridge::AppHost>,
+     bridge: &mut super::bridge::Bridge,
+-) -> bool {
++) -> ViewerTransport {
+     // The cursor is the instance's; read the one field this dispatch turns on, so the container
+     // is borrowed once and the arms below are free to present a panel on it.
+     let btn = super::bridge::player(pages).map_or(0, |player| player.hud.nav.btn);
+@@ -1472,10 +1528,11 @@ pub(crate) unsafe fn activate_player_row(
+         if let Some(command) = controls.command(btn) {
+             perform_hud_command(command, player, pa, repause_at, now, refresh_hubs, pages, bridge)
+         } else {
+-            false
++            ViewerTransport::None
+         }
+     } else {
+-        activate_stand_in(player, pa, repause_at, ctrl, now, refresh_hubs, pages, bridge)
++        ViewerTransport::from_seek(activate_stand_in(
++            player, pa, repause_at, ctrl, now, refresh_hubs, pages, bridge))
+     }
+ }
+ 
+@@ -1499,7 +1556,7 @@ fn activate_stand_in(
      let btn = super::bridge::player(pages).map_or(0, |screen| screen.hud.nav.btn);
      let accepted = activate_ctrl_row(player, pa, repause_at, ctrl, refresh_hubs, btn, pages, bridge);
      if let Some(player) = super::bridge::player_mut(pages) {
@@ -60321,7 +61400,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          player.publish();
      }
      accepted
-@@ -1519,7 +1548,7 @@ pub(crate) fn key_pause(
+@@ -1519,7 +1576,7 @@ pub(crate) fn key_pause(
          });
      }
      if let Some(player) = super::bridge::player_mut(pages) {
@@ -60330,7 +61409,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
          player.publish();
      }
      accepted
-@@ -1580,7 +1609,7 @@ pub(crate) unsafe fn key_play(
+@@ -1580,7 +1637,7 @@ pub(crate) unsafe fn key_play(
          ptr.cur_hidden = true;
      }
      if let Some(player) = super::bridge::player_mut(pages) {
@@ -60340,7 +61419,7 @@ index e81099c3b9e43f14262ac61f82883722b773434d..3bed29b642255d8a71ac5f763b85536c
      }
      accepted
 diff --git a/rust-modules/src/app/playback/queue_transport.rs b/rust-modules/src/app/playback/queue_transport.rs
-index 3e95a41da6653759636fbd369b22c0c09da826f7..510e9b0a3c634b1649fd50c37269f69097ef0e3d 100644
+index 3e95a41da6653759636fbd369b22c0c09da826f7..978989c9a578c11de1a3ebc17e9919c1087a17da 100644
 --- a/rust-modules/src/app/playback/queue_transport.rs
 +++ b/rust-modules/src/app/playback/queue_transport.rs
 @@ -1,4 +1,5 @@
@@ -60349,12 +61428,27 @@ index 3e95a41da6653759636fbd369b22c0c09da826f7..510e9b0a3c634b1649fd50c37269f690
  use super::*;
  use plx_media::route::{previous_restarts, queue_neighbor, QueueStep};
  use plx_plex::plex::QueueRow;
-@@ -20,14 +21,14 @@ pub(super) fn step(
-         return;
+@@ -9,25 +10,26 @@ pub(super) fn step(
+     direction: QueueStep,
+     pages: &mut plx_ui::dispatch::Dispatcher<super::super::bridge::AppHost>,
+     bridge: &mut super::super::bridge::Bridge,
+-) {
++) -> ViewerTransport {
+     if direction == QueueStep::Previous && previous_restarts(plx_media::player::intended_pos_ns(ps))
+     {
+         request_seek(0);
+         resume_if_paused(pa);
+-        return;
++        return ViewerTransport::Seek;
+     }
+     let Some(row) = queue_neighbor(ps, direction) else {
+-        return;
++        return ViewerTransport::None;
      };
      log(&format!("queue transport: {direction:?} rk={}", row.rk));
 -    play(ps, pa, row, HUD_LINGER_MS, pages, bridge);
 +    play(ps, pa, row, HudStart::Ordinary, pages, bridge);
++    ViewerTransport::None
  }
  
  pub(super) fn play(
@@ -60366,7 +61460,7 @@ index 3e95a41da6653759636fbd369b22c0c09da826f7..510e9b0a3c634b1649fd50c37269f690
      pages: &mut plx_ui::dispatch::Dispatcher<super::super::bridge::AppHost>,
      bridge: &mut super::super::bridge::Bridge,
  ) -> bool {
-@@ -54,7 +55,7 @@ pub(super) fn play(
+@@ -54,7 +56,7 @@ pub(super) fn play(
          pa,
          resume,
          Origin::Unchanged,
@@ -60757,7 +61851,7 @@ index dc1291578c755696f2a5fc9e0ef2ad7fe3820bd9..1f9e28d045e1f666f1fab462e7f7f4a5
          }
          plx_machine::landgate::disarm();
 diff --git a/rust-modules/src/app/run.rs b/rust-modules/src/app/run.rs
-index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238700435ea 100644
+index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..729d913fbfba687e3b4b7b705f7de19a6954795b 100644
 --- a/rust-modules/src/app/run.rs
 +++ b/rust-modules/src/app/run.rs
 @@ -36,6 +36,7 @@
@@ -60892,7 +61986,37 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
                      } else {
                          player.up_next.cancel();
                      }
-@@ -3770,6 +3790,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -2306,13 +2326,13 @@ pub(crate) unsafe fn land_results(app: &mut App, fr: &mut Frame) {
+                             Some(plx_screens::player::overlay::OverlayKind::Info)
+                         ) =>
+                     {
+-                        commit_info_press(&mut app.player,
++                        super::playback::ViewerTransport::from_seek(commit_info_press(&mut app.player,
+                             &mut app.adapters.player,
+                             &mut app.repause_at,
+                             &mut app.refresh_hubs,
+                             &mut app.pages,
+                             &mut app.bridge,
+-                        )
++                        ))
+                     }
+                     AppArg::Player => activate_player_row(&mut app.player,
+                         &mut app.adapters.player,
+@@ -2323,11 +2343,9 @@ pub(crate) unsafe fn land_results(app: &mut App, fr: &mut Frame) {
+                         &mut app.pages,
+                         &mut app.bridge,
+                     ),
+-                    _ => false,
++                    _ => super::playback::ViewerTransport::None,
+                 };
+-                if viewer_transport {
+-                    super::ott_runtime::viewer_transport(app);
+-                }
++                super::ott_runtime::viewer_action(app, viewer_transport);
+             } else if !app.input.press.is_active() {
+                 app.ok_armed = false; // long-press / cancelled — disarm without activating
+             }
+@@ -3770,6 +3788,7 @@ pub(crate) mod lifecycle_regression_tests {
          plx_media::player::SHARED.reset_session();
          let app = App {
              player_viewport: Default::default(),
@@ -60900,7 +62024,7 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
              ott: None,
              ott_standby:false,
              ott_wake_release:false,
-@@ -3785,6 +3806,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -3785,6 +3804,7 @@ pub(crate) mod lifecycle_regression_tests {
              #[cfg(feature = "devtools")]
              buffer_flip_count: Default::default(),
              down_sym: Default::default(),
@@ -60908,7 +62032,7 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
              modal_repeat: RepeatGate::IDLE,
              diagnostics: Default::default(),
              player: plx_media::player::machine::Player::new(),
-@@ -4613,7 +4635,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -4613,7 +4633,7 @@ pub(crate) mod lifecycle_regression_tests {
              frame(&mut app, now);
          }
          let player = super::super::bridge::player_mut(&mut app.pages).expect("the player page is mounted");
@@ -60917,7 +62041,7 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
          player.hud.visible_at_press = true;
          let (focus, engine) = (player.hud.nav.focus, app.pages.focus().map(|k| k.elem));
          app.bridge.take_player_reqs();
-@@ -4701,7 +4723,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -4701,7 +4721,7 @@ pub(crate) mod lifecycle_regression_tests {
              perform(&mut app, command, 100);
              assert_eq!(super::super::bridge::player_overlay_kind(&app.pages), Some(want), "{command:?}");
              let player = super::super::bridge::player(&app.pages).expect("the player page is mounted");
@@ -60926,7 +62050,7 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
          }
          for command in [HudCommand::Previous, HudCommand::Next] {
              let mut app = app();
-@@ -4812,7 +4834,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -4812,7 +4832,7 @@ pub(crate) mod lifecycle_regression_tests {
          assert_eq!(globals.seek_to(), 50_000_000_000);
          let player = super::super::bridge::player(&app.pages).expect("mounted");
          assert!(!player.hud.dismissed, "a control press does not hide the transport it was pressed on");
@@ -60935,7 +62059,7 @@ index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238
          perform_on_a_mounted_player(&mut app, seek, 300);
          assert_eq!(globals.seek_to(), 60_000_000_000, "the second press accumulates");
      }
-@@ -5137,7 +5159,7 @@ pub(crate) mod lifecycle_regression_tests {
+@@ -5137,7 +5157,7 @@ pub(crate) mod lifecycle_regression_tests {
                  &mut self.app.adapters.player,
                  0,
                  Origin::Here,
