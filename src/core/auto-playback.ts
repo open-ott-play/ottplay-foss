@@ -13,6 +13,7 @@ export function watchAutoNativePlayback(
         active: () => boolean;
         fallback: () => void;
         monitorDroppedFrames?: boolean;
+        monitorInitialStall?: boolean;
         restore: () => void;
     }
 ): ((restoreNative?: boolean) => void) & { pending: () => boolean } {
@@ -25,6 +26,22 @@ export function watchAutoNativePlayback(
     var probeTimer: ReturnType<typeof setTimeout> | null = null;
     var actionTimer: ReturnType<typeof setTimeout> | null = null;
     var cancelFrameWatch: (() => void) | null = null;
+    var initialTimer: ReturnType<typeof setTimeout> | null = null;
+    var initialSince: number | null = null;
+    var initialSample: number | null = null;
+    var initialPosition: number | null = null;
+    var initialFinished = false;
+    var initialSource = media.src;
+    var initialEvents = [
+        "pause",
+        "play",
+        "seeking",
+        "seeked",
+        "waiting",
+        "emptied",
+        "ratechange",
+    ];
+    var doc = media.ownerDocument || document;
     var events = [
         "playing",
         "timeupdate",
@@ -32,6 +49,12 @@ export function watchAutoNativePlayback(
         "loadeddata",
         "resize",
     ];
+
+    function addListeners(): void {
+        for (var i = 0; i < events.length; i++)
+            media.addEventListener(events[i], inspect);
+        media.addEventListener("error", onNativeError);
+    }
 
     function removeListeners(): void {
         for (var i = 0; i < events.length; i++)
@@ -64,6 +87,13 @@ export function watchAutoNativePlayback(
         // was already queued; stop/channel-switch cancellation never renews it.
         var renewNative = restoreNative === true && probing && options.active();
         disposed = true;
+        if (initialTimer !== null) clearTimeout(initialTimer);
+        initialTimer = null;
+        if (options.monitorInitialStall) {
+            for (var i = 0; i < initialEvents.length; i++)
+                media.removeEventListener(initialEvents[i], resetInitialWindow);
+            doc.removeEventListener("visibilitychange", resetInitialWindow);
+        }
         if (cancelFrameWatch) cancelFrameWatch();
         cancelFrameWatch = null;
         removeListeners();
@@ -88,7 +118,7 @@ export function watchAutoNativePlayback(
         return false;
     }
 
-    function finish(useFallback: boolean): void {
+    function finish(useFallback: boolean, initialGuard?: () => boolean): void {
         if (!current() || decided) return;
         decided = true;
         removeListeners();
@@ -98,6 +128,24 @@ export function watchAutoNativePlayback(
         actionTimer = setTimeout(function () {
             actionTimer = null;
             var stillCurrent = !disposed && options.active();
+            // A reset event or suspended timer can invalidate the timing guard
+            // before it reads media state. Never rearm onto a replaced source.
+            if (stillCurrent && initialGuard && media.src !== initialSource) {
+                cancel();
+                return;
+            }
+            if (stillCurrent && initialGuard && !initialGuard()) {
+                // Pause, new frames or a changed source may arrive between the
+                // last sample and this deferred action. Do not reload playback.
+                if (disposed) return;
+                decided = false;
+                addListeners();
+                resetInitialWindow();
+                scheduleInitialCheck();
+                onNativeError();
+                inspect();
+                return;
+            }
             // Native video may finish loading during the probe or just after
             // its track event. Keep that now-working engine; renewing src is
             // still necessary for proxies that replaced their session.
@@ -124,6 +172,111 @@ export function watchAutoNativePlayback(
                 if (current()) startFrameWatch();
             }
         }, 0);
+    }
+
+    function resetInitialWindow(): void {
+        initialSince = null;
+        initialSample = null;
+    }
+
+    function initialStalled(): boolean {
+        if (initialFinished || !current()) return false;
+        if (media.src !== initialSource) {
+            initialFinished = true;
+            cancel();
+            return false;
+        }
+        try {
+            var target = media as any;
+            var quality =
+                typeof target.getVideoPlaybackQuality === "function"
+                    ? target.getVideoPlaybackQuality()
+                    : null;
+            var frames = quality
+                ? quality.totalVideoFrames
+                : target.webkitDecodedFrameCount;
+            if (
+                (typeof frames === "number" &&
+                    isFinite(frames) &&
+                    frames > 0) ||
+                (initialPosition !== null &&
+                    media.currentTime !== initialPosition)
+            ) {
+                // This is only initial startup recovery, never a new stall policy
+                // for video which already started or was explicitly sought.
+                initialFinished = true;
+                return false;
+            }
+            if (
+                typeof frames !== "number" ||
+                frames !== 0 ||
+                media.paused ||
+                media.seeking ||
+                media.ended ||
+                media.error ||
+                media.readyState < 2 ||
+                media.playbackRate !== 1 ||
+                !media.videoWidth ||
+                !media.videoHeight ||
+                (target.videoTracks && !target.videoTracks.length) ||
+                doc.visibilityState !== "visible" ||
+                !isFinite(media.currentTime)
+            )
+                return false;
+            var buffered = media.buffered;
+            for (var i = 0; i < buffered.length; i++) {
+                if (
+                    buffered.start(i) <= media.currentTime &&
+                    buffered.end(i) - media.currentTime >= 2
+                ) {
+                    if (initialPosition === null)
+                        initialPosition = media.currentTime;
+                    return true;
+                }
+            }
+        } catch (_initialStateError) {}
+        return false;
+    }
+
+    function scheduleInitialCheck(): void {
+        if (
+            !options.monitorInitialStall ||
+            initialFinished ||
+            disposed ||
+            initialTimer !== null
+        )
+            return;
+        initialTimer = setTimeout(function () {
+            initialTimer = null;
+            if (!current()) return;
+            var now = Date.now();
+            if (probing || decided || !initialStalled()) resetInitialWindow();
+            else {
+                // Match the conservative 30s local startup watchdog. Time with
+                // no buffer, paused/hidden media or suspended timers never counts.
+                if (
+                    initialSince === null ||
+                    initialSample === null ||
+                    now <= initialSample ||
+                    now - initialSample > 2000
+                )
+                    initialSince = now;
+                initialSample = now;
+                if (now - initialSince >= 30000) {
+                    finish(true, function () {
+                        return (
+                            initialSince !== null &&
+                            initialSample !== null &&
+                            Date.now() - initialSample <= 2000 &&
+                            Date.now() - initialSince >= 30000 &&
+                            initialStalled()
+                        );
+                    });
+                    return;
+                }
+            }
+            scheduleInitialCheck();
+        }, 1000);
     }
 
     function audioWithoutVideo(): boolean {
@@ -235,10 +388,14 @@ export function watchAutoNativePlayback(
             });
     }
 
-    for (var i = 0; i < events.length; i++)
-        media.addEventListener(events[i], inspect);
-    media.addEventListener("error", onNativeError);
+    addListeners();
+    if (options.monitorInitialStall) {
+        for (var i = 0; i < initialEvents.length; i++)
+            media.addEventListener(initialEvents[i], resetInitialWindow);
+        doc.addEventListener("visibilitychange", resetInitialWindow);
+    }
     startFrameWatch();
+    scheduleInitialCheck();
     // PiP can load the HLS library after native playback has already emitted
     // metadata or failed. Inspect that state as well as subsequent events.
     onNativeError();

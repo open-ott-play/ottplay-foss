@@ -109,6 +109,7 @@ function fixture(options = {}) {
     };
     let timer = 0;
     const timeouts = new Map();
+    const documentListeners = {};
     function Hls() {
         this.events = {};
         this.levels = [{ bitrate: 90e6 }];
@@ -180,6 +181,15 @@ function fixture(options = {}) {
             }
         },
         document: {
+            addEventListener(event, callback) {
+                (documentListeners[event] ||= []).push(callback);
+            },
+            removeEventListener(event, callback) {
+                documentListeners[event] = (
+                    documentListeners[event] || []
+                ).filter((fn) => fn !== callback);
+            },
+            visibilityState: "visible",
             body: { classList: { remove() {} }, style: {} },
             getElementById(id) {
                 if (id === "video") return w.video;

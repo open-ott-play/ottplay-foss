@@ -2389,7 +2389,10 @@ function startCorePlayback(
                 ? media.currentTime || position
                 : undefined;
         };
-        var attachNative = function (sourceUrl: string): void {
+        var attachNative = function (
+            sourceUrl: string,
+            directRetry = false
+        ): void {
             if (!active()) return;
             nativeAttached = true;
             media.src = sourceUrl;
@@ -2409,7 +2412,7 @@ function startCorePlayback(
                     if (_coreNativeHlsCleanup) _coreNativeHlsCleanup();
                     _coreNativeHlsCleanup = null;
                     resetCoreNativeBitrate();
-                    attachNative(url);
+                    attachNative(url, true);
                 };
                 media.addEventListener("error", directFallback);
                 _coreNativeHlsCleanup = function (): void {
@@ -2454,6 +2457,9 @@ function startCorePlayback(
                                 );
                             });
                         },
+                        // A failed relay gets one direct native chance before Auto
+                        // gives up on a buffered attempt which never displays video.
+                        monitorInitialStall: directRetry,
                         monitorDroppedFrames: !!(
                             (window as any).__TAURI__ ||
                             (window as any).__TAURI_INTERNALS__
