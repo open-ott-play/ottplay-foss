@@ -927,9 +927,14 @@ export function loadProv(
         if ((window as any).__ottActiveProviderDriver) return;
         providerId = kiosk.snapshot().provider;
     }
+    if (providerId && !localSession)
+        (window as any).__ottLocalMedia?.cancelDroppedVideo?.();
     var commandLoad = {};
     (window as any).__ottCommandChannelLoad = commandLoad;
     (window as any).commandChannelsReady = false;
+    // Accept queued OS files after startup has committed its provider generation.
+    (window as any).__ottDesktopOpenReady = true;
+    (window as any).__ottLocalDrop?.ready?.();
     var nativeCompanion = (window as any).__ottMediaCompanion;
     if (
         (providerId || stbGetItem("ottplayprov")) === "torrent" &&
@@ -1115,7 +1120,9 @@ export function loadProv(
         }
 
         var matchResult =
-            localSession || (kiosk && kiosk.enabled())
+            localSession ||
+            (window as any).__ottLocalMedia?.hasDroppedVideo?.() ||
+            (kiosk && kiosk.enabled())
                 ? null
                 : window.location.search.match(/\?([^&]+)/);
         // Keep an explicitly selected demo after restarting a URL-pinned player.

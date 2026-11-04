@@ -1,0 +1,68 @@
+{
+  "feature": "Desktop single-file drop and OS Open With playback",
+  "base_commit": "cdf8974accd1f410792bbaebf2eefd03661167b5",
+  "measurement_scope": "same-toolchain shared entry only; no build identity/native transforms, no full distribution",
+  "node": "v26.8.2",
+  "entry": {
+    "source": "cdf8974accd1f410792bbaebf2eefd03661167b5",
+    "node": "v26.8.2",
+    "scope": "same-toolchain shared entry only; no build identity/native transforms, no full distribution",
+    "inputs": {
+      "src/storage/index.ts": "186ed46537aa764bea332c306449a546ecd425feb3d99d35c4f0bb17abfd613d",
+      "src/plugins/local-media.ts": "a3a2d4211dbbdf60ffd8be61879f54418d71506f073795b6875bedc55fdf5c2f",
+      "src/provider/index.ts": "2af04d73967b85a22b159f968dbfeaa907fc6554573759701f2c8bfd66e1065c",
+      "src/provider/drivers.ts": "ea74ddd229f38de9f49dde165ca377772585c96559c8955396065154f1b1fbf5"
+    },
+    "before": {
+      "bytes": 1193355,
+      "gzipBytes": 363407,
+      "sha256": "5f6ea9ce6025c511a209580338725a51008f7da5367ce1fd833a3e75f68541b1"
+    },
+    "after": {
+      "bytes": 1197173,
+      "gzipBytes": 364460,
+      "sha256": "a41c0825459ef00f7ad896fd39eb2069ea5e67d516b2561afad270c751d2b9fd"
+    },
+    "delta": {
+      "bytes": 3818,
+      "gzipBytes": 1053
+    }
+  },
+  "allowance": {
+    "entry": {
+      "bytes": 4000,
+      "gzipBytes": 1200
+    },
+    "optional": {
+      "bytes": 5400,
+      "gzipBytes": 2200
+    }
+  },
+  "accounting": [
+    "Entry allowance added once to entry and legacy budgets.",
+    "Complete payload adds entry and optional allowances once.",
+    "Per-provider budgets are unchanged."
+  ],
+  "pending": [
+    "Final deployed web, server, Tauri and Android artifact size verification on release toolchain."
+  ],
+  "optional": {
+    "scope": "Desktop optional bundle including native startup readiness and same-generation provider mount handling",
+    "node": "v26.8.2",
+    "typescript": "5.9.3",
+    "inputs": [
+      {
+        "path": "src/offline/dropped-video.ts",
+        "sha256": "eeed0b4c99d742a4fec862858d685583d94f1f1ce1ac35dbd7dd7deb4d3186ab"
+      },
+      {
+        "path": "src/plugins/local-drop.ts",
+        "sha256": "141da454bf13a17ac495357406d5f29cae47c7c06555acbd5592f71ed721b950"
+      }
+    ],
+    "assembledBytes": 11265,
+    "optimizedBytes": 5223,
+    "gzipBytes": 2092,
+    "optimizedSha256": "8914c3d49117c51cef32f07ca731d3e30ded66d78453d4b49fcb1077cf0c0b9a"
+  }
+}

@@ -6,9 +6,9 @@ use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
-struct Runtime {
-    endpoint: String,
-    library: ottplay_core::offline_media::Library,
+pub(super) struct Runtime {
+    pub(super) endpoint: String,
+    pub(super) library: ottplay_core::offline_media::Library,
 }
 #[derive(Default)]
 pub struct OfflineMediaState(
@@ -35,7 +35,7 @@ pub struct Endpoint {
     picker_cancelled: Option<bool>,
 }
 
-async fn runtime(
+pub(super) async fn runtime(
     app: &AppHandle,
     state: &OfflineMediaState,
     preferred_id: Option<&str>,
