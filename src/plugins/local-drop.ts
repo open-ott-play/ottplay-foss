@@ -43,8 +43,7 @@ export function installLocalDrop(w: any): any {
         }
     }
     function message(text: string): void {
-        if (!disposed && typeof w.showShift === "function")
-            w.showShift(w._ ? w._(text) : text);
+        if (!disposed && typeof w.showShift === "function") w.showShift(text);
     }
     function invoke(name: string, args: any): Promise<any> {
         var bridge = w.__TAURI__?.core || w.__TAURI__;
@@ -91,7 +90,11 @@ export function installLocalDrop(w: any): any {
         } catch (_) {
             release(lease);
             if (previous && !previous.released) active = previous;
-            message("Could not play the dropped video");
+            message(
+                w._
+                    ? w._("Local source unavailable")
+                    : "Local source unavailable"
+            );
         }
     }
     function hasFiles(event: any): boolean {
@@ -116,7 +119,11 @@ export function installLocalDrop(w: any): any {
         if (native || !allowed()) return;
         var files = event.dataTransfer.files;
         if (!files || files.length !== 1) {
-            message("Drop one video file at a time");
+            message(
+                w._
+                    ? w._("Drop one video file at a time")
+                    : "Drop one video file at a time"
+            );
             return;
         }
         var lease: any;
@@ -124,7 +131,7 @@ export function installLocalDrop(w: any): any {
             // Capture the File synchronously while the gesture owns DataTransfer.
             lease = createDroppedVideo(w, files[0]);
         } catch (_) {
-            message("Choose a supported video file");
+            message(w._ ? w._("Unsupported source") : "Unsupported source");
             return;
         }
         cancelPending();
@@ -155,7 +162,11 @@ export function installLocalDrop(w: any): any {
         lease.timer = w.setTimeout(function () {
             if (pending !== lease) return;
             cancelPending();
-            message("Could not play the dropped video");
+            message(
+                w._
+                    ? w._("Local source unavailable")
+                    : "Local source unavailable"
+            );
         }, 20000);
         invoke("local_media_take_drop", { grant: grant }).then(
             function (catalog) {
@@ -182,7 +193,11 @@ export function installLocalDrop(w: any): any {
                 pending = null;
                 w.clearTimeout(lease.timer);
                 release(lease);
-                message("Could not play the dropped video");
+                message(
+                    w._
+                        ? w._("Local source unavailable")
+                        : "Local source unavailable"
+                );
             }
         );
     }

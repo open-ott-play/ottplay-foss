@@ -81,6 +81,8 @@ jobs:
         run: cargo test --locked -p ottplay-tauri window_preferences::tests
       - name: Test fullscreen confirmation contracts on Windows
         run: cargo test --locked -p ottplay-tauri fullscreen_confirmation_tests
+      - name: Test local drop and OS file-open contracts on Windows
+        run: "cargo test --locked -p ottplay-tauri commands::local_drop::tests::"
       - name: Check owned-window smoke runner
         run: python tests/test_window_controls_smoke.py
       - name: Build isolated window controls fixture

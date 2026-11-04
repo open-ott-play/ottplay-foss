@@ -47,7 +47,7 @@
     "Final deployed web, server, Tauri and Android artifact size verification on release toolchain."
   ],
   "optional": {
-    "scope": "Desktop optional bundle including native startup readiness and same-generation provider mount handling",
+    "scope": "Desktop optional bundle including native startup readiness, same-generation provider mount handling and localized drop messages",
     "node": "v26.8.2",
     "typescript": "5.9.3",
     "inputs": [
@@ -57,12 +57,12 @@
       },
       {
         "path": "src/plugins/local-drop.ts",
-        "sha256": "141da454bf13a17ac495357406d5f29cae47c7c06555acbd5592f71ed721b950"
+        "sha256": "748e5202d2ad6aceb0f96218e70cfad026614ecf39c9759e46824a06e7883e00"
       }
     ],
-    "assembledBytes": 11265,
-    "optimizedBytes": 5223,
-    "gzipBytes": 2092,
-    "optimizedSha256": "8914c3d49117c51cef32f07ca731d3e30ded66d78453d4b49fcb1077cf0c0b9a"
+    "assembledBytes": 11539,
+    "optimizedBytes": 5356,
+    "gzipBytes": 2109,
+    "optimizedSha256": "743a21aa270e883a5925245810440088c9b26112437ca2378b490839ea543826"
   }
 }

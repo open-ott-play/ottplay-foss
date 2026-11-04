@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 let {
+    DESKTOP_DROP_ALLOWANCE,
     NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE,
     FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE,
     LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE,
@@ -77,7 +78,7 @@ let {
     measureBundle,
     writeBundleReport,
 } = require("../scripts/classic-size.cjs");
-const {
+let {
     CLASSIC_PROVIDER_BUNDLES,
     CLASSIC_OPTIONAL_BUNDLES,
 } = require("../scripts/classic-bundle.cjs");
@@ -94,6 +95,7 @@ const latestCaps = Object.freeze({
     OPTIONAL_BUDGETS,
     TOTAL_BUDGET,
 });
+const latestOptionalBundles = CLASSIC_OPTIONAL_BUNDLES;
 function capsWithoutAllowances(names) {
     assert.equal(new Set(names).size, names.length);
     const filename = require.resolve("../scripts/classic-size.cjs");
@@ -113,22 +115,105 @@ function capsWithoutAllowances(names) {
         );
         assert.equal(matches.length, 1, name + " has one budget declaration");
         assert(matches[0].initializer);
-        return matches[0].initializer;
+        return { initializer: matches[0].initializer, name };
     });
-    for (const initializer of initializers.sort((a, b) => b.pos - a.pos))
+    for (const { name, initializer } of initializers.sort(
+        (a, b) => b.initializer.pos - a.initializer.pos
+    )) {
+        const neutral =
+            name === "DESKTOP_DROP_ALLOWANCE"
+                ? "Object.freeze({entry:Object.freeze({bytes:0,gzipBytes:0}),optional:Object.freeze({bytes:0,gzipBytes:0})})"
+                : "Object.freeze({bytes:0,gzipBytes:0,optional:Object.freeze({bytes:4800,gzipBytes:1900}),entry:Object.freeze({bytes:0,gzipBytes:0}),favorites:Object.freeze({bytes:0,gzipBytes:0})})";
         source =
             source.slice(0, initializer.getStart(parsed)) +
-            "Object.freeze({bytes:0,gzipBytes:0,optional:Object.freeze({bytes:4800,gzipBytes:1900}),entry:Object.freeze({bytes:0,gzipBytes:0}),favorites:Object.freeze({bytes:0,gzipBytes:0})})" +
+            neutral +
             source.slice(initializer.end);
+    }
     const Module = require("node:module");
     const baseline = new Module(filename, module);
     baseline.filename = filename;
     baseline.paths = module.paths;
     baseline._compile(source, filename);
+    if (names.includes("DESKTOP_DROP_ALLOWANCE"))
+        baseline.exports.OPTIONAL_BUDGETS = Object.freeze(
+            Object.fromEntries(
+                Object.entries(baseline.exports.OPTIONAL_BUDGETS).filter(
+                    ([name]) => name !== "local-drop"
+                )
+            )
+        );
     return baseline.exports;
 }
+// Qualify desktop startup and its new optional asset independently. Earlier
+// receipts predate both; remove them only from the historical cap projections.
+const desktopBaseline = capsWithoutAllowances(["DESKTOP_DROP_ALLOWANCE"]);
+const desktopEvidence = require("../docs/evidence/desktop-video-drop-size.json");
+assert.deepEqual(DESKTOP_DROP_ALLOWANCE, desktopEvidence.allowance);
+assert(Object.isFrozen(DESKTOP_DROP_ALLOWANCE));
+for (const value of Object.values(DESKTOP_DROP_ALLOWANCE))
+    assert(Object.isFrozen(value));
+assert.deepEqual(
+    latestCaps.OPTIONAL_BUDGETS["local-drop"],
+    DESKTOP_DROP_ALLOWANCE.optional
+);
+assert.deepEqual(latestOptionalBundles["local-drop"], [
+    "build/offline/dropped-video.js",
+    "build/plugins/local-drop.js",
+]);
+for (const metric of ["bytes", "gzipBytes"]) {
+    const measured =
+        desktopEvidence.entry.after[metric] -
+        desktopEvidence.entry.before[metric];
+    assert.equal(measured, desktopEvidence.entry.delta[metric]);
+    assert(measured > 0 && measured <= DESKTOP_DROP_ALLOWANCE.entry[metric]);
+    const optionalMeasured =
+        desktopEvidence.optional[
+            metric === "bytes" ? "optimizedBytes" : "gzipBytes"
+        ];
+    assert(
+        optionalMeasured > 0 &&
+            optionalMeasured <= DESKTOP_DROP_ALLOWANCE.optional[metric]
+    );
+    for (const name of [
+        "BUDGET",
+        "LEGACY_TOTAL_BUDGET",
+        "BASE_TOTAL_BUDGET",
+        "TOTAL_BUDGET",
+    ])
+        assert.equal(
+            latestCaps[name][metric] - desktopBaseline[name][metric],
+            DESKTOP_DROP_ALLOWANCE.entry[metric] +
+                (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
+                    ? DESKTOP_DROP_ALLOWANCE.optional[metric]
+                    : 0),
+            name + " counts each desktop allowance once"
+        );
+}
+for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
+    assert.deepEqual(
+        require("../scripts/classic-size.cjs")[name],
+        desktopBaseline[name]
+    );
+assert.deepEqual(
+    Object.fromEntries(
+        Object.entries(latestCaps.OPTIONAL_BUDGETS).filter(
+            ([name]) => name !== "local-drop"
+        )
+    ),
+    desktopBaseline.OPTIONAL_BUDGETS
+);
+function historicalCapsWithoutAllowances(names) {
+    return capsWithoutAllowances(["DESKTOP_DROP_ALLOWANCE", ...names]);
+}
+CLASSIC_OPTIONAL_BUNDLES = Object.fromEntries(
+    Object.entries(latestOptionalBundles).filter(
+        ([name]) => name !== "local-drop"
+    )
+);
 // Qualify the new EPG layer against exact paired output, keeping old receipts immutable.
-const epgBaseline = capsWithoutAllowances(["EPG_PRESENTATION_ENTRY_ALLOWANCE"]);
+const epgBaseline = historicalCapsWithoutAllowances([
+    "EPG_PRESENTATION_ENTRY_ALLOWANCE",
+]);
 const epgEvidence = require("../docs/evidence/epg-presentation-size.json");
 assert(Object.isFrozen(EPG_PRESENTATION_ENTRY_ALLOWANCE));
 assert.deepEqual(EPG_PRESENTATION_ENTRY_ALLOWANCE, epgEvidence.allowance);
@@ -140,7 +225,7 @@ for (const metric of ["bytes", "gzipBytes"]) {
         epgEvidence.previousEntryCap[metric]
     );
     assert.equal(
-        latestCaps.BUDGET[metric] - epgEvidence.candidate[metric],
+        desktopBaseline.BUDGET[metric] - epgEvidence.candidate[metric],
         epgBaseline.BUDGET[metric] - epgEvidence.baseline[metric]
     );
     for (const name of [
@@ -150,18 +235,15 @@ for (const metric of ["bytes", "gzipBytes"]) {
         "TOTAL_BUDGET",
     ])
         assert.equal(
-            latestCaps[name][metric] - epgBaseline[name][metric],
+            desktopBaseline[name][metric] - epgBaseline[name][metric],
             delta
         );
 }
 for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
-    assert.deepEqual(
-        require("../scripts/classic-size.cjs")[name],
-        epgBaseline[name]
-    );
+    assert.deepEqual(desktopBaseline[name], epgBaseline[name]);
 // This feature changes only the shared entry. Retain historical receipts and
 // verify the exact increment once in each affected aggregate.
-const visibilityBaseline = capsWithoutAllowances([
+const visibilityBaseline = historicalCapsWithoutAllowances([
     "CATEGORY_VISIBILITY_ENTRY_ALLOWANCE",
     "EPG_PRESENTATION_ENTRY_ALLOWANCE",
 ]);
@@ -196,21 +278,18 @@ for (const metric of ["bytes", "gzipBytes"]) {
         );
 }
 for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET", "OPTIONAL_BUDGETS"])
-    assert.deepEqual(
-        require("../scripts/classic-size.cjs")[name],
-        visibilityBaseline[name]
-    );
-const favoritesCategoryPersistenceBaseline = capsWithoutAllowances([
+    assert.deepEqual(desktopBaseline[name], visibilityBaseline[name]);
+const favoritesCategoryPersistenceBaseline = historicalCapsWithoutAllowances([
     "FAVORITES_CATEGORY_PERSISTENCE_ALLOWANCE",
 ]);
-const localFavoritesPathCaps = latestCaps;
-const localFavoritesPathBaseline = capsWithoutAllowances([
+const localFavoritesPathCaps = desktopBaseline;
+const localFavoritesPathBaseline = historicalCapsWithoutAllowances([
     "LOCAL_FAVORITES_PATH_ALLOWANCE",
 ]);
-const localFavoriteWriteRecoveryBaseline = capsWithoutAllowances([
+const localFavoriteWriteRecoveryBaseline = historicalCapsWithoutAllowances([
     "LOCAL_FAVORITE_WRITE_RECOVERY_ALLOWANCE",
 ]);
-const historicalIncomingCaps = capsWithoutAllowances([
+const historicalIncomingCaps = historicalCapsWithoutAllowances([
     "EPG_PRESENTATION_ENTRY_ALLOWANCE",
     "CATEGORY_VISIBILITY_ENTRY_ALLOWANCE",
     "NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE",
@@ -576,7 +655,7 @@ const historicalCaps = Object.fromEntries(
 );
 try {
     const windowEvidence = require("../docs/evidence/native-window-controls-size-20261103.json");
-    const withoutWindowControls = capsWithoutAllowances([
+    const withoutWindowControls = historicalCapsWithoutAllowances([
         "NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE",
     ]);
     assert.deepEqual(
@@ -592,7 +671,8 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                latestCaps[name][metric] - withoutWindowControls[name][metric],
+                desktopBaseline[name][metric] -
+                    withoutWindowControls[name][metric],
                 NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE[metric],
                 name + " counts the window-controls entry cost once"
             );
@@ -602,7 +682,7 @@ try {
         "OPTIONAL_BUDGETS",
     ])
         assert.deepEqual(
-            require("../scripts/classic-size.cjs")[name],
+            desktopBaseline[name],
             withoutWindowControls[name],
             name + " is unchanged by window controls"
         );
@@ -643,7 +723,7 @@ try {
     assert(Object.isFrozen(MODERN_REPAINT_OPTIONAL_ALLOWANCE));
     assert.equal(repaint.delta.bytes, -83);
     assert.equal(repaint.delta.gzipBytes, 196);
-    const actualCaps = require("../scripts/classic-size.cjs");
+    const actualCaps = desktopBaseline;
     for (const [name, before] of Object.entries(repaint.budgets.before)) {
         const after = structuredClone(before);
         if (name === "OPTIONAL_BUDGETS")
@@ -664,7 +744,7 @@ try {
         repaint.candidate.output.gzipBytes - repaint.baseline.output.gzipBytes,
         repaint.delta.gzipBytes
     );
-    const withoutRepaint = capsWithoutAllowances([
+    const withoutRepaint = historicalCapsWithoutAllowances([
         "MODERN_REPAINT_OPTIONAL_ALLOWANCE",
     ]);
     for (const name of Object.keys(repaint.budgets.before)) {
@@ -716,7 +796,7 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                latestCaps[name][metric] -
+                desktopBaseline[name][metric] -
                     localFavoriteWriteRecoveryBaseline[name][metric],
                 entry +
                     (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
@@ -724,9 +804,9 @@ try {
                         : 0),
                 name + " counts each write-recovery component once"
             );
-        for (const name of Object.keys(latestCaps.OPTIONAL_BUDGETS))
+        for (const name of Object.keys(desktopBaseline.OPTIONAL_BUDGETS))
             assert.equal(
-                latestCaps.OPTIONAL_BUDGETS[name][metric] -
+                desktopBaseline.OPTIONAL_BUDGETS[name][metric] -
                     localFavoriteWriteRecoveryBaseline.OPTIONAL_BUDGETS[name][
                         metric
                     ],
@@ -735,7 +815,7 @@ try {
             );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                require("../scripts/classic-size.cjs")[name][metric],
+                desktopBaseline[name][metric],
                 localFavoriteWriteRecoveryBaseline[name][metric]
             );
         for (const row of writeRecoveryEvidence.measurements) {
@@ -807,7 +887,7 @@ try {
             "TOTAL_BUDGET",
         ])
             assert.equal(
-                latestCaps[name][metric] -
+                desktopBaseline[name][metric] -
                     favoritesCategoryPersistenceBaseline[name][metric],
                 entry +
                     (["BASE_TOTAL_BUDGET", "TOTAL_BUDGET"].includes(name)
@@ -816,23 +896,23 @@ try {
                 name + " counts each category persistence component once"
             );
         assert.equal(
-            latestCaps.OPTIONAL_BUDGETS["favorites-transfer"][metric] -
+            desktopBaseline.OPTIONAL_BUDGETS["favorites-transfer"][metric] -
                 favoritesCategoryPersistenceBaseline.OPTIONAL_BUDGETS[
                     "favorites-transfer"
                 ][metric],
             favorites
         );
-        for (const name of Object.keys(latestCaps.OPTIONAL_BUDGETS))
+        for (const name of Object.keys(desktopBaseline.OPTIONAL_BUDGETS))
             if (name !== "favorites-transfer")
                 assert.equal(
-                    latestCaps.OPTIONAL_BUDGETS[name][metric],
+                    desktopBaseline.OPTIONAL_BUDGETS[name][metric],
                     favoritesCategoryPersistenceBaseline.OPTIONAL_BUDGETS[name][
                         metric
                     ]
                 );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                require("../scripts/classic-size.cjs")[name][metric],
+                desktopBaseline[name][metric],
                 favoritesCategoryPersistenceBaseline[name][metric]
             );
         for (const row of categoryPersistenceEvidence.measurements) {
@@ -921,7 +1001,7 @@ try {
                 );
         for (const name of ["PROVIDER_BUDGET", "OPTIONAL_BUDGET"])
             assert.equal(
-                require("../scripts/classic-size.cjs")[name][metric],
+                desktopBaseline[name][metric],
                 localFavoritesPathBaseline[name][metric]
             );
         for (const row of pathEvidence.measurements) {
@@ -3574,7 +3654,7 @@ try {
             );
     }
     for (const file of ARTIFACTS)
-        for (const name of Object.keys(CLASSIC_OPTIONAL_BUNDLES))
+        for (const name of Object.keys(latestOptionalBundles))
             fs.writeFileSync(
                 path.join(root, path.dirname(file), name + ".js"),
                 source
@@ -4380,6 +4460,7 @@ try {
         OPTIONAL_BUDGETS,
         TOTAL_BUDGET,
     } = latestCaps);
+    CLASSIC_OPTIONAL_BUNDLES = latestOptionalBundles;
     assert(Object.isFrozen(BASE_TOTAL_BUDGET));
     assert(Object.isFrozen(LOCAL_COMPATIBILITY_ALLOWANCE));
     assert(Object.isFrozen(TOTAL_BUDGET));

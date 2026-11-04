@@ -208,7 +208,35 @@ test("rejected Local handoff releases new file and retains previous admission", 
     assert.equal(f.played.length, 1);
     assert.equal(f.played[0].admitted(), true);
     assert.equal(f.revoked.length, 1);
-    assert.equal(f.messages.at(-1), "Could not play the dropped video");
+    assert.equal(f.messages.at(-1), "Local source unavailable");
+});
+test("drop errors use audited translated keys for failure, unsupported type and multiple files", () => {
+    const context = {};
+    vm.runInNewContext(fs.readFileSync("locales/russian.js", "utf8"), context);
+    const f = fixture();
+    const translated = [];
+    f.w._ = (key) => {
+        assert.ok(
+            Object.hasOwn(context.keyStrings, key),
+            "Canonical translated key: " + key
+        );
+        translated.push(key);
+        return context.keyStrings[key];
+    };
+    f.event("drop", [file(), file()]);
+    f.event("drop", [file("unsupported.txt")]);
+    f.w.refuse = true;
+    f.event("drop", [file()]);
+    assert.deepEqual(translated, [
+        "Drop one video file at a time",
+        "Unsupported source",
+        "Local source unavailable",
+    ]);
+    assert.deepEqual(
+        f.messages,
+        translated.map((key) => context.keyStrings[key])
+    );
+    assert.ok(f.messages.every((text, i) => text !== translated[i]));
 });
 test("native consumes only opaque OS grants and ignores duplicate DOM file delivery", async () => {
     const f = fixture(true);

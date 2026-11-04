@@ -175,9 +175,29 @@ impl LocalDropState {
 struct Flight<'a> {
     state: &'a LocalDropState,
     grant: &'a str,
+    armed: bool,
+}
+impl<'a> Flight<'a> {
+    fn new(state: &'a LocalDropState, grant: &'a str) -> Self {
+        Self {
+            state,
+            grant,
+            armed: true,
+        }
+    }
+    fn publish_ready(&mut self, now: Instant) -> bool {
+        let mut slots = self.state.0.lock().unwrap_or_else(|e| e.into_inner());
+        // Validation and consumption use the same grant, but own separate
+        // flights. Retire this cleanup before consumption becomes admissible.
+        self.armed = false;
+        slots.ready(self.grant, now)
+    }
 }
 impl Drop for Flight<'_> {
     fn drop(&mut self) {
+        if !self.armed {
+            return;
+        }
         let mut slots = self.state.0.lock().unwrap_or_else(|e| e.into_inner());
         if slots.flight.as_deref() == Some(self.grant) {
             slots.reject(self.grant);
@@ -303,10 +323,7 @@ pub fn offer(app: &AppHandle, label: &str, paths: &[PathBuf]) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = app.state::<LocalDropState>();
-        let _flight = Flight {
-            state: &state,
-            grant: &grant,
-        };
+        let mut flight = Flight::new(&state, &grant);
         // Do not synchronously probe a potentially slow filesystem on the UI
         // event thread, and do not expose directories/symlinks as video grants.
         if ottplay_core::offline_media::validate_dropped_file(path, &work)
@@ -316,11 +333,7 @@ pub fn offer(app: &AppHandle, label: &str, paths: &[PathBuf]) {
             return;
         }
         let _ = work.publish(|| {
-            let ready = state
-                .0
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .ready(&grant, Instant::now());
+            let ready = flight.publish_ready(Instant::now());
             if ready
                 && app
                     .emit_to(
@@ -380,10 +393,7 @@ pub async fn local_media_take_drop(
         .unwrap_or_else(|e| e.into_inner())
         .start(&grant, Instant::now())
         .map_err(str::to_string)?;
-    let _flight = Flight {
-        state: &state,
-        grant: &grant,
-    };
+    let _flight = Flight::new(&state, &grant);
     let background = app.state::<ottplay_core::background_work::BackgroundWork>();
     let work = background.enter().map_err(str::to_string)?;
     // No catalog discovery, scanning, import, copy or persistent registration.
@@ -438,6 +448,38 @@ mod tests {
         let g = s.reserve(&[path()], now).unwrap();
         assert!(s.ready(&g, now));
         g
+    }
+    #[test]
+    fn validation_guard_cannot_cancel_the_next_take_of_the_same_grant() {
+        let state = LocalDropState::default();
+        let now = Instant::now();
+        let cancelled = state.0.lock().unwrap().reserve(&[path()], now).unwrap();
+        drop(Flight::new(&state, &cancelled));
+        {
+            let slots = state.0.lock().unwrap();
+            assert!(slots.flight.is_none() && slots.pending.is_none());
+        }
+
+        let grant = state.0.lock().unwrap().reserve(&[path()], now).unwrap();
+        let mut validation = Flight::new(&state, &grant);
+        assert!(validation.publish_ready(now));
+        assert_eq!(state.0.lock().unwrap().start(&grant, now).unwrap(), path());
+        let taking = Flight::new(&state, &grant);
+        // The event consumer starts before the publishing task returns.
+        drop(validation);
+        {
+            let mut slots = state.0.lock().unwrap();
+            assert_eq!(slots.flight.as_deref(), Some(grant.as_str()));
+            assert!(slots
+                .pending
+                .as_ref()
+                .is_some_and(|p| p.grant == grant && p.ready));
+            assert!(slots.reserve(&[path()], now).is_none());
+        }
+        // Only the current take's own cleanup may retire its flight.
+        drop(taking);
+        let slots = state.0.lock().unwrap();
+        assert!(slots.flight.is_none() && slots.pending.is_none());
     }
     #[test]
     fn drop_rejection_and_replay_never_retire_active() {
