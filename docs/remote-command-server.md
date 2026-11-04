@@ -59,7 +59,8 @@ the selected server grants approval. **Cancel pairing** retires pending callback
 - **Capacitor iOS/Android:** uses the browser lookup and Fetch pairing path too.
   The native HTTP bridge used by ordinary command polling does not replace this
   discovery transport. A packaged app must receive its own deployment profile;
-  installing the app does not copy the hosted website's profile.
+  installing the app does not copy the hosted website's profiles or credentials.
+  A distribution can embed an explicit profile through the build options below.
 
 Empty or invalid metadata from the browser lookup stops the attempt; it does not
 start another lookup loop. Native lookup and its profile fallback share one
@@ -102,8 +103,32 @@ The fingerprint identifies the exact metadata content. Use the
 for the exact URL and deployment checks; do not replace `<sha256>` with an
 arbitrary value.
 Generic player builds contain the lookup mechanism, not this Home-specific
-configuration. Publishing the website does not update a native app's bundled
-frontend or its separately supplied profile.
+configuration. To include a reviewed public profile in a particular web, server,
+Tauri, Capacitor or Tizen distribution, set both build variables explicitly:
+
+```sh
+export OTTPLAY_CONTROL_DISCOVERY_URL="https://catalog.example.invalid/control-discovery.json"
+export OTTPLAY_CONTROL_DISCOVERY_SHA256="REPLACE_WITH_REVIEWED_RAW_CATALOG_SHA256"
+```
+
+Pass the pair in the build environment. With both variables unset, no profile is
+injected. A partial or invalid pair fails before assembly. The configured build
+initializes `window.__OTT_CONTROL_DISCOVERY_URL__` only if the deployment has not
+defined it, and includes the initialization before calculating the common bundle
+identity. Explicit deployment values, including an empty value, remain intact.
+These settings supply discovery metadata only; they do not replace saved player
+settings or authorize a connection.
+
+The digest records the operator's reviewed catalog selection in
+`window.__OTT_CONTROL_DISCOVERY_SHA256__` alongside the injected URL; both values
+participate in the bundle identity. This marker is build metadata. The browser
+transport validates the response schema and HTTPS delivery but does not
+independently verify its response digest. Native LG builds retain their separate
+explicit URL/SHA-256 build profile and runtime digest verification. The hosted LG
+webOS launcher loads the canonical website and uses that site's profile.
+
+Publishing the website does not update an installed app's bundled frontend.
+Rebuild and install that distribution to change its packaged profile.
 
 Prefer absolute HTTPS URLs when sharing a profile across hosted, local and native
 players. A relative URL resolves against the **player page**, not the script that
