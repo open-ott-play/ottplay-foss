@@ -299,6 +299,7 @@ mod smoke {
         };
         let report_output = output.clone();
         let app = tauri::Builder::default()
+            .manage(window_controls::AlwaysOnTopPersistence::default())
             .invoke_handler(tauri::generate_handler![
                 window_controls::set_always_on_top,
                 tauri_commands::set_fullscreen,

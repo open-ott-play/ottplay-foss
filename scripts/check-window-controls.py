@@ -72,8 +72,11 @@ def run_case(binary, output, missing):
     process = None
     try:
         command = [str(binary), str(directory)] + (["--without-permission"] if missing else [])
+        environment = os.environ.copy()
+        environment["OTTPLAY_DATA_DIR"] = str(directory / "preferences")
+        environment.pop("OTTPLAY_INSTANCE", None)
         with (output / f"{name}.log").open("w", encoding="utf-8") as log:
-            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment)
             result["pid"] = process.pid
             try:
                 result["exit_code"] = process.wait(timeout=40)

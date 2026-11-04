@@ -94,6 +94,31 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue((output / "missing-permission.json").exists())
             kill.assert_not_called()
 
+    def test_preferences_are_isolated_from_inherited_user_paths(self):
+        captured = []
+        class Process:
+            pid = 45681
+            def __init__(self, command, **kwargs):
+                directory = Path(command[1])
+                environment = kwargs["env"]
+                captured.append((directory, environment))
+                (directory / "result.json").write_text(json.dumps(evidence(True)))
+            def wait(self, timeout):
+                return 0
+            def poll(self):
+                return 0
+        with tempfile.TemporaryDirectory() as output:
+            with patch.dict(runner.os.environ, {"OTTPLAY_DATA_DIR": "outside-user-data", "OTTPLAY_INSTANCE": "outside-instance"}):
+                with patch.object(runner.subprocess, "Popen", Process):
+                    result = runner.run_case(Path("fixture.exe"), Path(output), True)
+                self.assertEqual(runner.os.environ["OTTPLAY_DATA_DIR"], "outside-user-data")
+                self.assertEqual(runner.os.environ["OTTPLAY_INSTANCE"], "outside-instance")
+            self.assertEqual(result["status"], "pass")
+            directory, environment = captured[0]
+            self.assertEqual(Path(environment["OTTPLAY_DATA_DIR"]), directory / "preferences")
+            self.assertNotIn("OTTPLAY_INSTANCE", environment)
+            self.assertFalse(directory.exists())
+
     def test_external_deadline_is_failure_and_cleans_private_directory(self):
         captured = []
         class Process:
