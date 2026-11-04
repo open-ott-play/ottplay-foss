@@ -53,6 +53,13 @@ Download the following files from the **same native release**. In these names,
 - `ottplay-native-webos-VERSION-source-set.json` — binds the two source
   archives to the package.
 - `ottplay-native-webos-icon.png` — artwork used by the release catalog.
+- `ottplay-native-webos-VERSION-cargo-artifacts.jsonl` — Cargo compilation records.
+- `ottplay-native-webos-VERSION-build-config.txt` — effective native build configuration.
+
+The two compilation evidence files are required when the package receipt records
+`build.compilation`, as current candidates do. Older release receipts without
+that field do not require these two files. The verifier reads them locally; it
+does not download missing evidence.
 
 A Homebrew Channel publication also includes
 `ottplay-native-webos-manifest.json` and
