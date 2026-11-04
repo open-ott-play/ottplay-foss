@@ -3204,7 +3204,7 @@ for (const tauri of [true, false]) {
         async () => {
             const f = tauri
                 ? await relayRecovery()
-                : fixture({ tauri: false, device: "lg/webos" });
+                : fixture({ device: "lg/webos", tauri: false });
             if (tauri) relayError(f);
             else f.w.stbPlay("https://source.invalid/native.m3u8");
             const first = probe(f);
@@ -3253,7 +3253,6 @@ for (const failed of ["reject", "invalid", "throw"]) {
             for (const mode of [0, 3]) {
                 const calls = [];
                 const f = fixture({
-                    savedPlayerMode: mode,
                     globals: {
                         __TAURI__: {
                             core: {
@@ -3274,6 +3273,7 @@ for (const failed of ["reject", "invalid", "throw"]) {
                             },
                         },
                     },
+                    savedPlayerMode: mode,
                 });
                 f.w.stbPlay("https://source.invalid/transport-failure.m3u8");
                 await new Promise((resolve) => setImmediate(resolve));
@@ -3343,7 +3343,7 @@ test("video-evidenced restored source respects progress, pause, seek and ownersh
         ]) {
             const f = tauri
                 ? await relayRecovery()
-                : fixture({ tauri: false, device: "lg/webos" });
+                : fixture({ device: "lg/webos", tauri: false });
             if (tauri) relayError(f);
             else f.w.stbPlay("https://source.invalid/native.m3u8");
             const first = probe(f);
@@ -3403,7 +3403,7 @@ test("internal native probe restore keeps VOD position without becoming an expli
 });
 
 test("webOS restored-source progress in the deferred gap retires the initial-only observer", () => {
-    const f = fixture({ tauri: false, device: "lg/webos" });
+    const f = fixture({ device: "lg/webos", tauri: false });
     f.w.stbPlay("https://source.invalid/native.m3u8");
     const first = probe(f);
     ready(f.w.video, true);
