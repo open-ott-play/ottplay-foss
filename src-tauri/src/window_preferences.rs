@@ -74,7 +74,10 @@ pub fn write_always_on_top(root: &Path, enabled: bool) -> io::Result<()> {
         file.write_all(if enabled { b"1\n" } else { b"0\n" })?;
         file.sync_all()?;
         drop(file);
-        fs::rename(&temporary, root.join(TOPMOST_FILE))
+        fs::rename(&temporary, root.join(TOPMOST_FILE))?;
+        #[cfg(unix)]
+        File::open(root)?.sync_all()?;
+        Ok(())
     })();
     if result.is_err() {
         // This name belongs to this successful create_new call only.
