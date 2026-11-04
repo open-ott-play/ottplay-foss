@@ -424,10 +424,10 @@ index 3d10239613803e414047d67e8261ff430fa29683..541b4003b6efc50e4087ff51492de812
  and marks them unloadable; a selected HUD that becomes unloadable falls back to `builtin:classic` with one
  `hud: fallback` event-log line. Playback never fails because of a HUD. A package that does not fit the TV's current
 diff --git a/docs/macos-app-readme.md b/docs/macos-app-readme.md
-index 6a5b9a2fd57946b1b979aa7ed362cbb08ab3e6d4..bd1213ade4fbbb57f4b8095f222159d3e41c7362 100644
+index 6a5b9a2fd57946b1b979aa7ed362cbb08ab3e6d4..6dc47e75f6b1a588110335bcd20429e5d0f20f1d 100644
 --- a/docs/macos-app-readme.md
 +++ b/docs/macos-app-readme.md
-@@ -1,20 +1,20 @@
+@@ -1,31 +1,33 @@
 -# PlxNative for macOS
 +# OTTPlay Native for macOS
  
@@ -451,12 +451,57 @@ index 6a5b9a2fd57946b1b979aa7ed362cbb08ab3e6d4..bd1213ade4fbbb57f4b8095f222159d3
 -   your Plex Media Server directly, and cannot work without it.
 +   `xattr -dr com.apple.quarantine "/Applications/OTTPlay Native.app"`
 +3. Say **Allow** when macOS asks about finding devices on your local network if you use media
-+   servers on that network. Local-file playback does not require a Plex server.
++   servers on that network. Local-file access does not require a Plex account; see the playback
++   limitation below.
  
  After that it opens by double-click like anything else.
  
+-## Sign in
++## Choose a provider
+ 
+-The app shows a QR code and a four-character code. Scan the code with your phone, or go to
+-**plex.tv/link** and type it in. It then finds your server by itself and drops you on the home
+-screen. It stays signed in — you do this once.
++A fresh launch without a usable Plex session opens the provider catalogue. Choose the source or
++configured profile you want to use. Plex is optional; a retained Plex session may open its home
++screen instead.
+ 
+-You need to be on the **same network as your Plex server**. This is a television app: it talks to
+-the server directly over the LAN and has no remote-access path.
++If you choose Plex sign-in, scan the QR code or enter the displayed code at **plex.tv/link**.
++The app then discovers the account's servers. Network requirements depend on the chosen source;
++Plex needs a reachable, authorized server endpoint, which can use HTTPS.
+ 
+ ## Getting around
+ 
+@@ -40,16 +42,17 @@ It is a TV interface, so it is driven like one — with arrow keys, not the mous
+ 
+ Clicking works too, on most screens.
+ 
+-## What is not here: video
++## Playback in this bundle
+ 
+-**Playback does not work in this build, and pressing Play will tell you so** with a full-screen
+-message. That is honest rather than broken: the decoding is done by the television's own hardware
+-video pipeline (LG's StarfishMediaAPIs, bound to the TV's video plane), which does not exist on a
+-Mac. Everything else is the real thing — the same interface, the same code, talking to your real
+-server: browsing, libraries, search, seasons and episodes, cast, artwork, watched state, who's
+-watching.
++**This packaged `.app` does not enable video playback.** Its build disables the developer
++features that activate the host playback modes, and it does not include their external FFmpeg
++executable. Selecting Play reports the normal playback failure.
+ 
+-So: this is the app to *look at* and click around. It is not a way to watch anything.
++A separately configured development simulator can show decoded video when `clocksink` and
++`simvideo` are explicitly enabled and external FFmpeg is available. `clocksink` alone discards
++media and advances a clock; it is not decoded video or audio output. Successful development
++simulator playback does not establish playback in
++this bundle, audio output, smoothness, support for every codec/provider, or LG TV playback.
+ 
+ ## Small print
+ 
 diff --git a/docs/macos-app.md b/docs/macos-app.md
-index f145594f7623a6019003ada17943de4f0749137b..e5516e27532b13406554f30f83688a773fc4ae93 100644
+index f145594f7623a6019003ada17943de4f0749137b..76c3df2a41d9eed89c6fb69f3e3598b545622c05 100644
 --- a/docs/macos-app.md
 +++ b/docs/macos-app.md
 @@ -1,8 +1,8 @@
@@ -470,19 +515,61 @@ index f145594f7623a6019003ada17943de4f0749137b..e5516e27532b13406554f30f83688a77
  television runs, packaged so it starts on a Mac that has none of this repo's build environment —
  no Homebrew, no SDL, no toolchain. `ci/mkmacapp.py` is the whole recipe; this note is why it looks
  the way it does and what the result is and is not.
-@@ -22,8 +22,10 @@ and comes back signed in.
- hardware video plane via ACB — 29 symbols that exist on a television and nowhere else.
- `player/ffi_host.rs` reports the same failure a firmware with no usable video path reports, so
- **Play lands on the app's real full-screen failure read-out** rather than hanging. That was already
+@@ -11,26 +11,34 @@ It is **not a new build of the app**. It is `--features hostsim` — the desktop
+ (`docs/…`/`rust-modules/src/bin/sim.rs`, and the `ui-sim` skill) — with the dev features off and a
+ bundle around it. Every UI change, every Plex data-layer change, is the same code the ipk ships.
+ 
+-## What it can do, and the one thing it cannot
+-
+-**Can:** sign in with the real plex.tv QR flow, discover the account's servers, browse Home, the
+-libraries, Search, detail pages, seasons, episodes, cast, the who's-watching picker, watched state
+-— against a real Plex Media Server that advertises a usable HTTPS origin. It persists the session
+-and comes back signed in.
+-
+-**Cannot: play video.** The decode path is LG's in-process `StarfishMediaAPIs` bound to the
+-hardware video plane via ACB — 29 symbols that exist on a television and nowhere else.
+-`player/ffi_host.rs` reports the same failure a firmware with no usable video path reports, so
+-**Play lands on the app's real full-screen failure read-out** rather than hanging. That was already
 -the simulator's contract; the bundle inherits it. A Mac playback backend would be a new media
 -engine, not a packaging change.
-+the unarmed simulator's contract; this bundle inherits it because its build disables developer
-+triggers. It does not enable the developer simulator's opt-in `clocksink`/`simvideo` path or package
-+that path's external FFmpeg executable. The developer simulator's decoded pictures therefore do
-+not establish playback support in this self-contained bundle.
+-
+-Browsing is not LAN-only: the same `http.rs` control façade runs here through `net.rs`/libcurl for
+-HTTPS PMS control. The plaintext transport remains in the shared core; the distributable host build has developer
+-triggers disabled, so authenticated requests use it only under the same consented home-network
+-grant as the television (`plex::grant`). The HTTPS
+-media path is also present structurally (`curlio.rs`), but playback still ends at the host FFI seam
+-described above because macOS has no Starfish/ACB decoder backend.
++## Mac builds and playback
++
++**The packaged app does not enable video playback.** `make macapp` builds with
++`--release --no-default-features --features hostsim`. Developer triggers are disabled, so this
++bundle cannot enable the opt-in `clocksink` or `simvideo` modes. It also does not package the
++external FFmpeg executable used by `simvideo`. Selecting Play reaches the normal playback
++failure presentation rather than a working decoder.
++
++The development simulator is a different configuration. Its opt-in `clocksink` accepts and
++discards media access units and advances a presentation clock; that alone does not decode video
++or prove audio output. With developer triggers enabled and `clocksink` armed, `simvideo` can
++additionally send video access units to an external FFmpeg executable and composite decoded
++pictures into the window.
++Such a run does not establish playback in the packaged `.app`, audio output, smoothness, broad
++codec/provider support, or the LG hardware decoder.
++
++## Providers and optional Plex sign-in
++
++A fresh interactive launch without a usable Plex session opens the provider catalogue. Choose
++a provider or configured profile; Plex sign-in is optional. Access to Local files does not require
++a Plex account, but the packaged playback limitation above still applies. A retained usable Plex
++session can open its existing home screen instead.
++
++If you choose Plex sign-in, use its QR/code flow to connect the account and discover its servers.
++The shared Plex interface provides library browsing, Search, details and artwork where the
++server supplies them. Plex control requests are not inherently LAN-only: HTTPS uses the shared
++libcurl path, while authenticated plaintext requests require the existing consented home-network
++grant. The selected server must be reachable through its configured endpoint.
  
- Browsing is not LAN-only: the same `http.rs` control façade runs here through `net.rs`/libcurl for
- HTTPS PMS control. The plaintext transport remains in the shared core; the distributable host build has developer
+ ## What had to change for it to work at all
+ 
 diff --git a/docs/native-external-track-validation.md b/docs/native-external-track-validation.md
 index 71cc3dd7851dd1f8b7ef314b74826d6bf9390bcf..b13fcd445be4cf65c62c5c88d5908b2e16d123b8 100644
 --- a/docs/native-external-track-validation.md
