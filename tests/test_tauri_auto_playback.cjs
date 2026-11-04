@@ -3069,6 +3069,369 @@ test("unavailable Hls.js support cannot be enabled by direct startup recovery", 
     f.w.stbStop();
 });
 
+for (const outcome of ["radio", "error", "timeout"]) {
+    test(
+        "direct probe retires startup observation after " + outcome,
+        async () => {
+            const f = await relayRecovery();
+            relayError(f);
+            const first = probe(f);
+            if (outcome === "radio")
+                first.emit("tracks", {
+                    id: "main",
+                    tracks: { audio: { codec: "mp4a.40.2" } },
+                });
+            if (outcome === "error") first.emit("error", {});
+            if (outcome === "timeout") seconds(f, 8);
+            f.advance(0);
+            assert.equal(first.destroyCalls, 1);
+            assert.equal(
+                f.players.length,
+                1,
+                "native outcome creates no HLS player"
+            );
+            assert.equal(
+                f.timers.size,
+                1,
+                "only the existing frame-drop observer remains after native decision"
+            );
+            seconds(f, 60);
+            assert.equal(
+                f.timers.size,
+                1,
+                "retired startup polling cannot recur"
+            );
+            assert.equal(f.players.length, 1);
+            f.quality = { droppedVideoFrames: 0, totalVideoFrames: 0 };
+            f.w.video.getVideoPlaybackQuality = () => f.quality;
+            f.w.video.buffered = {
+                end: () => f.w.video.currentTime + 30,
+                length: 1,
+                start: () => 0,
+            };
+            ready(f.w.video, true);
+            advanceFrames(f, 13);
+            assert.equal(
+                f.players.length,
+                2,
+                "late severe frame loss still recovers"
+            );
+            assert.equal(f.players[1].media, f.w.video);
+            f.w.stbStop();
+            assert.equal(f.timers.size, 0);
+        }
+    );
+}
+
+test("explicit live seek before the first direct sample disables initial recovery", async () => {
+    const f = await relayRecovery();
+    relayError(f);
+    bufferedNoFrame(f);
+    f.w.video.duration = Infinity;
+    f.w.stbSetPosTime(7);
+    assert.equal(
+        f.w._coreSeekRevision,
+        1,
+        "actual core accepted the explicit seek"
+    );
+    assert.equal(f.w.video.currentTime, 7);
+    seconds(f, 65);
+    assert.equal(
+        f.players.length,
+        0,
+        "do not replace the requested live timeline with MSE live edge"
+    );
+    assert.equal(f.w.video.currentTime, 7);
+    f.w.stbStop();
+    assert.equal(f.timers.size, 0);
+});
+
+test("command pause/resume fences the queued direct recovery without early DOM events", async () => {
+    const f = await relayRecovery();
+    relayError(f);
+    bufferedNoFrame(f);
+    const schedule = f.w.setTimeout;
+    let intercepted = 0;
+    f.w.setTimeout = (callback, delay) =>
+        schedule(() => {
+            if (delay === 0 && ++intercepted === 1) {
+                const revision = f.w._corePauseRevision;
+                f.w.stbPause();
+                f.w.stbResume();
+                assert.ok(f.w._corePauseRevision > revision);
+                assert.equal(f.w.video.paused, false);
+                // Browser pause/play events have not been dispatched yet.
+            }
+            callback();
+        }, delay);
+    seconds(f, 32);
+    assert.equal(intercepted, 1, "hit the actual deferred decision");
+    assert.equal(
+        f.players.length,
+        0,
+        "commands invalidate the already collected evidence"
+    );
+    seconds(f, 29);
+    assert.equal(
+        f.players.length,
+        0,
+        "fresh continuous observation is required"
+    );
+    seconds(f, 2);
+    assert.equal(f.players.length, 1);
+    f.w.stbStop();
+    assert.equal(f.timers.size, 0);
+});
+
+test("command pause/resume between samples resets the direct window without DOM events", async () => {
+    const f = await relayRecovery();
+    relayError(f);
+    bufferedNoFrame(f);
+    seconds(f, 29);
+    f.w.stbPause();
+    f.w.stbResume();
+    seconds(f, 3);
+    assert.equal(f.players.length, 0);
+    seconds(f, 29);
+    assert.equal(f.players.length, 1);
+    f.w.stbStop();
+});
+
+for (const tauri of [true, false]) {
+    test(
+        "video-evidenced probe restore rearms one bounded zero-frame attempt: " +
+            (tauri ? "Tauri" : "webOS"),
+        async () => {
+            const f = tauri
+                ? await relayRecovery()
+                : fixture({ tauri: false, device: "lg/webos" });
+            if (tauri) relayError(f);
+            else f.w.stbPlay("https://source.invalid/native.m3u8");
+            const first = probe(f);
+            ready(f.w.video, true);
+            hevc(first);
+            f.advance(0);
+            assert.equal(first.destroyCalls, 1);
+            assert.equal(
+                f.players.length,
+                1,
+                "native video preserved at probe completion"
+            );
+            assert.equal(
+                f.w.video.readyState,
+                0,
+                "actual restore replaced the native source"
+            );
+            bufferedNoFrame(f);
+            seconds(f, 30);
+            assert.equal(
+                f.players.length,
+                1,
+                "new source needs its own full evidence window"
+            );
+            seconds(f, 2);
+            assert.equal(
+                f.players.length,
+                2,
+                "video restore cannot disable recovery forever"
+            );
+            assert.equal(f.players[1].media, f.w.video);
+            seconds(f, 60);
+            assert.equal(f.players.length, 2, "one recovery only");
+            f.w.stbStop();
+            assert.equal(f.timers.size, 0);
+        }
+    );
+}
+
+for (const failed of ["reject", "invalid", "throw"]) {
+    test(
+        "native transport " +
+            failed +
+            " rearms direct Auto but preserves explicit HTML5",
+        async () => {
+            for (const mode of [0, 3]) {
+                const calls = [];
+                const f = fixture({
+                    savedPlayerMode: mode,
+                    globals: {
+                        __TAURI__: {
+                            core: {
+                                invoke(command) {
+                                    calls.push(command);
+                                    if (command !== "native_hls_start")
+                                        return Promise.resolve({});
+                                    if (failed === "throw")
+                                        throw new Error(
+                                            "transport startup failed"
+                                        );
+                                    return failed === "reject"
+                                        ? Promise.reject(
+                                              new Error("transport unavailable")
+                                          )
+                                        : Promise.resolve({});
+                                },
+                            },
+                        },
+                    },
+                });
+                f.w.stbPlay("https://source.invalid/transport-failure.m3u8");
+                await new Promise((resolve) => setImmediate(resolve));
+                assert.equal(
+                    f.w.video.src,
+                    "https://source.invalid/transport-failure.m3u8"
+                );
+                assert.equal(
+                    calls.filter((x) => x === "native_hls_start").length,
+                    1
+                );
+                bufferedNoFrame(f);
+                seconds(f, 30);
+                assert.equal(f.players.length, 0);
+                seconds(f, 2);
+                assert.equal(f.players.length, mode === 3 ? 1 : 0);
+                f.w.stbStop();
+                assert.equal(f.timers.size, 0);
+            }
+        }
+    );
+}
+
+for (const jump of [120000, -5000]) {
+    test(
+        "actual sample clock jump starts a fresh direct evidence window: " +
+            jump,
+        async () => {
+            const f = await relayRecovery();
+            relayError(f);
+            bufferedNoFrame(f);
+            seconds(f, 20);
+            const originalNow = f.w.Date.now;
+            f.w.Date.now = () => originalNow() + jump;
+            seconds(f, 1); // The jump is observed in the 1-second sampler, not the deferred action.
+            assert.equal(f.players.length, 0);
+            seconds(f, 29);
+            assert.equal(f.players.length, 0);
+            seconds(f, 1);
+            assert.equal(f.players.length, 1);
+            f.w.stbStop();
+        }
+    );
+}
+
+test("rejected seek does not disable the initial direct recovery", async () => {
+    const f = await relayRecovery();
+    relayError(f);
+    bufferedNoFrame(f);
+    const revision = f.w._coreSeekRevision;
+    f.w.stbSetPosTime(NaN);
+    assert.equal(f.w._coreSeekRevision, revision);
+    seconds(f, 32);
+    assert.equal(f.players.length, 1);
+    f.w.stbStop();
+});
+
+test("video-evidenced restored source respects progress, pause, seek and ownership", async () => {
+    for (const tauri of [true, false])
+        for (const action of [
+            "frame",
+            "clock",
+            "pause",
+            "seek",
+            "stop",
+            "source",
+        ]) {
+            const f = tauri
+                ? await relayRecovery()
+                : fixture({ tauri: false, device: "lg/webos" });
+            if (tauri) relayError(f);
+            else f.w.stbPlay("https://source.invalid/native.m3u8");
+            const first = probe(f);
+            ready(f.w.video, true);
+            hevc(first);
+            f.advance(0);
+            bufferedNoFrame(f);
+            if (action === "frame")
+                f.w.video.getVideoPlaybackQuality = () => ({
+                    droppedVideoFrames: 0,
+                    totalVideoFrames: 1,
+                });
+            if (action === "clock") {
+                seconds(f, 1);
+                f.w.video.currentTime = 0.04;
+            }
+            if (action === "pause") f.w.stbPause();
+            if (action === "seek") f.w.stbSetPosTime(7);
+            if (action === "stop") f.w.stbStop();
+            if (action === "source")
+                f.w.video.src = "https://source.invalid/new.mp4";
+            seconds(f, 65);
+            assert.equal(
+                f.players.length,
+                1,
+                (tauri ? "Tauri " : "webOS ") + action
+            );
+            if (!tauri && ["frame", "clock", "seek"].includes(action))
+                assert.equal(
+                    f.timers.size,
+                    0,
+                    "completed initial-only sampler retires"
+                );
+            f.w.stbStop();
+            assert.equal(f.timers.size, 0);
+        }
+});
+
+test("internal native probe restore keeps VOD position without becoming an explicit seek", () => {
+    const f = fixture();
+    f.w.stbPlay("https://source.invalid/vod.m3u8", 7);
+    const first = probe(f);
+    ready(f.w.video, true);
+    hevc(first);
+    f.advance(0);
+    bufferedNoFrame(f);
+    assert.equal(f.w.video.currentTime, 7);
+    assert.equal(
+        f.w._coreSeekRevision,
+        0,
+        "internal restore is startup positioning"
+    );
+    seconds(f, 32);
+    assert.equal(f.players.length, 2);
+    assert.equal(f.players[1].config.startPosition, 7);
+    f.w.stbStop();
+});
+
+test("webOS restored-source progress in the deferred gap retires the initial-only observer", () => {
+    const f = fixture({ tauri: false, device: "lg/webos" });
+    f.w.stbPlay("https://source.invalid/native.m3u8");
+    const first = probe(f);
+    ready(f.w.video, true);
+    hevc(first);
+    f.advance(0);
+    bufferedNoFrame(f);
+    const schedule = f.w.setTimeout;
+    let queued = 0;
+    f.w.setTimeout = (callback, delay) =>
+        schedule(() => {
+            if (delay === 0 && ++queued === 1)
+                f.w.video.getVideoPlaybackQuality = () => ({
+                    droppedVideoFrames: 0,
+                    totalVideoFrames: 1,
+                });
+            callback();
+        }, delay);
+    seconds(f, 32);
+    assert.equal(queued, 1);
+    assert.equal(f.players.length, 1);
+    assert.equal(
+        f.timers.size,
+        0,
+        "completion must not create a replacement idle sampler"
+    );
+    f.w.stbStop();
+});
+
 async function run() {
     let failures = 0;
     for (const [name, callback] of cases) {

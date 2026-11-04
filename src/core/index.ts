@@ -2376,6 +2376,7 @@ function startCorePlayback(
         var media = video!;
         var attempt = _coreNativeAttempt;
         var nativeAttached = false;
+        var initialSeekRevision = _coreSeekRevision;
         var active = function (): boolean {
             return (
                 session === _playSession &&
@@ -2464,6 +2465,11 @@ function startCorePlayback(
                         // A failed relay gets one direct native chance before Auto
                         // gives up on a buffered attempt which never displays video.
                         monitorInitialStall: directRetry,
+                        recoveryRevision: function () {
+                            return initialSeekRevision === _coreSeekRevision
+                                ? _corePauseRevision
+                                : null;
+                        },
                         restore: function () {
                             var nextPosition = resumePosition();
                             cancelCoreSeek();
@@ -2471,7 +2477,7 @@ function startCorePlayback(
                             // Reload through the same transport, preserving native.
                             media.src = sourceUrl;
                             if (nextPosition)
-                                seekCoreMedia(nextPosition, session);
+                                seekCoreMedia(nextPosition, session, true);
                             if ((window as any).forcePlay !== false)
                                 playCoreMedia(media);
                         },
@@ -2488,7 +2494,7 @@ function startCorePlayback(
                   active: active,
                   changed: updateCoreVideoInfo,
                   failed: function (): void {
-                      attachNative(url);
+                      attachNative(url, true);
                   },
                   ready: attachNative,
               });
