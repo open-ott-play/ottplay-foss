@@ -228,7 +228,7 @@ class NativeScopeTests(unittest.TestCase):
         self.assertLess(install, probe)
         self.assertLess(probe, lint)
         command = steps[install]["run"]
-        for package in ("openssl", "curl", "libcurl4t64"):
+        for package in ("openssl", "curl", "libcurl4t64", "libwayland-dev", "libglib2.0-dev"):
             self.assertIn(package, command.split())
         self.assertIn("--force-reinstall --require-hashes --only-binary=:all:", command)
         self.assertIn("Pillow==13.0.0", command)

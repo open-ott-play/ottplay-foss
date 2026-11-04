@@ -56,7 +56,7 @@ jobs:
         timeout-minutes: 15
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build meson pkg-config autoconf automake libtool bzip2 libclang-18-dev libsdl2-dev libsdl2-ttf-dev libgl1-mesa-dev libgl1-mesa-dri xvfb xauth openssl curl libcurl4t64
+          sudo apt-get install -y build-essential cmake ninja-build meson pkg-config autoconf automake libtool bzip2 libclang-18-dev libsdl2-dev libsdl2-ttf-dev libgl1-mesa-dev libgl1-mesa-dri libwayland-dev libglib2.0-dev xvfb xauth openssl curl libcurl4t64
           # PyPI CPython 3.12 manylinux aarch64 wheel; required by the package pixel checks.
           python3 -m pip install --force-reinstall --require-hashes --only-binary=:all: -r /dev/stdin <<'REQUIREMENTS'
           Pillow==13.0.0 --hash=sha256:8bf295fe459343bc6093c8e5e0df60bfa189e0fcb775a22e2c2488fdeccc6c0d

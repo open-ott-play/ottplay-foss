@@ -141,6 +141,10 @@ lint/type checks, default library and storage tests, package-validator tests and
 recorded UI scenarios through the Linux simulator under Xvfb. These host checks
 precede ARM packaging because host builds can change files in the staging tree.
 They do not replace the later checks of the actual ARM package or testing on a TV.
+Linux host builds also link Wayland client and GLib explicitly: default-feature
+tests retain platform callbacks that reference those libraries directly. The
+workflow installs their development packages; ARM32 packaging keeps its existing
+Makefile linkage, and macOS keeps its existing host libraries.
 
 The package validator accepts current `+control:` build fingerprints and the
 supported historical stamp formats. A present malformed or unknown build stamp
