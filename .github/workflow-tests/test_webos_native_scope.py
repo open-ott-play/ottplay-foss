@@ -150,8 +150,7 @@ class NativeScopeTests(unittest.TestCase):
         commands = [step.get("run", "") for step in steps]
         markers = (
             "native/webos/build.py bootstrap", "rustup component add",
-            "make check-cargo-lint", "make check-cargo-unit-default",
-            "make check-cargo-unit-hostsim",
+            "make check 2>&1",
             "make sim-linux", "python3 tests/replay_fixtures.py",
             "source-recheck.log", "native/webos/companion/prepare.py",
             '"native/webos/companion/build.py", "build"', "native/webos/build.py all",
@@ -162,7 +161,7 @@ class NativeScopeTests(unittest.TestCase):
         for index in indexes:
             self.assertNotIn("if", steps[index])
             self.assertNotIn("continue-on-error", steps[index])
-        for index in indexes[1:7]:
+        for index in indexes[1:5]:
             step = steps[index]
             self.assertEqual(step["working-directory"], "build/native-webos/source")
             self.assertEqual(step["shell"], "bash")
@@ -180,20 +179,27 @@ class NativeScopeTests(unittest.TestCase):
         selftest = "python3 ci/check-package.py --selftest"
         product_tests = "python3 ci/test_package_product_config.py"
         self.assertLess(package_commands.index(selftest), package_commands.index(product_tests))
-        self.assertLess(package_commands.index(product_tests), package_commands.index("make check-cargo-lint"))
+        self.assertLess(package_commands.index(product_tests), package_commands.index("make check 2>&1"))
         self.assertIn("package-selftest.log", package_commands)
         self.assertIn("product-config-tests.log", package_commands)
-        self.assertIn("hostsim-libraries.log", commands[indexes[4]])
-        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[5]])
-        replay = steps[indexes[6]]
+        self.assertIn('make check 2>&1 | tee "$RUNNER_TEMP/native-host-verification/check.log"',
+                      package_commands.splitlines())
+        self.assertLess(package_commands.index("make check 2>&1"),
+                        package_commands.index("make check-nodef"))
+        self.assertEqual(sum(command.count("make check 2>&1") for command in commands), 1)
+        for partial in ("make check-cargo-lint", "make check-cargo-unit-default",
+                        "make check-cargo-unit-hostsim"):
+            self.assertFalse(any(partial in command for command in commands), partial)
+        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[3]])
+        replay = steps[indexes[4]]
         self.assertEqual(replay["env"]["LIBGL_ALWAYS_SOFTWARE"], "1")
         for argument in ("xvfb-run", '"$PWD/rust-modules/target-sim-ci/release/plxnative-sim"',
                          '--assets "$PWD/pkg"', "--jobs 1", "--timeout 300"):
             self.assertIn(argument, replay["run"])
-        recheck = commands[indexes[7]]
+        recheck = commands[indexes[5]]
         self.assertIn("native/webos/build.py prepare", recheck)
         self.assertIn("prepared-after.json", recheck)
-        self.assertIn("--rust-opt-level s", commands[indexes[10]])
+        self.assertIn("--rust-opt-level s", commands[indexes[8]])
         dependencies = next(command for command in commands if "apt-get install" in command)
         for package in ("libsdl2-dev", "libsdl2-ttf-dev", "libgl1-mesa-dev",
                         "libgl1-mesa-dri", "xvfb", "xauth"):
@@ -237,7 +243,7 @@ class NativeScopeTests(unittest.TestCase):
         steps = workflow["jobs"]["native-candidate"]["steps"]
         install = next(i for i, step in enumerate(steps) if "apt-get install" in step.get("run", ""))
         probe = next(i for i, step in enumerate(steps) if "curl_version_info" in step.get("run", ""))
-        lint = next(i for i, step in enumerate(steps) if "make check-cargo-lint" in step.get("run", ""))
+        lint = next(i for i, step in enumerate(steps) if "make check 2>&1" in step.get("run", ""))
         self.assertLess(install, probe)
         self.assertLess(probe, lint)
         command = steps[install]["run"]

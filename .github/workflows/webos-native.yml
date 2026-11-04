@@ -153,8 +153,10 @@ jobs:
           toolchain=$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("rust-modules/rust-toolchain.toml").read_text())["toolchain"]["channel"])')
           printf '%s\n' "$toolchain" > "$RUNNER_TEMP/native-host-verification/rust-toolchain.txt"
           rustup component add --toolchain "$toolchain" clippy rustfmt 2>&1 | tee "$RUNNER_TEMP/native-host-verification/components.log"
-      - name: Native package contracts and host type checks
-        timeout-minutes: 10
+      - name: Native full check, package contracts and shipping type checks
+        # Replaces the 10 + 25 + 25 minute partial host gates without repeating them.
+        # The unchanged 90-minute job limit still bounds host, replay and ARM work.
+        timeout-minutes: 60
         working-directory: build/native-webos/source
         shell: bash
         env:
@@ -167,36 +169,9 @@ jobs:
           set -euo pipefail
           python3 ci/check-package.py --selftest 2>&1 | tee "$RUNNER_TEMP/native-host-verification/package-selftest.log"
           python3 ci/test_package_product_config.py 2>&1 | tee "$RUNNER_TEMP/native-host-verification/product-config-tests.log"
-          make check-cargo-lint 2>&1 | tee "$RUNNER_TEMP/native-host-verification/lint.log"
+          # Run both canonical branches: all Cargo gates and Python/C/harness checks.
+          make check 2>&1 | tee "$RUNNER_TEMP/native-host-verification/check.log"
           make check-nodef 2>&1 | tee "$RUNNER_TEMP/native-host-verification/nodef.log"
-      - name: Native full default libraries and storage contracts
-        timeout-minutes: 25
-        working-directory: build/native-webos/source
-        shell: bash
-        env:
-          CARGO_INCREMENTAL: "0"
-          PLX_CARGO_SEED: "off"
-          HOST_THREADS: "0"
-          RELEASE: ""
-          PLX_TEST_JOBS: "2"
-        run: |
-          set -euo pipefail
-          # Keep every binary identity/result plus the storage and Cargo self-tests.
-          make check-cargo-unit-default 2>&1 | tee "$RUNNER_TEMP/native-host-verification/default-libraries.log"
-      - name: Native hostsim libraries and OTT interface contracts
-        timeout-minutes: 25
-        working-directory: build/native-webos/source
-        shell: bash
-        env:
-          CARGO_INCREMENTAL: "0"
-          PLX_CARGO_SEED: "off"
-          HOST_THREADS: "0"
-          RELEASE: ""
-          PLX_TEST_JOBS: "2"
-        run: |
-          set -euo pipefail
-          # OTT interface and host playback regressions are compiled only with hostsim.
-          make check-cargo-unit-hostsim 2>&1 | tee "$RUNNER_TEMP/native-host-verification/hostsim-libraries.log"
       - name: Build the native Linux renderer
         timeout-minutes: 30
         working-directory: build/native-webos/source
