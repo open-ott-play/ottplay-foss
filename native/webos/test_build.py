@@ -466,6 +466,8 @@ class NativeCompanionBuildTests(unittest.TestCase):
     def build_candidate(self):
         module = SimpleNamespace(checked_bundle=self.checked_bundle)
         with (
+            # The compiler/SDK are fixtures, so their supported host must be too.
+            patch.object(build, "sdk_host", return_value="linux-aarch64"),
             patch.object(build, "check_source", return_value=self.source),
             patch.object(build, "companion_builder", return_value=module),
             patch.object(build, "run", side_effect=self.external_command),
@@ -480,6 +482,7 @@ class NativeCompanionBuildTests(unittest.TestCase):
         self.assertEqual(receipt["companion"]["receipt_sha256"], build.sha256(self.bundle / "receipt.json"))
         self.assertEqual(receipt["ipk_sha256"], build.sha256(self.ipk))
         self.assertEqual(receipt["revision"], self.prepared["revision"])
+        self.assertEqual(receipt["configuration"]["host"], "linux-aarch64")
 
     def test_no_bundle_still_checks_compilation_size_and_elf_before_pack(self):
         self.args.companion_bundle = None
@@ -805,6 +808,30 @@ class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
 
 
 class NativeSdkTests(unittest.TestCase):
+    def test_sdk_host_accepts_supported_platforms_and_arm_aliases(self):
+        for system, machine, expected in (
+            ("Darwin", "arm64", "darwin-arm64"),
+            ("Darwin", "x86_64", "darwin-x86_64"),
+            ("Linux", "aarch64", "linux-aarch64"),
+            ("Linux", "arm64", "linux-aarch64"),
+            ("LINUX", "ARM64", "linux-aarch64"),
+        ):
+            with self.subTest(system=system, machine=machine), \
+                    patch.object(build.platform, "system", return_value=system), \
+                    patch.object(build.platform, "machine", return_value=machine):
+                self.assertEqual(build.sdk_host(), expected)
+
+    def test_sdk_host_rejects_unsupported_platforms(self):
+        for system, machine in (
+            ("Linux", "x86_64"), ("Linux", "amd64"), ("Linux", "armv7l"),
+            ("Darwin", "i386"), ("Windows", "ARM64"), ("FreeBSD", "aarch64"),
+        ):
+            with self.subTest(system=system, machine=machine), \
+                    patch.object(build.platform, "system", return_value=system), \
+                    patch.object(build.platform, "machine", return_value=machine), \
+                    self.assertRaisesRegex(ValueError, "Pinned SDK supports"):
+                build.sdk_host()
+
     def test_native_opt_is_explicit_and_scrubs_inherited_profile_settings(self):
         args = SimpleNamespace(work_dir=Path('/fixture/work'), sdk=Path('/fixture/sdk'), rust_opt_level='s')
         inherited = {'CARGO_PROFILE_RELEASE_OPT_LEVEL': '3', 'CARGO_PROFILE_RELEASE_LTO': 'off',
