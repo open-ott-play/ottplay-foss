@@ -89,10 +89,10 @@ class ReleaseNotesTests(unittest.TestCase):
             return publish.release_body(checked)
 
     def test_exact_version_uses_commit_bytes_not_changed_or_untracked_notes(self):
-        expected = self.notes.read_text(encoding="utf-8").strip()
+        expected = self.notes.read_text(encoding="utf-8")
         self.notes.write_text("Changed checkout text\n", encoding="utf-8")
         self.assertEqual(self.body(), expected)
-        self.assertEqual(self.body("0.2.0"), "Future version")
+        self.assertEqual(self.body("0.2.0"), "Future version\n")
         self.notes.with_name("0.3.0.md").write_text("Untracked text\n", encoding="utf-8")
         self.assertEqual(self.body("0.3.0"), publish.DEFAULT_RELEASE_BODY)
 
@@ -100,13 +100,19 @@ class ReleaseNotesTests(unittest.TestCase):
         self.assertEqual(self.body("0.9.0"), publish.DEFAULT_RELEASE_BODY)
 
     def test_later_commit_and_replace_ref_cannot_change_verified_notes(self):
-        expected = self.notes.read_text(encoding="utf-8").strip()
+        expected = self.notes.read_text(encoding="utf-8")
         original = self.sha
         self.notes.write_text("Later commit text\n", encoding="utf-8")
         self.commit()
         self.git("replace", original, self.sha)
         self.sha = original
         self.assertEqual(self.body(), expected)
+
+    def test_committed_notes_preserve_whitespace_line_endings_and_utf8(self):
+        raw = "\n \t# Native résumé\r\n\r\nVerified changes.  \r\n\t\n".encode("utf-8")
+        self.notes.write_bytes(raw)
+        self.commit()
+        self.assertEqual(self.body().encode("utf-8"), raw)
 
     def test_exact_size_limit_is_accepted(self):
         self.notes.write_bytes(b"x" * (64 * 1024))
@@ -120,7 +126,7 @@ class ReleaseNotesTests(unittest.TestCase):
             self.body()
 
     def test_empty_invalid_utf8_and_nul_notes_are_rejected(self):
-        for raw in (b"", b" \n", b"\xff", b"text\x00text"):
+        for raw in (b"", b" \n", b"\t\r\n", b"\xff", b"text\x00text"):
             with self.subTest(raw=raw):
                 self.notes.write_bytes(raw)
                 self.commit()
@@ -1028,7 +1034,7 @@ class PromotionPipelineTests(unittest.TestCase):
 
     def test_version_notes_are_published_with_the_verified_bundle(self):
         self.prepare()
-        self.notes.return_value = "# Native changes\n\nVerified package notes."
+        self.notes.return_value = "\n  # Native changes\n\nVerified package notes.  \n\n"
         self.do_publish()
         self.assertEqual(self.gh.release["body"], self.notes.return_value)
         self.notes.assert_called_once_with(inputs())

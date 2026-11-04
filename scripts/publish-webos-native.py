@@ -101,10 +101,10 @@ def release_body(inputs):
     raw = git("cat-file", "blob", oid)
     require(len(raw) == size, "Native release notes object size changed")
     try:
-        body = raw.decode("utf-8").strip()
+        body = raw.decode("utf-8")
     except UnicodeDecodeError:
         raise PromotionError("Native release notes must be UTF-8") from None
-    require(body and "\x00" not in body, "Native release notes are empty or contain NUL")
+    require(body.strip() and "\x00" not in body, "Native release notes are empty or contain NUL")
     return body
 
 
