@@ -485,5 +485,121 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
         self.assertEqual(upload["with"]["name"], "native-build-bench-${{ github.sha }}")
 
 
+    def test_bench_requires_the_edited_crate_to_rebuild(self):
+        import ast
+        import copy
+        import math
+        node = next(node for node in ast.parse(self.bench_code()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "checked_document")
+        scope = {"json": json, "math": math}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), "benchmark result predicate", "exec"), scope)  # noqa: S102
+        # Existing build-bench edit targets and Cargo's owning-crate evidence.
+        # UI's hub must rebuild UI; it need not rebuild every downstream crate.
+        targets = (("app", "app_rebuilt"), ("leaf", "base_rebuilt"),
+                   ("platform", "platform_rebuilt"), ("ui", "ui_rebuilt"),
+                   ("plex", "plex_rebuilt"), ("data", "data_rebuilt"),
+                   ("session", "session_rebuilt"), ("media", "media_rebuilt"),
+                   ("appkit", "appkit_rebuilt"), ("screens", "screens_rebuilt"),
+                   ("hub", "ui_rebuilt"))
+        for row_id, flag in targets:
+            good = {"failure": None, "red": [], "restored_clean": True,
+                    "via_make": True, "runs": 3, "scenarios": [{
+                        "id": row_id, "status": "ok", "samples": [
+                            {"seconds": 1.0, flag: True} for _ in range(3)]}]}
+            for outcome in ("rebuilt", "one-not-rebuilt", "missing", "not-a-boolean"):
+                doc = copy.deepcopy(good)
+                if outcome == "one-not-rebuilt":
+                    doc["scenarios"][0]["samples"][1][flag] = False
+                if outcome == "missing":
+                    doc["scenarios"][0]["samples"][1].pop(flag)
+                if outcome == "not-a-boolean":
+                    doc["scenarios"][0]["samples"][1][flag] = "true"
+                with self.subTest(row=row_id, outcome=outcome), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "result.json"
+                    path.write_text(json.dumps(doc))
+                    if outcome == "rebuilt":
+                        self.assertEqual(scope["checked_document"](path, [row_id], 3), doc)
+                    else:
+                        with self.assertRaises(ValueError):
+                            scope["checked_document"](path, [row_id], 3)
+
+    def test_bench_restores_snapshot_after_binding_failure(self):
+        import ast
+        tree = ast.parse(self.bench_code())
+        phase = next(node for node in tree.body if isinstance(node, ast.For)
+                     and isinstance(node.target, ast.Tuple)
+                     and node.target.elts[0].id == "label")
+        swap = next(i for i, node in enumerate(phase.body)
+                    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+                    and isinstance(node.value.func, ast.Name) and node.value.func.id == "git"
+                    and ast.unparse(node).endswith("'HEAD', bench_commit, upstream)"))
+        end = next(i for i in range(swap + 1, len(phase.body))
+                   if isinstance(phase.body[i], ast.Try))
+        start = swap
+        while start and isinstance(phase.body[start - 1], ast.Assign) and all(
+                isinstance(target, ast.Name) and target.id in ("binding", "prepared_sha256")
+                for target in phase.body[start - 1].targets):
+            start -= 1
+        # Execute the workflow's actual swap-to-finally transaction, with no Git/build process.
+        code = compile(ast.Module(body=phase.body[start:end + 1], type_ignores=[]),
+                       "benchmark snapshot transaction", "exec")
+        for point in ("binding-digest", "binding-write", "benchmark-entry"):
+            with self.subTest(point=point), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                prepared_path = root / "prepared.json"
+                prepared_path.write_text("{}\n")
+                upstream, snapshot = "a" * 40, "b" * 40
+                current = [upstream]
+                transitions = []
+                failure = OSError("injected " + point)
+
+                def git(source, *args):
+                    self.assertEqual(args[:3], ("update-ref", "--no-deref", "HEAD"))
+                    new, old = args[3:]
+                    self.assertEqual(current[0], old)  # Preserve real compare-and-swap semantics.
+                    current[0] = new
+                    transitions.append(new)
+                    return ""
+
+                def digest(path):
+                    if point == "binding-digest" and path.name == "Makefile":
+                        raise failure
+                    return "c" * 64
+
+                def check_source(*_):
+                    self.assertEqual(current[0], upstream)
+
+                original_write = Path.write_text
+                def write_text(path, *args, **kwargs):
+                    if point == "binding-write" and path.name == "before-binding-before.json":
+                        raise failure
+                    return original_write(path, *args, **kwargs)
+
+                builder = types.SimpleNamespace(check_source=mock.Mock(side_effect=check_source),
+                    cargo_environment=mock.Mock(side_effect=failure))
+                scope = dict(git=git, digest=digest, builder=builder, source=root / "source",
+                             upstream=upstream, bench_commit=snapshot, label="before",
+                             outer_sha="d" * 40, prepared={}, prepared_path=prepared_path,
+                             provenance=root / "PROVENANCE.json", tool_hash="e" * 64,
+                             mod_path=root / "build.py", evidence=root, args=object(),
+                             manifest={}, json=json, os=os, subprocess=subprocess)
+                with mock.patch.object(Path, "write_text", new=write_text), \
+                        mock.patch("subprocess.run") as run, \
+                        mock.patch("subprocess.check_output") as output:
+                    with self.assertRaises(OSError) as caught:
+                        exec(code, scope)  # noqa: S102: real transaction; process adapters are mocked
+                    self.assertIs(caught.exception, failure)
+                    run.assert_not_called()
+                    output.assert_not_called()
+                self.assertEqual(current[0], upstream, "failure must restore the prepared HEAD")
+                self.assertEqual(transitions, [snapshot, upstream])
+                builder.check_source.assert_called_once()
+                if point != "benchmark-entry":
+                    builder.cargo_environment.assert_not_called()
+                else:
+                    builder.cargo_environment.assert_called_once()
+                self.assertFalse((root / "complete-pair.json").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

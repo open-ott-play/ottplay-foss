@@ -421,6 +421,14 @@ jobs:
                   raise ValueError('Incomplete or unsuccessful benchmark')
               if doc['runs'] != count:
                   raise ValueError('Unexpected sample count')
+              # Prove the edited crate rebuilt; downstream dependency reuse is allowed.
+              rebuild_flags = {
+                  'leaf': 'base_rebuilt', 'platform': 'platform_rebuilt',
+                  'ui': 'ui_rebuilt', 'plex': 'plex_rebuilt', 'data': 'data_rebuilt',
+                  'session': 'session_rebuilt', 'media': 'media_rebuilt',
+                  'appkit': 'appkit_rebuilt', 'screens': 'screens_rebuilt',
+                  'app': 'app_rebuilt', 'hub': 'ui_rebuilt',
+              }
               for row in doc['scenarios']:
                   if row['status'] != 'ok':
                       raise ValueError('Skipped or failed required benchmark row')
@@ -431,6 +439,9 @@ jobs:
                       raise ValueError('Missing or invalid timed sample')
                   if row['id'] == 'noop' and any(s['app_rebuilt'] for s in samples):
                       raise ValueError('Unexpected no-op rebuild must be investigated')
+                  rebuild_flag = rebuild_flags.get(row['id'])
+                  if rebuild_flag and not all(s.get(rebuild_flag) is True for s in samples):
+                      raise ValueError('Edited-crate benchmark did not rebuild ' + rebuild_flag)
               return doc
 
           bindings = []
@@ -482,14 +493,16 @@ jobs:
                               GIT_COMMITTER_EMAIL='benchmark@example.invalid')
               bench_commit = git(source, 'commit-tree', expected_tree, '-p', upstream,
                                  '-m', 'Ephemeral benchmark snapshot for '+outer_sha, env=identity)
+              prepared_sha256 = digest(prepared_path)
+              binding = None
               git(source, 'update-ref', '--no-deref', 'HEAD', bench_commit, upstream)
-              binding = dict(label=label, outer_commit=outer_sha, prepared=prepared,
-                             prepared_sha256=digest(prepared_path), provenance_sha256=digest(provenance),
-                             benchmark_sha256=tool_hash, synthetic_benchmark_commit=bench_commit,
-                             makefile_sha256=digest(source/'Makefile'), builder_sha256=digest(mod_path),
-                             documents={})
-              (evidence / (label+'-binding-before.json')).write_text(json.dumps(binding, indent=2)+'\n')
               try:
+                  binding = dict(label=label, outer_commit=outer_sha, prepared=prepared,
+                                 prepared_sha256=prepared_sha256, provenance_sha256=digest(provenance),
+                                 benchmark_sha256=tool_hash, synthetic_benchmark_commit=bench_commit,
+                                 makefile_sha256=digest(source/'Makefile'), builder_sha256=digest(mod_path),
+                                 documents={})
+                  (evidence / (label+'-binding-before.json')).write_text(json.dumps(binding, indent=2)+'\n')
                   # Reuse the producer's config-free Cargo home and real cache lock aliases.
                   # Do not use build_env's RELEASE=1/ARM profile for a host benchmark.
                   with builder.cargo_environment(args) as isolated:
@@ -517,9 +530,10 @@ jobs:
                   git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)
                   builder.check_source(args, manifest)
                   (evidence / (label+'-prepared-after.json')).write_bytes(prepared_path.read_bytes())
-                  if digest(prepared_path) != binding['prepared_sha256']:
+                  if digest(prepared_path) != prepared_sha256:
                       raise ValueError('Prepared receipt changed during measurement')
-                  (evidence / (label+'-binding-after.json')).write_text(json.dumps(binding, indent=2)+'\n')
+                  if binding is not None:
+                      (evidence / (label+'-binding-after.json')).write_text(json.dumps(binding, indent=2)+'\n')
               bindings.append(binding)
 
           for suffix in ('rows', 'check'):
