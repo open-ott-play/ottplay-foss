@@ -775,7 +775,7 @@ const NATIVE_WINDOW_CONTROLS_ENTRY_ALLOWANCE = Object.freeze({
     gzipBytes: 929,
 });
 // One-file desktop drop keeps gesture handling out of shared startup. The
-// shared temporary-session and OS-startup hooks add 3818 raw / 1053 gzip bytes
+// shared temporary-session and OS-startup hooks add 3987 raw / 1078 gzip bytes
 // on Node 26.8.2. The optional desktop bundle measures 5356 / 2109 bytes.
 // Evidence: docs/evidence/desktop-video-drop-size.json. Preserve bounded
 // compiler/compressor variation; no provider allowance is changed.

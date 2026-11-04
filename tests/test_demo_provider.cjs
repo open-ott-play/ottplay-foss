@@ -84,7 +84,12 @@ const providerUi =
 const providerLoad =
     (process.argv.includes("--bundle")
         ? declarations(providerSource, ["__spreadArray"])
-        : "") + declarations(providerSource, ["loadProv", "syncFromWindow"]);
+        : "") +
+    declarations(providerSource, [
+        "desktopReady",
+        "loadProv",
+        "syncFromWindow",
+    ]);
 
 function storage() {
     return new Map([

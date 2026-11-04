@@ -10,7 +10,7 @@
     "inputs": {
       "src/storage/index.ts": "186ed46537aa764bea332c306449a546ecd425feb3d99d35c4f0bb17abfd613d",
       "src/plugins/local-media.ts": "a3a2d4211dbbdf60ffd8be61879f54418d71506f073795b6875bedc55fdf5c2f",
-      "src/provider/index.ts": "2af04d73967b85a22b159f968dbfeaa907fc6554573759701f2c8bfd66e1065c",
+      "src/provider/index.ts": "1376a4237666748e6bde422892cfdb3c447f08e700949c07496185fd26bfd0bd",
       "src/provider/drivers.ts": "ea74ddd229f38de9f49dde165ca377772585c96559c8955396065154f1b1fbf5"
     },
     "before": {
@@ -19,13 +19,13 @@
       "sha256": "5f6ea9ce6025c511a209580338725a51008f7da5367ce1fd833a3e75f68541b1"
     },
     "after": {
-      "bytes": 1197173,
-      "gzipBytes": 364460,
-      "sha256": "a41c0825459ef00f7ad896fd39eb2069ea5e67d516b2561afad270c751d2b9fd"
+      "bytes": 1197342,
+      "gzipBytes": 364485,
+      "sha256": "3799155a1aa26eb339a2c4dacc800084716688bf4307e424ff961c965b7e3d6f"
     },
     "delta": {
-      "bytes": 3818,
-      "gzipBytes": 1053
+      "bytes": 3987,
+      "gzipBytes": 1078
     }
   },
   "allowance": {

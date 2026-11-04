@@ -4,6 +4,8 @@ On PC, PC2, and the Tauri desktop shell, drop **one video file** into the player
 
 Only a single file is accepted. Dropping multiple files, a directory, or a file rejected by the format/type checks does not replace the current video. A drag cursor may show a copy symbol; the player does not copy the original media into its library.
 
+The native player processes one file request at a time. Wait for that request to finish before dropping or opening another file; additional requests during validation or handoff are not queued.
+
 ## Browser playback
 
 The browser reads the selected `File` through a temporary object URL. It does not upload the file to the OTT server or persist its bytes in browser storage.
@@ -16,7 +18,7 @@ If the browser blocks autoplay on a new page, press Play to start the selected f
 
 The native path accepts regular, non-symlink MP4, M4V, WebM, OGV, AVI, and MKV files. AVI/MKV use the existing Local compatibility backend and are rejected if it is unavailable. MOV is not part of the native Local format list in this implementation.
 
-The original file is served on demand through the existing private loopback Local media routes. There is no media import, directory scan, or durable source registration. The file must remain available. Native reads recheck the opened file against captured metadata, including device/inode identity on Unix. This is not a snapshot of immutable file contents.
+The original file is served on demand through the existing private loopback Local media routes. There is no media import, directory scan, or durable source registration. The file must remain available. Native reads recheck the opened file against captured metadata, including device/inode identity on Unix and volume/file identity on Windows. If Windows cannot read that identity, the file is rejected. This is not a snapshot of immutable file contents.
 
 The application event `local-media-drop` carries an opaque grant. The main-window commands `local_media_take_drop` and `local_media_release_drop` consume or release that grant; neither accepts an arbitrary filesystem path. The returned catalog contains temporary HTTP playback URLs. A pending grant expires after 30 seconds, and at most two issued grants are retained during replacement. Releasing a rejected new grant leaves the previous grant intact.
 
