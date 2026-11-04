@@ -341,5 +341,149 @@ class NativeScopeTests(unittest.TestCase):
                              prepared["rust_source_archive"])
 
 
+
+class NativeBuildBenchWorkflowTests(unittest.TestCase):
+    def workflow(self):
+        return yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                         Loader=yaml.BaseLoader)
+
+    def bench_code(self):
+        steps = self.workflow()["jobs"]["native-build-bench"]["steps"]
+        run = next(step["run"] for step in steps if "<<'PYBENCH'" in step.get("run", ""))
+        return run.split("python3 - <<'PYBENCH'\n", 1)[1].rsplit("\nPYBENCH", 1)[0]
+
+    def test_bench_is_explicit_dispatch_only_and_read_only(self):
+        workflow = self.workflow()
+        inputs = workflow["on"]["workflow_dispatch"]["inputs"]
+        self.assertEqual(inputs["build_bench"]["type"], "boolean")
+        self.assertEqual(inputs["build_bench"]["default"], "false")
+        self.assertEqual(inputs["bench_head_tree"]["type"], "string")
+        self.assertEqual(inputs["bench_head_tree"]["default"], "")
+        self.assertEqual(workflow["permissions"], {"contents": "read"})
+        predicate = "github.event_name == 'workflow_dispatch' && inputs.build_bench"
+        self.assertEqual(workflow["jobs"]["native-build-bench"]["if"], "${{ " + predicate + " }}")
+        self.assertEqual(workflow["jobs"]["contracts"]["if"], "${{ !(" + predicate + ") }}")
+
+    def test_bench_does_not_change_normal_gate_dependency_or_limits(self):
+        jobs = self.workflow()["jobs"]
+        self.assertEqual(jobs["native-candidate"]["needs"], "contracts")
+        self.assertEqual(jobs["native-candidate"]["if"], "${{ needs.contracts.outputs.build == 'true' }}")
+        self.assertEqual(jobs["native-candidate"]["timeout-minutes"], "90")
+        self.assertEqual(jobs["contracts"]["timeout-minutes"], "5")
+        self.assertNotIn("continue-on-error", jobs["native-build-bench"])
+        self.assertNotIn("needs", jobs["native-build-bench"])
+        self.assertEqual(jobs["native-build-bench"]["runs-on"], "ubuntu-24.04-arm")
+        for job in jobs.values():
+            self.assertNotIn("permissions", job)  # inherit the read-only workflow grant
+
+    def test_bench_concurrency_cannot_cancel_ordinary_ci(self):
+        group = self.workflow()["concurrency"]["group"]
+        self.assertEqual(group, "webos-native-${{ github.event_name == 'workflow_dispatch' && inputs.build_bench && 'bench-' || '' }}${{ github.event.pull_request.number || github.ref }}")
+        ref = "refs/heads/fixture"
+        ordinary = "webos-native-" + ref
+        benchmark = "webos-native-bench-" + ref
+        self.assertNotEqual(ordinary, benchmark)
+
+    def test_bench_binds_exact_base_and_dispatch_head_tree(self):
+        job = self.workflow()["jobs"]["native-build-bench"]
+        checkouts = [step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual(len(checkouts), 2)
+        self.assertNotIn("ref", checkouts[0]["with"])
+        self.assertEqual(checkouts[1]["with"]["ref"], "39dd8b4581a3375558fd6e15827c5cb17bf4c4f8")
+        self.assertEqual(checkouts[1]["with"]["path"], "benchmark-before")
+        self.assertEqual(job["env"]["BENCH_HEAD_TREE"], "${{ inputs.bench_head_tree }}")
+        code = self.bench_code()
+        self.assertIn("head = os.environ['GITHUB_SHA']", code)
+        self.assertIn("head_tree = os.environ['BENCH_HEAD_TREE']", code)
+        self.assertIn("'5c2d31b2adf3386b84f99dd0d91f9be8a9dbaae0'", code)
+        self.assertIn("if prepared['tree'] != expected_tree:", code)
+        self.assertIn("if git(outer, 'rev-parse', 'HEAD') != outer_sha:", code)
+        self.assertIn("builder_sha256=digest(mod_path)", code)
+
+    def test_invalid_bench_pins_refuse_before_any_process(self):
+        code = compile(self.bench_code(), "webos-native.yml benchmark", "exec")
+        for head, tree in (("a" * 40, ""), ("a" * 40, "main"), ("bad", "b" * 40),
+                           ("a" * 40, "B" * 40),
+                           ("39dd8b4581a3375558fd6e15827c5cb17bf4c4f8", "b" * 40)):
+            with self.subTest(head=head, tree=tree), tempfile.TemporaryDirectory() as directory:
+                environment = {"GITHUB_WORKSPACE": directory, "RUNNER_TEMP": directory,
+                               "GITHUB_SHA": head, "BENCH_HEAD_TREE": tree}
+                with mock.patch.dict(os.environ, environment), \
+                        mock.patch("subprocess.run") as run, \
+                        mock.patch("subprocess.check_output") as output:
+                    with self.assertRaises(ValueError):
+                        exec(code, {})  # noqa: S102: invalid-input preflight; process APIs are mocked
+                    run.assert_not_called()
+                    output.assert_not_called()
+
+    def test_bench_result_predicate_rejects_partial_failed_or_zero_samples(self):
+        import ast
+        import copy
+        import math
+        node = next(node for node in ast.parse(self.bench_code()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "checked_document")
+        scope = {"json": json, "math": math}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), "benchmark result predicate", "exec"), scope)  # noqa: S102
+        good = {"failure": None, "red": [], "restored_clean": True, "via_make": True, "runs": 3,
+                "scenarios": [{"id": "noop", "status": "ok", "samples": [
+                    {"seconds": 1.0, "app_rebuilt": False} for _ in range(3)]},
+                    {"id": "sizes", "status": "ok", "samples": []}]}
+        for case in ("good", "missing", "extra", "duplicate", "failed", "skipped", "short", "zero",
+                     "nonfinite", "failure", "red", "not-restored", "not-make", "wrong-runs", "dirty-noop"):
+            doc = copy.deepcopy(good)
+            if case == "missing": doc["scenarios"].pop()
+            if case == "extra": doc["scenarios"].append({"id": "arm", "status": "ok", "samples": []})
+            if case == "duplicate": doc["scenarios"].append(copy.deepcopy(doc["scenarios"][0]))
+            if case in ("failed", "skipped"): doc["scenarios"][0]["status"] = case
+            if case == "short": doc["scenarios"][0]["samples"].pop()
+            if case == "zero": doc["scenarios"][0]["samples"] = []
+            if case == "nonfinite": doc["scenarios"][0]["samples"][0]["seconds"] = float("nan")
+            if case == "failure": doc["failure"] = "synthetic failure"
+            if case == "red": doc["red"] = ["noop"]
+            if case == "not-restored": doc["restored_clean"] = False
+            if case == "not-make": doc["via_make"] = False
+            if case == "wrong-runs": doc["runs"] = 1
+            if case == "dirty-noop": doc["scenarios"][0]["samples"][0]["app_rebuilt"] = True
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "result.json"
+                path.write_text(json.dumps(doc))
+                if case == "good":
+                    self.assertEqual(scope["checked_document"](path, ["noop", "sizes"], 3), doc)
+                else:
+                    with self.assertRaises(ValueError):
+                        scope["checked_document"](path, ["noop", "sizes"], 3)
+
+    def test_bench_keeps_exact_tree_snapshot_and_restores_in_finally(self):
+        import ast
+        code = self.bench_code()
+        nodes = list(ast.walk(ast.parse(code)))
+        final = next(node.finalbody for node in nodes if isinstance(node, ast.Try) and node.finalbody)
+        self.assertEqual(ast.unparse(final[0]), "git(source, 'update-ref', '--no-deref', 'HEAD', upstream, bench_commit)")
+        self.assertEqual(ast.unparse(final[1]), "builder.check_source(args, manifest)")
+        self.assertIn("git(source, 'commit-tree', expected_tree, '-p', upstream", code)
+        self.assertIn("'update-ref', '--no-deref', 'HEAD', bench_commit, upstream", code)
+        self.assertIn("with builder.cargo_environment(args) as isolated:", code)
+        self.assertIn("synthetic_benchmark_commit=bench_commit", code)
+        self.assertNotIn("reset --hard", code)
+        self.assertNotIn("git push", code)
+
+    def test_bench_is_sequential_supported_make_subset_with_raw_evidence(self):
+        code = self.bench_code()
+        self.assertIn("rows = 'noop,leaf,platform,ui,plex,data,session,media,appkit,screens,app,hub,sizes'", code)
+        self.assertIn("for label, outer, outer_sha, expected_tree in phases:", code)
+        self.assertIn("[('rows', rows, 3), ('check', 'check', 1)]", code)
+        self.assertIn("['make', 'build-bench'", code)
+        self.assertIn("stderr=subprocess.STDOUT, check=True", code)
+        self.assertIn("if benchmark_hash is not None and benchmark_hash != tool_hash:", code)
+        self.assertIn("('toolchain','host','runner')", code)
+        self.assertIn("'complete-pair.json'", code)
+        job = self.workflow()["jobs"]["native-build-bench"]
+        self.assertNotIn("strategy", job)
+        upload = job["steps"][-1]
+        self.assertEqual(upload["if"], "always()")
+        self.assertEqual(upload["with"]["if-no-files-found"], "error")
+        self.assertEqual(upload["with"]["name"], "native-build-bench-${{ github.sha }}")
+
+
 if __name__ == "__main__":
     unittest.main()
