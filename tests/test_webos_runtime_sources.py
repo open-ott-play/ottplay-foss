@@ -427,6 +427,133 @@ class RuntimeSourceTests(unittest.TestCase):
                 self.assertEqual(manifest["sdk_recipe_reference"]["revision"], "fixture")
 
 
+class RuntimeArchiveContainmentTests(unittest.TestCase):
+    """Exercise the existing classifier with real path resolution, not a linker."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.source = self.root / "source"
+        self.sdk = self.root / "sdk"
+        for path in (self.source, self.sdk, self.source / "vendor", self.source / "src"):
+            path.mkdir()
+        (self.source / "rust-modules").mkdir()
+
+    def archive(self, path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"path-classification fixture, not a linkable archive")
+        return path
+
+    def inputs(self, path, **kwargs):
+        return runtime.runtime_inputs(str(path) + "(member.o)\n", self.source, self.sdk, **kwargs)
+
+    def test_source_sibling_prefix_does_not_authorize_archive(self):
+        outside = self.archive(self.root / "source-sibling/libother.a")
+        with self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+            self.inputs(outside)
+
+    def test_relative_source_prefix_cannot_traverse_outside(self):
+        self.archive(self.root / "outside/libother.a")
+        for prefix in ("vendor", "src", "rust-modules"):
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+                self.inputs(prefix + "/../../outside/libother.a")
+
+    def test_source_symlink_to_external_archive_is_rejected(self):
+        outside = self.archive(self.root / "outside/libother.a")
+        link = self.source / "vendor/external"
+        link.symlink_to(outside.parent, target_is_directory=True)
+        for path in (link / outside.name, "vendor/external/" + outside.name):
+            with self.subTest(path=str(path)), self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+                self.inputs(path)
+        native_tail = Path("armv7-unknown-linux-gnueabi/release/libplxnative_modules.a")
+        self.archive(self.root / "external-target" / native_tail)
+        native_link = self.source / "rust-modules/target-release-sym"
+        native_link.symlink_to(self.root / "external-target", target_is_directory=True)
+        for path in (native_link / native_tail, Path("rust-modules/target-release-sym") / native_tail):
+            with self.subTest(path=str(path)), self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+                self.inputs(path)
+
+    def test_resolved_source_archives_remain_accepted(self):
+        local = self.archive(self.source / "vendor/liblocal.a")
+        alias = self.source / "vendor-alias"
+        alias.symlink_to("vendor", target_is_directory=True)
+        native_relative = Path("rust-modules/target-release-sym/armv7-unknown-linux-gnueabi/release/libplxnative_modules.a")
+        native = self.archive(self.source / native_relative)
+        for path in (
+            local,
+            self.source / "src/../vendor/liblocal.a",
+            "vendor/liblocal.a",
+            "src/../vendor/liblocal.a",
+            "vendor-alias/liblocal.a",
+            native,
+            native_relative,
+        ):
+            with self.subTest(path=str(path)):
+                self.assertEqual(self.inputs(path), [])
+
+    def test_sdk_runtime_keeps_its_separate_source_owner(self):
+        sdk_archive = self.archive(self.sdk / "lib/libgcc.a")
+        rows = self.inputs(sdk_archive)
+        self.assertEqual(
+            rows,
+            [{"source": "gcc-runtime", "archive_or_object": "libgcc.a", "member": "member.o", "sdk_path": "lib/libgcc.a"}],
+        )
+        outside = self.archive(self.root / "outside/libgcc.a")
+        with self.assertRaisesRegex(ValueError, "outside the recorded SDK"):
+            self.inputs(outside, allowed_archives={str(outside)})
+        unknown = self.archive(self.sdk / "lib/libunknown.a")
+        with self.assertRaisesRegex(ValueError, "Unclassified static SDK"):
+            self.inputs(unknown, allowed_archives={str(unknown)})
+
+    def test_explicit_companion_archive_does_not_authorize_its_sibling(self):
+        helper = self.archive(self.root / "helper-target/libhelper.a")
+        sibling = self.archive(self.root / "helper-target-sibling/libhelper.a")
+        allowed = {str(helper)}
+        self.assertEqual(self.inputs(helper, allowed_archives=allowed), [])
+        self.assertEqual(
+            self.inputs("../helper-target/libhelper.a", archive_root=self.source, allowed_archives=allowed), []
+        )
+        for path, kwargs in ((helper, {}), (sibling, {"allowed_archives": allowed})):
+            with self.subTest(path=str(path), explicit=bool(kwargs)), self.assertRaisesRegex(
+                ValueError, "Unclassified static archive"
+            ):
+                self.inputs(path, **kwargs)
+
+    def test_sdk_sibling_prefix_remains_an_independent_archive(self):
+        sibling = self.archive(self.root / "sdk-sibling/libhelper.a")
+        with self.assertRaisesRegex(ValueError, "Unclassified static archive"):
+            self.inputs(sibling)
+        self.assertEqual(self.inputs(sibling, allowed_archives={str(sibling)}), [])
+
+    def test_sdk_object_classification_uses_resolved_containment(self):
+        ordinary = self.archive(self.sdk / "lib/ordinary.o")
+        sibling = self.archive(self.root / "sdk-sibling/ordinary.o")
+        local = self.archive(self.source / "vendor/ordinary.o")
+        alias = self.source / "vendor/sdk"
+        alias.symlink_to(self.sdk, target_is_directory=True)
+        for path in (ordinary, "vendor/sdk/lib/ordinary.o"):
+            with self.subTest(path=str(path)), self.assertRaisesRegex(ValueError, "Unclassified static SDK object"):
+                runtime.runtime_inputs("LOAD " + str(path) + "\n", self.source, self.sdk)
+        for path in (sibling, local):
+            with self.subTest(path=str(path)):
+                self.assertEqual(runtime.runtime_inputs("LOAD " + str(path) + "\n", self.source, self.sdk), [])
+        startup = self.archive(self.sdk / "lib/crtbegin.o")
+        expected = [{"source": "gcc-runtime", "archive_or_object": "crtbegin.o", "member": "", "sdk_path": "lib/crtbegin.o"}]
+        for path, kwargs in (
+            (startup, {}),
+            ("vendor/sdk/lib/crtbegin.o", {}),
+            ("lib/crtbegin.o", {"archive_root": self.sdk}),
+        ):
+            with self.subTest(path=str(path)):
+                self.assertEqual(
+                    runtime.runtime_inputs("LOAD " + str(path) + "\n", self.source, self.sdk, **kwargs), expected
+                )
+        outside = self.archive(self.root / "sdk-sibling/crtbegin.o")
+        with self.assertRaisesRegex(ValueError, "outside the recorded SDK"):
+            runtime.runtime_inputs("LOAD " + str(outside) + "\n", self.source, self.sdk)
+
+
 class CompanionRuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

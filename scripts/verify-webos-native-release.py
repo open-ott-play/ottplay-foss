@@ -353,6 +353,7 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
         "ci/ottplay-integration/upstream.json",
         "ci/ottplay-integration/PROVENANCE.json",
         "pkg/appinfo.json",
+        "rust-modules/rust-toolchain.toml",
     }
     rows, content = index_archive(path, lambda key: key in captures or key.startswith(INTEGRATION_PREFIX))
     check_private_paths(rows, source=True)
@@ -361,6 +362,10 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
         manifest.get("schema") == 1 and manifest.get("license") == "GPL-3.0-or-later", "Source schema/license mismatch"
     )
     environment = manifest["build_environment"]
+    if "compilation" in metadata["build"]:
+        toolchain = tomllib.loads(content.get("rust-modules/rust-toolchain.toml", b"").decode("utf-8"))
+        require(toolchain.get("toolchain", {}).get("channel") == metadata["build"]["rust_toolchain"],
+                "Native compilation source toolchain mismatch")
     require(
         manifest["rebuild_status"] == "NOT_RUN"
         and environment["rust_target"] == build.TARGET
@@ -413,8 +418,32 @@ def check_primary(path, metadata, receipt, package_rows, descriptor):
     for patch, digest in provenance["patches"].items():
         recorded_file(rows, "ci/ottplay-integration/patches/" + name(patch), digest)
     integration_names = INTEGRATION_FILES | {"patches/" + name(patch) for patch in provenance["patches"]}
+    generated_names = {"PROVENANCE.json"}
+    if "control_discovery" in metadata["build"]["configuration"]:
+        version = metadata["application"]["version"]
+        product = build.release_product_config(upstream)
+        product_path = build.PRODUCT_CONFIG
+        require(decode(content.get(product_path, b"{}")) == product, "Embedded release product mismatch")
+        documents = {}
+        for role, suffix in (("notes", ".md"), ("audit", "-audit.md")):
+            source_name = "releases/" + version + suffix
+            raw = content.get(INTEGRATION_PREFIX + source_name, b"")
+            require(0 < len(raw) <= build.RELEASE_DOCUMENT_LIMIT and b"\0" not in raw
+                    and raw.decode("utf-8").strip() and content.get(product[role]) == raw,
+                    "Embedded release document mismatch")
+            documents[role] = hashlib.sha256(raw).hexdigest()
+            integration_names.add(source_name)
+            generated_names.add(product[role].removeprefix(INTEGRATION_PREFIX))
+        integration_names.add("control_discovery_config.py")
+        generated_names.add(product_path.removeprefix(INTEGRATION_PREFIX))
+        expected_product = {"path": product_path, "sha256": hashlib.sha256(content[product_path]).hexdigest(),
+                            "documents": documents, "audit_evidence": "authored_only"}
+        require(metadata["build"].get("product_release") == expected_product,
+                "Release product receipt mismatch")
+    else:
+        require("product_release" not in metadata["build"], "Unexpected release product receipt")
     actual_names = {key.removeprefix(INTEGRATION_PREFIX) for key in rows if key.startswith(INTEGRATION_PREFIX)}
-    require(actual_names == integration_names | {"PROVENANCE.json"}, "Embedded integration file set mismatch")
+    require(actual_names == integration_names | generated_names, "Embedded integration file set mismatch")
     integration_hash = hashlib.sha256()
     for key in sorted(integration_names):
         integration_hash.update(key.encode() + b"\0")
@@ -962,10 +991,27 @@ def check_runtime(path, metadata, source_set, primary, package_rows, upstream, p
             "companion/companion-source.tar.gz",
             "evidence/ottplay-companion.link.map",
             "evidence/ottplay-companion.link.trace",
+            "evidence/plxnative.link.map",
+            "evidence/plxnative.link.trace",
         )
         spools = {name: stack.enter_context(tempfile.TemporaryFile()) for name in names}
         rows, content = index_archive(path, captures, spools=spools)
         runtime = check_runtime_evidence(rows, content, metadata, source_set, primary, package_rows, upstream)
+        if "compilation" in metadata["build"]:
+            archive = metadata["build"]["compilation"]["archive"]["path"].encode("utf-8")
+            expected = {archive, b"/build/ottplay-native/" + archive}
+            for label, stream in (("map", spools[names[3]]), ("trace", spools[names[4]])):
+                stream.seek(0)
+                found = False
+                while line := stream.readline(1024 * 1024 + 1):
+                    require(len(line) <= 1024 * 1024, "Native linker evidence line exceeds size limit")
+                    value = line.strip()
+                    if label == "map":
+                        if not value.startswith(b"LOAD "):
+                            continue
+                        value = value[5:].strip()
+                    found |= value in expected
+                require(found, "Native compilation archive missing from final " + label)
         check_companion(
             spools[names[0]],
             rows,
@@ -1029,6 +1075,8 @@ def check_runtime_evidence(rows, content, metadata, source_set, primary, package
             require("licenses/" + item["id"] + "/" + member_name(license_name) in rows, "Runtime license missing")
     attestation = manifest["sdk_attestation"]
     sdk = upstream["sdk"]
+    configured_host = metadata["build"]["configuration"].get("host")
+    require(configured_host is None or configured_host == attestation["host"], "Native build host binding mismatch")
     require(
         attestation["version"] == sdk["version"]
         and attestation["runtime_archive_match"] == "PASS"
@@ -1115,6 +1163,88 @@ def check_feed(directory, metadata, stem, require_feed):
     return True
 
 
+def check_build_configuration(metadata, directory, stem, *, require_current=False):
+    """Accept only the three published producer shapes; never execute evidence."""
+    recorded = metadata["build"]
+    config = recorded["configuration"]
+    base = {"FLAVOR": "stable", "RELEASE": "1", "target": build.TARGET}
+    require(isinstance(config, dict), "Native release configuration mismatch")
+    keys = set(config)
+    legacy = set(base)
+    discovery = legacy | {"control_discovery"}
+    compiled = discovery | {"ARM_PROFILE", "rust_opt_level", "symbols", "host"}
+    require(keys in (legacy, discovery, compiled), "Native release configuration mismatch")
+    require(not require_current or keys == compiled, "Current checkout requires native compilation evidence")
+    require(all(config.get(key) == value for key, value in base.items()), "Native release configuration mismatch")
+    if keys != legacy:
+        profile = config["control_discovery"]
+        require(isinstance(profile, dict), "Native control discovery configuration mismatch")
+        require(type(profile.get("configured")) is bool, "Native control discovery configuration mismatch")
+        expected = build.control_discovery_config.profile(profile.get("url"), profile.get("sha256"))
+        require(profile == expected, "Native control discovery configuration mismatch")
+    if keys != compiled:
+        require("compilation" not in recorded, "Unexpected native compilation evidence")
+        return
+    require(config["ARM_PROFILE"] == "release" and config["rust_opt_level"] in ("2", "s")
+            and config["symbols"] is False
+            and config["host"] in ("darwin-arm64", "darwin-x86_64", "linux-aarch64"),
+            "Native release configuration mismatch")
+    evidence = recorded.get("compilation")
+    require(isinstance(evidence, dict) and set(evidence) == {"cargo", "make", "archive"},
+            "Native compilation evidence mismatch")
+    archive = "rust-modules/target-release/" + build.TARGET + "/release/libplxnative_modules.a"
+    require(isinstance(evidence["archive"], dict) and set(evidence["archive"]) == {"path", "sha256"}
+            and evidence["archive"]["path"] == archive, "Native compilation archive mismatch")
+    checksum(evidence["archive"]["sha256"])
+    documents = {}
+    for role, suffix, fields in (("cargo", "-cargo-artifacts.jsonl", {"file", "sha256", "artifact"}),
+                                 ("make", "-build-config.txt", {"file", "sha256"})):
+        item = evidence[role]
+        require(isinstance(item, dict) and set(item) == fields and item["file"] == stem + suffix,
+                "Native compilation evidence file mismatch")
+        path = directory / item["file"]
+        hash_file(path, item["sha256"], JSON_LIMIT)
+        documents[role] = regular(path, JSON_LIMIT).read_bytes()
+    rows = [decode(line) for line in documents["cargo"].splitlines() if line.strip()]
+    require(rows and all(isinstance(row, dict) for row in rows), "Native Cargo evidence malformed")
+    finished = [row for row in rows if row.get("reason") == "build-finished"]
+    require(len(finished) == 1 and finished[0].get("success") is True and rows[-1] == finished[0],
+            "Native Cargo evidence is not a completed build")
+    artifacts = [row for row in rows if row.get("reason") == "compiler-artifact"
+                 and isinstance(row.get("target"), dict) and row["target"].get("name") == "plxnative_modules"]
+    require(len(artifacts) == 1 and artifacts[0] == evidence["cargo"]["artifact"],
+            "Native Cargo artifact binding mismatch")
+    artifact = artifacts[0]
+    manifest = artifact.get("manifest_path")
+    require(isinstance(manifest, str) and manifest.endswith("/rust-modules/Cargo.toml")
+            and PurePosixPath(manifest).is_absolute() and PurePosixPath(manifest).as_posix() == manifest
+            and ".." not in PurePosixPath(manifest).parts and "\\" not in manifest
+            and all(ord(char) >= 32 and ord(char) != 127 for char in manifest),
+            "Native Cargo source path mismatch")
+    root = manifest.removesuffix("/rust-modules/Cargo.toml")
+    target = artifact["target"]
+    profile = artifact.get("profile")
+    expected = {"opt_level": config["rust_opt_level"], "debuginfo": 0,
+                "debug_assertions": False, "overflow_checks": False, "test": False}
+    require(isinstance(profile, dict) and all(type(profile.get(key)) is type(value)
+            and profile[key] == value for key, value in expected.items())
+            and target.get("src_path") == root + "/rust-modules/src/lib.rs"
+            and target.get("kind") == ["staticlib"] and target.get("crate_types") == ["staticlib"]
+            and artifact.get("features") == [] and artifact.get("filenames") == [root + "/" + archive],
+            "Native Cargo release profile/path mismatch")
+    settings = {}
+    for line in documents["make"].decode("utf-8").splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            require(key not in settings, "Duplicate native Make configuration")
+            settings[key] = value
+    expected_make = {"RUST_TDIR": "target-release", "RUST_TARGET": build.TARGET,
+                     "ARM_PROFILE": "release", "ARM_PROFILE_FLAG": "--release", "RUST_LIB": archive,
+                     "RUST_FEATFLAGS": "--no-default-features", "RUST_TOOLCHAIN": recorded["rust_toolchain"]}
+    require(all(settings.get(key) == value for key, value in expected_make.items()),
+            "Native Make configuration mismatch")
+
+
 def verify(metadata_path, *, require_feed=False, check_checkout=False):
     metadata_path = Path(metadata_path)
     metadata = file_json(metadata_path)
@@ -1130,10 +1260,7 @@ def verify(metadata_path, *, require_feed=False, check_checkout=False):
     require(
         metadata.get("device_validation") == "not_performed", "Unsupported device validation claim in build metadata"
     )
-    require(
-        metadata["build"]["configuration"] == {"FLAVOR": "stable", "RELEASE": "1", "target": build.TARGET},
-        "Native release configuration mismatch",
-    )
+    check_build_configuration(metadata, directory, stem, require_current=check_checkout)
     require(
         metadata["build"]["ipk_sha256"] == metadata["sha256"]
         and metadata["build"]["revision"] == metadata["upstream"]["revision"]

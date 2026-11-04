@@ -4,7 +4,9 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -100,11 +102,15 @@ class NativeScopeTests(unittest.TestCase):
         verifier = next(i for i, step in enumerate(steps)
                         if "scripts/verify-webos-native-release.py" in step.get("run", ""))
         upload = next(i for i, step in enumerate(steps)
-                      if step.get("uses", "").startswith("actions/upload-artifact@"))
+                      if step.get("uses", "").startswith("actions/upload-artifact@")
+                      and step.get("with", {}).get("name") == "ottplay-native-webos-candidate")
         self.assertLess(collector, verifier)
         self.assertLess(verifier, upload)
         self.assertNotIn("continue-on-error", steps[verifier])
         self.assertNotIn("if", steps[verifier])
+        self.assertNotIn("if", steps[upload])
+        self.assertNotIn("continue-on-error", steps[upload])
+        self.assertEqual(steps[upload]["with"]["if-no-files-found"], "error")
         self.assertIn('--metadata "build/native-webos/dist/ottplay-native-webos-${native_version}.json"',
                       steps[verifier]["run"])
         self.assertIn("--check-checkout", steps[verifier]["run"])
@@ -114,9 +120,80 @@ class NativeScopeTests(unittest.TestCase):
         expected = {stem + suffix for suffix in (
             ".ipk", ".json", ".sha256", "-source.tar.gz", "-source.tar.gz.release.json",
             "-runtime-source.tar.gz", "-source-set.json",
+            "-cargo-artifacts.jsonl", "-build-config.txt",
         )}
         expected.add("build/native-webos/dist/ottplay-native-webos-icon.png")
         self.assertEqual(set(steps[upload]["with"]["path"].splitlines()), expected)
+
+    def test_host_qualification_precedes_arm_and_preserves_failure_evidence(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        job = workflow["jobs"]["native-candidate"]
+        self.assertEqual(job["runs-on"], "ubuntu-24.04-arm")
+        self.assertEqual(job["timeout-minutes"], "90")
+        self.assertNotIn("continue-on-error", job)
+        self.assertEqual(job["env"]["JOBS"], "2")
+        self.assertEqual(job["env"]["CARGO_BUILD_JOBS"], "2")
+        self.assertFalse(any(key.startswith("CARGO_PROFILE_") for key in job["env"]))
+        steps = job["steps"]
+        commands = [step.get("run", "") for step in steps]
+        markers = (
+            "native/webos/build.py bootstrap", "rustup component add",
+            "make check-cargo-lint", "make check-cargo-unit-default",
+            "make sim-linux", "python3 tests/replay_fixtures.py",
+            "source-recheck.log", "native/webos/companion/prepare.py",
+            '"native/webos/companion/build.py", "build"', "native/webos/build.py all",
+        )
+        indexes = [next(i for i, command in enumerate(commands) if marker in command)
+                   for marker in markers]
+        self.assertEqual(indexes, sorted(set(indexes)))
+        for index in indexes:
+            self.assertNotIn("if", steps[index])
+            self.assertNotIn("continue-on-error", steps[index])
+        for index in indexes[1:6]:
+            step = steps[index]
+            self.assertEqual(step["working-directory"], "build/native-webos/source")
+            self.assertEqual(step["shell"], "bash")
+            self.assertIn("set -euo pipefail", step["run"])
+            self.assertIn("tee", step["run"])
+            self.assertGreater(int(step["timeout-minutes"]), 0)
+            for key, value in {"CARGO_INCREMENTAL": "0", "PLX_CARGO_SEED": "off",
+                               "HOST_THREADS": "0", "RELEASE": "", "PLX_TEST_JOBS": "2"}.items():
+                self.assertEqual(step["env"][key], value)
+            self.assertFalse(any(key.startswith("CARGO_PROFILE_") for key in step["env"]))
+        self.assertIn("rust-modules/rust-toolchain.toml", commands[indexes[1]])
+        self.assertIn('clippy rustfmt', commands[indexes[1]])
+        self.assertIn("make check-nodef", commands[indexes[2]])
+        package_commands = commands[indexes[2]]
+        selftest = "python3 ci/check-package.py --selftest"
+        product_tests = "python3 ci/test_package_product_config.py"
+        self.assertLess(package_commands.index(selftest), package_commands.index(product_tests))
+        self.assertLess(package_commands.index(product_tests), package_commands.index("make check-cargo-lint"))
+        self.assertIn("package-selftest.log", package_commands)
+        self.assertIn("product-config-tests.log", package_commands)
+        self.assertIn("SIM_TDIR=rust-modules/target-sim-ci", commands[indexes[4]])
+        replay = steps[indexes[5]]
+        self.assertEqual(replay["env"]["LIBGL_ALWAYS_SOFTWARE"], "1")
+        for argument in ("xvfb-run", '"$PWD/rust-modules/target-sim-ci/release/plxnative-sim"',
+                         '--assets "$PWD/pkg"', "--jobs 1", "--timeout 300"):
+            self.assertIn(argument, replay["run"])
+        recheck = commands[indexes[6]]
+        self.assertIn("native/webos/build.py prepare", recheck)
+        self.assertIn("prepared-after.json", recheck)
+        self.assertIn("--rust-opt-level s", commands[indexes[9]])
+        dependencies = next(command for command in commands if "apt-get install" in command)
+        for package in ("libsdl2-dev", "libsdl2-ttf-dev", "libgl1-mesa-dev",
+                        "libgl1-mesa-dri", "xvfb", "xauth"):
+            self.assertIn(package, dependencies.split())
+        evidence = next(step for step in steps
+                        if step.get("with", {}).get("name", "").startswith("ottplay-native-host-verification-"))
+        self.assertTrue(evidence["uses"].startswith("actions/upload-artifact@"))
+        self.assertEqual(evidence["if"], "always()")
+        stem = "${{ runner.temp }}/native-host-verification/"
+        self.assertEqual(set(evidence["with"]["path"].splitlines()), {
+            stem + suffix for suffix in ("*.log", "*.json", "rust-toolchain.txt",
+                                        "replay/**/plxnative-events.log", "replay/**/sim.out")
+        })
 
     def test_complete_candidate_requires_companion_before_packaging(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
@@ -141,6 +218,70 @@ class NativeScopeTests(unittest.TestCase):
         self.assertIn('--companion-sources "$RUNNER_TEMP/companion-source"', commands[indexes[4]])
         self.assertIn('--sdk-archive "$WEBOS_SDK_ARCHIVE"', commands[indexes[4]])
 
+    def test_cold_prerequisites_are_installed_and_checked_before_host_gates(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        steps = workflow["jobs"]["native-candidate"]["steps"]
+        install = next(i for i, step in enumerate(steps) if "apt-get install" in step.get("run", ""))
+        probe = next(i for i, step in enumerate(steps) if "curl_version_info" in step.get("run", ""))
+        lint = next(i for i, step in enumerate(steps) if "make check-cargo-lint" in step.get("run", ""))
+        self.assertLess(install, probe)
+        self.assertLess(probe, lint)
+        command = steps[install]["run"]
+        for package in ("openssl", "curl", "libcurl4t64"):
+            self.assertIn(package, command.split())
+        self.assertIn("--force-reinstall --require-hashes --only-binary=:all:", command)
+        self.assertIn("Pillow==13.0.0", command)
+        self.assertIn("--hash=sha256:8bf295fe459343bc6093c8e5e0df60bfa189e0fcb775a22e2c2488fdeccc6c0d", command)
+        for index in (install, probe):
+            self.assertNotIn("if", steps[index])
+            self.assertNotIn("continue-on-error", steps[index])
+
+    def test_cold_prerequisite_probe_fails_closed(self):
+        workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        run = next(step["run"] for step in workflow["jobs"]["native-candidate"]["steps"]
+                   if "curl_version_info" in step.get("run", ""))
+        code = run.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+        for case in ("ok", "no-curl", "no-http2", "no-tls", "no-alpn", "openssl-fails",
+                     "no-pillow", "wrong-pillow", "bad-png"):
+            with self.subTest(case=case):
+                features = (1 << 2) | (1 << 16)
+                if case == "no-http2":
+                    features &= ~(1 << 16)
+                if case == "no-tls":
+                    features &= ~(1 << 2)
+                library = mock.Mock()
+                library.curl_version_info.return_value = types.SimpleNamespace(
+                    contents=types.SimpleNamespace(features=features, version=b"fixture"))
+                pil = types.ModuleType("PIL")
+                pil.__version__ = "wrong" if case == "wrong-pillow" else "13.0.0"
+                pil.Image = mock.MagicMock()
+                if case == "bad-png":
+                    pil.Image.open.side_effect = OSError("invalid PNG")
+                with mock.patch("ctypes.CDLL", return_value=library) as load, \
+                        mock.patch("ssl.HAS_ALPN", case != "no-alpn"), \
+                        mock.patch("ssl.SSLContext") as context, \
+                        mock.patch("subprocess.run") as execute, \
+                        mock.patch.dict(sys.modules, {"PIL": None if case == "no-pillow" else pil}), \
+                        mock.patch("builtins.print"):
+                    if case == "no-curl":
+                        load.side_effect = OSError("missing libcurl")
+                    if case == "openssl-fails":
+                        execute.side_effect = subprocess.CalledProcessError(1, ["openssl"])
+                    if case == "ok":
+                        exec(compile(code, "webos-native.yml prerequisites", "exec"), {})  # noqa: S102
+                        load.assert_called_once_with("libcurl.so.4")
+                        self.assertEqual(execute.call_args.args[0][:3], ["openssl", "req", "-x509"])
+                        self.assertTrue(execute.call_args.kwargs["check"])
+                        self.assertEqual(execute.call_args.kwargs["timeout"], 15)
+                        context.return_value.set_alpn_protocols.assert_called_once_with(["h2"])
+                        context.return_value.load_cert_chain.assert_called_once()
+                        pil.Image.open.assert_called_once_with("build/native-webos/source/pkg/largeIcon.png")
+                    else:
+                        with self.assertRaises((RuntimeError, OSError, ImportError, subprocess.CalledProcessError)):
+                            exec(compile(code, "webos-native.yml prerequisites", "exec"), {})  # noqa: S102
+
     def test_helper_build_and_sources_share_prepared_offline_environment(self):
         workflow = yaml.load((ROOT / ".github/workflows/webos-native.yml").read_text(),
                              Loader=yaml.BaseLoader)
@@ -150,13 +291,15 @@ class NativeScopeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="companion workflow ") as directory:
             prepared = {
                 "environment": {"CARGO_HOME": directory + "/cargo", "CARGO_NET_OFFLINE": "true",
-                                "RUSTUP_TOOLCHAIN": "pinned-fixture"},
+                                "CARGO_INCREMENTAL": "0", "RUSTUP_TOOLCHAIN": "1.96.1"},
                 "target_dir": directory + "/target", "libclang": directory + "/clang",
                 "rust_sysroot": directory + "/rust", "rust_source_archive": directory + "/rust.tar.xz",
             }
             (Path(directory) / "companion-prepared.json").write_text(json.dumps(prepared))
             with mock.patch.dict(os.environ, {"RUNNER_TEMP": directory, "WEBOS_SDK": "/sdk fixture",
-                                              "WEBOS_SDK_ARCHIVE": "/sdk fixture.tar.bz2"}), \
+                                              "WEBOS_SDK_ARCHIVE": "/sdk fixture.tar.bz2",
+                                              "CARGO_PROFILE_RELEASE_OPT_LEVEL": "s",
+                                              "RUSTFLAGS": "--cfg wrong", "RUSTC_WRAPPER": "/wrong"}), \
                     mock.patch("subprocess.run") as execute:
                 # Execute only the checked-in workflow body with process launches mocked.
                 exec(compile(code, "webos-native.yml companion", "exec"), {})  # noqa: S102
@@ -165,6 +308,10 @@ class NativeScopeTests(unittest.TestCase):
             self.assertEqual(build.kwargs["env"], source.kwargs["env"])
             for call in (build, source):
                 self.assertIs(call.kwargs["check"], True)
+                self.assertFalse(any(key.startswith("CARGO_PROFILE_") for key in call.kwargs["env"]))
+                self.assertNotIn("RUSTFLAGS", call.kwargs["env"])
+                self.assertNotIn("RUSTC_WRAPPER", call.kwargs["env"])
+                self.assertEqual(call.kwargs["env"]["RUSTUP_AUTO_INSTALL"], "0")
                 for key, value in prepared["environment"].items():
                     self.assertEqual(call.kwargs["env"][key], value)
             build_args, source_args = build.args[0], source.args[0]

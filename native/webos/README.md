@@ -127,6 +127,25 @@ From the repository root:
 python3 native/webos/build.py all --jobs 2
 ```
 
+The local default is Rust optimization level `2`. The hosted candidate uses
+`--rust-opt-level s` to optimize native code for size; these are the two supported
+values. Pass the option to `build` or `all`. It does not change the separately
+prepared companion. The build records the actual Cargo profile and archive,
+forces the final application link, and checks the existing executable size limit.
+This setting alone does not establish playback performance or TV compatibility.
+
+The hosted workflow checks its Linux prerequisites before compiling: the host
+libcurl must support TLS and HTTP/2, Python TLS must support ALPN, and the pinned,
+hash-verified Pillow wheel must decode the packaged icon. It then runs the native
+lint/type checks, default library and storage tests, package-validator tests and
+recorded UI scenarios through the Linux simulator under Xvfb. These host checks
+precede ARM packaging because host builds can change files in the staging tree.
+They do not replace the later checks of the actual ARM package or testing on a TV.
+
+The package validator accepts current `+control:` build fingerprints and the
+supported historical stamp formats. A present malformed or unknown build stamp
+fails validation rather than silently skipping checks for the build type.
+
 For an existing SDK:
 
 ```sh
@@ -160,9 +179,11 @@ The stages can also be run individually, using the same `--work-dir` and
    digest and patched Git tree. `--local-upstream /path/to/clone` can avoid downloading an existing
    clone; the exact commit is still checked.
 2. `bootstrap` verifies/downloads the SDK and installs the pinned Rust target.
-3. `build` normally runs `make RELEASE=1 FLAVOR=stable ipk`. With an explicit
-   `--companion-bundle`, it validates that bundle, runs `ipk-stage`, stages the
-   helper with private `--link-evidence`, then runs `ipk-pack`. It never contacts a TV.
+3. `build` uses `RELEASE=1 FLAVOR=stable`. It builds the native archive and storage
+   helper, checks the actual Cargo profile, then links and stages the application.
+   The existing size and ELF checks must pass before `ipk-pack`. With an explicit
+   `--companion-bundle`, it first validates that bundle and stages the helper with
+   its `--link-evidence` after `ipk-stage`. It never contacts a TV.
 4. `package` checks the native ARM executable, storage service, demuxer and
    package identity and the successful source-build receipt, then copies the independently named artifact.
 5. `source` collects and verifies corresponding source, Cargo-vendored
@@ -191,6 +212,8 @@ Default results are in `build/native-webos/dist/`. Keep these together:
 - `ottplay-native-webos-0.3.0-source.tar.gz` and its `.release.json` report
 - `ottplay-native-webos-0.3.0-runtime-source.tar.gz`
 - `ottplay-native-webos-0.3.0-source-set.json`
+- `ottplay-native-webos-0.3.0-cargo-artifacts.jsonl`
+- `ottplay-native-webos-0.3.0-build-config.txt`
 - `ottplay-native-webos-icon.png`
 
 `verify` rechecks the IPK. Source-validation reports distinguish a verified
@@ -200,7 +223,12 @@ requires a new build directory, so stale objects cannot silently enter a new
 candidate.
 
 The build receipt records the patched source tree, exact IPK hash, Rust
-version and actual SDK compiler hash. Corresponding-source validation also
+version, actual SDK compiler hash and effective build configuration. Current
+packages include the Cargo and Make evidence files listed above; keep them with
+the bundle for verification and publication. Older packages without compilation
+evidence retain their historical verification path, but cannot pass the current
+checkout check. The archive digest is the producer's record of its input, not an
+independent rebuild of that archive. Corresponding-source validation also
 requires physical archives for every bundled native dependency, Cargo crates
 and the Rust runtime; a list of download URLs alone does not pass.
 

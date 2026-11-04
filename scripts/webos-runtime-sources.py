@@ -457,35 +457,38 @@ def companion_archives(record, link_map, trace, source, sdk):
 
 def runtime_inputs(text, source, sdk, *, allowed_archives=(), archive_root=None):
     rows = set()
+    source, sdk = source.resolve(), sdk.resolve()
+    # Native relative inputs belong to the selected source, not this process's
+    # working directory. Companion inputs use their validated build root.
+    archive_root = source if archive_root is None else archive_root.resolve()
 
     def archive_path(value):
         path = Path(value)
-        if not path.is_absolute() and archive_root is not None:
+        if not path.is_absolute():
             path = archive_root / path
         return path.resolve()
 
     def relative_sdk(path):
         try:
-            return archive_path(path).relative_to(sdk.resolve()).as_posix()
+            return archive_path(path).relative_to(sdk).as_posix()
         except ValueError:
             fail("Runtime input is outside the recorded SDK: " + path)
 
     for archive, member in re.findall(r"([^\s()]+\.a)\(([^\s()]+)\)", text):
         base = PurePosixPath(archive).name
+        path = archive_path(archive)
         if base in RUNTIME:
             rows.add((RUNTIME[base], base, member, relative_sdk(archive)))
-        elif str(sdk) in archive or "/sysroot/" in archive:
+        elif path.is_relative_to(sdk) or "/sysroot/" in archive:
             fail("Unclassified static SDK archive: " + base)
-        elif not (
-            str(source) in archive
-            or archive.startswith(("src/", "vendor/", "rust-modules/"))
-            or str(archive_path(archive)) in allowed_archives
-        ):
+        # The external allowance is an exact, prevalidated link-time inventory,
+        # never a directory prefix or an unverified spelling from the map.
+        elif not (path.is_relative_to(source) or str(path) in allowed_archives):
             fail("Unclassified static archive: " + base)
     for obj in re.findall(r"(?:^|\s)([^\s()]+/[^/\s()]+\.o)(?=\s|$)", text, re.MULTILINE):
         base = PurePosixPath(obj).name
         is_startup = base.startswith(("crt", "Scrt"))
-        if not is_startup and str(sdk) not in obj and "/sysroot/" not in obj:
+        if not is_startup and not archive_path(obj).is_relative_to(sdk) and "/sysroot/" not in obj:
             continue
         if base in {"crt1.o", "Scrt1.o", "crti.o", "crtn.o"}:
             rows.add(("glibc-runtime", base, "", relative_sdk(obj)))

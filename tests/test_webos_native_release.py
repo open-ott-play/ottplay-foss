@@ -234,11 +234,11 @@ class PngArchiveTests(unittest.TestCase):
 class Bundle:
     """Small internally coherent release, with real IPK/tar and hash receipts."""
 
-    def __init__(self, root):
+    def __init__(self, root, version="0.1.0"):
         self.root = root
-        self.stem = "ottplay-native-webos-0.1.0"
+        self.stem = "ottplay-native-webos-" + version
         self.metadata_path = root / (self.stem + ".json")
-        self.app = {"id": release.APP_ID, "title": "OTTPlay Native", "version": "0.1.0", "channel": "experimental"}
+        self.app = {"id": release.APP_ID, "title": "OTTPlay Native", "version": version, "channel": "experimental"}
         self.prefix = "usr/palm/applications/" + release.APP_ID + "/"
         service_id = release.APP_ID + ".storage"
         self.service = "usr/palm/services/" + service_id + "/"
@@ -274,7 +274,7 @@ class Bundle:
                 {
                     "id": release.APP_ID,
                     "app": release.APP_ID,
-                    "version": "0.1.0",
+                    "version": version,
                     "services": [service_id],
                     "package_format_version": 2,
                     "requiredPermissions": ["database.operation", "securitykey.operation"],
@@ -285,7 +285,7 @@ class Bundle:
         self.modes = {self.prefix + "plxnative": 0o755, self.service + "plxnative-storage": 0o755}
         self.controls = {
             "control": (
-                "Package: " + release.APP_ID + "\nVersion: 0.1.0\nLicense: GPL-3.0-or-later\n"
+                "Package: " + release.APP_ID + "\nVersion: " + version + "\nLicense: GPL-3.0-or-later\n"
                 "Architecture: arm\nwebOS-Package-Format-Version: 2\n"
             ).encode()
         }
@@ -1227,6 +1227,114 @@ class NativeReleaseTests(unittest.TestCase):
         self.bundle.write()
         self.fails("rebuild claim")
 
+    def test_legacy_bundle_cannot_claim_current_checkout_binding(self):
+        with (
+            patch.object(release.build, "manifest", return_value=self.bundle.upstream),
+            patch.object(release.build, "integration_digest", return_value=self.bundle.integration_hash),
+        ):
+            self.assertEqual(self.verify()["bundle_validation"], "PASS")
+            with self.assertRaisesRegex(ValueError, "Current checkout requires native compilation evidence"):
+                self.verify(check_checkout=True)
+
+
+class CurrentNativeReleaseTests(unittest.TestCase):
+    """The real offline consumer receives current producer-shaped archives."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.bundle = Bundle(Path(temporary.name), version="0.3.0")
+        self.current(compilation=True)
+
+    def refresh_source(self):
+        b = self.bundle
+        prefix = release.INTEGRATION_PREFIX
+        names = release.INTEGRATION_FILES | {"control_discovery_config.py", "patches/0001-fixture.patch",
+                                            "releases/0.3.0.md", "releases/0.3.0-audit.md"}
+        h = hashlib.sha256()
+        for name in sorted(names):
+            if prefix + name in b.source:
+                h.update(name.encode() + b"\0" + b.source[prefix + name])
+        b.integration_hash = h.hexdigest()
+        b.metadata["integration_sha256"] = b.integration_hash
+        b.metadata["build"]["integration_sha256"] = b.integration_hash
+        prov = json.loads(b.source[prefix + "PROVENANCE.json"])
+        prov["integration_sha256"] = b.integration_hash
+        b.source[prefix + "PROVENANCE.json"] = encoded(prov)
+        b.source_manifest["files"] = {n: {"sha256": digest(v), "mode": 0o644}
+                                      for n, v in b.source.items() if n != "SOURCE-MANIFEST.json"}
+        b.source_manifest["snapshot_sha256"] = digest(encoded(b.source_manifest["files"]))
+        b.source["SOURCE-MANIFEST.json"] = encoded(b.source_manifest)
+        b.write()
+
+    def current(self, *, compilation, configured=False, opt="s"):
+        b = self.bundle
+        prefix = release.INTEGRATION_PREFIX
+        b.source[prefix + "control_discovery_config.py"] = b"raise RuntimeError('must never execute archived code')"
+        config = release.build.release_product_config(b.upstream)
+        b.source[release.build.PRODUCT_CONFIG] = encoded(config)
+        documents = {}
+        for role, suffix in (("notes", ".md"), ("audit", "-audit.md")):
+            text = ("Fixture " + role + ": authored only, device validation not performed").encode()
+            b.source[prefix + "releases/0.3.0" + suffix] = text
+            b.source[config[role]] = text
+            documents[role] = digest(text)
+        b.metadata["build"]["product_release"] = {
+            "path": release.build.PRODUCT_CONFIG, "sha256": digest(encoded(config)),
+            "documents": documents, "audit_evidence": "authored_only"}
+        profile = release.build.control_discovery_config.profile(
+            "https://catalog.example.test/servers.json" if configured else None, "a" * 64 if configured else None)
+        b.metadata["build"]["configuration"] = {
+            "FLAVOR": "stable", "RELEASE": "1", "target": release.build.TARGET, "control_discovery": profile}
+        if compilation:
+            b.metadata["build"]["configuration"].update(
+                ARM_PROFILE="release", rust_opt_level=opt, symbols=False, host="linux-aarch64")
+            b.metadata["build"]["rust_toolchain"] = "1.99.1"
+            b.upstream["sdk"]["assets"] = {"linux-aarch64": {"sha256": "b" * 64}}
+            b.source[prefix + "upstream.json"] = encoded(b.upstream)
+            b.runtime_manifest["sdk_attestation"]["host"] = "linux-aarch64"
+            b.source["rust-modules/rust-toolchain.toml"] = b'[toolchain]\nchannel = "1.99.1"\n'
+            archive = "rust-modules/target-release/" + release.build.TARGET + "/release/libplxnative_modules.a"
+            root = "/build/native-source"
+            self.artifact = {"reason": "compiler-artifact", "manifest_path": root + "/rust-modules/Cargo.toml",
+                "target": {"name": "plxnative_modules", "src_path": root + "/rust-modules/src/lib.rs",
+                           "kind": ["staticlib"], "crate_types": ["staticlib"]},
+                "profile": {"opt_level": opt, "debuginfo": 0, "debug_assertions": False,
+                            "overflow_checks": False, "test": False},
+                "features": [], "filenames": [root + "/" + archive]}
+            self.records = [self.artifact, {"reason": "build-finished", "success": True}]
+            self.make = {"RUST_TDIR": "target-release", "RUST_TARGET": release.build.TARGET,
+                         "ARM_PROFILE": "release", "ARM_PROFILE_FLAG": "--release", "RUST_LIB": archive,
+                         "RUST_FEATFLAGS": "--no-default-features", "RUST_TOOLCHAIN": "1.99.1"}
+            b.metadata["build"]["compilation"] = {"cargo": {}, "make": {},
+                                                   "archive": {"path": archive, "sha256": "c" * 64}}
+            self.write_compilation()
+            self.link_archive(archive)
+        else:
+            b.metadata["build"].pop("compilation", None)
+        self.refresh_source()
+
+    def link_archive(self, archive):
+        for role, data in (("map", ("LOAD " + archive + "\n").encode()),
+                           ("trace", (archive + "\n").encode())):
+            self.bundle.runtime["evidence/plxnative.link." + role] = data
+            self.bundle.runtime_manifest["shipped_elfs"]["plxnative"]["distributed_" + role + "_sha256"] = digest(data)
+
+    def write_compilation(self):
+        b = self.bundle
+        evidence = b.metadata["build"]["compilation"]
+        for role, suffix, data in (
+            ("cargo", "-cargo-artifacts.jsonl", b"\n".join(encoded(row) for row in self.records) + b"\n"),
+            ("make", "-build-config.txt", ("\n".join(k + "=" + v for k,v in self.make.items()) + "\n").encode())):
+            filename = b.stem + suffix
+            (b.root / filename).write_bytes(data)
+            evidence[role] = {"file": filename, "sha256": digest(data)}
+        evidence["cargo"]["artifact"] = json.loads(encoded(self.artifact))
+
+    def verify(self, **kwargs):
+        self.bundle.write()
+        return release.verify(self.bundle.metadata_path, **kwargs)
+
     def test_optional_current_checkout_binding(self):
         with (
             patch.object(release.build, "manifest", return_value=self.bundle.upstream),
@@ -1239,6 +1347,159 @@ class NativeReleaseTests(unittest.TestCase):
             self.assertRaisesRegex(ValueError, "current checkout"),
         ):
             self.verify(check_checkout=True)
+
+
+    def test_current_checkout_rejects_discovery_shape_downgrade(self):
+        b = self.bundle
+        before_source = dict(b.source)
+        before_product = json.loads(encoded(b.metadata["build"]["product_release"]))
+        before_integration = b.integration_hash
+        with (
+            patch.object(release.build, "manifest", return_value=b.upstream),
+            patch.object(release.build, "integration_digest", return_value=b.integration_hash),
+        ):
+            self.assertTrue(self.verify(check_checkout=True)["checkout_validated"])
+            for key in ("ARM_PROFILE", "rust_opt_level", "symbols", "host"):
+                del b.metadata["build"]["configuration"][key]
+            del b.metadata["build"]["compilation"]
+            self.assertEqual(self.verify()["bundle_validation"], "PASS")
+            with self.assertRaisesRegex(ValueError, "Current checkout requires native compilation evidence"):
+                self.verify(check_checkout=True)
+        self.assertEqual(b.source, before_source)
+        self.assertEqual(b.metadata["build"]["product_release"], before_product)
+        self.assertEqual(b.integration_hash, before_integration)
+
+    def test_current_full_bundle_accepts_both_optimization_and_discovery_profiles(self):
+        for opt in ("2", "s"):
+            for configured in (False, True):
+                with self.subTest(opt=opt, configured=configured):
+                    self.current(compilation=True, configured=configured, opt=opt)
+                    self.assertEqual(self.verify()["bundle_validation"], "PASS")
+
+    def test_current_full_bundle_with_companion_passes_the_same_consumer(self):
+        companion = CompanionBundle(self.bundle)
+        companion.receipt["sdk"]["host"] = "linux-aarch64"
+        companion.write()
+        self.assertEqual(self.verify()["bundle_validation"], "PASS")
+
+    def test_compilation_shape_and_filename_are_closed(self):
+        b = self.bundle
+        for role in ("cargo", "make", "archive"):
+            self.current(compilation=True)
+            b.metadata["build"]["compilation"][role]["unexpected"] = True
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "Native compilation"):
+                self.verify()
+        self.current(compilation=True)
+        b.metadata["build"]["compilation"]["cargo"]["file"] = "../outside.jsonl"
+        with self.assertRaisesRegex(ValueError, "evidence file"):
+            self.verify()
+        self.current(compilation=True)
+        del b.metadata["build"]["compilation"]
+        with self.assertRaisesRegex(ValueError, "compilation evidence"):
+            self.verify()
+
+    def test_discovery_only_published_bundle_remains_supported(self):
+        self.current(compilation=False)
+        self.assertEqual(self.verify()["bundle_validation"], "PASS")
+
+    def test_current_configuration_rejects_missing_extra_wrong_typed_or_forged_values(self):
+        good = json.loads(encoded(self.bundle.metadata["build"]["configuration"]))
+        invalid = [dict(good, extra="ignored"), {k:v for k,v in good.items() if k != "symbols"},
+                   dict(good, symbols=0), dict(good, rust_opt_level="3"), dict(good, ARM_PROFILE="tvdev"),
+                   dict(good, host="test"), dict(good, target="host"), dict(good, RELEASE="0")]
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "configuration mismatch"):
+                self.bundle.metadata["build"]["configuration"] = value
+                self.verify()
+        self.bundle.metadata["build"]["configuration"] = good
+
+    def test_discovery_rejects_extra_fields_forged_digest_and_boolean_confusion(self):
+        self.current(compilation=True, configured=True)
+        config = self.bundle.metadata["build"]["configuration"]
+        good = config["control_discovery"]
+        for value in (dict(good, fingerprint="f" * 64), dict(good, ignored=True), dict(good, configured=1),
+                      dict(good, url="http://catalog.example.test/servers.json"),
+                      {"configured": False, "fingerprint": "none", "url": None}, [], None):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                config["control_discovery"] = value
+                self.verify()
+        config["control_discovery"] = good
+
+    def test_compilation_requires_matching_profile_path_and_completed_cargo_stream(self):
+        mutations = (lambda: self.artifact["profile"].update(opt_level="2"),
+                     lambda: self.artifact["profile"].update(debuginfo=False),
+                     lambda: self.artifact.update(filenames=["/different/archive.a"]),
+                     lambda: self.artifact["target"].update(src_path="/different/lib.rs"),
+                     lambda: self.artifact.update(features=["dev"]),
+                     lambda: self.records[-1].update(success=False),
+                     lambda: self.records.append(dict(self.artifact)))
+        for mutate in mutations:
+            self.current(compilation=True)
+            mutate()
+            self.write_compilation()
+            with self.subTest(mutation=mutate), self.assertRaisesRegex(ValueError, "Native Cargo"):
+                self.verify()
+
+    def test_compilation_rejects_unbound_files_receipt_and_make_profile(self):
+        b = self.bundle
+        for role in ("cargo", "make"):
+            self.current(compilation=True)
+            (b.root / b.metadata["build"]["compilation"][role]["file"]).write_bytes(b"changed")
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "digest mismatch"):
+                self.verify()
+        self.current(compilation=True)
+        b.metadata["build"]["compilation"]["cargo"]["artifact"]["features"] = ["forged"]
+        with self.assertRaisesRegex(ValueError, "artifact binding"):
+            self.verify()
+        self.current(compilation=True)
+        self.make["ARM_PROFILE"] = "tvdev"
+        self.write_compilation()
+        with self.assertRaisesRegex(ValueError, "Make configuration"):
+            self.verify()
+
+    def test_current_release_artifacts_must_match_and_unknown_files_are_rejected(self):
+        b = self.bundle
+        path = release.INTEGRATION_PREFIX + "release/notes/v0.3.0.md"
+        b.source[path] = b"different notes"
+        self.refresh_source()
+        with self.assertRaisesRegex(ValueError, "release document"):
+            self.verify()
+        self.current(compilation=True)
+        b.source[release.INTEGRATION_PREFIX + "unlisted.py"] = b"unexpected"
+        self.refresh_source()
+        with self.assertRaisesRegex(ValueError, "integration file set"):
+            self.verify()
+
+    def test_current_release_missing_document_and_forged_receipt_are_rejected(self):
+        b = self.bundle
+        del b.source[release.INTEGRATION_PREFIX + "releases/0.3.0-audit.md"]
+        self.refresh_source()
+        with self.assertRaisesRegex(ValueError, "release document"):
+            self.verify()
+        self.current(compilation=True)
+        b.metadata["build"]["product_release"]["audit_evidence"] = "device_verified"
+        with self.assertRaisesRegex(ValueError, "product receipt"):
+            self.verify()
+
+    def test_current_source_toolchain_and_final_link_must_match_compilation(self):
+        b = self.bundle
+        b.source["rust-modules/rust-toolchain.toml"] = b'[toolchain]\nchannel = "1.98.0"\n'
+        self.refresh_source()
+        with self.assertRaisesRegex(ValueError, "source toolchain"):
+            self.verify()
+        self.current(compilation=True)
+        for role in ("map", "trace"):
+            data = b"LOAD unrelated/libplxnative_modules.a\n" if role == "map" else b"unrelated/libplxnative_modules.a\n"
+            b.runtime["evidence/plxnative.link." + role] = data
+            b.runtime_manifest["shipped_elfs"]["plxnative"]["distributed_" + role + "_sha256"] = digest(data)
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "archive missing from final"):
+                self.verify()
+            self.current(compilation=True)
+
+    def test_current_runtime_host_must_match_compilation(self):
+        self.bundle.metadata["build"]["configuration"]["host"] = "darwin-arm64"
+        with self.assertRaisesRegex(ValueError, "host binding"):
+            self.verify()
 
 
 class CargoSourceConfigTests(unittest.TestCase):

@@ -511,6 +511,18 @@ class ZipTests(unittest.TestCase):
         publish.safe_extract(self.archive, self.output, VERSION)
         self.assertEqual({p.name for p in self.output.iterdir()}, set(publish.candidate_names(VERSION)))
 
+    def test_current_exact_ten_files_and_wrong_same_size_set(self):
+        names = list(publish.candidate_names(VERSION, compilation=True))
+        self.write(names)
+        publish.safe_extract(self.archive, self.output, VERSION)
+        self.assertEqual({p.name for p in self.output.iterdir()}, set(names))
+        for path in self.output.iterdir():
+            path.unlink()
+        self.write(names[:-1] + ["unexpected.txt"])
+        with self.assertRaisesRegex(publish.PromotionError, "inventory"):
+            publish.safe_extract(self.archive, self.output, VERSION)
+        self.assertEqual(list(self.output.iterdir()), [])
+
     def test_traversal_nested_absolute_duplicate_and_unknown_are_rejected_before_writing(self):
         names = list(publish.candidate_names(VERSION))
         for replacement in ("../escape", "/tmp/escape", "folder/" + names[0], names[1], "unknown.txt"):
@@ -632,12 +644,18 @@ class PromotionPipelineTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        source = self.root / "source"
-        source.mkdir()
-        self.fixture = fixtures.Bundle(source)
+        self.start(patch("socket.socket.connect", side_effect=AssertionError("Unexpected network connection")))
+        self.start(patch.dict(globals(), VERSION="0.3.0", TAG="native-webos-v0.3.0-beta.1"))
+        # Reuse the real current-producer archive fixture, including compilation
+        # files; the production verifier still runs on every promotion phase.
+        current = fixtures.CurrentNativeReleaseTests()
+        current.setUp()
+        self.addCleanup(current.doCleanups)
+        self.fixture = current.bundle
+        source = self.fixture.root
         raw = io.BytesIO()
         with zipfile.ZipFile(raw, "w", zipfile.ZIP_DEFLATED) as archive:
-            for name in publish.candidate_names(VERSION):
+            for name in publish.candidate_names(VERSION, compilation=True):
                 archive.writestr(name, (source / name).read_bytes())
         self.gh = FakeGitHub(raw.getvalue())
         self.directory = self.root / "prepared"
@@ -683,7 +701,7 @@ class PromotionPipelineTests(unittest.TestCase):
             self.prepare()
             self.do_publish()
         self.assertEqual(sum("/actions/artifacts/" in path for path, _header in requests), 2)
-        self.assertEqual(sum("/releases/assets/" in path for path, _header in requests), 10)
+        self.assertEqual(sum("/releases/assets/" in path for path, _header in requests), 12)
 
     def prepare(self):
         return publish.prepare(self.args)
@@ -693,7 +711,7 @@ class PromotionPipelineTests(unittest.TestCase):
 
     def test_prepare_full_verifier_generates_feed_bound_to_exact_tag(self):
         receipt = self.prepare()
-        self.assertEqual(set(receipt["files"]), set(publish.release_names(VERSION)))
+        self.assertEqual(set(receipt["files"]), set(publish.release_names(VERSION, compilation=True)))
         self.assertEqual(receipt["artifact"], {key: self.gh.artifact[key] for key in ("id", "digest")})
         report = publish.verify_bundle(self.directory, VERSION)
         self.assertEqual(report["bundle_validation"], "PASS")
@@ -701,6 +719,36 @@ class PromotionPipelineTests(unittest.TestCase):
         feed = json.loads((self.directory / "ottplay-native-webos-manifest.json").read_text())
         self.assertIn("/releases/download/" + TAG + "/", feed["ipkUrl"])
         self.assertIn("/v1/" + TAG + "/", feed["iconUri"])
+
+    def test_compilation_evidence_survives_all_promotion_and_public_downloads(self):
+        names = ("ottplay-native-webos-" + VERSION + "-cargo-artifacts.jsonl",
+                 "ottplay-native-webos-" + VERSION + "-build-config.txt")
+        expected = {name: (self.fixture.root / name).read_bytes() for name in names}
+        receipt = self.prepare()
+        for name in names:
+            self.assertEqual(receipt["files"][name]["sha256"], hashlib.sha256(expected[name]).hexdigest())
+        self.do_publish()
+        for name in names:
+            self.assertEqual(self.gh.assets[name], expected[name])
+        with patch.object(publish, "fetch_worker", side_effect=lambda url, limit: self.gh.assets[url.rsplit("/", 1)[1]]):
+            self.assertEqual(publish.verify_public(SimpleNamespace(bundle=self.directory))["public_assets"], "PASS")
+
+    def test_corrupt_or_missing_compile_evidence_never_mutates_release(self):
+        original = self.gh.archive
+        target = "ottplay-native-webos-" + VERSION + "-cargo-artifacts.jsonl"
+        for missing in (False, True):
+            raw = io.BytesIO()
+            with zipfile.ZipFile(io.BytesIO(original)) as source, zipfile.ZipFile(raw, "w") as archive:
+                for name in source.namelist():
+                    if missing and name == target:
+                        continue
+                    archive.writestr(name, b"changed" if name == target else source.read(name))
+            self.gh.archive = raw.getvalue()
+            self.gh.artifact = artifact(self.gh.archive)
+            self.args.output = self.root / ("bad-missing" if missing else "bad-corrupt")
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                self.prepare()
+            self.assertFalse(any(event[0] in ("POST", "PATCH", "UPLOAD") for event in self.gh.events))
 
     def test_candidate_digest_tamper_rejected_before_extraction(self):
         self.gh.artifact["digest"] = "sha256:" + "0" * 64
@@ -724,10 +772,10 @@ class PromotionPipelineTests(unittest.TestCase):
         result = self.do_publish()
         self.assertTrue(result["published"])
         self.assertFalse(self.gh.release["draft"])
-        self.assertEqual(set(self.gh.assets), set(publish.release_names(VERSION)))
+        self.assertEqual(set(self.gh.assets), set(publish.release_names(VERSION, compilation=True)))
         public = next(i for i, event in enumerate(self.gh.events) if event[0] == "PATCH")
         downloads = [i for i, event in enumerate(self.gh.events) if event[0] == "DOWNLOAD" and "/releases/assets/" in event[1]]
-        self.assertEqual(len(downloads), 10)
+        self.assertEqual(len(downloads), 12)
         self.assertLess(max(downloads), public)
         self.assertEqual(sum(event[0] == "DOWNLOAD" and event[1].endswith("/zip") for event in self.gh.events), 2)
         self.assertFalse(any(event[0] == "DELETE" for event in self.gh.events))
@@ -816,7 +864,7 @@ class PromotionPipelineTests(unittest.TestCase):
 
     def test_corrupt_uploaded_bytes_leave_release_draft(self):
         self.prepare()
-        self.gh.corrupt = publish.candidate_names(VERSION)[0]
+        self.gh.corrupt = publish.candidate_names(VERSION, compilation=True)[0]
         with self.assertRaisesRegex(publish.PromotionError, "bytes differ"):
             self.do_publish()
         self.assertTrue(self.gh.release["draft"])
@@ -877,7 +925,7 @@ class PromotionPipelineTests(unittest.TestCase):
             publish.verify_public(SimpleNamespace(bundle=self.directory))
         self.environment.assert_called_once_with(inputs(), require_current_main=False)
         anonymous = [event for event in self.gh.events if event[0] == "PUBLIC_DOWNLOAD"]
-        self.assertEqual(len(anonymous), 10)
+        self.assertEqual(len(anonymous), 12)
         self.assertFalse(any(event[0] == "DOWNLOAD" for event in self.gh.events),
                          "public validation must not substitute authenticated asset bytes")
 

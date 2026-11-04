@@ -358,7 +358,7 @@ class NativeCompanionBuildTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.spec = build.manifest()
         self.source = self.root / "source"
         (self.source / "rust-modules").mkdir(parents=True)
@@ -389,16 +389,51 @@ class NativeCompanionBuildTests(unittest.TestCase):
         if self.fail_at == "validate":
             raise ValueError("fixture bundle invalid")
 
-    def external_command(self, command, *, cwd=None, env=None):
+    def compile_fixture(self):
+        target = self.source / 'rust-modules/target-release'
+        archive = target / build.TARGET / 'release/libplxnative_modules.a'
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        archive.write_bytes(b'fixture staticlib; never linked')
+        artifact = {'reason': 'compiler-artifact', 'manifest_path': str(self.source / 'rust-modules/Cargo.toml'),
+                    'target': {'name': 'plxnative_modules', 'kind': ['staticlib'], 'crate_types': ['staticlib'],
+                               'src_path': str(self.source / 'rust-modules/src/lib.rs'), 'test': True},
+                    'profile': {'opt_level': getattr(self.args, 'rust_opt_level', '2'), 'debuginfo': 0,
+                                'debug_assertions': False, 'overflow_checks': False, 'test': False},
+                    'features': [], 'filenames': [str(archive)], 'fresh': False}
+        rows = [artifact, {'reason': 'build-finished', 'success': True}]
+        (target / '.lib-artifacts.json').write_text('\n'.join(json.dumps(row) for row in rows) + '\n')
+
+    def external_command(self, command, *, cwd=None, env=None, capture=False):
         if command[0] == "make":
             step = command[-1]
-            self.assertEqual(command[:-1], [
-                "make", "-j2", "RELEASE=1", "FLAVOR=stable", "OTT_PRODUCT_CONFIG=" + build.PRODUCT_CONFIG
+            self.assertEqual(command[:10], [
+                "make", "-j2", "RELEASE=1", "FLAVOR=stable", "OTT_PRODUCT_CONFIG=" + build.PRODUCT_CONFIG,
+                'ARM_PROFILE=release', 'RUST_TDIR=target-release', 'STORAGE_TDIR=target-release-storage',
+                'RUST_TARGET=' + build.TARGET, 'RUST_TOOLCHAIN=1.99.1'
             ])
             self.assertEqual(env["REQUIRE_PACKAGE"], "1")
             self.assertEqual(cwd, self.source)
+            if step == 'print-bench-config':
+                self.assertTrue(capture)
+                return ('RUST_TDIR=target-release\nRUST_TARGET=' + build.TARGET +
+                        '\nRUST_LIB=rust-modules/target-release/' + build.TARGET + '/release/libplxnative_modules.a' +
+                        '\nRUST_TOOLCHAIN=1.99.1\nRUST_FEATFLAGS=--no-default-features\n'
+                        'ARM_PROFILE=release\nARM_PROFILE_FLAG=--release')
+            if step == 'pkg/plxnative-storage':
+                step = 'compile'
+                self.assertEqual(command[10:12], ['-W', 'rust-modules/Cargo.toml'])
+                self.assertNotIn('-W', command[12:])
+                self.compile_fixture()
+            if step == 'ipk-stage':
+                self.assertEqual(command[10:-1], ['-W', 'rust-modules/target-release/' + build.TARGET + '/release/libplxnative_modules.a'])
+        elif str(command[1]).endswith('check-build-budgets.py'):
+            step = 'size'
+            self.assertEqual(command[-1], self.staging / 'plxnative')
+        elif str(command[1]).endswith('check-elf.sh'):
+            step = 'elf'
         else:
             step = "companion-stage"
+            self.assertFalse(any(key.startswith('CARGO_PROFILE_') for key in env))
             self.assertEqual(
                 command,
                 [
@@ -422,7 +457,7 @@ class NativeCompanionBuildTests(unittest.TestCase):
         if step == self.fail_at:
             raise subprocess.CalledProcessError(1, command)
         if step == "ipk-stage":
-            self.staging.mkdir(parents=True)
+            self.staging.mkdir(parents=True, exist_ok=True)
         elif step in ("ipk-pack", "ipk"):
             self.ipk.parent.mkdir(parents=True, exist_ok=True)
             self.ipk.write_bytes(self.payload)
@@ -439,18 +474,18 @@ class NativeCompanionBuildTests(unittest.TestCase):
 
     def test_stage_then_pack_records_exact_companion(self):
         self.build_candidate()
-        self.assertEqual(self.steps, ["validate", "ipk-stage", "companion-stage", "ipk-pack"])
+        self.assertEqual(self.steps, ["validate", "compile", "ipk-stage", "size", "elf", "companion-stage", "ipk-pack"])
         receipt = json.loads((self.root / "built.json").read_text())
         self.assertEqual(receipt["companion"], build.verify_ipk(self.ipk, self.spec)["companion"])
         self.assertEqual(receipt["companion"]["receipt_sha256"], build.sha256(self.bundle / "receipt.json"))
         self.assertEqual(receipt["ipk_sha256"], build.sha256(self.ipk))
         self.assertEqual(receipt["revision"], self.prepared["revision"])
 
-    def test_no_bundle_keeps_existing_single_make_target(self):
+    def test_no_bundle_still_checks_compilation_size_and_elf_before_pack(self):
         self.args.companion_bundle = None
         self.payload = fixture(self.spec)
         self.build_candidate()
-        self.assertEqual(self.steps, ["ipk"])
+        self.assertEqual(self.steps, ["compile", "ipk-stage", "size", "elf", "ipk-pack"])
         self.assertNotIn("companion", json.loads((self.root / "built.json").read_text()))
 
     def test_invalid_bundle_prevents_native_compilation(self):
@@ -465,7 +500,7 @@ class NativeCompanionBuildTests(unittest.TestCase):
         self.fail_at = "companion-stage"
         with self.assertRaises(subprocess.CalledProcessError):
             self.build_candidate()
-        self.assertEqual(self.steps, ["validate", "ipk-stage", "companion-stage"])
+        self.assertEqual(self.steps, ["validate", "compile", "ipk-stage", "size", "elf", "companion-stage"])
         self.assertFalse(self.ipk.exists())
         self.assertFalse((self.root / "built.json").exists())
 
@@ -473,7 +508,7 @@ class NativeCompanionBuildTests(unittest.TestCase):
         self.fail_at = "ipk-stage"
         with self.assertRaises(subprocess.CalledProcessError):
             self.build_candidate()
-        self.assertEqual(self.steps, ["validate", "ipk-stage"])
+        self.assertEqual(self.steps, ["validate", "compile", "ipk-stage"])
         self.assertFalse(self.ipk.exists())
         self.assertFalse((self.root / "built.json").exists())
 
@@ -489,15 +524,136 @@ class NativeCompanionBuildTests(unittest.TestCase):
         self.args.companion_bundle = None
         with self.assertRaisesRegex(ValueError, "explicitly selected bundle"):
             self.build_candidate()
-        self.assertEqual(self.steps, ["ipk"])
+        self.assertEqual(self.steps, ["compile", "ipk-stage", "size", "elf", "ipk-pack"])
         self.assertFalse((self.root / "built.json").exists())
 
     def test_selected_companion_must_reach_final_ipk(self):
         self.payload = fixture(self.spec)
         with self.assertRaisesRegex(ValueError, "explicitly selected bundle"):
             self.build_candidate()
-        self.assertEqual(self.steps, ["validate", "ipk-stage", "companion-stage", "ipk-pack"])
+        self.assertEqual(self.steps, ["validate", "compile", "ipk-stage", "size", "elf", "companion-stage", "ipk-pack"])
         self.assertFalse((self.root / "built.json").exists())
+
+    def test_profile_switch_always_refreshes_cargo_and_relinks(self):
+        for level in ('2', 's', '2'):
+            self.args.rust_opt_level = level
+            self.steps.clear()
+            self.build_candidate()
+            receipt = json.loads((self.root / 'built.json').read_text())
+            self.assertEqual(receipt['configuration']['rust_opt_level'], level)
+            evidence = receipt['compilation']
+            self.assertEqual(evidence['cargo']['artifact']['profile']['opt_level'], level)
+            self.assertEqual(build.sha256(self.root / evidence['cargo']['file']), evidence['cargo']['sha256'])
+            self.assertEqual(self.steps, ['validate', 'compile', 'ipk-stage', 'size', 'elf', 'companion-stage', 'ipk-pack'])
+
+    def test_invalid_cargo_evidence_never_reaches_link_or_package(self):
+        original = self.compile_fixture
+        def change(field, value):
+            def mutate(rows):
+                target = rows[0]
+                for key in field[:-1]:
+                    target = target[key]
+                target[field[-1]] = value
+                return rows
+            return mutate
+        mutations = [
+            lambda rows: rows[:-1],
+            lambda rows: rows + [rows[-1]],
+            lambda rows: [rows[0], rows[0], rows[-1]],
+            lambda rows: rows[:-1] + [{'reason': 'build-finished', 'success': False}],
+            change(('profile', 'opt_level'), '3'), change(('profile', 'test'), True),
+            change(('features',), ['devtriggers']), change(('target', 'kind'), ['rlib']),
+            change(('manifest_path',), '/foreign/Cargo.toml'),
+            change(('filenames',), ['/foreign/libplxnative_modules.a']),
+        ]
+        path = self.source / 'rust-modules/target-release/.lib-artifacts.json'
+        for mutation in mutations:
+            def fixture(mutation=mutation):
+                original()
+                rows = [json.loads(line) for line in path.read_text().splitlines()]
+                path.write_text('\n'.join(json.dumps(row) for row in mutation(rows)) + '\n')
+            self.compile_fixture = fixture
+            self.steps.clear()
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                self.build_candidate()
+            self.assertEqual(self.steps, ['validate', 'compile'])
+            self.assertFalse((self.root / 'built.json').exists())
+            self.assertFalse(self.ipk.exists())
+        def malformed():
+            original()
+            path.write_text('{broken JSON\n')
+        self.compile_fixture = malformed
+        with self.assertRaisesRegex(ValueError, 'Malformed native Cargo'):
+            self.build_candidate()
+
+    def test_size_and_elf_failures_cannot_package(self):
+        for gate in ('size', 'elf'):
+            self.fail_at = gate
+            self.steps.clear()
+            with self.subTest(gate=gate), self.assertRaises(subprocess.CalledProcessError):
+                self.build_candidate()
+            self.assertNotIn('companion-stage', self.steps)
+            self.assertNotIn('ipk-pack', self.steps)
+            self.assertFalse((self.root / 'built.json').exists())
+
+    def test_archive_drift_during_link_is_rejected(self):
+        original = self.external_command
+        def drift(command, **kwargs):
+            result = original(command, **kwargs)
+            if command[-1] == 'ipk-stage':
+                path = self.source / 'rust-modules/target-release' / build.TARGET / 'release/libplxnative_modules.a'
+                path.write_bytes(b'unexpected replacement')
+            return result
+        self.external_command = drift
+        with self.assertRaisesRegex(ValueError, 'changed during final link'):
+            self.build_candidate()
+        self.assertNotIn('ipk-pack', self.steps)
+
+    def test_symlinked_cargo_evidence_outside_source_is_rejected(self):
+        original = self.compile_fixture
+        def escaped():
+            original()
+            path = self.source / 'rust-modules/target-release/.lib-artifacts.json'
+            destination = self.root / 'outside.json'
+            path.rename(destination)
+            path.symlink_to(destination)
+        self.compile_fixture = escaped
+        with self.assertRaisesRegex(ValueError, 'inside its source tree'):
+            self.build_candidate()
+        self.assertNotIn('ipk-stage', self.steps)
+
+    def test_changed_compilation_evidence_cannot_be_packaged(self):
+        self.build_candidate()
+        self.args.output = self.root / 'dist'
+        self.args.base_url = None
+        receipt = json.loads((self.root / 'built.json').read_text())
+        (self.root / receipt['compilation']['cargo']['file']).write_text('changed')
+        with patch.object(build, 'check_source', return_value=self.source):
+            with self.assertRaisesRegex(ValueError, 'compilation evidence changed'):
+                build.package(self.args, self.spec)
+
+    def test_package_preserves_raw_compile_evidence(self):
+        self.build_candidate()
+        self.args.output = self.root / 'dist'
+        self.args.base_url = None
+        (self.source / 'pkg/icon.png').write_bytes(b'fixture icon')
+        with patch.object(build, 'check_source', return_value=self.source):
+            build.package(self.args, self.spec)
+        metadata = json.loads((self.args.output / (build.output_name(self.spec) + '.json')).read_text())
+        for field in ('cargo', 'make'):
+            evidence = metadata['build']['compilation'][field]
+            self.assertEqual(build.sha256(self.args.output / evidence['file']), evidence['sha256'])
+
+    def test_native_opt_cli_validates_before_prepare(self):
+        argv = ['build.py', 'all', '--rust-opt-level', '3']
+        with patch.object(build.sys, 'argv', argv), patch.object(build, 'prepare') as prepare:
+            with self.assertRaises(SystemExit):
+                build.main()
+        prepare.assert_not_called()
+        argv = ['build.py', 'build', '--rust-opt-level', 's']
+        with patch.object(build.sys, 'argv', argv), patch.object(build, 'build') as run_build:
+            build.main()
+        self.assertEqual(run_build.call_args.args[0].rust_opt_level, 's')
 
 
 class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
@@ -561,15 +717,15 @@ class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
         self.configured()
         observed = []
         original = self.external_command
-        def inspect(command, *, cwd=None, env=None):
+        def inspect(command, *, cwd=None, env=None, capture=False):
             self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_URL"), self.URL)
             self.assertEqual(env.get("PLX_CONTROL_DISCOVERY_SHA256"), self.DIGEST)
             self.assertFalse(any(self.URL in str(arg) for arg in command))
             observed.append(command[-1])
-            return original(command, cwd=cwd, env=env)
+            return original(command, cwd=cwd, env=env, capture=capture)
         self.external_command = inspect
         self.build_candidate()
-        self.assertEqual(observed[0], "ipk-stage")
+        self.assertEqual(observed[0], "print-bench-config")
         self.assertEqual(observed[-1], "ipk-pack")
         config = json.loads((self.root / "built.json").read_text())["configuration"]
         self.assertEqual(config["control_discovery"]["url"], self.URL)
@@ -649,6 +805,25 @@ class NativeControlDiscoveryBuildTests(NativeCompanionBuildTests):
 
 
 class NativeSdkTests(unittest.TestCase):
+    def test_native_opt_is_explicit_and_scrubs_inherited_profile_settings(self):
+        args = SimpleNamespace(work_dir=Path('/fixture/work'), sdk=Path('/fixture/sdk'), rust_opt_level='s')
+        inherited = {'CARGO_PROFILE_RELEASE_OPT_LEVEL': '3', 'CARGO_PROFILE_RELEASE_LTO': 'off',
+                     'CARGO_TARGET_DIR': '/outside', 'CARGO_BUILD_RUSTFLAGS': '-C panic=abort',
+                     'ARM_PROFILE': 'tvdev', 'RUSTC_WRAPPER': '/unreviewed', 'GNUMAKEFLAGS': '-e'}
+        with patch.dict(build.os.environ, inherited):
+            env = build.build_env(args)
+        self.assertEqual(env['CARGO_PROFILE_RELEASE_OPT_LEVEL'], 's')
+        for key in inherited.keys() - {'CARGO_PROFILE_RELEASE_OPT_LEVEL'}:
+            self.assertNotIn(key, env)
+
+    def test_native_opt_default_and_restricted_values(self):
+        args = SimpleNamespace(work_dir=Path('/fixture/work'), sdk=Path('/fixture/sdk'))
+        self.assertEqual(build.build_env(args).get('CARGO_PROFILE_RELEASE_OPT_LEVEL'), '2')
+        for value in ('0', '3', 'z', '', 's -C panic=abort'):
+            args.rust_opt_level = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                build.build_env(args)
+
     def test_bootstrap_does_not_update_global_rustup_manager(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
