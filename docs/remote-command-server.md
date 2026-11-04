@@ -73,6 +73,16 @@ queries use the operating system resolver; no public DNS server is substituted.
 The network must supply the intended search domain as well as working DNS.
 A reachable controller alone is insufficient if that domain is missing. This
 is search-domain DNS-SD, not an automatic browser mDNS or `.local` scan.
+
+Advertise the search list through DHCPv4 option 119; retain an existing option 15
+domain where clients need it. For IPv6, the DNSSL/search-list advertisement
+supplies suffixes, while RDNSS supplies DNS resolver addresses; one does not
+replace the other. Let clients receive an ordinary lease renewal or router
+advertisement rather than forcing a connection reset or reboot. Keep an
+external controller hostname's A/AAAA records pointing to its actual service:
+do not replace them with the router's address to make multicast advertisements
+appear to work.
+
 The controller's [DNS-SD setup guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/discovery.md)
 covers publishing the records and configuring its optional discovery/pairing
 service. A browser profile transports the same version-1 descriptors over HTTP;
@@ -192,7 +202,9 @@ retains its explicit URL/SHA-256 catalog fallback and runtime digest verificatio
 The hosted LG webOS launcher loads the canonical website and uses that site's profile.
 
 Publishing the website does not update an installed app's bundled frontend.
-Rebuild and install that distribution to change its packaged profile.
+Rebuild and install that distribution to change its packaged profile. See
+[delivery by platform](discovery-deployment.md) for reload, package, signing and
+installation-preservation requirements.
 
 Prefer absolute HTTPS URLs when sharing a profile across hosted, local and native
 players. A relative URL resolves against the **player page**, not the script that
@@ -222,9 +234,14 @@ but DNS discovery alone cannot cryptographically authenticate that controller.
 Discovery responses contain addresses, never device tokens. Multiple servers remain
 an explicit choice. The player sends `{device_id,server_id}` to the selected base's
 `/api/pairings`, displays the eight-character approval code, and waits for the operator
-to approve it with `ott approve NAME CODE`. The short-lived pairing secret stays in
-memory and authenticates readback and receipt cleanup; it is not rendered, logged
-or persisted.
+to approve it. For an already registered CLI alias, use `ott approve NAME CODE`.
+With an enabled device registry, a new alias can instead be enrolled and approved
+with `ott registry approve NAME UUID CODE`, using the administrator CLI profile.
+First match the expected player's full UUID and displayed code against
+`ott -j pending`. A request's UUID is self-declared; confirm the physical player's
+identity and code rather than approving by UUID alone.
+The short-lived pairing secret stays in memory and authenticates readback and
+receipt cleanup; it is not rendered, logged or persisted.
 An approved response must match the exact device and selected HTTPS address and carry
 a valid device token before the existing command-server controller saves and enables it.
 
@@ -251,10 +268,9 @@ command connections and provider transports retain their behavior.
 
 ### Operator runbook: no address entry on the player
 
-For the managed h3 network, the [router-side runbook](https://github.com/4alvit/h3-openwrt-backup/blob/main/managed/lan-services/dns/OTT-CONTROL-DISCOVERY.md)
-records the deployed DNS/DHCP configuration and maintenance steps. Access to
-that private repository is required. Use the client procedure below with the
-network's advertised service; do not duplicate router configuration in a player.
+Use the operator's network runbook for the deployed DNS/DHCP configuration and
+maintenance steps. Follow the client procedure below with the network's
+advertised service; do not duplicate router configuration in a player.
 
 1. Publish the controller's PTR/SRV/TXT records under the intended network search
    domain and enable its discovery/pairing configuration. Ensure the advertised
@@ -270,15 +286,18 @@ network's advertised service; do not duplicate router configuration in a player.
    and Capacitor installations need their deployment profile, except for the
    local loopback route above. Other Native builds need the build-bound catalog.
    Configure CORS for the actual browser/WebView origin where Fetch is used.
-3. Register this player's actual device UUID on the intended controller and give
-   it the operator's chosen alias. Do not copy an administrator token or another
-   player's device token into the player. Verify the advertised HTTPS service is
-   reachable from the player's network over the available address family.
+3. Choose a distinct CLI alias for this installation. A static controller needs
+   the player's full UUID registered before pairing; an enabled device registry
+   also supports enrollment at approval as described above. Do not reuse another
+   player's alias or token, or copy an administrator token into the player.
+   Verify the advertised HTTPS service is reachable from the player's network
+   over the available address family.
 4. On a fresh web-based installation, allow the initial lookup to complete. For
    an existing installation or an explicit retry, select **Find command server**.
    Select the intended server when offered; the web player starts pairing directly
    for a single result, while Native Find always requires selection. Check the
-   displayed server and device before approving the code with `ott approve NAME CODE`.
+   displayed server, full device UUID and code before using the appropriate
+   registered-alias or registry approval command above.
 5. Wait for approval and the saved, enabled connection. Finding a server, displaying
    a code or approving the wrong installation is not connection confirmation.
    Cancel if the server is unexpected. If discovery fails, repair the domain,
@@ -288,6 +307,47 @@ network's advertised service; do not duplicate router configuration in a player.
 This runbook moves endpoint configuration to the network/deployment operator;
 it does not remove that prerequisite or promise discovery on every network.
 Keep a previously paired installation intact while testing a fresh deployment.
+
+### CLI checks and preset transfer
+
+The terminal must already be configured for the intended controller:
+
+```sh
+ott -j discover
+ott -j pending
+```
+
+`discover` queries that configured controller; it does not bootstrap an unknown
+server or search for players. `pending` lists existing pairing requests and does
+not authorize them. Keep each installation's alias separate: for example, retain
+`l` for the existing player and use `l_` for a new Native installation with its
+own full UUID and credentials. Match the screen's code and identity before
+approving; do not approve an unknown request automatically.
+
+After the connection is confirmed, a saved composite preset can be transferred
+with a plan and a durable checkpoint. Replace the example alias and preset with
+your actual values. Here `local` is a case-insensitive saved preset name, not the
+Local-files provider; the example preset's M3U `active_profile` determines what
+opens. Replace `/PRIVATE_DIR` with a private directory restricted to its owner
+(mode `0700`); keep checkpoints out of shared repositories and logs.
+
+```sh
+ott l_ load local plan
+ott l_ load local apply --checkpoint /PRIVATE_DIR/l_-local.json
+ott l_ load local verify
+# Only when recovering the same incomplete operation:
+ott l_ load local resume --checkpoint /PRIVATE_DIR/l_-local.json
+```
+
+`plan` inspects the preset's local structure; it is not a Native compatibility
+check. `apply` requires command-journal support and compares all parts before
+its first mutation, but subsequent steps are not atomic. If preflight is
+unsupported, stop rather than falling back to a bare load. Recover an uncertain
+operation with the same preset, device and checkpoint using `resume`.
+`verify` is read-only; it does not prove visible playback or every arbitrary UI
+setting. If saved Favorites require the CLI's explicit `--settings-only` option,
+use it consistently in every mode only when deliberately skipping Favorites;
+that is not a complete preset import, and the flag must not be added silently.
 
 ### Troubleshooting discovery
 
@@ -335,7 +395,8 @@ channel selection by catalogue number/name, provider listing/selection,
 M3U profiles, playback restarts and explicit M3U/Xtream/Stalker/OTTClub settings
 adapters. See the
 [CLI guide](https://github.com/open-ott-play/ottplay-control-server/blob/main/docs/cli.md).
-The terminal's alias maps to the device's UUID in the server configuration.
+The terminal's alias maps to the device UUID in the local CLI configuration;
+device registration and credentials belong to the controller.
 Each installation needs its own code. No administrator token belongs in a player.
 
 `ott NAME fav add` saves the currently playing channel or film with its provider
