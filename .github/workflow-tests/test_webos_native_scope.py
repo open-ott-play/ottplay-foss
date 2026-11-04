@@ -454,6 +454,81 @@ class NativeBuildBenchWorkflowTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         scope["checked_document"](path, ["noop", "sizes"], 3)
 
+    def test_bench_scrubs_overrides_at_both_measured_commands(self):
+        import ast
+        from contextlib import nullcontext
+
+        node = next(node for node in ast.walk(ast.parse(self.bench_code()))
+                    if isinstance(node, ast.With) and any(
+                        isinstance(item.context_expr, ast.Call)
+                        and isinstance(item.context_expr.func, ast.Attribute)
+                        and item.context_expr.func.attr == "cargo_environment"
+                        for item in node.items))
+        code = compile(ast.Module(body=[node], type_ignores=[]), "actual measured commands", "exec")
+        overrides = {
+            "RUSTFLAGS": "--cfg wrong", "CARGO_ENCODED_RUSTFLAGS": "--cfg\x1fwrong",
+            "RUSTDOCFLAGS": "--cfg wrong", "CARGO_ENCODED_RUSTDOCFLAGS": "--cfg\x1fwrong",
+            "RUSTC": "/wrong/rustc", "RUSTDOC": "/wrong/rustdoc",
+            "RUSTC_WRAPPER": "/wrong/wrapper", "RUSTC_WORKSPACE_WRAPPER": "/wrong/workspace",
+            "RUSTC_BOOTSTRAP": "1", "RUSTUP_TOOLCHAIN": "wrong-toolchain",
+            "CARGO_PROFILE_DEV_OPT_LEVEL": "3", "CARGO_PROFILE_TEST_DEBUG": "0",
+            "CARGO_PROFILE_RELEASE_OPT_LEVEL": "s", "CARGO_PROFILE_BENCH_LTO": "fat",
+            "CARGO_BUILD_RUSTFLAGS": "--cfg wrong", "CARGO_BUILD_RUSTDOCFLAGS": "--cfg wrong",
+            "CARGO_BUILD_RUSTC": "/wrong/rustc", "CARGO_BUILD_RUSTC_WRAPPER": "/wrong/wrapper",
+            "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER": "/wrong/workspace",
+            "CARGO_BUILD_TARGET": "wrong-target", "CARGO_BUILD_TARGET_DIR": "/wrong/build",
+            "CARGO_BUILD_INCREMENTAL": "1", "CARGO_TARGET_DIR": "/wrong/target",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS": "--cfg wrong",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "/wrong/linker",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER": "/wrong/runner",
+            "RUST_TOOLCHAIN": "wrong-toolchain", "RUST_TARGET": "wrong-target",
+            "RUST_TDIR": "/wrong/target", "RUST_FEATFLAGS": "--features wrong",
+            "RUST_ENV": "RUSTFLAGS=wrong", "RUST_CODEGEN": "wrong",
+            "RUST_DEBUGINFO": "wrong", "RUST_CAPLINTS": "wrong", "RUST_REMAP": "wrong",
+            "MAKEFLAGS": "-e RUSTFLAGS=wrong", "GNUMAKEFLAGS": "-e",
+            "MAKEOVERRIDES": "RUSTFLAGS=wrong", "MAKEFILES": "/wrong/Makefile",
+            "MFLAGS": "-e", "MAKELEVEL": "9", "CARGO_MAKEFLAGS": "--jobserver-auth=90,91",
+        }
+        preserved = {"PATH": "/usr/bin:/bin", "HOME": "/fixture/home",
+                     "RUSTUP_HOME": "/fixture/toolchains", "HTTPS_PROXY": "http://proxy.invalid",
+                     "CARGO_NET_OFFLINE": "true"}
+        explicit = {"CARGO_HOME": "/fixture/isolated", "CARGO_INCREMENTAL": "0",
+                    "PLX_CARGO_SEED": "off", "HOST_THREADS": "0", "RELEASE": "",
+                    "PLX_TEST_JOBS": "2", "JOBS": "2", "CARGO_BUILD_JOBS": "2"}
+        for label in ("before", "after"):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                inherited = dict(preserved, **overrides, **{key: "wrong" for key in explicit})
+                original = dict(inherited)
+                # The ARM producer's settings must not become host benchmark overrides.
+                isolated = {"CARGO_HOME": explicit["CARGO_HOME"], "RELEASE": "1",
+                            "CARGO_PROFILE_RELEASE_OPT_LEVEL": "s", "ARM_PROFILE": "release"}
+                builder = types.SimpleNamespace(cargo_environment=mock.Mock(return_value=nullcontext(isolated)))
+                document = {"git_sha": "a" * 12, "tree_dirty": False, "toolchain": "pinned",
+                            "host": "same", "runner": "same"}
+                binding = {"documents": {}}
+                scope = {"builder": builder, "args": object(), "os": os,
+                         "subprocess": subprocess, "evidence": Path(directory), "label": label,
+                         "rows": "noop,sizes", "source": Path(directory), "bench_commit": "a" * 40,
+                         "checked_document": mock.Mock(return_value=document), "binding": binding,
+                         "digest": lambda path: "f" * 64}
+                with mock.patch.dict(os.environ, inherited, clear=True), mock.patch("subprocess.run") as run:
+                    exec(code, scope)  # noqa: S102 - Actual workflow AST; process execution is mocked.
+                    self.assertEqual(dict(os.environ), original)
+                self.assertEqual(run.call_count, 2)
+                for call, suffix, count, selected in zip(run.call_args_list,
+                                                        ("rows", "check"), (3, 1), ("noop,sizes", "check")):
+                    self.assertEqual(call.args[0], ["make", "build-bench",
+                        f"ARGS=--runs {count} --only {selected} --json {Path(directory) / (label+'-'+suffix+'.json')}"])
+                    self.assertTrue(call.kwargs["check"])
+                    environment = call.kwargs["env"]
+                    for key in overrides:
+                        with self.subTest(label=label, suffix=suffix, removed=key):
+                            self.assertNotIn(key, environment)
+                    for key, value in dict(preserved, **explicit).items():
+                        self.assertEqual(environment[key], value, key)
+                    self.assertNotIn("ARM_PROFILE", environment)
+                self.assertEqual(set(binding["documents"]), {"rows", "check"})
+
     def test_bench_keeps_exact_tree_snapshot_and_restores_in_finally(self):
         import ast
         code = self.bench_code()

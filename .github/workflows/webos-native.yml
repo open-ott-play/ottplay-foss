@@ -543,7 +543,18 @@ jobs:
                   # Reuse the producer's config-free Cargo home and real cache lock aliases.
                   # Do not use build_env's RELEASE=1/ARM profile for a host benchmark.
                   with builder.cargo_environment(args) as isolated:
-                      environment = dict(os.environ, CARGO_HOME=isolated['CARGO_HOME'],
+                      # Keep host defaults: neither caller overrides nor the producer's
+                      # ARM release settings belong in the measured Cargo configuration.
+                      environment = {
+                          key: value for key, value in os.environ.items()
+                          if not key.startswith(('CARGO_BUILD_', 'CARGO_PROFILE_', 'CARGO_TARGET_',
+                                                 'CARGO_ENCODED_', 'RUSTC_', 'RUSTDOC_', 'RUST_'))
+                          and key not in {'RUSTFLAGS', 'RUSTDOCFLAGS', 'RUSTC', 'RUSTDOC',
+                                          'RUSTUP_TOOLCHAIN', 'MAKEFLAGS', 'GNUMAKEFLAGS',
+                                          'MAKEOVERRIDES', 'MAKEFILES', 'MFLAGS', 'MAKELEVEL',
+                                          'CARGO_MAKEFLAGS'}
+                      }
+                      environment.update(CARGO_HOME=isolated['CARGO_HOME'],
                                          CARGO_INCREMENTAL='0', PLX_CARGO_SEED='off',
                                          HOST_THREADS='0', RELEASE='', PLX_TEST_JOBS='2',
                                          JOBS='2', CARGO_BUILD_JOBS='2')
