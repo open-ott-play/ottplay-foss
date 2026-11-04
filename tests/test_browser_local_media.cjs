@@ -778,25 +778,25 @@ async function builtUi(devicePath) {
                     const values = prototype.values;
                     const list = browserMedia.list;
                     const fixture = (window.__initialReadFixture = {
-                        sourceId: saved.sourceIds[0],
-                        iterators: 0,
-                        firstReads: 0,
-                        released: false,
                         earlyItems: false,
-                        scans: [],
-                        old: [],
+                        firstReads: 0,
                         gates: [],
+                        iterators: 0,
+                        old: [],
                         release() {
                             this.released = true;
                             this.gates
                                 .splice(0)
                                 .forEach((resolve) => resolve());
                         },
+                        released: false,
                         restore() {
                             prototype.values = values;
                             browserMedia.list = list;
                             this.release();
                         },
+                        scans: [],
+                        sourceId: saved.sourceIds[0],
                         start() {
                             const result = { state: "pending" };
                             this.old.push(result);
@@ -923,22 +923,22 @@ async function builtUi(devicePath) {
                 const result = await page.evaluate(() => {
                     const f = window.__initialReadFixture;
                     return {
-                        iterators: f.iterators,
                         firstReads: f.firstReads,
+                        frames: document
+                            .querySelector("video")
+                            .getVideoPlaybackQuality().totalVideoFrames,
+                        iterators: f.iterators,
                         old: f.old,
                         selected:
                             window.channels[window.curList[window.primaryIndex]]
                                 .channel_name,
-                        frames: document
-                            .querySelector("video")
-                            .getVideoPlaybackQuality().totalVideoFrames,
                     };
                 });
                 assert.equal(result.iterators, 1);
                 assert.equal(result.firstReads, 1);
                 assert.deepEqual(result.old, [
-                    { state: "fulfilled", cancelled: true, items: 0 },
-                    { state: "fulfilled", cancelled: true, items: 0 },
+                    { cancelled: true, items: 0, state: "fulfilled" },
+                    { cancelled: true, items: 0, state: "fulfilled" },
                 ]);
                 assert.equal(result.selected, "folder-video.mp4");
                 assert.ok(result.frames > 0);
