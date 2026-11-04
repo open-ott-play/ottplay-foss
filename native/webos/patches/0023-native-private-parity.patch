@@ -99,8 +99,34 @@ index 13d91d1fa7f6973111151c7c48aa11b6d6428b6c..fbd4f68fd4b3048a1dc8f23b8b8aaafa
  rust-modules/data/src/person.rs::seed_dev_credits::tape::active
  rust-modules/data/src/person.rs::sources::server_ids
  rust-modules/data/src/person.rs::sync_roster::server_roster_gen
+diff --git a/ci/build-libass.py b/ci/build-libass.py
+index 8ba4a310eed5e6f49323698a810031cca7045c79..8c2925a858e6647ee7ceeb0dc856ce509e3b910c 100755
+--- a/ci/build-libass.py
++++ b/ci/build-libass.py
+@@ -153,16 +153,18 @@ def verify_library(path, darwin, readelf=None, *, host=False):
+             expected = targets.get(platform.machine().lower())
+             if platform.system() != 'Linux' or expected is None:
+                 raise ValueError('unsupported host ELF target')
+-        header = subprocess.check_output([readelf, '-h', str(path)], text=True)
++        # readelf output is a parsed protocol; keep its labels in English.
++        env = {**os.environ, 'LC_ALL': 'C'}
++        header = subprocess.check_output([readelf, '-h', str(path)], text=True, env=env)
+         classes = re.findall(r'^\s*Class:\s*([^\r\n]+)', header, re.MULTILINE)
+         machines = re.findall(r'^\s*Machine:\s*([^\r\n]+)', header, re.MULTILINE)
+         if ([value.strip() for value in classes] != [expected[0]] or
+                 [value.strip() for value in machines] != [expected[1]]):
+             raise ValueError('unexpected ELF target; expected ' + expected[0] + '/' + expected[1])
+-        dynamic = subprocess.check_output([readelf, '-d', str(path)], text=True)
++        dynamic = subprocess.check_output([readelf, '-d', str(path)], text=True, env=env)
+         needed = re.findall(r'\(NEEDED\).*\[([^\]]+)\]', dynamic)
+         allowed = {'libc.so.6', 'libm.so.6', 'libgcc_s.so.1', 'libpthread.so.0', expected[2]}
+-        symbols = subprocess.check_output([readelf, '--dyn-syms', '--wide', str(path)], text=True)
++        symbols = subprocess.check_output([readelf, '--dyn-syms', '--wide', str(path)], text=True, env=env)
+         names = []
+         for line in symbols.splitlines():
+             fields = line.split()
 diff --git a/ci/check-package.py b/ci/check-package.py
-index 11c4591dfe06661c830c90441f506f0eaca54cba..2070d7c427425cbe09ecdd80a38b118fb71cabdf 100755
+index 11c4591dfe06661c830c90441f506f0eaca54cba..f59249d159a07421017a459d9292723ec86c8c0b 100755
 --- a/ci/check-package.py
 +++ b/ci/check-package.py
 @@ -89,7 +89,8 @@ def build_configuration(stamp: "str | None") -> "str | None":
@@ -122,6 +148,15 @@ index 11c4591dfe06661c830c90441f506f0eaca54cba..2070d7c427425cbe09ecdd80a38b118f
          r"(?:\+nightly:[0-9]{8})?(?:\+rc:[0-9]+)?(?:\+tel:[0-9a-f]+)?"
          r"(?:\+control:(?:none|[0-9a-f]{64}))?",
          stamp.strip())
+@@ -377,7 +378,7 @@ def check_library_payload(archive, notices: bytes, build: str, app_id: str) -> N
+     shipped = set()
+     for member in members:
+         name = Path(member.name).name
+-        if ".so." in name:
++        if name.endswith(".so") or ".so." in name:
+             with archive.extractfile(member) as content:
+                 if content.read(4) == b"\x7fELF":
+                     shipped.add(name)
 @@ -483,6 +484,11 @@ def _selftest() -> int:
          "features:+tel:abc+control:none+control:none",
          "features:+control:none+tel:abc", "features:+tel:abc+tel:def",
@@ -294,6 +329,179 @@ index 607a4325071d0c6ce8292da0fc959fe7b4fa74bb..726d0d049c648e69999971b2db81f1f5
          zip_path.unlink(missing_ok=True)
          # ditto, not zipfile: it is the tool that preserves the extended attributes and symlink
          # layout a signed bundle needs. A plain zip can arrive with a broken signature.
+diff --git a/ci/test_build_not_always_dirty.py b/ci/test_build_not_always_dirty.py
+index 48cc549f67c0e16e72857bb04ae1d6d75ead2544..15afb85d8894d497ebb51a52d09f7756b62c83ee 100644
+--- a/ci/test_build_not_always_dirty.py
++++ b/ci/test_build_not_always_dirty.py
+@@ -281,6 +281,118 @@ def vcs(cwd, *args):
+                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+ 
+ 
++class HostLibrarySearchPathsTests(unittest.TestCase):
++    """Exercise the real host-link emitter with isolated package replies, without linking SDL."""
++
++    @classmethod
++    def setUpClass(cls):
++        cls.scratch = tempfile.TemporaryDirectory(prefix="plx-host-link-")
++        cls.addClassCleanup(cls.scratch.cleanup)
++        root = Path(cls.scratch.name)
++        wrapper = root / "probe.rs"
++        wrapper.write_text(
++            f'#[path = {json.dumps(str(RUST / "build_support/host_link.rs"))}]\n'
++            'mod host_link;\n'
++            'fn main() {\n'
++            '    let args: Vec<String> = std::env::args().skip(1).collect();\n'
++            '    let libraries: Vec<&str> = args.iter().map(String::as_str).collect();\n'
++            '    host_link::emit(None, &libraries);\n'
++            '}\n'
++        )
++        cls.probe = root / "host-link-probe"
++        built = subprocess.run(
++            ["rustc", f"+{NIGHTLY}", "--edition=2021", str(wrapper), "-o", str(cls.probe)],
++            env=cargo_env(), capture_output=True, text=True, timeout=60,
++        )
++        if built.returncode:
++            raise AssertionError("host-link probe compilation failed: " + built.stderr)
++
++    def setUp(self):
++        scratch = tempfile.TemporaryDirectory(dir=self.scratch.name)
++        self.addCleanup(scratch.cleanup)
++        self.root = Path(scratch.name)
++        self.pkg_config = self.root / "pkg-config"
++        self.pkg_config.write_text(f"#!{sys.executable}\n" + r"""
++import json, os, sys
++from pathlib import Path
++args = sys.argv[1:]
++with Path(os.environ["HOST_LINK_CALLS"]).open("a") as output:
++    output.write(json.dumps(args) + "\n")
++packages = json.loads(os.environ["HOST_LINK_PACKAGES"])
++if args and args[0] == "--exists":
++    sys.exit(0 if args[1:] and all(name in packages for name in args[1:]) else 1)
++if len(args) == 2 and args[0] == "--variable=libdir" and args[1] in packages:
++    row = packages[args[1]]
++    raw = bytes.fromhex(row["stdout_hex"]) if "stdout_hex" in row else row.get("libdir", "").encode()
++    sys.stdout.buffer.write(raw)
++    sys.exit(row.get("status", 0))
++sys.exit(2)
++""")
++        self.pkg_config.chmod(0o755)
++
++    def emit(self, packages, libraries=("SDL2", "GL"), arch="x86_64"):
++        calls = self.root / "calls.jsonl"
++        calls.write_text("")
++        env = {**cargo_env(), "PATH": str(self.root), "CARGO_CFG_TARGET_ARCH": arch,
++               "CARGO_CFG_TARGET_OS": "linux", "HOST_LINK_CALLS": str(calls),
++               "HOST_LINK_PACKAGES": json.dumps(packages)}
++        result = subprocess.run([str(self.probe), *libraries], env=env,
++                                capture_output=True, text=True, timeout=10)
++        self.assertEqual(result.returncode, 0, result.stderr)
++        return result.stdout.splitlines(), [json.loads(line) for line in calls.read_text().splitlines()]
++
++    def assert_discovery(self, lines, directories, warning=False):
++        self.assertEqual([line for line in lines if line.startswith("cargo:rustc-link-search=")],
++                         [f"cargo:rustc-link-search=native={path}" for path in directories])
++        self.assertEqual(any(line.startswith("cargo:warning=") for line in lines), warning)
++
++    def test_missing_gl_metadata_keeps_custom_sdl_prefix(self):
++        prefix = str(self.root / "custom SDL prefix/lib")
++        for libraries in (("SDL2", "GL"), ("GL", "SDL2")):
++            with self.subTest(libraries=libraries):
++                lines, _ = self.emit({"sdl2": {"libdir": prefix}}, libraries)
++                self.assert_discovery(lines, [prefix])
++                self.assertEqual([line for line in lines if line.startswith("cargo:rustc-link-lib=")],
++                                 [f"cargo:rustc-link-lib=dylib={name}" for name in libraries])
++
++    def test_failed_or_non_utf8_peer_keeps_valid_prefix(self):
++        prefix = str(self.root / "SDL/lib")
++        for broken in ({"libdir": "/discard/failing-output", "status": 1}, {"stdout_hex": "ff"}):
++            for libraries in (("SDL2", "GL"), ("GL", "SDL2")):
++                with self.subTest(broken=broken, libraries=libraries):
++                    lines, _ = self.emit({"sdl2": {"libdir": prefix}, "gl": broken}, libraries)
++                    self.assert_discovery(lines, [prefix])
++
++    def test_raw_spaced_directories_are_deduplicated_and_empty_is_success(self):
++        prefix = str(self.root / "shared prefix/lib")
++        lines, _ = self.emit({"sdl2": {"libdir": prefix + "\n"}, "gl": {"libdir": prefix}})
++        self.assert_discovery(lines, [prefix])
++        lines, _ = self.emit({"sdl2": {"libdir": ""}, "gl": {"libdir": "  \n"}})
++        self.assert_discovery(lines, [])
++        lines, calls = self.emit({}, libraries=())
++        self.assertEqual(lines, [])
++        self.assertEqual(calls, [])
++
++    def test_valid_empty_directory_survives_missing_peer_metadata(self):
++        lines, _ = self.emit({"sdl2": {"libdir": ""}})
++        self.assert_discovery(lines, [])
++
++    def test_no_usable_metadata_or_missing_executable_keeps_fallback_warning(self):
++        for packages in ({}, {"sdl2": {"status": 1}, "gl": {"status": 1}}):
++            with self.subTest(packages=packages):
++                lines, _ = self.emit(packages)
++                self.assert_discovery(lines, [], warning=True)
++        self.pkg_config.unlink()
++        lines, calls = self.emit({})
++        self.assert_discovery(lines, [], warning=True)
++        self.assertEqual(calls, [])
++
++    def test_arm_target_emits_no_host_links_and_runs_no_package_query(self):
++        lines, calls = self.emit({"sdl2": {"libdir": "/must/not/query"}}, arch="arm")
++        self.assertEqual(lines, [])
++        self.assertEqual(calls, [])
++
++
+ class MarkerStillTriggersTests(unittest.TestCase):
+     """The RELEASE_LINE marker appearing, changing and disappearing must still re-run build.rs."""
+ 
+diff --git a/ci/test_libass_fetch.py b/ci/test_libass_fetch.py
+index fa29bba43f49f39b1140baa1f7b2d7738d63330a..e563ab41a7544c4da3565b5e0f99feb96fd85b45 100644
+--- a/ci/test_libass_fetch.py
++++ b/ci/test_libass_fetch.py
+@@ -342,15 +342,27 @@ class RuntimeDependencies(unittest.TestCase):
+                 '  1: 00000000 12 FUNC GLOBAL DEFAULT 12 ' + name + '\n' for name in names),
+         }
+ 
+-        def output(args, *, text):
++        def output(args, *, text, env=None):
+             self.assertTrue(text)
+             return outputs[tuple(args)]
+ 
+         with mock.patch.object(build_libass.platform, 'machine', return_value=machine), \
+                 mock.patch.object(build_libass.platform, 'system', return_value=system), \
+-                mock.patch.object(build_libass.subprocess, 'check_output', side_effect=output), \
++                mock.patch.object(build_libass.subprocess, 'check_output', side_effect=output) as probe, \
+                 contextlib.redirect_stdout(io.StringIO()):
+             build_libass.verify_library(path, False, 'readelf', host=host)
++        return probe.call_args_list
++
++    def test_readelf_uses_c_locale_without_mutating_inherited_environment(self):
++        inherited = {'LANG': 'de_DE.UTF-8', 'LC_ALL': 'de_DE.UTF-8',
++                     'LANGUAGE': 'de', 'PATH': '/fixture/bin', 'LIBASS_TEST_TOKEN': 'retained'}
++        with mock.patch.dict(os.environ, inherited, clear=True):
++            calls = self.elf()
++            self.assertEqual(len(calls), 3)
++            for call in calls:
++                self.assertEqual(call.kwargs.get('env'), {**inherited, 'LC_ALL': 'C'})
++                self.assertIsNot(call.kwargs['env'], os.environ)
++            self.assertEqual(dict(os.environ), inherited)
+ 
+     def test_aarch64_host_accepts_only_its_exact_loader(self):
+         for machine in ('aarch64', 'arm64', 'ARM64'):
+diff --git a/ci/test_package_product_config.py b/ci/test_package_product_config.py
+index 564873a1fe49f2ccb0358e878aa39b6ee3761912..3da665841b450ae3de8eb2147ab569f8752499e4 100644
+--- a/ci/test_package_product_config.py
++++ b/ci/test_package_product_config.py
+@@ -430,6 +430,11 @@ class LibraryPayload(unittest.TestCase):
+         self.assertEqual(len(failures), 1, failures)
+         self.assertIn("shipped-not-named=['libsurprise.so.1']", failures[0])
+ 
++    def test_unversioned_unknown_shipped_elf_is_not_filtered_out(self):
++        failures = self.inspect({**self.libraries, "libsurprise.so": b"\x7fELFunknown"})
++        self.assertEqual(len(failures), 1, failures)
++        self.assertIn("shipped-not-named=['libsurprise.so']", failures[0])
++
+     def test_missing_documented_library_fails(self):
+         files = {name: data for name, data in self.libraries.items() if name != "libass-plx.so.0"}
+         with tempfile.TemporaryDirectory() as temporary:
 diff --git a/docs/agent-reference.md b/docs/agent-reference.md
 index 58c2193164ebaa7576eaf8e7a13ccbea124e8332..05dce2710643e57f0e177f320a036fd46f783a88 100644
 --- a/docs/agent-reference.md
@@ -5161,6 +5369,61 @@ index 8eb05319f7fa83eaf27d6ddf95a2d78a6c22d6ae..5c83b79ffe9c9b9c735ac870e3774f42
      #[test]
      fn cancellation_and_expiry_stop_the_existing_transport_checkpoint() {
          let worker = OffFrame::for_test();
+diff --git a/rust-modules/build_support/host_link.rs b/rust-modules/build_support/host_link.rs
+index 0b15b8f47f8d7e74e8935d2500e6b4a1d10c1260..f3d600dc7a9cd36a563fa41c82774927470dd66c 100644
+--- a/rust-modules/build_support/host_link.rs
++++ b/rust-modules/build_support/host_link.rs
+@@ -166,35 +166,33 @@ fn compile_svg(repo: &Path) {
+ /// A successful pkg-config query may return no `-L` flags because the libraries live on the
+ /// linker's default path. That is still discovery success, represented by `Some(vec![])`, so a
+ /// normal Linux install does not emit a misleading discovery warning.
++/// Missing metadata for one package does not discard paths discovered for another.
+ fn host_library_search_paths(target_os: &str, packages: &[&str]) -> Option<Vec<PathBuf>> {
+     if packages.is_empty() { return Some(Vec::new()); }
+     if target_os == "linux" {
+-        if !Command::new("pkg-config")
+-            .arg("--exists")
+-            .args(packages)
+-            .status()
+-            .ok()?
+-            .success()
+-        {
+-            return None;
+-        }
+         let mut paths = Vec::new();
++        let mut discovered = false;
+         for package in packages {
++            // Metadata may be absent for a library on the default linker path. Do not let
++            // that discard another package's required custom prefix.
++            let Ok(status) = Command::new("pkg-config").args(["--exists", package]).status() else {
++                continue;
++            };
++            if !status.success() { continue; }
+             // Query the raw variable rather than parsing shell-escaped `-L` flags: prefixes may
+             // legitimately contain spaces.
+-            let out = Command::new("pkg-config")
++            let Ok(out) = Command::new("pkg-config")
+                 .args(["--variable=libdir", package])
+-                .output()
+-                .ok()?;
+-            if !out.status.success() {
+-                return None;
+-            }
+-            let path = PathBuf::from(String::from_utf8(out.stdout).ok()?.trim());
++                .output() else { continue; };
++            if !out.status.success() { continue; }
++            let Ok(libdir) = String::from_utf8(out.stdout) else { continue; };
++            discovered = true;
++            let path = PathBuf::from(libdir.trim());
+             if !path.as_os_str().is_empty() && !paths.contains(&path) {
+                 paths.push(path);
+             }
+         }
+-        return Some(paths);
++        return discovered.then_some(paths);
+     }
+ 
+     if target_os != "macos" {
 diff --git a/rust-modules/data/src/metadata.rs b/rust-modules/data/src/metadata.rs
 index a6742bc9ec2d04654428454384b19fdfd7e7da54..d5feaef43c4605164e85cbd6418e496903c95f91 100644
 --- a/rust-modules/data/src/metadata.rs
