@@ -16429,8 +16429,274 @@ index dd24cb43..e2aed016 100644
 +        assert_eq!(locale.time_minute([23, 59, 59]).as_deref(), Some("23:59"));
 +    }
 +}
+diff --git a/rust-modules/platform/src/keymanager.rs b/rust-modules/platform/src/keymanager.rs
+index 3a2fa7fb..d591c2da 100644
+--- a/rust-modules/platform/src/keymanager.rs
++++ b/rust-modules/platform/src/keymanager.rs
+@@ -113,11 +113,11 @@ pub fn open_named(namespace: crate::tv::secure::Namespace, sealed: &Sealed) -> O
+ pub fn open_named_detailed(namespace: crate::tv::secure::Namespace, sealed: &Sealed) -> Result<Vec<u8>, KeymanagerFailure> {
+     let name = namespace.key_name();
+     let result = if sealed.key != name || sealed.backend != Backend::Keymanager3 {
+-        Err(invalid_response(KeymanagerOperation::Open, KeymanagerStage::Validate))
++        Err(invalid_response(KeymanagerOperation::Open, KeymanagerStage::Validate, None))
+     } else {
+         named_crypt_detailed(&name, sealed.data.as_bytes(), Some(&sealed.iv))
+             .and_then(|value| b64::decode(&value.data).ok_or_else(||
+-                invalid_response(KeymanagerOperation::Open, KeymanagerStage::Finish)))
++                invalid_response(KeymanagerOperation::Open, KeymanagerStage::Finish, None)))
+     };
+     crate::storage::diagnostics::protection(result.as_ref().map(|_| ()).map_err(|error| *error));
+     result
+@@ -151,7 +151,7 @@ fn named_key_ready_detailed(key_name: &str) -> Result<(), KeymanagerFailure> {
+     let operation = KeymanagerOperation::Seal;
+     let stage = KeymanagerStage::Generate;
+     let mut client = platform::Client::new().map_err(|error| error.into_failure(operation, stage))?;
+-    let v = call_detailed(
++    let (v, hub_error) = call_detailed(
+         &mut client,
+         "luna://com.webos.service.keymanager3/generateKey",
+         &json!({
+@@ -164,7 +164,7 @@ fn named_key_ready_detailed(key_name: &str) -> Result<(), KeymanagerFailure> {
+     )?;
+     // The existing durable namespace key must be reused, never removed/replaced.
+     if succeeded(&v) || error_code(&v) == Some(-10002) { Ok(()) }
+-    else { Err(response_failure(&v, operation, stage)) }
++    else { Err(response_failure(&v, operation, stage, hub_error)) }
+ }
+ 
+ fn modern_crypt(input: &[u8], iv: Option<&str>) -> Option<Sealed> {
+@@ -191,25 +191,25 @@ fn named_crypt_detailed(key_name: &str, input: &[u8], iv: Option<&str>) -> Resul
+     if let Some(iv) = iv {
+         params["iv"] = Value::String(iv.to_string());
+     }
+-    let begin = call_detailed(
++    let (begin, begin_hub_error) = call_detailed(
+         &mut client,
+         "luna://com.webos.service.keymanager3/begin",
+         &json!({"name": key_name, "params": params}), operation, KeymanagerStage::Begin,
+     )?;
+     if !succeeded(&begin) {
+-        return Err(response_failure(&begin, operation, KeymanagerStage::Begin));
++        return Err(response_failure(&begin, operation, KeymanagerStage::Begin, begin_hub_error));
+     }
+     let handle = begin.get("handle").and_then(Value::as_str)
+-        .ok_or_else(|| invalid_response(operation, KeymanagerStage::Begin))?.to_string();
++        .ok_or_else(|| invalid_response(operation, KeymanagerStage::Begin, begin_hub_error))?.to_string();
+     let generated_iv = iv
+         .map(str::to_string)
+         .or_else(|| begin.get("iv")?.as_str().map(str::to_string));
+     let Some(generated_iv) = generated_iv else {
+         abort_modern(&mut client, &handle);
+-        return Err(invalid_response(operation, KeymanagerStage::Begin));
++        return Err(invalid_response(operation, KeymanagerStage::Begin, begin_hub_error));
+     };
+     let data = if decrypt {
+-        std::str::from_utf8(input).map_err(|_| invalid_response(operation, KeymanagerStage::Validate))?.to_string()
++        std::str::from_utf8(input).map_err(|_| invalid_response(operation, KeymanagerStage::Validate, None))?.to_string()
+     } else {
+         b64::encode(input)
+     };
+@@ -218,7 +218,7 @@ fn named_crypt_detailed(key_name: &str, input: &[u8], iv: Option<&str>) -> Resul
+         "luna://com.webos.service.keymanager3/finish",
+         &json!({"handle": handle, "data": data}), operation, KeymanagerStage::Finish,
+     );
+-    let finish = match finish {
++    let (finish, finish_hub_error) = match finish {
+         Ok(value) => value,
+         Err(error) => {
+             abort_modern(&mut client, &handle);
+@@ -226,7 +226,7 @@ fn named_crypt_detailed(key_name: &str, input: &[u8], iv: Option<&str>) -> Resul
+         }
+     };
+     if !succeeded(&finish) {
+-        let error = response_failure(&finish, operation, KeymanagerStage::Finish);
++        let error = response_failure(&finish, operation, KeymanagerStage::Finish, finish_hub_error);
+         abort_modern(&mut client, &handle);
+         return Err(error);
+     }
+@@ -235,7 +235,7 @@ fn named_crypt_detailed(key_name: &str, input: &[u8], iv: Option<&str>) -> Resul
+         key: key_name.to_string(),
+         iv: generated_iv,
+         data: finish.get("output").and_then(Value::as_str)
+-            .ok_or_else(|| invalid_response(operation, KeymanagerStage::Finish))?.to_string(),
++            .ok_or_else(|| invalid_response(operation, KeymanagerStage::Finish, finish_hub_error))?.to_string(),
+     })
+ }
+ 
+@@ -254,27 +254,44 @@ impl CallFailure {
+         Self { code: ErrorCode::Timeout, category: KeymanagerFailureCategory::Timeout, service_code: None }
+     }
+     fn into_failure(self, operation: KeymanagerOperation, stage: KeymanagerStage) -> KeymanagerFailure {
+-        KeymanagerFailure { operation, stage, code: self.code, category: self.category, service_code: self.service_code }
++        KeymanagerFailure { operation, stage, code: self.code, category: self.category,
++            service_code: self.service_code, hub_error: None }
+     }
+ }
+ 
+-fn invalid_response(operation: KeymanagerOperation, stage: KeymanagerStage) -> KeymanagerFailure {
++fn invalid_response(operation: KeymanagerOperation, stage: KeymanagerStage, hub_error: Option<bool>) -> KeymanagerFailure {
+     KeymanagerFailure { operation, stage, code: ErrorCode::Corrupt,
+-        category: KeymanagerFailureCategory::InvalidResponse, service_code: None }
++        category: KeymanagerFailureCategory::InvalidResponse, service_code: None, hub_error }
+ }
+-fn response_failure(value: &Value, operation: KeymanagerOperation, stage: KeymanagerStage) -> KeymanagerFailure {
++fn response_failure(value: &Value, operation: KeymanagerOperation, stage: KeymanagerStage,
++    hub_error: Option<bool>) -> KeymanagerFailure {
+     if value["returnValue"] == false {
+         KeymanagerFailure { operation, stage, code: ErrorCode::Capability,
+             category: KeymanagerFailureCategory::ServiceRejected,
+-            service_code: error_code(value).and_then(|code| i32::try_from(code).ok()) }
+-    } else { invalid_response(operation, stage) }
++            service_code: error_code(value).and_then(|code| i32::try_from(code).ok()), hub_error }
++    } else { invalid_response(operation, stage, hub_error) }
+ }
++
++/// Reply provenance is carried separately from untrusted JSON. Synthetic or legacy
++/// transports without a message category leave it unknown, not false.
++struct CallReply {
++    payload: String,
++    hub_error: Option<bool>,
++}
++
++fn decode_reply(reply: CallReply, operation: KeymanagerOperation, stage: KeymanagerStage)
++    -> Result<(Value, Option<bool>), KeymanagerFailure> {
++    serde_json::from_str(&reply.payload)
++        .map(|value| (value, reply.hub_error))
++        .map_err(|_| invalid_response(operation, stage, reply.hub_error))
++}
++
+ fn call_detailed(client: &mut platform::Client, uri: &str, payload: &Value,
+-    operation: KeymanagerOperation, stage: KeymanagerStage) -> Result<Value, KeymanagerFailure> {
++    operation: KeymanagerOperation, stage: KeymanagerStage) -> Result<(Value, Option<bool>), KeymanagerFailure> {
+     let _block = plx_base::task::assert_may_block(const { &plx_base::task::BlockingLabel::new("keymanager round trip") });
+-    let text = client.call(uri, &payload.to_string())
++    let reply = client.call(uri, &payload.to_string())
+         .map_err(|error| error.into_failure(operation, stage))?;
+-    serde_json::from_str(&text).map_err(|_| invalid_response(operation, stage))
++    decode_reply(reply, operation, stage)
+ }
+ 
+ fn abort_modern(client: &mut platform::Client, handle: &str) {
+@@ -296,7 +313,7 @@ fn call_with(client: &mut platform::Client, uri: &str, payload: &Value) -> Optio
+     client
+         .call(uri, &payload.to_string())
+         .ok()
+-        .and_then(|s| serde_json::from_str(&s).ok())
++        .and_then(|reply| serde_json::from_str(&reply.payload).ok())
+ }
+ 
+ #[cfg(any(feature = "hostsim", test, feature = "test-support"))]
+@@ -311,10 +328,12 @@ mod platform {
+             Err(CallFailure::unavailable(None))
+         }
+ 
+-        pub(super) fn call(&mut self, _uri: &str, _payload: &str) -> Result<String, CallFailure> {
++        pub(super) fn call(&mut self, _uri: &str, _payload: &str) -> Result<super::CallReply, CallFailure> {
+             #[cfg(any(test, feature = "test-support"))]
+             if let Some(rpc) = super::RPC_FOR_TEST.with(|hook| hook.get()) {
+-                return rpc(_uri, _payload).map_err(|()| CallFailure::unavailable(None));
++                return rpc(_uri, _payload)
++                    .map(|payload| super::CallReply { payload, hub_error: None })
++                    .map_err(|()| CallFailure::unavailable(None));
+             }
+             Err(CallFailure::unavailable(None))
+         }
+@@ -359,13 +378,13 @@ mod platform {
+                 })
+         }
+ 
+-        pub(super) fn call(&mut self, uri: &str, payload: &str) -> Result<String, CallFailure> {
++        pub(super) fn call(&mut self, uri: &str, payload: &str) -> Result<super::CallReply, CallFailure> {
+             if self.dead {
+                 return Err(CallFailure::timeout());
+             }
+             let started = std::time::Instant::now();
+-            match self.registration.call(uri, payload, BUDGET) {
+-                Ok(reply) => Ok(reply),
++            match self.registration.call_reply(uri, payload, BUDGET) {
++                Ok(reply) => Ok(super::CallReply { payload: reply.payload, hub_error: Some(reply.hub_error) }),
+                 Err(crate::webos::ls2::Fail::Timeout) => {
+                     self.dead = true;
+                     plx_base::eventlog::log(&format!(
+diff --git a/rust-modules/platform/src/keymanager_named_diagnostics_tests.rs b/rust-modules/platform/src/keymanager_named_diagnostics_tests.rs
+index 8ded4c5b..d09c9a9a 100644
+--- a/rust-modules/platform/src/keymanager_named_diagnostics_tests.rs
++++ b/rust-modules/platform/src/keymanager_named_diagnostics_tests.rs
+@@ -391,6 +391,7 @@ fn typed_ls2_timeout_and_setup_failure_keep_their_distinct_categories() {
+     assert_eq!(timeout.code, ErrorCode::Timeout);
+     assert_eq!(timeout.category, KeymanagerFailureCategory::Timeout);
+     assert_eq!(timeout.service_code, None);
++    assert_eq!(timeout.hub_error, None);
+     let setup = CallFailure::unavailable(Some(-1027))
+         .into_failure(KeymanagerOperation::Seal, KeymanagerStage::Generate);
+     assert_eq!(setup.operation, KeymanagerOperation::Seal);
+@@ -398,4 +399,64 @@ fn typed_ls2_timeout_and_setup_failure_keep_their_distinct_categories() {
+     assert_eq!(setup.code, ErrorCode::Unavailable);
+     assert_eq!(setup.category, KeymanagerFailureCategory::Unavailable);
+     assert_eq!(setup.service_code, Some(-1027));
++    assert_eq!(setup.hub_error, None);
++}
++
++#[test]
++fn named_rejection_does_not_infer_hub_origin_from_json_or_repeat_the_rpc() {
++    let _serial = plx_base::testlock::serial();
++    let hook = Hook::new(vec![reply("generateKey", json!({
++        "returnValue":false, "errorCode":-1000, "hub_error":true,
++        "errorText":"private-response"
++    }))]);
++    let error = failure(seal_named_detailed(Namespace::OttState, b"private-input"));
++    assert_eq!(error.hub_error, None);
++    assert_eq!(error.operation, KeymanagerOperation::Seal);
++    assert_eq!(error.stage, KeymanagerStage::Generate);
++    assert_eq!(error.code, ErrorCode::Capability);
++    assert_eq!(error.category, KeymanagerFailureCategory::ServiceRejected);
++    assert_eq!(error.service_code, Some(-1000));
++    assert_private(error);
++    let calls = hook.calls();
++    assert_eq!(calls.len(), 1);
++    assert_eq!(calls[0].0, "generateKey");
++}
++
++#[test]
++fn reply_origin_is_transport_evidence_not_json_or_authorization() {
++    for stage in [KeymanagerStage::Generate, KeymanagerStage::Begin, KeymanagerStage::Finish] {
++        for hub_error in [None, Some(false), Some(true)] {
++            let (value, observed) = decode_reply(CallReply {
++                payload: json!({
++                    "returnValue":false, "errorCode":-1000,
++                    "errorText":"private-response", "hub_error":hub_error != Some(true),
++                    "name":"private-key", "data":"private-input"
++                }).to_string(),
++                hub_error,
++            }, KeymanagerOperation::Seal, stage).unwrap();
++            let error = response_failure(&value, KeymanagerOperation::Seal, stage, observed);
++            assert_eq!(error.hub_error, hub_error);
++            assert_eq!(error.stage, stage);
++            assert_eq!(error.service_code, Some(-1000));
++            // In particular, false says only that LS2 did not mark this as a hub error.
++            // It cannot turn the service's refusal into permission or crypto success.
++            assert_eq!(error.code, ErrorCode::Capability);
++            assert_eq!(error.category, KeymanagerFailureCategory::ServiceRejected);
++            assert_private(error);
++        }
++    }
++}
++
++#[test]
++fn invalid_json_preserves_only_transport_origin() {
++    for hub_error in [None, Some(false), Some(true)] {
++        let error = failure(decode_reply(CallReply {
++            payload: "private-response: invalid JSON private-input".into(),
++            hub_error,
++        }, KeymanagerOperation::Open, KeymanagerStage::Begin));
++        assert_eq!(error.hub_error, hub_error);
++        assert_eq!(error.service_code, None);
++        assert_eq!(error.category, KeymanagerFailureCategory::InvalidResponse);
++        assert_private(error);
++    }
+ }
 diff --git a/rust-modules/platform/src/storage/diagnostics.rs b/rust-modules/platform/src/storage/diagnostics.rs
-index f4a812ca..0e87e597 100644
+index f4a812ca..32b82d4c 100644
 --- a/rust-modules/platform/src/storage/diagnostics.rs
 +++ b/rust-modules/platform/src/storage/diagnostics.rs
 @@ -21,6 +21,10 @@ use super::wire::{
@@ -16496,7 +16762,31 @@ index f4a812ca..0e87e597 100644
      }
  }
  fn guard() -> plx_base::task::BlockingGuard {
-@@ -827,9 +848,24 @@ fn publish_with(
+@@ -474,17 +495,19 @@ impl Snapshot {
+ fn write_protection(out: &mut String, result: Option<Protection>) -> std::fmt::Result {
+     use std::fmt::Write;
+     match result {
+-        None => writeln!(out, "protection state=unobserved operation=- stage=- category=- code=- service_code=-"),
+-        Some(Ok(())) => writeln!(out, "protection state=complete operation=- stage=- category=- code=- service_code=-"),
++        // No failure reply is represented in these states; its origin is unknown.
++        None => writeln!(out, "protection state=unobserved operation=- stage=- category=- code=- service_code=- hub_error=unknown"),
++        Some(Ok(())) => writeln!(out, "protection state=complete operation=- stage=- category=- code=- service_code=- hub_error=unknown"),
+         Some(Err(failure)) => {
+             // Serialization accepts only the existing closed wire enums, never
+             // arbitrary service text, keys, operation handles or payloads.
+             let label = |value: serde_json::Value| value.as_str().unwrap_or("unknown").to_owned();
+-            writeln!(out, "protection state=failed operation={} stage={} category={} code={} service_code={}",
++            let hub_error = match failure.hub_error { Some(true) => "true", Some(false) => "false", None => "unknown" };
++            writeln!(out, "protection state=failed operation={} stage={} category={} code={} service_code={} hub_error={}",
+                 label(serde_json::to_value(failure.operation).unwrap_or_default()),
+                 label(serde_json::to_value(failure.stage).unwrap_or_default()),
+                 label(serde_json::to_value(failure.category).unwrap_or_default()),
+-                wire_code(Some(failure.code)), optional_number(failure.service_code))
++                wire_code(Some(failure.code)), optional_number(failure.service_code), hub_error)
+         }
+     }
+ }
+@@ -827,9 +850,24 @@ fn publish_with(
          return Err(io::Error::from_raw_os_error(libc::EFBIG));
      }
      let dir = directory(root)?;
@@ -16523,7 +16813,7 @@ index f4a812ca..0e87e597 100644
      let result = (|| {
          let meta = file.metadata()?;
          if !meta.is_file()
-@@ -844,7 +880,7 @@ fn publish_with(
+@@ -844,7 +882,7 @@ fn publish_with(
              return Err(io::Error::last_os_error());
          }
          before_rename()?;
@@ -16532,7 +16822,7 @@ index f4a812ca..0e87e597 100644
          if DISABLED.load(Ordering::Acquire) {
              return Err(io::Error::from_raw_os_error(libc::ECANCELED));
          }
-@@ -863,7 +899,7 @@ fn publish_with(
+@@ -863,7 +901,7 @@ fn publish_with(
          Ok(())
      })();
      if result.is_err() {
@@ -16541,7 +16831,7 @@ index f4a812ca..0e87e597 100644
      }
      result
  }
-@@ -886,7 +922,7 @@ mod tests {
+@@ -886,7 +924,7 @@ mod tests {
              let _ = std::fs::remove_dir_all(&self.0);
          }
      }
@@ -16550,6 +16840,62 @@ index f4a812ca..0e87e597 100644
          Snapshot {
              seq: 1,
              app_id: Identifier::new("com.openottplay.player.native"),
+@@ -1071,7 +1109,7 @@ mod tests {
+         use super::super::wire::{KeymanagerFailureCategory, KeymanagerOperation, KeymanagerStage};
+         KeymanagerFailure { operation: KeymanagerOperation::Seal, stage: KeymanagerStage::Begin,
+             code: ErrorCode::Capability, category: KeymanagerFailureCategory::ServiceRejected,
+-            service_code: Some(-20030) }
++            service_code: Some(-20030), hub_error: None }
+     }
+ 
+     #[test]
+@@ -1084,7 +1122,7 @@ mod tests {
+         assert_ne!(snapshot.semantic(), before);
+         let failed = snapshot.format();
+         assert!(failed.contains("helper stage=complete "));
+-        assert!(failed.contains("protection state=failed operation=seal stage=begin category=service_rejected code=capability service_code=-20030\n"));
++        assert!(failed.contains("protection state=failed operation=seal stage=begin category=service_rejected code=capability service_code=-20030 hub_error=unknown\n"));
+         assert!(failed.len() <= LIMIT);
+         snapshot.helper.observe(Some(HelperFailure::new(Stage::Db8, Some(-3963))));
+         snapshot.protection = Some(Ok(()));
+@@ -1108,6 +1146,37 @@ mod tests {
+         assert!(matches!(pending.0.pop_front(), Some(Update::Protection(Ok(())))));
+     }
+ 
++    #[test]
++    fn protection_hub_origin_is_preserved_without_changing_failure_or_helper_state() {
++        let mut pending = Pending::default();
++        for hub_error in [None, Some(false), Some(true)] {
++            let failure = KeymanagerFailure { hub_error, ..protection_failure() };
++            pending.push(Update::Protection(Err(failure)));
++            pending.push(Update::Protection(Err(failure)));
++        }
++        assert_eq!(pending.0.len(), 3, "origin changes must survive deduplication");
++        let mut snapshot = fixture();
++        snapshot.helper = helper_outcome(None);
++        let original = snapshot.format();
++        let helper = original.lines().find(|line| line.starts_with("helper ")).unwrap();
++        for (hub_error, label) in [(None, "unknown"), (Some(false), "false"), (Some(true), "true")] {
++            let Some(Update::Protection(result)) = pending.0.pop_front() else { panic!("protection update") };
++            assert_eq!(result.unwrap_err().hub_error, hub_error);
++            snapshot.protection = Some(result);
++            let text = snapshot.format();
++            assert_eq!(text.lines().find(|line| line.starts_with("helper ")).unwrap(), helper);
++            assert_eq!(text.lines().find(|line| line.starts_with("protection ")).unwrap(),
++                format!("protection state=failed operation=seal stage=begin category=service_rejected code=capability service_code=-20030 hub_error={label}"));
++            assert!(!text.contains("errorText"));
++            assert!(!text.contains("private-fixture"));
++        }
++        for (result, state) in [(None, "unobserved"), (Some(Ok(())), "complete")] {
++            let mut text = String::new();
++            write_protection(&mut text, result).unwrap();
++            assert_eq!(text, format!("protection state={state} operation=- stage=- category=- code=- service_code=- hub_error=unknown\n"));
++        }
++    }
++
+     #[test]
+     fn changed_protection_is_published_without_changing_helper_evidence() {
+         let _serial = plx_base::testlock::serial();
 diff --git a/rust-modules/platform/src/storage/diagnostics/developer_export.rs b/rust-modules/platform/src/storage/diagnostics/developer_export.rs
 new file mode 100644
 index 00000000..84fb52c6
@@ -16800,6 +17146,92 @@ index 00000000..84fb52c6
 +        assert_eq!(std::fs::read(unrelated).unwrap(), b"sentinel");
 +    }
 +}
+diff --git a/rust-modules/platform/src/storage/private_helper_named_tests.rs b/rust-modules/platform/src/storage/private_helper_named_tests.rs
+index 22b8f31a..79b8b5e6 100644
+--- a/rust-modules/platform/src/storage/private_helper_named_tests.rs
++++ b/rust-modules/platform/src/storage/private_helper_named_tests.rs
+@@ -21,6 +21,7 @@ impl Sealer {
+                 code: ErrorCode::Capability,
+                 category: KeymanagerFailureCategory::ServiceRejected,
+                 service_code: Some(-20030),
++                hub_error: None,
+             }))
+         });
+         SEAL_CALLS.with(|calls| calls.borrow_mut().clear());
+diff --git a/rust-modules/platform/src/storage_service/keymanager.rs b/rust-modules/platform/src/storage_service/keymanager.rs
+index 7374caf1..892a369e 100644
+--- a/rust-modules/platform/src/storage_service/keymanager.rs
++++ b/rust-modules/platform/src/storage_service/keymanager.rs
+@@ -64,6 +64,7 @@ pub fn failure(
+             _ => KeymanagerFailureCategory::Other,
+         },
+         service_code: None,
++        hub_error: None,
+     }
+ }
+ fn diagnose<R: Rpc, T>(
+diff --git a/rust-modules/platform/src/storage_service/wire.rs b/rust-modules/platform/src/storage_service/wire.rs
+index d93d32cf..22cfe00d 100644
+--- a/rust-modules/platform/src/storage_service/wire.rs
++++ b/rust-modules/platform/src/storage_service/wire.rs
+@@ -192,6 +192,10 @@ pub struct KeymanagerFailure {
+     pub code: ErrorCode,
+     pub category: KeymanagerFailureCategory,
+     pub service_code: Option<i32>,
++    /// LS2's typed hub-error flag when a reply was observed. None means unknown;
++    /// false identifies a non-hub reply, not successful authorization or operation.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub hub_error: Option<bool>,
+ }
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+ #[serde(rename_all = "snake_case")]
+@@ -390,6 +394,7 @@ mod tests {
+             ("operation", serde_json::json!("private-fixture")),
+             ("stage", serde_json::json!("private-fixture")),
+             ("service_code", serde_json::json!("private-fixture")),
++            ("hub_error", serde_json::json!("private-fixture")),
+             ("errorText", serde_json::json!("private-fixture")),
+         ] {
+             let mut bad = good.clone();
+@@ -398,6 +403,30 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn hub_origin_preserves_old_failure_wire_and_typed_reply_values() {
++        let legacy = serde_json::json!({"operation":"seal","stage":"generate",
++            "code":"capability","category":"service_rejected","service_code":-1000});
++        let old: KeymanagerFailure = serde_json::from_value(legacy.clone()).unwrap();
++        assert_eq!(old.hub_error, None);
++        assert_eq!(serde_json::to_value(old).unwrap(), legacy,
++            "unknown origin must not add a field rejected by an older helper");
++        for hub_error in [false, true] {
++            let mut observed = legacy.clone();
++            observed["hub_error"] = serde_json::json!(hub_error);
++            let decoded: KeymanagerFailure = serde_json::from_value(observed.clone()).unwrap();
++            assert_eq!(decoded.hub_error, Some(hub_error));
++            assert_eq!(decoded.category, KeymanagerFailureCategory::ServiceRejected);
++            assert_eq!(decoded.code, ErrorCode::Capability);
++            assert_eq!(serde_json::to_value(decoded).unwrap(), observed);
++        }
++        for invalid in [serde_json::json!("false"), serde_json::json!(0), serde_json::json!({"errorText":"private-fixture"})] {
++            let mut observed = legacy.clone();
++            observed["hub_error"] = invalid;
++            assert!(serde_json::from_value::<KeymanagerFailure>(observed).is_err());
++        }
++    }
++
+     #[test]
+     fn fallback_context_and_strict_failure_have_only_closed_fields() {
+         let context =
+@@ -415,6 +444,7 @@ mod tests {
+                 code: ErrorCode::Timeout,
+                 category: KeymanagerFailureCategory::Timeout,
+                 service_code: None,
++                hub_error: None,
+             },
+             preservation: AuthPreservation::Unchanged,
+             db8_commit_verified: false,
 diff --git a/rust-modules/platform/src/tv/removable.rs b/rust-modules/platform/src/tv/removable.rs
 index 15f8c0c0..9c74f234 100644
 --- a/rust-modules/platform/src/tv/removable.rs
@@ -16862,6 +17294,19 @@ index 03b5f4fa..681afb60 100644
          Self { mount, identity }
      }
  }
+diff --git a/rust-modules/platform/src/tv/secure.rs b/rust-modules/platform/src/tv/secure.rs
+index 37b1d720..4cdaf3e5 100644
+--- a/rust-modules/platform/src/tv/secure.rs
++++ b/rust-modules/platform/src/tv/secure.rs
+@@ -81,7 +81,7 @@ pub fn seal_named_detailed(namespace: Namespace, plain: &[u8]) -> Result<Sealed,
+ pub fn protection_unavailable() -> crate::storage::wire::KeymanagerFailure {
+     use crate::storage::wire::{ErrorCode, KeymanagerFailure, KeymanagerFailureCategory, KeymanagerOperation, KeymanagerStage};
+     KeymanagerFailure { operation: KeymanagerOperation::Seal, stage: KeymanagerStage::Validate,
+-        code: ErrorCode::Unavailable, category: KeymanagerFailureCategory::Unavailable, service_code: None }
++        code: ErrorCode::Unavailable, category: KeymanagerFailureCategory::Unavailable, service_code: None, hub_error: None }
+ }
+ pub fn open_named(namespace: Namespace, sealed: &Sealed) -> Option<Vec<u8>> {
+     (super::port().open_named)(namespace, sealed)
 diff --git a/rust-modules/platform/src/tv/secure/fixture.rs b/rust-modules/platform/src/tv/secure/fixture.rs
 index 53aef48f..7726c760 100644
 --- a/rust-modules/platform/src/tv/secure/fixture.rs
@@ -17781,6 +18226,83 @@ index bc924146..7348cf54 100644
      /// True when the library's `Feed` is the pre-C++11 copy-on-write-string build (webOS 3.x).
      /// A memoized read, so it takes no `MainThread`.
      fn feed_abi_is_cow(&self) -> bool;
+diff --git a/rust-modules/platform/src/webos.rs b/rust-modules/platform/src/webos.rs
+index b074541d..fbfc72b9 100644
+--- a/rust-modules/platform/src/webos.rs
++++ b/rust-modules/platform/src/webos.rs
+@@ -661,12 +661,20 @@ pub mod ls2 {
+         ) -> bool;
+         fn LSCallCancel(handle: *mut c_void, token: libc::c_ulong, error: *mut LSError) -> bool;
+         fn LSMessageGetPayload(message: *mut c_void) -> *const c_char;
++        fn LSMessageIsHubErrorMessage(message: *mut c_void) -> bool;
+         fn LSUnregister(handle: *mut c_void, error: *mut LSError) -> bool;
+         fn g_main_context_new() -> *mut c_void;
+         fn g_main_context_iteration(context: *mut c_void, may_block: c_int) -> c_int;
+         fn g_main_context_unref(context: *mut c_void);
+     }
+ 
++    /// The message category comes from LS2, never from a field in the JSON payload.
++    /// A non-hub reply does not establish authorization or operation success.
++    pub struct Reply {
++        pub payload: String,
++        pub hub_error: bool,
++    }
++
+     extern "C" fn on_reply(_h: *mut c_void, message: *mut c_void, context: *mut c_void) -> bool {
+         if context.is_null() || message.is_null() {
+             return true;
+@@ -674,8 +682,10 @@ pub mod ls2 {
+         let payload = unsafe { LSMessageGetPayload(message) };
+         if !payload.is_null() {
+             unsafe {
+-                *(context as *mut Option<String>) =
+-                    Some(CStr::from_ptr(payload).to_string_lossy().into_owned());
++                *(context as *mut Option<Reply>) = Some(Reply {
++                    payload: CStr::from_ptr(payload).to_string_lossy().into_owned(),
++                    hub_error: LSMessageIsHubErrorMessage(message),
++                });
+             }
+         }
+         true
+@@ -830,6 +840,11 @@ pub mod ls2 {
+         /// `Err` never means "the method said no" — a refusal comes back as the platform's own JSON
+         /// in the `Ok`, for the caller to grade.
+         pub fn call(&self, uri: &str, payload: &str, budget: Duration) -> Result<String, Fail> {
++            self.call_reply(uri, payload, budget).map(|reply| reply.payload)
++        }
++
++        /// The same ordinary call, retaining its reply category for typed diagnostics.
++        pub fn call_reply(&self, uri: &str, payload: &str, budget: Duration) -> Result<Reply, Fail> {
+             self.call_with(uri, payload, None, budget)
+         }
+ 
+@@ -845,7 +860,7 @@ pub mod ls2 {
+             app_id: &str,
+             budget: Duration,
+         ) -> Result<String, Fail> {
+-            self.call_with(uri, payload, Some(app_id), budget)
++            self.call_with(uri, payload, Some(app_id), budget).map(|reply| reply.payload)
+         }
+ 
+         /// The one reply-slot / timeout / cancel path both public calls share.
+@@ -855,7 +870,7 @@ pub mod ls2 {
+             payload: &str,
+             app_id: Option<&str>,
+             budget: Duration,
+-        ) -> Result<String, Fail> {
++        ) -> Result<Reply, Fail> {
+             let _block = plx_base::task::assert_may_block(const { &plx_base::task::BlockingLabel::new("LS2 round trip") });
+             let setup = |stage| Fail::Setup {
+                 stage,
+@@ -872,7 +887,7 @@ pub mod ls2 {
+             // call (`keymanager` keeps one across begin → finish), so a late dispatch of a call
+             // that timed out would otherwise write into a returned stack frame. It is taken back
+             // below on every path except a refused cancel, where it is leaked on purpose.
+-            let slot: *mut Option<String> = Box::into_raw(Box::new(None));
++            let slot: *mut Option<Reply> = Box::into_raw(Box::new(None));
+             let mut token = 0;
+             let called = unsafe {
+                 match &app_id {
 diff --git a/rust-modules/plex/src/plex/client.rs b/rust-modules/plex/src/plex/client.rs
 index 16ff01ec..853f97a5 100644
 --- a/rust-modules/plex/src/plex/client.rs
@@ -18288,6 +18810,18 @@ index 1bd7af5e..9c11eb70 100644
 +#[cfg(test)]
 +#[path = "session_managed_publication_tests.rs"]
 +mod managed_publication_tests;
+diff --git a/rust-modules/plex/src/plex/session/async_persistence.rs b/rust-modules/plex/src/plex/session/async_persistence.rs
+index 1446e46f..015a0deb 100644
+--- a/rust-modules/plex/src/plex/session/async_persistence.rs
++++ b/rust-modules/plex/src/plex/session/async_persistence.rs
+@@ -2040,6 +2040,7 @@ mod tests {
+             code: plx_platform::storage::wire::ErrorCode::Unavailable,
+             category: plx_platform::storage::wire::KeymanagerFailureCategory::Unavailable,
+             service_code: None,
++            hub_error: None,
+         }
+     }
+ 
 diff --git a/rust-modules/plex/src/plex/session_managed_publication_tests.rs b/rust-modules/plex/src/plex/session_managed_publication_tests.rs
 new file mode 100644
 index 00000000..10d7d3fb
@@ -23328,7 +23862,7 @@ index 56a3049e..d8f8776c 100644
      };
      if !output.live() { return; }
 diff --git a/rust-modules/session/src/auth/owner.rs b/rust-modules/session/src/auth/owner.rs
-index 8b3a957f..56b78794 100644
+index 8b3a957f..66598ff0 100644
 --- a/rust-modules/session/src/auth/owner.rs
 +++ b/rust-modules/session/src/auth/owner.rs
 @@ -10,6 +10,8 @@ use std::sync::Arc;
@@ -23538,6 +24072,15 @@ index 8b3a957f..56b78794 100644
              SessionEvent::Command(Command::ResumeStored) => self.resume_stored(&mut emit),
              SessionEvent::Command(Command::StartLogin) => self.restart_login(true, &mut emit),
              SessionEvent::Command(Command::Retry) => self.retry(&mut emit),
+@@ -3477,7 +3515,7 @@ mod tests {
+         use plx_telemetry::telemetry::incident::{IncidentKind, PersistenceFailure as P};
+         let protection = ProtectionFailure {
+             failure: KeymanagerFailure { operation: KeymanagerOperation::Seal, stage: KeymanagerStage::Finish,
+-                code: ErrorCode::Unavailable, category: KeymanagerFailureCategory::ServiceRejected, service_code: Some(-3961) },
++                code: ErrorCode::Unavailable, category: KeymanagerFailureCategory::ServiceRejected, service_code: Some(-3961), hub_error: None },
+             preservation: AuthPreservation::Unchanged, db8_commit_verified: false,
+         };
+         let helper = HelperFailure::new(Stage::Db8, Some(-3963));
 diff --git a/rust-modules/session/src/auth/owner/managed.rs b/rust-modules/session/src/auth/owner/managed.rs
 new file mode 100644
 index 00000000..ceac5b3f
@@ -56048,6 +56591,18 @@ index 00000000..ba3497a7
 +    assert_eq!(bridge::ott_catalog_surface(&app.pages), Some(surface));
 +    assert!(matches!(app.route(), AppArg::Player));
 +}
+diff --git a/rust-modules/src/app/ott_save_error.rs b/rust-modules/src/app/ott_save_error.rs
+index e940bb82..80319b17 100644
+--- a/rust-modules/src/app/ott_save_error.rs
++++ b/rust-modules/src/app/ott_save_error.rs
+@@ -111,6 +111,7 @@ mod tests {
+             category: KeymanagerFailureCategory::ServiceRejected,
+             code: ErrorCode::Authentication,
+             service_code: Some(-1000),
++            hub_error: None,
+         };
+         assert_eq!(message(private::Error::ProtectionFailed(failure)),
+             "Could not save protected OTT settings. storage: seal/begin service-rejected authentication (-1000)");
 diff --git a/rust-modules/src/app/ott_selection.rs b/rust-modules/src/app/ott_selection.rs
 index 0d29078d..be6462a0 100644
 --- a/rust-modules/src/app/ott_selection.rs
@@ -65363,6 +65918,18 @@ index f7fbbbc7..14f94f6b 100644
 +    if let Some(result) = plx_platform::tv::secure::fixture::local_identities(off, mounts, check) { return result; }
 +    plx_platform::webos::removable_identity::identity_snapshot(off, mounts, check)
 +}
+diff --git a/rust-modules/telemetry/src/telemetry/incident.rs b/rust-modules/telemetry/src/telemetry/incident.rs
+index a9809b88..73a0abad 100644
+--- a/rust-modules/telemetry/src/telemetry/incident.rs
++++ b/rust-modules/telemetry/src/telemetry/incident.rs
+@@ -1166,6 +1166,7 @@ mod tests {
+                 code: ErrorCode::Unavailable,
+                 category: KeymanagerFailureCategory::ServiceRejected,
+                 service_code,
++                hub_error: None,
+             },
+             preservation: AuthPreservation::Unchanged,
+             db8_commit_verified: false,
 diff --git a/rust-modules/ui/src/classic.rs b/rust-modules/ui/src/classic.rs
 index 2334e7c2..fd894d2f 100644
 --- a/rust-modules/ui/src/classic.rs
