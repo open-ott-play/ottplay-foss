@@ -49,6 +49,34 @@ index b474cbde608d05e4f2b2ded719331fa45a6bac9a..77d5b74c5184e2401bcb9e31a2fc417a
  - **The cached modal ground.** The simulator runs with the frame cache OFF (`frame cache:
    CopyTexSubImage error=0x500 — cache off`), so `popover::host`'s cached stages never run and a sim
    capture cannot show a fault in them; only the TV can.
+diff --git a/.gitignore b/.gitignore
+index 39b23639625c751fb13472a8d8df30fbaf97a1c3..d068edf43cd8e194acb68d0cb9ace5c817da3a3c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -155,6 +155,10 @@ pkg/lab.json
+ pkg/PlxNative.app/
+ pkg/PlxNative-*.zip
+ pkg/PlxNative-README.md
++# Current OTT bundle names; retain the legacy names above for older build output.
++pkg/OTTPlay Native.app/
++pkg/OTTPlay-Native-*.zip
++pkg/OTTPlay-Native-README.md
+ 
+ # Generated test media (tests/fixtures/make_fixtures.py, `make fixtures`). The default output
+ # root is ~/plxnative-fixtures and the generator REFUSES an --out anywhere inside this repo, so
+diff --git a/Makefile b/Makefile
+index a7c9be30ddee638c28e51e21de02d33cfc18def3..c79f6452be0713b3f34e4ec99693292905c2b686 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2513,7 +2513,7 @@ sim-macos-clean:
+ 	rm -rf $(SIM_DIR)
+ 
+ # ---------------------------------------------------------------------------------------------
+-# PlxNative.app — the same host build, packaged as a SELF-CONTAINED macOS application you can send
++# OTTPlay Native.app — the same host build, packaged as a SELF-CONTAINED macOS application you can send
+ # to somebody who has none of this installed. `ci/mkmacapp.py` is the whole recipe and its module
+ # doc is the account of the three ways it silently ships broken; `docs/macos-app.md` is the design
+ # note (what it can and cannot do — chiefly: no video off-device).
 diff --git a/ci/allow/globals/data-person.txt b/ci/allow/globals/data-person.txt
 index 13d91d1fa7f6973111151c7c48aa11b6d6428b6c..fbd4f68fd4b3048a1dc8f23b8b8aaafa7517c6a2 100644
 --- a/ci/allow/globals/data-person.txt
@@ -191,11 +219,93 @@ index f1287e64cefd0c68c098c61e3e45479ef6674a5c..0cafc71e63b2b0e109c956557617ae72
 +[src/app/ott_numeric_input.rs::DIGIT_WINDOW_MS]
 +class = not-a-list
 +reason = The two-second monotonic input deadline groups channel-number digits before dispatch; it is a time interval, not a limit on channel rows.
+diff --git a/ci/mkmacapp.py b/ci/mkmacapp.py
+index 607a4325071d0c6ce8292da0fc959fe7b4fa74bb..726d0d049c648e69999971b2db81f1f5bca80a2b 100755
+--- a/ci/mkmacapp.py
++++ b/ci/mkmacapp.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Build `PlxNative.app` — the app core as a SELF-CONTAINED macOS application.
++"""Build `OTTPlay Native.app` — the app core as a SELF-CONTAINED macOS application.
+ 
+ This is the `hostsim` build (`rust-modules/src/bin/sim.rs`): the same UI, the same Plex data layer
+ and the same event loop the television runs, wrapped in a bundle that carries its own SDL, its own
+@@ -134,8 +134,10 @@ def build_binary(tdir: Path) -> Path:
+ 
+ 
+ def write_icon(res: Path):
+-    """`.icns` from the 1254px master — macOS wants a 512@2x rung, and upscaling `pkg/icon320.png`
+-    into it is visible in the Dock."""
++    """Reuse the shipped 512px OTT master for every icon rung.
++
++    The 512@2x rung is upsampled from that master; no new artwork is generated.
++    """
+     print("==> icon")
+     master = REPO / "assets/logo-master.png"
+     with tempfile.TemporaryDirectory() as tmp:
+@@ -155,8 +157,8 @@ def write_plist(contents: Path, ver: str):
+     same 1:1 texel contract the television renders under. Without it the OS hands back a
+     half-resolution surface and doubles the whole interface."""
+     plist = {
+-        "CFBundleName": "PlxNative",
+-        "CFBundleDisplayName": "PlxNative",
++        "CFBundleName": "OTTPlay Native",
++        "CFBundleDisplayName": "OTTPlay Native",
+         "CFBundleExecutable": "PlxNative",
+         "CFBundleIdentifier": "com.openottplay.player.native",
+         "CFBundleIconFile": "AppIcon",
+@@ -168,7 +170,7 @@ def write_plist(contents: Path, ver: str):
+         "CFBundleVersion": package_version(),
+         # Free-form by definition, and the one plist field that may carry the suffix. It is what
+         # Finder's Get Info shows, so "which build is this?" is answerable without launching it.
+-        "CFBundleGetInfoString": f"PlxNative {ver}",
++        "CFBundleGetInfoString": f"OTTPlay Native {ver}",
+         "LSMinimumSystemVersion": "11.0",
+         "NSHighResolutionCapable": True,
+         "NSHumanReadableCopyright":
+@@ -176,7 +178,7 @@ def write_plist(contents: Path, ver: str):
+         # macOS 15+ asks before letting an app reach the LAN, and a Plex client that cannot is
+         # useless. The string is what the person sees in that prompt, so it says why.
+         "NSLocalNetworkUsageDescription":
+-            "PlxNative streams from a Plex Media Server on your local network.",
++            "OTTPlay Native connects to media servers on your local network.",
+     }
+     (contents / "Info.plist").write_bytes(plistlib.dumps(plist))
+ 
+@@ -261,7 +263,7 @@ def main():
+ 
+     ver = version()
+     out = Path(args.out)
+-    app = out / "PlxNative.app"
++    app = out / "OTTPlay Native.app"
+     contents, = (app / "Contents",)
+     macos, frameworks, res = contents / "MacOS", contents / "Frameworks", contents / "Resources"
+ 
+@@ -310,10 +312,10 @@ def main():
+ 
+     readme = REPO / "docs/macos-app-readme.md"
+     if readme.exists():
+-        shutil.copy2(readme, out / "PlxNative-README.md")
++        shutil.copy2(readme, out / "OTTPlay-Native-README.md")
+ 
+     if args.zip:
+-        zip_path = out / f"PlxNative-{ver}-{platform.machine()}.zip"
++        zip_path = out / f"OTTPlay-Native-{ver}-{platform.machine()}.zip"
+         zip_path.unlink(missing_ok=True)
+         # ditto, not zipfile: it is the tool that preserves the extended attributes and symlink
+         # layout a signed bundle needs. A plain zip can arrive with a broken signature.
 diff --git a/docs/agent-reference.md b/docs/agent-reference.md
-index 58c2193164ebaa7576eaf8e7a13ccbea124e8332..0dfab5df580d19d2bce6d9655b98413500bdd3ae 100644
+index 58c2193164ebaa7576eaf8e7a13ccbea124e8332..05dce2710643e57f0e177f320a036fd46f783a88 100644
 --- a/docs/agent-reference.md
 +++ b/docs/agent-reference.md
-@@ -805,7 +805,8 @@ the pinned Sentry Native cross-build), and `sshpass` (Homebrew; deploy/run use y
+@@ -799,13 +799,14 @@ the pinned Sentry Native cross-build), and `sshpass` (Homebrew; deploy/run use y
+   headers by hand. Neither bug is visible from the other's side: `webosbrew-ipk-verify` reads a
+   GNU-named archive fine, and the TV never gets far enough to miss a descriptor. `check-package.py`
+   now asserts both. Full account: `docs/distribution.md` §9.
+-- `make macapp` / `make macapp-zip` — **`pkg/PlxNative.app`: the app as a self-contained macOS
++- `make macapp` / `make macapp-zip` — **`pkg/OTTPlay Native.app`: the app as a self-contained macOS
+   application**, for sending to somebody who has none of this installed. Same `hostsim` core the
+   simulator runs, built `--release --no-default-features` (so no dev counter, no `/tmp` trigger
    surface, no FIFO, no capture listener), with every non-system dylib copied in and rewritten to
    `@rpath`, ad-hoc codesigned. It signs in with the real QR flow and browses a real server; **it
    cannot play video** — the Starfish/ACB seam does not exist off-device, so Play lands on the app's
@@ -300,10 +410,66 @@ index 0000000000000000000000000000000000000000..ed1bf278fd3c44f3948a1ff9e83506ed
 +Unknown settings, invalid ranges and stale write contexts are rejected by the
 +existing settings contract. Consumers receive new preferences only after an
 +authoritative load or a successful durable save.
+diff --git a/docs/hud-plugins.md b/docs/hud-plugins.md
+index 3d10239613803e414047d67e8261ff430fa29683..541b4003b6efc50e4087ff51492de812f92d6555 100644
+--- a/docs/hud-plugins.md
++++ b/docs/hud-plugins.md
+@@ -663,7 +663,7 @@ marker ends or Watch Credits dismisses the offer.
+    wrong"; the registry index can carry it per entry.
+ 
+ Decided at install and at selection, never per frame: an unsupported major, or a minor above the app's, is
+-rejected ("Made for a newer PlxNative" / "Uses an older HUD format"). Strict parsing makes that mandatory: an
++rejected ("Made for a newer OTTPlay Native" / "Uses an older HUD format"). Strict parsing makes that mandatory: an
+ older app cannot know whether an unknown key is cosmetic. An app update that drops a major keeps the files
+ and marks them unloadable; a selected HUD that becomes unloadable falls back to `builtin:classic` with one
+ `hud: fallback` event-log line. Playback never fails because of a HUD. A package that does not fit the TV's current
+diff --git a/docs/macos-app-readme.md b/docs/macos-app-readme.md
+index 6a5b9a2fd57946b1b979aa7ed362cbb08ab3e6d4..bd1213ade4fbbb57f4b8095f222159d3e41c7362 100644
+--- a/docs/macos-app-readme.md
++++ b/docs/macos-app-readme.md
+@@ -1,20 +1,20 @@
+-# PlxNative for macOS
++# OTTPlay Native for macOS
+ 
+-A native Plex client, built for LG webOS televisions, running here as a real Mac app. Everything it
+-needs is inside the bundle — there is nothing to install.
++OTTPlay Native for macOS shares its application core with the LG webOS version. The runtime
++libraries it needs are included in the app bundle.
+ 
+ ## Open it (the first time only)
+ 
+ macOS will refuse to open it on the first try: the app is signed, but not by a registered Apple
+ developer, and Apple charges for that. This is normal and you only do it once.
+ 
+-1. Drag **PlxNative.app** to your Applications folder (or anywhere you like).
++1. Drag **OTTPlay Native.app** to your Applications folder (or anywhere you like).
+ 2. **Right-click it → Open**, then click **Open** in the dialog.
+    *If macOS says the app "is damaged and can't be opened", that is the download quarantine, not
+    the app. Open Terminal and run:*
+-   `xattr -dr com.apple.quarantine /Applications/PlxNative.app`
+-3. Say **Allow** when macOS asks about finding devices on your local network — the app talks to
+-   your Plex Media Server directly, and cannot work without it.
++   `xattr -dr com.apple.quarantine "/Applications/OTTPlay Native.app"`
++3. Say **Allow** when macOS asks about finding devices on your local network if you use media
++   servers on that network. Local-file playback does not require a Plex server.
+ 
+ After that it opens by double-click like anything else.
+ 
 diff --git a/docs/macos-app.md b/docs/macos-app.md
-index f145594f7623a6019003ada17943de4f0749137b..6d4010f885e6448a3551b10901ebefe4d0efa38f 100644
+index f145594f7623a6019003ada17943de4f0749137b..e5516e27532b13406554f30f83688a773fc4ae93 100644
 --- a/docs/macos-app.md
 +++ b/docs/macos-app.md
+@@ -1,8 +1,8 @@
+-# `PlxNative.app` — the app as a self-contained macOS application
++# `OTTPlay Native.app` — the app as a self-contained macOS application
+ 
+ *Written 2026-08-16, when the bundle was first built and verified.*
+ 
+-`make macapp` (or `make macapp-zip`) produces `pkg/PlxNative.app`: the same application core the
++`make macapp` (or `make macapp-zip`) produces `pkg/OTTPlay Native.app`: the same application core the
+ television runs, packaged so it starts on a Mac that has none of this repo's build environment —
+ no Homebrew, no SDL, no toolchain. `ci/mkmacapp.py` is the whole recipe; this note is why it looks
+ the way it does and what the result is and is not.
 @@ -22,8 +22,10 @@ and comes back signed in.
  hardware video plane via ACB — 29 symbols that exist on a television and nowhere else.
  `player/ffi_host.rs` reports the same failure a firmware with no usable video path reports, so
@@ -2299,6 +2465,60 @@ index 0000000000000000000000000000000000000000..529c67a722d0f83dcf5b0440d76a5708
 +        assert_eq!(menu.selected_hls_row(), Some(TrackRow::HlsAudio(0)));
 +        route::reset_player_control_for_test(&route::PlaybackSession::IDLE);
 +    }
+diff --git a/rust-modules/appkit/src/hud_format.rs b/rust-modules/appkit/src/hud_format.rs
+index 6da2208b8dddc9092a252e9c4ed15ca8024bc0dc..e3877893150be018ab13d1f86ab6bb9e80723b9c 100644
+--- a/rust-modules/appkit/src/hud_format.rs
++++ b/rust-modules/appkit/src/hud_format.rs
+@@ -191,7 +191,7 @@ pub fn has_error(findings: &[Finding]) -> bool {
+ }
+ 
+ /// The user-facing reason for a `format` whose minor (or major) is above what this app supports.
+-pub const REASON_NEWER: &str = "Made for a newer PlxNative";
++pub const REASON_NEWER: &str = "Made for a newer OTTPlay Native";
+ /// The user-facing reason for a `format` whose major is below what this app supports.
+ pub const REASON_OLDER: &str = "Uses an older HUD format";
+ 
+@@ -578,7 +578,7 @@ mod freeze_tests {
+         assert_eq!(f.nearest, ["block", "band", "anchor"]);
+         assert!(f.is_error() && has_error(&[f]));
+         assert!(!has_error(&[]));
+-        assert_eq!(REASON_NEWER, "Made for a newer PlxNative");
++        assert_eq!(REASON_NEWER, "Made for a newer OTTPlay Native");
+         assert_eq!(REASON_OLDER, "Uses an older HUD format");
+     }
+ }
+diff --git a/rust-modules/appkit/src/hud_format/parse.rs b/rust-modules/appkit/src/hud_format/parse.rs
+index 776392f396a6c4a102b04f892c7b200c1bdb850d..c5190b5a1012c83f1b532e51cd93dc5e3b99b162 100644
+--- a/rust-modules/appkit/src/hud_format/parse.rs
++++ b/rust-modules/appkit/src/hud_format/parse.rs
+@@ -427,7 +427,7 @@ fn version_gate(root: &Ordered) -> Result<Since, Finding> {
+             clip(text)
+         )));
+     };
+-    let hint = format!("this PlxNative reads HUD format {}", supported_text());
++    let hint = format!("this OTTPlay Native reads HUD format {}", supported_text());
+     match schema::SUPPORTED
+         .iter()
+         .find(|(m, _)| u64::from(*m) == major)
+diff --git a/rust-modules/appkit/src/hud_format/tests.rs b/rust-modules/appkit/src/hud_format/tests.rs
+index 04bb119d52673e2b5b9f8ffaa6b07cc8c4f0f6df..a5ae6e3f662333e5f589b80a202e6ee93ab6c98b 100644
+--- a/rust-modules/appkit/src/hud_format/tests.rs
++++ b/rust-modules/appkit/src/hud_format/tests.rs
+@@ -1061,12 +1061,12 @@ mod invalid {
+         };
+         let newer_minor = by_label("format_1_1_is_a_newer_minor");
+         assert_eq!(newer_minor.len(), 1, "the version gate answers alone");
+-        assert_eq!(newer_minor[0].message, "Made for a newer PlxNative");
++        assert_eq!(newer_minor[0].message, "Made for a newer OTTPlay Native");
+         assert_eq!(newer_minor[0].message, REASON_NEWER);
+         assert_eq!(newer_minor[0].code, "HUD-E0402");
+         assert_eq!(newer_minor[0].pointer, "/format");
+         let newer_major = by_label("format_2_0_is_a_newer_major");
+-        assert_eq!(newer_major[0].message, "Made for a newer PlxNative");
++        assert_eq!(newer_major[0].message, "Made for a newer OTTPlay Native");
+         assert_eq!(newer_major[0].code, "HUD-E0403");
+         let older = by_label("format_0_9_is_an_older_major");
+         assert_eq!(older[0].message, "Uses an older HUD format");
 diff --git a/rust-modules/appkit/src/lib.rs b/rust-modules/appkit/src/lib.rs
 index 03664ca94d6bf9b3c0efb0c8133ac5adbf21164f..a70cfef6c3bf952bd765a1225aadff648f242151 100644
 --- a/rust-modules/appkit/src/lib.rs
@@ -22776,10 +22996,26 @@ index 29a1a28bbc54947912df921f9cddc753a97a387e..3327c8a0b60eaba335edede1b250a03f
      }
  
 diff --git a/rust-modules/src/app/boot.rs b/rust-modules/src/app/boot.rs
-index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..d653c84e0138dc865fedd2714392c820f9ce9dfe 100644
+index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..646d2632e501fc8a77fa405898a1652aa6446bff 100644
 --- a/rust-modules/src/app/boot.rs
 +++ b/rust-modules/src/app/boot.rs
-@@ -1813,9 +1813,8 @@ pub(crate) unsafe fn construct(
+@@ -1690,13 +1690,8 @@ pub(crate) unsafe fn construct(
+         let (w, h) = requested_drawable(&session).unwrap_or((SCR_W, SCR_H));
+         (0, 0, w, h)
+     };
+-    // The title is furniture a television never draws (no window manager, no decoration) and
+-    // the first thing a desktop shows, so the two builds spell it differently: the device keeps
+-    // the process-shaped name every log, `pidof` recipe and skill already uses.
+-    #[cfg(feature = "hostsim")]
+-    let title = c"PlxNative";
+-    #[cfg(not(feature = "hostsim"))]
+-    let title = c"plxnative";
++    // This display title does not change process identity or the names used by launch tools.
++    let title = c"OTTPlay Native";
+     // A frame dump's drawable is exactly the window's size in points: it is the one desktop window
+     // that does not ask for ALLOW_HIGHDPI (0x2000), so its window is the 1920x1080 points of the
+     // canonical Linux host on a Retina display too, and `fit_window_to_density` finds nothing to
+@@ -1813,9 +1808,8 @@ pub(crate) unsafe fn construct(
      // A managed profile is runtime configuration, not a replacement of the stored
      // account. Keep the actual disk identity for future conditional session writes.
      let stored_identity = plx_session::auth::owner::Identity::of(&session);
@@ -22791,7 +23027,7 @@ index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..d653c84e0138dc865fedd2714392c820
      // Drain whatever the LAST session left behind, on a worker — and **after `global_init`,
      // which is the whole reason this line is here and not beside `telemetry::boot()` 170 lines
      // up.** It was there first, and the end-to-end run showed why that was wrong: the worker
-@@ -2102,9 +2101,9 @@ pub(crate) unsafe fn construct(
+@@ -2102,9 +2096,9 @@ pub(crate) unsafe fn construct(
              }
          }
      } else {
@@ -22804,7 +23040,7 @@ index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..d653c84e0138dc865fedd2714392c820
          log("boot: no session — opening OTT catalogue");
          unsigned_boot_target(controlled)
      }
-@@ -2517,6 +2516,7 @@ pub(crate) unsafe fn construct(
+@@ -2517,6 +2511,7 @@ pub(crate) unsafe fn construct(
      if !controlled { crate::lab::start_control(); }
      let mut app = App {
          player_viewport: Default::default(),
@@ -22812,7 +23048,7 @@ index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..d653c84e0138dc865fedd2714392c820
          ott: if controlled { None } else { Some(super::ott_runtime::Runtime::new()) },
          ott_standby:false,
          ott_wake_release:false,
-@@ -2532,6 +2532,7 @@ pub(crate) unsafe fn construct(
+@@ -2532,6 +2527,7 @@ pub(crate) unsafe fn construct(
          #[cfg(feature = "devtools")]
          buffer_flip_count,
          down_sym,
@@ -22820,7 +23056,7 @@ index b8fa6d7a764601ca4157cea6b64b39adc381e5ab..d653c84e0138dc865fedd2714392c820
          modal_repeat,
          diagnostics: crate::app::diagnostics::Diagnostics::default(),
          player,
-@@ -2742,5 +2743,6 @@ pub(crate) unsafe fn construct(
+@@ -2742,5 +2738,6 @@ pub(crate) unsafe fn construct(
              maybe_ask_consent(&mut app.pages);
          }
      }
@@ -63002,6 +63238,21 @@ index 33170378d0a2b06ca913c678560217012730274b..e4e684f4951ea406508da52f9949fae8
      });
  }
  
+diff --git a/site/hud/examples/invalid/newer-format.lint.json b/site/hud/examples/invalid/newer-format.lint.json
+index 83f1eef03fc754b8b856fc4fa39873e896d92ce2..ae3eb745b211296f199e2f3720613e47c6fcc0ad 100644
+--- a/site/hud/examples/invalid/newer-format.lint.json
++++ b/site/hud/examples/invalid/newer-format.lint.json
+@@ -3,8 +3,8 @@
+   "findings": [
+     {
+       "code": "HUD-E0402",
+-      "hint": "this PlxNative reads HUD format 1.0",
+-      "message": "Made for a newer PlxNative",
++      "hint": "this OTTPlay Native reads HUD format 1.0",
++      "message": "Made for a newer OTTPlay Native",
+       "nearest": [],
+       "path": "/format",
+       "rule": "format-newer-minor",
 diff --git a/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json b/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json
 index ed8161be4cbe6c9c38af0dda4477fe7ad8ad17e3..a4e5e5c4321cf7235f664266eb28390ad0082bb3 100644
 --- a/tests/fixtures/replay/1-boot-home-chip-grid/manifest.json
@@ -98121,3 +98372,26 @@ index 2eb8deedc6a0d27e7f9f5ba8f74ce9b40fbd271e..26e62ff68bcddce46aab216b43d97ea9
                    "rust-modules/storage/Cargo.toml",
                    "rust-modules/storage/build.rs", "rust-modules/.cargo/config.toml", "Makefile")
          for rel in inputs:
+diff --git a/tools/build-gc.sh b/tools/build-gc.sh
+index 6573edd8a87632b8c011fabb5114994d41a89bff..182b1be7b5ff4b46e53b736f98bc9ebd573d4909 100755
+--- a/tools/build-gc.sh
++++ b/tools/build-gc.sh
+@@ -1218,6 +1218,8 @@ derived_output() {
+     pkg/*.ipk|pkg/ipk.sha256|pkg/lib*-plx.so.*|pkg/libass-plx-host.so.0*|pkg/libass-plx.0.dylib.*.new) ;;
+     pkg/*.dylib|pkg/symbols|pkg/.ffabi-ok|pkg/.ffabi-host-ok|pkg/.build-config|pkg/.config-local-stamp) ;;
+     pkg/.flavor|pkg/PlxNative.app|pkg/PlxNative-*|pkg/*.link.*|pkg/link-evidence) ;;
++    # Git porcelain quotes this one generated bundle path because its name contains a space.
++    pkg/OTTPlay\ Native.app|'"pkg/OTTPlay Native.app/"'|pkg/OTTPlay-Native-*) ;;
+     ipkroot/*.tar.gz|ipkroot/debian-binary|ipkroot/data/usr|stub/*.so|*.o) ;;
+     tools/node_modules|__pycache__|*/__pycache__|*.pyc|.DS_Store|*/.DS_Store) ;;
+     .tv-*.pid|.tv-*.log) ;;                                     # a session's scratch, not its address or password
+@@ -1230,7 +1232,8 @@ derived_output() {
+ # `make` cannot rebuild). `--ignored=matching` names each ignored path at the granularity of the pattern that
+ # ignores it (`vendor/downloads/`, not a `vendor/` that merely contains it), and a directory is never walked, so
+ # a multi-gigabyte `target/` costs one line. Returns 1 when git cannot answer — the caller must not read that
+-# as "nothing". A path git quotes (spaces) never matches `derived_output`, so it is listed: kept, not guessed at.
++# as "nothing". Git-quoted paths are kept unless they exactly match the generated bundle named
++# in `derived_output`; other quoted paths are never guessed at.
+ private_ignored_paths() {
+   _pst=$(git -C "$1" -c core.quotePath=false status --porcelain --ignored=matching 2>/dev/null) || return 1
+   printf '%s\n' "$_pst" | sed -n 's/^!! //p' | while IFS= read -r _pp; do
