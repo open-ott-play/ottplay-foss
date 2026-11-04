@@ -162,6 +162,9 @@
 - Start inspected native Local videos without an audio track through the
   video-only pipeline, retaining their video parameters and clearing audio
   state left by the previous file.
+- Accept richer VPortal descriptions and posters from later catalogue pages
+  while preserving the original source identity and rejecting conflicting
+  playback links before publishing their folder entries.
 
 ### Upgrade
 

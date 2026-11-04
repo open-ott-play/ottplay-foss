@@ -6076,7 +6076,7 @@ index e3c7b1bf30a1f292fbeedf856d523d5d026f98fd..5b4f464ef2125252e7c5736db6b73f3d
      })?;
      Ok(output)
 diff --git a/rust-modules/data/src/person.rs b/rust-modules/data/src/person.rs
-index 043d74245453cb7d66c5ecb5e77920b610507602..6d8254de47d44464706e44821816870f9b6b9ff2 100644
+index 043d74245453cb7d66c5ecb5e77920b610507602..458a0f13cc86749b04353e70a669f5b77ef8fd16 100644
 --- a/rust-modules/data/src/person.rs
 +++ b/rust-modules/data/src/person.rs
 @@ -335,8 +335,7 @@ pub struct PersonState {
@@ -6438,7 +6438,25 @@ index 043d74245453cb7d66c5ecb5e77920b610507602..6d8254de47d44464706e44821816870f
              }
              n
          }
-@@ -3474,7 +3552,7 @@ mod tests {
+@@ -2655,12 +2733,17 @@ mod tests {
+         plx_plex::plex::reset_servers_for_test();
+         let saved = plx_plex::plex::session::peek();
+         plx_plex::plex::session::install_transient_for_test(true);
++        assert!(plx_plex::plex::session::peek_settled().is_none());
+         let mut owner = Owner::default();
+         owner.open(S0, "1001", "", "Synthetic person", "");
++        // Open no longer reads session authority: observe the unavailable input on a frame
++        // before recovery, as the Bridge does when it pumps this owner.
++        assert!(!owner.pump());
+         owner.state.current.as_mut().unwrap().profiled = true;
+         owner.state.current.as_mut().unwrap().credited = true;
+         let old_generation = owner.gen();
+         plx_plex::plex::session::save(&saved);
++        assert!(plx_plex::plex::session::peek_settled().is_some());
+         assert!(owner.pump());
+         assert!(owner.gen() > old_generation, "old credential-bound replies must be retired");
+         assert!(!owner.current().unwrap().profiled);
+@@ -3474,7 +3557,7 @@ mod tests {
              std::thread::sleep(std::time::Duration::from_millis(25));
              worker.land(at(S0, K_MEDIA), gen, media(vec![PmsMovie::default()], Vec::new()));
          });
@@ -6447,7 +6465,7 @@ index 043d74245453cb7d66c5ecb5e77920b610507602..6d8254de47d44464706e44821816870f
              "the answer the pump owed must be taken by the pump that asked");
          assert_eq!(owner.current().unwrap().shelf(0).len(), 1);
          assert!(!owner.adapter.mailbox(at(S0, K_MEDIA)).busy(), "the TAKE released the claim");
-@@ -3505,7 +3583,7 @@ mod tests {
+@@ -3505,7 +3588,7 @@ mod tests {
              std::thread::sleep(std::time::Duration::from_millis(25));
              worker.land(at(S0, K_MEDIA), current, media(vec![PmsMovie::default()], Vec::new()));
          });
@@ -6456,7 +6474,7 @@ index 043d74245453cb7d66c5ecb5e77920b610507602..6d8254de47d44464706e44821816870f
              "B was out when the pump ran, so B's answer must land on this pump");
          assert_eq!(owner.current().unwrap().shelf(0).len(), 1);
          assert!(!owner.adapter.mailbox(at(S0, K_MEDIA)).busy(), "B's own answer released B's claim");
-@@ -4728,7 +4806,7 @@ mod tests {
+@@ -4728,7 +4811,7 @@ mod tests {
          let mut owner = Owner::default();
          let media = at(S0, K_MEDIA);
          let (job, port) = media_job(&mut owner);
@@ -22893,7 +22911,7 @@ index 3c5dcbf30fbdfbf69d9cf0811621e48bc0fea83b..1130a0e617ade57146eb9d4b61b22c83
 +    }
 +}
 diff --git a/rust-modules/src/app/bridge.rs b/rust-modules/src/app/bridge.rs
-index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cfb854fa48 100644
+index eaf042166f2bf0d4a0eb2050986762218e45cd69..3f5a2bf7e921c2512454651c173f222c5ade8a4f 100644
 --- a/rust-modules/src/app/bridge.rs
 +++ b/rust-modules/src/app/bridge.rs
 @@ -39,7 +39,7 @@
@@ -22977,7 +22995,16 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
      hubs: plx_data::pms::HubsSnapshot,
      listing: plx_data::stores::browse::ListingSnapshot,
      directory: plx_data::stores::browse::DirectorySnapshot,
-@@ -635,7 +649,7 @@ impl Bridge {
+@@ -515,6 +529,8 @@ pub(crate) struct Bridge {
+ impl Bridge {
+     #[cfg(test)]
+     pub(crate) fn measurement_queries(&self)->Vec<plx_ui::rec::MetricKey> { self.measure.queries() }
++    #[cfg(test)]
++    pub(crate) fn measurement_query_trace(&self)->Vec<(plx_ui::rec::MetricKey, bool)> { self.measure.query_trace() }
+     pub(crate) fn prepare_measurements(&mut self, replay: Option<&std::collections::HashMap<plx_ui::rec::MetricKey,u32>>) {
+         self.measure.prepare(replay);
+     }
+@@ -635,7 +651,7 @@ impl Bridge {
      }
  
      #[cfg(test)]
@@ -22986,7 +23013,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
          static FIXTURE: plx_ui::fixture::FixtureMeasure = plx_ui::fixture::FixtureMeasure;
          let adapter = super::adapters::session::SessionAdapter::fixture_with(init.persisted.clone());
          Self::with_publications(&FIXTURE, || 0, init, adapter, Default::default(),
-@@ -712,10 +726,12 @@ impl Bridge {
+@@ -712,10 +728,12 @@ impl Bridge {
              playback_live: false,
              ott_catalog_offer: None,
              ott_player_offer: None,
@@ -22999,7 +23026,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
              hubs: reads.hubs,
              listing: reads.listing,
              directory: reads.directory,
-@@ -814,6 +830,15 @@ impl Bridge {
+@@ -814,6 +832,15 @@ impl Bridge {
          std::mem::take(&mut self.library_reqs)
      }
  
@@ -23015,7 +23042,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
      pub(crate) fn publish_ott_player_offer(&mut self, offer: Option<plx_screens::registry::OttPlayerOffer>) {
          self.ott_player_offer = offer;
      }
-@@ -1000,9 +1025,9 @@ impl Bridge {
+@@ -1000,9 +1027,9 @@ impl Bridge {
      }
  
      /// How long the next player instance pins its transport for — see
@@ -23028,7 +23055,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
      }
  
      fn home_focus(d: &Dispatcher<AppHost>) -> Option<FocusKey<u32>> {
-@@ -1362,7 +1387,8 @@ impl Bridge {
+@@ -1362,7 +1389,8 @@ impl Bridge {
      /// the next store's (`collection_pump`, then the detail reconciliation) record theirs.
      pub(crate) fn person_pump(&mut self) -> bool {
          super::adapters::stores::refill_client_keys(&mut self.client_keys);
@@ -23038,7 +23065,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
          self.start_store_jobs_of(StoreId::Person);
          changed
      }
-@@ -2150,7 +2176,7 @@ impl Bridge {
+@@ -2150,7 +2178,7 @@ impl Bridge {
              let publication = self.session.publication();
              let cx = parts.cx::<AppHost>(AppViews { auth: publication.read(),
                  hubs: self.hubs.view(), listing: self.listing.view(), directory: self.directory.view(),
@@ -23047,7 +23074,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
              }, &self.measure);
              let handled = self.session.step(event, &cx, fx);
              // #132: the owner logs nothing, and the Profiles screen cannot see a read-out that
-@@ -2348,7 +2374,7 @@ impl Rig<AppHost> for Bridge {
+@@ -2348,7 +2376,7 @@ impl Rig<AppHost> for Bridge {
                  hubs: self.hubs.view(),
                  listing: self.listing.view(),
                  directory: self.directory.view(),
@@ -23056,7 +23083,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
              },
              measure: &self.measure,
          }
-@@ -2453,6 +2479,7 @@ impl Bridge {
+@@ -2453,6 +2481,7 @@ impl Bridge {
                  let addressed = match &req {
                      plx_screens::registry::PlayerReq::CommitTrackAddressed(request) => Some(request.reply),
                      plx_screens::registry::PlayerReq::ViewportAddressed(request) => Some(request.reply),
@@ -23064,7 +23091,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
                      _ => None,
                  };
                  if addressed.is_some_and(|reply| reply.to != from || !matches!(from, MachineId::Instance(_))) { return; }
-@@ -2484,8 +2511,11 @@ impl Bridge {
+@@ -2484,8 +2513,11 @@ impl Bridge {
              Delivery::Machine(AppMsg::Session(event))));
          match effect {
              SessionFx::Commit { req, epoch, arrival, plan } => {
@@ -23077,7 +23104,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
                          deliver(SessionEvent::Commit(reply));
                      }
                      // Fixture/immediate resources can finish here. Live writes land through
-@@ -2522,7 +2552,15 @@ impl Bridge {
+@@ -2522,7 +2554,15 @@ impl Bridge {
              }
              SessionFx::PublishProfile(publication) => {
                  if self.session.publication_is_current(&publication) {
@@ -23094,7 +23121,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
                          if self.seat_watch.arrive(seat) {
                              if let Some(value) = self.native_subtitle_preferences {
                                  Self::restore_native_subtitle_geometry(value);
-@@ -2534,6 +2572,21 @@ impl Bridge {
+@@ -2534,6 +2574,21 @@ impl Bridge {
                      }
                  }
              }
@@ -23116,7 +23143,7 @@ index eaf042166f2bf0d4a0eb2050986762218e45cd69..6c0dd300cd6b32d999fb24ec760c84cf
              SessionFx::Ready { epoch, scope, server, token, install } => {
                  if self.session.ready_is_current(epoch, scope) {
                      self.session_ready = Some((epoch, scope, server, token, install));
-@@ -4782,3 +4835,55 @@ fn transport_keys_keep_their_identity_through_dispatcher_input() {
+@@ -4782,3 +4837,55 @@ fn transport_keys_keep_their_identity_through_dispatcher_input() {
      let input = key_input(consts::SDLK_LEFT, consts::WCODE_REWIND, 1, Tick::default(), Source::Sdl);
      assert!(matches!(input.kind, InputKind::Key { key: Key::Left, .. }), "plain D-pad precedence is unchanged");
  }
@@ -32190,7 +32217,7 @@ index 2b4a9a77e44d1d2e2e7fc75714ad976574f69faf..2b23dd3807d891982055f1035cc755b5
 +    }
 +}
 diff --git a/rust-modules/src/app/ott_local_sources.rs b/rust-modules/src/app/ott_local_sources.rs
-index f105000e3387761c829a30dc4f082117bc353aae..79e51be6252cd6aeeec59173427c5365cf279044 100644
+index f105000e3387761c829a30dc4f082117bc353aae..c51682b2f40606639b155d52bcbc93a58964ee20 100644
 --- a/rust-modules/src/app/ott_local_sources.rs
 +++ b/rust-modules/src/app/ott_local_sources.rs
 @@ -149,9 +149,7 @@ impl FolderDescriptor {
@@ -32204,7 +32231,38 @@ index f105000e3387761c829a30dc4f082117bc353aae..79e51be6252cd6aeeec59173427c5365
              || !clean_text(&self.path, 4096)
              || !self.path.starts_with('/')
              || (self.path != "/"
-@@ -460,3 +458,17 @@ mod usb_tests;
+@@ -403,7 +401,7 @@ mod tests {
+                 "{path:?}"
+             );
+         }
+-        for name in ["", " ", ".", "..", "a/b", "a\\b", "a\n"] {
++        for name in ["", "a\n", "a\0", "x\u{85}y"] {
+             let mut row = folder(0);
+             row.name = name.into();
+             assert!(
+@@ -411,6 +409,21 @@ mod tests {
+                 "{name:?}"
+             );
+         }
++        // Display labels are not paths or legacy name selectors. The shared
++        // validator preserves these bytes; the private path and id stay intact.
++        for name in [" ", ".", "..", "a/b", "a\\b"] {
++            let mut row = folder(0);
++            row.name = name.into();
++            let expected = row.clone();
++            let candidate = RememberedFolders::default().with_connected(row).unwrap();
++            assert_eq!(candidate.folders(), &[expected]);
++            let mut settings = BTreeMap::new();
++            candidate.put_into(&mut settings).unwrap();
++            assert_eq!(RememberedFolders::read(&settings).unwrap(), candidate);
++        }
++        let mut oversized = folder(0);
++        oversized.name = "x".repeat(513);
++        assert!(RememberedFolders::default().with_connected(oversized).is_err());
+     }
+ 
+     #[test]
+@@ -460,3 +473,17 @@ mod usb_tests;
  #[cfg(test)]
  #[path = "ott_local_sources_file_tests.rs"]
  mod file_tests;
@@ -58427,7 +58485,7 @@ index bbeaf180b740c26554dc34894e72ac41653710fe..f05fbda754a9d2570cbf1352e538d366
                  current:Some(plx_screens::ott::OttGuideProgramme {
                      title:"A long current programme title with several translated words ".repeat(4),
 diff --git a/rust-modules/src/app/ott_vportal.rs b/rust-modules/src/app/ott_vportal.rs
-index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f629d2ceaf 100644
+index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..41a926189ac665548631a665a2c5d07a2825d81e 100644
 --- a/rust-modules/src/app/ott_vportal.rs
 +++ b/rust-modules/src/app/ott_vportal.rs
 @@ -2,7 +2,7 @@
@@ -58507,7 +58565,7 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
              depth,
          });
          let text = request(&link, &job.page.request, cancel, fetch)?;
-@@ -211,16 +235,30 @@ pub(super) fn visit_with_deadline(
+@@ -211,16 +235,47 @@ pub(super) fn visit_with_deadline(
              .parse_response(&text, profile)
              .map_err(|_| "Invalid or incomplete VPortal catalogue")?;
          active(cancel)?;
@@ -58520,11 +58578,25 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
 -            let encoded =
 -                serde_json::to_string(&entry).map_err(|_| "Invalid VPortal catalogue row")?;
 -            if rows_seen.get(&entry.id) == Some(&encoded) {
+-                continue;
 +            let encoded = serde_json::to_string(&entry)
 +                .map_err(|_| "Invalid VPortal catalogue row")?;
-+            if rows_seen.get(&entry.id).is_some_and(|previous| previous != &encoded) {
-+                return Err("VPortal catalogue contains conflicting rows");
-+            }
++            if let Some(previous) = rows_seen.get(&entry.id) {
++                if previous != &encoded {
++                    let previous: CatalogEntry = serde_json::from_str(previous)
++                        .map_err(|_| "Invalid VPortal catalogue row")?;
++                    // Later pages may refine display metadata, never replace the
++                    // source or provider identity already published for this row.
++                    if previous.id != entry.id || previous.category != entry.category
++                        || previous.provider_id != entry.provider_id
++                        || previous.provider_id_field != entry.provider_id_field
++                        || previous.media != entry.media || previous.live != entry.live
++                    {
++                        return Err("VPortal catalogue contains conflicting rows");
++                    }
++                }
+             }
+-            let old_bytes = rows_seen.get(&entry.id).map_or(0, String::len);
 +            entries.push((entry, encoded));
 +        }
 +        if let Some(graph) = &hierarchy {
@@ -58534,17 +58606,21 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
 +        let mut repeated = Vec::new();
 +        let mut batch = Vec::with_capacity(BATCH_SIZE);
 +        for (entry, encoded) in entries {
-+            if rows_seen.contains_key(&entry.id) {
-+                repeated.push(entry.id);
-                 continue;
-             }
--            let old_bytes = rows_seen.get(&entry.id).map_or(0, String::len);
++            let previous_bytes = match rows_seen.get(&entry.id) {
++                Some(previous) if previous == &encoded => {
++                    repeated.push(entry.id);
++                    continue;
++                }
++                Some(previous) => previous.len(),
++                None => 0,
++            };
              row_bytes = row_bytes
 -                .saturating_sub(old_bytes)
++                .saturating_sub(previous_bytes)
                  .saturating_add(encoded.len());
              if row_bytes > ott::MAX_CATALOG_MODEL_BYTES {
                  return Err("VPortal catalogue metadata limit reached");
-@@ -233,14 +271,22 @@ pub(super) fn visit_with_deadline(
+@@ -233,14 +288,22 @@ pub(super) fn visit_with_deadline(
              // A playable first row must not wait for sibling folders or pages.
              if !emitted || batch.len() >= BATCH_SIZE {
                  active(cancel)?;
@@ -58569,7 +58645,7 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
              active(cancel)?;
          }
          // Depth-first traversal reaches a playable leaf before fetching the
-@@ -259,6 +305,28 @@ pub(super) fn visit_with_deadline(
+@@ -259,6 +322,28 @@ pub(super) fn visit_with_deadline(
      active(cancel)
  }
  
@@ -58598,7 +58674,7 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
  #[derive(Clone, PartialEq, Eq)]
  pub(super) struct SessionHints {
      pub stop: String,
-@@ -452,3 +520,7 @@ fn session_url(endpoint: &str, value: &str) -> Option<String> {
+@@ -452,3 +537,7 @@ fn session_url(endpoint: &str, value: &str) -> Option<String> {
  #[cfg(test)]
  #[path = "ott_vportal/tests.rs"]
  mod tests;
@@ -58606,6 +58682,77 @@ index 88df3ce3b6010fd16ffbbf552c8837491d4f335f..f74ad763db16000bb2f5f70226b742f6
 +#[cfg(test)]
 +#[path = "ott_vportal_ancestor_tests.rs"]
 +mod ancestor_tests;
+diff --git a/rust-modules/src/app/ott_vportal/tests.rs b/rust-modules/src/app/ott_vportal/tests.rs
+index fd75df8544dbbad4b395560d824bf8f85808a609..8d3b7fb84b26306763ed2ce3faeb3402edd66aef 100644
+--- a/rust-modules/src/app/ott_vportal/tests.rs
++++ b/rust-modules/src/app/ott_vportal/tests.rs
+@@ -319,15 +319,17 @@ fn later_page_can_enrich_metadata_for_an_existing_row() {
+         Ok(if body.get("offset").is_none() {
+             json!({"type":"category","items":[{"type":"stream","id":1,"url":"/old"},{"type":"next","request":{}}]})
+         } else {
+-            json!({"type":"category","items":[{"type":"stream","id":1,"url":"/fresh","description":"Complete description","img":"/cover.jpg"}]})
++            json!({"type":"category","items":[{"type":"stream","id":1,"url":"/old","description":"Complete description","img":"/cover.jpg"}]})
+         }.to_string())
+     };
+     let mut rows = Vec::new();
++    let mut catalog = Catalog::default();
+     visit_with(
+         &OffFrame::for_test(),
+         &profile(),
+         &AtomicBool::new(false),
+         &mut |batch| {
++            catalog.merge(Catalog { entries: batch.clone(), hierarchy: None }).unwrap();
+             rows.extend(batch);
+             Ok(())
+         },
+@@ -337,14 +339,46 @@ fn later_page_can_enrich_metadata_for_an_existing_row() {
+     assert_eq!(rows.len(), 2);
+     assert_eq!(rows[0].id, rows[1].id);
+     assert_eq!(rows[1].description, "Complete description");
++    assert_eq!(rows[1].poster, "https://portal.invalid:443/cover.jpg");
++    assert_eq!(catalog.entries.len(), 1);
++    assert_eq!(catalog.entries[0], rows[1]);
+     assert_eq!(
+         rows[1].media,
+         MediaLocator::Http {
+-            url: "https://portal.invalid:443/fresh".into()
++            url: "https://portal.invalid:443/old".into()
+         }
+     );
+ }
+ 
++#[test]
++fn later_page_cannot_replace_an_existing_row_locator() {
++    let mut calls = 0;
++    let mut transport = |_: &str, body: &Value, _: &AtomicBool| {
++        calls += 1;
++        Ok(if body.get("offset").is_none() {
++            json!({"type":"category","items":[{"type":"stream","id":1,"url":"/old"},{"type":"next","request":{}}]})
++        } else {
++            json!({"type":"category","items":[{"type":"stream","id":1,"url":"/fresh","description":"Complete description","img":"/cover.jpg"}]})
++        }.to_string())
++    };
++    let mut rows = Vec::new();
++    let result = visit_with(
++        &OffFrame::for_test(),
++        &profile(),
++        &AtomicBool::new(false),
++        &mut |batch| { rows.extend(batch); Ok(()) },
++        &mut transport,
++    );
++    assert_eq!(result, Err("VPortal catalogue contains conflicting rows"));
++    assert_eq!(calls, 2);
++    assert_eq!(rows.len(), 1);
++    assert!(rows[0].description.is_empty());
++    assert!(rows[0].poster.is_empty());
++    assert_eq!(rows[0].media, MediaLocator::Http {
++        url: "https://portal.invalid:443/old".into()
++    });
++}
++
+ #[test]
+ fn expired_lookup_deadline_stops_before_empty_catalogue_traversal() {
+     let worker = OffFrame::for_test();
 diff --git a/rust-modules/src/app/ott_vportal_ancestor_tests.rs b/rust-modules/src/app/ott_vportal_ancestor_tests.rs
 new file mode 100644
 index 0000000000000000000000000000000000000000..f37a829d85be0e697e29e1c138f0b229885d8b3b
@@ -60019,6 +60166,64 @@ index 11e0f7608f10de18cff4e526152731a5f80c5428..9e71a63af3fe14291845e4e4b4baf3b3
  fn screen(d: &Dispatcher<AppHost>, owner: InstanceId) -> Option<&plx_screens::ott::OttScreen> {
      let body = d.nav.instance(owner)?;
      if body.staged { return None; }
+diff --git a/rust-modules/src/app/recorder.rs b/rust-modules/src/app/recorder.rs
+index dc1291578c755696f2a5fc9e0ef2ad7fe3820bd9..1f9e28d045e1f666f1fab462e7f7f4a5d360bdda 100644
+--- a/rust-modules/src/app/recorder.rs
++++ b/rust-modules/src/app/recorder.rs
+@@ -1631,6 +1631,13 @@ mod tests {
+     }
+     fn product_settings_run_with_queries(rec:&mut Recplay, changed_focus:bool, changed_hit:bool,
+         queries:&mut Vec<plx_ui::rec::MetricKey>) -> Vec<u64> {
++        let mut trace=Vec::new();
++        let states=product_settings_run_with_query_trace(rec,changed_focus,changed_hit,&mut trace);
++        queries.extend(trace.into_iter().map(|(key, _)| key));
++        states
++    }
++    fn product_settings_run_with_query_trace(rec:&mut Recplay, changed_focus:bool, changed_hit:bool,
++        queries:&mut Vec<(plx_ui::rec::MetricKey, bool)>) -> Vec<u64> {
+         use plx_ui::{dispatch::Dispatcher};
+         use plx_machine::{machine::{Tick,Key,InputKind}};
+         use super::super::bridge;
+@@ -1681,7 +1688,7 @@ mod tests {
+             rec.end_frame(&||hash);
+             if pointer { assert!(d.focus().is_some()); }
+         }
+-        queries.extend(rig.measurement_queries());
++        queries.extend(rig.measurement_query_trace());
+         hashes
+     }
+ 
+@@ -1709,15 +1716,26 @@ mod tests {
+         assert!(!recording.metrics.is_empty(),"real product resolution must capture measurements");
+         for mode in [ReplayMode::Targets,ReplayMode::Resolve] {
+             let mut replay=replay_for_test(copy_recording(&recording),mode);
+-            assert_eq!(product_settings_run(&mut replay,false,false),expected);
++            let mut trace=Vec::new();
++            assert_eq!(product_settings_run_with_query_trace(&mut replay,false,false,&mut trace),expected);
+             assert!(!replay.outcome_failed());
++            let required:std::collections::HashSet<_>=trace.into_iter()
++                .filter_map(|(key, strict)| strict.then_some(key)).collect();
++            assert!(!required.is_empty(),"the product must exercise required measurements");
+             for key in recording.metrics.keys() {
+                 let mut missing=copy_recording(&recording);
+                 missing.metrics.remove(key);
+                 let mut replay=replay_for_test(missing,mode);
+-                product_settings_run(&mut replay,false,false);
+-                assert!(replay.outcome_failed(),"a table miss must fail before SAME");
+-                assert_eq!(replay.failure(),Some("replay measurement table miss"));
++                let states=product_settings_run(&mut replay,false,false);
++                if required.contains(key) {
++                    assert!(replay.outcome_failed(),"a required table miss must fail before SAME: {key:?}");
++                    assert_eq!(replay.failure(),Some("replay measurement table miss"));
++                } else {
++                    // Prewarming records keys for pages that no graded frame drew.
++                    // Omitting only those keys must not alter product state or grading.
++                    assert!(!replay.outcome_failed(),"speculative-only key changed grading: {key:?}");
++                    assert_eq!(states,expected,"speculative-only key changed state: {key:?}");
++                }
+             }
+         }
+         plx_machine::landgate::disarm();
 diff --git a/rust-modules/src/app/run.rs b/rust-modules/src/app/run.rs
 index 4e7291ee3b0246b628825d9cb13c84fa29d185b5..7efce78a80c43cb29faeafc9b9cf5238700435ea 100644
 --- a/rust-modules/src/app/run.rs
@@ -60366,6 +60571,71 @@ index 783db21762e5bda8b267384d31bc0962f87258e5..730090104d0116556efa56b1315cc705
  /// The catalog sentence, `{key}` held by the object-replacement character.
  fn sentence() -> String {
      plx_platform::i18n::msg::widgets_hint_hold_options("\u{fffc}")
+diff --git a/rust-modules/ui/src/rec.rs b/rust-modules/ui/src/rec.rs
+index c2bf57155b4ebb4369f4c98e511a605de45a51de..591867b911e1bd9d1d39f290cb2d826cac702a5a 100644
+--- a/rust-modules/ui/src/rec.rs
++++ b/rust-modules/ui/src/rec.rs
+@@ -920,7 +920,7 @@ pub struct TableMeasure {
+     table: HashMap<MetricKey,u32>,
+     miss: std::cell::RefCell<Option<MetricKey>>,
+     #[cfg(any(test, feature = "test-support"))]
+-    queries: std::cell::RefCell<Vec<MetricKey>>,
++    queries: std::cell::RefCell<Vec<(MetricKey, bool)>>,
+ }
+ 
+ impl TableMeasure {
+@@ -944,7 +944,7 @@ impl TableMeasure {
+     /// without being charged against the replay.
+     fn answer(&self, key: MetricKey, strict: bool) -> f32 {
+         #[cfg(any(test, feature = "test-support"))]
+-        self.queries.borrow_mut().push(key.clone());
++        self.queries.borrow_mut().push((key.clone(), strict));
+         if let Some(bits)=self.table.get(&key) { return f32::from_bits(*bits); }
+         if strict { self.miss.borrow_mut().get_or_insert(key); }
+         0.0
+@@ -1007,11 +1007,16 @@ pub struct MetricCapture {
+     bytes: usize,
+     failed: bool,
+     #[cfg(any(test, feature = "test-support"))]
+-    queries: Vec<MetricKey>,
++    queries: Vec<(MetricKey, bool)>,
+ }
+ impl Measurements {
+     #[cfg(any(test, feature = "test-support"))]
+     pub fn queries(&self)->Vec<MetricKey> {
++        self.query_trace().into_iter().map(|(key, _)| key).collect()
++    }
++    /// Test evidence distinguishes required layout from speculative text warming.
++    #[cfg(any(test, feature = "test-support"))]
++    pub fn query_trace(&self)->Vec<(MetricKey, bool)> {
+         match self {
+             Self::Replay(table)=>table.queries.take(),
+             Self::Record {capture,..}=>std::mem::take(&mut capture.borrow_mut().queries),
+@@ -1058,7 +1063,7 @@ impl Measurements {
+                 let bits=answer.to_bits();
+                 let mut capture=capture.borrow_mut();
+                 #[cfg(any(test, feature = "test-support"))]
+-                capture.queries.push(key.clone());
++                capture.queries.push((key.clone(), !speculating()));
+                 if let Some(old)=capture.table.get(&key) {
+                     if *old!=bits { capture.failed=true; }
+                 } else if !key.valid() || capture.table.len()>=MAX_METRICS
+@@ -1602,6 +1607,7 @@ mod tests {
+         let metrics:HashMap<_,_>=record.drain().unwrap().into_iter().collect();
+         let key=MetricKey::Width {text:b"s025b413f".to_vec(),sz:26,bold:true};
+         assert_eq!(metrics.get(&key), Some(&warmed.to_bits()), "a current recording answers the walk exactly");
++        assert_eq!(record.query_trace(), vec![(key.clone(), false)]);
+ 
+         // An older recording that never measured the key: the walk's miss is answered, not charged.
+         let replay=Measurements::Replay(TableMeasure::new(HashMap::new()));
+@@ -1611,6 +1617,7 @@ mod tests {
+         // Outside the pass the same miss still refuses the replay.
+         replay.width(c"s025b413f", 26, true);
+         assert_eq!(replay.drain(), Err("replay measurement table miss"));
++        assert_eq!(replay.query_trace(), vec![(key.clone(), false), (key.clone(), true)]);
+ 
+         // A hit inside the pass answers the recorded bits.
+         let replay=Measurements::Replay(TableMeasure::new(metrics));
 diff --git a/rust-modules/ui/src/route_screen.rs b/rust-modules/ui/src/route_screen.rs
 index a24a9e66d37795d4a862adcff2a72bc9e55db94b..b112eee0f994ff8ebb6aca4bd6d82427002ec4e6 100644
 --- a/rust-modules/ui/src/route_screen.rs
